@@ -33,6 +33,12 @@ computeUnboxedS = compute Sequential unboxed
 computeUnboxedP = compute Parallel unboxed
 {-# INLINE computeUnboxedP #-}
 
+computeUnboxedPIO
+  :: (Load r ix, VG.Vector VU.Vector e)
+  => Array r ix e -> IO (Array M ix e)
+computeUnboxedPIO = computeP unboxed
+{-# INLINE computeUnboxedPIO #-}
+
 
 fromListsUnboxed :: VU.Unbox e => [[e]] -> Array M DIM2 e
 fromListsUnboxed !ls =

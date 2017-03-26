@@ -70,7 +70,7 @@ instance Source M DIM1 where
 
 instance Source M DIM2 where
   type Elt M DIM2 e = Array D DIM1 e
-  unsafeIndex (MArray sz f) = f . toLinearIndex sz
+  unsafeIndex (MArray (_, n) f) !(i, j) = f (n * i + j) -- . toLinearIndex sz
   {-# INLINE unsafeIndex #-}
   unsafeLinearIndex = mUnsafeLinearIndex
   {-# INLINE unsafeLinearIndex #-}

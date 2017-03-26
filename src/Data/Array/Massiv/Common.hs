@@ -16,6 +16,7 @@ module Data.Array.Massiv.Common
   , Source(..)
   , loop
   , loopM_
+  , loopM
   , module Data.Array.Massiv.Index
   ) where
 
@@ -52,7 +53,7 @@ class Massiv r ix => Source r ix where
 
 
 
--- | Very efficient loop
+-- | Very efficient loop with accumulator
 loop :: t -> (t -> Bool) -> (t -> t) -> a -> (t -> a -> a) -> a
 loop !init' condition increment !initAcc f = go init' initAcc where
   go !step !acc =
@@ -63,11 +64,21 @@ loop !init' condition increment !initAcc f = go init' initAcc where
 
 
 -- | Very efficient monadic loop
-loopM_ :: Monad m => t -> (t -> Bool) -> (t -> t) -> (t -> m a) -> m ()
+loopM_ :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> m a) -> m ()
 loopM_ !init' condition increment f = go init' where
   go !step =
     case condition step of
       False -> return ()
       True  -> f step >> go (increment step)
 {-# INLINE loopM_ #-}
+
+
+-- | Very efficient monadic loop with accumulator
+loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
+loopM !init' condition increment !initAcc f = go init' initAcc where
+  go !step acc =
+    case condition step of
+      False -> return acc
+      True  -> f step acc >>= go (increment step)
+{-# INLINE loopM #-}
 

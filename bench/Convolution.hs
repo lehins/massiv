@@ -15,32 +15,29 @@ import           Data.Array.Repa.Stencil.Dim2        as R
 
 import           Data.Array.Massiv as M
 import           Data.Array.Massiv.Convolution
-import           Data.Array.Massiv.Windowed
+-- import           Data.Array.Massiv.Windowed
 import           Data.Array.Massiv.Manifest.Unboxed  as M
 import           Prelude                             as P
 
 
--- | Filter that can be applied to an image using `applyFilter`.
---
--- @since 1.5.3
-data Filter r e = Filter
-  { applyFilter :: M.Array r M.DIM2 e -> M.Array M.D M.DIM2 e -- ^ Apply a filter to an image
-  }
+-- data Filter r e = Filter
+--   { applyFilter :: M.Array r M.DIM2 e -> M.Array W M.DIM2 e -- ^ Apply a filter to an image
+--   }
 
 
-sobelFilter :: (Unbox e, Eq e, Num e) => Orientation -> Filter M e
-sobelFilter dir =
-  Filter (correlate kernel)
-  where
-    !kernel =
-      case dir of
-        Vertical   -> fromListsUnboxed $ [ [ -1, -2, -1 ]
-                                         , [  0,  0,  0 ]
-                                         , [  1,  2,  1 ] ]
-        Horizontal -> fromListsUnboxed $ [ [ -1, 0, 1 ]
-                                         , [ -2, 0, 1 ]
-                                         , [ -1, 0, 1 ] ]
-{-# INLINE sobelFilter #-}
+-- sobelFilter :: (Unbox e, Eq e, Num e) => Orientation -> Filter M e
+-- sobelFilter dir =
+--   Filter (correlate kernel)
+--   where
+--     !kernel =
+--       case dir of
+--         Vertical   -> fromListsUnboxed $ [ [ -1, -2, -1 ]
+--                                          , [  0,  0,  0 ]
+--                                          , [  1,  2,  1 ] ]
+--         Horizontal -> fromListsUnboxed $ [ [ -1, 0, 1 ]
+--                                          , [ -2, 0, 1 ]
+--                                          , [ -1, 0, 1 ] ]
+-- {-# INLINE sobelFilter #-}
 
 
 -- | Repa algorithms convolution implementation
@@ -103,16 +100,15 @@ main = do
         M.computeUnboxedS $
         makeArray2D
           (600, 600)
-          (\(i, j) -> fromIntegral ((min i j) `div` (1 + max i j)))
-  let !sobel = applyFilter (sobelFilter Horizontal)
+          (\ (i, j) -> fromIntegral ((min i j) `div` (1 + max i j)))
   let sobelR = sobelGxR arrR
-  let sobelRAlg = sobelGxRAlg arrR
+  --let sobelRAlg = sobelGxRAlg arrR
   --let sobelRAlgSep = sobelGxRAlgSep arrR
   defaultMain
     [ bgroup
         "Sobel"
-        [ bench "repa R Stencil" $ whnfIO (forceP sobelR)
-        , bench "Filter Unboxed" $ whnf (M.computeUnboxedP . sobel) arrM
-        , bench "repa R Agorithms" $ whnfIO sobelRAlg
+        [ bench "Repa Stencil Convolution" $ whnfIO (forceS sobelR)
+        , bench "Massiv Filter" $ whnf (M.computeUnboxedS . sobelHorizontal) arrM
+        --, bench "repa R Agorithms" $ whnfIO sobelRAlg
         ]
     ]
