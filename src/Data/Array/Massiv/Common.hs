@@ -53,7 +53,7 @@ class Massiv r ix => Source r ix where
 
 
 
--- | Very efficient loop with accumulator
+-- | Very efficient loop with an accumulator
 loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
 loop !init' condition increment !initAcc f = go init' initAcc where
   go !step !acc =
@@ -73,7 +73,7 @@ loopM_ !init' condition increment f = go init' where
 {-# INLINE loopM_ #-}
 
 
--- | Very efficient monadic loop with accumulator
+-- | Very efficient monadic loop with an accumulator
 loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
 loopM !init' condition increment !initAcc f = go init' initAcc where
   go !step acc =

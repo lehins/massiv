@@ -102,9 +102,10 @@ benchmark convolution
   main-is:             Convolution.hs
   other-modules:       Compute
                      , VectorConvolve
-  --ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
   ghc-options:         -threaded -O2
-  --ghc-options:         -Odph -rtsopts -threaded -fno-liberate-case -fllvm -optlo-O3
+  --ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
+  --ghc-options:         -threaded -O2 -fvia-C -optc-O3 -D64
+  --ghc-options:         -fllvm -optlo-O3 -Odph -fno-liberate-case -funfolding-use-threshold100 -funfolding-keeness-factor100
 
   build-depends:       base
                      , criterion
@@ -113,6 +114,7 @@ benchmark convolution
                      , repa >= 3.4.1.2
                      , repa-algorithms >= 3.4.1.1
                      , vector
+                     , primitive
   default-language:    Haskell2010
 
 -- executable sobel-profile

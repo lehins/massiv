@@ -254,8 +254,8 @@ instance Load D DIM2 where
 
 
 instance Load W DIM2 where
-  loadS (WArray sz@(m, n) indexBorder t@(it, jt) (wm, wn) indexWindow) unsafeWrite = do
-    let !b@(ib, jb) = (wm + it, wn + jt)
+  loadS (WArray sz@(m, n) indexBorder (it, jt) (wm, wn) indexWindow) unsafeWrite = do
+    let !(ib, jb) = (wm + it, wn + jt)
     iterateWithLinearM_ RowMajor sz (0, 0) (it, n) $ \ !k !ix ->
       unsafeWrite k (indexBorder ix)
     iterateWithLinearM_ RowMajor sz (ib, 0) (m, n) $ \ !k !ix ->
@@ -264,41 +264,20 @@ instance Load W DIM2 where
       unsafeWrite k (indexBorder ix)
     iterateWithLinearM_ RowMajor sz (it, jb) (ib, n) $ \ !k !ix ->
       unsafeWrite k (indexBorder ix)
-    iterateWithLinearM_ RowMajor sz t b $ \ !k !ix ->
-      unsafeWrite k (indexWindow ix)
-    -- loopM_ it (< ib) (+ 3) $ \ !i -> do
-    --     loopM_ jt (< jb) (+ 1) $ \ !j -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexWindow (i, j))
-    --       unsafeWrite (toLinearIndex sz (i+1, j)) (indexWindow (i+1, j))
-    --       unsafeWrite (toLinearIndex sz (i+2, j)) (indexWindow (i+2, j))
-
-    -- loopM_ 0 (< n) (+ 1) $ \ !j -> do
-    --     loopM_ 0 (< it) (+ 1) $ \ !i -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    --     loopM_ ib (< m) (+ 1) $ \ !i -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    -- loopM_ it (< ib) (+ 1) $ \ !i -> do
-    --     loopM_ 0 (< jt) (+ 1) $ \ !j -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    --     loopM_ jt (< jb) (+ 1) $ \ !j -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexWindow (i, j))
-    --     loopM_ jb (< n) (+ 1) $ \ !j -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    -- loopM_ 0 (< n) (+ 1) $ \ !j -> do
-    --     loopM_ 0 (< it) (+ 1) $ \ !i -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    --     loopM_ ib (< m) (+ 1) $ \ !i -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    -- loopM_ it (< ib) (+ 2) $ \ !i -> do
-    --     loopM_ 0 (< jt) (+ 1) $ \ !j -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    --       unsafeWrite (toLinearIndex sz (i+1, j)) (indexBorder (i+1, j))
-    --     loopM_ jt (< jb) (+ 1) $ \ !j -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexWindow (i, j))
-    --       unsafeWrite (toLinearIndex sz (i+1, j)) (indexWindow (i+1, j))
-    --     loopM_ jb (< n) (+ 1) $ \ !j -> do
-    --       unsafeWrite (toLinearIndex sz (i, j)) (indexBorder (i, j))
-    --       unsafeWrite (toLinearIndex sz (i+1, j)) (indexBorder (i+1, j))
+    -- iterateWithLinearM_ RowMajor sz t b $ \ !k !ix ->
+    --   unsafeWrite k (indexWindow ix)
+    let !ibS = ib - ((ib - it) `mod` 3)
+    loopM_ it (< ibS) (+ 3) $ \ !i -> do
+      loopM_ jt (< jb) (+ 1) $ \ !j -> do
+        let !ix0 = (i, j)
+        let !ix1 = (i + 1, j)
+        let !ix2 = (i + 2, j)
+        unsafeWrite (toLinearIndex sz ix0) (indexWindow ix0)
+        unsafeWrite (toLinearIndex sz ix1) (indexWindow ix1)
+        unsafeWrite (toLinearIndex sz ix2) (indexWindow ix2)
+    loopM_ ibS (< ib) (+ 1) $ \ !i -> do
+      loopM_ jt (< jb) (+ 1) $ \ !j -> do
+        unsafeWrite (toLinearIndex sz (i, j)) (indexWindow (i, j))
   {-# INLINE loadS #-}
   loadP WArray {..} unsafeWrite = do
     let !(m, n) = wSize
@@ -383,7 +362,7 @@ loadVectorParallel :: (Load r ix, VG.Vector v a) => Array r ix a -> v a
 loadVectorParallel arr = unsafePerformIO $ do
   let !k = totalElem (size arr)
   mv <- MVG.unsafeNew k
-  loadP arr (\ !val -> MVG.unsafeWrite mv val)
+  loadP arr (MVG.unsafeWrite mv)
   VG.unsafeFreeze mv
 {-# NOINLINE loadVectorParallel #-}
 

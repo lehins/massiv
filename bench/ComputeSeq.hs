@@ -7,7 +7,7 @@ import           Criterion.Main
 import           Data.Array.Massiv                  as M
 
 import           Data.Array.Repa                    as R
--- import qualified Data.Vector.Unboxed                as VU
+import qualified Data.Vector.Unboxed                as VU
 import           Prelude                            as P
 
 
@@ -21,13 +21,12 @@ main = do
   let !arrCR = R.computeUnboxedS $ arrR sz
   let !vecCU = vecU sz
   defaultMain
-      -- bgroup
-    --     "Unsafe Indexing"
-    --     [ bench "Massiv 2D" $ whnf (M.unsafeIndex arrCM) ixM
-    --     , bench "Repa 2D" $ whnf (R.unsafeIndex arrCR) ixR
-    --     , bench "Vector 1D" $ whnf (VU.unsafeIndex vecCU) ix1D
-    --     ]
-    -- ,
+    [ -- bgroup
+      --   "Unsafe Indexing"
+      --   [ bench "Massiv 2D" $ whnf (M.unsafeIndex arrCM) ixM
+      --   , bench "Repa 2D" $ whnf (R.unsafeIndex arrCR) ixR
+      --   , bench "Vector 1D" $ whnf (VU.unsafeIndex vecCU) ix1D
+      --   ]
       -- bgroup
       --   "Safe Indexing"
       --   [ bench "Massiv 2D" $ whnf (M.index arrCM) ixM
@@ -42,28 +41,28 @@ main = do
       --     , bench "Massiv 2D" $ whnf (M.mUnsafeLinearIndex arrCM) ix1D
       --     , bench "Vector 1D" $ whnf (VU.unsafeIndex vecCU) ix1D
       --     ]
-    [ bgroup
-        "Load Light"
-        [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrM) sz
-        , bench "Array Repa" $ whnf (R.computeUnboxedS . arrR) sz
-        , bench "Vector Unboxed" $ whnf vecU sz
-        ]
-    , bgroup
-        "Load Heavy"
-        [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrM') sz
-        , bench "Array Repa" $ whnf (R.computeUnboxedS . arrR') sz
-        , bench "Vector Unboxed" $ whnf vecU' sz
-        ]
-      -- bgroup
-      --   "Load Windowed"
-      --   [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrWindowedM) sz
-      --   , bench "Array Repa" $ whnf (R.computeUnboxedS . arrWindowedR) sz
-      --   ]
+      -- "Load Light"
+      -- [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrM) sz
+      -- , bench "Array Repa" $ whnf (R.computeUnboxedS . arrR) sz
+      -- , bench "Vector Unboxed" $ whnf vecU sz
+      -- ]
     -- , bgroup
-    --     "Fuse"
-    --     [ bench "Array Massiv" $
-    --       whnf (M.computeUnboxedS . mapA (+ 25) . arrM) sz
-    --     , bench "Array Repa" $ whnf (R.computeUnboxedS . R.map (+ 25) . arrR) sz
-    --     , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
+    --     "Load Heavy"
+    --     [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrM') sz
+    --     , bench "Array Repa" $ whnf (R.computeUnboxedS . arrR') sz
+    --     , bench "Vector Unboxed" $ whnf vecU' sz
     --     ]
+    --   bgroup
+    --     "Load Windowed"
+    --     [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrWindowedM) sz
+    --     , bench "Array Repa" $ whnf (R.computeUnboxedS . arrWindowedR) sz
+    --     ]
+    -- , 
+      bgroup
+        "Fuse"
+        [ bench "Array Massiv" $
+          whnf (M.computeUnboxedS . mapA (+ 25) . arrM) sz
+        , bench "Array Repa" $ whnf (R.computeUnboxedS . R.map (+ 25) . arrR) sz
+        , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
+        ]
     ]
