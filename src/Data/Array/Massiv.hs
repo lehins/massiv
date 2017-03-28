@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -15,6 +16,7 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Common
   , module Data.Array.Massiv.Delayed
   , module Data.Array.Massiv.Manifest
+  , module Data.Array.Massiv.Manifest.Unboxed
   , makeArray1D
   , makeArray2D
   , makeArray3D
@@ -23,14 +25,16 @@ module Data.Array.Massiv
   , (?)
   , index
   , mapA
+  , index2D
   ) where
 
 import Data.Array.Massiv.Index
 import Data.Array.Massiv.Common
 import Data.Array.Massiv.Delayed
 import Data.Array.Massiv.Manifest
+import Data.Array.Massiv.Manifest.Unboxed
 
-
+-- import Data.Foldable
 
 
 makeArray1D :: Int -> (Int -> e) -> Array D DIM1 e
@@ -70,6 +74,10 @@ index !arr !ix
   | isSafeIndex (size arr) ix = unsafeIndex arr ix
   | otherwise = errorIx ix (size arr)
 {-# INLINE index #-}
+
+index2D :: Source M DIM2 => Array M DIM2 e -> (Int, Int) -> e
+index2D !arr !(i, j) = arr ! i ! j
+{-# INLINE index2D #-}
 
 
 (!) :: Source r ix => Array r ix e -> Int -> Elt r ix e

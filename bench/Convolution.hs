@@ -4,6 +4,8 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 module Main where
 
+import           Compute
+import qualified VectorConvolve as VC
 import           Control.Monad
 import           Criterion.Main
 import           Data.Array.Repa                     as R
@@ -13,10 +15,10 @@ import           Data.Array.Repa.Repr.Unboxed        as R
 import           Data.Array.Repa.Stencil             as R
 import           Data.Array.Repa.Stencil.Dim2        as R
 
-import           Data.Array.Massiv as M
-import           Data.Array.Massiv.Convolution
+-- import           Data.Array.Massiv                   as M
+
 -- import           Data.Array.Massiv.Windowed
-import           Data.Array.Massiv.Manifest.Unboxed  as M
+-- import           Data.Array.Massiv.Manifest.Unboxed  as M
 import           Prelude                             as P
 
 
@@ -56,20 +58,23 @@ sobelGxRAlgSep =
     (R.fromListUnboxed (Z :. 3 :. 1) [1, 2, 1])
 
 
--- |  Repa stencil base convolution
-sobelGxR
+-- | Repa stencil base Kirsch W horizontal convolution
+kirschWR
   :: (R.Source r e, Num e) => R.Array r R.DIM2 e
      -> R.Array PC5 R.DIM2 e
-sobelGxR = mapStencil2 BoundClamp stencil
+kirschWR = mapStencil2 BoundClamp stencil
   where stencil = makeStencil2 3 3
                   (\ix -> case ix of
-                      Z :. -1 :. -1 -> Just (-1)
-                      Z :.  0 :. -1 -> Just (-2)
-                      Z :.  1 :. -1 -> Just (-1)
-                      Z :. -1 :.  1 -> Just 1
-                      Z :.  0 :.  1 -> Just 2
-                      Z :.  1 :.  1 -> Just 1
+                      Z :. -1 :. -1 -> Just 5
+                      Z :. -1 :.  0 -> Just (-3)
+                      Z :. -1 :.  1 -> Just (-3)
+                      Z :.  0 :. -1 -> Just 5
+                      Z :.  0 :.  1 -> Just (-3)
+                      Z :.  1 :. -1 -> Just 5
+                      Z :.  1 :.  0 -> Just (-3)
+                      Z :.  1 :.  1 -> Just (-3)
                       _             -> Nothing)
+
 
 forceP
   :: (Load r1 sh e, Unbox e, Monad m)
@@ -85,30 +90,50 @@ forceS !arr = do
     forcedArr <- return $ computeS arr
     forcedArr `deepSeqArray` return forcedArr
 
+validate :: (Int, Int) -> (R.Array U R.DIM2 Int, R.Array U R.DIM2 Int)
+validate (m, n) = (sR, sVR)
+  where
+    arrCR = R.computeUnboxedS (arrRLight (m, n) :: R.Array R.D R.DIM2 Int)
+    sR = R.computeUnboxedS . sobelGxR $ arrCR
+    arrVU = VC.makeVUArray (m, n) lightF :: VC.VUArray Int
+    (VC.VUArray _ _ sV) = VC.applyFilter (VC.sobelFilter VC.Horizontal VC.Edge) arrVU
+    sVR = R.fromUnboxed (Z :. m :. n) sV
+
 
 
 main :: IO ()
 main = do
-  let arrR :: R.Array U R.DIM2 Double
-      !arrR =
-        R.computeUnboxedS $
-        fromFunction
-          (Z :. (600 :: Int) :. (600 :: Int))
-          (\(Z :. i :. j) -> fromIntegral ((min i j) `div` (1 + max i j)))
-  let arrM :: M.Array M M.DIM2 Double
-      !arrM =
-        M.computeUnboxedS $
-        makeArray2D
-          (600, 600)
-          (\ (i, j) -> fromIntegral ((min i j) `div` (1 + max i j)))
-  let sobelR = sobelGxR arrR
-  --let sobelRAlg = sobelGxRAlg arrR
-  --let sobelRAlgSep = sobelGxRAlgSep arrR
+  let !sz = (1502, 602)
+      !arrCR = R.computeUnboxedS (arrR sz)
+      -- !arrCM = M.computeUnboxedS (arrM sz)
+      -- !sobelH = sobelStencil Horizontal
+      -- !sobelH' = sobelStencil' Horizontal
+      -- !kirschW = kirschWStencil
+      -- !kirschW' = kirschWStencil'
+      -- !sobelHUnroll = makeSobelStencil2D 0
+      !sobelHVC = VC.sobelFilter VC.Horizontal VC.Edge
+      -- !kirschWUnroll = makeKirschWStencil2D 0
+      arrVU :: VC.VUArray Double
+      !arrVU = VC.makeVUArray sz lightF
+  -- arrCM <- M.computeUnboxedIO (arrM sz)
+  --let sobelRAlg = sobelGxRAlg arrCR
   defaultMain
     [ bgroup
-        "Sobel"
-        [ bench "Repa Stencil Convolution" $ whnfIO (forceS sobelR)
-        , bench "Massiv Filter" $ whnf (M.computeUnboxedS . sobelHorizontal) arrM
+        "Sobel Horizontal"
+        [ --bench "Massiv check if zero" $ whnf (M.computeUnboxedS . mapStencil2D sobelH) arrCM
+        -- , bench "Massiv 1D array with indecies"
+        --   $ whnf (M.computeUnboxedS . mapStencil2D sobelH') arrCM
+        --, bench "Massiv Unroll" $ whnf (M.computeUnboxedS . mapStencil2D sobelHUnroll) arrCM
+         bench "VectorConvolve" $ whnf (VC.applyFilter sobelHVC) arrVU
+        , bench "Repa Sobel" $ whnf (R.computeUnboxedS . sobelGxR) arrCR
         --, bench "repa R Agorithms" $ whnfIO sobelRAlg
         ]
+        -- "KirschW Horizontal"
+        -- [ bench "Massiv check if zero" $ whnf (M.computeUnboxedS . mapStencil2D kirschW) arrCM
+        -- -- , bench "Massiv 1D array with indecies"
+        -- --   $ whnf (M.computeUnboxedS . mapStencil2D kirschW') arrCM
+        -- , bench "Massiv Unroll" $ whnf (M.computeUnboxedS . mapStencil2D kirschWUnroll) arrCM
+        -- , bench "Repa KirschW" $ whnf (R.computeUnboxedS . kirschWR) arrCR
+        -- --, bench "repa R Agorithms" $ whnfIO kirschWRAlg
+        -- ]
     ]

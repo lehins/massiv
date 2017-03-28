@@ -93,3 +93,4 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex =
   , wWindowUnsafeIndex = wUnsafeIndex
   }
 {-# INLINE makeArrayWindowed #-}
+

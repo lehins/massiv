@@ -89,17 +89,17 @@ instance Source D DIM3 where
 
 -- | Row-major folding over a delayed array.
 instance Foldable (Array D DIM1) where
-  foldr f acc (DArray k g) = loop 0 (< k) (+ 1) acc $ \i accI -> f (g i) accI
-  {-# INLINE foldr #-}
-  foldr' f !acc (DArray k g) =
-    loop 0 (< k) (+ 1) acc $ \ !i !accI -> f (g i) accI
-  {-# INLINE foldr' #-}
-  foldl f acc (DArray k g) =
-    loop (k - 1) (>= 0) (subtract 1) acc $ \i accI -> f accI (g i)
+  foldl f acc (DArray k g) = loop 0 (< k) (+ 1) acc $ \i acc0 -> f acc0 (g i)
   {-# INLINE foldl #-}
   foldl' f !acc (DArray k g) =
-    loop (k - 1) (>= 0) (subtract 1) acc $ \ !i !accI -> f accI (g i)
+    loop 0 (< k) (+ 1) acc $ \ !i !acc0 -> f acc0 (g i)
   {-# INLINE foldl' #-}
+  foldr f acc (DArray k g) =
+    loop (k - 1) (>= 0) (subtract 1) acc $ \i acc0 -> f (g i) acc0
+  {-# INLINE foldr #-}
+  foldr' f !acc (DArray k g) =
+    loop (k - 1) (>= 0) (subtract 1) acc $ \ !i !acc0 -> f (g i) acc0
+  {-# INLINE foldr' #-}
   null (DArray k _) = k == 0
   {-# INLINE null #-}
   sum = foldr' (+) 0
@@ -112,22 +112,22 @@ instance Foldable (Array D DIM1) where
 
 -- | Row-major folding over a delayed array.
 instance Foldable (Array D DIM2) where
-  foldr f acc (DArray (m, n) g) =
-    loop 0 (< m) (+ 1) acc $ \i accO ->
-      loop 0 (< n) (+ 1) accO $ \j accI -> f (g (i, j)) accI
-  {-# INLINE foldr #-}
-  foldr' f !acc (DArray (m, n) g) =
-    loop 0 (< m) (+ 1) acc $ \ !i !accO ->
-      loop 0 (< n) (+ 1) accO $ \ !j !accI -> f (g (i, j)) accI
-  {-# INLINE foldr' #-}
   foldl f acc (DArray (m, n) g) =
-    loop (m - 1) (>= 0) (subtract 1) acc $ \i accO ->
-      loop (n - 1) (>= 0) (subtract 1) accO $ \j accI -> f accI (g (i, j))
+    loop 0 (< m) (+ 1) acc $ \i acc0 ->
+      loop 0 (< n) (+ 1) acc0 $ \j acc1 -> f acc1 (g (i, j))
   {-# INLINE foldl #-}
   foldl' f !acc (DArray (m, n) g) =
-    loop (m - 1) (>= 0) (subtract 1) acc $ \ !i !accO ->
-      loop (n - 1) (>= 0) (subtract 1) accO $ \ !j !accI -> f accI (g (i, j))
+    loop 0 (< m) (+ 1) acc $ \ !i !acc0 ->
+      loop 0 (< n) (+ 1) acc0 $ \ !j !acc1 -> f acc1 (g (i, j))
   {-# INLINE foldl' #-}
+  foldr f acc (DArray (m, n) g) =
+    loop (m - 1) (>= 0) (subtract 1) acc $ \i acc0 ->
+      loop (n - 1) (>= 0) (subtract 1) acc0 $ \j acc1 -> f (g (i, j)) acc1
+  {-# INLINE foldr #-}
+  foldr' f !acc (DArray (m, n) g) =
+    loop (m - 1) (>= 0) (subtract 1) acc $ \ !i !acc0 ->
+      loop (n - 1) (>= 0) (subtract 1) acc0 $ \ !j !acc1 -> f (g (i, j)) acc1
+  {-# INLINE foldr' #-}
   null (DArray (m, n) _) = m == 0 || n == 0
   {-# INLINE null #-}
   sum = foldr' (+) 0

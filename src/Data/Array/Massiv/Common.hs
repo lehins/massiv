@@ -41,11 +41,11 @@ class Massiv r ix => Source r ix where
   type Elt r ix e = Array r (Lower ix) e
 
   unsafeIndex :: Massiv r ix => Array r ix e -> ix -> e
-  unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
+  unsafeIndex !arr = {-# SCC "SCC:unsafeIndex" #-}  unsafeLinearIndex arr . toLinearIndex (size arr)
   {-# INLINE unsafeIndex #-}
 
   unsafeLinearIndex :: Array r ix e -> Int -> e
-  unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
+  unsafeLinearIndex !arr = {-# SCC "SCC:unsafeLinearIndex" #-} unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
   (!?) :: Array r ix e -> Int -> Maybe (Elt r ix e)
@@ -54,7 +54,7 @@ class Massiv r ix => Source r ix where
 
 
 -- | Very efficient loop with accumulator
-loop :: t -> (t -> Bool) -> (t -> t) -> a -> (t -> a -> a) -> a
+loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
 loop !init' condition increment !initAcc f = go init' initAcc where
   go !step !acc =
     case condition step of

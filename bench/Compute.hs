@@ -4,6 +4,8 @@ module Compute where
 
 import           Data.Array.Massiv                   as M
 import           Data.Array.Massiv.Windowed          as M
+import           Data.Array.Repa.Stencil             as R
+import           Data.Array.Repa.Stencil.Dim2        as R
 import           Data.Array.Repa                     as R
 import           Data.Array.Repa.Repr.Partitioned    as R
 import           Data.Array.Repa.Repr.Undefined
@@ -35,24 +37,39 @@ makeWindowed (Z :. it :. jt) (Z :. wm :. wn) arrWindow arrBorder =
 {-# INLINE makeWindowed #-}
 
 
-lightF :: (Num b, Integral a) => (a, a) -> b
-lightF !(i, j) = fromIntegral (max i j `div` (1 + min i j))
+lightF :: Num b => (Int, Int) -> b
+lightF !(i, j) =
+  fromIntegral
+    (round (sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Float)) :: Int)
 {-# INLINE lightF #-}
 
-heavyF :: (Floating a2, Integral a1, Integral a) => (a1, a) -> a2
+heavyF :: (Floating a2, Integral a) => (a, a) -> a2
 heavyF !(i, j) =
         sin (sqrt (sqrt ((fromIntegral i) ** 2 + (fromIntegral j) ** 2)))
 {-# INLINE heavyF #-}
 
-vecU, vecU' :: (Int, Int) -> VU.Vector Double
-vecU !(m, n) = VU.generate (m * n) $ \ !k -> lightF (k `quotRemInt` n)
+vecULight :: (VU.Unbox a, Num a) => (Int, Int) -> VU.Vector a
+vecULight !(m, n) = VU.generate (m * n) $ \ !k -> lightF (k `quotRemInt` n)
+{-# INLINE vecULight #-}
+
+vecU :: (Int, Int) -> VU.Vector Double
+vecU = vecULight
 {-# INLINE vecU #-}
+
+vecU' :: (Int, Int) -> VU.Vector Double
 vecU' !(m, n) = VU.generate (m * n) $ \ !k -> heavyF (k `quotRemInt` n)
 {-# INLINE vecU' #-}
 
-arrR, arrR' :: (Int, Int) -> R.Array R.D R.DIM2 Double
-arrR !(m, n) = fromFunction (Z :. m :. n) (\(Z :. i :. j) -> lightF (i, j))
+arrRLight :: (Num a)
+     => (Int, Int) -> R.Array R.D R.DIM2 a
+arrRLight !(m, n) = fromFunction (Z :. m :. n) (\(Z :. i :. j) -> lightF (i, j))
+{-# INLINE arrRLight #-}
+
+arrR :: (Int, Int) -> R.Array R.D R.DIM2 Double
+arrR = arrRLight
 {-# INLINE arrR #-}
+
+arrR' :: (Int, Int) -> R.Array R.D R.DIM2 Double
 arrR' !(m, n) = fromFunction (Z :. m :. n) (\(Z :. i :. j) -> heavyF (i, j))
 {-# INLINE arrR' #-}
 
@@ -62,9 +79,15 @@ arrWindowedR sh@(m, n) =
   makeWindowed (Z :. 20 :. 25) (Z :. m - 20 :. n - 25) (arrR sh) (arrR' sh)
 {-# INLINE arrWindowedR #-}
 
-arrM, arrM' :: (Int, Int) -> M.Array M.D M.DIM2 Double
-arrM !arrSz = makeArray2D arrSz lightF
+arrMLight :: (Num a) => (Int, Int) -> M.Array M.D M.DIM2 a
+arrMLight !arrSz = makeArray2D arrSz lightF
+{-# INLINE arrMLight #-}
+
+arrM :: (Int, Int) -> M.Array M.D M.DIM2 Double
+arrM = arrMLight
 {-# INLINE arrM #-}
+
+arrM' :: (Int, Int) -> M.Array M.D M.DIM2 Double
 arrM' !arrSz = makeArray2D arrSz heavyF
 {-# INLINE arrM' #-}
 
@@ -72,3 +95,21 @@ arrWindowedM :: (Int, Int) -> M.Array M.W M.DIM2 Double
 arrWindowedM !arrSz@(m, n) =
   makeArrayWindowed (makeArray2D arrSz heavyF) (20, 25) (m - 20, n - 25) lightF
 {-# INLINE arrWindowedM #-}
+
+
+
+-- | Repa stencil base Sobel horizontal convolution
+sobelGxR
+  :: (R.Source r e, Num e) => R.Array r R.DIM2 e
+     -> R.Array PC5 R.DIM2 e
+sobelGxR = mapStencil2 (BoundClamp) stencil
+  where stencil = makeStencil2 3 3
+                  (\ix -> {-# SCC "insideStencil" #-} case ix of
+                      Z :. -1 :. -1 -> Just (-1)
+                      Z :.  0 :. -1 -> Just (-2)
+                      Z :.  1 :. -1 -> Just (-1)
+                      Z :. -1 :.  1 -> Just 1
+                      Z :.  0 :.  1 -> Just 2
+                      Z :.  1 :.  1 -> Just 1
+                      _             -> Nothing)
+{-# INLINE sobelGxR #-}

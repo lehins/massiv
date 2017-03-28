@@ -20,14 +20,18 @@ module Data.Array.Massiv.Convolution where
 -- import qualified Data.Vector.Unboxed.Mutable as MVU
 import           Prelude                             as P
 import Data.Array.Massiv
--- import Data.Array.Massiv.Manifest
--- -- import Data.Array.Massiv.Windowed
+
+import qualified Data.Vector.Unboxed             as VU
+import Data.Maybe (fromMaybe)
+import Data.Array.Massiv.Manifest.Loading
+import Data.Array.Massiv.Windowed
+-- import Data.Array.Massiv.Manifest.Unboxed
 
 -- import Data.Maybe
 
--- data Orientation
---   = Vertical
---   | Horizontal deriving Show
+data Orientation
+  = Vertical
+  | Horizontal deriving Show
 
 -- data Kernel e
 --   = Kernel2D {-# UNPACK #-} !Int
@@ -50,15 +54,165 @@ import Data.Array.Massiv
 
 
 data Stencil ix e = Stencil
-  { stencilKernel :: !(Array M DIM1 e, Array M DIM1 ix)
-  , stencilZero :: !e
-  , stencilAcc :: ix -> e -> e -> e
+  { stencilZero :: !e
+  , stencilSize :: !ix
+  , stencilAcc :: (ix -> e) -> ix -> e
   }
 
 
 
 
---makeStencil :: Source r ix => 
+-- makeStencil
+--   :: (Eq e, Num e, Source r DIM2, VU.Unbox e)
+--   => e -> Array r DIM2 e -> Stencil DIM2 e
+-- makeStencil zero arr = Stencil zero (m2, n2) accumulator
+--   where
+--     !(m, n) = size arr
+--     !(m2, n2) = (m `div` 2, n `div` 2)
+--     !(kernelIx, kernelVal) = filterIx (/= zero) arr
+--     !kernelIxM = computeUnboxedS $ mapA (\ (i, _) -> i - m2) kernelIx
+--     !kernelIxN = computeUnboxedS $ mapA (\ (_, j) -> j - n2) kernelIx
+--     accumulator getVal !(i, j) = ifoldl RowMajor apply zero kernelVal
+--       where
+--         apply !acc !k !kVal = {-# SCC "SCC:foldlApply" #-}
+--           acc + kVal * getVal (i + unsafeIndex kernelIxM k, j + unsafeIndex kernelIxN k)
+--         {-# INLINE apply #-}
+--     {-# INLINE accumulator #-}
+-- {-# INLINE makeStencil #-}
+
+
+makeStencil
+  :: (Eq e, Num e, Source r DIM2, VU.Unbox e)
+  => e -> Array r DIM2 e -> Stencil DIM2 e
+makeStencil zero arr = Stencil zero (m2, n2) accumulator
+  where
+    !(m, n) = size arr
+    !(m2, n2) = (m `div` 2, n `div` 2)
+    !(kernelIx, kernelVal) = filterIx (/= zero) arr
+    !kernelIx' = computeUnboxedS $ mapA (\ !(i, j) -> (i - m2, j - n2)) kernelIx
+    accumulator getVal !(i, j) = ifoldl RowMajor apply zero kernelVal
+      where
+        apply !acc !k !kVal =
+          let !(iD, jD) = unsafeIndex kernelIx' k
+          in acc + kVal * getVal (i + iD, j + jD)
+        {-# INLINE apply #-}
+    {-# INLINE accumulator #-}
+{-# INLINE makeStencil #-}
+
+
+makeStencil2D
+  :: (Eq e, Num e, Source r DIM2, VU.Unbox e)
+  => e -> Array r DIM2 e -> Stencil DIM2 e
+makeStencil2D zero kernel = Stencil zero (m2, n2) accumulator
+  where
+    !(m, n) = size kernel
+    !(m2, n2) = (m `div` 2, n `div` 2)
+    accumulator getVal (i, j) = ifoldl RowMajor apply zero kernel
+      where
+        apply !acc (ki, kj) !kVal = if kVal == zero
+                                    then acc
+                                    else acc + kVal * getVal (i + ki - m2, j + kj -n2)
+        {-# INLINE apply #-}
+    {-# INLINE accumulator #-}
+{-# INLINE makeStencil2D #-}
+
+
+
+makeSobelStencil2D
+  :: (Num e)
+  => e -> Stencil DIM2 e
+makeSobelStencil2D !zero = Stencil zero (1, 1) accumulator
+  where
+    accumulator getVal !(i, j) =
+      getVal (i-1, j-1) * 1 +
+      getVal (  i, j-1) * 2 +
+      getVal (i+1, j-1) * 1 +
+      getVal (i-1, j+1) * (-1) +
+      getVal (  i, j+1) * (-2) +
+      getVal (i+1, j+1) * (-1)
+    {-# INLINE accumulator #-}
+{-# INLINE makeSobelStencil2D #-}
+
+makeKirschWStencil2D
+  :: (Num e)
+  => e -> Stencil DIM2 e
+makeKirschWStencil2D !zero = Stencil zero (1, 1) accumulator
+  where
+    accumulator getVal !(i, j) =
+      getVal (i-1, j-1) * (-3) +
+      getVal (i-1, j  ) * (-3) +
+      getVal (i-1, j+1) * 5 +
+      getVal (  i, j-1) * (-3) +
+      getVal (  i, j+1) * 5 +
+      getVal (i+1, j-1) * (-3) +
+      getVal (i+1, j  ) * (-3) +
+      getVal (i+1, j+1) * 5
+    {-# INLINE accumulator #-}
+{-# INLINE makeKirschWStencil2D #-}
+
+-- | KirschW stencil (already rotated 180 degrees for correlation
+kirschWStencil :: (Num e, Eq e, VU.Unbox e) => Stencil DIM2 e
+kirschWStencil =
+  makeStencil2D 0 $ fromListsUnboxed  [ [ -3, -3, 5 ]
+                                      , [ -3,  0, 5 ]
+                                      , [ -3, -3, 5 ] ]
+{-# INLINE kirschWStencil #-}
+
+
+-- | KirschW stencil (already rotated 180 degrees for correlation
+kirschWStencil' :: (Num e, Eq e, VU.Unbox e) => Stencil DIM2 e
+kirschWStencil' =
+  makeStencil 0 $ fromListsUnboxed  [ [ -3, -3, 5 ]
+                                    , [ -3,  0, 5 ]
+                                    , [ -3, -3, 5 ] ]
+{-# INLINE kirschWStencil' #-}
+
+
+-- | Sobel stencil (already rotated 180 degrees for correlation
+sobelStencil :: (Num e, Eq e, VU.Unbox e) => Orientation -> Stencil DIM2 e
+sobelStencil Vertical =
+  makeStencil2D 0 $ fromListsUnboxed [ [  1,  2,  1 ]
+                                     , [  0,  0,  0 ]
+                                     , [ -1, -2, -1 ] ]
+sobelStencil Horizontal =
+  makeStencil2D 0 $ fromListsUnboxed  [ [ 1, 0, -1 ]
+                                      , [ 2, 0, -2 ]
+                                      , [ 1, 0, -1 ] ]
+{-# INLINE sobelStencil #-}
+
+
+-- | Sobel stencil (already rotated 180 degrees for correlation
+sobelStencil' :: (Num e, Eq e, VU.Unbox e) => Orientation -> Stencil DIM2 e
+sobelStencil' Vertical =
+  makeStencil 0 $ fromListsUnboxed [ [  1,  2,  1 ]
+                                   , [  0,  0,  0 ]
+                                   , [ -1, -2, -1 ] ]
+sobelStencil' Horizontal =
+  makeStencil 0 $ fromListsUnboxed  [ [ 1, 0, -1 ]
+                                    , [ 2, 0, -2 ]
+                                    , [ 1, 0, -1 ] ]
+{-# INLINE sobelStencil' #-}
+
+mapStencil2D :: (Source r DIM2, Eq e, Num e, VU.Unbox e) =>
+                   Stencil DIM2 e -> Array r DIM2 e -> Array W DIM2 e
+mapStencil2D (Stencil zero (kM2, kN2) getStencil) !arr =
+  makeArrayWindowed
+    (makeArray sz safeStencil)
+    (kM2, kN2)
+    (m - kM2 * 2, n - kN2 * 2)
+    (getStencil (unsafeIndex arr))
+  where
+    !sz@(m, n) = size arr
+    safeStencil = getStencil (fromMaybe zero . maybeIndex' arr)
+    {-# INLINE safeStencil #-}
+{-# INLINE mapStencil2D #-}
+
+
+maybeIndex' :: Source r ix => Array r ix e -> ix -> Maybe e
+maybeIndex' !arr !ix
+  | isSafeIndex (size arr) ix = Just (unsafeIndex arr ix)
+  | otherwise = Nothing
+{-# INLINE maybeIndex' #-}
 
 
 maybeLinearIndex :: Source r ix => Array r ix e -> Int -> Maybe e

@@ -4,41 +4,48 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 module Main where
 
--- import qualified Data.Vector.Unboxed             as VU
+
+import Compute
+import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
--- import           Data.Array.Massiv.Convolution
--- import           Data.Array.Massiv.Windowed
-import           Data.Array.Massiv.Manifest.Unboxed as M
--- import           Data.Array.Repa                    as R
+import           Data.Array.Massiv.Convolution
+import           Data.Array.Repa                     as R
 
 
 
-import           Data.Time.Clock.POSIX
-import           Prelude                            as P
+
+repaSobel :: (Int, Int) -> IO (R.Array U R.DIM2 Double)
+repaSobel sz = do
+  let !sobel = R.computeUnboxedS $ sobelGxR $ arrR sz
+  print (extent sobel)
+  return sobel
+{-# INLINE repaSobel #-}
+
+
+massivSobel :: (Int, Int) -> IO (M.Array M.M M.DIM2 Double)
+massivSobel sz = do
+  arrMC <- M.computeUnboxedIO $ arrM sz
+  let !sobelH = sobelStencil' Horizontal
+  let !sobel = M.computeUnboxedS $ mapStencil2D sobelH arrMC
+  print sobel
+  return sobel
+
+
+
+vectorSobel :: (Int, Int) -> IO (VC.VUArray Double)
+vectorSobel sz = do
+  let arrVU :: VC.VUArray Double
+      !arrVU = VC.makeVUArray sz lightF
+      !sobelHVC = VC.sobelFilter VC.Horizontal 0
+  let !sobel = VC.applyFilter sobelHVC arrVU
+  print sobel
+  return sobel
 
 
 main :: IO ()
 main = do
-  t0 <- getPOSIXTime
-  -- let makeArrR :: (Int, Int) -> R.Array R.D R.DIM2 Double
-  --     makeArrR !(m, n) =
-  --       fromFunction
-  --         (Z :. m :. n)
-  --         (\(Z :. i :. j) -> fromIntegral (min i j `div` (1 + max i j)))
-  --let arrM :: M.Array M M.DIM2 Double
-  arrM <-
-        M.computeUnboxedPIO $
-        makeArray2D
-          (32560, 42560)
-          (\ !(i, j) -> (fromIntegral ((max i j) `div` (1 + min i j))))
-  --arrR <- return $ R.computeUnboxedS $ makeArrR (215600, 215600)
-  print (arrM :: M.Array M M.DIM2 Double)
-  print (arrM ! 1000 ! 12000)
-  t1 <- getPOSIXTime
-  print (t1 - t0)
-  -- threadDelay 1000000
-  -- t1' <- getPOSIXTime
-  -- let !sobel = M.computeUnboxedP $ sobelHorizontal arrM
-  -- print sobel
-  -- t2 <- getPOSIXTime
-  -- print (t2 - t1')
+  --_ <- massivSobel (1600, 1600)
+  _ <- vectorSobel (1600, 1600)
+  --_ <- repaSobel (1600, 1600)
+  return ()
+

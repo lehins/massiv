@@ -60,9 +60,9 @@ instance Index DIM2 where
   {-# INLINE totalElem #-}
   isSafeIndex !(m, n) !(i, j) = 0 <= i && 0 <= j && i < m && j < n
   {-# INLINE isSafeIndex #-}
-  toLinearIndex !(_, n) !(i, j) = n * i + j
+  toLinearIndex !(_, n) !(i, j) = {-# SCC "SCC:toLinearIndex2D" #-} n * i + j
   {-# INLINE toLinearIndex #-}
-  fromLinearIndex !(_, n) !k = k `quotRemInt` n
+  fromLinearIndex !(_, n) !k =  {-# SCC "SCC:fromLinearIndex2D" #-} k `quotRemInt` n
   {-# INLINE fromLinearIndex #-}
 
 
