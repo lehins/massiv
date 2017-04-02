@@ -1,12 +1,12 @@
 -- |
--- Module      : Data.Array.Massiv.Manifest.Gang
+-- Module      : Data.Array.Massiv.Compute.Gang
 -- Copyright   : (c) Alexey Kuleshevich 2017
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Manifest.Gang (
+module Data.Array.Massiv.Compute.Gang (
   theGang
   , Gang, forkGang, gangSize, gangIO, gangST
   )

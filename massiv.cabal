@@ -17,45 +17,51 @@ library
   hs-source-dirs:      src
   exposed-modules:     Data.Array.Massiv
                      , Data.Array.Massiv.Common
-                     , Data.Array.Massiv.Convolution
+                     , Data.Array.Massiv.Common.Index
+                     , Data.Array.Massiv.Common.Iterator
+                     , Data.Array.Massiv.Compute
+                     , Data.Array.Massiv.Compute.Gang
                      , Data.Array.Massiv.Delayed
-                     , Data.Array.Massiv.Index
+                     , Data.Array.Massiv.Delayed.Windowed
                      , Data.Array.Massiv.Manifest
                      , Data.Array.Massiv.Manifest.Unboxed
-                     , Data.Array.Massiv.Windowed
-                     , Data.Array.Massiv.Manifest.Loading
-  other-modules:       Data.Array.Massiv.Manifest.Gang
+                     , Data.Array.Massiv.Manifest.Storable
+                     , Data.Array.Massiv.Manifest.Primitive
+                     , Data.Array.Massiv.Stencil
+                     , Data.Array.Massiv.Stencil.Convolution
+  other-modules:       Data.Array.Massiv.Stencil.Internal
   build-depends:       base >= 4.6 && < 5
                      , deepseq
+                     , data-default
                      , primitive
                      , stm
                      , vector
   default-language:    Haskell2010
   ghc-options:         -Wall
 
-benchmark loops
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      bench
-  main-is:             Loops.hs
-  ghc-options:         -threaded -O2
-  build-depends:       base
-                     , criterion
-                     , massiv
-                     , vector
-                     , repa
-  default-language:    Haskell2010
+-- benchmark loops
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      bench
+--   main-is:             Loops.hs
+--   ghc-options:         -threaded -O2
+--   build-depends:       base
+--                      , criterion
+--                      , massiv
+--                      , vector
+--                      , repa
+--   default-language:    Haskell2010
 
-benchmark fusion
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      bench
-  main-is:             Fusion.hs
-  ghc-options:         -threaded -O2
-  build-depends:       base
-                     , criterion
-                     , deepseq
-                     , massiv
-                     , vector
-  default-language:    Haskell2010
+-- benchmark fusion
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      bench
+--   main-is:             Fusion.hs
+--   ghc-options:         -threaded -O2
+--   build-depends:       base
+--                      , criterion
+--                      , deepseq
+--                      , massiv
+--                      , vector
+--   default-language:    Haskell2010
 
 benchmark compute
   type:                exitcode-stdio-1.0
@@ -83,18 +89,18 @@ benchmark compute-par
                      , vector
   default-language:    Haskell2010
 
-benchmark filtering
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      bench
-  main-is:             Filtering.hs
-  other-modules:       Compute
-  ghc-options:         -threaded -O2
-  build-depends:       base
-                     , criterion
-                     , massiv
-                     , vector
-                     , repa
-  default-language:    Haskell2010
+-- benchmark filtering
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      bench
+--   main-is:             Filtering.hs
+--   other-modules:       Compute
+--   ghc-options:         -threaded -O2
+--   build-depends:       base
+--                      , criterion
+--                      , massiv
+--                      , vector
+--                      , repa
+--   default-language:    Haskell2010
 
 benchmark convolution
   type:                exitcode-stdio-1.0
@@ -103,9 +109,22 @@ benchmark convolution
   other-modules:       Compute
                      , VectorConvolve
   ghc-options:         -threaded -O2
-  --ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
-  --ghc-options:         -threaded -O2 -fvia-C -optc-O3 -D64
-  --ghc-options:         -fllvm -optlo-O3 -Odph -fno-liberate-case -funfolding-use-threshold100 -funfolding-keeness-factor100
+
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , repa >= 3.4.1.2
+                     , vector
+                     , primitive
+  default-language:    Haskell2010
+
+benchmark convolution-par
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             ConvolutionPar.hs
+  other-modules:       Compute
+                     , VectorConvolve
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
 
   build-depends:       base
                      , criterion
@@ -129,8 +148,10 @@ benchmark convolution
 --                      , time
 --                      , repa
 --   default-language:    Haskell2010
---   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
---   --ghc-options:         -Wall -O2 -threaded -prof -fprof-auto
+--   ghc-options:         -threaded -O2
+  --ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
+  --ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
+  --ghc-options:         -Wall -O2 -threaded -prof -fprof-auto
 
 source-repository head
   type:     git

@@ -1,5 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Unboxed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -10,51 +14,66 @@
 --
 module Data.Array.Massiv.Manifest.Unboxed where
 
-import qualified Data.Vector.Generic             as VG
-import qualified Data.Vector.Unboxed             as VU
-import Data.Maybe (listToMaybe)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Compute
 import           Data.Array.Massiv.Manifest
-import           Data.Array.Massiv.Manifest.Loading
-import           Control.DeepSeq                 (NFData, deepseq)
+import           Data.Maybe                  (listToMaybe)
+import qualified Data.Vector.Unboxed         as VU
+import qualified Data.Vector.Unboxed.Mutable as MVU
+import System.IO.Unsafe (unsafePerformIO)
+
+data U = U
+
+data instance Array U ix e = UArray { uSize :: !ix
+                                    , uData :: !(VU.Vector e)
+                                    } deriving Eq
+
+instance Index ix => Massiv U ix where
+  size = uSize
+  {-# INLINE size #-}
+
+
+instance (Index ix, VU.Unbox e) => Source U ix e where
+  unsafeLinearIndex (UArray _ v) = VU.unsafeIndex v
+  {-# INLINE unsafeLinearIndex #-}
+
+
+instance VU.Unbox e => Manifest U DIM1 e where
+  type Elt U DIM1 e = e
+  (!?) (UArray _ v) = (v VU.!?)
+  {-# INLINE (!?) #-}
+
+
+instance VU.Unbox e => Manifest U DIM2 e where
+  (!?) = maybeLowerIndex
+  {-# INLINE (!?) #-}
 
 
 
-unboxed :: V VU.Vector
-unboxed = V
+instance VU.Unbox e => Manifest U DIM3 e where
+  (!?) = maybeLowerIndex
+  {-# INLINE (!?) #-}
 
 
-computeUnboxedS, computeUnboxedP :: (VU.Unbox e, Load r ix) => Array r ix e -> Array M ix e
-computeUnboxedS !arr =
-  vector `deepseq` MArray (size arr) (VU.unsafeIndex vector)
-  where
-    !vector = computeVG Sequential unboxed arr
-{-# INLINE computeUnboxedS #-}
-computeUnboxedP !arr =
-  vector `deepseq` MArray (size arr) (VU.unsafeIndex vector)
-  where
-    !vector = computeVG Parallel unboxed arr
-{-# INLINE computeUnboxedP #-}
+instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
+  data MArray s U ix e = MUArray ix (VU.MVector s e)
 
-computeUnboxedIO :: (Load r ix, VU.Unbox e)
-                  => Array r ix e -> IO (Array M ix e)
-computeUnboxedIO !arr = do
-  vector <- loadVectorParallelIO unboxed arr
-  return (vector `deepseq` MArray (size arr) (VU.unsafeIndex vector))
-{-# INLINE computeUnboxedIO #-}
+  unsafeThaw (UArray sz v) = MUArray sz <$> VU.unsafeThaw v
+  {-# INLINE unsafeThaw #-}
+
+  unsafeFreeze (MUArray sz v) = UArray sz <$> VU.unsafeFreeze v
+  {-# INLINE unsafeFreeze #-}
+
+  unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)
+  {-# INLINE unsafeNew #-}
+
+  unsafeLinearRead (MUArray _sz v) i = MVU.unsafeRead v i
+  {-# INLINE unsafeLinearRead #-}
+
+  unsafeLinearWrite (MUArray _sz v) i = MVU.unsafeWrite v i
+  {-# INLINE unsafeLinearWrite #-}
 
 
-toVectorUnboxed :: (Source r ix, VU.Unbox e) => Array r ix e -> VU.Vector e
-toVectorUnboxed !arr = VU.generate (totalElem (size arr)) (unsafeLinearIndex arr)
-{-# INLINE toVectorUnboxed #-}
-
-toVectorUnboxedS :: (Load r ix, VU.Unbox e) => Array r ix e -> VU.Vector e
-toVectorUnboxedS = computeVG Sequential unboxed
-{-# INLINE toVectorUnboxedS #-}
-
-toVectorUnboxedP :: (Load r ix, VU.Unbox e) => Array r ix e -> VU.Vector e
-toVectorUnboxedP = computeVG Parallel unboxed
-{-# INLINE toVectorUnboxedP #-}
 
 fromListsUnboxed :: VU.Unbox e => [[e]] -> Array M DIM2 e
 fromListsUnboxed !ls =
@@ -66,49 +85,21 @@ fromListsUnboxed !ls =
 {-# INLINE fromListsUnboxed #-}
 
 
-imapMaybe
-  :: (Iterator RowMajor ix, Source r ix, VG.Vector VU.Vector b)
-  => (ix -> e -> Maybe b) -> Array r ix e -> Array M DIM1 b
-imapMaybe = imapMaybeS unboxed
-{-# INLINE imapMaybe #-}
+computeUnboxedS :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
+computeUnboxedS = computeS
+{-# INLINE computeUnboxedS #-}
 
 
-mapMaybe
-  :: (Foldable (Array r ix), Source r ix, VG.Vector VU.Vector b)
-  => (e -> Maybe b) -> Array r ix e -> Array M DIM1 b
-mapMaybe = mapMaybeS unboxed
-{-# INLINE mapMaybe #-}
+computeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> IO (Array U ix e)
+computeUnboxedP = computeP
+{-# INLINE computeUnboxedP #-}
 
 
-
-ifilter
-  :: (Iterator RowMajor ix, Source r ix, VG.Vector VU.Vector e)
-  => (ix -> e -> Bool) -> Array r ix e -> Array M DIM1 e
-ifilter f = imapMaybeS unboxed (\ !i !v -> if f i v then Just v else Nothing)
-{-# INLINE ifilter #-}
+unsafeComputeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
+unsafeComputeUnboxedP = unsafePerformIO . computeP
+{-# INLINE unsafeComputeUnboxedP #-}
 
 
-ifilterIx
-  :: (Iterator RowMajor ix, Source r ix, VU.Unbox e, VU.Unbox ix)
-  => (ix -> e -> Bool) -> Array r ix e -> (Array M DIM1 ix, Array M DIM1 e)
-ifilterIx f !arr =
-  (MArray vLen (VU.unsafeIndex vectorIx), MArray vLen (VU.unsafeIndex vectorVal))
-  where
-    !vLen = VU.length vectorIx
-    !(vectorIx, vectorVal) = imapMaybeIxS (\ !i !v -> if f i v then Just v else Nothing) arr
-{-# INLINE ifilterIx #-}
-
-
-filterIx
-  :: (Iterator RowMajor ix, Source r ix, VU.Unbox e, VU.Unbox ix)
-  => (e -> Bool) -> Array r ix e -> (Array M DIM1 ix, Array M DIM1 e)
-filterIx f = ifilterIx $ \ _ v -> f v
-{-# INLINE filterIx #-}
-
-
-
-filter
-  :: (Foldable (Array r ix), Source r ix, VG.Vector VU.Vector e)
-  => (e -> Bool) -> Array r ix e -> Array M DIM1 e
-filter f = mapMaybeS unboxed (\ !v -> if f v then Just v else Nothing)
-{-# INLINE filter #-}
+toVectorUnboxed :: Array U ix e -> VU.Vector e
+toVectorUnboxed (UArray _ v) = v
+{-# INLINE toVectorUnboxed #-}

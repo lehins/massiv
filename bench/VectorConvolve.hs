@@ -10,8 +10,17 @@ import Control.Monad.ST
 import qualified  Data.Vector.Unboxed as VU
 import qualified  Data.Vector.Unboxed.Mutable as MVU
 import Data.Array.Massiv.Common
+import Data.Array.Massiv.Manifest.Unboxed
+import Data.Array.Massiv.Delayed.Windowed
 
 data VUArray e = VUArray !(Int, Int) !(VU.Vector e)
+
+-- data WArray e = WArray { wSize :: !(Int, Int)
+--                        , wSafeIndexBorder :: (Int, Int) -> e
+--                        , wWindowStartIndex :: !(Int, Int)
+--                        , wWindowSize :: !(Int, Int)
+--                        , wWindowUnsafeIndex :: (Int, Int) -> e }
+
 
 getVec :: VUArray t -> VU.Vector t
 getVec (VUArray _ v) = v
@@ -27,60 +36,49 @@ makeVUArray !sz@(m, n) f =
 {-# INLINE makeVUArray #-}
 
 
-makeWindowedVUArray
+loadWindowedWArray
   :: forall p . VU.Unbox p
-  => (Int, Int)
-  -> (Int, Int)
-  -> (Int, Int)
-  -> ((Int, Int) -> p)
-  -> ((Int, Int) -> p)
-  -> VUArray p
-makeWindowedVUArray !sz@(m, n) !(it, jt) !(wm, wn) getWindowPx getBorderPx =
-  VUArray (m, n) $ VU.create generate
+  => Array W DIM2 p
+  -> Array U DIM2 p
+loadWindowedWArray arr = -- (WArray sz@(m, n) getBorderPx (it, jt) (wm, wn) getWindowPx) =
+  UArray (m, n) v
   where
-    !(ib, jb) = (wm + it, wn + jt)
+    -- !(ib, jb) = (wm + it, wn + jt)
+    !v = VU.create generate
+    (m, n) = size arr
     generate :: ST s (VU.MVector s p)
     generate = do
       mv <- MVU.unsafeNew (m * n)
-      loopM_ 0 (< n) (+ 1) $ \ !j -> do
-        loopM_ 0 (< it) (+ 1) $ \ !i -> do
-          let ix = (i, j)
-          MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
-        loopM_ ib (< m) (+ 1) $ \ !i -> do
-          let ix = (i, j)
-          MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
-      loopM_ it (< ib) (+ 1) $ \ !i -> do
-        loopM_ 0 (< jt) (+ 1) $ \ !j -> do
-          let ix = (i, j)
-          MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
-        loopM_ jb (< n) (+ 1) $ \ !j -> do
-          let ix = (i, j)
-          MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
-      let !ibS = ib - ((ib - it) `mod` 3)
-      loopM_ it (< ibS) (+ 3) $ \ !i -> do
-        loopM_ jt (< jb) (+ 1) $ \ !j -> do
-          let !ix0 = (i, j)
-          let !ix1 = (i + 1, j)
-          let !ix2 = (i + 2, j)
-          -- let !ix3 = (i + 3, j)
-      --     let !ix4 = (i + 4, j)
-      --     let !ix5 = (i + 5, j)
-      --     let !ix6 = (i + 6, j)
-      --     let !ix7 = (i + 7, j)
-          MVU.unsafeWrite mv (fromIx sz ix0) (getWindowPx ix0)
-          MVU.unsafeWrite mv (fromIx sz ix1) (getWindowPx ix1)
-          MVU.unsafeWrite mv (fromIx sz ix2) (getWindowPx ix2)
-          -- MVU.unsafeWrite mv (fromIx n ix3) (getWindowPx ix3)
-      --     MVU.unsafeWrite mv (fromIx n ix4) (getWindowPx ix4)
-      --     MVU.unsafeWrite mv (fromIx n ix5) (getWindowPx ix5)
-      --     MVU.unsafeWrite mv (fromIx n ix6) (getWindowPx ix6)
-      --     MVU.unsafeWrite mv (fromIx n ix7) (getWindowPx ix7)
-      loopM_ ibS (< ib) (+ 1) $ \ !i -> do
-        loopM_ jt (< jb) (+ 1) $ \ !j -> do
-          MVU.unsafeWrite mv (fromIx sz (i, j)) (getWindowPx (i, j))
+      loadS arr (MVU.unsafeWrite mv)
+      -- loopM_ 0 (< n) (+ 1) $ \ !j -> do
+      --   loopM_ 0 (< it) (+ 1) $ \ !i -> do
+      --     let ix = (i, j)
+      --     MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
+      --   loopM_ ib (< m) (+ 1) $ \ !i -> do
+      --     let ix = (i, j)
+      --     MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
+      -- loopM_ it (< ib) (+ 1) $ \ !i -> do
+      --   loopM_ 0 (< jt) (+ 1) $ \ !j -> do
+      --     let ix = (i, j)
+      --     MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
+      --   loopM_ jb (< n) (+ 1) $ \ !j -> do
+      --     let ix = (i, j)
+      --     MVU.unsafeWrite mv (fromIx sz ix) (getBorderPx ix)
+      -- let !ibS = ib - ((ib - it) `mod` 3)
+      -- loopM_ it (< ibS) (+ 3) $ \ !i -> do
+      --   loopM_ jt (< jb) (+ 1) $ \ !j -> do
+      --     let !ix0 = (i, j)
+      --     let !ix1 = (i + 1, j)
+      --     let !ix2 = (i + 2, j)
+      --     MVU.unsafeWrite mv (fromIx sz ix0) (getWindowPx ix0)
+      --     MVU.unsafeWrite mv (fromIx sz ix1) (getWindowPx ix1)
+      --     MVU.unsafeWrite mv (fromIx sz ix2) (getWindowPx ix2)
+      -- loopM_ ibS (< ib) (+ 1) $ \ !i -> do
+      --   loopM_ jt (< jb) (+ 1) $ \ !j -> do
+      --     MVU.unsafeWrite mv (fromIx sz (i, j)) (getWindowPx (i, j))
       return mv
     {-# INLINE generate #-}
-{-# INLINE makeWindowedVUArray #-}
+{-# INLINE loadWindowedWArray #-}
 
 fromIx :: (Int, Int) -- ^ @n@ columns
        -> (Int, Int) -- ^ @(i, j)@ row, column index
@@ -138,54 +136,27 @@ uIndex (VUArray sz v) !ix = VU.unsafeIndex v (fromIx sz ix)
 {-# INLINE uIndex #-}
 
 
-data Border e = Fill e | Wrap | Edge | Reflect | Continue
-
-bIndex :: (MVU.Unbox t, Num t) => (Border t) -> VUArray t -> (Int, Int) -> t
-bIndex border arr@(VUArray (m, n) _) !(i, j) =
-  if north || east || south || west
-  then case border of
-    Fill px  -> px
-    Wrap     -> getPx (i `mod` m, j `mod` n)
-    Edge     -> getPx (if north then 0 else if south then m - 1 else i,
-                       if west then 0 else if east then n - 1 else j)
-    Reflect  -> getPx (if north then (abs i - 1) `mod` m else
-                         if south then (-i - 1) `mod` m else i,
-                       if west then (abs j - 1) `mod` n else
-                         if east then (-j - 1) `mod` n else j)
-    Continue -> getPx (if north then abs i `mod` m else
-                         if south then (-i - 2) `mod` m else i,
-                       if west then abs j `mod` n else
-                         if east then (-j - 2) `mod` n else j)
-  else getPx (i, j)
-  where
-    getPx = uIndex arr
-    !north = i < 0
-    !south = i >= m
-    !west  = j < 0
-    !east  = j >= n
-{-# INLINE bIndex #-}
-
-
 -- data Stencil ix e = Stencil
 --   { stencil :: (ix -> e) -> e
 --   , kernelSize :: ix
 --   , kernelCenter :: ix
 --   }
 
-
 --makeStaticStencil :: ix -> ix -> ((ix -> e) -> e)
 
 -- | Correlate an image with a kernel. Border resolution technique is required.
 correlate :: (MVU.Unbox t, Num t, Eq t) =>
-     (Border t) -> VUArray t -> VUArray t -> VUArray t
-correlate b !kernel !arr@(VUArray (m, n) _) =
-  makeWindowedVUArray
+     (Border t) -> VUArray t -> VUArray t -> Array W DIM2 t
+correlate b !(VUArray (kM, kN) _) !arr@(VUArray (m, n) _) =
+  WArray
     (m, n)
+    (Just (3, 3))
+    (getStencil (handleBorderIndex b (m, n) (uIndex arr)))
     (kM2, kN2)
     (m - kM2 * 2, n - kN2 * 2)
     (getStencil (uIndex arr))
-    (getStencil (bIndex b arr))
   where
+    !(kM2, kN2) = (kM `div` 2, kN `div` 2)
     getStencil getVal !(i, j) = stencil (\ !(iD, jD) -> getVal (i + iD, j + jD))
     stencil iArr =
       2 * (iArr (0, 1) - iArr (0, -1)) + iArr (-1, 1) + iArr (1, 1) -
@@ -202,8 +173,8 @@ correlate b !kernel !arr@(VUArray (m, n) _) =
     -- stencil iArr =
     --   2 * (iArr (0, 1) - iArr (0, -1)) + iArr (-1, 1) + iArr (1, 1) -
     --   iArr (-1, -1) - iArr (1, -1)
-    _kLen = VU.length _iVec
-    (Kernel2D kM2 kN2 _iVec _) = toKernel kernel
+    -- _kLen = VU.length _iVec
+    -- (Kernel2D kM2 kN2 _iVec _) = toKernel kernel
     -- stencil getVal !(i, j) =
     --   loop 0 (< kLen) (+ 1) 0 $ \ !k !acc ->
     --     let !(iDelta, jDelta) = VU.unsafeIndex iVec k
@@ -295,7 +266,7 @@ correlate b !kernel !arr@(VUArray (m, n) _) =
 
 
 data Filter e = Filter
-  { applyFilter :: VUArray e -> VUArray e -- ^ Apply a filter to an image
+  { applyFilter :: VUArray e -> Array U DIM2 e -- ^ Apply a filter to an image
   }
 
 -- | Used to specify direction for some filters.
@@ -306,7 +277,7 @@ data Direction
 
 sobelFilter :: (MVU.Unbox e, Num e, Eq e) => Direction -> (Border e) -> Filter e
 sobelFilter dir !border =
-  Filter (correlate border kernel)
+  Filter (computeUnboxedS . correlate border kernel)
   where
     !kernel =
       case dir of

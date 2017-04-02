@@ -14,6 +14,7 @@
 module Data.Array.Massiv.Delayed where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Compute.Gang
 
 import           Data.Foldable
 import           GHC.Base                 (quotRemInt)
@@ -27,14 +28,8 @@ data instance Array D ix e = DArray { dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
 
 
-errorDims :: String -> String -> a
-errorDims fName errMsg =
-  error $ "Data.Array.Massiv.Delayed." ++ fName ++ " - Incorrect dimensions: " ++ errMsg
-
-
-
-makeArray :: ix -> (ix -> e) -> Array D ix e
-makeArray = DArray
+makeArray :: Index ix => ix -> (ix -> e) -> Array D ix e
+makeArray !ix = DArray (liftIndex (max 0) ix)
 {-# INLINE makeArray #-}
 
 
@@ -42,49 +37,25 @@ instance Index ix => Massiv D ix where
   size = dSize
   {-# INLINE size #-}
 
-
-instance Source D DIM1 where
-  type Elt D DIM1 e = e
+instance Index ix => Source D ix e where
   unsafeIndex = dUnsafeIndex
   {-# INLINE unsafeIndex #-}
-  unsafeLinearIndex = dUnsafeIndex
-  {-# INLINE unsafeLinearIndex #-}
-  (!?) (DArray k f) !i
-    | isSafeIndex k i = Just (f i)
-    | otherwise = Nothing
-  {-# INLINE (!?) #-}
 
-instance Source D DIM2 where
-  unsafeIndex = dUnsafeIndex
-  {-# INLINE unsafeIndex #-}
-  unsafeLinearIndex (DArray (_, n) f) !l = f (quotRemInt l n)
-  {-# INLINE unsafeLinearIndex #-}
-  (!?) !arr !i
-    | isSafeIndex m i = Just (DArray n (\ !j -> unsafeIndex arr (i, j)))
-    | otherwise = Nothing
-    where
-      !(m, n) = size arr
-  {-# INLINE (!?) #-}
+instance (Eq e, Index ix, Foldable (Array D ix)) => Eq (Array D ix e) where
+  (==) (DArray sz1 uIndex1) (DArray sz2 uIndex2) =
+    sz1 == sz2 && foldl' (&&) True (DArray sz1 (\ !ix -> uIndex1 ix == uIndex2 ix))
 
 
-instance Source D DIM3 where
-  unsafeIndex (DArray _ g) = g
-  {-# INLINE unsafeIndex #-}
-  unsafeLinearIndex (DArray (_, n, o) f) !l = f (i, j, k)
-    where !(h, k) = quotRemInt l o
-          !(i, j) = quotRemInt h n
-  {-# INLINE unsafeLinearIndex #-}
-  (!?) !arr !i
-    | isSafeIndex m i = Just (DArray (n, o) (\ !(j, k) -> unsafeIndex arr (i, j, k)))
-    | otherwise = Nothing
-    where
-      !(m, n, o) = size arr
-  {-# INLINE (!?) #-}
+instance Functor (Array D ix) where
+  fmap f (DArray sz g) = DArray sz (f . g)
+  {-# INLINE fmap #-}
 
 
--- instance (Source D ix, Massiv ix) => Functor (Array D ix) where
---   fmap = mapA
---   {-# INLINE fmap #-}
+instance Index ix => Applicative (Array D ix) where
+  pure a = DArray (liftIndex (+ 1) zeroIndex) (const a)
+  (<*>) (DArray sz1 uIndex1) (DArray sz2 uIndex2) =
+    DArray (liftIndex2 (*) sz1 sz2) $ \ !ix ->
+      (uIndex1 (liftIndex2 mod ix sz1)) (uIndex2 (liftIndex2 mod ix sz2))
 
 
 -- | Row-major folding over a delayed array.
@@ -169,3 +140,43 @@ instance Foldable (Array D DIM3) where
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
+
+
+
+instance Load D DIM1 where
+  loadS (DArray sz f) unsafeWrite = do
+    iterateWithLinearM_ RowMajor sz 0 sz $ \ !k !ix ->
+      unsafeWrite k (f ix)
+  {-# INLINE loadS #-}
+  loadP arr@(DArray arrSize f) unsafeWrite = do
+    let !gSize = gangSize theGang
+        !totalLength = totalElem arrSize
+        !(chunkLength, slackLength) = totalLength `quotRemInt` gSize
+    gangIO theGang $ \ !tid ->
+      let !start = tid * chunkLength
+          !end = start + chunkLength
+      in do
+        iterateLinearM_ RowMajor arrSize start end $ \ !k !ix -> do
+          unsafeWrite k $ f ix
+    loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
+      unsafeWrite i (unsafeLinearIndex arr i)
+  {-# INLINE loadP #-}
+
+instance Load D DIM2 where
+  loadS (DArray sz f) unsafeWrite =
+    iterateWithLinearM_ RowMajor sz (0, 0) sz $ \ !k !ix ->
+      unsafeWrite k (f ix)
+  {-# INLINE loadS #-}
+  loadP arr@(DArray arrSize f) unsafeWrite = do
+    let !gSize = gangSize theGang
+        !totalLength = totalElem arrSize
+        !(chunkLength, slackLength) = totalLength `quotRemInt` gSize
+    gangIO theGang $ \ !tid ->
+      let !start = tid * chunkLength
+          !end = start + chunkLength
+      in do
+        iterateLinearM_ RowMajor arrSize start end $ \ !k !ix -> do
+          unsafeWrite k $ f ix
+    loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
+      unsafeWrite i (unsafeLinearIndex arr i)
+  {-# INLINE loadP #-}

@@ -3,14 +3,13 @@
 module Compute where
 
 import           Data.Array.Massiv                   as M
-import           Data.Array.Massiv.Windowed          as M
+import           Data.Array.Massiv.Delayed.Windowed  as M
 import           Data.Array.Repa.Stencil             as R
 import           Data.Array.Repa.Stencil.Dim2        as R
 import           Data.Array.Repa                     as R
 import           Data.Array.Repa.Repr.Partitioned    as R
 import           Data.Array.Repa.Repr.Undefined
 import qualified Data.Vector.Unboxed                 as VU
-import           GHC.Base                            (quotRemInt)
 import           Prelude                             as P
 
 
@@ -49,7 +48,7 @@ heavyF !(i, j) =
 {-# INLINE heavyF #-}
 
 vecULight :: (VU.Unbox a, Num a) => (Int, Int) -> VU.Vector a
-vecULight !(m, n) = VU.generate (m * n) $ \ !k -> lightF (k `quotRemInt` n)
+vecULight !(m, n) = VU.generate (m * n) $ \ !k -> lightF (k `quotRem` n)
 {-# INLINE vecULight #-}
 
 vecU :: (Int, Int) -> VU.Vector Double
@@ -57,7 +56,7 @@ vecU = vecULight
 {-# INLINE vecU #-}
 
 vecU' :: (Int, Int) -> VU.Vector Double
-vecU' !(m, n) = VU.generate (m * n) $ \ !k -> heavyF (k `quotRemInt` n)
+vecU' !(m, n) = VU.generate (m * n) $ \ !k -> heavyF (k `quotRem` n)
 {-# INLINE vecU' #-}
 
 arrRLight :: (Num a)
@@ -99,17 +98,35 @@ arrWindowedM !arrSz@(m, n) =
 
 
 -- | Repa stencil base Sobel horizontal convolution
-sobelGxR
+sobelXR
   :: (R.Source r e, Num e) => R.Array r R.DIM2 e
      -> R.Array PC5 R.DIM2 e
-sobelGxR = mapStencil2 (BoundClamp) stencil
+sobelXR = mapStencil2 (BoundClamp) stencil
   where stencil = makeStencil2 3 3
-                  (\ix -> {-# SCC "insideStencil" #-} case ix of
-                      Z :. -1 :. -1 -> Just (-1)
-                      Z :.  0 :. -1 -> Just (-2)
-                      Z :.  1 :. -1 -> Just (-1)
+                  (\ix -> case ix of
                       Z :. -1 :.  1 -> Just 1
                       Z :.  0 :.  1 -> Just 2
                       Z :.  1 :.  1 -> Just 1
+                      Z :. -1 :. -1 -> Just (-1)
+                      Z :.  0 :. -1 -> Just (-2)
+                      Z :.  1 :. -1 -> Just (-1)
                       _             -> Nothing)
-{-# INLINE sobelGxR #-}
+{-# INLINE sobelXR #-}
+
+
+
+-- | Repa stencil base Sobel vertical convolution
+sobelYR
+  :: (R.Source r e, Num e) => R.Array r R.DIM2 e
+     -> R.Array PC5 R.DIM2 e
+sobelYR = mapStencil2 (BoundClamp) stencil
+  where stencil = makeStencil2 3 3
+                  (\ix -> case ix of
+                      Z :.  1 :. -1 -> Just 1
+                      Z :.  1 :.  0 -> Just 2
+                      Z :.  1 :.  1 -> Just 1
+                      Z :. -1 :. -1 -> Just (-1)
+                      Z :. -1 :.  0 -> Just (-2)
+                      Z :. -1 :.  1 -> Just (-1)
+                      _             -> Nothing)
+{-# INLINE sobelYR #-}

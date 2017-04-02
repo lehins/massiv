@@ -2,15 +2,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-
+import           Control.Monad.ST
 import           Criterion.Main
-import Control.Monad.ST
-import           Data.Array.Massiv.Manifest.Loading as M
 import           Data.Array.Massiv.Common
 import           Data.IORef
 import           Data.STRef
 -- import qualified Data.Vector.Unboxed                as VU
-import           Prelude                            as P
+import           Prelude                  as P
 
 accumIO :: IORef Int -> Int -> (Int, Int) -> IO ()
 accumIO accRef !_k !(i, j) = do
@@ -70,7 +68,7 @@ main = do
     --         loopM_ 521 (< (uncurry (*) sz - 523)) (+ 1) $ \ !k ->
     --           accumIO ref k (quotRemInt k n)
     --     ]
-    -- , 
+    -- ,
       -- bgroup
       --   "iterateWithLinearIO_"
       --   [ bench "smart: 521 to (k - 523)" $ whnfIO $ do

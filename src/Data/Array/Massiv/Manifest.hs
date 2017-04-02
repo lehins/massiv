@@ -1,10 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE BangPatterns              #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE RecordWildCards           #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -15,10 +16,16 @@
 --
 module Data.Array.Massiv.Manifest where
 
-import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Common
-
 import           Data.Foldable
+
+
+class Source r ix e => Manifest r ix e where
+  type Elt r ix e :: *
+  type Elt r ix e = Array M (Lower ix) e
+
+  (!?) :: Array r ix e -> Int -> Maybe (Elt r ix e)
+
 
 -- | Manifest representation
 data M
@@ -31,64 +38,125 @@ instance Index ix => Massiv M ix where
   {-# INLINE size #-}
 
 instance Massiv M ix => Foldable (Array M ix) where
-  foldr f acc (MArray {..})  =
-    loop 0 (< k) (+ 1) acc $ \i accI -> f (mUnsafeLinearIndex i) accI
-    where
-      !k = totalElem mSize
+  foldr f acc (MArray sz g) =
+    loop (totalElem sz - 1) (>= 0) (subtract 1) acc $ \i accI -> f (g i) accI
   {-# INLINE foldr #-}
-  foldr' f !acc (MArray {..})  =
-    loop 0 (< k) (+ 1) acc $ \ !i !accI -> f (mUnsafeLinearIndex i) accI
-    where
-      !k = totalElem mSize
+  foldr' f !acc (MArray sz g) =
+    loop (totalElem sz - 1) (>= 0) (subtract 1) acc $ \ !i !accI -> f (g i) accI
   {-# INLINE foldr' #-}
-  foldl f acc (MArray {..})  =
-    loop 0 (< k) (+ 1) acc $ \i accI -> f accI (mUnsafeLinearIndex i)
-    where
-      !k = totalElem mSize
+  foldl f acc (MArray sz g) =
+    loop 0 (< totalElem sz) (+ 1) acc $ \i accI -> f accI (g i)
   {-# INLINE foldl #-}
-  foldl' f !acc (MArray {..})  =
-    loop 0 (< k) (+ 1) acc $ \ !i !accI -> f accI (mUnsafeLinearIndex i)
-    where
-      !k = totalElem mSize
+  foldl' f !acc (MArray sz g) =
+    loop 0 (< totalElem sz) (+ 1) acc $ \ !i !accI -> f accI (g i)
   {-# INLINE foldl' #-}
   length = totalElem . size
   {-# INLINE length #-}
 
 
 
-instance Source M DIM1 where
-  type Elt M DIM1 e = e
-  unsafeIndex = mUnsafeLinearIndex
-  {-# INLINE unsafeIndex #-}
+instance Index ix => Source M ix e where
   unsafeLinearIndex = mUnsafeLinearIndex
   {-# INLINE unsafeLinearIndex #-}
+
+
+instance Manifest M DIM1 e where
+  type Elt M DIM1 e = e
   (!?) (MArray k f) !i
     | isSafeIndex k i = Just (f i)
     | otherwise = Nothing
   {-# INLINE (!?) #-}
 
 
-instance Source M DIM2 where
-  type Elt M DIM2 e = Array D DIM1 e
-  unsafeLinearIndex = mUnsafeLinearIndex
-  {-# INLINE unsafeLinearIndex #-}
-  (!?) !arr !i
-    | isSafeIndex m i = Just (DArray n (\ !j -> unsafeIndex arr (i, j)))
-    | otherwise = Nothing
-    where
-      !(m, n) = size arr
+instance Manifest M DIM2 e where
+  (!?) = maybeLowerIndex
   {-# INLINE (!?) #-}
 
-instance Source M DIM3 where
-  type Elt M DIM3 e = Array D DIM2 e
-  unsafeLinearIndex = mUnsafeLinearIndex
-  {-# INLINE unsafeLinearIndex #-}
-  (!?) !arr !i
-    | isSafeIndex m i = Just (DArray (n, o) (\ !(j, k) -> unsafeIndex arr (i, j, k)))
+
+
+instance Manifest M DIM3 e where
+  (!?) = maybeLowerIndex
+  {-# INLINE (!?) #-}
+
+
+toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
+toManifest arr = MArray (size arr) (unsafeLinearIndex arr) where
+{-# INLINE toManifest #-}
+
+
+maybeLowerIndex
+  :: forall r ix e . (Index (Lower ix), Source r ix e) =>
+     Array r ix e -> Int -> Maybe (Array M (Lower ix) e)
+maybeLowerIndex !arr !i
+    | isSafeIndex m i = Just (MArray szL (\ !k -> unsafeLinearIndex arr (k + kStart)))
     | otherwise = Nothing
     where
-      !(m, n, o) = size arr
-  {-# INLINE (!?) #-}
+      !sz = size arr
+      !(m, szL) = unconsDim sz
+      !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
+{-# INLINE maybeLowerIndex #-}
+
+
+
+errorIx :: (Show a2, Show a1) => a2 -> a1 -> a
+errorIx ix sz =
+  error $ "Index out of bounds: " ++ show ix ++ " for array size: " ++ show sz
+
+
+maybeIndex :: Manifest r ix e => Array r ix e -> ix -> Maybe e
+maybeIndex !arr = handleBorderIndex (Fill Nothing) (size arr) (Just . unsafeIndex arr)
+{-# INLINE maybeIndex #-}
+
+
+defaultIndex :: Manifest r ix e => e -> Array r ix e -> ix -> e
+defaultIndex defVal !arr = handleBorderIndex (Fill defVal) (size arr) (unsafeIndex arr)
+{-# INLINE defaultIndex #-}
+
+
+borderIndex :: Manifest r ix e => Border e -> Array r ix e -> ix -> e
+borderIndex border !arr = handleBorderIndex border (size arr) (unsafeIndex arr)
+{-# INLINE borderIndex #-}
+
+index :: Manifest r ix e => Array r ix e -> ix -> e
+index !arr !ix
+  | isSafeIndex (size arr) ix = unsafeIndex arr ix
+  | otherwise = errorIx ix (size arr)
+{-# INLINE index #-}
+
+safeIndex :: Source r ix e => Array r ix e -> ix -> e
+safeIndex !arr !ix
+  | isSafeIndex (size arr) ix = unsafeIndex arr ix
+  | otherwise = errorIx ix (size arr)
+{-# INLINE safeIndex #-}
+
+
+
+
+(!) :: Manifest r ix e => Array r ix e -> Int -> Elt r ix e
+(!) arr ix =
+  case arr !? ix of
+    Just res -> res
+    Nothing  -> errorIx ix (size arr)
+{-# INLINE (!) #-}
+
+
+(?) :: Manifest r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
+(?) Nothing _      = Nothing
+(?) (Just arr) !ix = arr !? ix
+{-# INLINE (?) #-}
+
+
+
+-- instance Source M (Int, Int, Int, Int) where
+--   type Elt M (Int, Int, Int, Int) e = Array D DIM3 e
+--   unsafeLinearIndex = mUnsafeLinearIndex
+--   {-# INLINE unsafeLinearIndex #-}
+--   (!?) !arr !i
+--     | isSafeIndex m i = Just (DArray szL (\ !ixL -> unsafeIndex arr (consDim i ixL)))
+--     | otherwise = Nothing
+--     where
+--       !(m, szL) = unconsDim (size arr)
+--   {-# INLINE (!?) #-}
 
 
 

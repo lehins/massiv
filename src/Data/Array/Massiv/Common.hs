@@ -14,13 +14,15 @@ module Data.Array.Massiv.Common
   ( Array
   , Massiv(..)
   , Source(..)
-  , loop
-  , loopM_
-  , loopM
-  , module Data.Array.Massiv.Index
+  , Load(..)
+  , module Data.Array.Massiv.Common.Index
+  , module Data.Array.Massiv.Common.Iterator
+  , ifoldl
   ) where
 
-import Data.Array.Massiv.Index
+import Control.Monad.ST (ST)
+import Data.Array.Massiv.Common.Index hiding (Z)
+import Data.Array.Massiv.Common.Iterator
 
 data family Array r ix e :: *
 
@@ -36,49 +38,35 @@ instance Massiv r ix => Show (Array r ix e) where
   show arr = "<Array: " ++ show (size arr) ++ ">"
 
 
-class Massiv r ix => Source r ix where
-  type Elt r ix e :: *
-  type Elt r ix e = Array r (Lower ix) e
+class Massiv r ix => Source r ix e where
 
   unsafeIndex :: Massiv r ix => Array r ix e -> ix -> e
-  unsafeIndex !arr = {-# SCC "SCC:unsafeIndex" #-}  unsafeLinearIndex arr . toLinearIndex (size arr)
+  unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
   {-# INLINE unsafeIndex #-}
 
   unsafeLinearIndex :: Array r ix e -> Int -> e
-  unsafeLinearIndex !arr = {-# SCC "SCC:unsafeLinearIndex" #-} unsafeIndex arr . fromLinearIndex (size arr)
+  unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
-  (!?) :: Array r ix e -> Int -> Maybe (Elt r ix e)
+
+class Massiv r ix => Load r ix where
+  -- | Load an array into memory sequentially
+  loadS
+    :: Array r ix e -- ^ Array that is being loaded
+    -> (Int -> e -> ST s ()) -- ^ Write element
+    -> ST s ()
+
+  -- | Load an array into memory in parallel
+  loadP
+    :: Array r ix e -- ^ Array that is being loaded
+    -> (Int -> e -> IO ()) -- ^ Write element
+    -> IO ()
 
 
+ifoldl
+  :: (Iterator i ix, Source r ix a)
+  => i -> (ix -> b -> a -> b) -> b -> Array r ix a -> b
+ifoldl i f !acc !arr = iter i zeroIndex (size arr) acc $ \ !ix !a -> f ix a (unsafeIndex arr ix)
+{-# INLINE ifoldl #-}
 
-
--- | Very efficient loop with an accumulator
-loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
-loop !init' condition increment !initAcc f = go init' initAcc where
-  go !step !acc =
-    case condition step of
-      False -> acc
-      True  -> go (increment step) (f step acc)
-{-# INLINE loop #-}
-
-
--- | Very efficient monadic loop
-loopM_ :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> m a) -> m ()
-loopM_ !init' condition increment f = go init' where
-  go !step =
-    case condition step of
-      False -> return ()
-      True  -> f step >> go (increment step)
-{-# INLINE loopM_ #-}
-
-
--- | Very efficient monadic loop with an accumulator
-loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
-loopM !init' condition increment !initAcc f = go init' initAcc where
-  go !step acc =
-    case condition step of
-      False -> return acc
-      True  -> f step acc >>= go (increment step)
-{-# INLINE loopM #-}
 
