@@ -29,7 +29,7 @@ module Data.Array.Massiv
   , izipWith
   , izipWith3
   -- * Geometric Operators
-  , transpose
+  --, transpose
   , backpermute
   , unsafeBackpermute
   ) where

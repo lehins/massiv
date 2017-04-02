@@ -68,35 +68,6 @@ class (Eq ix, Show ix) => Index ix where
 
 --   totalElem
 
-instance Index DIM1 where
-  type Lower DIM1 = ()
-  zeroIndex = 0
-  {-# INLINE zeroIndex #-}
-  totalElem = id
-  {-# INLINE totalElem #-}
-  isSafeIndex !k !i = 0 <= i && i < k
-  {-# INLINE isSafeIndex #-}
-  toLinearIndex _ = id
-  {-# INLINE toLinearIndex #-}
-  fromLinearIndex _ = id
-  {-# INLINE fromLinearIndex #-}
-  repairIndex !k !i rBelow rOver
-    | i < 0 = rBelow k i
-    | i >= k = rOver k i
-    | otherwise = i
-  {-# INLINE repairIndex #-}
-  consDim i () = i
-  {-# INLINE consDim #-}
-  unconsDim i = (i, ())
-  {-# INLINE unconsDim #-}
-  snocDim () i = i
-  {-# INLINE snocDim #-}
-  unsnocDim i = ((), i)
-  {-# INLINE unsnocDim #-}
-  liftIndex f = f
-  {-# INLINE liftIndex #-}
-  liftIndex2 f = f
-  {-# INLINE liftIndex2 #-}
 
 
 instance Index DIM1 where
