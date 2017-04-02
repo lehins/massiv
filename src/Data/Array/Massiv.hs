@@ -103,17 +103,17 @@ izipWith3 f !arr1 arr2 arr3 =
 {-# INLINE izipWith3 #-}
 
 
-transpose
-  :: (Index (Lower ix), Index (Lower (Lower ix)), Source r ix e)
-  => Array r ix e -> Array D ix e
-transpose !arr = DArray (transInner (size arr)) newVal where
-  transInner !ix = snocDim (snocDim ixU2 n) m where
-    !(ixU1, n) = unsnocDim ix
-    !(ixU2, m) = unsnocDim ixU1
-  {-# INLINE transInner #-}
-  newVal !ix = unsafeIndex arr (transInner ix)
-  {-# INLINE newVal #-}
-{-# INLINE transpose #-}
+-- transpose
+--   :: (Index (Lower ix), Index (Lower (Lower ix)), Source r ix e)
+--   => Array r ix e -> Array D ix e
+-- transpose !arr = DArray (transInner (size arr)) newVal where
+--   transInner !ix = snocDim (snocDim ixU2 n) m where
+--     !(ixU1, n) = unsnocDim ix
+--     !(ixU2, m) = unsnocDim ixU1
+--   {-# INLINE transInner #-}
+--   newVal !ix = unsafeIndex arr (transInner ix)
+--   {-# INLINE newVal #-}
+-- {-# INLINE transpose #-}
 
 
 backpermute :: Source r ix1 e => ix -> (ix -> ix1) -> Array r ix1 e -> Array D ix e
