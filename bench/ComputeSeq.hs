@@ -5,7 +5,7 @@ module Main where
 import           Compute
 import           Criterion.Main
 import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Manifest         as M
+
 import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Repa                    as R
 import qualified Data.Vector.Unboxed                as VU
@@ -69,7 +69,7 @@ main = do
         [ bgroup
             "map"
             [ bench "Array Massiv" $
-              whnf (M.computeUnboxedS . mapA (+ 25) . arrM) sz
+              whnf (M.computeUnboxedS . M.map (+ 25) . arrM) sz
             , bench "Array Repa" $
               whnf (R.computeUnboxedS . R.map (+ 25) . arrR) sz
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz

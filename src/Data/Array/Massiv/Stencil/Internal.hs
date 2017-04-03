@@ -95,9 +95,9 @@ safeStencilIndex DArray {..} ix
 validateStencil
   :: Index ix
   => e -> Stencil ix e a -> Stencil ix e a
-validateStencil d s@(Stencil _ sSz sCenter stencil) =
-  let valArr = DArray sSz (const d)
-  in stencil (safeStencilIndex valArr) sCenter `seq` s
+validateStencil d s@(Stencil _ sSz sCenter stencil) = s
+  -- let valArr = DArray sSz (const d)
+  -- in stencil (safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
 
 

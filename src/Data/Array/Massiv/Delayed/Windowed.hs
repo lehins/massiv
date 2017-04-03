@@ -126,14 +126,14 @@ instance Load W DIM2 where
 unrollAndJam :: Monad m =>
                 Int -> (Int, Int) -> (Int, Int) -> ((Int, Int) -> m a) -> m ()
 unrollAndJam !bH !(it, ib) !(jt, jb) f = do
-  let !bH' = max (min 1 bH) 7
+  let !bH' = min (max 1 bH) 7
   let f2 !(i, j) = f (i, j) >> f  (i+1, j)
   let f3 !(i, j) = f (i, j) >> f2 (i+1, j)
   let f4 !(i, j) = f (i, j) >> f3 (i+1, j)
   let f5 !(i, j) = f (i, j) >> f4 (i+1, j)
   let f6 !(i, j) = f (i, j) >> f5 (i+1, j)
   let f7 !(i, j) = f (i, j) >> f6 (i+1, j)
-  let f' = case bH of
+  let f' = case bH' of
              1 -> f
              2 -> f2
              3 -> f3
@@ -145,10 +145,6 @@ unrollAndJam !bH !(it, ib) !(jt, jb) f = do
   loopM_ it (< ibS) (+ bH') $ \ !i ->
     loopM_ jt (< jb) (+ 1) $ \ !j ->
       f' (i, j)
-      -- let !ix0 = (i, j)
-      -- let !ix1 = (i + 1, j)
-      -- let !ix2 = (i + 2, j)
-      -- f ix0 >> f ix1 >> f ix2
   -- when (ibRem > 0) $
   --   unrollAndJam ibRem (ibS, ib) (jt, jb) f
   loopM_ ibS (< ib) (+ 1) $ \ !i ->

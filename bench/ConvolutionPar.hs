@@ -10,7 +10,7 @@ import           Data.Array.Massiv                     as M
 import           Data.Array.Massiv.Compute             as M
 import           Data.Array.Massiv.Manifest.Unboxed    as M
 import           Data.Array.Massiv.Stencil             as M
-import           Data.Array.Massiv.Stencil.Convolution as M
+-- import           Data.Array.Massiv.Stencil.Convolution as M
 import           Data.Array.Repa                       as R
 import           Data.Array.Repa.Algorithms.Convolve   as R
 import           Data.Array.Repa.Eval                  as R

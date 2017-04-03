@@ -22,9 +22,24 @@ type DIM2 = (Int, Int)
 
 type DIM3 = (Int, Int, Int)
 
+type family Lower ix :: *
+type family Higher ix :: *
+
+type instance Lower () = DIM3
+type instance Lower Z = ()
+type instance Lower DIM1 = Z
+type instance Lower DIM2 = DIM1
+type instance Lower DIM3 = DIM2
+
+type instance Higher () = Z
+type instance Higher Z = DIM1
+type instance Higher DIM1 = DIM2
+type instance Higher DIM2 = DIM3
+type instance Higher DIM3 = ()
+
+
 
 class (Eq ix, Show ix) => Index ix where
-  type Lower ix :: *
 
   zeroIndex :: ix
 
@@ -58,20 +73,47 @@ class (Eq ix, Show ix) => Index ix where
 
   unsnocDim :: Index (Lower ix) => ix -> (Lower ix, Int)
 
--- data Z = Zero | One deriving Show
+  -- iter :: ix -> ix -> a -> (ix -> a -> a) -> a
 
--- instance Index Z where
---   type Lower Z = Z
+  -- iterM :: Monad m => ix -> ix -> a -> (ix -> a -> m a) -> m a
 
---   isSafeIndex Zero One = True
---   isSafeIndex _ _ = False
+  -- iterM_ :: Monad m => ix -> ix -> (ix -> m ()) -> m ()
 
---   totalElem
 
+
+data Z = Z deriving (Eq, Show)
+
+errorBelowZero :: a
+errorBelowZero = error "There is no dimension that is lower than DIM0"
+
+instance Index Z where
+  zeroIndex = Z
+  {-# INLINE zeroIndex #-}
+  totalElem _ = 0
+  {-# INLINE totalElem #-}
+  isSafeIndex _   _    = False
+  {-# INLINE isSafeIndex #-}
+  toLinearIndex _ _ = 0
+  {-# INLINE toLinearIndex #-}
+  fromLinearIndex _ _ = Z
+  {-# INLINE fromLinearIndex #-}
+  repairIndex _ _ _ _ = Z
+  {-# INLINE repairIndex #-}
+  consDim _ _ = Z
+  {-# INLINE consDim #-}
+  unconsDim _ = errorBelowZero
+  {-# INLINE unconsDim #-}
+  snocDim _ _ = Z
+  {-# INLINE snocDim #-}
+  unsnocDim _ = errorBelowZero
+  {-# INLINE unsnocDim #-}
+  liftIndex _ _ = Z
+  {-# INLINE liftIndex #-}
+  liftIndex2 _ _ _ = Z
+  {-# INLINE liftIndex2 #-}
 
 
 instance Index DIM1 where
-  type Lower DIM1 = ()
   zeroIndex = 0
   {-# INLINE zeroIndex #-}
   totalElem = id
@@ -87,13 +129,13 @@ instance Index DIM1 where
     | i >= k = rOver k i
     | otherwise = i
   {-# INLINE repairIndex #-}
-  consDim i () = i
+  consDim i _ = i
   {-# INLINE consDim #-}
-  unconsDim i = (i, ())
+  unconsDim i = (i, Z)
   {-# INLINE unconsDim #-}
-  snocDim () i = i
+  snocDim _ i = i
   {-# INLINE snocDim #-}
-  unsnocDim i = ((), i)
+  unsnocDim i = (Z, i)
   {-# INLINE unsnocDim #-}
   liftIndex f = f
   {-# INLINE liftIndex #-}
@@ -102,7 +144,6 @@ instance Index DIM1 where
 
 
 instance Index DIM2 where
-  type Lower DIM2 = DIM1
   zeroIndex = (0, 0)
   {-# INLINE zeroIndex #-}
   totalElem !(m, n) = m * n
@@ -130,7 +171,6 @@ instance Index DIM2 where
 
 
 instance Index DIM3 where
-  type Lower DIM3 = DIM2
   zeroIndex = (0, 0, 0)
   {-# INLINE zeroIndex #-}
   totalElem !(m, n, o) = m * n * o
@@ -211,3 +251,64 @@ fromLinearIndexRec !sz !k = snocDim (fromLinearIndex szL kL) j
   where !(kL, j) = quotRemInt k n
         !(szL, n) = unsnocDim sz
 {-# INLINE fromLinearIndexRec #-}
+
+
+-- iterRec :: (Index (Lower ix), Index ix) => ix -> ix -> a -> (ix -> a -> a) -> a
+-- iterRec sIx eIx acc f =
+--     loop k0 (< k1) (+ 1) acc $ \ !i !acc0 ->
+--       iter sIxL eIxL acc0 $ \ !ix acc1 -> f (consDim i ix) acc1
+--     where
+--       !(k0, sIxL) = unconsDim sIx
+--       !(k1, eIxL) = unconsDim eIx
+-- {-# INLINE iterRec #-}
+
+
+-- iterMRec_ :: (Index (Lower ix), Index ix, Monad m) => ix -> ix -> (ix -> m ()) -> m ()
+-- iterMRec_ !sIx !eIx f = do
+--     let (k0, sIxL) = unconsDim sIx
+--         (k1, eIxL) = unconsDim eIx
+--     loopM_ k0 (< k1) (+ 1) $ \ !i ->
+--       iterM_ sIxL eIxL $ \ !ix ->
+--         f (consDim i ix)
+-- {-# INLINE iterMRec_ #-}
+
+
+iterLinearM_ :: (Index ix, Monad m) => ix -> Int -> Int -> (Int -> ix -> m ()) -> m ()
+iterLinearM_ sz k0 k1 f = loopM_ k0 (<k1) (+1) $ \ !i -> f i (fromLinearIndex sz i)
+{-# INLINE iterLinearM_ #-}
+
+-- | Iterate over N-dimensional space from start to end with accumulator
+iterLinearM :: (Index ix, Monad m) => ix -> Int -> Int -> a -> (Int -> ix -> a -> m a) -> m a
+iterLinearM sz k0 k1 acc f =
+  loopM k0 (< k1) (+ 1) acc $ \ !i acc0 -> f i (fromLinearIndex sz i) acc0
+{-# INLINE iterLinearM #-}
+
+
+-- | Very efficient loop with an accumulator
+loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
+loop !init' condition increment !initAcc f = go init' initAcc where
+  go !step !acc =
+    case condition step of
+      False -> acc
+      True  -> go (increment step) (f step acc)
+{-# INLINE loop #-}
+
+
+-- | Very efficient monadic loop
+loopM_ :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> m a) -> m ()
+loopM_ !init' condition increment f = go init' where
+  go !step =
+    case condition step of
+      False -> return ()
+      True  -> f step >> go (increment step)
+{-# INLINE loopM_ #-}
+
+
+-- | Very efficient monadic loop with an accumulator
+loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
+loopM !init' condition increment !initAcc f = go init' initAcc where
+  go !step acc =
+    case condition step of
+      False -> return acc
+      True  -> f step acc >>= go (increment step)
+{-# INLINE loopM #-}

@@ -17,6 +17,7 @@
 module Data.Array.Massiv.Manifest where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Delayed
 import           Data.Foldable
 
 
@@ -25,6 +26,8 @@ class Source r ix e => Manifest r ix e where
   type Elt r ix e = Array M (Lower ix) e
 
   (!?) :: Array r ix e -> Int -> Maybe (Elt r ix e)
+
+  --(?!) :: Int -> Array r ix e -> Maybe (Elt r ix e)
 
 
 -- | Manifest representation
@@ -67,10 +70,16 @@ instance Manifest M DIM1 e where
     | otherwise = Nothing
   {-# INLINE (!?) #-}
 
+  -- (?!) = flip (!?)
+  -- {-# INLINE (?!) #-}
+
 
 instance Manifest M DIM2 e where
   (!?) = maybeLowerIndex
   {-# INLINE (!?) #-}
+
+  -- (?!) = maybeLowerIndexInner
+  -- {-# INLINE (?!) #-}
 
 
 
@@ -78,10 +87,17 @@ instance Manifest M DIM3 e where
   (!?) = maybeLowerIndex
   {-# INLINE (!?) #-}
 
+  -- (?!) = maybeLowerIndexInner
+  -- {-# INLINE (?!) #-}
 
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
 toManifest arr = MArray (size arr) (unsafeLinearIndex arr) where
 {-# INLINE toManifest #-}
+
+
+delay :: Manifest r ix e => Array r ix e -> Array D ix e
+delay arr = DArray (size arr) (unsafeIndex arr)
+{-# INLINE delay #-}
 
 
 maybeLowerIndex
@@ -95,6 +111,18 @@ maybeLowerIndex !arr !i
       !(m, szL) = unconsDim sz
       !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
 {-# INLINE maybeLowerIndex #-}
+
+maybeLowerIndexInner
+  :: forall r ix e . (Index (Lower ix), Source r ix e) =>
+     Int -> Array r ix e -> Maybe (Array M (Lower ix) e)
+maybeLowerIndexInner !i !arr
+    | isSafeIndex m i = Just (MArray szL (\ !k -> unsafeLinearIndex arr (k*m + kStart)))
+    | otherwise = Nothing
+    where
+      !sz = size arr
+      !(szL, m) = unsnocDim sz
+      !kStart = toLinearIndex sz (snocDim (zeroIndex :: Lower ix) i)
+{-# INLINE maybeLowerIndexInner #-}
 
 
 
@@ -144,6 +172,21 @@ safeIndex !arr !ix
 (?) Nothing _      = Nothing
 (?) (Just arr) !ix = arr !? ix
 {-# INLINE (?) #-}
+
+
+
+-- (<!) :: Manifest r ix e => Int -> Array r ix e -> Elt r ix e
+-- (<!) ix arr =
+--   case ix ?! arr of
+--     Just res -> res
+--     Nothing  -> errorIx ix (size arr)
+-- {-# INLINE (<!) #-}
+
+
+-- (<?) :: Manifest r ix e => Int -> Maybe (Array r ix e) -> Maybe (Elt r ix e)
+-- (<?) _ Nothing      = Nothing
+-- (<?) !ix (Just arr) = ix ?! arr
+-- {-# INLINE (<?) #-}
 
 
 

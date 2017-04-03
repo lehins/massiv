@@ -10,9 +10,9 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Common.Iterator where
+module Data.Array.Massiv.Common.Iterator (Iterator(..), RowMajor(..)) where
 
-import           Data.Array.Massiv.Common.Index
+import           Data.Array.Massiv.Common.Index hiding (iter)
 
 
   -- ifoldl :: Source r ix e => i -> (b -> ix -> e -> b) -> b -> Array r ix e -> b
@@ -24,7 +24,7 @@ import           Data.Array.Massiv.Common.Index
 class Index ix => Iterator i ix where
 
   iter :: i -> ix -> ix -> a -> (ix -> a -> a) -> a
-  
+
   iterateM_
     :: Monad m
     => i -- ^ Iterator
@@ -55,34 +55,34 @@ class Index ix => Iterator i ix where
 
 
 
--- | Very efficient loop with an accumulator
-loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
-loop !init' condition increment !initAcc f = go init' initAcc where
-  go !step !acc =
-    case condition step of
-      False -> acc
-      True  -> go (increment step) (f step acc)
-{-# INLINE loop #-}
+-- -- | Very efficient loop with an accumulator
+-- loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
+-- loop !init' condition increment !initAcc f = go init' initAcc where
+--   go !step !acc =
+--     case condition step of
+--       False -> acc
+--       True  -> go (increment step) (f step acc)
+-- {-# INLINE loop #-}
 
 
--- | Very efficient monadic loop
-loopM_ :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> m a) -> m ()
-loopM_ !init' condition increment f = go init' where
-  go !step =
-    case condition step of
-      False -> return ()
-      True  -> f step >> go (increment step)
-{-# INLINE loopM_ #-}
+-- -- | Very efficient monadic loop
+-- loopM_ :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> m a) -> m ()
+-- loopM_ !init' condition increment f = go init' where
+--   go !step =
+--     case condition step of
+--       False -> return ()
+--       True  -> f step >> go (increment step)
+-- {-# INLINE loopM_ #-}
 
 
--- | Very efficient monadic loop with an accumulator
-loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
-loopM !init' condition increment !initAcc f = go init' initAcc where
-  go !step acc =
-    case condition step of
-      False -> return acc
-      True  -> f step acc >>= go (increment step)
-{-# INLINE loopM #-}
+-- -- | Very efficient monadic loop with an accumulator
+-- loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
+-- loopM !init' condition increment !initAcc f = go init' initAcc where
+--   go !step acc =
+--     case condition step of
+--       False -> return acc
+--       True  -> f step acc >>= go (increment step)
+-- {-# INLINE loopM #-}
 
 
 
@@ -146,6 +146,31 @@ instance Iterator RowMajor DIM2 where
             in f (toLinearIndex sz ix) ix
         let !ej' = ej + 1
         loopM_ 0 (< ej') (+ 1) $ \ !j -> f (k1 + j - ej') (ei, j)
+  {-# INLINE iterateLinearM_ #-}
+  -- iterateLinearM_ _ !sz !k0 !k1 f = do
+  --   loopM_ k0 (<k1) (+1) $ \ !i ->
+  --     f i (fromLinearIndex sz i)
+  -- {-# INLINE iterateLinearM_ #-}
+
+
+instance Iterator RowMajor DIM3 where
+  iter it sIx eIx acc f =
+    loop k0 (< k1) (+ 1) acc $ \ !i !acc0 ->
+      iter it sIxL eIxL acc0 $ \ !ix acc1 -> f (consDim i ix) acc1
+    where
+      !(k0, sIxL) = unconsDim sIx
+      !(k1, eIxL) = unconsDim eIx
+  {-# INLINE iter #-}
+  iterateM_ it !sIx !eIx f = do
+    let (k0, sIxL) = unconsDim sIx
+        (k1, eIxL) = unconsDim eIx
+    loopM_ k0 (< k1) (+ 1) $ \ !i ->
+      iterateM_ it sIxL eIxL $ \ !ix ->
+        f (consDim i ix)
+  {-# INLINE iterateM_ #-}
+  iterateLinearM_ _ !sz !k0 !k1 f = do
+    loopM_ k0 (<k1) (+1) $ \ !i ->
+      f i (fromLinearIndex sz i)
   {-# INLINE iterateLinearM_ #-}
   -- iterateLinearM_ _ !sz !k0 !k1 f = do
   --   loopM_ k0 (<k1) (+1) $ \ !i ->

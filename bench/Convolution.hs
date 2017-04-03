@@ -10,7 +10,7 @@ import           Data.Array.Massiv                  as M
 import           Data.Array.Massiv.Compute          as M
 import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Massiv.Stencil          as M
-import           Data.Array.Massiv.Stencil          as M
+
 import           Data.Array.Repa                    as R
 import qualified VectorConvolve                     as VC
 
@@ -51,6 +51,7 @@ validateOperator (m, n) = (sR, sVR)
     sR = sobelOperatorR' arrCR
     arrCU = M.computeUnboxedS (arrMLight (m, n))
     mArr = M.computeS $ mapStencil (sobelOperator Edge) arrCU
+    --mArr = sobelOperator' Edge arrCU
     --arrVU = VC.makeVUArray (m, n) lightF :: VC.VUArray Int
     --mArr = VC.applyFilter (VC.sobelFilter VC.Horizontal Edge) arrVU
     sVR = R.fromUnboxed (Z :. m :. n) $ M.toVectorUnboxed mArr
@@ -80,6 +81,11 @@ sobelOperator' b arr = M.computeUnboxedS $ M.map sqrt $ M.zipWith (+) arrX2 arrY
     !sX = sobelStencilX b
     !sY = sobelStencilY b
 
+--sobelOperator'' :: (Default b, Floating b) => Border b -> Stencil M.DIM2 b b
+sobelOperator'' b = sqrt (sX + sY) where
+  !sX = (^ (2 :: Int)) <$> sobelStencilX b
+  !sY = (^ (2 :: Int)) <$> sobelStencilY b
+{-# INLINE sobelOperator'' #-}
 
 main :: IO ()
 main = do
@@ -97,6 +103,7 @@ main = do
       !sobel = sobelStencilX Edge
       !sobelOp = sobelOperator Edge
       !sobelOp' = sobelOperator' Edge
+      !sobelOp'' = sobelOperator'' Edge
       !kirschW = kirschWStencil Edge
   defaultMain
     [ bgroup
@@ -110,6 +117,8 @@ main = do
         "Sobel Operator"
         [ bench "Massiv stencil operator" $
           whnf (M.computeUnboxedS . mapStencil sobelOp) arrUM
+        , bench "Massiv stencil operator local" $
+          whnf (M.computeUnboxedS . mapStencil sobelOp'') arrUM
         , bench "Massiv unfused" $ whnf sobelOp' arrUM
         , bench "Repa fused" $ whnf sobelOperatorR arrCR
         , bench "Repa unfused" $ whnf sobelOperatorR' arrCR

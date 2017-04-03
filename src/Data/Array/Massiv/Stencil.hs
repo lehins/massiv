@@ -173,13 +173,23 @@ instance Functor (Stencil ix e) where
 -- up. This approach would also remove requirement to validate the result
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
-instance (Default e, Index ix) => Applicative (Stencil ix e) where
-  pure a = Stencil Edge (liftIndex (+1) zeroIndex) zeroIndex (const (const a))
+instance (Default e, Index ix) =>
+         Applicative (Stencil ix e) where
+  pure a = Stencil Edge (liftIndex (+ 1) zeroIndex) zeroIndex (const (const a))
   {-# INLINE pure #-}
-
-  (<*>) (Stencil _ _ _ f) (Stencil sB sSz sC g) =
-    validateStencil def (Stencil sB sSz sC (\ gV ix -> (f gV ix) (g gV ix)))
+  (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
+    validateStencil def (Stencil sB newSz maxCenter (\gV ix -> (f1 gV ix) (f2 gV ix)))
+    where
+      newSz =
+        liftIndex2
+          (+)
+          maxCenter
+          (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2))
+      !maxCenter = liftIndex2 max sC1 sC2
   {-# INLINE (<*>) #-}
+  -- (<*>) (Stencil _ _ _ f) (Stencil sB sSz sC g) =
+  --   validateStencil def (Stencil sB sSz sC (\ gV ix -> (f gV ix) (g gV ix)))
+  -- {-# INLINE (<*>) #-}
 
 instance (Index ix, Default e, Num a) => Num (Stencil ix e a) where
   (+) = liftA2 (+)
@@ -346,7 +356,7 @@ sobelStencilY b = mkConvolutionStencil b (3, 3) (1, 1) accum where
 
 
 sobelOperator :: (Default b, Floating b) => Border b -> Stencil DIM2 b b
-sobelOperator b = fmap sqrt (liftA2 (+) sX sY) where
+sobelOperator b = sqrt (sX + sY) where
   !sX = (^ (2 :: Int)) <$> sobelStencilX b
   !sY = (^ (2 :: Int)) <$> sobelStencilY b
 {-# INLINE sobelOperator #-}

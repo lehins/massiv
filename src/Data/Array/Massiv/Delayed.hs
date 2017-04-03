@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -17,7 +18,6 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Compute.Gang
 
 import           Data.Foldable
-import           GHC.Base                 (quotRemInt)
 
 
 -- | Delayed representation.
@@ -143,15 +143,15 @@ instance Foldable (Array D DIM3) where
 
 
 
-instance Load D DIM1 where
+instance Iterator RowMajor ix => Load D ix where
   loadS (DArray sz f) unsafeWrite = do
-    iterateWithLinearM_ RowMajor sz 0 sz $ \ !k !ix ->
-      unsafeWrite k (f ix)
+    iterateM_ RowMajor zeroIndex sz $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
   loadP arr@(DArray arrSize f) unsafeWrite = do
     let !gSize = gangSize theGang
         !totalLength = totalElem arrSize
-        !(chunkLength, slackLength) = totalLength `quotRemInt` gSize
+        !(chunkLength, slackLength) = totalLength `quotRem` gSize
     gangIO theGang $ \ !tid ->
       let !start = tid * chunkLength
           !end = start + chunkLength
@@ -162,21 +162,23 @@ instance Load D DIM1 where
       unsafeWrite i (unsafeLinearIndex arr i)
   {-# INLINE loadP #-}
 
-instance Load D DIM2 where
-  loadS (DArray sz f) unsafeWrite =
-    iterateWithLinearM_ RowMajor sz (0, 0) sz $ \ !k !ix ->
-      unsafeWrite k (f ix)
-  {-# INLINE loadS #-}
-  loadP arr@(DArray arrSize f) unsafeWrite = do
-    let !gSize = gangSize theGang
-        !totalLength = totalElem arrSize
-        !(chunkLength, slackLength) = totalLength `quotRemInt` gSize
-    gangIO theGang $ \ !tid ->
-      let !start = tid * chunkLength
-          !end = start + chunkLength
-      in do
-        iterateLinearM_ RowMajor arrSize start end $ \ !k !ix -> do
-          unsafeWrite k $ f ix
-    loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
-      unsafeWrite i (unsafeLinearIndex arr i)
-  {-# INLINE loadP #-}
+-- instance Load D DIM2 where
+--   loadS (DArray sz f) unsafeWrite =
+--     iterateWithLinearM_ RowMajor sz (0, 0) sz $ \ !k !ix ->
+--       unsafeWrite k (f ix)
+--   {-# INLINE loadS #-}
+--   loadP arr@(DArray arrSize f) unsafeWrite = do
+--     let !gSize = gangSize theGang
+--         !totalLength = totalElem arrSize
+--         !(chunkLength, slackLength) = totalLength `quotRem` gSize
+--     gangIO theGang $ \ !tid ->
+--       let !start = tid * chunkLength
+--           !end = start + chunkLength
+--       in do
+--         iterateLinearM_ RowMajor arrSize start end $ \ !k !ix -> do
+--           unsafeWrite k $ f ix
+--     loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
+--       unsafeWrite i (unsafeLinearIndex arr i)
+--   {-# INLINE loadP #-}
+
+

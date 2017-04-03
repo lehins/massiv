@@ -69,4 +69,3 @@ ifoldl
 ifoldl i f !acc !arr = iter i zeroIndex (size arr) acc $ \ !ix !a -> f ix a (unsafeIndex arr ix)
 {-# INLINE ifoldl #-}
 
-

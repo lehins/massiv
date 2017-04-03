@@ -49,7 +49,6 @@ instance VU.Unbox e => Manifest U DIM2 e where
   {-# INLINE (!?) #-}
 
 
-
 instance VU.Unbox e => Manifest U DIM3 e where
   (!?) = maybeLowerIndex
   {-# INLINE (!?) #-}
