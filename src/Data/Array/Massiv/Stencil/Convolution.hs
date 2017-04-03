@@ -41,7 +41,7 @@ mkConvolutionStencil b !sSz !sCenter makeStencil =
 
 -- | Make a stencil out of a Kernel Array
 mkConvolutionStencilFromKernel
-  :: (Iterator RowMajor ix, Manifest r ix e, Eq e, Num e)
+  :: (Manifest r ix e, Eq e, Num e)
   => Border e
   -> Array r ix e
   -> Stencil ix e e
@@ -49,7 +49,7 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = (liftIndex (`div` 2) sz)
-    stencil getVal !ix = ifoldl RowMajor accum 0 kArr where
+    stencil getVal !ix = ifoldl accum 0 kArr where
       accum !kIx !acc !kVal =
         getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx)) * kVal + acc
       {-# INLINE accum #-}

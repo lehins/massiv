@@ -1,7 +1,7 @@
 name:                massiv
 version:             0.1.0.0
 synopsis:            Simple multi-dimensional Arrays
-description:         Massiv (Массив) is a Russian word for an Array.
+description:         Massiv (Масси́в) is a Russian word for an Array.
 homepage:            https://github.com/lehins/massiv
 license:             BSD3
 license-file:        LICENSE
@@ -18,7 +18,6 @@ library
   exposed-modules:     Data.Array.Massiv
                      , Data.Array.Massiv.Common
                      , Data.Array.Massiv.Common.Index
-                     , Data.Array.Massiv.Common.Iterator
                      , Data.Array.Massiv.Compute
                      , Data.Array.Massiv.Compute.Gang
                      , Data.Array.Massiv.Delayed
@@ -39,17 +38,17 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall
 
--- benchmark loops
---   type:                exitcode-stdio-1.0
---   hs-source-dirs:      bench
---   main-is:             Loops.hs
---   ghc-options:         -threaded -O2
---   build-depends:       base
---                      , criterion
---                      , massiv
---                      , vector
---                      , repa
---   default-language:    Haskell2010
+benchmark loops
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Loops.hs
+  ghc-options:         -threaded -O2
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , vector
+                     , repa
+  default-language:    Haskell2010
 
 -- benchmark fusion
 --   type:                exitcode-stdio-1.0
@@ -152,6 +151,18 @@ benchmark convolution-par
   --ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
   --ghc-options:         -threaded -rtsopts -with-rtsopts=-N -O2
   --ghc-options:         -Wall -O2 -threaded -prof -fprof-auto
+
+Test-Suite massiv-tests
+  Type:               exitcode-stdio-1.0
+  HS-Source-Dirs:     tests
+  Main-Is:            Spec.hs
+  Other-Modules:      Data.Array.Massiv.Common.IndexSpec
+  Build-Depends:      base            >= 4.5 && < 5
+                    , massiv
+                    , hspec
+                    , QuickCheck
+  Default-Language:   Haskell2010
+  GHC-Options:        -Wall -O2 -fno-warn-orphans -threaded -with-rtsopts=-N
 
 source-repository head
   type:     git

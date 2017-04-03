@@ -67,15 +67,34 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex =
 
 
 instance Load W DIM1 where
-  loadS (WArray sz _ indexBorder it wk indexWindow) unsafeWrite = do
-    iterateM_ RowMajor 0 it $ \ !i ->
-      unsafeWrite i (indexBorder i)
-    iterateM_ RowMajor it wk $ \ !i ->
-      unsafeWrite i (indexWindow i)
-    iterateM_ RowMajor wk sz $ \ !i ->
-      unsafeWrite i (indexBorder i)
+  loadS (WArray sz _ indexB it wk indexW) unsafeWrite = do
+    iterM_ 0 it $ \ !i ->
+      unsafeWrite i (indexB i)
+    iterM_ it wk $ \ !i ->
+      unsafeWrite i (indexW i)
+    iterM_ wk sz $ \ !i ->
+      unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
-  loadP WArray {..} unsafeWrite = undefined
+  loadP (WArray sz _ indexB it wk indexW) unsafeWrite = do
+    let !gSize = gangSize theGang
+        !(chunkHeight, slackHeight) = wk `quotRem` gSize
+    let loadBlock !it' !ib' =
+          iterM_ it' ib' $ \ !ix ->
+            unsafeWrite (toLinearIndex sz ix) (indexW ix)
+        {-# INLINE loadBlock #-}
+    gangIO theGang $ \ !cix -> do
+      let !it' = cix * chunkHeight + it
+      loadBlock it' (it' + chunkHeight)
+      when (cix == 0) $
+        iterM_ 0 it $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      when (cix == 1 `mod` gSize) $
+        iterM_ wk sz $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      when (cix == 3 `mod` gSize && slackHeight > 0) $ do
+        let !itSlack = gSize * chunkHeight + it
+        loadBlock itSlack (itSlack + slackHeight)
+  {-# INLINE loadP #-}
 
 
 
@@ -83,14 +102,14 @@ instance Load W DIM2 where
   loadS (WArray sz@(m, n) mStencilSz indexB (it, jt) (wm, wn) indexW) unsafeWrite = do
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
-    iterateWithLinearM_ RowMajor sz (0, 0) (it, n) $ \ !k !ix ->
-      unsafeWrite k (indexB ix)
-    iterateWithLinearM_ RowMajor sz (ib, 0) (m, n) $ \ !k !ix ->
-      unsafeWrite k (indexB ix)
-    iterateWithLinearM_ RowMajor sz (it, 0) (ib, jt) $ \ !k !ix ->
-      unsafeWrite k (indexB ix)
-    iterateWithLinearM_ RowMajor sz (it, jb) (ib, n) $ \ !k !ix ->
-      unsafeWrite k (indexB ix)
+    iterM_ (0, 0) (it, n) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (ib, 0) (m, n) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (it, 0) (ib, jt) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (it, jb) (ib, n) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
     unrollAndJam blockHeight (it, ib) (jt, jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
   {-# INLINE loadS #-}
@@ -99,8 +118,6 @@ instance Load W DIM2 where
         !blockHeight = maybe 1 fst mStencilSz
     let !gSize = gangSize theGang
         !(chunkHeight, slackHeight) = wm `quotRem` gSize
-    let iterM_ = iterateWithLinearM_ RowMajor sz
-        {-# INLINE iterM_ #-}
     let loadBlock !it' !ib' =
           unrollAndJam blockHeight (it', ib') (jt, jb) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexW ix)
@@ -108,16 +125,18 @@ instance Load W DIM2 where
     gangIO theGang $ \ !cix -> do
       let !it' = cix * chunkHeight + it
       loadBlock it' (it' + chunkHeight)
-      when (cix == 0) $ do
-        iterM_ (0, 0) (it, n) $ \ !k !ix -> unsafeWrite k (indexB ix)
-      when (cix == 1 `mod` gSize) $ do
-        iterM_ (ib, 0) (m, n) $ \ !k !ix -> unsafeWrite k (indexB ix)
-      when (cix == 2 `mod` gSize) $ do
-        iterM_ (it, 0) (ib, jt) $ \ !k !ix ->
-          unsafeWrite k (indexB ix)
-      when (cix == 3 `mod` gSize) $ do
-        iterM_ (it, jb) (ib, n) $ \ !k !ix ->
-          unsafeWrite k (indexB ix)
+      when (cix == 0) $
+        iterM_ (0, 0) (it, n) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      when (cix == 1 `mod` gSize) $
+        iterM_ (ib, 0) (m, n) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      when (cix == 2 `mod` gSize) $
+        iterM_ (it, 0) (ib, jt) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      when (cix == 3 `mod` gSize) $
+        iterM_ (it, jb) (ib, n) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
       when (cix == 4 `mod` gSize && slackHeight > 0) $ do
         let !itSlack = gSize * chunkHeight + it
         loadBlock itSlack (itSlack + slackHeight)
@@ -145,36 +164,7 @@ unrollAndJam !bH !(it, ib) !(jt, jb) f = do
   loopM_ it (< ibS) (+ bH') $ \ !i ->
     loopM_ jt (< jb) (+ 1) $ \ !j ->
       f' (i, j)
-  -- when (ibRem > 0) $
-  --   unrollAndJam ibRem (ibS, ib) (jt, jb) f
   loopM_ ibS (< ib) (+ 1) $ \ !i ->
     loopM_ jt (< jb) (+ 1) $ \ !j ->
       f (i, j)
 {-# INLINE unrollAndJam #-}
-
-
-
-  -- loadS (WArray sz@(m, n) indexBorder (it, jt) (wm, wn) indexWindow) unsafeWrite = do
-  --   let !(ib, jb) = (wm + it, wn + jt)
-  --   iterateWithLinearM_ RowMajor sz (0, 0) (it, n) $ \ !k !ix ->
-  --     unsafeWrite k (indexBorder ix)
-  --   iterateWithLinearM_ RowMajor sz (ib, 0) (m, n) $ \ !k !ix ->
-  --     unsafeWrite k (indexBorder ix)
-  --   iterateWithLinearM_ RowMajor sz (it, 0) (ib, jt) $ \ !k !ix ->
-  --     unsafeWrite k (indexBorder ix)
-  --   iterateWithLinearM_ RowMajor sz (it, jb) (ib, n) $ \ !k !ix ->
-  --     unsafeWrite k (indexBorder ix)
-  --   -- iterateWithLinearM_ RowMajor sz t b $ \ !k !ix ->
-  --   --   unsafeWrite k (indexWindow ix)
-  --   let !ibS = ib - ((ib - it) `mod` 3)
-  --   loopM_ it (< ibS) (+ 3) $ \ !i -> do
-  --     loopM_ jt (< jb) (+ 1) $ \ !j -> do
-  --       let !ix0 = (i, j)
-  --       let !ix1 = (i + 1, j)
-  --       let !ix2 = (i + 2, j)
-  --       unsafeWrite (toLinearIndex sz ix0) (indexWindow ix0)
-  --       unsafeWrite (toLinearIndex sz ix1) (indexWindow ix1)
-  --       unsafeWrite (toLinearIndex sz ix2) (indexWindow ix2)
-  --   loopM_ ibS (< ib) (+ 1) $ \ !i -> do
-  --     loopM_ jt (< jb) (+ 1) $ \ !j -> do
-  --       unsafeWrite (toLinearIndex sz (i, j)) (indexWindow (i, j))

@@ -15,16 +15,16 @@
 --
 module Data.Array.Massiv.Stencil where
 
-import           Control.Applicative
+-- import           Control.Applicative
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Delayed
+-- import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Delayed.Windowed
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Manifest.Unboxed
 import           Data.Default                       (Default (def))
 import qualified Data.Vector.Unboxed                as VU
 import           GHC.Exts                           (inline)
-
+import Data.Array.Massiv.Stencil.Internal
 
 data Orientation
   = Vertical
@@ -153,108 +153,85 @@ data Orientation
 
 
 
-data Stencil ix e a = Stencil
-  { stencilBorder :: Border e
-  , stencilSize   :: !ix
-  , stencilCenter :: !ix
-  , stencilFunc   :: (ix -> e) -> ix -> a
-  }
+-- data Stencil ix e a = Stencil
+--   { stencilBorder :: Border e
+--   , stencilSize   :: !ix
+--   , stencilCenter :: !ix
+--   , stencilFunc   :: (ix -> e) -> ix -> a
+--   }
 
 
-instance Functor (Stencil ix e) where
-  fmap f stencil@(Stencil { stencilFunc = g }) =
-    stencil { stencilFunc = (\ s -> f . g s) }
-  {-# INLINE fmap #-}
+-- instance Functor (Stencil ix e) where
+--   fmap f stencil@(Stencil { stencilFunc = g }) =
+--     stencil { stencilFunc = (\ s -> f . g s) }
+--   {-# INLINE fmap #-}
 
 
--- TODO: Figure out interchange law (u <*> pure y = pure ($ y) <*> u) and issue
--- with discarding size and center. Best idea so far is to increase stencil size to
--- the maximum one and shift the center of the other stencil so the yboth match
--- up. This approach would also remove requirement to validate the result
--- Stencil - both stencils are trusted, increasing the size will not affect the
--- safety.
-instance (Default e, Index ix) =>
-         Applicative (Stencil ix e) where
-  pure a = Stencil Edge (liftIndex (+ 1) zeroIndex) zeroIndex (const (const a))
-  {-# INLINE pure #-}
-  (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
-    validateStencil def (Stencil sB newSz maxCenter (\gV ix -> (f1 gV ix) (f2 gV ix)))
-    where
-      newSz =
-        liftIndex2
-          (+)
-          maxCenter
-          (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2))
-      !maxCenter = liftIndex2 max sC1 sC2
-  {-# INLINE (<*>) #-}
-  -- (<*>) (Stencil _ _ _ f) (Stencil sB sSz sC g) =
-  --   validateStencil def (Stencil sB sSz sC (\ gV ix -> (f gV ix) (g gV ix)))
-  -- {-# INLINE (<*>) #-}
+-- -- TODO: Figure out interchange law (u <*> pure y = pure ($ y) <*> u) and issue
+-- -- with discarding size and center. Best idea so far is to increase stencil size to
+-- -- the maximum one and shift the center of the other stencil so the yboth match
+-- -- up. This approach would also remove requirement to validate the result
+-- -- Stencil - both stencils are trusted, increasing the size will not affect the
+-- -- safety.
+-- instance (Default e, Index ix) =>
+--          Applicative (Stencil ix e) where
+--   pure a = Stencil Edge (liftIndex (+ 1) zeroIndex) zeroIndex (const (const a))
+--   {-# INLINE pure #-}
+--   (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
+--     validateStencil def (Stencil sB newSz maxCenter (\gV ix -> (f1 gV ix) (f2 gV ix)))
+--     where
+--       newSz =
+--         liftIndex2
+--           (+)
+--           maxCenter
+--           (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2))
+--       !maxCenter = liftIndex2 max sC1 sC2
+--   {-# INLINE (<*>) #-}
+--   -- (<*>) (Stencil _ _ _ f) (Stencil sB sSz sC g) =
+--   --   validateStencil def (Stencil sB sSz sC (\ gV ix -> (f gV ix) (g gV ix)))
+--   -- {-# INLINE (<*>) #-}
 
-instance (Index ix, Default e, Num a) => Num (Stencil ix e a) where
-  (+) = liftA2 (+)
-  (-) = liftA2 (-)
-  (*) = liftA2 (*)
-  negate = fmap negate
-  abs = fmap abs
-  signum = fmap signum
-  fromInteger = pure . fromInteger
+-- instance (Index ix, Default e, Num a) => Num (Stencil ix e a) where
+--   (+) = liftA2 (+)
+--   (-) = liftA2 (-)
+--   (*) = liftA2 (*)
+--   negate = fmap negate
+--   abs = fmap abs
+--   signum = fmap signum
+--   fromInteger = pure . fromInteger
 
-instance (Index ix, Default e, Fractional a) => Fractional (Stencil ix e a) where
-  (/) = liftA2 (/)
-  recip = fmap recip
-  fromRational = pure . fromRational
+-- instance (Index ix, Default e, Fractional a) => Fractional (Stencil ix e a) where
+--   (/) = liftA2 (/)
+--   recip = fmap recip
+--   fromRational = pure . fromRational
 
-instance (Index ix, Default e, Floating a) => Floating (Stencil ix e a) where
-  pi = pure pi
-  exp = fmap exp
-  log = fmap log
-  sqrt = fmap sqrt
-  (**) = liftA2 (**)
-  logBase = liftA2 logBase
-  sin = fmap sin
-  cos = fmap cos
-  tan = fmap tan
-  asin = fmap asin
-  acos = fmap acos
-  atan = fmap atan
-  sinh = fmap sinh
-  cosh = fmap cosh
-  tanh = fmap tanh
-  asinh = fmap asinh
-  acosh = fmap acosh
-  atanh = fmap atanh
-
-
-safeStencil :: Index a => Array D a t -> a -> t
-safeStencil DArray {..} ix
-  | isSafeIndex dSize ix = dUnsafeIndex ix
-  | otherwise =
-    error $
-    "Index is out of bounds: " ++ show ix ++ " for stencil size: " ++ show dSize
+-- instance (Index ix, Default e, Floating a) => Floating (Stencil ix e a) where
+--   pi = pure pi
+--   exp = fmap exp
+--   log = fmap log
+--   sqrt = fmap sqrt
+--   (**) = liftA2 (**)
+--   logBase = liftA2 logBase
+--   sin = fmap sin
+--   cos = fmap cos
+--   tan = fmap tan
+--   asin = fmap asin
+--   acos = fmap acos
+--   atan = fmap atan
+--   sinh = fmap sinh
+--   cosh = fmap cosh
+--   tanh = fmap tanh
+--   asinh = fmap asinh
+--   acosh = fmap acosh
+--   atanh = fmap atanh
 
 
--- | Correlate an image with a kernel. Border resolution technique is required.
-correlate :: (Num e, Eq e, VU.Unbox e, Manifest r DIM2 e) =>
-     Border e -> Array r DIM2 e -> Array W DIM2 e
-correlate border !arr =
-  WArray
-    (m, n)
-    (Just (3, 3))
-    (getStencil (borderIndex border arr))
-    (kM2, kN2)
-    (m - kM2 * 2, n - kN2 * 2)
-    (getStencil (unsafeIndex arr))
-  where
-    !(m, n) = size arr
-    !(kM2, kN2) = (1, 1)
-    getStencil getVal !(i, j) = stencil (\ !(iD, jD) -> getVal (i + iD, j + jD))
-    {-# INLINE getStencil #-}
-    stencil iArr =
-      2 * (iArr (0, 1) - iArr (0, -1)) + iArr (-1, 1) + iArr (1, 1) -
-      iArr (-1, -1) - iArr (1, -1)
-    {-# INLINE stencil #-}
-{-# INLINE correlate #-}
+-- safeStencil :: Index a => Array D a t -> a -> t
+-- safeStencil DArray {..} ix
+--   | isSafeIndex dSize ix = dUnsafeIndex ix
+--   | otherwise =
+--     error $
+--     "Index is out of bounds: " ++ show ix ++ " for stencil size: " ++ show dSize
 
 
 
@@ -294,7 +271,7 @@ mkConvolutionStencil b !sSz !sCenter makeStencil =
 
 -- | Make a stencil out of a Kernel Array
 mkConvolutionStencilFromKernel
-  :: (Iterator RowMajor ix, Manifest r ix e, Eq e, Num e)
+  :: (Manifest r ix e, Eq e, Num e)
   => Border e
   -> Array r ix e
   -> Stencil ix e e
@@ -302,7 +279,7 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = (liftIndex (`div` 2) sz)
-    stencil getVal !ix = ifoldl RowMajor accum 0 kArr where
+    stencil getVal !ix = ifoldl accum 0 kArr where
       accum !kIx !acc !kVal =
         getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx)) * kVal + acc
       {-# INLINE accum #-}
@@ -317,15 +294,6 @@ sobelKernelStencilX b =
                                                        , [ 2, 0, -2 ]
                                                        , [ 1, 0, -1 ] ]
 {-# INLINE sobelKernelStencilX #-}
-
-
-validateStencil
-  :: Index ix
-  => e -> Stencil ix e a -> Stencil ix e a
-validateStencil d s@(Stencil _ sSz sCenter stencil) =
-  let valArr = DArray sSz (const d)
-  in stencil (safeStencil valArr) sCenter `seq` s
-{-# INLINE validateStencil #-}
 
 
 

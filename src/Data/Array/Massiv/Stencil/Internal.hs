@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -40,11 +41,17 @@ instance Functor (Stencil ix e) where
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance (Default e, Index ix) => Applicative (Stencil ix e) where
-  pure a = Stencil Edge (liftIndex (+1) zeroIndex) zeroIndex (const (const a))
+  pure a = Stencil Edge (liftIndex (+ 1) zeroIndex) zeroIndex (const (const a))
   {-# INLINE pure #-}
-
-  (<*>) (Stencil _ _ _ f) (Stencil sB sSz sC g) =
-    validateStencil def (Stencil sB sSz sC (\ gV ix -> (f gV ix) (g gV ix)))
+  (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
+    validateStencil def (Stencil sB newSz maxCenter (\gV ix -> (f1 gV ix) (f2 gV ix)))
+    where
+      newSz =
+        liftIndex2
+          (+)
+          maxCenter
+          (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2))
+      !maxCenter = liftIndex2 max sC1 sC2
   {-# INLINE (<*>) #-}
 
 instance (Index ix, Default e, Num a) => Num (Stencil ix e a) where
@@ -95,9 +102,9 @@ safeStencilIndex DArray {..} ix
 validateStencil
   :: Index ix
   => e -> Stencil ix e a -> Stencil ix e a
-validateStencil d s@(Stencil _ sSz sCenter stencil) = s
-  -- let valArr = DArray sSz (const d)
-  -- in stencil (safeStencilIndex valArr) sCenter `seq` s
+validateStencil d s@(Stencil _ sSz sCenter stencil) =
+  let valArr = DArray sSz (const d)
+  in stencil (safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
 
 

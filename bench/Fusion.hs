@@ -148,33 +148,7 @@ main = do
   let vecVInt sz = A.makeArray2D sz snd
   --let vpD n = A.makeArray2D (1, n) (\ !(_, j) -> VP.unsafeIndex (vp n) j)
   defaultMain
-    [ -- bgroup
-    --     "Sum [Int]"
-    --     [ bench "foldl'" $ whnf (F.foldl' (+) 0) lsInt
-    --     , bench "foldr'" $ whnf (F.foldr' (+) 0) lsInt
-    --     ]
-    -- , bgroup
-    --     "Sum U (Vector Int)"
-    --     [ bench "foldl'" $ whnf (V.foldl' (+) 0) vecInt
-    --     , bench "foldr'" $ whnf (V.foldr' (+) 0) vecInt
-    --     ]
-    -- , bgroup
-    --     "Sum S (Vector Int)"
-    --     [ bench "foldl'" $ whnf (VS.foldl' (+) 0) vecSInt
-    --     , bench "foldr'" $ whnf (VS.foldr' (+) 0) vecSInt
-    --     ]
-    -- , bgroup
-    --     "Sum P (Vector Int)"
-    --     [ bench "foldl'" $ whnf (VP.foldl' (+) 0) vecPInt
-    --     , bench "foldr'" $ whnf (VP.foldr' (+) 0) vecPInt
-    --     ]
-    -- , bgroup
-    --     "Sum B (Vector Int)"
-    --     [ bench "foldl'" $ whnf (B.foldl' (+) 0) vecBInt
-    --     , bench "foldr'" $ whnf (B.foldr' (+) 0) vecBInt
-    --     ]
-    -- ,
-      bgroup
+    [ bgroup
         "Sum"
         [ bench "Vector.Array2D Text" $ whnf fuseda2 (2, n)
         , bench "Vector.Array Current" $ whnf (sum . vecVInt) (2, n)
@@ -183,20 +157,4 @@ main = do
         , bench "Vector.Array Text" $ whnf fuseda n
         -- , bench "Vector.Fusion" $ whnf (sum . vf) n
         ]
-    -- , bgroup
-    --     "Sum F (Vector F Int)"
-    --     [ bench "F.foldl'" $ whnf (F.foldl' (+) 0) vecFInt
-    --     , bench "VF.foldl'" $ whnf (VF.foldl' (+) 0) vecFInt
-    --     ]
-    -- , bgroup
-    --     "Sum . Succ"
-    --     [ bench "Vector.Primitive" $ whnf (VP.sum . VP.map succ . vp) n
-    --     , bench "Vector.Fusion" $ whnf (sum . fmap succ . vf) n
-    --     ]
-    -- , bgroup
-    --     "Sum . Filter"
-    --     [ bench "Vector.Primitive" $ whnf (VP.sum . VP.filter pred' . vp) n
-    --     --, bench "Vector.Fusion" $ whnf (sum . VF.filter pred' . vf) n
-    --     , bench "Vector.Fusion" $ whnf (sum . P.filter pred' . lf) n
-    --     ]
     ]

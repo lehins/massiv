@@ -16,13 +16,13 @@ module Data.Array.Massiv.Common
   , Source(..)
   , Load(..)
   , module Data.Array.Massiv.Common.Index
-  , module Data.Array.Massiv.Common.Iterator
+  --, module Data.Array.Massiv.Common.Iterator
   , ifoldl
   ) where
 
 import Control.Monad.ST (ST)
 import Data.Array.Massiv.Common.Index hiding (Z)
-import Data.Array.Massiv.Common.Iterator
+--import Data.Array.Massiv.Common.Iterator
 
 data family Array r ix e :: *
 
@@ -64,8 +64,8 @@ class Massiv r ix => Load r ix where
 
 
 ifoldl
-  :: (Iterator i ix, Source r ix a)
-  => i -> (ix -> b -> a -> b) -> b -> Array r ix a -> b
-ifoldl i f !acc !arr = iter i zeroIndex (size arr) acc $ \ !ix !a -> f ix a (unsafeIndex arr ix)
+  :: Source r ix a
+  => (ix -> b -> a -> b) -> b -> Array r ix a -> b
+ifoldl f !acc !arr = iter zeroIndex (size arr) acc $ \ !ix !a -> f ix a (unsafeIndex arr ix)
 {-# INLINE ifoldl #-}
 

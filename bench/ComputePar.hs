@@ -6,7 +6,7 @@ import           Criterion.Main
 import           Compute
 import           Prelude                            as P
 import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Manifest.Unboxed as M
+--import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Repa                    as R
 import           Data.Array.Repa.Eval               as R
 import           Data.Array.Repa.Repr.Unboxed       as R
@@ -46,7 +46,7 @@ main = do
     , bgroup
         "Fuse"
         [ bench "Array Massiv IO" $
-          whnfIO (M.computeUnboxedP $ mapA (+ 25) $ arrM sz)
+          whnfIO (M.computeUnboxedP $ M.map (+ 25) $ arrM sz)
         , bench "Array Repa" $ whnfIO (forceP $ R.map (+ 25) $ arrR sz)
         ]
     ]
