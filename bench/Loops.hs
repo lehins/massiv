@@ -38,7 +38,7 @@ iterInt !(i0, i1, i2, i3, i4) !(j0, j1, j2, j3, j4) !acc f =
 
 
 countElems :: Index ix => ix -> Int
-countElems sz = iter zeroIndex sz 0 (\ _ !acc -> 1 + acc)
+countElems sz = iter zeroIndex sz 1 0 (\ _ !acc -> 1 + acc)
 -- {-# INLINE countElems #-}
 
 countElemsInt :: (Int, Int, Int, Int, Int) -> Int

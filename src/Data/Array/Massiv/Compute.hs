@@ -12,30 +12,18 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Compute where
+module Data.Array.Massiv.Compute
+  ( Mutable(..)
+  , computeS
+  , computeP
+  , unsafeComputeP
+  ) where
 
--- import           Control.DeepSeq             (NFData, deepseq)
-import           Control.Monad.ST            (runST)
+import           Control.Monad.Primitive    (PrimMonad (..))
+import           Control.Monad.ST           (runST)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest
--- import qualified Data.Vector.Generic         as VG
--- import qualified Data.Vector.Generic.Mutable as MVG
-import qualified Data.Vector.Primitive       as VP
-import qualified Data.Vector.Storable        as VS
-import qualified Data.Vector.Unboxed         as VU
-
-import           Control.Monad.Primitive     (PrimMonad (..))
-
-data VProxy v e = VProxy (v e -> Int -> e)
-
-unboxed :: VU.Unbox e => VProxy VU.Vector e
-unboxed = VProxy VU.unsafeIndex
-
-storable :: VS.Storable e => VProxy VS.Vector e
-storable = VProxy VS.unsafeIndex
-
-primitive :: VP.Prim e => VProxy VP.Vector e
-primitive = VProxy VP.unsafeIndex
+import           System.IO.Unsafe           (unsafePerformIO)
 
 
 
@@ -57,35 +45,53 @@ class Manifest r ix e => Mutable r ix e where
   unsafeLinearWrite :: PrimMonad m =>
                        MArray (PrimState m) r ix e -> Int -> e -> m ()
 
-  computeS :: Load r' ix => Array r' ix e -> Array r ix e
-  computeS !arr = runST $ do
+  computeSeq :: Load r' ix => Array r' ix e -> Array r ix e
+  computeSeq !arr = runST $ do
     mArr <- unsafeNew (size arr)
     loadS arr (unsafeLinearWrite mArr)
     unsafeFreeze mArr
-  {-# INLINE computeS #-}
+  {-# INLINE computeSeq #-}
 
-  computeP :: Load r' ix => Array r' ix e -> IO (Array r ix e)
-  computeP !arr = do
+  computePar :: Load r' ix => Array r' ix e -> IO (Array r ix e)
+  computePar !arr = do
     mArr <- unsafeNew (size arr)
     loadP arr (unsafeLinearWrite mArr)
     unsafeFreeze mArr
-  {-# INLINE computeP #-}
+  {-# INLINE computePar #-}
 
 
-computeManifestS
-  :: forall r' r ix e.
-     (Mutable r ix e, Load r' ix)
+computeAsSeq
+  :: (Load r' ix, Mutable r ix e)
+  => r -> Array r' ix e -> Array r ix e
+computeAsSeq _ arr = computeSeq arr
+{-# INLINE computeAsSeq #-}
+
+computeAsPar
+  :: (Load r' ix, Mutable r ix e)
+  => r -> Array r' ix e -> IO (Array r ix e)
+computeAsPar _ arr = computePar arr
+{-# INLINE computeAsPar #-}
+
+
+computeS
+  :: (Load r' ix, Mutable r ix e)
   => r -> Array r' ix e -> Array M ix e
-computeManifestS _ arr = toManifest (computeS arr :: Array r ix e)
-{-# INLINE computeManifestS #-}
+computeS r = toManifest . computeAsSeq r
+{-# INLINE computeS #-}
 
 
-computeManifestP
-  :: forall r' r ix e.
-     (Mutable r ix e, Load r' ix)
+computeP
+  :: (Load r' ix, Mutable r ix e)
   => r -> Array r' ix e -> IO (Array M ix e)
-computeManifestP _ arr = fmap toManifest (computeP arr :: IO (Array r ix e))
-{-# INLINE computeManifestP #-}
+computeP r arr = fmap toManifest (computeAsPar r arr)
+{-# INLINE computeP #-}
+
+
+unsafeComputeP
+  :: (Load r' ix, Mutable r ix e)
+  => r -> Array r' ix e -> Array M ix e
+unsafeComputeP r arr = toManifest (unsafePerformIO (computeAsPar r arr))
+{-# INLINE unsafeComputeP #-}
 
 
 -- imapMaybeS :: forall r ix v e b.

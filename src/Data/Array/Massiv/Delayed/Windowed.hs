@@ -68,28 +68,28 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex =
 
 instance Load W DIM1 where
   loadS (WArray sz _ indexB it wk indexW) unsafeWrite = do
-    iterM_ 0 it $ \ !i ->
+    iterM_ 0 it 1 (<) $ \ !i ->
       unsafeWrite i (indexB i)
-    iterM_ it wk $ \ !i ->
+    iterM_ it wk 1 (<) $ \ !i ->
       unsafeWrite i (indexW i)
-    iterM_ wk sz $ \ !i ->
+    iterM_ wk sz 1 (<) $ \ !i ->
       unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
   loadP (WArray sz _ indexB it wk indexW) unsafeWrite = do
     let !gSize = gangSize theGang
         !(chunkHeight, slackHeight) = wk `quotRem` gSize
     let loadBlock !it' !ib' =
-          iterM_ it' ib' $ \ !ix ->
+          iterM_ it' ib' 1 (<) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexW ix)
         {-# INLINE loadBlock #-}
     gangIO theGang $ \ !cix -> do
       let !it' = cix * chunkHeight + it
       loadBlock it' (it' + chunkHeight)
       when (cix == 0) $
-        iterM_ 0 it $ \ !ix ->
+        iterM_ 0 it 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       when (cix == 1 `mod` gSize) $
-        iterM_ wk sz $ \ !ix ->
+        iterM_ wk sz 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       when (cix == 3 `mod` gSize && slackHeight > 0) $ do
         let !itSlack = gSize * chunkHeight + it
@@ -102,13 +102,13 @@ instance Load W DIM2 where
   loadS (WArray sz@(m, n) mStencilSz indexB (it, jt) (wm, wn) indexW) unsafeWrite = do
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
-    iterM_ (0, 0) (it, n) $ \ !ix ->
+    iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (ib, 0) (m, n) $ \ !ix ->
+    iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, 0) (ib, jt) $ \ !ix ->
+    iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, jb) (ib, n) $ \ !ix ->
+    iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
     unrollAndJam blockHeight (it, ib) (jt, jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
@@ -126,16 +126,16 @@ instance Load W DIM2 where
       let !it' = cix * chunkHeight + it
       loadBlock it' (it' + chunkHeight)
       when (cix == 0) $
-        iterM_ (0, 0) (it, n) $ \ !ix ->
+        iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       when (cix == 1 `mod` gSize) $
-        iterM_ (ib, 0) (m, n) $ \ !ix ->
+        iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       when (cix == 2 `mod` gSize) $
-        iterM_ (it, 0) (ib, jt) $ \ !ix ->
+        iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       when (cix == 3 `mod` gSize) $
-        iterM_ (it, jb) (ib, n) $ \ !ix ->
+        iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       when (cix == 4 `mod` gSize && slackHeight > 0) $ do
         let !itSlack = gSize * chunkHeight + it

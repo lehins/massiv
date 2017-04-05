@@ -1,19 +1,19 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE UnboxedTuples         #-}
 module Main where
 
 import           Compute
 import           Criterion.Main
-import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Compute          as M
-import           Data.Array.Massiv.Manifest.Unboxed as M
-import           Data.Array.Massiv.Stencil          as M
-
-import           Data.Array.Repa                    as R
-import qualified VectorConvolve                     as VC
-
+import           Data.Array.Massiv         as M
+import           Data.Array.Massiv.Compute as M
+-- import           Data.Array.Massiv.Manifest.Unboxed as M
+import           Data.Array.Massiv.Stencil as M
+import           Data.Array.Repa           as R
+import qualified VectorConvolve            as VC
 
 -- -- | Repa stencil base Kirsch W horizontal convolution
 -- kirschWR
@@ -87,12 +87,14 @@ sobelOperator'' b = sqrt (sX + sY) where
   !sY = (^ (2 :: Int)) <$> sobelStencilY b
 {-# INLINE sobelOperator'' #-}
 
+
+
+-- M.computeUnboxedS (mapStencil (sobelStencilX Edge) (M.computeUnboxedS (arrM (43, 45)))) == M.computeUnboxedS (mapStencil (sobelXSIMD Edge) (M.computeUnboxedS (arrM (43,45))))
+
 main :: IO ()
 main = do
   let !sz = (1502, 602)
       !arrCR = R.computeUnboxedS (arrR sz)
-      !arrCU = M.computeUnboxedS (arrM sz)
-      !arrCM = M.computeManifestS U (arrM sz)
       -- !kirschW = kirschWStencil
       -- !kirschW' = kirschWStencil'
       !sobelHVC = VC.sobelFilter VC.Horizontal Edge
@@ -104,7 +106,7 @@ main = do
       !sobelOp = sobelOperator Edge
       !sobelOp' = sobelOperator' Edge
       !sobelOp'' = sobelOperator'' Edge
-      !kirschW = kirschWStencil Edge
+      -- !kirschW = kirschWStencil Edge
   defaultMain
     [ bgroup
         "Sobel Horizontal"

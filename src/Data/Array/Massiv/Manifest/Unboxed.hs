@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -12,7 +12,19 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Manifest.Unboxed where
+module Data.Array.Massiv.Manifest.Unboxed
+  ( U (..)
+  , VU.Unbox
+  , generateM
+  , fromVectorUnboxed
+  , toVectorUnboxed
+  , fromListsUnboxed
+  , computeUnboxedS
+  , computeUnboxedP
+  , unsafeComputeUnboxedP
+  , mapM
+  , imapM
+  ) where
 
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Compute
@@ -20,7 +32,8 @@ import           Data.Array.Massiv.Manifest
 import           Data.Maybe                  (listToMaybe)
 import qualified Data.Vector.Unboxed         as VU
 import qualified Data.Vector.Unboxed.Mutable as MVU
-import System.IO.Unsafe (unsafePerformIO)
+import           Prelude                     hiding (mapM)
+import           System.IO.Unsafe            (unsafePerformIO)
 
 data U = U
 
@@ -38,20 +51,7 @@ instance (Index ix, VU.Unbox e) => Source U ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance VU.Unbox e => Manifest U DIM1 e where
-  type Elt U DIM1 e = e
-  (!?) (UArray _ v) = (v VU.!?)
-  {-# INLINE (!?) #-}
-
-
-instance VU.Unbox e => Manifest U DIM2 e where
-  (!?) = maybeLowerIndex
-  {-# INLINE (!?) #-}
-
-
-instance VU.Unbox e => Manifest U DIM3 e where
-  (!?) = maybeLowerIndex
-  {-# INLINE (!?) #-}
+instance (Index ix, VU.Unbox e) => Manifest U ix e
 
 
 instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
@@ -85,20 +85,52 @@ fromListsUnboxed !ls =
 
 
 computeUnboxedS :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
-computeUnboxedS = computeS
+computeUnboxedS = computeSeq
 {-# INLINE computeUnboxedS #-}
 
 
 computeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> IO (Array U ix e)
-computeUnboxedP = computeP
+computeUnboxedP = computePar
 {-# INLINE computeUnboxedP #-}
 
 
 unsafeComputeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
-unsafeComputeUnboxedP = unsafePerformIO . computeP
+unsafeComputeUnboxedP = unsafePerformIO . computePar
 {-# INLINE unsafeComputeUnboxedP #-}
 
 
+fromVectorUnboxed :: Index ix => ix -> VU.Vector e -> Array U ix e
+fromVectorUnboxed sz v = UArray { uSize = sz, uData = v }
+{-# INLINE fromVectorUnboxed #-}
+
+
 toVectorUnboxed :: Array U ix e -> VU.Vector e
-toVectorUnboxed (UArray _ v) = v
+toVectorUnboxed = uData
 {-# INLINE toVectorUnboxed #-}
+
+
+generateM :: (Index ix, VU.Unbox a, Monad m) =>
+  ix -> (ix -> m a) -> m (Array U ix a)
+generateM sz f =
+  UArray sz <$> VU.generateM (totalElem sz) (f . fromLinearIndex sz)
+{-# INLINE generateM #-}
+
+
+mapM :: (VU.Unbox b, Source r ix a, Monad m) =>
+  (a -> m b) -> Array r ix a -> m (Array U ix b)
+mapM f arr = do
+  let !sz = size arr
+  v <- VU.generateM (totalElem sz) (f . unsafeLinearIndex arr)
+  return $ UArray sz v
+{-# INLINE mapM #-}
+
+imapM :: (VU.Unbox b, Source r ix a, Monad m) =>
+  (ix -> a -> m b) -> Array r ix a -> m (Array U ix b)
+imapM f arr = do
+  let !sz = size arr
+  v <- VU.generateM (totalElem sz) $ \ !i ->
+         let !ix = fromLinearIndex sz i
+         in f ix (unsafeIndex arr ix)
+  return $ UArray sz v
+{-# INLINE imapM #-}
+

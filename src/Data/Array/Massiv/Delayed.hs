@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -14,6 +15,7 @@
 module Data.Array.Massiv.Delayed where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Compute.Gang
 
 import           Data.Foldable
@@ -40,6 +42,41 @@ instance Index ix => Source D ix e where
   unsafeIndex = dUnsafeIndex
   {-# INLINE unsafeIndex #-}
 
+instance Index ix => Shape D ix e where
+  unsafeReshape !sz !arr =
+    DArray sz $ \ !ix ->
+      unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
+  {-# INLINE unsafeReshape #-}
+
+  -- unsafeExtract !sIx !eIx !arr =
+  --   DArray (liftIndex2 (-) eIx sIx) $ \ !ix ->
+  --     unsafeIndex arr (liftIndex2 (+) ix sIx)
+  -- {-# INLINE unsafeExtract #-}
+  unsafeExtract !sIx !newSz !arr =
+    DArray newSz $ \ !ix ->
+      unsafeIndex arr (liftIndex2 (+) ix sIx)
+  {-# INLINE unsafeExtract #-}
+
+
+instance (Index ix, Index (Lower ix)) => Slice D ix e where
+
+  (!?>) !arr !i
+    | isSafeIndex m i = Just (DArray szL (\ !ix -> unsafeIndex arr (consDim i ix)))
+    | otherwise = Nothing
+    where
+      !sz = size arr
+      !(m, szL) = unconsDim sz
+  {-# INLINE (!?>) #-}
+
+  (<!?) !arr !i
+    | isSafeIndex m i = Just (DArray szL (\ !ix -> unsafeIndex arr (snocDim ix i)))
+    | otherwise = Nothing
+    where
+      !sz = size arr
+      !(szL, m) = unsnocDim sz
+  {-# INLINE (<!?) #-}
+
+
 instance (Eq e, Index ix, Foldable (Array D ix)) => Eq (Array D ix e) where
   (==) (DArray sz1 uIndex1) (DArray sz2 uIndex2) =
     sz1 == sz2 && foldl' (&&) True (DArray sz1 (\ !ix -> uIndex1 ix == uIndex2 ix))
@@ -58,84 +95,24 @@ instance Index ix => Applicative (Array D ix) where
 
 
 -- | Row-major folding over a delayed array.
-instance Foldable (Array D DIM1) where
-  foldl f acc (DArray k g) = loop 0 (< k) (+ 1) acc $ \i acc0 -> f acc0 (g i)
+instance Index ix => Foldable (Array D ix) where
+  foldl f acc (DArray sz g) =
+    iter zeroIndex sz 1 (<) acc $ \ix acc0 -> f acc0 (g ix)
   {-# INLINE foldl #-}
-  foldl' f !acc (DArray k g) =
-    loop 0 (< k) (+ 1) acc $ \ !i !acc0 -> f acc0 (g i)
+  foldl' f !acc (DArray sz g) =
+    iter zeroIndex sz 1 (<) acc $ \ !ix !acc0 -> f acc0 (g ix)
   {-# INLINE foldl' #-}
-  foldr f acc (DArray k g) =
-    loop (k - 1) (>= 0) (subtract 1) acc $ \i acc0 -> f (g i) acc0
+  foldr f acc (DArray sz g) =
+    iter (liftIndex (subtract 1) sz) zeroIndex (-1) (>=) acc $ \i acc0 -> f (g i) acc0
   {-# INLINE foldr #-}
-  foldr' f !acc (DArray k g) =
-    loop (k - 1) (>= 0) (subtract 1) acc $ \ !i !acc0 -> f (g i) acc0
+  foldr' f !acc (DArray sz g) =
+    iter (liftIndex (subtract 1) sz) zeroIndex (-1) (>=) acc $ \ !i !acc0 -> f (g i) acc0
   {-# INLINE foldr' #-}
-  null (DArray k _) = k == 0
+  null (DArray sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = foldr' (+) 0
+  sum = foldl' (+) 0
   {-# INLINE sum #-}
-  product = foldr' (*) 1
-  {-# INLINE product #-}
-  length = totalElem . size
-  {-# INLINE length #-}
-
-
--- | Row-major folding over a delayed array.
-instance Foldable (Array D DIM2) where
-  foldl f acc (DArray (m, n) g) =
-    loop 0 (< m) (+ 1) acc $ \i acc0 ->
-      loop 0 (< n) (+ 1) acc0 $ \j acc1 -> f acc1 (g (i, j))
-  {-# INLINE foldl #-}
-  foldl' f !acc (DArray (m, n) g) =
-    loop 0 (< m) (+ 1) acc $ \ !i !acc0 ->
-      loop 0 (< n) (+ 1) acc0 $ \ !j !acc1 -> f acc1 (g (i, j))
-  {-# INLINE foldl' #-}
-  foldr f acc (DArray (m, n) g) =
-    loop (m - 1) (>= 0) (subtract 1) acc $ \i acc0 ->
-      loop (n - 1) (>= 0) (subtract 1) acc0 $ \j acc1 -> f (g (i, j)) acc1
-  {-# INLINE foldr #-}
-  foldr' f !acc (DArray (m, n) g) =
-    loop (m - 1) (>= 0) (subtract 1) acc $ \ !i !acc0 ->
-      loop (n - 1) (>= 0) (subtract 1) acc0 $ \ !j !acc1 -> f (g (i, j)) acc1
-  {-# INLINE foldr' #-}
-  null (DArray (m, n) _) = m == 0 || n == 0
-  {-# INLINE null #-}
-  sum = foldr' (+) 0
-  {-# INLINE sum #-}
-  product = foldr' (*) 1
-  {-# INLINE product #-}
-  length = totalElem . size
-  {-# INLINE length #-}
-
-
-
--- | Row-major folding over a delayed array.
-instance Foldable (Array D DIM3) where
-  foldr f acc (DArray (m, n, o) g) =
-    loop 0 (< m) (+ 1) acc $ \i acc0 ->
-      loop 0 (< n) (+ 1) acc0 $ \j acc1 ->
-        loop 0 (< o) (+ 1) acc1 $ \k acc2 -> f (g (i, j, k)) acc2
-  {-# INLINE foldr #-}
-  foldr' f !acc (DArray (m, n, o) g) =
-    loop 0 (< m) (+ 1) acc $ \ !i !acc0 ->
-      loop 0 (< n) (+ 1) acc0 $ \ !j !acc1 ->
-        loop 0 (< o) (+ 1) acc1 $ \ !k !acc2 -> f (g (i, j, k)) acc2
-  {-# INLINE foldr' #-}
-  foldl f acc (DArray (m, n, o) g) =
-    loop (m - 1) (>= 0) (subtract 1) acc $ \i acc0 ->
-      loop (n - 1) (>= 0) (subtract 1) acc0 $ \j acc1 ->
-        loop (o - 1) (>= 0) (subtract 1) acc1 $ \k acc2 -> f acc2 (g (i, j, k))
-  {-# INLINE foldl #-}
-  foldl' f !acc (DArray (m, n, o) g) =
-    loop (m - 1) (>= 0) (subtract 1) acc $ \ !i !acc0 ->
-      loop (n - 1) (>= 0) (subtract 1) acc0 $ \ !j !acc1 ->
-        loop (o - 1) (>= 0) (subtract 1) acc1 $ \ !k !acc2 -> f acc2 (g (i, j, k))
-  {-# INLINE foldl' #-}
-  null (DArray (m, n, o) _) = m == 0 || n == 0 || o == 0
-  {-# INLINE null #-}
-  sum = foldr' (+) 0
-  {-# INLINE sum #-}
-  product = foldr' (*) 1
+  product = foldl' (*) 1
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
@@ -144,7 +121,7 @@ instance Foldable (Array D DIM3) where
 
 instance Index ix => Load D ix where
   loadS (DArray sz f) unsafeWrite = do
-    iterM_ zeroIndex sz $ \ !ix ->
+    iterM_ zeroIndex sz 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
   loadP arr@(DArray arrSize f) unsafeWrite = do
@@ -155,7 +132,7 @@ instance Index ix => Load D ix where
       let !start = tid * chunkLength
           !end = start + chunkLength
       in do
-        iterLinearM_ arrSize start end $ \ !k !ix -> do
+        iterLinearM_ arrSize start end 1 (<) $ \ !k !ix -> do
           unsafeWrite k $ f ix
     loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
       unsafeWrite i (unsafeLinearIndex arr i)

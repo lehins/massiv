@@ -19,8 +19,8 @@ main = do
       !ixR = (Z :. 1000 :. 999)
       !ix1D = toLinearIndex sz ixM
   let !arrCM = M.computeUnboxedS $ arrM sz
-  let !arrCR = R.computeUnboxedS $ arrR sz
-  let !vecCU = vecU sz
+      !arrCR = R.computeUnboxedS $ arrR sz
+      !vecCU = vecU sz
   defaultMain
     [ bgroup
         "Indexing"
@@ -32,8 +32,10 @@ main = do
             ]
         , bgroup
             "Safe"
-            [ bench "Massiv 2D: index" $ whnf (M.index arrCM) ixM
-            , bench "Massiv 2D: (!)" $ whnf (\ !(i, j) -> arrCM M.! i M.! j) ixM
+            [ bench "Massiv 2D: maybeIndex" $
+              whnf (maybe (error "impossible") id . M.maybeIndex arrCM) ixM
+            , bench "Massiv 2D: index" $ whnf (M.index arrCM) ixM
+            , bench "Massiv 2D: (!)" $ whnf (\ !(i, j) -> (toManifest arrCM) M.<! i M.! j) ixM
             , bench "Repa 2D" $ whnf (R.index arrCR) ixR
             , bench "Vector 1D" $ whnf (vecCU VU.!) ix1D
             ]

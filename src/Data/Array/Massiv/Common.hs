@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Common
@@ -18,24 +20,39 @@ module Data.Array.Massiv.Common
   , module Data.Array.Massiv.Common.Index
   --, module Data.Array.Massiv.Common.Iterator
   , ifoldl
+  , ifoldr
+  , safeIndex
+  , errorIx
   ) where
 
-import Control.Monad.ST (ST)
-import Data.Array.Massiv.Common.Index hiding (Z)
---import Data.Array.Massiv.Common.Iterator
+import           Control.Monad.ST               (ST)
+import           Data.Array.Massiv.Common.Index hiding (Z)
+import           Data.Proxy
+import           Data.Typeable                  (Typeable, showsTypeRep,
+                                                 typeRep)
 
 data family Array r ix e :: *
 
 
 -- | Immutable, shape polymorphic array construction and indexing.
-class Index ix => Massiv r ix where
+class (Typeable r, Index ix) => Massiv r ix where
 
   size :: Array r ix e -> ix
 
 
 
-instance Massiv r ix => Show (Array r ix e) where
-  show arr = "<Array: " ++ show (size arr) ++ ">"
+instance Massiv r ix =>
+         Show (Array r ix e) where
+  show arr =
+    "<Array " ++
+    showsTypeRep (typeRep (Proxy :: Proxy r)) ": " ++ show (size arr) ++ ">"
+
+
+-- instance (Show e, Source r DIM1 e) => Show (Array r DIM1 e) where
+--   show arr = "<Array DIM1 (" ++ show (size arr) ++ ")>:\n" ++ show (foldrA (:) [] arr)
+
+-- instance (Show e, Source r DIM2 e) => Show (Array r DIM2 e) where
+--   show arr = "<Array DIM2 " ++ show (size arr) ++ ">:\n" ++ show (foldrA (:) [] arr)
 
 
 class Massiv r ix => Source r ix e where
@@ -66,6 +83,44 @@ class Massiv r ix => Load r ix where
 ifoldl
   :: Source r ix a
   => (ix -> b -> a -> b) -> b -> Array r ix a -> b
-ifoldl f !acc !arr = iter zeroIndex (size arr) acc $ \ !ix !a -> f ix a (unsafeIndex arr ix)
+ifoldl f !acc !arr = iter zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f ix a (unsafeIndex arr ix)
 {-# INLINE ifoldl #-}
 
+ifoldr
+  :: Source r ix a
+  => (ix -> a -> b -> b) -> b -> Array r ix a -> b
+ifoldr f !acc !arr =
+  iter
+    (liftIndex (subtract 1) (size arr))
+    zeroIndex
+    (-1)
+    (>=)
+    acc $ \ !ix !a -> f ix (unsafeIndex arr ix) a
+{-# INLINE ifoldr #-}
+
+-- foldrA
+--   :: Source r ix a
+--   => (a -> b -> b) -> b -> Array r ix a -> b
+-- foldrA f !acc !arr =
+--   iter
+--     (liftIndex (subtract 1) (size arr))
+--     zeroIndex
+--     (-1)
+--     (>=)
+--     acc $ \ !ix !a -> f (unsafeIndex arr ix) a
+-- {-# INLINE foldrA #-}
+
+
+
+errorIx :: (Massiv r ix, Index ix') => String -> Array r ix e -> ix' -> a
+errorIx fName arr ix =
+  error $ fName ++ ": Index out of bounds: " ++ show ix ++ " for: " ++ show arr
+
+safeIndex :: Source r ix e => Array r ix e -> ix -> e
+safeIndex !arr !ix =
+  handleBorderIndex
+    (Fill (errorIx "safeIndex" arr ix))
+    (size arr)
+    (unsafeIndex arr)
+    ix
+{-# INLINE safeIndex #-}
