@@ -6,7 +6,7 @@ import           Compute
 import           Criterion.Main
 import           Data.Array.Massiv                  as M
 
-import           Data.Array.Massiv.Manifest.Unboxed as M
+
 import           Data.Array.Repa                    as R
 import qualified Data.Vector.Unboxed                as VU
 import           Prelude                            as P
@@ -36,6 +36,8 @@ main = do
               whnf (maybe (error "impossible") id . M.maybeIndex arrCM) ixM
             , bench "Massiv 2D: index" $ whnf (M.index arrCM) ixM
             , bench "Massiv 2D: (!)" $ whnf (\ !(i, j) -> (toManifest arrCM) M.<! i M.! j) ixM
+            , bench "Massiv 2D: (<!>)" $
+              whnf (\ !(i, j) -> (toManifest arrCM) M.<!> (1, i) M.! j) ixM
             , bench "Repa 2D" $ whnf (R.index arrCR) ixR
             , bench "Vector 1D" $ whnf (vecCU VU.!) ix1D
             ]
