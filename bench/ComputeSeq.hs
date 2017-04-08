@@ -79,4 +79,21 @@ main = do
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
             ]
         ]
+    , bgroup
+        "Append"
+        [ bgroup
+            "append"
+            [ bench "Array Massiv" $
+              whnf
+                (\sz' ->
+                   M.computeUnboxedS $ M.append' 1 (arrM sz') (arrM sz'))
+                sz
+            , bench "Array Repa" $
+              whnf
+                (\sz' -> R.computeUnboxedS $ R.append (arrR sz') (arrR sz'))
+                sz
+            , bench "Vector Unboxed" $
+              whnf (\sz' -> (vecU sz') VU.++ (vecU sz')) sz
+            ]
+        ]
     ]

@@ -45,6 +45,8 @@ module Data.Array.Massiv
   , reshape'
   , extract
   , extractFromTo
+  , append
+  , append'
   -- * Monadic folds
   , foldlM
   , foldlM_
@@ -58,7 +60,8 @@ module Data.Array.Massiv
   ) where
 
 import Prelude hiding (null, length, map, zipWith, zipWith3)
-import Control.Monad (void)
+import Control.Monad (void, guard)
+import Data.Maybe
 import Data.Array.Massiv.Common
 import Data.Array.Massiv.Common.Shape
 import Data.Array.Massiv.Delayed
@@ -245,3 +248,37 @@ enumFromN !s !k = DArray k $ \ !i -> fromIntegral i + s
 enumFromStepN :: Num e => e -> e -> Int -> Array D DIM1 e
 enumFromStepN !s !step !k = DArray k $ \ !i -> fromIntegral i * step + s
 {-# INLINE enumFromStepN #-}
+
+append
+  :: (Source r1 ix e, Source r ix e) =>
+     Int -> Array r1 ix e -> Array r ix e -> Maybe (Array D ix e)
+append !n !arr1 !arr2 = do
+  let sz1 = size arr1
+      sz2 = size arr2
+  k1 <- getIndex sz1 n
+  k2 <- getIndex sz2 n
+  sz1' <- setIndex sz2 n k1
+  guard $ sz1 == sz1'
+  newSz <- setIndex sz1 n (k1 + k2)
+  return $ DArray newSz $ \ !ix -> fromMaybe (unsafeIndex arr1 zeroIndex) $ do
+    k' <- getIndex ix n
+    if k' < k1
+      then Just (unsafeIndex arr1 ix)
+      else do
+      i <- getIndex ix n
+      ix' <- setIndex ix n (i - k1)
+      return $ unsafeIndex arr2 ix'
+{-# INLINE append #-}
+
+append'
+  :: (Source r1 ix e, Source r2 ix e) =>
+     Int -> Array r1 ix e -> Array r2 ix e -> Array D ix e
+append' !n !arr1 !arr2 =
+  case append n arr1 arr2 of
+    Just arr -> arr
+    Nothing ->
+      error $
+      if 0 < n && n <= rank (size arr1)
+        then "Dimension mismatch: " ++ show arr1 ++ " and " ++ show arr2
+        else "Invalid dimension index: " ++ show n
+{-# INLINE append' #-}
