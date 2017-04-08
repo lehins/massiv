@@ -33,6 +33,11 @@ makeArray :: Index ix => ix -> (ix -> e) -> Array D ix e
 makeArray !ix = DArray (liftIndex (max 0) ix)
 {-# INLINE makeArray #-}
 
+-- | _O(1)_ Conversion from a source array to `D` representation.
+delay :: Source r ix e => Array r ix e -> Array D ix e
+delay arr = DArray (size arr) (unsafeIndex arr)
+{-# INLINE delay #-}
+
 
 instance Index ix => Massiv D ix where
   size = dSize

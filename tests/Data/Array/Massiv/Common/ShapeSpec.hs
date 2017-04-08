@@ -137,6 +137,30 @@ prop_SliceIndexDim3RankM (ArrIx arr ix@(i, j, k)) =
     val = unsafeIndex arr ix
 
 
+prop_SliceIndexDim4D :: ArrIx D DIM4 Int -> Bool
+prop_SliceIndexDim4D (ArrIx arr ix@(i1, i2, i3, i4)) =
+  val == safeIndex (arr !> i1 !> i2 !> i3) i4 &&
+  val == safeIndex (arr !> i1 !> i2 <! i4) i3 &&
+  val == safeIndex (arr !> i1 <! i4 <! i3) i2 &&
+  val == safeIndex (arr !> i1 <! i4 !> i2) i3 &&
+  val == safeIndex (arr <! i4 !> i1 !> i2) i3 &&
+  val == safeIndex (arr <! i4 !> i1 <! i3) i2 &&
+  val == safeIndex (arr <! i4 <! i3 <! i2) i1 &&
+  val == safeIndex (arr <! i4 <! i3 !> i1) i2
+  where
+    val = unsafeIndex arr ix
+
+prop_SliceIndexDim4RankD :: ArrIx D DIM4 Int -> Bool
+prop_SliceIndexDim4RankD (ArrIx arr ix@(i1, i2, i3, i4)) =
+  val == unsafeIndex (arr <!> (1, i1) <!> (1, i2) <!> (1, i3)) i4 &&
+  val == unsafeIndex (arr <!> (1, i1) <!> (2, i3) <! i4) i2 &&
+  val == unsafeIndex (arr <!> (2, i2) <!> (1, i1)) (i3, i4) &&
+  val == unsafeIndex (arr <!> (3, i3) <!> (2, i2)) (i1, i4) &&
+  val == unsafeIndex (arr <!> (3, i3) <!> (3, i4) !> i1) i2 &&
+  val == unsafeIndex (arr <!> (4, i4) !> i1 !> i2) i3
+  where
+    val = unsafeIndex arr ix
+
 prop_SliceIndexDim4M :: ArrIx M DIM4 Int -> Bool
 prop_SliceIndexDim4M (ArrIx arr ix@(i1, i2, i3, i4)) =
   val == arr !> i1 !> i2 !> i3 ! i4 &&
@@ -180,21 +204,24 @@ spec = do
   describe "DIM2" $ do
     specShapeN (Nothing :: Maybe (D, DIM2, Int))
     specSliceN (Nothing :: Maybe (D, DIM2, Int))
-    it "SliceIndexDim2 - Delayed" $ property $ prop_SliceIndexDim2D
-    it "SliceIndexDim2Rank - Delayed" $ property $ prop_SliceIndexDim2RankD
-    it "SliceIndexDim2 - Manifest" $ property $ prop_SliceIndexDim2M
-    it "SliceIndexDim2Rank - Manifest" $ property $ prop_SliceIndexDim2RankM
+    describe "SliceIndex" $ do
+      it "Delayed" $ property $ prop_SliceIndexDim2D
+      it "Rank - Delayed" $ property $ prop_SliceIndexDim2RankD
+      it "Manifest" $ property $ prop_SliceIndexDim2M
+      it "Rank - Manifest" $ property $ prop_SliceIndexDim2RankM
   describe "DIM3" $ do
     specShapeN (Nothing :: Maybe (D, DIM3, Int))
     specSliceN (Nothing :: Maybe (D, DIM3, Int))
-    it "SliceIndexDim3 - Delayed" $ property $ prop_SliceIndexDim3D
-    it "SliceIndexDim3Rank - Delayed" $ property $ prop_SliceIndexDim3RankD
-    it "SliceIndexDim3 - Manifest" $ property $ prop_SliceIndexDim3M
-    it "SliceIndexDim3Rank - Manifest" $ property $ prop_SliceIndexDim3RankM
+    describe "SliceIndex" $ do
+      it "Delayed" $ property $ prop_SliceIndexDim3D
+      it "Rank - Delayed" $ property $ prop_SliceIndexDim3RankD
+      it "Manifest" $ property $ prop_SliceIndexDim3M
+      it "Rank - Manifest" $ property $ prop_SliceIndexDim3RankM
   describe "DIM4" $ do
-    specShapeN (Nothing :: Maybe (D, DIM3, Int))
-    specSliceN (Nothing :: Maybe (D, DIM3, Int))
-    --it "SliceIndexDim3 - Delayed" $ property $ prop_SliceIndexDim3D
-    --it "SliceIndexDim3Rank - Delayed" $ property $ prop_SliceIndexDim3RankD
-    it "SliceIndexDim4 - Manifest" $ property $ prop_SliceIndexDim4M
-    it "SliceIndexDim4Rank - Manifest" $ property $ prop_SliceIndexDim4RankM
+    specShapeN (Nothing :: Maybe (D, DIM4, Int))
+    specSliceN (Nothing :: Maybe (D, DIM4, Int))
+    describe "SliceIndex" $ do
+      it "Delayed" $ property $ prop_SliceIndexDim4D
+      it "Rank - Delayed" $ property $ prop_SliceIndexDim4RankD
+      it "Manifest" $ property $ prop_SliceIndexDim4M
+      it "Rank - Manifest" $ property $ prop_SliceIndexDim4RankM

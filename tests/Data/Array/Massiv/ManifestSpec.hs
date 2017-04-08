@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.ManifestSpec (spec) where
 
-import           Control.Monad                (guard)
+
 import           Data.Array.Massiv
 import           Data.Array.Massiv.CommonSpec (ArrIx (..))
 import           Data.Array.Massiv.Compute

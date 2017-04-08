@@ -158,6 +158,11 @@ Test-Suite massiv-tests
   HS-Source-Dirs:     tests
   Main-Is:            Spec.hs
   Other-Modules:      Data.Array.Massiv.Common.IndexSpec
+                    , Data.Array.Massiv.Common.ShapeSpec
+                    , Data.Array.Massiv.CommonSpec
+                    , Data.Array.Massiv.DelayedSpec
+                    , Data.Array.Massiv.ManifestSpec
+                    , Data.Array.MassivSpec
   Build-Depends:      base            >= 4.5 && < 5
                     , massiv
                     , hspec

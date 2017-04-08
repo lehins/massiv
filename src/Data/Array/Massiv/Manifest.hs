@@ -19,7 +19,7 @@ module Data.Array.Massiv.Manifest where
 
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
-import           Data.Array.Massiv.Delayed
+
 import           Data.Foldable
 
 
@@ -102,12 +102,6 @@ instance (Index ix, Index (Lower ix)) => Slice M ix e where
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
 toManifest arr = MArray (size arr) (unsafeLinearIndex arr) where
 {-# INLINE toManifest #-}
-
-
--- | _O(1)_ Conversion of manifest arrays to `D` representation.
-delay :: Manifest r ix e => Array r ix e -> Array D ix e
-delay arr = DArray (size arr) (unsafeIndex arr)
-{-# INLINE delay #-}
 
 
 (!) :: Manifest r ix e => Array r ix e -> ix -> e

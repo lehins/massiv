@@ -43,4 +43,3 @@ workers =
 --           -> (Int -> IO a)
 --           -> IO [(Int, a)]
 -- computeIO n f = do
-  

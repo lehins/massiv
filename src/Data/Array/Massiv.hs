@@ -151,7 +151,7 @@ transposeInner
 transposeInner !arr = DArray (transInner (size arr)) newVal
   where
     transInner !ix =
-      maybe (error "transposeInner: Impossible happened") id $ do
+      fromMaybe (error "transposeInner: Impossible happened") $ do
         n <- getIndex ix (rank ix)
         m <- getIndex ix (rank ix - 1)
         ix' <- setIndex ix (rank ix) m
@@ -167,7 +167,7 @@ transposeOuter
 transposeOuter !arr = DArray (transOuter (size arr)) newVal
   where
     transOuter !ix =
-      maybe (error "transposeOuter: Impossible happened") id $ do
+      fromMaybe (error "transposeOuter: Impossible happened") $ do
         n <- getIndex ix 1
         m <- getIndex ix 2
         ix' <- setIndex ix 1 m
@@ -253,21 +253,23 @@ append
   :: (Source r1 ix e, Source r ix e) =>
      Int -> Array r1 ix e -> Array r ix e -> Maybe (Array D ix e)
 append !n !arr1 !arr2 = do
-  let sz1 = size arr1
-      sz2 = size arr2
+  let !sz1 = size arr1
+      !sz2 = size arr2
   k1 <- getIndex sz1 n
   k2 <- getIndex sz2 n
   sz1' <- setIndex sz2 n k1
   guard $ sz1 == sz1'
   newSz <- setIndex sz1 n (k1 + k2)
-  return $ DArray newSz $ \ !ix -> fromMaybe (unsafeIndex arr1 zeroIndex) $ do
-    k' <- getIndex ix n
-    if k' < k1
-      then Just (unsafeIndex arr1 ix)
-      else do
-      i <- getIndex ix n
-      ix' <- setIndex ix n (i - k1)
-      return $ unsafeIndex arr2 ix'
+  return $
+    DArray newSz $ \ !ix ->
+      fromMaybe (error "append: Impossible happened") $ do
+        k' <- getIndex ix n
+        if k' < k1
+          then Just (unsafeIndex arr1 ix)
+          else do
+            i <- getIndex ix n
+            ix' <- setIndex ix n (i - k1)
+            return $ unsafeIndex arr2 ix'
 {-# INLINE append #-}
 
 append'
