@@ -8,46 +8,49 @@ import           Prelude                            as P
 import           Data.Array.Massiv                  as M
 --import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Repa                    as R
-import           Data.Array.Repa.Eval               as R
-import           Data.Array.Repa.Repr.Unboxed       as R
 
 
-
-forceP
-  :: (R.Load r1 sh e, R.Unbox e, Monad m)
-  => R.Array r1 sh e -> m (R.Array R.U sh e)
-forceP !arr = do
-    forcedArr <- R.computeUnboxedP arr
-    forcedArr `deepSeqArray` return forcedArr
+import Data.Foldable
+import Data.Functor.Identity
 
 main :: IO ()
 main = do
-  let !sz = (1600, 1200 :: Int)
+  let !sz = (1600, 1201 :: Int)
   defaultMain
     [ bgroup
         "Load"
         [ bgroup
             "Light"
             [ bench "Array Massiv" $ whnfIO (M.computeUnboxedP $ arrM sz)
-            , bench "Array Repa" $ whnfIO (forceP $ arrR sz)
+            , bench "Array Massiv ID" $ whnfIO (M.computeUnboxedP $ toInterleaved $ arrM sz)
+            , bench "Array Repa" $ whnf (runIdentity . R.computeUnboxedP .  arrR) sz
             ]
         , bgroup
             "Heavy"
-            [ bench "Array Massiv" $ whnfIO (M.computeUnboxedP $ arrM' sz)
-            , bench "Array Repa" $ whnfIO (forceP $ arrR' sz)
+            [ bench "Array Massiv ID" $ whnfIO (M.computeUnboxedP $ toInterleaved $ arrM' sz)
+            --, bench "Array Massiv" $ whnfIO (M.computeUnboxedP $ arrM' sz)
+            , bench "Array Repa" $ whnf (runIdentity . R.computeUnboxedP . arrR') sz
             ]
         , bgroup
             "Windowed"
             [ bench "Array Massiv IO" $
               whnfIO (M.computeUnboxedP $ arrWindowedM sz)
-            , bench "Array Repa" $ whnfIO (forceP $ arrWindowedR sz)
+            , bench "Array Repa" $ whnf (runIdentity . R.computeUnboxedP .  arrWindowedR) sz
             ]
         ]
     , bgroup
+        "Fold"
+        [ bench "Array Massiv Seq" $
+          whnf (foldl' (+) 0 . arrM) sz
+        , bench "Array Massiv ID" $
+          whnfIO (M.foldP (+) (+) 0 (arrM sz))
+        , bench "Array Repa" $ whnf (runIdentity . foldAllP (+) 0 . arrR) sz
+        ]
+    , bgroup
         "Fuse"
-        [ bench "Array Massiv IO" $
+        [ bench "Array Massiv" $
           whnfIO (M.computeUnboxedP $ M.map (+ 25) $ arrM sz)
-        , bench "Array Repa" $ whnfIO (forceP $ R.map (+ 25) $ arrR sz)
+        , bench "Array Repa" $ whnf (runIdentity . R.computeUnboxedP .  R.map (+ 25) . arrR) sz
         ]
     ]
 

@@ -69,7 +69,7 @@ instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
   unsafeLinearRead (MUArray _sz v) i = MVU.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MUArray _sz v) i = MVU.unsafeWrite v i
+  unsafeLinearWrite (MUArray _sz v) i = MVU.write v i
   {-# INLINE unsafeLinearWrite #-}
 
 

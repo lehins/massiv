@@ -6,9 +6,9 @@ module Main where
 
 
 import Compute
-import qualified VectorConvolve as VC
+--import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Convolution
+-- import           Data.Array.Massiv.Stencil
 
 -- import           Data.Array.Repa                     as R
 
@@ -23,29 +23,30 @@ import           Data.Array.Massiv.Convolution
 --   return sobel
 
 
-massivSobel :: (Int, Int) -> IO (M.Array M.M M.DIM2 Double)
-massivSobel sz = do
-  --let !(VC.VUArray _ v) = VC.makeVUArray sz lightF :: VC.VUArray Double
-  let !arrMC = M.computeUnboxedS (arrM sz)
-  let !sobelH = correlate Edge arrMC
-  let !sobel = M.computeUnboxedS sobelH
-  print sobel
-  return sobel
+-- massivSobel :: (Int, Int) -> IO (M.Array M.M M.DIM2 Double)
+-- massivSobel sz = do
+--   --let !(VC.VUArray _ v) = VC.makeVUArray sz lightF :: VC.VUArray Double
+--   let !arrMC = M.computeUnboxedS (arrM sz)
+--   let !sobelH = correlate Edge arrMC
+--   let !sobel = M.computeUnboxedS sobelH
+--   print sobel
+--   return sobel
 
 
-unboxSobel :: (Int, Int) -> IO (M.Array M.M M.DIM2 Double)
-unboxSobel sz = do
-  let !(VC.VUArray _ v) = VC.makeVUArray sz lightF :: VC.VUArray Double
-      !arrUM = UArray sz v
-      !sobelHVC = correlateU Edge arrUM
-  let !sobel = M.computeUnboxedS sobelHVC
-  print sobel
-  return sobel
+-- unboxSobel :: (Int, Int) -> IO (M.Array M.M M.DIM2 Double)
+-- unboxSobel sz = do
+--   let !(VC.VUArray _ v) = VC.makeVUArray sz lightF :: VC.VUArray Double
+--       !arrUM = UArray sz v
+--       !sobelHVC = correlateU Edge arrUM
+--   let !sobel = M.computeUnboxedS sobelHVC
+--   print sobel
+--   return sobel
 
 main :: IO ()
 main = do
-  _ <- massivSobel (16000, 16000)
-  _ <- unboxSobel (16000, 16000)
+  --_ <- massivSobel (16000, 16000)
+  --_ <- unboxSobel (16000, 16000)
   --_ <- repaSobel (16000, 16000)
-  return ()
+  a <- M.computeUnboxedP $ toInterleaved $ arrM (1600, 1201)
+  print a
 

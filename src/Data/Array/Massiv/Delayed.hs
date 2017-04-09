@@ -14,9 +14,11 @@
 --
 module Data.Array.Massiv.Delayed where
 
+-- import Control.Monad
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Compute.Gang
+import           Data.Array.Massiv.Compute.Scheduler
 
 import           Data.Foldable
 
@@ -53,10 +55,6 @@ instance Index ix => Shape D ix e where
       unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
   {-# INLINE unsafeReshape #-}
 
-  -- unsafeExtract !sIx !eIx !arr =
-  --   DArray (liftIndex2 (-) eIx sIx) $ \ !ix ->
-  --     unsafeIndex arr (liftIndex2 (+) ix sIx)
-  -- {-# INLINE unsafeExtract #-}
   unsafeExtract !sIx !newSz !arr =
     DArray newSz $ \ !ix ->
       unsafeIndex arr (liftIndex2 (+) ix sIx)
@@ -125,20 +123,106 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix where
-  loadS (DArray sz f) unsafeWrite = do
+  loadS (DArray sz f) unsafeWrite =
     iterM_ zeroIndex sz 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
-  loadP arr@(DArray arrSize f) unsafeWrite = do
+  loadP arr@(DArray sz f) unsafeWrite = do
     let !gSize = gangSize theGang
-        !totalLength = totalElem arrSize
+        !totalLength = totalElem sz
         !(chunkLength, slackLength) = totalLength `quotRem` gSize
     gangIO theGang $ \ !tid ->
       let !start = tid * chunkLength
           !end = start + chunkLength
       in do
-        iterLinearM_ arrSize start end 1 (<) $ \ !k !ix -> do
+        iterLinearM_ sz start end 1 (<) $ \ !k !ix ->
           unsafeWrite k $ f ix
-    loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
-      unsafeWrite i (unsafeLinearIndex arr i)
+    -- loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
+    --   unsafeWrite i (unsafeLinearIndex arr i)
+    iterLinearM_ sz (totalLength - slackLength) totalLength 1 (<) $ \ !k !ix ->
+      unsafeWrite k (unsafeIndex arr ix)
   {-# INLINE loadP #-}
+
+
+data ID
+
+data instance Array ID ix e = IDArray !(Array D ix e)
+
+instance Index ix => Massiv ID ix where
+  size (IDArray arr) = size arr
+
+
+-- instance Index ix => Load ID ix where
+--   loadS (IDArray arr) unsafeWrite = loadS arr unsafeWrite
+--   {-# INLINE loadS #-}
+--   loadP (IDArray arr@(DArray sz f)) unsafeWrite = do
+--     let !gSize = gangSize theGang
+--         !totalLength = totalElem sz
+--         !slackLength = totalLength `rem` gSize
+--         !end = totalLength - slackLength
+--     gangIO theGang $ \ !tid ->
+--       iterLinearM_ sz tid end gSize (<) $ \ !k !ix -> do
+--         unsafeWrite k $ f ix
+--     iterLinearM_ sz end totalLength 1 (<) $ \ !k !ix ->
+--       unsafeWrite k (unsafeIndex arr ix)
+--   {-# INLINE loadP #-}
+
+
+toInterleaved :: Array D ix e -> Array ID ix e
+toInterleaved = IDArray
+{-# INLINE toInterleaved #-}
+
+-- toInterleaved :: Source r ix e => Array r ix e -> Array ID ix e
+-- toInterleaved = IDArray . delay
+-- {-# INLINE toInterleaved #-}
+
+
+instance Index ix =>
+         Load ID ix where
+  loadS (IDArray arr) unsafeWrite = loadS arr unsafeWrite
+  {-# INLINE loadS #-}
+  loadP (IDArray (DArray sz f)) unsafeWrite = do
+    numWorkers <- getNumWorkers
+    scheduler <- makeScheduler
+    let !totalLength = totalElem sz
+        !chunkLength = totalLength `quot` numWorkers
+        !slackStart  = chunkLength * numWorkers
+    loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+      submitRequest scheduler $
+      JobRequest $
+      iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> do
+        unsafeWrite k $ f ix
+    submitRequest scheduler $
+      JobRequest $
+      iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> do
+        unsafeWrite k (f ix)
+    waitTillDone scheduler
+  {-# INLINE loadP #-}
+
+
+foldP :: Source r ix e =>
+         (b -> b -> b) -> (b -> e -> b) -> b -> Array r ix e -> IO b
+foldP g f !initAcc !arr = do
+  numWorkers <- getNumWorkers
+  scheduler <- makeScheduler
+  let !sz = size arr
+      !totalLength = totalElem sz
+      !chunkLength = totalLength `quot` numWorkers
+      !slackStart = chunkLength * numWorkers
+  loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+    submitRequest scheduler $
+    JobRequest $
+    iterM start (start + chunkLength) 1 (<) initAcc $ \ !ix !acc ->
+      return $ f acc (unsafeLinearIndex arr ix)
+  submitRequest scheduler $
+    JobRequest $
+    iterM slackStart totalLength 1 (<) initAcc $ \ !ix !acc ->
+      return $ f acc (unsafeLinearIndex arr ix)
+  collectResults scheduler g initAcc
+{-# INLINE foldP #-}
+
+
+sumP :: (Source r ix e, Num e) =>
+        Array r ix e -> IO e
+sumP = foldP (+) (+) 0
+{-# INLINE sumP #-}
