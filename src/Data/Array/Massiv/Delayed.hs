@@ -1,9 +1,9 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Delayed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -14,14 +14,16 @@
 --
 module Data.Array.Massiv.Delayed where
 
--- import Control.Monad
+import           Control.Monad                       (void, when)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
-import           Data.Array.Massiv.Compute.Gang
 import           Data.Array.Massiv.Compute.Scheduler
-
 import           Data.Foldable
+import           Data.List                           (sortOn)
 
+-- TODO: Use CPP to account for sortOn is only available since base-4.8
+--import Data.List (sortBy)
+--import Data.Function (on)
 
 -- | Delayed representation.
 data D
@@ -127,30 +129,30 @@ instance Index ix => Load D ix where
     iterM_ zeroIndex sz 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
-  loadP arr@(DArray sz f) unsafeWrite = do
-    let !gSize = gangSize theGang
-        !totalLength = totalElem sz
-        !(chunkLength, slackLength) = totalLength `quotRem` gSize
-    gangIO theGang $ \ !tid ->
-      let !start = tid * chunkLength
-          !end = start + chunkLength
-      in do
-        iterLinearM_ sz start end 1 (<) $ \ !k !ix ->
+  loadP (DArray sz f) unsafeWrite = do
+    void $ splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        submitRequest scheduler $
+        JobRequest 0 $
+        iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> do
           unsafeWrite k $ f ix
-    -- loopM_ (totalLength - slackLength) (< totalLength) (+ 1) $ \ !i ->
-    --   unsafeWrite i (unsafeLinearIndex arr i)
-    iterLinearM_ sz (totalLength - slackLength) totalLength 1 (<) $ \ !k !ix ->
-      unsafeWrite k (unsafeIndex arr ix)
+      submitRequest scheduler $
+        JobRequest 0 $
+        iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> do
+          unsafeWrite k (f ix)
   {-# INLINE loadP #-}
 
+-- | Interleaved parallel computation.
+data I
 
-data ID
+data instance Array I ix e = IArray !(Array D ix e)
 
-data instance Array ID ix e = IDArray !(Array D ix e)
+instance Index ix => Massiv I ix where
+  size (IArray arr) = size arr
 
-instance Index ix => Massiv ID ix where
-  size (IDArray arr) = size arr
 
+instance Functor (Array I ix) where
+  fmap f (IArray arr) = IArray (fmap f arr)
 
 -- instance Index ix => Load ID ix where
 --   loadS (IDArray arr) unsafeWrite = loadS arr unsafeWrite
@@ -168,61 +170,195 @@ instance Index ix => Massiv ID ix where
 --   {-# INLINE loadP #-}
 
 
-toInterleaved :: Array D ix e -> Array ID ix e
-toInterleaved = IDArray
+toInterleaved :: Source r ix e => Array r ix e -> Array I ix e
+toInterleaved = IArray . delay
 {-# INLINE toInterleaved #-}
 
--- toInterleaved :: Source r ix e => Array r ix e -> Array ID ix e
--- toInterleaved = IDArray . delay
--- {-# INLINE toInterleaved #-}
 
-
-instance Index ix =>
-         Load ID ix where
-  loadS (IDArray arr) unsafeWrite = loadS arr unsafeWrite
+instance Index ix => Load I ix where
+  loadS (IArray arr) unsafeWrite = loadS arr unsafeWrite
   {-# INLINE loadS #-}
-  loadP (IDArray (DArray sz f)) unsafeWrite = do
-    numWorkers <- getNumWorkers
+  loadP (IArray (DArray sz f)) unsafeWrite = do
     scheduler <- makeScheduler
     let !totalLength = totalElem sz
-        !chunkLength = totalLength `quot` numWorkers
-        !slackStart  = chunkLength * numWorkers
-    loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       submitRequest scheduler $
-      JobRequest $
-      iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> do
+      JobRequest 0 $
+      iterLinearM_ sz start totalLength (numWorkers scheduler) (<) $ \ !k !ix ->
         unsafeWrite k $ f ix
-    submitRequest scheduler $
-      JobRequest $
-      iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> do
-        unsafeWrite k (f ix)
     waitTillDone scheduler
   {-# INLINE loadP #-}
 
 
-foldP :: Source r ix e =>
-         (b -> b -> b) -> (b -> e -> b) -> b -> Array r ix e -> IO b
-foldP g f !initAcc !arr = do
-  numWorkers <- getNumWorkers
-  scheduler <- makeScheduler
+
+ifoldlP :: Source r ix e =>
+           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+ifoldlP g !tAcc f !initAcc !arr = do
   let !sz = size arr
-      !totalLength = totalElem sz
-      !chunkLength = totalLength `quot` numWorkers
-      !slackStart = chunkLength * numWorkers
-  loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-    submitRequest scheduler $
-    JobRequest $
-    iterM start (start + chunkLength) 1 (<) initAcc $ \ !ix !acc ->
-      return $ f acc (unsafeLinearIndex arr ix)
-  submitRequest scheduler $
-    JobRequest $
-    iterM slackStart totalLength 1 (<) initAcc $ \ !ix !acc ->
-      return $ f acc (unsafeLinearIndex arr ix)
-  collectResults scheduler g initAcc
+  results <- splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    jId <-
+      loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
+        submitRequest scheduler $
+          JobRequest jId $
+          iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
+            return $ f acc ix (unsafeLinearIndex arr i)
+        return (jId + 1)
+    when (slackStart < totalLength) $
+      submitRequest scheduler $
+      JobRequest jId $
+      iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
+        return $ f acc ix (unsafeLinearIndex arr i)
+  return $ foldl' g tAcc $ map jobResult $ sortOn jobResultId results
+{-# INLINE ifoldlP #-}
+
+
+foldlP :: Source r ix e =>
+           (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
+foldlP g tAcc f = ifoldlP g tAcc (\ x _ -> f x)
+{-# INLINE foldlP #-}
+
+
+ifoldrP :: Source r ix e =>
+           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
+ifoldrP g !tAcc f !initAcc !arr = do
+  let !sz = size arr
+  results <- splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    when (slackStart < totalLength) $
+      submitRequest scheduler $
+      JobRequest 0 $
+      iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
+        return $ f ix (unsafeLinearIndex arr i) acc
+    loopM slackStart (> 0) (subtract chunkLength) 1 $ \ !start !jId -> do
+      submitRequest scheduler $
+        JobRequest jId $
+        iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
+          return $ f ix (unsafeLinearIndex arr i) acc
+      return (jId + 1)
+  return $ foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
+{-# INLINE ifoldrP #-}
+
+foldrP :: Source r ix e =>
+          (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
+foldrP g tAcc f = ifoldrP g tAcc (const f)
+{-# INLINE foldrP #-}
+
+
+
+foldP :: Source r ix e =>
+         (e -> e -> e) -> e -> Array r ix e -> IO e
+foldP f !initAcc = foldlP f initAcc f initAcc
 {-# INLINE foldP #-}
 
 
 sumP :: (Source r ix e, Num e) =>
         Array r ix e -> IO e
-sumP = foldP (+) (+) 0
+sumP = foldP (+) 0
 {-# INLINE sumP #-}
+
+
+productP :: (Source r ix e, Num e) =>
+            Array r ix e -> IO e
+productP = foldP (*) 1
+{-# INLINE productP #-}
+
+
+
+-- foldP :: Source r ix e =>
+--          (b -> b -> b) -> (b -> e -> b) -> b -> Array r ix e -> IO b
+-- foldP g f !initAcc !arr = do
+--   numWorkers <- getNumWorkers
+--   scheduler <- makeScheduler
+--   let !sz = size arr
+--       !totalLength = totalElem sz
+--       !chunkLength = totalLength `quot` numWorkers
+--       !slackStart = chunkLength * numWorkers
+--   loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+--     submitRequest scheduler $
+--     JobRequest 0 $
+--     iterM start (start + chunkLength) 1 (<) initAcc $ \ !ix !acc ->
+--       return $ f acc (unsafeLinearIndex arr ix)
+--   submitRequest scheduler $
+--     JobRequest 0 $
+--     iterM slackStart totalLength 1 (<) initAcc $ \ !ix !acc ->
+--       return $ f acc (unsafeLinearIndex arr ix)
+--   let g' !jRes acc = g (jobResult jRes) acc
+--   collectResults scheduler g' initAcc
+-- {-# INLINE foldP #-}
+
+-- foldlP' :: Source r ix e =>
+--            (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
+-- foldlP' g !tAcc f !initAcc !arr = do
+--   numWorkers <- getNumWorkers
+--   scheduler <- makeScheduler
+--   let !sz = size arr
+--       !totalLength = totalElem sz
+--       !chunkLength = totalLength `quot` numWorkers
+--       !slackStart = chunkLength * numWorkers
+--   jId <- loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
+--     submitRequest scheduler $
+--       JobRequest jId $
+--       iterM start (start + chunkLength) 1 (<) initAcc $ \ !ix !acc ->
+--         return $ f acc (unsafeLinearIndex arr ix)
+--     return (jId + 1)
+--   when (slackStart < totalLength) $
+--     submitRequest scheduler $
+--     JobRequest jId $
+--     iterM slackStart totalLength 1 (<) initAcc $ \ !ix !acc ->
+--       return $ f acc (unsafeLinearIndex arr ix)
+--   results <- collectResults scheduler (:) []
+--   return $ foldl' g tAcc $ map jobResult $ sortOn jobResultId results
+-- {-# INLINE foldlP' #-}
+
+
+
+-- ifoldlP' :: Source r ix e =>
+--            (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+-- ifoldlP' g !tAcc f !initAcc !arr = do
+--   numWorkers <- getNumWorkers
+--   scheduler <- makeScheduler
+--   let !sz = size arr
+--       !totalLength = totalElem sz
+--       !chunkLength = totalLength `quot` numWorkers
+--       !slackStart = chunkLength * numWorkers
+--   jId <-
+--     loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
+--       submitRequest scheduler $
+--         JobRequest jId $
+--         iterM start (start + chunkLength) 1 (<) initAcc $ \ !i !acc ->
+--           let !ix = fromLinearIndex sz i
+--           in return $ f acc ix (unsafeIndex arr ix)
+--       return (jId + 1)
+--   when (slackStart < totalLength) $
+--     submitRequest scheduler $
+--     JobRequest jId $
+--     iterM slackStart totalLength 1 (<) initAcc $ \ !i !acc ->
+--       let !ix = fromLinearIndex sz i
+--       in return $ f acc ix (unsafeIndex arr ix)
+--   results <- collectResults scheduler (:) []
+--   return $ foldl' g tAcc $ map jobResult $ sortOn jobResultId results
+-- {-# INLINE ifoldlP' #-}
+
+
+-- foldrP' :: Source r ix e =>
+--            (a  -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
+-- foldrP' g !tAcc f !initAcc !arr = do
+--   numWorkers <- getNumWorkers
+--   scheduler <- makeScheduler
+--   let !sz = size arr
+--       !totalLength = totalElem sz
+--       !chunkLength = totalLength `quot` numWorkers
+--       !slackStart = chunkLength * numWorkers
+--   when (slackStart < totalLength) $
+--     submitRequest scheduler $
+--     JobRequest 0 $
+--     iterM (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !ix !acc ->
+--       return $ f (unsafeLinearIndex arr ix) acc
+--   void $ loopM slackStart (> 0) (subtract chunkLength) 1 $ \ !start !jId -> do
+--     submitRequest scheduler $
+--       JobRequest jId $
+--       iterM (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !ix !acc ->
+--         return $ f (unsafeLinearIndex arr ix) acc
+--     return (jId + 1)
+--   results <- collectResults scheduler (:) []
+--   return $ foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
+-- {-# INLINE foldrP' #-}

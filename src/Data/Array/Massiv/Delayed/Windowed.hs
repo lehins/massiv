@@ -15,6 +15,8 @@
 module Data.Array.Massiv.Delayed.Windowed where
 
 import           Control.Monad                  (when)
+import           Data.Array.Massiv.Compute.Scheduler
+import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Compute.Gang
 
@@ -33,9 +35,25 @@ data instance Array W ix e = WArray { wSize :: !ix
                                     , wWindowSize :: !ix
                                     , wWindowUnsafeIndex :: ix -> e }
 
+data WD
+
+data instance Array WD ix e = WDArray { wdArray :: !(Array D ix e)
+                                      , wdStencilSize :: Maybe ix
+                                        -- ^ Setting this value during stencil
+                                        -- application improves cache utilization
+                                        -- while computing an array
+                                      , wdWindowStartIndex :: !ix
+                                      , wdWindowSize :: !ix
+                                      , wdWindowUnsafeIndex :: ix -> e }
+
 
 instance Index ix => Massiv W ix where
   size = wSize
+  {-# INLINE size #-}
+
+
+instance Index ix => Massiv WD ix where
+  size = size . wdArray
   {-# INLINE size #-}
 
 
@@ -168,3 +186,59 @@ unrollAndJam !bH !(it, ib) !(jt, jb) f = do
     loopM_ jt (< jb) (+ 1) $ \ !j ->
       f (i, j)
 {-# INLINE unrollAndJam #-}
+
+
+
+
+instance Load WD DIM2 where
+  loadS (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) unsafeWrite = do
+    let !(ib, jb) = (wm + it, wn + jt)
+        !blockHeight = maybe 1 fst mStencilSz
+    iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    unrollAndJam blockHeight (it, ib) (jt, jb) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexW ix)
+  {-# INLINE loadS #-}
+  loadP (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) unsafeWrite = do
+    scheduler <- makeScheduler
+    let !(ib, jb) = (wm + it, wn + jt)
+        !blockHeight = maybe 1 fst mStencilSz
+        !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
+    let loadBlock !it' !ib' =
+          unrollAndJam blockHeight (it', ib') (jt, jb) $ \ !ix ->
+            unsafeWrite (toLinearIndex sz ix) (indexW ix)
+        {-# INLINE loadBlock #-}
+    submitRequest scheduler $
+      JobRequest 0 $
+        iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    submitRequest scheduler $
+      JobRequest 0 $
+        iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    submitRequest scheduler $
+      JobRequest 0 $
+        iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    submitRequest scheduler $
+      JobRequest 0 $
+        iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
+      let !it' = wid * chunkHeight + it
+      submitRequest scheduler $
+        JobRequest 0 $
+        loadBlock it' (it' + chunkHeight)
+    when (slackHeight > 0) $ do
+      let !itSlack = (numWorkers scheduler) * chunkHeight + it
+      submitRequest scheduler $
+        JobRequest 0 $
+        loadBlock itSlack (itSlack + slackHeight)
+    waitTillDone scheduler
+  {-# INLINE loadP #-}

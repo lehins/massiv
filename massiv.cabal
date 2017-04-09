@@ -82,7 +82,7 @@ benchmark compute-par
   hs-source-dirs:      bench
   main-is:             ComputePar.hs
   other-modules:       Compute
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N8 -O2
   build-depends:       base
                      , criterion
                      , massiv

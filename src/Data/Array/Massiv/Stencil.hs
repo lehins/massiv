@@ -19,6 +19,7 @@ module Data.Array.Massiv.Stencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
   , mapStencil
+  , mapStencil'
   -- * Sobel
   , sobelKernelStencilX
   , sobelStencilX
@@ -30,7 +31,7 @@ module Data.Array.Massiv.Stencil
 
 -- import           Control.Applicative
 import           Data.Array.Massiv.Common
--- import           Data.Array.Massiv.Delayed
+import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Delayed.Windowed
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Manifest.Unboxed
@@ -53,6 +54,19 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
+
+mapStencil' :: (Source r ix e, Eq e, Num e, VU.Unbox e, Manifest r ix e) =>
+              Stencil ix e a -> Array r ix e -> Array WD ix a
+mapStencil' (Stencil b sSz sCenter stencilF) !arr =
+  WDArray
+    (DArray sz (stencilF (borderIndex b arr)))
+    (Just sSz)
+    sCenter
+    (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))
+    (stencilF (unsafeIndex arr))
+  where
+    !sz = size arr
+{-# INLINE mapStencil' #-}
 
 
 mkStaticStencil

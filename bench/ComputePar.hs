@@ -2,20 +2,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-import           Criterion.Main
 import           Compute
-import           Prelude                            as P
-import           Data.Array.Massiv                  as M
+import           Criterion.Main
+import           Data.Array.Massiv     as M
+import           Prelude               as P
 --import           Data.Array.Massiv.Manifest.Unboxed as M
-import           Data.Array.Repa                    as R
-
-
-import Data.Foldable
-import Data.Functor.Identity
+import           Data.Array.Repa       as R
+import           Data.Foldable         as F
+import           Data.Functor.Identity
 
 main :: IO ()
 main = do
-  let !sz = (1600, 1201 :: Int)
+  let !sz = (1600, 1200) :: M.DIM2
   defaultMain
     [ bgroup
         "Load"
@@ -27,8 +25,8 @@ main = do
             ]
         , bgroup
             "Heavy"
-            [ bench "Array Massiv ID" $ whnfIO (M.computeUnboxedP $ toInterleaved $ arrM' sz)
-            --, bench "Array Massiv" $ whnfIO (M.computeUnboxedP $ arrM' sz)
+            [ bench "Array Massiv" $ whnfIO (M.computeUnboxedP $ arrM' sz)
+            , bench "Array Massiv ID" $ whnfIO (M.computeUnboxedP $ toInterleaved $ arrM' sz)
             , bench "Array Repa" $ whnf (runIdentity . R.computeUnboxedP . arrR') sz
             ]
         , bgroup
@@ -42,9 +40,12 @@ main = do
         "Fold"
         [ bench "Array Massiv Seq" $
           whnf (foldl' (+) 0 . arrM) sz
-        , bench "Array Massiv ID" $
-          whnfIO (M.foldP (+) (+) 0 (arrM sz))
-        , bench "Array Repa" $ whnf (runIdentity . foldAllP (+) 0 . arrR) sz
+        , bench "Array Repa" $ whnf (runIdentity . sumAllP . arrR) sz
+        , bench "Array Massiv Par" $
+          whnfIO (M.sumP (arrM sz))
+        -- , bench "Array Massiv foldlP'" $
+        --   whnfIO (M.foldlP' (+) 0 (+) 0 (arrM sz))
+        , bench "Array Repa" $ whnf (runIdentity . sumAllP . arrR) sz
         ]
     , bgroup
         "Fuse"

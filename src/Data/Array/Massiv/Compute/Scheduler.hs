@@ -7,30 +7,57 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Compute.Scheduler where
+module Data.Array.Massiv.Compute.Scheduler
+  ( Scheduler
+  , makeScheduler
+  , numWorkers
+  , JobRequest(..)
+  , JobResult(..)
+  , submitRequest
+  , collectResults
+  , waitTillDone
+  , splitWork
+  ) where
 
-import Data.Array.Massiv.Common.Index
-import           Control.Concurrent
-import           System.IO.Unsafe   (unsafePerformIO)
--- import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM
--- import Control.Concurrent.STM.TBQueue -- (TBQueue, newTBQueueIO, writeTBQueue)
+import           Control.Concurrent             (forkOn, getNumCapabilities)
+import           Control.Concurrent.STM.TChan   (TChan, isEmptyTChan,
+                                                 newTChanIO, readTChan,
+                                                 writeTChan)
+import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVarIO,
+                                                 readTVar)
+import           Control.Monad                  (void)
+import           Control.Monad.STM              (atomically)
+import           Data.Array.Massiv.Common.Index
+import           System.IO.Unsafe               (unsafePerformIO)
 
+
+-- initWorkers :: IO ()
+-- initWorkers = jobQueue `seq` return ()
 
 data Job = Job (Int -> IO ())
 
 
 data Scheduler a = Scheduler
-  { resultsChan :: !(TChan a)
-  , jobsCountVar :: TVar Int
+  { _resultsChan  :: !(TChan (JobResult a))
+  , _jobsCountVar :: !(TVar Int)
+  , numWorkers    :: !Int
   }
 
+data JobResult a = JobResult { jobResultId :: !Int
+                             , jobResult   :: !a }
 
-data JobRequest a = JobRequest { jobAction :: IO a }
+
+data JobRequest a = JobRequest { jobRequestId     :: !Int
+                               , jobRequestAction :: IO a }
+
+
+
+makeScheduler :: IO (Scheduler a)
+makeScheduler = Scheduler <$> newTChanIO <*> newTVarIO 0 <*> getNumWorkers
 
 
 submitRequest :: Scheduler a -> JobRequest a -> IO ()
-submitRequest (Scheduler rChan jVar) (JobRequest jAction) = do
+submitRequest (Scheduler rChan jVar _) (JobRequest jId jAction) = do
   atomically $ do
     modifyTVar' jVar (+ 1)
     writeTChan jobQueue $
@@ -38,36 +65,45 @@ submitRequest (Scheduler rChan jVar) (JobRequest jAction) = do
         result <- jAction
         atomically $ do
           modifyTVar' jVar (subtract 1)
-          writeTChan rChan result
+          writeTChan rChan (JobResult jId result)
 
 
-collectResults :: Scheduler a -> (b -> a -> b) -> b -> IO b
-collectResults (Scheduler rChan jVar) f !initAcc = collect initAcc
+collectResults :: Scheduler a -> (JobResult a -> b -> b) -> b -> IO b
+collectResults (Scheduler rChan jVar _) f !initAcc = collect initAcc
   where
     collect !acc = do
-      (res, stop) <-
+      (jRes, stop) <-
         atomically $ do
-          res <- readTChan rChan
+          jRes <- readTChan rChan
           resEmpty <- isEmptyTChan rChan
           if resEmpty
             then do
               jCount <- readTVar jVar
-              return (res, jCount == 0)
-            else return (res, False)
+              return (jRes, jCount == 0)
+            else return (jRes, False)
       if stop
-        then return $! f acc res
-        else collect $! f acc res
+        then return $! f jRes acc
+        else collect $! f jRes acc
 
 
 
 waitTillDone :: Scheduler a -> IO ()
-waitTillDone scheduler = collectResults scheduler (\ _ _ -> ()) ()
-
-makeScheduler :: IO (Scheduler a)
-makeScheduler = Scheduler <$> newTChanIO <*> newTVarIO 0
+waitTillDone scheduler = collectResults scheduler (const id) ()
 
 
-data Worker = Worker { workerId :: !Int } deriving Show
+
+splitWork
+  :: Index ix
+  => ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
+splitWork !sz submitWork = do
+  scheduler <- makeScheduler
+  let !totalLength = totalElem sz
+      !chunkLength = totalLength `quot` numWorkers scheduler
+      !slackStart = chunkLength * numWorkers scheduler
+  void $ submitWork scheduler chunkLength totalLength slackStart
+  collectResults scheduler (:) []
+{-# INLINE splitWork #-}
+
 
 
 getNumWorkers :: IO Int
@@ -77,9 +113,9 @@ getNumWorkers = getNumCapabilities
 jobQueue :: TChan Job
 jobQueue =
   unsafePerformIO $ do
-    numWorkers <- getNumWorkers
+    nWorkers <- getNumWorkers
     jQueue <- newTChanIO
-    startWorkers jQueue numWorkers
+    startWorkers jQueue nWorkers
     return jQueue
 {-# NOINLINE jobQueue #-}
 
@@ -90,14 +126,8 @@ runWorker jQueue wid = do
   action wid
   runWorker jQueue wid
 
+
 startWorkers :: TChan Job -> Int -> IO ()
-startWorkers jQueue numWorkers =
-  loopM_ 0 (< numWorkers) (+ 1) $ \ !wid -> forkOn wid (runWorker jQueue wid)
+startWorkers jQueue nWorkers =
+  loopM_ 0 (< nWorkers) (+ 1) $ \ !wid -> forkOn wid (runWorker jQueue wid)
 
-
-
--- computeIO :: Int -- ^ Number of workers to engage. (should be in range from 1 to
---                  -- `getNumCapabilities`)
---           -> (Int -> IO a)
---           -> IO [(Int, a)]
--- computeIO n f = do
