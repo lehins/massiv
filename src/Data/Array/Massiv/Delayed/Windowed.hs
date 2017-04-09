@@ -15,6 +15,8 @@
 module Data.Array.Massiv.Delayed.Windowed where
 
 import           Control.Monad                  (when)
+import           Control.Monad.ST
+import           Control.Monad.ST.Unsafe
 import           Data.Array.Massiv.Compute.Scheduler
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Common
@@ -67,20 +69,41 @@ instance Functor (Array W ix) where
   {-# INLINE fmap #-}
 
 
+instance Functor (Array WD ix) where
+  fmap f !arr =
+    arr
+    { wdArray = fmap f (wdArray arr)
+    , wdWindowUnsafeIndex = f . wdWindowUnsafeIndex arr
+    }
+  {-# INLINE fmap #-}
+
+-- | Supply a separate generating function for interior of an array. This is
+-- very usful for stencil mapping, where interior function does not perform
+-- boundary checks, thus significantly speeding up computation process.
 makeArrayWindowed
   :: Source r ix e
   => Array r ix e -- ^ Source array that will have a window inserted into it
   -> ix -- ^ Start index for the window
-  -> ix -> (ix -> e) -> Array W ix e
-makeArrayWindowed !arr !wIx !wSz wUnsafeIndex =
-  WArray
-  { wSize = size arr
-  , wStencilSize = Nothing
-  , wSafeIndexBorder = unsafeIndex arr
-  , wWindowStartIndex = wIx
-  , wWindowSize = wSz
-  , wWindowUnsafeIndex = wUnsafeIndex
-  }
+  -> ix -- ^ Size of the window
+  -> (ix -> e) -- ^ Inside window indexing function
+  -> Array WD ix e
+makeArrayWindowed !arr !wIx !wSz wUnsafeIndex
+  | not (isSafeIndex sz wIx) =
+    error $
+    "Incorrect window starting index: " ++ show wIx ++ " for: " ++ show arr
+  | liftIndex2 (+) wIx wSz > sz =
+    error $
+    "Incorrect window size: " ++
+    show wSz ++ " and/or placement: " ++ show wIx ++ " for: " ++ show arr
+  | otherwise =
+    WDArray
+    { wdArray = delay arr
+    , wdStencilSize = Nothing
+    , wdWindowStartIndex = wIx
+    , wdWindowSize = wSz
+    , wdWindowUnsafeIndex = wUnsafeIndex
+    }
+  where sz = size arr
 {-# INLINE makeArrayWindowed #-}
 
 
@@ -242,3 +265,88 @@ instance Load WD DIM2 where
         loadBlock itSlack (itSlack + slackHeight)
     waitTillDone scheduler
   {-# INLINE loadP #-}
+
+instance Load WD DIM3 where
+  loadS = loadWindowedSRec
+  {-# INLINE loadS #-}
+  loadP = loadWindowedPRec
+  {-# INLINE loadP #-}
+
+instance Load WD DIM4 where
+  loadS = loadWindowedSRec
+  {-# INLINE loadS #-}
+  loadP = loadWindowedPRec
+  {-# INLINE loadP #-}
+
+instance Load WD DIM5 where
+  loadS = loadWindowedSRec
+  {-# INLINE loadS #-}
+  loadP = loadWindowedPRec
+  {-# INLINE loadP #-}
+
+loadWindowedSRec
+  :: (Index ix, Load WD (Lower ix)) =>
+     Array WD ix e -> (Int -> e -> ST s ()) -> ST s ()
+loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeWrite = do
+  let !szL = snd $ unconsDim sz
+      !(t, tixL) = unconsDim tix
+      !(w, wSzL) = unconsDim wSz
+      !pageElements = totalElem szL
+      -- Are there at least as many pages as there are available workers (2 for borders)
+      unsafeWriteLower i k val = unsafeWrite (k + pageElements * (t + i)) val
+      {-# INLINE unsafeWriteLower #-}
+  iterM_ zeroIndex tix 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+  iterM_ (liftIndex2 (+) tix wSz) sz 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+  loopM_ t (< (w + t)) (+ 1) $ \ !i ->
+    let !lowerArr =
+          (WDArray
+             (DArray szL (\ !ix -> indexB (consDim i ix)))
+             ((snd . unconsDim) <$> mStencilSz) -- can safely drop the dim, only
+                                                -- last 2 matter anyways
+             tixL
+             wSzL
+             (\ !ix -> indexW (consDim i ix)))
+    in loadS lowerArr (unsafeWriteLower i)
+{-# INLINE loadWindowedSRec #-}
+
+
+loadWindowedPRec
+  :: (Index ix, Load WD (Lower ix)) =>
+     Array WD ix e -> (Int -> e -> IO ()) -> IO ()
+loadWindowedPRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeWrite = do
+  scheduler <- makeScheduler
+  let !szL = snd $ unconsDim sz
+      !(t, tixL) = unconsDim tix
+      !(w, wSzL) = unconsDim wSz
+      !pageElements = totalElem szL
+      -- Are there at least as many pages as there are available workers (2 for borders)
+      !enoughPages = w >= (numWorkers scheduler - 2)
+      unsafeWriteLower i k val = unsafeWrite (k + pageElements * (t + i)) val
+      {-# INLINE unsafeWriteLower #-}
+      unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
+      {-# INLINE unsafeWriteLowerST #-}
+  submitRequest scheduler $
+    JobRequest 0 $
+    iterM_ zeroIndex tix 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+  submitRequest scheduler $
+    JobRequest 0 $
+    iterM_ (liftIndex2 (+) tix wSz) sz 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+  loopM_ t (< (w + t)) (+ 1) $ \ !i ->
+    let !lowerArr =
+          (WDArray
+             (DArray szL (\ !ix -> indexB (consDim i ix)))
+             ((snd . unconsDim) <$> mStencilSz) -- can safely drop the dim, only
+                                                -- last 2 matter anyways
+             tixL
+             wSzL
+             (\ !ix -> indexW (consDim i ix)))
+    in if enoughPages
+         then submitRequest scheduler $
+              JobRequest 0 $ stToIO $ loadS lowerArr (unsafeWriteLowerST i)
+         else loadP lowerArr (unsafeWriteLower i)
+  waitTillDone scheduler
+{-# INLINE loadWindowedPRec #-}
