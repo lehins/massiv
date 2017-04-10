@@ -9,11 +9,9 @@ module Main where
 import           Compute
 import           Criterion.Main
 import           Data.Array.Massiv         as M
-import           Data.Array.Massiv.Compute as M
 -- import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Massiv.Stencil as M
 import           Data.Array.Repa           as R
-import qualified VectorConvolve            as VC
 
 -- -- | Repa stencil base Kirsch W horizontal convolution
 -- kirschWR
@@ -33,28 +31,24 @@ import qualified VectorConvolve            as VC
 --                       _             -> Nothing)
 
 
-validate :: (Int, Int) -> (R.Array R.U R.DIM2 Int, R.Array R.U R.DIM2 Int)
-validate (m, n) = (sR, sVR)
-  where
-    arrCR = R.computeUnboxedS (arrRLight (m, n) :: R.Array R.D R.DIM2 Int)
-    sR = R.computeUnboxedS . sobelXR $ arrCR
-    arrCU = M.computeUnboxedS (arrMLight (m, n))
-    mArr = M.computeS $ mapStencil (sobelStencilX Edge) arrCU
-    --arrVU = VC.makeVUArray (m, n) lightF :: VC.VUArray Int
-    --mArr = VC.applyFilter (VC.sobelFilter VC.Horizontal Edge) arrVU
-    sVR = R.fromUnboxed (Z :. m :. n) $ M.toVectorUnboxed mArr
+-- validate :: (Int, Int) -> (R.Array R.U R.DIM2 Int, R.Array R.U R.DIM2 Int)
+-- validate (m, n) = (sR, sVR)
+--   where
+--     arrCR = R.computeUnboxedS (arrRLight (m, n) :: R.Array R.D R.DIM2 Int)
+--     sR = R.computeUnboxedS . sobelXR $ arrCR
+--     arrCU = M.computeUnboxedS (arrMLight (m, n))
+--     mArr = M.computeS $ mapStencil (sobelStencilX Edge) arrCU
+--     --arrVU = VC.makeVUArray (m, n) lightF :: VC.VUArray Int
+--     --mArr = VC.applyFilter (VC.sobelFilter VC.Horizontal Edge) arrVU
+--     sVR = R.fromUnboxed (Z :. m :. n) $ M.toVectorUnboxed mArr
 
-validateOperator :: (Int, Int) -> (R.Array R.U R.DIM2 Double, R.Array R.U R.DIM2 Double)
-validateOperator (m, n) = (sR, sVR)
-  where
-    arrCR = R.computeUnboxedS (arrRLight (m, n) :: R.Array R.D R.DIM2 Double)
-    sR = sobelOperatorR' arrCR
-    arrCU = M.computeUnboxedS (arrMLight (m, n))
-    mArr = M.computeS $ mapStencil (sobelOperator Edge) arrCU
-    --mArr = sobelOperator' Edge arrCU
-    --arrVU = VC.makeVUArray (m, n) lightF :: VC.VUArray Int
-    --mArr = VC.applyFilter (VC.sobelFilter VC.Horizontal Edge) arrVU
-    sVR = R.fromUnboxed (Z :. m :. n) $ M.toVectorUnboxed mArr
+-- validateOperator :: (Int, Int) -> (R.Array R.U R.DIM2 Double, R.Array R.U R.DIM2 Double)
+-- validateOperator (m, n) = (sR, sVR)
+--   where
+--     arrCR = R.computeUnboxedS (arrRLight (m, n) :: R.Array R.D R.DIM2 Double)
+--     sR = sobelOperatorR' arrCR
+--     mArr = sobelOperator' Edge arrCU
+--     sVR = R.fromUnboxed (Z :. m :. n) $ M.toVectorUnboxed mArr
 
 sobelOperatorR' :: R.Source r Double =>
                   R.Array r R.DIM2 Double -> R.Array R.U R.DIM2 Double
@@ -97,9 +91,6 @@ main = do
       !arrCR = R.computeUnboxedS (arrR sz)
       -- !kirschW = kirschWStencil
       -- !kirschW' = kirschWStencil'
-      !sobelHVC = VC.sobelFilter VC.Horizontal Edge
-      arrVU :: VC.VUArray Double
-      !arrVU = VC.makeVUArray sz lightF
       arrUM :: M.Array M.U M.DIM2 Double
       !arrUM = M.computeUnboxedS (arrM sz)
       !sobel = sobelStencilX Edge
@@ -112,7 +103,6 @@ main = do
         "Sobel Horizontal"
         [ bench "Massiv mapStencil" $
           whnf (M.computeUnboxedS . mapStencil sobel) arrUM
-        , bench "VectorConvolve" $ whnf (VC.applyFilter sobelHVC) arrVU
         , bench "Repa Sobel" $ whnf (R.computeUnboxedS . sobelXR) arrCR
         ]
     , bgroup

@@ -90,7 +90,7 @@ arrM' :: (Int, Int) -> M.Array M.D M.DIM2 Double
 arrM' !arrSz = makeArray2D arrSz heavyF
 {-# INLINE arrM' #-}
 
-arrWindowedM :: (Int, Int) -> M.Array M.W M.DIM2 Double
+arrWindowedM :: (Int, Int) -> M.Array WD M.DIM2 Double
 arrWindowedM !arrSz@(m, n) =
   makeArrayWindowed (makeArray2D arrSz heavyF) (20, 25) (m - 20, n - 25) lightF
 {-# INLINE arrWindowedM #-}

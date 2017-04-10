@@ -142,53 +142,6 @@ instance Index ix => Load D ix where
           unsafeWrite k (f ix)
   {-# INLINE loadP #-}
 
--- | Interleaved parallel computation.
-data I
-
-data instance Array I ix e = IArray !(Array D ix e)
-
-instance Index ix => Massiv I ix where
-  size (IArray arr) = size arr
-
-
-instance Functor (Array I ix) where
-  fmap f (IArray arr) = IArray (fmap f arr)
-
--- instance Index ix => Load ID ix where
---   loadS (IDArray arr) unsafeWrite = loadS arr unsafeWrite
---   {-# INLINE loadS #-}
---   loadP (IDArray arr@(DArray sz f)) unsafeWrite = do
---     let !gSize = gangSize theGang
---         !totalLength = totalElem sz
---         !slackLength = totalLength `rem` gSize
---         !end = totalLength - slackLength
---     gangIO theGang $ \ !tid ->
---       iterLinearM_ sz tid end gSize (<) $ \ !k !ix -> do
---         unsafeWrite k $ f ix
---     iterLinearM_ sz end totalLength 1 (<) $ \ !k !ix ->
---       unsafeWrite k (unsafeIndex arr ix)
---   {-# INLINE loadP #-}
-
-
-toInterleaved :: Source r ix e => Array r ix e -> Array I ix e
-toInterleaved = IArray . delay
-{-# INLINE toInterleaved #-}
-
-
-instance Index ix => Load I ix where
-  loadS (IArray arr) unsafeWrite = loadS arr unsafeWrite
-  {-# INLINE loadS #-}
-  loadP (IArray (DArray sz f)) unsafeWrite = do
-    scheduler <- makeScheduler
-    let !totalLength = totalElem sz
-    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
-      submitRequest scheduler $
-      JobRequest 0 $
-      iterLinearM_ sz start totalLength (numWorkers scheduler) (<) $ \ !k !ix ->
-        unsafeWrite k $ f ix
-    waitTillDone scheduler
-  {-# INLINE loadP #-}
-
 
 
 ifoldlP :: Source r ix e =>

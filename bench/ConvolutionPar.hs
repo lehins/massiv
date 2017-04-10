@@ -6,23 +6,16 @@ module Main where
 
 import           Compute
 import           Criterion.Main
-import           Data.Array.Massiv                     as M
+import           Data.Array.Massiv                   as M
+import           Data.Functor.Identity
 -- import           Data.Array.Massiv.Compute             as M
 -- import           Data.Array.Massiv.Manifest.Unboxed    as M
-import           Data.Array.Massiv.Stencil             as M
+import           Data.Array.Massiv.Stencil           as M
 -- import           Data.Array.Massiv.Stencil.Convolution as M
-import           Data.Array.Repa                       as R
-import           Data.Array.Repa.Algorithms.Convolve   as R
-import           Data.Array.Repa.Eval                  as R
+import           Data.Array.Repa                     as R
+import           Data.Array.Repa.Algorithms.Convolve as R
+
 -- import           Data.Array.Repa.Repr.Unboxed          as R
-
-
-forceP
-  :: (R.Load r1 sh e, Unbox e, Monad m)
-  => R.Array r1 sh e -> m (R.Array R.U sh e)
-forceP !arr = do
-    forcedArr <- R.computeUnboxedP arr
-    forcedArr `deepSeqArray` return forcedArr
 
 
 -- validate :: (Int, Int) -> (R.Array R.U R.DIM2 Int, R.Array R.U R.DIM2 Int)
@@ -48,18 +41,18 @@ forceP !arr = do
 --     sVR = R.fromUnboxed (Z :. m :. n) $ M.toVectorUnboxed mArr
 
 sobelOperatorR' :: R.Source r Double =>
-                  R.Array r R.DIM2 Double -> IO (R.Array R.U R.DIM2 Double)
+                  R.Array r R.DIM2 Double -> Identity (R.Array R.U R.DIM2 Double)
 sobelOperatorR' arr = do
-  arrX <- forceP (sobelXR arr)
-  arrY <- forceP (sobelYR arr)
-  forceP $
+  arrX <- R.computeUnboxedP (sobelXR arr)
+  arrY <- R.computeUnboxedP (sobelYR arr)
+  R.computeUnboxedP $
     R.map sqrt $
     R.zipWith (+) (R.map (^ (2 :: Int)) arrX) (R.map (^ (2 :: Int)) arrY)
 
 sobelOperatorR :: R.Source r Double =>
-                  R.Array r R.DIM2 Double -> IO (R.Array R.U R.DIM2 Double)
+                  R.Array r R.DIM2 Double -> Identity (R.Array R.U R.DIM2 Double)
 sobelOperatorR arr =
-  forceP $ R.smap sqrt $ R.szipWith (+) arrX2 arrY2 where
+  R.computeUnboxedP $ R.smap sqrt $ R.szipWith (+) arrX2 arrY2 where
     !arrX2 = R.smap (^ (2 :: Int)) $ sobelXR arr
     !arrY2 = R.smap (^ (2 :: Int)) $ sobelYR arr
 
@@ -94,11 +87,9 @@ main = do
         "Sobel Horizontal"
         [ bench "Massiv mapStencil" $
           whnfIO (M.computeUnboxedP . mapStencil sobel $ arrUM)
-        , bench "Massiv mapStencil WD" $
-          whnfIO (M.computeUnboxedP . mapStencil' sobel $ arrUM)
-        -- , bench "Massiv mapStencil UNSAFE" $
-        --   whnf (M.unsafeComputeUnboxedP . mapStencil sobel) arrUM
-        , bench "Repa Sobel" $ whnfIO (forceP (sobelXR arrCR))
+        , bench "Massiv mapStencil UNSAFE" $
+          whnf (M.unsafeComputeUnboxedP . mapStencil sobel) arrUM
+        , bench "Repa Sobel" $ whnf (runIdentity . R.computeUnboxedP . sobelXR) arrCR
         ]
     , bgroup
         "Sobel Kernel Horizontal"
@@ -113,13 +104,13 @@ main = do
         , bench "Massiv stencil operator UNSAFE" $
           whnf (M.unsafeComputeUnboxedP . mapStencil sobelOp) arrUM
         --, bench "Massiv unfused" $ whnfIO (sobelOp' arrUM)
-        , bench "Repa fused" $ whnfIO (sobelOperatorR arrCR)
+        , bench "Repa fused" $ whnf (runIdentity . sobelOperatorR) arrCR
         --, bench "Repa unfused" $ whnfIO (sobelOperatorR' arrCR)
         ]
     , bgroup
         "Sobel Unfused Operator"
         [ bench "Massiv" $ whnfIO (sobelOp' arrUM)
-        , bench "Repa" $ whnfIO (sobelOperatorR' arrCR)
+        , bench "Repa" $ whnf (runIdentity . sobelOperatorR') arrCR
         ]
     -- , bgroup
     --     "KirschW Horizontal"

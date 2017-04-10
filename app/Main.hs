@@ -47,6 +47,6 @@ main = do
   --_ <- massivSobel (16000, 16000)
   --_ <- unboxSobel (16000, 16000)
   --_ <- repaSobel (16000, 16000)
-  a <- M.computeUnboxedP $ toInterleaved $ arrM (1600, 1201)
+  a <- M.computeUnboxedP $ arrM (1600, 1201)
   print a
 

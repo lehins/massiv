@@ -19,7 +19,6 @@ module Data.Array.Massiv.Stencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
   , mapStencil
-  , mapStencil'
   -- * Sobel
   , sobelKernelStencilX
   , sobelStencilX
@@ -42,22 +41,8 @@ import           GHC.Exts                           (inline)
 
 
 mapStencil :: (Source r ix e, Eq e, Num e, VU.Unbox e, Manifest r ix e) =>
-              Stencil ix e a -> Array r ix e -> Array W ix a
-mapStencil (Stencil b sSz sCenter stencilF) !arr =
-  WArray
-    sz
-    (Just sSz)
-    (stencilF (borderIndex b arr))
-    sCenter
-    (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))
-    (stencilF (unsafeIndex arr))
-  where
-    !sz = size arr
-{-# INLINE mapStencil #-}
-
-mapStencil' :: (Source r ix e, Eq e, Num e, VU.Unbox e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array WD ix a
-mapStencil' (Stencil b sSz sCenter stencilF) !arr =
+mapStencil (Stencil b sSz sCenter stencilF) !arr =
   WDArray
     (DArray sz (stencilF (borderIndex b arr)))
     (Just sSz)
@@ -66,7 +51,7 @@ mapStencil' (Stencil b sSz sCenter stencilF) !arr =
     (stencilF (unsafeIndex arr))
   where
     !sz = size arr
-{-# INLINE mapStencil' #-}
+{-# INLINE mapStencil #-}
 
 
 mkStaticStencil

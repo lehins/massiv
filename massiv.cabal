@@ -20,9 +20,9 @@ library
                      , Data.Array.Massiv.Common.Index
                      , Data.Array.Massiv.Common.Shape
                      , Data.Array.Massiv.Compute
-                     , Data.Array.Massiv.Compute.Gang
                      , Data.Array.Massiv.Compute.Scheduler
                      , Data.Array.Massiv.Delayed
+                     , Data.Array.Massiv.Delayed.Interleaved
                      , Data.Array.Massiv.Delayed.Windowed
                      , Data.Array.Massiv.Manifest
                      , Data.Array.Massiv.Manifest.Unboxed
@@ -108,7 +108,6 @@ benchmark convolution
   hs-source-dirs:      bench
   main-is:             Convolution.hs
   other-modules:       Compute
-                     , VectorConvolve
   ghc-options:         -threaded -O2
 
   build-depends:       base
@@ -124,7 +123,6 @@ benchmark convolution-par
   hs-source-dirs:      bench
   main-is:             ConvolutionPar.hs
   other-modules:       Compute
-                     , VectorConvolve
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
 
   build-depends:       base
@@ -142,7 +140,6 @@ executable sobel-profile
                      , bench
   main-is:             Main.hs
   other-modules:       Compute
-                     , VectorConvolve
   build-depends:       base
                      , massiv
                      , vector
