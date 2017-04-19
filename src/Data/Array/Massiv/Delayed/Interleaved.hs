@@ -16,7 +16,7 @@ module Data.Array.Massiv.Delayed.Interleaved where
 
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
-import           Data.Array.Massiv.Compute.Scheduler
+import           Data.Array.Massiv.Scheduler
 
 
 
@@ -40,9 +40,9 @@ toInterleaved = IDArray . delay
 
 
 instance Index ix => Load ID ix where
-  loadS (IDArray arr) unsafeWrite = loadS arr unsafeWrite
+  loadS (IDArray arr) unsafeRead unsafeWrite = loadS arr unsafeRead unsafeWrite
   {-# INLINE loadS #-}
-  loadP (IDArray (DArray sz f)) unsafeWrite = do
+  loadP (IDArray (DArray sz f)) _ unsafeWrite = do
     scheduler <- makeScheduler
     let !totalLength = totalElem sz
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->

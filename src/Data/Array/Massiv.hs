@@ -16,7 +16,6 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Common.Shape
   , module Data.Array.Massiv.Delayed
   , module Data.Array.Massiv.Manifest
-  , module Data.Array.Massiv.Manifest.Unboxed -- TODO: Remove
   -- * Accessors
   -- ** Size information
   , size
@@ -66,7 +65,8 @@ import Data.Array.Massiv.Common
 import Data.Array.Massiv.Common.Shape
 import Data.Array.Massiv.Delayed
 import Data.Array.Massiv.Manifest
-import Data.Array.Massiv.Manifest.Unboxed
+--import Data.Array.Massiv.Mutable
+--import qualified Data.Foldable as F
 
 --import qualified  Data.Vector.Unboxed as VU
 

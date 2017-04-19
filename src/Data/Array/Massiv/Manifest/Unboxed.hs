@@ -21,19 +21,18 @@ module Data.Array.Massiv.Manifest.Unboxed
   , fromListsUnboxed
   , computeUnboxedS
   , computeUnboxedP
-  , unsafeComputeUnboxedP
   , mapM
   , imapM
   ) where
 
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Compute
-import           Data.Array.Massiv.Manifest
-import           Data.Maybe                  (listToMaybe)
-import qualified Data.Vector.Unboxed         as VU
-import qualified Data.Vector.Unboxed.Mutable as MVU
-import           Prelude                     hiding (mapM)
-import           System.IO.Unsafe            (unsafePerformIO)
+import           Data.Array.Massiv.Manifest.Internal
+import           Data.Array.Massiv.Mutable
+import           Data.Maybe                          (listToMaybe)
+import qualified Data.Vector.Unboxed                 as VU
+import qualified Data.Vector.Unboxed.Mutable         as MVU
+import           Prelude                             hiding (mapM)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 data U = U
 
@@ -74,10 +73,10 @@ instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
 
 
 
-fromListsUnboxed :: VU.Unbox e => [[e]] -> Array M DIM2 e
+fromListsUnboxed :: VU.Unbox e => [[e]] -> Array U DIM2 e
 fromListsUnboxed !ls =
   if all (== n) (map length ls)
-    then MArray (m, n) $ VU.unsafeIndex (VU.fromList $ concat ls)
+    then UArray (m, n) (VU.fromList $ concat ls)
     else error "fromListsVG:Inner lists are of different lengths."
   where -- TODO: check dims
     (m, n) = (length ls, maybe 0 length $ listToMaybe ls)
@@ -89,14 +88,9 @@ computeUnboxedS = computeSeq
 {-# INLINE computeUnboxedS #-}
 
 
-computeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> IO (Array U ix e)
-computeUnboxedP = computePar
+computeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
+computeUnboxedP = unsafePerformIO . computePar
 {-# INLINE computeUnboxedP #-}
-
-
-unsafeComputeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
-unsafeComputeUnboxedP = unsafePerformIO . computePar
-{-# INLINE unsafeComputeUnboxedP #-}
 
 
 fromVectorUnboxed :: Index ix => ix -> VU.Vector e -> Array U ix e

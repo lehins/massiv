@@ -14,6 +14,8 @@
 --
 module Data.Array.Massiv.Common.Index where
 
+import           Control.DeepSeq (NFData)
+
 
 type DIM1 = Int
 
@@ -44,7 +46,7 @@ type instance Higher DIM5 = Z
 
 
 
-class (Eq ix, Ord ix, Show ix) => Index ix where
+class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
   rank :: ix -> Int
 

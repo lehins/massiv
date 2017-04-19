@@ -19,18 +19,21 @@ library
                      , Data.Array.Massiv.Common
                      , Data.Array.Massiv.Common.Index
                      , Data.Array.Massiv.Common.Shape
-                     , Data.Array.Massiv.Compute
-                     , Data.Array.Massiv.Compute.Scheduler
                      , Data.Array.Massiv.Delayed
                      , Data.Array.Massiv.Delayed.Interleaved
                      , Data.Array.Massiv.Delayed.Windowed
+                     , Data.Array.Massiv.Delayed.WindowedM
                      , Data.Array.Massiv.Manifest
-                     , Data.Array.Massiv.Manifest.Unboxed
-                     , Data.Array.Massiv.Manifest.Storable
+                     , Data.Array.Massiv.Manifest.Boxed
                      , Data.Array.Massiv.Manifest.Primitive
+                     , Data.Array.Massiv.Manifest.Storable
+                     , Data.Array.Massiv.Manifest.Unboxed
+                     , Data.Array.Massiv.Mutable
+                     , Data.Array.Massiv.Scheduler
                      , Data.Array.Massiv.Stencil
                      , Data.Array.Massiv.Stencil.Convolution
   other-modules:       Data.Array.Massiv.Stencil.Internal
+                     , Data.Array.Massiv.Manifest.Internal
   build-depends:       base >= 4.6 && < 5
                      , deepseq
                      , data-default

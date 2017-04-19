@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE Rank2Types            #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
@@ -14,12 +15,13 @@
 --
 module Data.Array.Massiv.Delayed where
 
-import           Control.Monad                       (void, when)
+import           Control.Monad                  (void, when)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
-import           Data.Array.Massiv.Compute.Scheduler
+import           Data.Array.Massiv.Scheduler
 import           Data.Foldable
-import           Data.List                           (sortOn)
+import           Data.List                      (sortOn)
+import           System.IO.Unsafe               (unsafePerformIO)
 
 -- TODO: Use CPP to account for sortOn is only available since base-4.8
 --import Data.List (sortBy)
@@ -33,11 +35,15 @@ data instance Array D ix e = DArray { dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
 
 
-makeArray :: Index ix => ix -> (ix -> e) -> Array D ix e
+-- | /O(1)/ Construct an Array.
+makeArray :: Index ix =>
+             ix -- ^ Size of an Array
+          -> (ix -> e) -- ^ Generating function
+          -> Array D ix e
 makeArray !ix = DArray (liftIndex (max 0) ix)
 {-# INLINE makeArray #-}
 
--- | _O(1)_ Conversion from a source array to `D` representation.
+-- | /O(1)/ Conversion from a source array to `D` representation.
 delay :: Source r ix e => Array r ix e -> Array D ix e
 delay arr = DArray (size arr) (unsafeIndex arr)
 {-# INLINE delay #-}
@@ -125,11 +131,11 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix where
-  loadS (DArray sz f) unsafeWrite =
+  loadS (DArray sz f) _ unsafeWrite =
     iterM_ zeroIndex sz 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
-  loadP (DArray sz f) unsafeWrite = do
+  loadP (DArray sz f) _ unsafeWrite = do
     void $ splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
         submitRequest scheduler $
@@ -145,8 +151,8 @@ instance Index ix => Load D ix where
 
 
 ifoldlP :: Source r ix e =>
-           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
-ifoldlP g !tAcc f !initAcc !arr = do
+           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> b
+ifoldlP g !tAcc f !initAcc !arr = unsafePerformIO $ do
   let !sz = size arr
   results <- splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
     jId <-
@@ -166,14 +172,14 @@ ifoldlP g !tAcc f !initAcc !arr = do
 
 
 foldlP :: Source r ix e =>
-           (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
-foldlP g tAcc f = ifoldlP g tAcc (\ x _ -> f x)
+           (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> b
+foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
 
 ifoldrP :: Source r ix e =>
-           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
-ifoldrP g !tAcc f !initAcc !arr = do
+           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> b
+ifoldrP g !tAcc f !initAcc !arr = unsafePerformIO $ do
   let !sz = size arr
   results <- splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
     when (slackStart < totalLength) $
@@ -191,26 +197,26 @@ ifoldrP g !tAcc f !initAcc !arr = do
 {-# INLINE ifoldrP #-}
 
 foldrP :: Source r ix e =>
-          (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
-foldrP g tAcc f = ifoldrP g tAcc (const f)
+          (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> b
+foldrP g !tAcc f = ifoldrP g tAcc (const f)
 {-# INLINE foldrP #-}
 
 
 
 foldP :: Source r ix e =>
-         (e -> e -> e) -> e -> Array r ix e -> IO e
+         (e -> e -> e) -> e -> Array r ix e -> e
 foldP f !initAcc = foldlP f initAcc f initAcc
 {-# INLINE foldP #-}
 
 
 sumP :: (Source r ix e, Num e) =>
-        Array r ix e -> IO e
+        Array r ix e -> e
 sumP = foldP (+) 0
 {-# INLINE sumP #-}
 
 
 productP :: (Source r ix e, Num e) =>
-            Array r ix e -> IO e
+            Array r ix e -> e
 productP = foldP (*) 1
 {-# INLINE productP #-}
 

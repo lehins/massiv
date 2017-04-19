@@ -5,8 +5,8 @@ module Data.Array.Massiv.ManifestSpec (spec) where
 
 
 import           Data.Array.Massiv
-import           Data.Array.Massiv.CommonSpec (ArrIx (..))
-import           Data.Array.Massiv.Compute
+import           Data.Array.Massiv.CommonSpec       (ArrIx (..))
+import           Data.Array.Massiv.Manifest.Unboxed
 import           Test.Hspec
 import           Test.QuickCheck
 

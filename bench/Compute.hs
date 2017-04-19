@@ -19,7 +19,7 @@ makeWindowed
   -> R.DIM2
   -> R.Array r2 R.DIM2 e
   -> R.Array r1 R.DIM2 e
-  -> R.Array (P r2 (P r1 (P r1 (P r1 (P r1 X))))) R.DIM2 e
+  -> R.Array (R.P r2 (R.P r1 (R.P r1 (R.P r1 (R.P r1 X))))) R.DIM2 e
 makeWindowed (Z :. it :. jt) (Z :. wm :. wn) arrWindow arrBorder =
   let sh@(Z :. m :. n) = R.extent arrWindow
       inInternal !(Z :. i :. j) = i >= it && i < ib && j >= jt && j < jb
@@ -73,7 +73,7 @@ arrR' !(m, n) = fromFunction (Z :. m :. n) (\(Z :. i :. j) -> heavyF (i, j))
 {-# INLINE arrR' #-}
 
 arrWindowedR :: (Int, Int)
-             -> R.Array (P R.D (P R.D (P R.D (P R.D (P R.D X))))) R.DIM2 Double
+             -> R.Array (R.P R.D (R.P R.D (R.P R.D (R.P R.D (R.P R.D X))))) R.DIM2 Double
 arrWindowedR sh@(m, n) =
   makeWindowed (Z :. 20 :. 25) (Z :. m - 20 :. n - 25) (arrR sh) (arrR' sh)
 {-# INLINE arrWindowedR #-}

@@ -19,6 +19,7 @@ module Data.Array.Massiv.Stencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
   , mapStencil
+  , mapStencilM
   -- * Sobel
   , sobelKernelStencilX
   , sobelStencilX
@@ -32,6 +33,7 @@ module Data.Array.Massiv.Stencil
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Delayed.Windowed
+import           Data.Array.Massiv.Delayed.WindowedM
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Manifest.Unboxed
 import           Data.Array.Massiv.Stencil.Internal
@@ -54,6 +56,22 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
 {-# INLINE mapStencil #-}
 
 
+mapStencilM :: (Source r ix e, Eq e, Num e, VU.Unbox e, Manifest r ix e) =>
+                 StencilM ix e a -> Array r ix e -> Array WMD ix a
+mapStencilM (StencilM b sSz sCenter deps stencilM) !arr =
+  WMDArray
+    sz
+    (stencilM (borderIndex b arr))
+    (Just sSz)
+    sCenter
+    (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))
+    (stencilM (unsafeIndex arr))
+    deps
+  where
+    !sz = size arr
+{-# INLINE mapStencilM #-}
+
+
 mkStaticStencil
   :: (Index ix, Default e)
   => Border e
@@ -61,11 +79,11 @@ mkStaticStencil
   -> ix
   -> ((ix -> e) -> a)
   -> Stencil ix e a
-mkStaticStencil b !sSz !sCenter makeStencil =
+mkStaticStencil b !sSz !sCenter relStencil =
   validateStencil def $ Stencil b sSz sCenter stencil
   where
     stencil getVal !ix =
-      (inline makeStencil $ \ !ixD -> getVal (liftIndex2 (-) ix ixD))
+      (inline relStencil $ \ !ixD -> getVal (liftIndex2 (-) ix ixD))
     {-# INLINE stencil #-}
 {-# INLINE mkStaticStencil #-}
 
@@ -77,11 +95,11 @@ mkConvolutionStencil
   -> ix
   -> ((ix -> e -> e -> e) -> e -> e)
   -> Stencil ix e e
-mkConvolutionStencil b !sSz !sCenter makeStencil =
+mkConvolutionStencil b !sSz !sCenter relStencil =
   validateStencil 0 $ Stencil b sSz sCenter stencil
   where
     stencil getVal !ix =
-      (inline makeStencil $ \ !ixD !kVal !acc ->
+      (inline relStencil $ \ !ixD !kVal !acc ->
           getVal (liftIndex2 (-) ix ixD) * kVal + acc)
       0
     {-# INLINE stencil #-}

@@ -23,6 +23,7 @@ module Data.Array.Massiv.Common
   , ifoldr
   , safeIndex
   , errorIx
+  , errorImpossible
   ) where
 
 import           Control.Monad.ST               (ST)
@@ -70,13 +71,15 @@ class Massiv r ix => Load r ix where
   -- | Load an array into memory sequentially
   loadS
     :: Array r ix e -- ^ Array that is being loaded
-    -> (Int -> e -> ST s ()) -- ^ Write element
+    -> (Int -> ST s e) -- ^ Function that reads an element
+    -> (Int -> e -> ST s ()) -- ^ Function that writes an element
     -> ST s ()
 
   -- | Load an array into memory in parallel
   loadP
     :: Array r ix e -- ^ Array that is being loaded
-    -> (Int -> e -> IO ()) -- ^ Write element
+    -> (Int -> IO e) -- ^ Function that reads an element
+    -> (Int -> e -> IO ()) -- ^ Function that writes an element
     -> IO ()
 
 
@@ -111,6 +114,9 @@ ifoldr f !acc !arr =
 -- {-# INLINE foldrA #-}
 
 
+errorImpossible :: String -> a
+errorImpossible fName =
+  error $ fName ++ ": Impossible happened. Please report this error."
 
 errorIx :: (Massiv r ix, Index ix') => String -> Array r ix e -> ix' -> a
 errorIx fName arr ix =

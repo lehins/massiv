@@ -2,7 +2,9 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE Rank2Types            #-}
 {-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Stencil.Internal
@@ -15,10 +17,17 @@
 module Data.Array.Massiv.Stencil.Internal where
 
 import           Control.Applicative
+import           Control.Monad                      (unless, when, void)
+import           Control.Monad.ST
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
-import           Data.Default              (Default (def))
+import           Data.Array.Massiv.Manifest
+import           Data.Array.Massiv.Manifest.Unboxed
+import           Data.Default                       (Default (def))
+import           GHC.Exts                           (inline)
 
+import qualified Data.Vector.Unboxed                as VU
+import qualified Data.Vector.Unboxed.Mutable        as MVU
 
 data Stencil ix e a = Stencil
   { stencilBorder :: Border e
@@ -26,6 +35,73 @@ data Stencil ix e a = Stencil
   , stencilCenter :: !ix
   , stencilFunc   :: (ix -> e) -> ix -> a
   }
+
+data Dependency ix = Dependency { depDimension :: Int
+                                , depDirection :: Int }
+
+data StencilM ix e a = StencilM
+  { mStencilBorder :: Border e
+  , mStencilSize   :: !ix
+  , mStencilCenter :: !ix
+  , mStencilDeps   :: Array M Int Int
+  , mStencilFunc   :: forall m . Monad m => (ix -> e) -> (ix -> m a) -> ix -> m a
+  }
+
+
+
+mkStaticStencilM
+  :: forall ix e a . (Index ix, Default e, Default a)
+  => Border e
+  -> ix
+  -> ix
+  -> (forall m . Monad m => ((ix -> e) -> (ix -> m a) -> m a))
+  -> StencilM ix e a
+mkStaticStencilM b !sSz !sCenter relStencil =
+  StencilM b sSz sCenter deps stencil
+  where
+    stencil
+      :: (Default a, Monad m)
+      => (ix -> e) -> (ix -> m a) -> ix -> m a
+    stencil getVal getCurValM !ix =
+      inline
+        relStencil
+        (\ !ixD -> getVal (liftIndex2 (-) ix ixD))
+        (\ !ixD -> getCurValM (liftIndex2 (-) ix ixD))
+    {-# INLINE stencil #-}
+    sRank = rank sSz
+    defArrA :: Array D ix a
+    defArrA = DArray sSz (const def)
+    defArr = DArray sSz (const def)
+    deps = toManifest $ fromVectorUnboxed (rank sSz) $ VU.create makeDeps
+    -- TODO: switch to mutable Array, once it is implemented.
+    makeDeps :: ST s (MVU.MVector s Int)
+    makeDeps = do
+      mv <- MVU.new sRank
+      -- Need to record at which dimensions and directions there are dependencies
+      let checkWrite ix = do
+            unless (isSafeIndex sSz ix) $
+              error "mkStaticStencilM: Invalid StencilM index access"
+            loopM_ 0 (< sRank) (+ 1) $ \i -> do
+              let !r =
+                    maybe (errorImpossible "mkStaticStencilM") signum $
+                    getIndex ix i
+              when (r /= 0) $ do
+                curVal <- MVU.read mv i
+                if curVal == 0
+                  then MVU.write mv i r
+                  else when (curVal /= r) $
+                       error
+                         "mkStaticStencilM: Stencil creates an invalid dependency"
+            return $ unsafeIndex defArrA ix
+          checkRead = return . safeStencilIndex defArrA
+      void $ stencil (safeStencilIndex defArr) checkRead sCenter
+      void $ relStencil (unsafeIndex defArr) checkWrite
+      return mv
+{-# INLINE mkStaticStencilM #-}
+
+
+
+
 
 
 instance Functor (Stencil ix e) where

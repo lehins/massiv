@@ -1,13 +1,13 @@
-{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 module Main where
 
 
-import Compute
+import           Compute
 --import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
+import           Data.Array.Massiv.Manifest.Unboxed as M
 -- import           Data.Array.Massiv.Stencil
 
 -- import           Data.Array.Repa                     as R
@@ -47,6 +47,6 @@ main = do
   --_ <- massivSobel (16000, 16000)
   --_ <- unboxSobel (16000, 16000)
   --_ <- repaSobel (16000, 16000)
-  a <- M.computeUnboxedP $ arrM (1600, 1201)
+  let a = M.computeUnboxedP $ arrM (1600, 1201)
   print a
 

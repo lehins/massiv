@@ -5,8 +5,7 @@ module Main where
 import           Compute
 import           Criterion.Main
 import           Data.Array.Massiv                  as M
-
-
+import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Repa                    as R
 import qualified Data.Vector.Unboxed                as VU
 import           Prelude                            as P
@@ -14,7 +13,7 @@ import           Prelude                            as P
 
 main :: IO ()
 main = do
-  let !sz = (1600, 1200 :: Int)
+  let !sz = (1600, 1200) :: M.DIM2
   let !ixM = (1000, 999)
       !ixR = (Z :. 1000 :. 999)
       !ix1D = toLinearIndex sz ixM

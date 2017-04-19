@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE Rank2Types            #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
@@ -14,12 +15,13 @@
 --
 module Data.Array.Massiv.Delayed.Windowed where
 
-import           Control.Monad                       (void, when)
+import           Control.Monad               (void, when)
 import           Control.Monad.ST
 import           Control.Monad.ST.Unsafe
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Compute.Scheduler
 import           Data.Array.Massiv.Delayed
+--import           Data.Array.Massiv.Manifest
+import           Data.Array.Massiv.Scheduler
 
 
 data WD
@@ -45,6 +47,7 @@ instance Functor (Array WD ix) where
     , wdWindowUnsafeIndex = f . wdWindowUnsafeIndex arr
     }
   {-# INLINE fmap #-}
+
 
 -- | Supply a separate generating function for interior of an array. This is
 -- very usful for stencil mapping, where interior function does not perform
@@ -79,12 +82,12 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex
 
 
 instance Load WD DIM1 where
-  loadS (WDArray (DArray sz indexB) _ it wk indexW) unsafeWrite = do
+  loadS (WDArray (DArray sz indexB) _ it wk indexW) _ unsafeWrite = do
     iterM_ 0 it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
     iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
     iterM_ wk sz 1 (<) $ \ !i -> unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
-  loadP (WDArray (DArray sz indexB) _ it wk indexW) unsafeWrite = do
+  loadP (WDArray (DArray sz indexB) _ it wk indexW) _ unsafeWrite = do
     void $
       splitWork wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         submitRequest scheduler $
@@ -109,7 +112,7 @@ instance Load WD DIM1 where
 
 
 instance Load WD DIM2 where
-  loadS (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) unsafeWrite = do
+  loadS (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
     iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
@@ -123,7 +126,7 @@ instance Load WD DIM2 where
     unrollAndJam blockHeight (it, ib) (jt, jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
   {-# INLINE loadS #-}
-  loadP (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) unsafeWrite = do
+  loadP (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
     scheduler <- makeScheduler
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
@@ -181,8 +184,8 @@ instance Load WD DIM5 where
 
 loadWindowedSRec
   :: (Index ix, Load WD (Lower ix)) =>
-     Array WD ix e -> (Int -> e -> ST s ()) -> ST s ()
-loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeWrite = do
+     Array WD ix e -> (Int -> ST s e) -> (Int -> e -> ST s ()) -> ST s ()
+loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
   let !szL = snd $ unconsDim sz
       !(t, tixL) = unconsDim tix
       !(w, wSzL) = unconsDim wSz
@@ -203,21 +206,19 @@ loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeWr
              tixL
              wSzL
              (\ !ix -> indexW (consDim i ix)))
-    in loadS lowerArr (unsafeWriteLower i)
+    in loadS lowerArr unsafeRead (unsafeWriteLower i)
 {-# INLINE loadWindowedSRec #-}
 
 
 loadWindowedPRec
   :: (Index ix, Load WD (Lower ix)) =>
-     Array WD ix e -> (Int -> e -> IO ()) -> IO ()
-loadWindowedPRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeWrite = do
+     Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
+loadWindowedPRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
   scheduler <- makeScheduler
   let !szL = snd $ unconsDim sz
       !(t, tixL) = unconsDim tix
       !(w, wSzL) = unconsDim wSz
       !pageElements = totalElem szL
-      -- Are there at least as many pages as there are available workers (2 for borders)
-      !enoughPages = w >= (numWorkers scheduler - 2)
       unsafeWriteLower i k val = unsafeWrite (k + pageElements * (t + i)) val
       {-# INLINE unsafeWriteLower #-}
       unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
@@ -239,10 +240,13 @@ loadWindowedPRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeWr
              tixL
              wSzL
              (\ !ix -> indexW (consDim i ix)))
-    in if enoughPages
-         then submitRequest scheduler $
-              JobRequest 0 $ stToIO $ loadS lowerArr (unsafeWriteLowerST i)
-         else loadP lowerArr (unsafeWriteLower i)
+    in submitRequest scheduler $
+       JobRequest 0 $
+       stToIO $
+       loadS
+         lowerArr
+         (\_ix -> unsafeIOToST $ unsafeRead _ix)
+         (unsafeWriteLowerST i)
   waitTillDone scheduler
 {-# INLINE loadWindowedPRec #-}
 

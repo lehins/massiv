@@ -65,48 +65,48 @@ class (Index (Lower ix), Shape r ix e) => Slice r ix e where
 
 
 (<!?>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Maybe (Array r (Lower ix) e)
-(<!?>) arr (dim, i) = do
+(<!?>) !arr !(dim, i) = do
   m <- getIndex (size arr) dim
   guard $ isSafeIndex m i
   start <- setIndex zeroIndex dim i
   cutSz <- setIndex (size arr) dim 1
-  --end <- setIndex (size arr) dim (i + 1)
   newSz <- dropIndex cutSz dim
   return $ unsafeReshape newSz (unsafeExtract start cutSz arr)
+{-# INLINE (<!?>) #-}
 
 
 (?>) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array r (Lower ix) e)
-(?>) Nothing _      = Nothing
+(?>) Nothing      _ = Nothing
 (?>) (Just arr) !ix = arr !?> ix
 {-# INLINE (?>) #-}
 
 (<?) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array r (Lower ix) e)
-(<?) Nothing _      = Nothing
+(<?) Nothing      _ = Nothing
 (<?) (Just arr) !ix = arr <!? ix
 {-# INLINE (<?) #-}
 
 (<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Int, Int) -> Maybe (Array r (Lower ix) e)
-(<?>) Nothing _      = Nothing
+(<?>) Nothing      _ = Nothing
 (<?>) (Just arr) !ix = arr <!?> ix
 {-# INLINE (<?>) #-}
 
 
 (!>) :: Slice r ix e => Array r ix e -> Int -> Array r (Lower ix) e
-(!>) arr ix =
+(!>) !arr !ix =
   case arr !?> ix of
     Just res -> res
     Nothing  -> errorIx "(!>)" arr ix
 {-# INLINE (!>) #-}
 
 (<!) :: Slice r ix e => Array r ix e -> Int -> Array r (Lower ix) e
-(<!) arr ix =
+(<!) !arr !ix =
   case arr <!? ix of
     Just res -> res
     Nothing  -> errorIx "(<!)" arr ix
 {-# INLINE (<!) #-}
 
 (<!>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Array r (Lower ix) e
-(<!>) arr (dim, i) =
+(<!>) !arr !(dim, i) =
   case arr <!?> (dim, i) of
     Just res -> res
     Nothing  -> if dim < 1 || dim > rank (size arr)

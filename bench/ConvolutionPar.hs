@@ -9,7 +9,7 @@ import           Criterion.Main
 import           Data.Array.Massiv                   as M
 import           Data.Functor.Identity
 -- import           Data.Array.Massiv.Compute             as M
--- import           Data.Array.Massiv.Manifest.Unboxed    as M
+import           Data.Array.Massiv.Manifest.Unboxed    as M
 import           Data.Array.Massiv.Stencil           as M
 -- import           Data.Array.Massiv.Stencil.Convolution as M
 import           Data.Array.Repa                     as R
@@ -42,16 +42,17 @@ import           Data.Array.Repa.Algorithms.Convolve as R
 
 sobelOperatorR' :: R.Source r Double =>
                   R.Array r R.DIM2 Double -> Identity (R.Array R.U R.DIM2 Double)
-sobelOperatorR' arr = do
+sobelOperatorR' !arr = do
   arrX <- R.computeUnboxedP (sobelXR arr)
   arrY <- R.computeUnboxedP (sobelYR arr)
   R.computeUnboxedP $
     R.map sqrt $
     R.zipWith (+) (R.map (^ (2 :: Int)) arrX) (R.map (^ (2 :: Int)) arrY)
+-- INLINE or NOINLINE shouldn't be specified, both slow down the operator
 
 sobelOperatorR :: R.Source r Double =>
                   R.Array r R.DIM2 Double -> Identity (R.Array R.U R.DIM2 Double)
-sobelOperatorR arr =
+sobelOperatorR !arr =
   R.computeUnboxedP $ R.smap sqrt $ R.szipWith (+) arrX2 arrY2 where
     !arrX2 = R.smap (^ (2 :: Int)) $ sobelXR arr
     !arrY2 = R.smap (^ (2 :: Int)) $ sobelYR arr
@@ -60,12 +61,13 @@ sobelOperatorR arr =
 sobelOperator'
   :: (Manifest r M.DIM2 Double)
   => Border Double -> M.Array r M.DIM2 Double -> IO (M.Array M.U M.DIM2 Double)
-sobelOperator' b arr = do
+sobelOperator' !b !arr = do
   arrX <- M.computeUnboxedP (mapStencil (sobelStencilX b) arr)
   arrY <- M.computeUnboxedP (mapStencil (sobelStencilY b) arr)
   M.computeUnboxedP $
     M.map sqrt $
     M.zipWith (+) (M.map (^ (2 :: Int)) arrX) (M.map (^ (2 :: Int)) arrY)
+{-# INLINE sobelOperator' #-}
 
 main :: IO ()
 main = do
@@ -86,23 +88,19 @@ main = do
     [ bgroup
         "Sobel Horizontal"
         [ bench "Massiv mapStencil" $
-          whnfIO (M.computeUnboxedP . mapStencil sobel $ arrUM)
-        , bench "Massiv mapStencil UNSAFE" $
-          whnf (M.unsafeComputeUnboxedP . mapStencil sobel) arrUM
+          whnf (M.computeUnboxedP . mapStencil sobel) arrUM
         , bench "Repa Sobel" $ whnf (runIdentity . R.computeUnboxedP . sobelXR) arrCR
         ]
     , bgroup
         "Sobel Kernel Horizontal"
         [ bench "Massiv mapStencil" $
-          whnfIO (M.computeUnboxedP . mapStencil sobelKern $ arrUM)
+          whnf (M.computeUnboxedP . mapStencil sobelKern) arrUM
         , bench "repa R Agorithms" $ whnfIO (sobelKernRP arrCR)
         ]
     , bgroup
         "Sobel Operator"
         [ bench "Massiv stencil operator" $
-          whnfIO (M.computeUnboxedP . mapStencil sobelOp $ arrUM)
-        , bench "Massiv stencil operator UNSAFE" $
-          whnf (M.unsafeComputeUnboxedP . mapStencil sobelOp) arrUM
+          whnf (M.computeUnboxedP . mapStencil sobelOp) arrUM
         --, bench "Massiv unfused" $ whnfIO (sobelOp' arrUM)
         , bench "Repa fused" $ whnf (runIdentity . sobelOperatorR) arrCR
         --, bench "Repa unfused" $ whnfIO (sobelOperatorR' arrCR)

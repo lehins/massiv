@@ -1,13 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
 -- |
--- Module      : Data.Array.Massiv.Manifest.Scheduler
+-- Module      : Data.Array.Massiv.Scheduler
 -- Copyright   : (c) Alexey Kuleshevich 2017
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Compute.Scheduler
+module Data.Array.Massiv.Scheduler
   ( Scheduler
   , makeScheduler
   , numWorkers
@@ -30,9 +30,6 @@ import           Control.Monad.STM              (atomically)
 import           Data.Array.Massiv.Common.Index
 import           System.IO.Unsafe               (unsafePerformIO)
 
-
--- initWorkers :: IO ()
--- initWorkers = jobQueue `seq` return ()
 
 data Job = Job (Int -> IO ())
 
