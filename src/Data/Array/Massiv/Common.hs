@@ -35,14 +35,16 @@ import           Data.Typeable                  (Typeable, showsTypeRep,
 data family Array r ix e :: *
 
 
--- | Immutable, shape polymorphic array construction and indexing.
-class (Typeable r, Index ix) => Massiv r ix where
+-- | Index and size polymorphic arrays.
+class (Typeable r, Index ix) => Massiv r ix e where
 
   size :: Array r ix e -> ix
 
+  makeArray :: Index ix => ix -> (ix -> e) -> Array r ix e
 
 
-instance Massiv r ix =>
+
+instance Massiv r ix e =>
          Show (Array r ix e) where
   show arr =
     "<Array " ++
@@ -56,9 +58,9 @@ instance Massiv r ix =>
 --   show arr = "<Array DIM2 " ++ show (size arr) ++ ">:\n" ++ show (foldrA (:) [] arr)
 
 
-class Massiv r ix => Source r ix e where
+class Massiv r ix e => Source r ix e where
 
-  unsafeIndex :: Massiv r ix => Array r ix e -> ix -> e
+  unsafeIndex :: Array r ix e -> ix -> e
   unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
   {-# INLINE unsafeIndex #-}
 
@@ -67,17 +69,19 @@ class Massiv r ix => Source r ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-class Massiv r ix => Load r ix where
+class Index ix => Load r ix where
   -- | Load an array into memory sequentially
   loadS
-    :: Array r ix e -- ^ Array that is being loaded
+    :: Massiv r ix e =>
+       Array r ix e -- ^ Array that is being loaded
     -> (Int -> ST s e) -- ^ Function that reads an element
     -> (Int -> e -> ST s ()) -- ^ Function that writes an element
     -> ST s ()
 
   -- | Load an array into memory in parallel
   loadP
-    :: Array r ix e -- ^ Array that is being loaded
+    :: Massiv r ix e =>
+       Array r ix e -- ^ Array that is being loaded
     -> (Int -> IO e) -- ^ Function that reads an element
     -> (Int -> e -> IO ()) -- ^ Function that writes an element
     -> IO ()
@@ -101,24 +105,12 @@ ifoldr f !acc !arr =
     acc $ \ !ix !a -> f ix (unsafeIndex arr ix) a
 {-# INLINE ifoldr #-}
 
--- foldrA
---   :: Source r ix a
---   => (a -> b -> b) -> b -> Array r ix a -> b
--- foldrA f !acc !arr =
---   iter
---     (liftIndex (subtract 1) (size arr))
---     zeroIndex
---     (-1)
---     (>=)
---     acc $ \ !ix !a -> f (unsafeIndex arr ix) a
--- {-# INLINE foldrA #-}
-
 
 errorImpossible :: String -> a
 errorImpossible fName =
   error $ fName ++ ": Impossible happened. Please report this error."
 
-errorIx :: (Massiv r ix, Index ix') => String -> Array r ix e -> ix' -> a
+errorIx :: (Massiv r ix e, Index ix') => String -> Array r ix e -> ix' -> a
 errorIx fName arr ix =
   error $ fName ++ ": Index out of bounds: " ++ show ix ++ " for: " ++ show arr
 

@@ -18,7 +18,6 @@ module Data.Array.Massiv.Manifest.Storable
   , generateM
   , fromVectorStorable
   , toVectorStorable
-  , fromListsStorable
   , computeStorableS
   , computeStorableP
   , mapM
@@ -28,7 +27,6 @@ module Data.Array.Massiv.Manifest.Storable
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
-import           Data.Maybe                          (listToMaybe)
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           Prelude                             hiding (mapM)
@@ -40,9 +38,14 @@ data instance Array S ix e = SArray { sSize :: !ix
                                     , sData :: !(VS.Vector e)
                                     } deriving Eq
 
-instance Index ix => Massiv S ix where
+instance (VS.Storable e, Index ix) => Massiv S ix e where
   size = sSize
   {-# INLINE size #-}
+
+  makeArray !sz f = SArray sz' $ VS.generate (totalElem sz') (f . fromLinearIndex sz')
+    where
+      !sz' = liftIndex (max 0) sz
+  {-# INLINE makeArray #-}
 
 
 instance (Index ix, VS.Storable e) => Source S ix e where
@@ -73,22 +76,12 @@ instance (Manifest S ix e, VS.Storable e) => Mutable S ix e where
 
 
 
-fromListsStorable :: VS.Storable e => [[e]] -> Array M DIM2 e
-fromListsStorable !ls =
-  if all (== n) (map length ls)
-    then MArray (m, n) $ VS.unsafeIndex (VS.fromList $ concat ls)
-    else error "fromListsVG:Inner lists are of different lengths."
-  where -- TODO: check dims
-    (m, n) = (length ls, maybe 0 length $ listToMaybe ls)
-{-# INLINE fromListsStorable #-}
-
-
-computeStorableS :: (Load r' ix, Mutable S ix e) => Array r' ix e -> Array S ix e
+computeStorableS :: (Massiv r ix e, Load r ix, Mutable S ix e) => Array r ix e -> Array S ix e
 computeStorableS = computeSeq
 {-# INLINE computeStorableS #-}
 
 
-computeStorableP :: (Load r' ix, Mutable S ix e) => Array r' ix e -> Array S ix e
+computeStorableP :: (Massiv r ix e, Load r ix, Mutable S ix e) => Array r ix e -> Array S ix e
 computeStorableP = unsafePerformIO . computePar
 {-# INLINE computeStorableP #-}
 

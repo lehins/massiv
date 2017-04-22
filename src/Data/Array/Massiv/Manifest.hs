@@ -22,6 +22,8 @@ module Data.Array.Massiv.Manifest
   , M
   , computeS
   , computeP
+  , computeAsS
+  , computeAsP
   -- * Boxed
   , B.B(..)
   -- * Primitive
@@ -52,36 +54,30 @@ import           System.IO.Unsafe                     (unsafePerformIO)
 
 
 computeAsS
-  :: (Load r' ix, Mutable r ix e)
+  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
   => r -> Array r' ix e -> Array r ix e
 computeAsS _ arr = computeSeq arr
 {-# INLINE computeAsS #-}
 
 computeAsP
-  :: (Load r' ix, Mutable r ix e)
+  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
   => r -> Array r' ix e -> Array r ix e
 computeAsP _ arr = unsafePerformIO $ computePar arr
 {-# INLINE computeAsP #-}
 
 
 computeS
-  :: (Load r' ix, Mutable r ix e)
+  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
   => r -> Array r' ix e -> Array M ix e
 computeS r = toManifest . computeAsS r
 {-# INLINE computeS #-}
 
 
 computeP
-  :: (Load r' ix, Mutable r ix e)
+  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
   => r -> Array r' ix e -> Array M ix e
 computeP r = toManifest . computeAsP r
 {-# INLINE computeP #-}
-
-
--- | _O(1)_ Conversion of manifest arrays to `M` representation.
-toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
-toManifest arr = MArray (size arr) (unsafeLinearIndex arr) where
-{-# INLINE toManifest #-}
 
 
 (!) :: Manifest r ix e => Array r ix e -> ix -> e

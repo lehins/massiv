@@ -18,7 +18,6 @@ module Data.Array.Massiv.Manifest.Unboxed
   , generateM
   , fromVectorUnboxed
   , toVectorUnboxed
-  , fromListsUnboxed
   , computeUnboxedS
   , computeUnboxedP
   , mapM
@@ -28,7 +27,6 @@ module Data.Array.Massiv.Manifest.Unboxed
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
-import           Data.Maybe                          (listToMaybe)
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           Prelude                             hiding (mapM)
@@ -40,10 +38,14 @@ data instance Array U ix e = UArray { uSize :: !ix
                                     , uData :: !(VU.Vector e)
                                     } deriving Eq
 
-instance Index ix => Massiv U ix where
+instance (VU.Unbox e, Index ix) => Massiv U ix e where
   size = uSize
   {-# INLINE size #-}
 
+  makeArray !sz f = UArray sz' $ VU.generate (totalElem sz') (f . fromLinearIndex sz')
+    where
+      !sz' = liftIndex (max 0) sz
+  {-# INLINE makeArray #-}
 
 instance (Index ix, VU.Unbox e) => Source U ix e where
   unsafeLinearIndex (UArray _ v) = VU.unsafeIndex v
@@ -72,23 +74,12 @@ instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-
-fromListsUnboxed :: VU.Unbox e => [[e]] -> Array U DIM2 e
-fromListsUnboxed !ls =
-  if all (== n) (map length ls)
-    then UArray (m, n) (VU.fromList $ concat ls)
-    else error "fromListsVG:Inner lists are of different lengths."
-  where -- TODO: check dims
-    (m, n) = (length ls, maybe 0 length $ listToMaybe ls)
-{-# INLINE fromListsUnboxed #-}
-
-
-computeUnboxedS :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
+computeUnboxedS :: (Massiv r ix e, Load r ix, Mutable U ix e) => Array r ix e -> Array U ix e
 computeUnboxedS = computeSeq
 {-# INLINE computeUnboxedS #-}
 
 
-computeUnboxedP :: (Load r' ix, Mutable U ix e) => Array r' ix e -> Array U ix e
+computeUnboxedP :: (Massiv r ix e, Load r ix, Mutable U ix e) => Array r ix e -> Array U ix e
 computeUnboxedP = unsafePerformIO . computePar
 {-# INLINE computeUnboxedP #-}
 

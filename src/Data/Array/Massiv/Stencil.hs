@@ -19,7 +19,7 @@ module Data.Array.Massiv.Stencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
   , mapStencil
-  , mapStencilM
+--  , mapStencilM
   -- * Sobel
   , sobelKernelStencilX
   , sobelStencilX
@@ -33,16 +33,16 @@ module Data.Array.Massiv.Stencil
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Delayed.Windowed
-import           Data.Array.Massiv.Delayed.WindowedM
+--import           Data.Array.Massiv.Delayed.WindowedM
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Manifest.Unboxed
+import           Data.Array.Massiv.Ops.Construct
 import           Data.Array.Massiv.Stencil.Internal
-import           Data.Default                       (Default (def))
-import qualified Data.Vector.Unboxed                as VU
-import           GHC.Exts                           (inline)
+import           Data.Default                        (Default (def))
+import           GHC.Exts                            (inline)
 
 
-mapStencil :: (Source r ix e, Eq e, Num e, VU.Unbox e, Manifest r ix e) =>
+mapStencil :: (Source r ix e, Eq e, Num e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array WD ix a
 mapStencil (Stencil b sSz sCenter stencilF) !arr =
   WDArray
@@ -56,20 +56,20 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
 {-# INLINE mapStencil #-}
 
 
-mapStencilM :: (Source r ix e, Eq e, Num e, VU.Unbox e, Manifest r ix e) =>
-                 StencilM ix e a -> Array r ix e -> Array WMD ix a
-mapStencilM (StencilM b sSz sCenter deps stencilM) !arr =
-  WMDArray
-    sz
-    (stencilM (borderIndex b arr))
-    (Just sSz)
-    sCenter
-    (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))
-    (stencilM (unsafeIndex arr))
-    deps
-  where
-    !sz = size arr
-{-# INLINE mapStencilM #-}
+-- mapStencilM :: (Source r ix e, Eq e, Num e, Manifest r ix e) =>
+--                  StencilM ix e a -> Array r ix e -> Array WMD ix a
+-- mapStencilM (StencilM b sSz sCenter deps stencilM) !arr =
+--   WMDArray
+--     sz
+--     (stencilM (borderIndex b arr))
+--     (Just sSz)
+--     sCenter
+--     (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))
+--     (stencilM (unsafeIndex arr))
+--     deps
+--   where
+--     !sz = size arr
+-- {-# INLINE mapStencilM #-}
 
 
 mkStaticStencil
@@ -125,11 +125,11 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
 
 
 sobelKernelStencilX
-  :: (Eq e, Num e, VU.Unbox e) => Border e -> Stencil DIM2 e e
+  :: (Eq e, Num e, Unbox e) => Border e -> Stencil DIM2 e e
 sobelKernelStencilX b =
-  mkConvolutionStencilFromKernel b $ fromListsUnboxed  [ [ 1, 0, -1 ]
-                                                       , [ 2, 0, -2 ]
-                                                       , [ 1, 0, -1 ] ]
+  mkConvolutionStencilFromKernel b $ fromListsS U [ [ 1, 0, -1 ]
+                                                  , [ 2, 0, -2 ]
+                                                  , [ 1, 0, -1 ] ]
 {-# INLINE sobelKernelStencilX #-}
 
 

@@ -19,12 +19,14 @@ module Data.Array.Massiv.Manifest.Internal
   ( M
   , Manifest
   , Array(..)
+  , makeBoxedVector
+  , toManifest
   ) where
 
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Foldable
-
+import qualified Data.Vector                         as V
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
@@ -40,11 +42,29 @@ data M
 data instance Array M ix e = MArray { mSize :: !ix
                                     , mUnsafeLinearIndex :: Int -> e }
 
-instance Index ix => Massiv M ix where
+instance Index ix => Massiv M ix e where
   size = mSize
   {-# INLINE size #-}
 
-instance Massiv M ix => Foldable (Array M ix) where
+  makeArray !sz f = MArray sz (V.unsafeIndex (makeBoxedVector sz f))
+  {-# INLINE makeArray #-}
+
+
+makeBoxedVector :: Index ix => ix -> (ix -> a) -> V.Vector a
+makeBoxedVector !sz f = V.generate (totalElem sz') (f . fromLinearIndex sz')
+  where
+    !sz' = liftIndex (max 0) sz
+{-# INLINE makeBoxedVector #-}
+
+
+-- | _O(1)_ Conversion of manifest arrays to `M` representation.
+toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
+toManifest arr = MArray (size arr) (unsafeLinearIndex arr) where
+{-# INLINE toManifest #-}
+
+
+
+instance Index ix => Foldable (Array M ix) where
   foldr f acc (MArray sz g) =
     loop (totalElem sz - 1) (>= 0) (subtract 1) acc $ \i accI -> f (g i) accI
   {-# INLINE foldr #-}

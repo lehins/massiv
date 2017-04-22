@@ -26,9 +26,11 @@ data ID
 
 data instance Array ID ix e = IDArray !(Array D ix e)
 
-instance Index ix => Massiv ID ix where
+instance Index ix => Massiv ID ix e where
   size (IDArray arr) = size arr
 
+  makeArray ix = IDArray . makeArray ix
+  {-# INLINE makeArray #-}
 
 instance Functor (Array ID ix) where
   fmap f (IDArray arr) = IDArray (fmap f arr)

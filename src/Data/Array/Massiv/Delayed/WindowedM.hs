@@ -15,11 +15,8 @@
 --
 module Data.Array.Massiv.Delayed.WindowedM where
 
-import           Control.Monad               (void, when)
-import           Control.Monad.ST
-import           Control.Monad.ST.Unsafe
+import           Control.Monad                       (when)
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Scheduler
 
@@ -37,10 +34,12 @@ data instance Array WMD ix e =
            , wmdDependencies :: Array M Int Int
            }
 
-instance Index ix => Massiv WMD ix where
+instance Index ix => Massiv WMD ix e where
   size = wmdSize
   {-# INLINE size #-}
 
+  -- makeArray ix f = WMDArray (DArray (liftIndex (max 0) ix) f) Nothing zeroIndex zeroIndex f
+  -- {-# INLINE makeArray #-}
 
 
 instance Load WMD DIM2 where

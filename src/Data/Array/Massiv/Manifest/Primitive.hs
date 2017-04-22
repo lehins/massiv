@@ -18,7 +18,6 @@ module Data.Array.Massiv.Manifest.Primitive
   , generateM
   , fromVectorPrimitive
   , toVectorPrimitive
-  , fromListsPrimitive
   , computePrimitiveS
   , computePrimitiveP
   , mapM
@@ -28,7 +27,6 @@ module Data.Array.Massiv.Manifest.Primitive
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
-import           Data.Maybe                          (listToMaybe)
 import qualified Data.Vector.Primitive               as VP
 import qualified Data.Vector.Primitive.Mutable       as MVP
 import           Prelude                             hiding (mapM)
@@ -40,10 +38,14 @@ data instance Array P ix e = PArray { pSize :: !ix
                                     , pData :: !(VP.Vector e)
                                     } deriving Eq
 
-instance Index ix => Massiv P ix where
+instance (VP.Prim e, Index ix) => Massiv P ix e where
   size = pSize
   {-# INLINE size #-}
 
+  makeArray !sz f = PArray sz' $ VP.generate (totalElem sz') (f . fromLinearIndex sz')
+    where
+      !sz' = liftIndex (max 0) sz
+  {-# INLINE makeArray #-}
 
 instance (Index ix, VP.Prim e) => Source P ix e where
   unsafeLinearIndex (PArray _ v) = VP.unsafeIndex v
@@ -73,22 +75,12 @@ instance (Manifest P ix e, VP.Prim e) => Mutable P ix e where
 
 
 
-fromListsPrimitive :: VP.Prim e => [[e]] -> Array P DIM2 e
-fromListsPrimitive !ls =
-  if all (== n) (map length ls)
-    then PArray (m, n) (VP.fromList $ concat ls)
-    else error "fromListsVG:Inner lists are of different lengths."
-  where -- TODO: check dims
-    (m, n) = (length ls, maybe 0 length $ listToMaybe ls)
-{-# INLINE fromListsPrimitive #-}
-
-
-computePrimitiveS :: (Load r' ix, Mutable P ix e) => Array r' ix e -> Array P ix e
+computePrimitiveS :: (Massiv r ix e, Load r ix, Mutable P ix e) => Array r ix e -> Array P ix e
 computePrimitiveS = computeSeq
 {-# INLINE computePrimitiveS #-}
 
 
-computePrimitiveP :: (Load r' ix, Mutable P ix e) => Array r' ix e -> Array P ix e
+computePrimitiveP :: (Massiv r ix e, Load r ix, Mutable P ix e) => Array r ix e -> Array P ix e
 computePrimitiveP = unsafePerformIO . computePar
 {-# INLINE computePrimitiveP #-}
 

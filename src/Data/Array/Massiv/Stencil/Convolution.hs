@@ -14,9 +14,9 @@ module Data.Array.Massiv.Stencil.Convolution where
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Manifest.Unboxed
+import           Data.Array.Massiv.Ops.Construct
 import           Data.Array.Massiv.Stencil.Internal
 import           Data.Default                       (Default)
-import qualified Data.Vector.Unboxed                as VU
 import           GHC.Exts                           (inline)
 
 
@@ -58,11 +58,11 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
 
 
 sobelKernelStencilX
-  :: (Eq e, Num e, VU.Unbox e) => Border e -> Stencil DIM2 e e
+  :: (Eq e, Num e, Unbox e) => Border e -> Stencil DIM2 e e
 sobelKernelStencilX b =
-  mkConvolutionStencilFromKernel b $ fromListsUnboxed  [ [ 1, 0, -1 ]
-                                                       , [ 2, 0, -2 ]
-                                                       , [ 1, 0, -1 ] ]
+  mkConvolutionStencilFromKernel b $ fromListsS U [ [ 1, 0, -1 ]
+                                                  , [ 2, 0, -2 ]
+                                                  , [ 1, 0, -1 ] ]
 {-# INLINE sobelKernelStencilX #-}
 
 

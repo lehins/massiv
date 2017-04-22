@@ -35,9 +35,12 @@ data instance Array WD ix e = WDArray { wdArray :: !(Array D ix e)
                                       , wdWindowSize :: !ix
                                       , wdWindowUnsafeIndex :: ix -> e }
 
-instance Index ix => Massiv WD ix where
+instance Index ix => Massiv WD ix e where
   size = size . wdArray
   {-# INLINE size #-}
+
+  makeArray sz f = WDArray (makeArray sz f) Nothing zeroIndex zeroIndex f
+  {-# INLINE makeArray #-}
 
 
 instance Functor (Array WD ix) where

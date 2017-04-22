@@ -15,7 +15,6 @@
 module Data.Array.Massiv.Manifest.Boxed
   ( B (..)
   -- * Creation
-  , makeBoxedArray
   , generateM
   -- * Mapping
   , mapM
@@ -23,7 +22,6 @@ module Data.Array.Massiv.Manifest.Boxed
   -- * Conversion
   , fromVectorBoxed
   , toVectorBoxed
-  , fromListsBoxed
   -- * Evaluation
   , computeBoxedS
   , computeBoxedP
@@ -38,7 +36,6 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Scheduler
-import           Data.Maybe                          (listToMaybe)
 import qualified Data.Vector                         as V
 import qualified Data.Vector.Mutable                 as MV
 import           Prelude                             hiding (mapM)
@@ -50,10 +47,12 @@ data instance Array B ix e = BArray { bSize :: !ix
                                     , bData :: !(V.Vector e)
                                     } deriving Eq
 
-instance Index ix => Massiv B ix where
+instance Index ix => Massiv B ix e where
   size = bSize
   {-# INLINE size #-}
 
+  makeArray sz = BArray sz . makeBoxedVector sz
+  {-# INLINE makeArray #-}
 
 instance Index ix => Source B ix e where
   unsafeLinearIndex (BArray _ v) = V.unsafeIndex v
@@ -117,30 +116,12 @@ instance (Index ix, NFData e) => NFData (Array B ix e) where
   rnf (BArray sz v) = sz `deepseq` v `deepseq` ()
 
 
--- | Create a boxed array, where all elements are not evaluated. Use `deepseq`
--- or `deepseqP` to get elements to NF.
-makeBoxedArray :: Index ix => ix -> (ix -> e) -> Array B ix e
-makeBoxedArray sz f =
-  BArray sz $ V.generate (totalElem sz) (f . fromLinearIndex sz)
-{-# INLINE makeBoxedArray #-}
-
-
-fromListsBoxed :: [[e]] -> Array B DIM2 e
-fromListsBoxed !ls =
-  if all (== n) (map length ls)
-    then BArray (m, n) (V.fromList $ concat ls)
-    else error "fromListsVG:Inner lists are of different lengths."
-  where -- TODO: check dims
-    (m, n) = (length ls, maybe 0 length $ listToMaybe ls)
-{-# INLINE fromListsBoxed #-}
-
-
-computeBoxedS :: (Load r' ix, Mutable B ix e) => Array r' ix e -> Array B ix e
+computeBoxedS :: (Massiv r ix e, Load r ix, Mutable B ix e) => Array r ix e -> Array B ix e
 computeBoxedS = computeSeq
 {-# INLINE computeBoxedS #-}
 
 
-computeBoxedP :: (Load r' ix, Mutable B ix e) => Array r' ix e -> Array B ix e
+computeBoxedP :: (Massiv r ix e, Load r ix, Mutable B ix e) => Array r ix e -> Array B ix e
 computeBoxedP = unsafePerformIO . computePar
 {-# INLINE computeBoxedP #-}
 

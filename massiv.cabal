@@ -22,7 +22,7 @@ library
                      , Data.Array.Massiv.Delayed
                      , Data.Array.Massiv.Delayed.Interleaved
                      , Data.Array.Massiv.Delayed.Windowed
-                     , Data.Array.Massiv.Delayed.WindowedM
+                     --, Data.Array.Massiv.Delayed.WindowedM
                      , Data.Array.Massiv.Manifest
                      , Data.Array.Massiv.Manifest.Boxed
                      , Data.Array.Massiv.Manifest.Primitive
@@ -34,6 +34,11 @@ library
                      , Data.Array.Massiv.Stencil.Convolution
   other-modules:       Data.Array.Massiv.Stencil.Internal
                      , Data.Array.Massiv.Manifest.Internal
+                     , Data.Array.Massiv.Ops.Construct
+                     , Data.Array.Massiv.Ops.Filter
+                     , Data.Array.Massiv.Ops.Fold
+                     , Data.Array.Massiv.Ops.Map
+                     , Data.Array.Massiv.Ops.Transform
   build-depends:       base >= 4.6 && < 5
                      , deepseq
                      , data-default
