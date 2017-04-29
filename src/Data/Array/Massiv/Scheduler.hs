@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Data.Array.Massiv.Scheduler
@@ -21,23 +22,31 @@ module Data.Array.Massiv.Scheduler
 
 import           Control.Concurrent             (forkOn, getNumCapabilities)
 import           Control.Concurrent.STM.TChan   (TChan, isEmptyTChan,
-                                                 newTChanIO, readTChan,
+                                                 newTChan, newTChanIO, readTChan,
                                                  writeTChan)
-import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVarIO,
-                                                 readTVar)
-import           Control.Monad                  (void)
+import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVar, newTVarIO,
+                                                 readTVar, writeTVar)
+import           Control.Monad                  (void, when, unless)
+import           Control.Monad.Catch            (Exception, throwM)
 import           Control.Monad.STM              (atomically)
 import           Data.Array.Massiv.Common.Index
 import           System.IO.Unsafe               (unsafePerformIO)
 
-
 data Job = Job (Int -> IO ())
+         | Retire
 
+
+data SchedulerRetired = SchedulerRetired deriving Show
+
+instance Exception SchedulerRetired
 
 data Scheduler a = Scheduler
-  { _resultsChan  :: !(TChan (JobResult a))
-  , _jobsCountVar :: !(TVar Int)
-  , numWorkers    :: !Int
+  { resultsChan  :: TChan (JobResult a)
+  , jobCountVar :: TVar Int
+  , jobQueue     :: TChan Job
+  , numWorkers   :: !Int
+  , retiredVar   :: TVar Bool
+  , isGlobalScheduler :: Bool
   }
 
 data JobResult a = JobResult { jobResultId :: !Int
@@ -50,32 +59,55 @@ data JobRequest a = JobRequest { jobRequestId     :: !Int
 
 
 makeScheduler :: IO (Scheduler a)
-makeScheduler = Scheduler <$> newTChanIO <*> newTVarIO 0 <*> getNumWorkers
+makeScheduler = do
+  numWorkers <- getNumWorkers
+  isGlobalScheduler <- atomically $ do
+    hasGlobalScheduler <- readTVar hasGlobalSchedulerVar
+    unless hasGlobalScheduler $ writeTVar hasGlobalSchedulerVar True
+    return $ not hasGlobalScheduler
+  jobQueue <- if isGlobalScheduler
+              then return globalJobQueue
+              else makeJobQueue numWorkers
+  atomically $ do
+    resultsChan <- newTChan
+    jobCountVar <- newTVar 0
+    retiredVar <- newTVar False
+    return $ Scheduler {..}
 
 
 submitRequest :: Scheduler a -> JobRequest a -> IO ()
-submitRequest (Scheduler rChan jVar _) (JobRequest jId jAction) = do
+submitRequest (Scheduler {..}) (JobRequest {..}) = do
   atomically $ do
-    modifyTVar' jVar (+ 1)
+    isRetired <- readTVar retiredVar
+    when isRetired $ throwM SchedulerRetired
+    modifyTVar' jobCountVar (+ 1)
     writeTChan jobQueue $
       Job $ \_wid -> do
-        result <- jAction
+        result <- jobRequestAction
         atomically $ do
-          modifyTVar' jVar (subtract 1)
-          writeTChan rChan (JobResult jId result)
+          modifyTVar' jobCountVar (subtract 1)
+          writeTChan resultsChan (JobResult jobRequestId result)
 
 
 collectResults :: Scheduler a -> (JobResult a -> b -> b) -> b -> IO b
-collectResults (Scheduler rChan jVar _) f !initAcc = collect initAcc
+collectResults (Scheduler {..}) f !initAcc = collect initAcc
   where
     collect !acc = do
       (jRes, stop) <-
         atomically $ do
-          jRes <- readTChan rChan
-          resEmpty <- isEmptyTChan rChan
+          isRetired <- readTVar retiredVar
+          when isRetired $ throwM SchedulerRetired
+          jRes <- readTChan resultsChan
+          resEmpty <- isEmptyTChan resultsChan
           if resEmpty
             then do
-              jCount <- readTVar jVar
+              jCount <- readTVar jobCountVar
+              when (jCount == 0) $ do
+                writeTVar retiredVar True
+                if isGlobalScheduler
+                  then writeTVar hasGlobalSchedulerVar False
+                  else loopM_ 0 (< numWorkers) (+ 1) $ \ !_ ->
+                         writeTChan jobQueue Retire
               return (jRes, jCount == 0)
             else return (jRes, False)
       if stop
@@ -100,29 +132,37 @@ splitWork !sz submitWork
         !slackStart = chunkLength * numWorkers scheduler
     void $ submitWork scheduler chunkLength totalLength slackStart
     collectResults scheduler (:) []
-{-# INLINE splitWork #-}
 
+
+hasGlobalSchedulerVar :: TVar Bool
+hasGlobalSchedulerVar = unsafePerformIO $ newTVarIO False
+{-# NOINLINE hasGlobalSchedulerVar #-}
+
+
+globalJobQueue :: TChan Job
+globalJobQueue = unsafePerformIO (getNumWorkers >>= makeJobQueue)
+{-# NOINLINE globalJobQueue #-}
+
+
+makeJobQueue :: Int -> IO (TChan Job)
+makeJobQueue nWorkers = do
+  jQueue <- newTChanIO
+  startWorkers jQueue nWorkers
+  return jQueue
 
 
 getNumWorkers :: IO Int
 getNumWorkers = getNumCapabilities
 
 
-jobQueue :: TChan Job
-jobQueue =
-  unsafePerformIO $ do
-    nWorkers <- getNumWorkers
-    jQueue <- newTChanIO
-    startWorkers jQueue nWorkers
-    return jQueue
-{-# NOINLINE jobQueue #-}
-
-
 runWorker :: TChan Job -> Int -> IO ()
 runWorker jQueue wid = do
-  Job action <- atomically $ readTChan jQueue
-  action wid
-  runWorker jQueue wid
+  job <- atomically $ readTChan jQueue
+  case job of
+    Job action -> do
+      action wid
+      runWorker jQueue wid
+    Retire -> return ()
 
 
 startWorkers :: TChan Job -> Int -> IO ()

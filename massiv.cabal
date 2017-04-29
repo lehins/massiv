@@ -40,8 +40,9 @@ library
                      , Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Ops.Transform
   build-depends:       base >= 4.6 && < 5
-                     , deepseq
                      , data-default
+                     , deepseq
+                     , exceptions
                      , primitive
                      , stm
                      , vector

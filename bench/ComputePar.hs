@@ -8,13 +8,15 @@ import           Data.Array.Massiv                     as M
 import           Data.Array.Massiv.Delayed.Interleaved as M
 import           Data.Array.Massiv.Manifest.Unboxed    as M
 import           Data.Array.Repa                       as R
--- import           Data.Foldable                         as F
 import           Data.Functor.Identity
 import           Prelude                               as P
 
 main :: IO ()
 main = do
   let !sz = (1600, 1200) :: M.DIM2
+      nestedArrM !(m, n) = makeArray1D m (arr !>)
+        where !arr = arrM (m, n)
+      {-# INLINE nestedArrM #-}
   defaultMain
     [ bgroup
         "Load"
@@ -39,11 +41,10 @@ main = do
         ]
     , bgroup
         "Fold"
-        [ -- bench "Array Massiv Seq" $
-        --   whnf (foldl' (+) 0 . arrM) sz
-        -- , 
-          bench "Array Massiv Par" $
+        [ bench "Array Massiv" $
           whnf (M.sumP . arrM) sz
+        , bench "Array Massiv Nested" $
+          whnf (M.sumP . (M.map M.sumP) . nestedArrM) sz
         , bench "Array Repa" $ whnf (runIdentity . sumAllP . arrR) sz
         ]
     , bgroup
