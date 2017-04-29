@@ -25,6 +25,7 @@ module Data.Array.Massiv.Manifest.Primitive
   ) where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Primitive               as VP
@@ -47,10 +48,28 @@ instance (VP.Prim e, Index ix) => Massiv P ix e where
       !sz' = liftIndex (max 0) sz
   {-# INLINE makeArray #-}
 
-instance (Index ix, VP.Prim e) => Source P ix e where
+instance (VP.Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex (PArray _ v) = VP.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
 
+
+instance (VP.Prim e, Index ix) => Shape P ix e where
+  type R P = M
+
+  unsafeReshape !sz !arr = arr { pSize = sz }
+  {-# INLINE unsafeReshape #-}
+
+  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
+  {-# INLINE unsafeExtract #-}
+
+
+instance (VP.Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
+
+  (!?>) !arr = (toManifest arr !?>)
+  {-# INLINE (!?>) #-}
+
+  (<!?) !arr = (toManifest arr <!?)
+  {-# INLINE (<!?) #-}
 
 instance (Index ix, VP.Prim e) => Manifest P ix e
 

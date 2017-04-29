@@ -25,6 +25,7 @@ module Data.Array.Massiv.Manifest.Unboxed
   ) where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Unboxed                 as VU
@@ -47,10 +48,28 @@ instance (VU.Unbox e, Index ix) => Massiv U ix e where
       !sz' = liftIndex (max 0) sz
   {-# INLINE makeArray #-}
 
-instance (Index ix, VU.Unbox e) => Source U ix e where
+instance (VU.Unbox e, Index ix) => Source U ix e where
   unsafeLinearIndex (UArray _ v) = VU.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
 
+
+instance (VU.Unbox e, Index ix) => Shape U ix e where
+  type R U = M
+
+  unsafeReshape !sz !arr = arr { uSize = sz }
+  {-# INLINE unsafeReshape #-}
+
+  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
+  {-# INLINE unsafeExtract #-}
+
+
+instance (VU.Unbox e, Index ix, Index (Lower ix)) => Slice U ix e where
+
+  (!?>) !arr = (toManifest arr !?>)
+  {-# INLINE (!?>) #-}
+
+  (<!?) !arr = (toManifest arr <!?)
+  {-# INLINE (<!?) #-}
 
 instance (Index ix, VU.Unbox e) => Manifest U ix e
 

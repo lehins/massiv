@@ -22,6 +22,7 @@ import           Data.Array.Massiv.Scheduler
 import           Data.Foldable
 
 
+
 -- | Delayed representation.
 data D
 
@@ -141,102 +142,82 @@ instance Index ix => Load D ix where
           unsafeWrite k (f ix)
   {-# INLINE loadP #-}
 
--- foldP :: Source r ix e =>
---          (b -> b -> b) -> (b -> e -> b) -> b -> Array r ix e -> IO b
--- foldP g f !initAcc !arr = do
---   numWorkers <- getNumWorkers
---   scheduler <- makeScheduler
---   let !sz = size arr
---       !totalLength = totalElem sz
---       !chunkLength = totalLength `quot` numWorkers
---       !slackStart = chunkLength * numWorkers
---   loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---     submitRequest scheduler $
---     JobRequest 0 $
---     iterM start (start + chunkLength) 1 (<) initAcc $ \ !ix !acc ->
---       return $ f acc (unsafeLinearIndex arr ix)
---   submitRequest scheduler $
---     JobRequest 0 $
---     iterM slackStart totalLength 1 (<) initAcc $ \ !ix !acc ->
---       return $ f acc (unsafeLinearIndex arr ix)
---   let g' !jRes acc = g (jobResult jRes) acc
---   collectResults scheduler g' initAcc
--- {-# INLINE foldP #-}
 
--- foldlP' :: Source r ix e =>
---            (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
--- foldlP' g !tAcc f !initAcc !arr = do
---   numWorkers <- getNumWorkers
---   scheduler <- makeScheduler
---   let !sz = size arr
---       !totalLength = totalElem sz
---       !chunkLength = totalLength `quot` numWorkers
---       !slackStart = chunkLength * numWorkers
---   jId <- loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
---     submitRequest scheduler $
---       JobRequest jId $
---       iterM start (start + chunkLength) 1 (<) initAcc $ \ !ix !acc ->
---         return $ f acc (unsafeLinearIndex arr ix)
---     return (jId + 1)
---   when (slackStart < totalLength) $
---     submitRequest scheduler $
---     JobRequest jId $
---     iterM slackStart totalLength 1 (<) initAcc $ \ !ix !acc ->
---       return $ f acc (unsafeLinearIndex arr ix)
---   results <- collectResults scheduler (:) []
---   return $ foldl' g tAcc $ map jobResult $ sortOn jobResultId results
--- {-# INLINE foldlP' #-}
+singleton :: Index ix => e -> Array D ix e
+singleton !e = DArray (liftIndex (+ 1) zeroIndex) (const e)
+{-# INLINE singleton #-}
+
+liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
+liftArray f !arr = DArray (size arr) (f . unsafeIndex arr)
+{-# INLINE liftArray #-}
+
+-- | Similar to @zipWith@, except dimensions of both arrays either have to be the
+-- same, or at least of two array must contain only a single element, in which
+-- case it will behave as @fmap@.
+liftArray2
+  :: (Source r1 ix a, Source r2 ix b)
+  => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
+liftArray2 f !arr1 !arr2
+  | sz1 == oneIndex = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
+  | sz2 == oneIndex = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
+  | sz1 == sz2 =
+    DArray sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  | otherwise =
+    error $
+    "Array dimensions must be the same, instead got: " ++
+    show arr1 ++ " and " ++ show arr2
+  where
+    sz1 = size arr1
+    sz2 = size arr2
+    !oneIndex = liftIndex (+ 1) zeroIndex
+{-# INLINE liftArray2 #-}
 
 
+instance (Index ix, Num e) => Num (Array D ix e) where
+  (+)         = liftArray2 (+)
+  {-# INLINE (+) #-}
+  (-)         = liftArray2 (-)
+  {-# INLINE (-) #-}
+  (*)         = liftArray2 (*)
+  {-# INLINE (*) #-}
+  abs         = liftArray abs
+  {-# INLINE abs #-}
+  signum      = liftArray signum
+  {-# INLINE signum #-}
+  fromInteger = singleton . fromInteger
+  {-# INLINE fromInteger #-}
 
--- ifoldlP' :: Source r ix e =>
---            (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
--- ifoldlP' g !tAcc f !initAcc !arr = do
---   numWorkers <- getNumWorkers
---   scheduler <- makeScheduler
---   let !sz = size arr
---       !totalLength = totalElem sz
---       !chunkLength = totalLength `quot` numWorkers
---       !slackStart = chunkLength * numWorkers
---   jId <-
---     loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
---       submitRequest scheduler $
---         JobRequest jId $
---         iterM start (start + chunkLength) 1 (<) initAcc $ \ !i !acc ->
---           let !ix = fromLinearIndex sz i
---           in return $ f acc ix (unsafeIndex arr ix)
---       return (jId + 1)
---   when (slackStart < totalLength) $
---     submitRequest scheduler $
---     JobRequest jId $
---     iterM slackStart totalLength 1 (<) initAcc $ \ !i !acc ->
---       let !ix = fromLinearIndex sz i
---       in return $ f acc ix (unsafeIndex arr ix)
---   results <- collectResults scheduler (:) []
---   return $ foldl' g tAcc $ map jobResult $ sortOn jobResultId results
--- {-# INLINE ifoldlP' #-}
+instance (Index ix, Fractional e) => Fractional (Array D ix e) where
+  (/)          = liftArray2 (/)
+  {-# INLINE (/) #-}
+  fromRational = singleton . fromRational
+  {-# INLINE fromRational #-}
 
 
--- foldrP' :: Source r ix e =>
---            (a  -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
--- foldrP' g !tAcc f !initAcc !arr = do
---   numWorkers <- getNumWorkers
---   scheduler <- makeScheduler
---   let !sz = size arr
---       !totalLength = totalElem sz
---       !chunkLength = totalLength `quot` numWorkers
---       !slackStart = chunkLength * numWorkers
---   when (slackStart < totalLength) $
---     submitRequest scheduler $
---     JobRequest 0 $
---     iterM (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !ix !acc ->
---       return $ f (unsafeLinearIndex arr ix) acc
---   void $ loopM slackStart (> 0) (subtract chunkLength) 1 $ \ !start !jId -> do
---     submitRequest scheduler $
---       JobRequest jId $
---       iterM (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !ix !acc ->
---         return $ f (unsafeLinearIndex arr ix) acc
---     return (jId + 1)
---   results <- collectResults scheduler (:) []
---   return $ foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
--- {-# INLINE foldrP' #-}
+instance (Index ix, Floating e) => Floating (Array D ix e) where
+  pi    = singleton pi
+  {-# INLINE pi #-}
+  exp   = liftArray exp
+  {-# INLINE exp #-}
+  log   = liftArray log
+  {-# INLINE log #-}
+  sin   = liftArray sin
+  {-# INLINE sin #-}
+  cos   = liftArray cos
+  {-# INLINE cos #-}
+  asin  = liftArray asin
+  {-# INLINE asin #-}
+  atan  = liftArray atan
+  {-# INLINE atan #-}
+  acos  = liftArray acos
+  {-# INLINE acos #-}
+  sinh  = liftArray sinh
+  {-# INLINE sinh #-}
+  cosh  = liftArray cosh
+  {-# INLINE cosh #-}
+  asinh = liftArray asinh
+  {-# INLINE asinh #-}
+  atanh = liftArray atanh
+  {-# INLINE atanh #-}
+  acosh = liftArray acosh
+  {-# INLINE acosh #-}

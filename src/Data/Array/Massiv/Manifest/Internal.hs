@@ -28,12 +28,11 @@ import           Data.Array.Massiv.Common.Shape
 import           Data.Foldable
 import qualified Data.Vector                         as V
 
+
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
 -- `(!)`, `(!?)`, etc. are constrained to manifest arrays only.
-class Source r ix e => Manifest r ix e where
-
-
+class Shape r ix e => Manifest r ix e where
 
 
 -- | Manifest representation

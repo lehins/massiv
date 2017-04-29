@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Common.Shape
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -16,14 +17,16 @@ import           Data.Array.Massiv.Common
 
 
 
-class Source r ix e => Shape r ix e where
+class (Source r ix e, Source (R r) ix e) => Shape r ix e where
+  type R r :: *
+  type R r = r
 
   unsafeReshape :: Index ix' => ix' -> Array r ix e -> Array r ix' e
 
-  unsafeExtract :: ix -> ix -> Array r ix e -> Array r ix e
+  unsafeExtract :: ix -> ix -> Array r ix e -> Array (R r) ix e
 
 
-extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array r ix e)
+extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
 extract !sIx !newSz !arr
   | isSafeIndex (size arr) sIx && isSafeIndex eIx sIx && eIx <= size arr =
     Just $ unsafeExtract sIx newSz arr
@@ -32,7 +35,7 @@ extract !sIx !newSz !arr
     eIx = liftIndex2 (+) sIx newSz
 {-# INLINE extract #-}
 
-extractFromTo :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array r ix e)
+extractFromTo :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
 extractFromTo !sIx !eIx !arr = extract sIx newSz arr
   where
     newSz = liftIndex2 (-) eIx sIx
@@ -57,14 +60,17 @@ reshape' !sz !arr =
 {-# INLINE reshape' #-}
 
 
-class (Index (Lower ix), Shape r ix e) => Slice r ix e where
+class ( Index (Lower ix)
+      , Shape r ix e
+      , Shape (R r) ix e
+      , Shape (R r) (Lower ix) e
+      ) =>
+      Slice r ix e where
+  (!?>) :: Array r ix e -> Int -> Maybe (Array (R r) (Lower ix) e)
+  (<!?) :: Array r ix e -> Int -> Maybe (Array (R r) (Lower ix) e)
 
-  (!?>) :: Array r ix e -> Int -> Maybe (Array r (Lower ix) e)
 
-  (<!?) :: Array r ix e -> Int -> Maybe (Array r (Lower ix) e)
-
-
-(<!?>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Maybe (Array r (Lower ix) e)
+(<!?>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Maybe (Array (R r) (Lower ix) e)
 (<!?>) !arr !(dim, i) = do
   m <- getIndex (size arr) dim
   guard $ isSafeIndex m i
@@ -75,37 +81,37 @@ class (Index (Lower ix), Shape r ix e) => Slice r ix e where
 {-# INLINE (<!?>) #-}
 
 
-(?>) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array r (Lower ix) e)
+(?>) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array (R r) (Lower ix) e)
 (?>) Nothing      _ = Nothing
 (?>) (Just arr) !ix = arr !?> ix
 {-# INLINE (?>) #-}
 
-(<?) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array r (Lower ix) e)
+(<?) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array (R r) (Lower ix) e)
 (<?) Nothing      _ = Nothing
 (<?) (Just arr) !ix = arr <!? ix
 {-# INLINE (<?) #-}
 
-(<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Int, Int) -> Maybe (Array r (Lower ix) e)
+(<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Int, Int) -> Maybe (Array (R r) (Lower ix) e)
 (<?>) Nothing      _ = Nothing
 (<?>) (Just arr) !ix = arr <!?> ix
 {-# INLINE (<?>) #-}
 
 
-(!>) :: Slice r ix e => Array r ix e -> Int -> Array r (Lower ix) e
+(!>) :: Slice r ix e => Array r ix e -> Int -> Array (R r) (Lower ix) e
 (!>) !arr !ix =
   case arr !?> ix of
     Just res -> res
     Nothing  -> errorIx "(!>)" arr ix
 {-# INLINE (!>) #-}
 
-(<!) :: Slice r ix e => Array r ix e -> Int -> Array r (Lower ix) e
+(<!) :: Slice r ix e => Array r ix e -> Int -> Array (R r) (Lower ix) e
 (<!) !arr !ix =
   case arr <!? ix of
     Just res -> res
     Nothing  -> errorIx "(<!)" arr ix
 {-# INLINE (<!) #-}
 
-(<!>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Array r (Lower ix) e
+(<!>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Array (R r) (Lower ix) e
 (<!>) !arr !(dim, i) =
   case arr <!?> (dim, i) of
     Just res -> res

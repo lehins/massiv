@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Array.Massiv.Ops.Map
@@ -9,11 +10,15 @@
 -- Portability : non-portable
 --
 module Data.Array.Massiv.Ops.Map
-  -- * Mapping
-  ( map
+  ( -- * Mapping
+    map
   , imap
   , imapM_
   -- * Zipping
+  , zip
+  , zip3
+  , unzip
+  , unzip3
   , zipWith
   , zipWith3
   , izipWith
@@ -22,16 +27,44 @@ module Data.Array.Massiv.Ops.Map
 
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
-import           Prelude                   hiding (map, zipWith, zipWith3)
+import           Prelude                   hiding (map, unzip, unzip3, zip,
+                                            zip3, zipWith, zipWith3)
 
 
 map :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
-map f !arr = DArray (size arr) (f . unsafeIndex arr)
+map = liftArray
 {-# INLINE map #-}
 
 imap :: Source r ix b => (ix -> b -> e) -> Array r ix b -> Array D ix e
 imap f !arr = DArray (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE imap #-}
+
+
+zip
+  :: (Source r1 ix a1, Source r2 ix a2)
+  => Array r1 ix a1 -> Array r2 ix a2 -> Array D ix (a1, a2)
+zip = zipWith (,)
+{-# INLINE zip #-}
+
+zip3
+  :: (Source r1 ix a1, Source r2 ix a2, Source r3 ix a3)
+  => Array r1 ix a1 -> Array r2 ix a2 -> Array r3 ix a3 -> Array D ix (a1, a2, a3)
+zip3 = zipWith3 (,,)
+{-# INLINE zip3 #-}
+
+
+unzip
+  :: Source r ix (a1, a2)
+  => Array r ix (a1, a2) -> (Array D ix a1, Array D ix a2)
+unzip arr = (map fst arr, map snd arr)
+{-# INLINE unzip #-}
+
+
+unzip3
+  :: Source r ix (a1, a2, a3)
+  => Array r ix (a1, a2, a3) -> (Array D ix a1, Array D ix a2, Array D ix a3)
+unzip3 arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_, _, e) -> e) arr)
+{-# INLINE unzip3 #-}
 
 
 zipWith

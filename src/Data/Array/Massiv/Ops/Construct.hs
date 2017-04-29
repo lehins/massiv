@@ -10,8 +10,8 @@
 -- Portability : non-portable
 --
 module Data.Array.Massiv.Ops.Construct
-  -- * Construction
-  ( makeArray1D
+  ( -- * Construction
+    makeArray1D
   , makeArray2D
   , makeArray3D
   -- * Enumeration

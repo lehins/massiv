@@ -399,6 +399,26 @@ instance Index DIM5 where
   {-# INLINE iterM_ #-}
 
 
+-- | Checks whether array with this size can hold at least one element.
+isSafeSize :: Index ix => ix -> Bool
+isSafeSize = (zeroIndex >=)
+{-# INLINE isSafeSize #-}
+
+
+-- | Checks whether array with this size can hold at least one element.
+isNonEmpty :: Index ix => ix -> Bool
+isNonEmpty !sz = isSafeIndex sz zeroIndex
+{-# INLINE isNonEmpty #-}
+
+
+headDim :: (Index ix, Index (Lower ix)) => ix -> Int
+headDim = fst . unconsDim
+{-# INLINE headDim #-}
+
+lastDim :: (Index ix, Index (Lower ix)) => ix -> Int
+lastDim = snd . unsnocDim
+{-# INLINE lastDim #-}
+
 -- | Approach to be used with respect to the border of an array
 -- when index goes out of bounds.
 data Border e = Fill e | Wrap | Edge | Reflect | Continue deriving (Eq, Show)

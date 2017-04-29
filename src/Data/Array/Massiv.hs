@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns              #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
@@ -40,6 +41,38 @@ import           Data.Array.Massiv.Ops.Map
 import           Data.Array.Massiv.Ops.Transform
 import           Prelude                            hiding (length, map, null,
                                                      zipWith, zipWith3)
+import Text.Printf
+import qualified Data.List as L
+
+
+instance Show FormatAdjustment where
+  show ZeroPad = "ZeroPad"
+  show LeftAdjust = "LeftAdjust"
+
+instance Show FormatSign where
+  show SignPlus = "SignPlus"
+  show SignSpace = "SignSpace"
+
+instance Show FieldFormat where
+  show (FieldFormat {..}) =
+    concat $ L.map (++",")
+      [ show fmtWidth
+      , show fmtPrecision
+      , show fmtAdjust
+      , show fmtSign
+      , show fmtAlternate
+      , show fmtModifiers
+      , show fmtChar
+      ]
+
+instance (Source r Int e, PrintfArg e) => PrintfArg (Array r Int e) where
+
+  formatArg arr = \ ff -> --error $ show ff
+                    ((formatArg (unsafeIndex arr 0)) ff) .
+                    ((formatArg (unsafeIndex arr 1)) ff) .
+                    ((formatArg (unsafeIndex arr 2)) ff)
+  -- parseFormat _ (c : cs) = FormatParse "" c cs
+  -- parseFormat _ "" = errorShortFormat
 
 length :: Massiv r ix e => Array r ix e -> Int
 length = totalElem . size

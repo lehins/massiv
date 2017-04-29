@@ -33,6 +33,7 @@ import           Control.DeepSeq
 import           Control.Monad                       (void)
 import           Control.Monad.ST                    (runST)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Scheduler
@@ -57,6 +58,25 @@ instance Index ix => Massiv B ix e where
 instance Index ix => Source B ix e where
   unsafeLinearIndex (BArray _ v) = V.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
+
+
+instance Index ix => Shape B ix e where
+  type R B = M
+
+  unsafeReshape !sz !arr = arr { bSize = sz }
+  {-# INLINE unsafeReshape #-}
+
+  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
+  {-# INLINE unsafeExtract #-}
+
+
+instance (Index ix, Index (Lower ix)) => Slice B ix e where
+
+  (!?>) !arr = (toManifest arr !?>)
+  {-# INLINE (!?>) #-}
+
+  (<!?) !arr = (toManifest arr <!?)
+  {-# INLINE (<!?) #-}
 
 
 instance Index ix => Manifest B ix e

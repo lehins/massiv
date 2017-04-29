@@ -25,6 +25,7 @@ module Data.Array.Massiv.Manifest.Storable
   ) where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Storable                as VS
@@ -48,9 +49,28 @@ instance (VS.Storable e, Index ix) => Massiv S ix e where
   {-# INLINE makeArray #-}
 
 
-instance (Index ix, VS.Storable e) => Source S ix e where
+instance (VS.Storable e, Index ix) => Source S ix e where
   unsafeLinearIndex (SArray _ v) = VS.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
+
+
+instance (VS.Storable e, Index ix) => Shape S ix e where
+  type R S = M
+
+  unsafeReshape !sz !arr = arr { sSize = sz }
+  {-# INLINE unsafeReshape #-}
+
+  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
+  {-# INLINE unsafeExtract #-}
+
+
+instance (VS.Storable e, Index ix, Index (Lower ix)) => Slice S ix e where
+
+  (!?>) !arr = (toManifest arr !?>)
+  {-# INLINE (!?>) #-}
+
+  (<!?) !arr = (toManifest arr <!?)
+  {-# INLINE (<!?) #-}
 
 
 instance (Index ix, VS.Storable e) => Manifest S ix e
