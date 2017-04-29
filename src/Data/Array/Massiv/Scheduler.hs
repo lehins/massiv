@@ -89,16 +89,17 @@ waitTillDone scheduler = collectResults scheduler (const id) ()
 
 
 
-splitWork
-  :: Index ix
-  => ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
-splitWork !sz submitWork = do
-  scheduler <- makeScheduler
-  let !totalLength = totalElem sz
-      !chunkLength = totalLength `quot` numWorkers scheduler
-      !slackStart = chunkLength * numWorkers scheduler
-  void $ submitWork scheduler chunkLength totalLength slackStart
-  collectResults scheduler (:) []
+splitWork :: Index ix
+          => ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
+splitWork !sz submitWork
+  | totalElem sz == 0 = return []
+  | otherwise = do
+    scheduler <- makeScheduler
+    let !totalLength = totalElem sz
+        !chunkLength = totalLength `quot` numWorkers scheduler
+        !slackStart = chunkLength * numWorkers scheduler
+    void $ submitWork scheduler chunkLength totalLength slackStart
+    collectResults scheduler (:) []
 {-# INLINE splitWork #-}
 
 

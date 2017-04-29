@@ -168,6 +168,7 @@ Test-Suite massiv-tests
                     , Data.Array.Massiv.CommonSpec
                     , Data.Array.Massiv.DelayedSpec
                     , Data.Array.Massiv.ManifestSpec
+                    , Data.Array.Massiv.Ops.FoldSpec
                     , Data.Array.MassivSpec
   Build-Depends:      base            >= 4.5 && < 5
                     , massiv

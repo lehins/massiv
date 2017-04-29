@@ -33,6 +33,7 @@ module Data.Array.Massiv.Ops.Fold
   , productP
   ) where
 
+import           Control.DeepSeq             (NFData, deepseq)
 import           Control.Monad               (void, when)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Ops.Map   as M (zipWith)
@@ -132,7 +133,6 @@ productS = foldlS (*) 1
 {-# INLINE productS #-}
 
 
-
 -- | /O(n)/ - Left fold, computed in parallel. Parallelization of folding
 -- is implemented in such a way that an array is split into a number of chunks
 -- of equal length, plus an extra one for the remainder. Number of chunks is the
@@ -161,12 +161,12 @@ productS = foldlS (*) 1
 -- >>> foldlP (flip (:) . reverse) [] (flip (:)) [] $ makeArray1D 11 id
 -- [[10,9,8],[5,4],[1,0],[3,2],[7,6]]
 --
-foldlP :: Source r ix e =>
+foldlP :: (NFData a, Source r ix e) =>
           (b -> a -> b) -- ^ Chunk results folding function @f@.
        -> b -- ^ Accumulator for results of chunks folding.
        -> (a -> e -> a) -- ^ Chunks folding function @g@.
        -> a -- ^ Accumulator for each chunk.
-       -> Array r ix e -> b
+       -> Array r ix e -> IO b
 foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
@@ -174,31 +174,34 @@ foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 -- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
 -- like `foldlP`, except that folding function will receive an index of an
 -- element it is being applied to.
-ifoldlP :: Source r ix e =>
-           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> b
-ifoldlP g !tAcc f !initAcc !arr = unsafePerformIO $ do
+ifoldlP :: (NFData a, Source r ix e) =>
+           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+ifoldlP g !tAcc f !initAcc !arr = do
   let !sz = size arr
-  results <- splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-    jId <-
-      loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
+  results <-
+    splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      jId <-
+        loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
+          submitRequest scheduler $
+            JobRequest jId $
+            iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
+              let res = f acc ix (unsafeLinearIndex arr i)
+              in res `deepseq` return res
+          return (jId + 1)
+      when (slackStart < totalLength) $
         submitRequest scheduler $
-          JobRequest jId $
-          iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
-            return $ f acc ix (unsafeLinearIndex arr i)
-        return (jId + 1)
-    when (slackStart < totalLength) $
-      submitRequest scheduler $
-      JobRequest jId $
-      iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
-        return $ f acc ix (unsafeLinearIndex arr i)
+        JobRequest jId $
+        iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
+          let res = f acc ix (unsafeLinearIndex arr i)
+          in res `deepseq` return res
   return $ F.foldl' g tAcc $ map jobResult $ sortOn jobResultId results
 {-# INLINE ifoldlP #-}
 
 
 -- | /O(n)/ - Left fold, computed in parallel. Same as `foldlP`, except directed
 -- from the last element in the array towards beginning.
-foldrP :: Source r ix e =>
-          (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> b
+foldrP :: (NFData a, Source r ix e) =>
+          (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
 foldrP g !tAcc f = ifoldrP g tAcc (const f)
 {-# INLINE foldrP #-}
 
@@ -206,32 +209,35 @@ foldrP g !tAcc f = ifoldrP g tAcc (const f)
 -- | /O(n)/ - Right fold with an index aware function, computed in parallel.
 -- Same as `ifoldlP`, except directed from the last element in the array towards
 -- beginning.
-ifoldrP :: Source r ix e =>
-           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> b
-ifoldrP g !tAcc f !initAcc !arr = unsafePerformIO $ do
+ifoldrP :: (NFData a, Source r ix e) =>
+           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
+ifoldrP g !tAcc f !initAcc !arr = do
   let !sz = size arr
-  results <- splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-    when (slackStart < totalLength) $
-      submitRequest scheduler $
-      JobRequest 0 $
-      iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
-        return $ f ix (unsafeLinearIndex arr i) acc
-    loopM slackStart (> 0) (subtract chunkLength) 1 $ \ !start !jId -> do
-      submitRequest scheduler $
-        JobRequest jId $
-        iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
+  results <-
+    splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      when (slackStart < totalLength) $
+        submitRequest scheduler $
+        JobRequest 0 $
+        iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
           return $ f ix (unsafeLinearIndex arr i) acc
-      return (jId + 1)
-  return $ F.foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
+      loopM slackStart (> 0) (subtract chunkLength) 1 $ \ !start !jId -> do
+        submitRequest scheduler $
+          JobRequest jId $
+          iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
+            let res = f ix (unsafeLinearIndex arr i) acc
+            in res `deepseq` return res
+        return (jId + 1)
+  return $
+    F.foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
 {-# INLINE ifoldrP #-}
 
 
 
 
 -- | /O(n)/ - Unstructured fold, computed in parallel.
-foldP :: Source r ix e =>
+foldP :: (NFData e, Source r ix e) =>
          (e -> e -> e) -> e -> Array r ix e -> e
-foldP f !initAcc = foldlP f initAcc f initAcc
+foldP f !initAcc = unsafePerformIO . foldlP f initAcc f initAcc
 {-# INLINE foldP #-}
 
 
@@ -243,14 +249,14 @@ eqP !arr1 !arr2 = (size arr1 == size arr2) && foldP (&&) True (M.zipWith (==) ar
 
 
 -- | /O(n)/ - Compute sum in parallel.
-sumP :: (Source r ix e, Num e) =>
+sumP :: (Source r ix e, NFData e, Num e) =>
         Array r ix e -> e
 sumP = foldP (+) 0
 {-# INLINE sumP #-}
 
 
 -- | /O(n)/ - Compute product in parallel.
-productP :: (Source r ix e, Num e) =>
+productP :: (Source r ix e, NFData e, Num e) =>
             Array r ix e -> e
 productP = foldP (*) 1
 {-# INLINE productP #-}
