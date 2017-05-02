@@ -26,12 +26,20 @@ module Data.Array.Massiv.Manifest
   , computeAsP
   -- * Boxed
   , B.B(..)
+  , B.computeBoxedS
+  , B.computeBoxedP
   -- * Primitive
   , P.P(..)
+  , P.computePrimitiveS
+  , P.computePrimitiveP
   -- * Storable
   , S.S(..)
+  , S.computeStorableS
+  , S.computeStorableP
   -- * Unboxed
   , U.U(..)
+  , U.computeUnboxedS
+  , U.computeUnboxedP
   -- * Indexing
   , (!)
   , index

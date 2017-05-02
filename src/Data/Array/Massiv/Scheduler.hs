@@ -18,6 +18,7 @@ module Data.Array.Massiv.Scheduler
   , collectResults
   , waitTillDone
   , splitWork
+  , splitWork_
   ) where
 
 import           Control.Concurrent             (forkOn, getNumCapabilities)
@@ -60,14 +61,15 @@ data JobRequest a = JobRequest { jobRequestId     :: !Int
 
 makeScheduler :: IO (Scheduler a)
 makeScheduler = do
-  numWorkers <- getNumWorkers
-  isGlobalScheduler <- atomically $ do
-    hasGlobalScheduler <- readTVar hasGlobalSchedulerVar
-    unless hasGlobalScheduler $ writeTVar hasGlobalSchedulerVar True
-    return $ not hasGlobalScheduler
-  jobQueue <- if isGlobalScheduler
-              then return globalJobQueue
-              else makeJobQueue numWorkers
+  isGlobalScheduler <-
+    atomically $ do
+      hasGlobalScheduler <- readTVar hasGlobalSchedulerVar
+      unless hasGlobalScheduler $ writeTVar hasGlobalSchedulerVar True
+      return $ not hasGlobalScheduler
+  (numWorkers, jobQueue) <-
+    if isGlobalScheduler
+      then return globalJobQueue
+      else makeJobQueue
   atomically $ do
     resultsChan <- newTChan
     jobCountVar <- newTVar 0
@@ -133,22 +135,26 @@ splitWork !sz submitWork
     void $ submitWork scheduler chunkLength totalLength slackStart
     collectResults scheduler (:) []
 
+splitWork_ :: Index ix
+          => ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
+splitWork_ sz = void . splitWork sz
 
 hasGlobalSchedulerVar :: TVar Bool
 hasGlobalSchedulerVar = unsafePerformIO $ newTVarIO False
 {-# NOINLINE hasGlobalSchedulerVar #-}
 
 
-globalJobQueue :: TChan Job
-globalJobQueue = unsafePerformIO (getNumWorkers >>= makeJobQueue)
+globalJobQueue :: (Int, TChan Job)
+globalJobQueue = unsafePerformIO makeJobQueue
 {-# NOINLINE globalJobQueue #-}
 
 
-makeJobQueue :: Int -> IO (TChan Job)
-makeJobQueue nWorkers = do
+makeJobQueue :: IO (Int, TChan Job)
+makeJobQueue = do
+  nWorkers <- getNumWorkers
   jQueue <- newTChanIO
   startWorkers jQueue nWorkers
-  return jQueue
+  return (nWorkers, jQueue)
 
 
 getNumWorkers :: IO Int

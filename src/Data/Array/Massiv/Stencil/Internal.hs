@@ -17,7 +17,8 @@
 module Data.Array.Massiv.Stencil.Internal where
 
 import           Control.Applicative
-import           Control.Monad                      (unless, when, void)
+import           Control.Monad                      (unless, void, when)
+import           Control.Monad.Primitive            (PrimMonad)
 import           Control.Monad.ST
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
@@ -44,7 +45,7 @@ data StencilM ix e a = StencilM
   , mStencilSize   :: !ix
   , mStencilCenter :: !ix
   , mStencilDeps   :: Array M Int Int
-  , mStencilFunc   :: forall m . Monad m => (ix -> e) -> (ix -> m a) -> ix -> m a
+  , mStencilFunc   :: forall m . PrimMonad m => (ix -> e) -> (ix -> m a) -> ix -> m a
   }
 
 
@@ -54,13 +55,13 @@ mkStaticStencilM
   => Border e
   -> ix
   -> ix
-  -> (forall m . Monad m => ((ix -> e) -> (ix -> m a) -> m a))
+  -> (forall m . PrimMonad m => ((ix -> e) -> (ix -> m a) -> m a))
   -> StencilM ix e a
 mkStaticStencilM b !sSz !sCenter relStencil =
   StencilM b sSz sCenter deps stencil
   where
     stencil
-      :: (Default a, Monad m)
+      :: (Default a, PrimMonad m)
       => (ix -> e) -> (ix -> m a) -> ix -> m a
     stencil getVal getCurValM !ix =
       inline

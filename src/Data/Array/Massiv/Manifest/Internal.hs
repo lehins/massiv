@@ -24,6 +24,7 @@ module Data.Array.Massiv.Manifest.Internal
   ) where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Common.Shape
 import           Data.Foldable
 import qualified Data.Vector                         as V
@@ -32,7 +33,7 @@ import qualified Data.Vector                         as V
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
 -- `(!)`, `(!?)`, etc. are constrained to manifest arrays only.
-class Shape r ix e => Manifest r ix e where
+class Shape r ix e => Manifest r ix e
 
 
 -- | Manifest representation
@@ -58,35 +59,35 @@ makeBoxedVector !sz f = V.generate (totalElem sz') (f . fromLinearIndex sz')
 
 -- | _O(1)_ Conversion of manifest arrays to `M` representation.
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
-toManifest arr = MArray (size arr) (unsafeLinearIndex arr) where
+toManifest !arr = MArray (size arr) (unsafeLinearIndex arr) where
 {-# INLINE toManifest #-}
 
 
-
 instance Index ix => Foldable (Array M ix) where
-  foldr f acc (MArray sz g) =
-    loop (totalElem sz - 1) (>= 0) (subtract 1) acc $ \i accI -> f (g i) accI
+  foldr = lazyFoldrS
   {-# INLINE foldr #-}
-  foldr' f !acc (MArray sz g) =
-    loop (totalElem sz - 1) (>= 0) (subtract 1) acc $ \ !i !accI -> f (g i) accI
+  foldr' = foldrS
   {-# INLINE foldr' #-}
-  foldl f acc (MArray sz g) =
-    loop 0 (< totalElem sz) (+ 1) acc $ \i accI -> f accI (g i)
+  foldl = lazyFoldlS
   {-# INLINE foldl #-}
-  foldl' f !acc (MArray sz g) =
-    loop 0 (< totalElem sz) (+ 1) acc $ \ !i !accI -> f accI (g i)
+  foldl' = foldlS
   {-# INLINE foldl' #-}
+  sum = foldl' (+) 0
+  {-# INLINE sum #-}
+  product = foldl' (*) 1
+  {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
 
 
 
 instance Index ix => Source M ix e where
-  unsafeLinearIndex = mUnsafeLinearIndex
+  unsafeLinearIndex !arr !ix = mUnsafeLinearIndex arr ix
   {-# INLINE unsafeLinearIndex #-}
 
 
 instance Index ix => Manifest M ix e
+
 
 
 instance Index ix => Shape M ix e where

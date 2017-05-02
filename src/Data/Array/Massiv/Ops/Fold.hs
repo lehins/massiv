@@ -11,15 +11,20 @@
 module Data.Array.Massiv.Ops.Fold
   ( -- * Monadic folds
     foldlM
+  , foldrM
   , foldlM_
+  , foldrM_
   , ifoldlM
+  , ifoldrM
   , ifoldlM_
+  , ifoldrM_
   -- * Sequential folds
   , foldlS
+  , lazyFoldlS
   , foldrS
+  , lazyFoldrS
   , ifoldlS
   , ifoldrS
-  , eqS
   , sumS
   , productS
   -- * Parallel folds
@@ -28,15 +33,14 @@ module Data.Array.Massiv.Ops.Fold
   , ifoldlP
   , ifoldrP
   , foldP
-  , eqP
   , sumP
   , productP
   ) where
 
+import Data.Functor.Identity
 import           Control.DeepSeq             (NFData, deepseq)
 import           Control.Monad               (void, when)
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Ops.Map   as M (zipWith)
 import           Data.Array.Massiv.Scheduler
 import qualified Data.Foldable               as F (foldl', foldr')
 import           Data.List                   (sortOn)
@@ -46,77 +50,102 @@ import           System.IO.Unsafe            (unsafePerformIO)
 --import Data.Function (on)
 
 
+
 -- | /O(n)/ - Monadic left fold.
-foldlM :: (Source r ix b, Monad m) => (a -> b -> m a) -> a -> Array r ix b -> m a
-foldlM f !acc !arr =
-  iterM zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a (unsafeIndex arr ix)
+foldlM :: (Source r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m a
+foldlM f = ifoldlM (\ !a _ !b -> f a b)
 {-# INLINE foldlM #-}
 
 
 -- | /O(n)/ - Monadic left fold, that discards the result.
-foldlM_ :: (Source r ix b, Monad m) => (a -> ix -> b -> m a) -> a -> Array r ix b -> m ()
-foldlM_ f !acc !arr =
-  void $ iterM zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
+foldlM_ :: (Source r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m ()
+foldlM_ f = ifoldlM_ (\ !a _ !b -> f a b)
 {-# INLINE foldlM_ #-}
 
 
 -- | /O(n)/ - Monadic left fold with an index aware function.
-ifoldlM :: (Source r ix b, Monad m) => (a -> ix -> b -> m a) -> a -> Array r ix b -> m a
-ifoldlM f !acc !arr =
+ifoldlM :: (Source r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m a
+ifoldlM f acc arr =
   iterM zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
 {-# INLINE ifoldlM #-}
 
 
 -- | /O(n)/ - Monadic left fold with an index aware function, that discards the result.
-ifoldlM_ :: (Source r ix b, Monad m) => (a -> ix -> b -> m a) -> a -> Array r ix b -> m ()
-ifoldlM_ f !acc !arr =
-  void $ iterM zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
+ifoldlM_ :: (Source r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m ()
+ifoldlM_ f !acc !arr = void $ ifoldlM f acc arr
 {-# INLINE ifoldlM_ #-}
+
+
+-- | /O(n)/ - Monadic right fold.
+foldrM :: (Source r ix e, Monad m) => (e -> a -> m a) -> a -> Array r ix e -> m a
+foldrM f = ifoldrM (\_ e a -> f e a)
+{-# INLINE foldrM #-}
+
+
+-- | /O(n)/ - Monadic right fold, that discards the result.
+foldrM_ :: (Source r ix e, Monad m) => (e -> a -> m a) -> a -> Array r ix e -> m ()
+foldrM_ f = ifoldrM_ (\_ e a -> f e a)
+{-# INLINE foldrM_ #-}
+
+
+-- | /O(n)/ - Monadic right fold with an index aware function.
+ifoldrM :: (Source r ix e, Monad m) => (ix -> e -> a -> m a) -> a -> Array r ix e -> m a
+ifoldrM f !acc !arr =
+  iterM (liftIndex (subtract 1) (size arr)) zeroIndex (-1) (>=) acc $ \ !ix !acc0 ->
+    f ix (unsafeIndex arr ix) acc0
+{-# INLINE ifoldrM #-}
+
+
+-- | /O(n)/ - Monadic right fold with an index aware function, that discards the result.
+ifoldrM_ :: (Source r ix e, Monad m) => (ix -> e -> a -> m a) -> a -> Array r ix e -> m ()
+ifoldrM_ f !acc !arr = void $ ifoldrM f acc arr
+{-# INLINE ifoldrM_ #-}
+
+
+
+-- | /O(n)/ - Left fold, computed sequentially with lazy accumulator.
+lazyFoldlS :: Source r ix e => (a -> e -> a) -> a -> Array r ix e -> a
+lazyFoldlS f initAcc arr = go initAcc 0 where
+    len = totalElem (size arr)
+    go acc k | k < len = go (f acc (unsafeLinearIndex arr k)) (k + 1)
+             | otherwise = acc
+{-# INLINE lazyFoldlS #-}
+
+
+-- | /O(n)/ - Right fold, computed sequentially with lazy accumulator.
+lazyFoldrS :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
+lazyFoldrS f initAcc arr = go initAcc (totalElem (size arr) - 1) where
+  go acc k | k >= 0 = go (f (unsafeLinearIndex arr k) acc) (k + 1)
+           | otherwise = acc
+{-# INLINE lazyFoldrS #-}
 
 
 -- | /O(n)/ - Left fold, computed sequentially.
 foldlS
   :: Source r ix e
   => (a -> e -> a) -> a -> Array r ix e -> a
-foldlS f !acc !arr =
-  iter zeroIndex (size arr) 1 (<) acc $ \ !ix !acc0 -> f acc0 (unsafeIndex arr ix)
+foldlS f !acc !arr = ifoldlS (\ !a _ !e -> f a e) acc arr
 {-# INLINE foldlS #-}
 
 
 -- | /O(n)/ - Right fold, computed sequentially.
-foldrS
-  :: Source r ix e
-  => (e -> a -> a) -> a -> Array r ix e -> a
-foldrS f !acc !arr =
-  iter (liftIndex (subtract 1) (size arr)) zeroIndex (-1) (>=) acc $ \ !ix !acc0 ->
-    f (unsafeIndex arr ix) acc0
+foldrS :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
+foldrS f = ifoldrS (\_ e a -> f e a)
 {-# INLINE foldrS #-}
 
 
 -- | /O(n)/ - Left fold with an index aware function, computed sequentially.
-ifoldlS
-  :: Source r ix e
-  => (a -> ix -> e -> a) -> a -> Array r ix e -> a
-ifoldlS f !acc !arr =
-  iter zeroIndex (size arr) 1 (<) acc $ \ !ix !acc0 -> f acc0 ix (unsafeIndex arr ix)
+ifoldlS :: Source r ix e
+        => (a -> ix -> e -> a) -> a -> Array r ix e -> a
+ifoldlS f acc arr = runIdentity $! ifoldlM (\ !a !ix !e -> return $! f a ix e) acc arr
 {-# INLINE ifoldlS #-}
 
 
 -- | /O(n)/ - Right fold with an index aware function, computed sequentially.
-ifoldrS
-  :: Source r ix e
-  => (ix -> e -> a -> a) -> a -> Array r ix e -> a
-ifoldrS f !acc !arr =
-  iter (liftIndex (subtract 1) (size arr)) zeroIndex (-1) (>=) acc $ \ !ix !acc0 ->
-    f ix (unsafeIndex arr ix) acc0
+ifoldrS :: Source r ix e
+        => (ix -> e -> a -> a) -> a -> Array r ix e -> a
+ifoldrS f acc arr = runIdentity $ ifoldrM (\ ix e a -> return $ f ix e a) acc arr
 {-# INLINE ifoldrS #-}
-
-
--- | /O(n1 + n2)/ - Compute equlity sequentially.
-eqS :: (Eq a, Source r1 ix a, Source r2 ix a) =>
-       Array r1 ix a -> Array r2 ix a -> Bool
-eqS !arr1 !arr2 = (size arr1 == size arr2) && foldlS (&&) True (M.zipWith (==) arr1 arr2)
-{-# INLINE eqS #-}
 
 
 -- | /O(n)/ - Compute sum sequentially.
@@ -240,12 +269,6 @@ foldP :: (NFData e, Source r ix e) =>
 foldP f !initAcc = unsafePerformIO . foldlP f initAcc f initAcc
 {-# INLINE foldP #-}
 
-
--- | /O(n1 + n2)/ - Compute equality in parallel.
-eqP :: (Eq a, Source r1 ix a, Source r2 ix a) =>
-       Array r1 ix a -> Array r2 ix a -> Bool
-eqP !arr1 !arr2 = (size arr1 == size arr2) && foldP (&&) True (M.zipWith (==) arr1 arr2)
-{-# INLINE eqP #-}
 
 
 -- | /O(n)/ - Compute sum in parallel.

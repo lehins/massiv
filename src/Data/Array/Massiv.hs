@@ -21,6 +21,8 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Manifest
   , module Data.Array.Massiv.Ops.Map
   , module Data.Array.Massiv.Ops.Fold
+  , eqS
+  , eqP
   , module Data.Array.Massiv.Ops.Construct
   , module Data.Array.Massiv.Ops.Transform
   -- * Accessors
@@ -82,3 +84,17 @@ null :: Massiv r ix e => Array r ix e -> Bool
 null !arr = 0 == length arr
 {-# INLINE null #-}
 
+
+
+-- | /O(n1 + n2)/ - Compute equlity sequentially.
+eqS :: (Source r1 ix e1, Source r2 ix e2) =>
+       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
+eqS f arr1 arr2 = (size arr1 == size arr2) && foldlS (&&) True (zipWith f arr1 arr2)
+{-# INLINE eqS #-}
+
+
+-- | /O(n1 + n2)/ - Compute equality in parallel.
+eqP :: (Source r1 ix e1, Source r2 ix e2) =>
+       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
+eqP f arr1 arr2 = (size arr1 == size arr2) && foldP (&&) True (zipWith f arr1 arr2)
+{-# INLINE eqP #-}

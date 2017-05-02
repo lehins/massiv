@@ -22,6 +22,7 @@ module Data.Array.Massiv.Manifest.Unboxed
   , computeUnboxedP
   , mapM
   , imapM
+  , fromUnboxedArray
   ) where
 
 import           Data.Array.Massiv.Common
@@ -38,6 +39,10 @@ data U = U
 data instance Array U ix e = UArray { uSize :: !ix
                                     , uData :: !(VU.Vector e)
                                     } deriving Eq
+
+fromUnboxedArray :: VU.Unbox e => Array U ix e -> Array M ix e
+fromUnboxedArray (UArray sz v) = MArray sz (VU.unsafeIndex v)
+{-# INLINE fromUnboxedArray #-}
 
 instance (VU.Unbox e, Index ix) => Massiv U ix e where
   size = uSize

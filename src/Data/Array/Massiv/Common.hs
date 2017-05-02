@@ -84,6 +84,7 @@ class Index ix => Load r ix where
 
 
 
+
 errorImpossible :: String -> a
 errorImpossible fName =
   error $ fName ++ ": Impossible happened. Please report this error."

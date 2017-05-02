@@ -18,6 +18,7 @@ module Data.Array.Massiv.Delayed where
 import           Control.Monad                  (void)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Scheduler
 import           Data.Foldable
 
@@ -81,9 +82,9 @@ instance (Index ix, Index (Lower ix)) => Slice D ix e where
   {-# INLINE (<!?) #-}
 
 
-instance (Eq e, Index ix, Foldable (Array D ix)) => Eq (Array D ix e) where
+instance (Eq e, Index ix) => Eq (Array D ix e) where
   (==) (DArray sz1 uIndex1) (DArray sz2 uIndex2) =
-    sz1 == sz2 && foldl' (&&) True (DArray sz1 (\ !ix -> uIndex1 ix == uIndex2 ix))
+    sz1 == sz2 && foldlS (&&) True (DArray sz1 (\ !ix -> uIndex1 ix == uIndex2 ix))
 
 
 instance Functor (Array D ix) where
@@ -101,17 +102,13 @@ instance Index ix => Applicative (Array D ix) where
 
 -- | Row-major folding over a delayed array.
 instance Index ix => Foldable (Array D ix) where
-  foldl f acc (DArray sz g) =
-    iter zeroIndex sz 1 (<) acc $ \ix acc0 -> f acc0 (g ix)
+  foldl = lazyFoldlS
   {-# INLINE foldl #-}
-  foldl' f !acc (DArray sz g) =
-    iter zeroIndex sz 1 (<) acc $ \ !ix !acc0 -> f acc0 (g ix)
+  foldl' = foldlS
   {-# INLINE foldl' #-}
-  foldr f acc (DArray sz g) =
-    iter (liftIndex (subtract 1) sz) zeroIndex (-1) (>=) acc $ \i acc0 -> f (g i) acc0
+  foldr = lazyFoldrS
   {-# INLINE foldr #-}
-  foldr' f !acc (DArray sz g) =
-    iter (liftIndex (subtract 1) sz) zeroIndex (-1) (>=) acc $ \ !i !acc0 -> f (g i) acc0
+  foldr' = foldrS
   {-# INLINE foldr' #-}
   null (DArray sz _) = totalElem sz == 0
   {-# INLINE null #-}
@@ -143,6 +140,7 @@ instance Index ix => Load D ix where
   {-# INLINE loadP #-}
 
 
+
 singleton :: Index ix => e -> Array D ix e
 singleton !e = DArray (liftIndex (+ 1) zeroIndex) (const e)
 {-# INLINE singleton #-}
@@ -152,7 +150,7 @@ liftArray f !arr = DArray (size arr) (f . unsafeIndex arr)
 {-# INLINE liftArray #-}
 
 -- | Similar to @zipWith@, except dimensions of both arrays either have to be the
--- same, or at least of two array must contain only a single element, in which
+-- same, or at least one of two array must be a singleton array, in which
 -- case it will behave as @fmap@.
 liftArray2
   :: (Source r1 ix a, Source r2 ix b)

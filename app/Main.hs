@@ -1,13 +1,11 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 module Main where
 
 
-import           Compute
+--import           Compute
 --import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Manifest.Unboxed as M
+import           Data.Array.Massiv.Manifest.Unboxed
+
 -- import           Data.Array.Massiv.Stencil
 
 -- import           Data.Array.Repa                     as R
@@ -47,6 +45,14 @@ main = do
   --_ <- massivSobel (16000, 16000)
   --_ <- unboxSobel (16000, 16000)
   --_ <- repaSobel (16000, 16000)
-  let a = M.computeUnboxedP $ arrM (1600, 1201)
-  print a
+  --let a = M.computeUnboxedP $ arrM (1600, 1201)
+  --let arr = makeArray1D 3037000500 succ
+  let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
+  let arr = toManifest arrU
+  let res = foldlS (+) 0 arr
+  -- let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
+  -- let arr = arrU `seq` toManifest arrU
+  -- let res = arr `seq` foldlS (+) 0 arr
+  print res
+
 
