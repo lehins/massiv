@@ -76,8 +76,10 @@ instance (VU.Unbox e, Index ix, Index (Lower ix)) => Slice U ix e where
   (<!?) !arr = (toManifest arr <!?)
   {-# INLINE (<!?) #-}
 
-instance (Index ix, VU.Unbox e) => Manifest U ix e
+instance (Index ix, VU.Unbox e) => Manifest U ix e where
 
+  unsafeLinearIndexM (UArray _ v) = VU.unsafeIndex v
+  {-# INLINE unsafeLinearIndexM #-}
 
 instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
   data MArray s U ix e = MUArray ix (VU.MVector s e)
@@ -99,7 +101,7 @@ instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
 
 
 computeUnboxedS :: (Massiv r ix e, Load r ix, Mutable U ix e) => Array r ix e -> Array U ix e
-computeUnboxedS = computeSeq
+computeUnboxedS !arr = computeSeq arr
 {-# INLINE computeUnboxedS #-}
 
 

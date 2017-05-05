@@ -73,7 +73,10 @@ instance (VS.Storable e, Index ix, Index (Lower ix)) => Slice S ix e where
   {-# INLINE (<!?) #-}
 
 
-instance (Index ix, VS.Storable e) => Manifest S ix e
+instance (Index ix, VS.Storable e) => Manifest S ix e where
+
+  unsafeLinearIndexM (SArray _ v) = VS.unsafeIndex v
+  {-# INLINE unsafeLinearIndexM #-}
 
 
 instance (Manifest S ix e, VS.Storable e) => Mutable S ix e where

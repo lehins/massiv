@@ -17,7 +17,7 @@
 --
 module Data.Array.Massiv.Manifest.Internal
   ( M
-  , Manifest
+  , Manifest(..)
   , Array(..)
   , makeBoxedVector
   , toManifest
@@ -33,7 +33,9 @@ import qualified Data.Vector                         as V
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
 -- `(!)`, `(!?)`, etc. are constrained to manifest arrays only.
-class Shape r ix e => Manifest r ix e
+class Shape r ix e => Manifest r ix e where
+
+  unsafeLinearIndexM :: Array r ix e -> Int -> e
 
 
 -- | Manifest representation
@@ -41,6 +43,7 @@ data M
 
 data instance Array M ix e = MArray { mSize :: !ix
                                     , mUnsafeLinearIndex :: Int -> e }
+
 
 instance Index ix => Massiv M ix e where
   size = mSize
@@ -59,7 +62,7 @@ makeBoxedVector !sz f = V.generate (totalElem sz') (f . fromLinearIndex sz')
 
 -- | _O(1)_ Conversion of manifest arrays to `M` representation.
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
-toManifest !arr = MArray (size arr) (unsafeLinearIndex arr) where
+toManifest !arr = MArray (size arr) (unsafeLinearIndexM arr) where
 {-# INLINE toManifest #-}
 
 
@@ -82,12 +85,14 @@ instance Index ix => Foldable (Array M ix) where
 
 
 instance Index ix => Source M ix e where
-  unsafeLinearIndex !arr !ix = mUnsafeLinearIndex arr ix
+  unsafeLinearIndex = mUnsafeLinearIndex
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Manifest M ix e
+instance Index ix => Manifest M ix e where
 
+  unsafeLinearIndexM = mUnsafeLinearIndex
+  {-# INLINE unsafeLinearIndexM #-}
 
 
 instance Index ix => Shape M ix e where

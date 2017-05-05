@@ -79,7 +79,10 @@ instance (Index ix, Index (Lower ix)) => Slice B ix e where
   {-# INLINE (<!?) #-}
 
 
-instance Index ix => Manifest B ix e
+instance Index ix => Manifest B ix e where
+
+  unsafeLinearIndexM (BArray _ v) = V.unsafeIndex v
+  {-# INLINE unsafeLinearIndexM #-}
 
 
 instance (NFData e, Manifest B ix e) => Mutable B ix e where

@@ -18,11 +18,9 @@ main = do
       !ixR = (Z :. 1000 :. 999)
       !ix1D = toLinearIndex sz ixM
   let !arrCM = M.computeUnboxedS $ arrM sz
-      !arrCMM = arrCM `seq` toManifest arrCM
+      !arrCMM = toManifest arrCM
       !arrCR = R.computeUnboxedS $ arrR sz
       !vecCU = vecU sz
-  f <- arrCMM `seq` return "f"
-  print f
   defaultMain
     [ bgroup
         "Indexing"
@@ -78,16 +76,16 @@ main = do
               -- bench "Array Massiv Lazy" $
             --   whnf (foldl (+) 0 . arrM) sz
             -- ,
-            [ bench "Array Massiv Delayed Strict" $
+            [ bench "Array Massiv Delayed" $
               whnf (foldl' (+) 0 . arrM) sz
-            , bench "Array Massiv Manifest Strict" $
-              whnf (foldlS (+) 0) arrCMM
             , bench "Vector Unboxed" $ whnf (VU.foldl' (+) 0 . vecU) sz
             , bench "Array Repa" $ whnf (R.foldAllS (+) 0 . arrR) sz
             ]
         , bgroup
             "Computed"
-            [ bench "Array Massiv Unboxed Strict" $ whnf (foldlS (+) 0) arrCM
+            [ bench "Array Massiv Unboxed" $ whnf (foldlS (+) 0) arrCM
+            , bench "Array Massiv Unboxed 2" $ whnf (foldrS (+) 0) arrCM
+            , bench "Array Massiv Manifest" $ whnf (foldlS (+) 0) arrCMM
             , bench "Vector Unboxed" $ whnf (VU.foldl' (+) 0) vecCU
             , bench "Array Repa" $ whnf (R.foldAllS (+) 0) arrCR
             ]

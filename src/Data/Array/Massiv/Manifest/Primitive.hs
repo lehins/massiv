@@ -71,7 +71,10 @@ instance (VP.Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
   (<!?) !arr = (toManifest arr <!?)
   {-# INLINE (<!?) #-}
 
-instance (Index ix, VP.Prim e) => Manifest P ix e
+instance (Index ix, VP.Prim e) => Manifest P ix e where
+
+  unsafeLinearIndexM (PArray _ v) = VP.unsafeIndex v
+  {-# INLINE unsafeLinearIndexM #-}
 
 
 instance (Manifest P ix e, VP.Prim e) => Mutable P ix e where

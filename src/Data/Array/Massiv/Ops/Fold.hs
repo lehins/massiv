@@ -53,26 +53,26 @@ import           System.IO.Unsafe            (unsafePerformIO)
 
 -- | /O(n)/ - Monadic left fold.
 foldlM :: (Source r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m a
-foldlM f = ifoldlM (\ !a _ !b -> f a b)
+foldlM f = ifoldlM (\ a _ b -> f a b)
 {-# INLINE foldlM #-}
 
 
 -- | /O(n)/ - Monadic left fold, that discards the result.
 foldlM_ :: (Source r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m ()
-foldlM_ f = ifoldlM_ (\ !a _ !b -> f a b)
+foldlM_ f = ifoldlM_ (\ a _ b -> f a b)
 {-# INLINE foldlM_ #-}
 
 
 -- | /O(n)/ - Monadic left fold with an index aware function.
 ifoldlM :: (Source r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m a
-ifoldlM f acc arr =
+ifoldlM f !acc !arr =
   iterM zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
 {-# INLINE ifoldlM #-}
 
 
 -- | /O(n)/ - Monadic left fold with an index aware function, that discards the result.
 ifoldlM_ :: (Source r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m ()
-ifoldlM_ f !acc !arr = void $ ifoldlM f acc arr
+ifoldlM_ f acc = void . ifoldlM f acc
 {-# INLINE ifoldlM_ #-}
 
 
@@ -121,10 +121,8 @@ lazyFoldrS f initAcc arr = go initAcc (totalElem (size arr) - 1) where
 
 
 -- | /O(n)/ - Left fold, computed sequentially.
-foldlS
-  :: Source r ix e
-  => (a -> e -> a) -> a -> Array r ix e -> a
-foldlS f !acc !arr = ifoldlS (\ !a _ !e -> f a e) acc arr
+foldlS :: Source r ix e => (a -> e -> a) -> a -> Array r ix e -> a
+foldlS f = ifoldlS (\ a _ e -> f a e)
 {-# INLINE foldlS #-}
 
 
@@ -137,28 +135,27 @@ foldrS f = ifoldrS (\_ e a -> f e a)
 -- | /O(n)/ - Left fold with an index aware function, computed sequentially.
 ifoldlS :: Source r ix e
         => (a -> ix -> e -> a) -> a -> Array r ix e -> a
-ifoldlS f acc arr = runIdentity $! ifoldlM (\ !a !ix !e -> return $! f a ix e) acc arr
+ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> return $ f a ix e) acc
 {-# INLINE ifoldlS #-}
 
 
 -- | /O(n)/ - Right fold with an index aware function, computed sequentially.
-ifoldrS :: Source r ix e
-        => (ix -> e -> a -> a) -> a -> Array r ix e -> a
-ifoldrS f acc arr = runIdentity $ ifoldrM (\ ix e a -> return $ f ix e a) acc arr
+ifoldrS :: Source r ix e => (ix -> e -> a -> a) -> a -> Array r ix e -> a
+ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 {-# INLINE ifoldrS #-}
 
 
 -- | /O(n)/ - Compute sum sequentially.
 sumS :: (Source r ix e, Num e) =>
         Array r ix e -> e
-sumS = foldlS (+) 0
+sumS = foldrS (+) 0
 {-# INLINE sumS #-}
 
 
 -- | /O(n)/ - Compute product sequentially.
 productS :: (Source r ix e, Num e) =>
             Array r ix e -> e
-productS = foldlS (*) 1
+productS = foldrS (*) 1
 {-# INLINE productS #-}
 
 
