@@ -58,7 +58,8 @@ data JobRequest a = JobRequest { jobRequestId     :: !Int
                                , jobRequestAction :: IO a }
 
 
-
+-- | Create a `Scheduler` that can be used to submit `JobRequest`s and collect
+-- work done by the workers using `collectResults`.
 makeScheduler :: IO (Scheduler a)
 makeScheduler = do
   isGlobalScheduler <-
@@ -77,6 +78,8 @@ makeScheduler = do
     return $ Scheduler {..}
 
 
+-- | Submit a `JobRequest`, which will get executed as soon as there is an
+-- available worker.
 submitRequest :: Scheduler a -> JobRequest a -> IO ()
 submitRequest (Scheduler {..}) (JobRequest {..}) = do
   atomically $ do
@@ -91,6 +94,8 @@ submitRequest (Scheduler {..}) (JobRequest {..}) = do
           writeTChan resultsChan (JobResult jobRequestId result)
 
 
+-- | Block current thread and wait for all `JobRequest`s to get processed. Use a
+-- supplied function to collect the results produced by all jobs.
 collectResults :: Scheduler a -> (JobResult a -> b -> b) -> b -> IO b
 collectResults (Scheduler {..}) f !initAcc = collect initAcc
   where
@@ -117,7 +122,7 @@ collectResults (Scheduler {..}) f !initAcc = collect initAcc
         else collect $! f jRes acc
 
 
-
+-- | Wait for the `Scheduler` to process all submitted `JobRequest`s.
 waitTillDone :: Scheduler a -> IO ()
 waitTillDone scheduler = collectResults scheduler (const id) ()
 
