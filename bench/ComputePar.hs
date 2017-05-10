@@ -51,6 +51,8 @@ main = do
         "Fuse"
         [ bench "Array Massiv" $
           whnf (M.computeUnboxedP . M.map (+ 25) . arrM) sz
+        , bench "Array Massiv" $
+          whnf (M.computeUnboxedP . M.map ((`div` (0 :: Int)) . round) . arrM) sz
         , bench "Array Repa" $ whnf (runIdentity . R.computeUnboxedP .  R.map (+ 25) . arrR) sz
         ]
     ]

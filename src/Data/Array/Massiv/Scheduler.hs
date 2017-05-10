@@ -1,5 +1,5 @@
+{-# LANGUAGE BangPatterns    #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Data.Array.Massiv.Scheduler
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -21,14 +21,16 @@ module Data.Array.Massiv.Scheduler
   , splitWork_
   ) where
 
-import           Control.Concurrent             (forkOn, getNumCapabilities)
-import           Control.Concurrent.STM.TChan   (TChan, isEmptyTChan,
-                                                 newTChan, newTChanIO, readTChan,
+import           Control.Concurrent             (ThreadId, forkOn,
+                                                 getNumCapabilities, myThreadId)
+import           Control.Concurrent.STM.TChan   (TChan, isEmptyTChan, newTChan,
+                                                 newTChanIO, readTChan,
                                                  writeTChan)
-import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVar, newTVarIO,
-                                                 readTVar, writeTVar)
-import           Control.Monad                  (void, when, unless)
-import           Control.Monad.Catch            (Exception, throwM)
+import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVar,
+                                                 newTVarIO, readTVar, writeTVar)
+import           Control.Exception.Safe         (Exception, catchAny, throwM,
+                                                 throwTo)
+import           Control.Monad                  (unless, void, when)
 import           Control.Monad.STM              (atomically)
 import           Data.Array.Massiv.Common.Index
 import           System.IO.Unsafe               (unsafePerformIO)
@@ -42,12 +44,13 @@ data SchedulerRetired = SchedulerRetired deriving Show
 instance Exception SchedulerRetired
 
 data Scheduler a = Scheduler
-  { resultsChan  :: TChan (JobResult a)
-  , jobCountVar :: TVar Int
-  , jobQueue     :: TChan Job
-  , numWorkers   :: !Int
-  , retiredVar   :: TVar Bool
+  { resultsChan       :: TChan (JobResult a)
+  , jobCountVar       :: TVar Int
+  , jobQueue          :: TChan Job
+  , numWorkers        :: !Int
+  , retiredVar        :: TVar Bool
   , isGlobalScheduler :: Bool
+  , parentThreadId    :: ThreadId
   }
 
 data JobResult a = JobResult { jobResultId :: !Int
@@ -62,6 +65,7 @@ data JobRequest a = JobRequest { jobRequestId     :: !Int
 -- work done by the workers using `collectResults`.
 makeScheduler :: IO (Scheduler a)
 makeScheduler = do
+  parentThreadId <- myThreadId
   isGlobalScheduler <-
     atomically $ do
       hasGlobalScheduler <- readTVar hasGlobalSchedulerVar
@@ -88,10 +92,15 @@ submitRequest (Scheduler {..}) (JobRequest {..}) = do
     modifyTVar' jobCountVar (+ 1)
     writeTChan jobQueue $
       Job $ \_wid -> do
-        result <- jobRequestAction
-        atomically $ do
-          modifyTVar' jobCountVar (subtract 1)
-          writeTChan resultsChan (JobResult jobRequestId result)
+        eResult <- catchAny (Right <$> jobRequestAction) (return . Left)
+        case eResult of
+          Left exc -> do
+            throwTo parentThreadId exc
+            atomically $ modifyTVar' jobCountVar (subtract 1)
+          Right result ->
+            atomically $ do
+              modifyTVar' jobCountVar (subtract 1)
+              writeTChan resultsChan (JobResult jobRequestId result)
 
 
 -- | Block current thread and wait for all `JobRequest`s to get processed. Use a
