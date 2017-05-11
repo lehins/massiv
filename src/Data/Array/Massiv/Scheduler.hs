@@ -11,6 +11,7 @@
 --
 module Data.Array.Massiv.Scheduler
   ( Scheduler
+  , SchedulerRetired(..)
   , makeScheduler
   , numWorkers
   , JobRequest(..)
@@ -41,13 +42,14 @@ data Job = Job (Int -> IO ())
          | Retire
 
 
-data SchedulerRetired = SchedulerRetired deriving Show
+data SchedulerRetired = SchedulerRetired deriving (Eq, Show)
 
 instance Exception SchedulerRetired
 
 data Scheduler a = Scheduler
   { resultsChan       :: TChan (Either SomeException (JobResult a))
-  , jobCountVar       :: TVar Int
+  , jobsSubmittedVar  :: TVar Int
+  , jobsFinishedVar   :: TVar Int
   , jobQueue          :: TChan Job
   , workers           :: [ThreadId]
   , numWorkers        :: !Int
@@ -55,11 +57,11 @@ data Scheduler a = Scheduler
   , isGlobalScheduler :: Bool
   }
 
-data JobResult a = JobResult { jobResultId :: !Int
+data JobResult a = JobResult { jobResultId :: Int
                              , jobResult   :: !a }
 
 
-data JobRequest a = JobRequest { jobRequestId     :: !Int
+data JobRequest a = JobRequest { jobRequestId     :: Int
                                , jobRequestAction :: IO a }
 
 
@@ -79,7 +81,8 @@ makeScheduler = do
   let numWorkers = length workers
   atomically $ do
     resultsChan <- newTChan
-    jobCountVar <- newTVar 0
+    jobsSubmittedVar <- newTVar 0
+    jobsFinishedVar <- newTVar 0
     retiredVar <- newTVar False
     return $ Scheduler {..}
 
@@ -90,40 +93,46 @@ clearJobQueue scheduler@(Scheduler {..}) = do
   mJob <- tryReadTChan jobQueue
   case mJob of
     Just _ -> do
-      modifyTVar' jobCountVar (subtract 1)
+      modifyTVar' jobsFinishedVar (+ 1)
       clearJobQueue scheduler
     Nothing -> return ()
 
 
 -- | Submit a `JobRequest`, which will get executed as soon as there is an
--- available worker.
+-- available worker. Thows `SchedulerRetired`
 submitRequest :: Scheduler a -> JobRequest a -> IO ()
 submitRequest Scheduler {..} JobRequest {..} = do
   atomically $ do
     isRetired <- readTVar retiredVar
     when isRetired $ throwM SchedulerRetired
-    modifyTVar' jobCountVar (+ 1)
+    modifyTVar' jobsSubmittedVar (+ 1)
     writeTChan jobQueue $
       Job $ \_wid -> do
         eResult <- catchAny (Right <$> jobRequestAction) (return . Left)
         atomically $ do
-          modifyTVar' jobCountVar (subtract 1)
+          modifyTVar' jobsFinishedVar (+ 1)
           writeTChan resultsChan (JobResult jobRequestId <$> eResult)
 
 
 -- | Block current thread and wait for all `JobRequest`s to get processed. Use a
--- supplied function to collect the results, which are produced by submitted
--- jobs. If any job throws an exception, the whole scheduler is retired
--- while cancelling all other jobs, in case there are any in progress, and that
--- exception is further re-thrown.
+-- supplied function to collect all of the results produced by submitted
+-- jobs. If any job throws an exception, the whole scheduler is retired, all
+-- jobs are immediately cancelled and the exception is re-thrown. `Scheduler` is
+-- retired after results are collected and can not be used again, doing so will
+-- result in a synchronous exception `SchedulerRetired`.
 collectResults :: Scheduler a -> (JobResult a -> b -> b) -> b -> IO b
-collectResults scheduler@(Scheduler {..}) f initAcc = collect initAcc
+collectResults scheduler@(Scheduler {..}) f initAcc = do
+  jobsSubmitted <- atomically $ do
+    isRetired <- readTVar retiredVar
+    when isRetired $ throwM SchedulerRetired
+    readTVar jobsSubmittedVar
+  if jobsSubmitted == 0
+    then return initAcc
+    else collect initAcc
   where
     collect !acc = do
       (eJRes, stop) <-
         atomically $ do
-          isRetired <- readTVar retiredVar
-          when isRetired $ throwM SchedulerRetired
           eJRes <- readTChan resultsChan
           -- prevent any new jobs from starting in case of an exception
           when (isLeft eJRes) $ do
@@ -132,8 +141,9 @@ collectResults scheduler@(Scheduler {..}) f initAcc = collect initAcc
           resEmpty <- isEmptyTChan resultsChan
           if resEmpty
             then do
-              jCount <- readTVar jobCountVar
-              return (eJRes, jCount == 0)
+              jobsSubmitted <- readTVar jobsSubmittedVar
+              jobsFinished <- readTVar jobsFinishedVar
+              return (eJRes, jobsSubmitted == jobsFinished)
             else return (eJRes, False)
       case eJRes of
         Right jRes ->
@@ -149,7 +159,8 @@ collectResults scheduler@(Scheduler {..}) f initAcc = collect initAcc
             else collect $ f jRes acc
         Left exc -> do
           mapM_ killThread workers
-          -- kill all workers and create new ones if those were primary workers
+          -- kill all workers. Recreate the workers only if those that were
+          -- killed were primary workers.
           when isGlobalScheduler $ do
             jQueue <- makeJobQueue
             atomically $ do
@@ -158,7 +169,9 @@ collectResults scheduler@(Scheduler {..}) f initAcc = collect initAcc
           throw exc
 
 
--- | Block current thread and wait for the `Scheduler` to process all submitted `JobRequest`s.
+-- | Block current thread and wait for the `Scheduler` to process all submitted
+-- `JobRequest`s. It is a call to `collectResults`, which discards the results,
+-- so all specifics apply here as well.
 waitTillDone :: Scheduler a -> IO ()
 waitTillDone scheduler = collectResults scheduler (const id) ()
 
