@@ -109,9 +109,9 @@ instance (NFData e, Manifest B ix e) => Mutable B ix e where
     unsafeFreeze mArr
   {-# INLINE computeSeq #-}
 
-  computePar !arr = do
+  computePar wIds !arr = do
     mArr <- unsafeNew (size arr)
-    loadP arr (unsafeLinearRead mArr) (unsafeLinearWrite' mArr)
+    loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite' mArr)
     unsafeFreeze mArr
   {-# INLINE computePar #-}
 
@@ -121,9 +121,9 @@ instance Index ix => Load B ix where
     iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !i _ ->
       unsafeWrite i (V.unsafeIndex v i)
   {-# INLINE loadS #-}
-  loadP (BArray sz v) _ unsafeWrite = do
+  loadP wIds (BArray sz v) _ unsafeWrite = do
     void $
-      splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           submitRequest scheduler $
           JobRequest 0 $
@@ -145,7 +145,7 @@ computeBoxedS = computeSeq
 
 
 computeBoxedP :: (Massiv r ix e, Load r ix, Mutable B ix e) => Array r ix e -> Array B ix e
-computeBoxedP = unsafePerformIO . computePar
+computeBoxedP = unsafePerformIO . computePar []
 {-# INLINE computeBoxedP #-}
 
 
@@ -190,7 +190,7 @@ imapM f arr = do
 deepseqP :: (Index ix, NFData a) => Array B ix a -> b -> b
 deepseqP (BArray sz v) b =
   unsafePerformIO
-    ((splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    ((splitWork [] sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           submitRequest scheduler $
           JobRequest 0 $

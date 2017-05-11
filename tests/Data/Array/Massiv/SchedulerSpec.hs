@@ -56,17 +56,16 @@ prop_CatchNested (ArrIx arr ix) =
     return
 
 
-exc_SchedulerRetiredSubmit :: IO Bool
+exc_SchedulerRetiredSubmit :: IO ()
 exc_SchedulerRetiredSubmit = do
-  scheduler <- makeScheduler
+  scheduler <- makeScheduler []
   submitRequest scheduler (JobRequest 1 (return True))
   _ <- collectResults scheduler (\jRes acc -> acc && jobResult jRes) True
   submitRequest scheduler (JobRequest 2 (return False))
-  return False
 
 exc_SchedulerRetiredCollect :: IO Bool
 exc_SchedulerRetiredCollect = do
-  scheduler <- makeScheduler
+  scheduler <- makeScheduler []
   submitRequest scheduler (JobRequest 1 (return True))
   resTrue <- collectResults scheduler (\jRes acc -> acc && jobResult jRes) True
   collectResults scheduler (\jRes acc -> acc && jobResult jRes) resTrue
@@ -77,7 +76,7 @@ prop_SchedulerRequestIdMatch :: [Int] -> Property
 prop_SchedulerRequestIdMatch ids =
   monadicIO $
   (run $ do
-     scheduler <- makeScheduler
+     scheduler <- makeScheduler []
      P.mapM_ (\jId -> submitRequest scheduler (JobRequest jId (return jId))) ids
      collectResults
        scheduler
@@ -91,7 +90,7 @@ prop_SchedulerAllJobsProcessed ids =
   monadicIO $ do
     res <-
       run $ do
-        scheduler <- makeScheduler
+        scheduler <- makeScheduler []
         P.mapM_
           (\jId -> submitRequest scheduler (JobRequest jId (return jId)))
           ids

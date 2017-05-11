@@ -70,7 +70,7 @@ computeAsS _ arr = computeSeq arr
 computeAsP
   :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
   => r -> Array r' ix e -> Array r ix e
-computeAsP _ arr = unsafePerformIO $ computePar arr
+computeAsP _ arr = unsafePerformIO $ computePar [] arr
 {-# INLINE computeAsP #-}
 
 

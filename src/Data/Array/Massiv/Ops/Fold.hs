@@ -32,6 +32,8 @@ module Data.Array.Massiv.Ops.Fold
   , foldrP
   , ifoldlP
   , ifoldrP
+  , ifoldlOnP
+  , ifoldrOnP
   , foldP
   , sumP
   , productP
@@ -196,16 +198,14 @@ foldlP :: (NFData a, Source r ix e) =>
 foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
-
--- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
--- like `foldlP`, except that folding function will receive an index of an
--- element it is being applied to.
-ifoldlP :: (NFData a, Source r ix e) =>
-           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
-ifoldlP g !tAcc f !initAcc !arr = do
+-- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- computation on.
+ifoldlOnP :: (NFData a, Source r ix e) =>
+           [Int] -> (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+ifoldlOnP wIds g !tAcc f !initAcc !arr = do
   let !sz = size arr
   results <-
-    splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       jId <-
         loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
           submitRequest scheduler $
@@ -221,6 +221,14 @@ ifoldlP g !tAcc f !initAcc !arr = do
           let res = f acc ix (unsafeLinearIndex arr i)
           in res `deepseq` return res
   return $ F.foldl' g tAcc $ map jobResult $ sortOn jobResultId results
+{-# INLINE ifoldlOnP #-}
+
+-- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
+-- like `foldlP`, except that folding function will receive an index of an
+-- element it is being applied to.
+ifoldlP :: (NFData a, Source r ix e) =>
+           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+ifoldlP = ifoldlOnP []
 {-# INLINE ifoldlP #-}
 
 
@@ -232,15 +240,14 @@ foldrP g !tAcc f = ifoldrP g tAcc (const f)
 {-# INLINE foldrP #-}
 
 
--- | /O(n)/ - Right fold with an index aware function, computed in parallel.
--- Same as `ifoldlP`, except directed from the last element in the array towards
--- beginning.
-ifoldrP :: (NFData a, Source r ix e) =>
-           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
-ifoldrP g !tAcc f !initAcc !arr = do
+-- | Just like `ifoldrP`, but allows you to specify which cores to run
+-- computation on.
+ifoldrOnP :: (NFData a, Source r ix e) =>
+           [Int] -> (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
+ifoldrOnP wIds g !tAcc f !initAcc !arr = do
   let !sz = size arr
   results <-
-    splitWork sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       when (slackStart < totalLength) $
         submitRequest scheduler $
         JobRequest 0 $
@@ -255,6 +262,15 @@ ifoldrP g !tAcc f !initAcc !arr = do
         return (jId + 1)
   return $
     F.foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
+{-# INLINE ifoldrOnP #-}
+
+
+-- | /O(n)/ - Right fold with an index aware function, computed in parallel.
+-- Same as `ifoldlP`, except directed from the last element in the array towards
+-- beginning.
+ifoldrP :: (NFData a, Source r ix e) =>
+           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
+ifoldrP = ifoldrOnP []
 {-# INLINE ifoldrP #-}
 
 

@@ -51,10 +51,10 @@ class Manifest r ix e => Mutable r ix e where
     unsafeFreeze mArr
   {-# INLINE computeSeq #-}
 
-  computePar :: (Massiv r' ix e, Load r' ix) => Array r' ix e -> IO (Array r ix e)
-  computePar !arr = do
+  computePar :: (Massiv r' ix e, Load r' ix) => [Int] -> Array r' ix e -> IO (Array r ix e)
+  computePar wIds !arr = do
     mArr <- unsafeNew (size arr)
-    loadP arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+    loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
     unsafeFreeze mArr
   {-# INLINE computePar #-}
 

@@ -105,7 +105,7 @@ computeStorableS = computeSeq
 
 
 computeStorableP :: (Massiv r ix e, Load r ix, Mutable S ix e) => Array r ix e -> Array S ix e
-computeStorableP = unsafePerformIO . computePar
+computeStorableP = unsafePerformIO . computePar []
 {-# INLINE computeStorableP #-}
 
 

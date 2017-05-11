@@ -106,7 +106,7 @@ computeUnboxedS !arr = computeSeq arr
 
 
 computeUnboxedP :: (Massiv r ix e, Load r ix, Mutable U ix e) => Array r ix e -> Array U ix e
-computeUnboxedP = unsafePerformIO . computePar
+computeUnboxedP = unsafePerformIO . computePar []
 {-# INLINE computeUnboxedP #-}
 
 

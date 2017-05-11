@@ -138,7 +138,7 @@ mapP_ f = imapP_ (const f)
 imapP_ :: Source r ix a => (ix -> a -> IO b) -> Array r ix a -> IO ()
 imapP_ f !arr = do
   let !sz = size arr
-  splitWork_ sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+  splitWork_ [] sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
       submitRequest scheduler $
       JobRequest 0 $

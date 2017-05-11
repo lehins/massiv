@@ -103,7 +103,7 @@ computePrimitiveS = computeSeq
 
 
 computePrimitiveP :: (Massiv r ix e, Load r ix, Mutable P ix e) => Array r ix e -> Array P ix e
-computePrimitiveP = unsafePerformIO . computePar
+computePrimitiveP = unsafePerformIO . computePar []
 {-# INLINE computePrimitiveP #-}
 
 

@@ -44,8 +44,8 @@ toInterleaved = IDArray . delay
 instance Index ix => Load ID ix where
   loadS (IDArray arr) unsafeRead unsafeWrite = loadS arr unsafeRead unsafeWrite
   {-# INLINE loadS #-}
-  loadP (IDArray (DArray sz f)) _ unsafeWrite = do
-    scheduler <- makeScheduler
+  loadP wIds (IDArray (DArray sz f)) _ unsafeWrite = do
+    scheduler <- makeScheduler wIds
     let !totalLength = totalElem sz
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       submitRequest scheduler $

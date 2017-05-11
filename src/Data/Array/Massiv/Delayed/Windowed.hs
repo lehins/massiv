@@ -90,9 +90,9 @@ instance Load WD DIM1 where
     iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
     iterM_ wk sz 1 (<) $ \ !i -> unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
-  loadP (WDArray (DArray sz indexB) _ it wk indexW) _ unsafeWrite = do
+  loadP wIds (WDArray (DArray sz indexB) _ it wk indexW) _ unsafeWrite = do
     void $
-      splitWork wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      splitWork wIds wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         submitRequest scheduler $
           JobRequest 0 $
           iterM_ 0 it 1 (<) $ \ !ix ->
@@ -129,8 +129,8 @@ instance Load WD DIM2 where
     unrollAndJam blockHeight (it, ib) (jt, jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
   {-# INLINE loadS #-}
-  loadP (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
-    scheduler <- makeScheduler
+  loadP wIds (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
+    scheduler <- makeScheduler wIds
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
         !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
@@ -197,9 +197,9 @@ loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRe
       unsafeWriteLower i k val = unsafeWrite (k + pageElements * (t + i)) val
       {-# INLINE unsafeWriteLower #-}
   iterM_ zeroIndex tix 1 (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    unsafeWrite (toLinearIndex sz ix) (indexB ix)
   iterM_ (liftIndex2 (+) tix wSz) sz 1 (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    unsafeWrite (toLinearIndex sz ix) (indexB ix)
   loopM_ t (< (w + t)) (+ 1) $ \ !i ->
     let !lowerArr =
           (WDArray
@@ -215,9 +215,9 @@ loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRe
 
 loadWindowedPRec
   :: (Index ix, Load WD (Lower ix)) =>
-     Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
-loadWindowedPRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
-  scheduler <- makeScheduler
+     [Int] -> Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
+loadWindowedPRec wIds (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
+  scheduler <- makeScheduler wIds
   let !szL = snd $ unconsDim sz
       !(t, tixL) = unconsDim tix
       !(w, wSzL) = unconsDim wSz

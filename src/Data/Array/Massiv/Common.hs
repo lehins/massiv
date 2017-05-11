@@ -77,7 +77,10 @@ class Index ix => Load r ix where
   -- | Load an array into memory in parallel
   loadP
     :: Massiv r ix e =>
-       Array r ix e -- ^ Array that is being loaded
+       [Int] -- ^ List of capabilities to run workers on, as described in
+             -- `Control.Concurrent.forkOn`. Empty will imply all that are available,
+             -- i.e. run on all cores available through @+RTS -N@.
+    -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> IO e) -- ^ Function that reads an element
     -> (Int -> e -> IO ()) -- ^ Function that writes an element
     -> IO ()

@@ -50,8 +50,7 @@ data Scheduler a = Scheduler
   { resultsChan       :: TChan (Either SomeException (JobResult a))
   , jobsSubmittedVar  :: TVar Int
   , jobsFinishedVar   :: TVar Int
-  , jobQueue          :: TChan Job
-  , workers           :: [ThreadId]
+  , workers           :: Workers
   , numWorkers        :: !Int
   , retiredVar        :: TVar Bool
   , isGlobalScheduler :: Bool
@@ -65,20 +64,26 @@ data JobRequest a = JobRequest { jobRequestId     :: Int
                                , jobRequestAction :: IO a }
 
 
+data Workers = Workers { workerIds :: [Int]
+                       , workerThreadIds :: [ThreadId]
+                       , workersJobQueue  :: TChan Job }
+
 -- | Create a `Scheduler` that can be used to submit `JobRequest`s and collect
 -- work done by the workers using `collectResults`.
-makeScheduler :: IO (Scheduler a)
-makeScheduler = do
+makeScheduler :: [Int] -> IO (Scheduler a)
+makeScheduler wIds = do
   isGlobalScheduler <-
-    atomically $ do
-      hasGlobalScheduler <- readTVar hasGlobalSchedulerVar
-      unless hasGlobalScheduler $ writeTVar hasGlobalSchedulerVar True
-      return $ not hasGlobalScheduler
-  (workers, jobQueue) <-
+    if null wIds
+      then atomically $ do
+             hasGlobalScheduler <- readTVar hasGlobalSchedulerVar
+             unless hasGlobalScheduler $ writeTVar hasGlobalSchedulerVar True
+             return $ not hasGlobalScheduler
+      else return False
+  workers <-
     if isGlobalScheduler
-      then atomically $ readTVar globalJobQueue
-      else makeJobQueue
-  let numWorkers = length workers
+      then atomically $ readTVar globalWorkersVar
+      else hireWorkers wIds
+  let numWorkers = length $ workerIds workers
   atomically $ do
     resultsChan <- newTChan
     jobsSubmittedVar <- newTVar 0
@@ -90,7 +95,7 @@ makeScheduler = do
 -- | Clear out outstanding jobs in the queue
 clearJobQueue :: Scheduler a -> STM ()
 clearJobQueue scheduler@(Scheduler {..}) = do
-  mJob <- tryReadTChan jobQueue
+  mJob <- tryReadTChan (workersJobQueue workers)
   case mJob of
     Just _ -> do
       modifyTVar' jobsFinishedVar (+ 1)
@@ -106,7 +111,7 @@ submitRequest Scheduler {..} JobRequest {..} = do
     isRetired <- readTVar retiredVar
     when isRetired $ throwM SchedulerRetired
     modifyTVar' jobsSubmittedVar (+ 1)
-    writeTChan jobQueue $
+    writeTChan (workersJobQueue workers) $
       Job $ \_wid -> do
         eResult <- catchAny (Right <$> jobRequestAction) (return . Left)
         atomically $ do
@@ -154,18 +159,18 @@ collectResults scheduler@(Scheduler {..}) f initAcc = do
                 if isGlobalScheduler
                   then writeTVar hasGlobalSchedulerVar False
                   else loopM_ 0 (< numWorkers) (+ 1) $ \ !_ ->
-                         writeTChan jobQueue Retire
+                         writeTChan (workersJobQueue workers) Retire
               return $! f jRes acc
             else collect $ f jRes acc
         Left exc -> do
-          mapM_ killThread workers
+          mapM_ killThread (workerThreadIds workers)
           -- kill all workers. Recreate the workers only if those that were
           -- killed were primary workers.
           when isGlobalScheduler $ do
-            jQueue <- makeJobQueue
+            globalWorkers <- hireWorkers []
             atomically $ do
               writeTVar hasGlobalSchedulerVar False
-              writeTVar globalJobQueue jQueue
+              writeTVar globalWorkersVar globalWorkers
           throw exc
 
 
@@ -178,11 +183,11 @@ waitTillDone scheduler = collectResults scheduler (const id) ()
 
 
 splitWork :: Index ix
-          => ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
-splitWork !sz submitWork
+          => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
+splitWork wIds !sz submitWork
   | totalElem sz == 0 = return []
   | otherwise = do
-    scheduler <- makeScheduler
+    scheduler <- makeScheduler wIds
     let !totalLength = totalElem sz
         !chunkLength = totalLength `quot` numWorkers scheduler
         !slackStart = chunkLength * numWorkers scheduler
@@ -190,29 +195,30 @@ splitWork !sz submitWork
     collectResults scheduler (:) []
 
 splitWork_ :: Index ix
-          => ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
-splitWork_ sz = void . splitWork sz
+          => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
+splitWork_ wIds sz = void . splitWork wIds sz
 
 hasGlobalSchedulerVar :: TVar Bool
 hasGlobalSchedulerVar = unsafePerformIO $ newTVarIO False
 {-# NOINLINE hasGlobalSchedulerVar #-}
 
 
-globalJobQueue :: TVar ([ThreadId], TChan Job)
-globalJobQueue = unsafePerformIO $ makeJobQueue >>= newTVarIO
-{-# NOINLINE globalJobQueue #-}
+globalWorkersVar :: TVar Workers
+globalWorkersVar = unsafePerformIO $ hireWorkers [] >>= newTVarIO
+{-# NOINLINE globalWorkersVar #-}
 
 
-makeJobQueue :: IO ([ThreadId], TChan Job)
-makeJobQueue = do
-  nWorkers <- getNumWorkers
-  jQueue <- newTChanIO
-  workers <- startWorkers jQueue nWorkers
-  return (workers, jQueue)
-
-
-getNumWorkers :: IO Int
-getNumWorkers = getNumCapabilities
+hireWorkers :: [Int] -> IO Workers
+hireWorkers wIds = do
+  workerIds <-
+    if null wIds
+      then do
+        wNum <- getNumCapabilities
+        return [0 .. wNum-1]
+      else return wIds
+  workersJobQueue <- newTChanIO
+  workerThreadIds <- startWorkers workersJobQueue workerIds
+  return Workers {..}
 
 
 runWorker :: TChan Job -> Int -> IO ()
@@ -225,9 +231,6 @@ runWorker jQueue wid = do
     Retire -> return ()
 
 
-startWorkers :: TChan Job -> Int -> IO [ThreadId]
-startWorkers jQueue nWorkers =
-  loopM 0 (< nWorkers) (+ 1) [] $ \ !wid acc -> do
-    tid <- forkOn wid (runWorker jQueue wid)
-    return (tid:acc)
+startWorkers :: TChan Job -> [Int] -> IO [ThreadId]
+startWorkers jQueue = mapM (\ !wId -> forkOn wId (runWorker jQueue wId))
 
