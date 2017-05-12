@@ -81,6 +81,8 @@ instance Index ix => Foldable (Array M ix) where
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
+  toList = foldr' (:) []
+  {-# INLINE toList #-}
 
 
 

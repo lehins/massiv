@@ -1,11 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE BangPatterns              #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeSynonymInstances      #-}
-{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -41,11 +41,19 @@ import           Data.Array.Massiv.Ops.Construct
 import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Ops.Map
 import           Data.Array.Massiv.Ops.Transform
-import           Prelude                            hiding (length, map, null,
-                                                     zipWith, zipWith3)
--- import Text.Printf
+import           Prelude                         as P hiding (length, map, null,
+                                                       zipWith, zipWith3)
+import Text.Printf
+import qualified Data.Foldable as F
 -- import qualified Data.List as L
 
+
+showPrintf :: (PrintfArg a, Foldable t) => String -> t a -> String
+showPrintf format arr = concat $ fmap (printf format) $ F.toList arr
+
+
+-- instance PrettyShow DIM1 where
+--   prettyShow format arr = concat $ fmap (printf format) $ F.toList arr
 
 -- instance Show FormatAdjustment where
 --   show ZeroPad = "ZeroPad"

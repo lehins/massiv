@@ -17,6 +17,7 @@ module Data.Array.Massiv.Common
   , Massiv(..)
   , Source(..)
   , Load(..)
+  , PrettyShow(..)
   , module Data.Array.Massiv.Common.Index
   , safeIndex
   , errorIx
@@ -28,6 +29,7 @@ import           Data.Array.Massiv.Common.Index hiding (Z)
 import           Data.Proxy
 import           Data.Typeable                  (Typeable, showsTypeRep,
                                                  typeRep)
+import           Text.Printf
 
 data family Array r ix e :: *
 
@@ -104,3 +106,8 @@ safeIndex !arr !ix =
     (unsafeIndex arr)
     ix
 {-# INLINE safeIndex #-}
+
+
+class PrettyShow ix where
+
+  prettyShow :: PrintfArg e => String -> Array r ix e -> String

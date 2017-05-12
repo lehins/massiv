@@ -32,6 +32,8 @@ module Data.Array.Massiv.Ops.Fold
   , foldrP
   , ifoldlP
   , ifoldrP
+  , foldlOnP
+  , foldrOnP
   , ifoldlOnP
   , ifoldrOnP
   , foldP
@@ -117,7 +119,7 @@ lazyFoldlS f initAcc arr = go initAcc 0 where
 -- | /O(n)/ - Right fold, computed sequentially with lazy accumulator.
 lazyFoldrS :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
 lazyFoldrS f initAcc arr = go initAcc (totalElem (size arr) - 1) where
-  go acc k | k >= 0 = go (f (unsafeLinearIndex arr k) acc) (k + 1)
+  go acc k | k >= 0 = go (f (unsafeLinearIndex arr k) acc) (k - 1)
            | otherwise = acc
 {-# INLINE lazyFoldrS #-}
 
@@ -170,24 +172,14 @@ productS = foldrS (*) 1
 -- allowing us to use information about the strucutre of an array during
 -- folding.
 --
--- ==== __Examples__
---
--- Emulate different number of cores. (/Note/: @setNumCapabilities@ does not
--- actually affect number of parallel workers)
---
--- >>> :m Control.Concurrent
 -- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
 -- [[10,9,8,7,6,5,4,3,2,1,0]]
--- >>> setNumCapabilities 3
--- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
+--
+-- This is how the result would look like if the above computation would be
+-- performed in a program compiled with @+RTS -N3@, i.e. with 3 capabilities:
+--
+-- >>> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
 -- [[10,9],[8,7,6],[5,4,3],[2,1,0]]
---
--- The order in which chunks folding results will be supplied to function @f@ is
--- guaranteed to be consecutive, i.e. aligned with folding direction.
---
--- >>> setNumCapabilities 4
--- >>> foldlP (flip (:) . reverse) [] (flip (:)) [] $ makeArray1D 11 id
--- [[10,9,8],[5,4],[1,0],[3,2],[7,6]]
 --
 foldlP :: (NFData a, Source r ix e) =>
           (b -> a -> b) -- ^ Chunk results folding function @f@.
@@ -197,6 +189,29 @@ foldlP :: (NFData a, Source r ix e) =>
        -> Array r ix e -> IO b
 foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 {-# INLINE foldlP #-}
+
+
+-- | Just like `foldlP`, but allows you to specify which cores to run
+-- computation on.
+--
+-- ==== __Examples__
+--
+--
+--
+-- The order in which chunked results will be supplied to function @f@ is
+-- guaranteed to be consecutive, i.e. aligned with folding direction.
+--
+-- >>> fmap snd $ foldlOnP [1,2,3] (\(i, acc) x -> (i + 1, (i, x):acc)) (1, []) (flip (:)) [] $ makeArray1D 11 id
+-- [(4,[10,9]),(3,[8,7,6]),(2,[5,4,3]),(1,[2,1,0])]
+-- >>> fmap (P.zip [4,3..]) <$> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
+-- [(4,[10,9]),(3,[8,7,6]),(2,[5,4,3]),(1,[2,1,0])]
+--
+foldlOnP
+  :: (NFData a, Source r ix e)
+  => [Int] -> (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
+foldlOnP wIds g !tAcc f = ifoldlOnP wIds g tAcc (\ x _ -> f x)
+{-# INLINE foldlOnP #-}
+
 
 -- | Just like `ifoldlP`, but allows you to specify which cores to run
 -- computation on.
@@ -238,6 +253,33 @@ foldrP :: (NFData a, Source r ix e) =>
           (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
 foldrP g !tAcc f = ifoldrP g tAcc (const f)
 {-# INLINE foldrP #-}
+
+
+-- | Just like `foldrP`, but allows you to specify which cores to run
+-- computation on.
+--
+-- ==== __Examples__
+--
+-- Number of wokers dictate the result structure:
+--
+-- >>> foldrOnP [2,2,3] (:) [] (:) [] $ makeArray1D 9 id
+-- [[0,1,2],[3,4,5],[6,7,8]]
+-- >>> foldrOnP [2,2,3] (:) [] (:) [] $ makeArray1D 10 id
+-- [[0,1,2],[3,4,5],[6,7,8],[9]]
+-- >>> foldrOnP [2,2,3] (:) [] (:) [] $ makeArray1D 12 id
+-- [[0,1,2,3],[4,5,6,7],[8,9,10,11]]
+--
+-- Same as `foldlOnP`, order is quaranteed to be consecutive and in proper direction:
+--
+-- >>> fmap snd $ foldrOnP [1,2,3] (\x (i, acc) -> (i + 1, (i, x):acc)) (1, []) (:) [] $ makeArray1D 11 id
+-- [(4,[0,1,2]),(3,[3,4,5]),(2,[6,7,8]),(1,[9,10])]
+-- >>> fmap (P.zip [4,3..]) <$> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 11 id
+-- [(4,[0,1,2]),(3,[3,4,5]),(2,[6,7,8]),(1,[9,10])]
+--
+foldrOnP :: (NFData a, Source r ix e) =>
+            [Int] -> (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
+foldrOnP wIds g !tAcc f = ifoldrOnP wIds g tAcc (const f)
+{-# INLINE foldrOnP #-}
 
 
 -- | Just like `ifoldrP`, but allows you to specify which cores to run
