@@ -49,7 +49,7 @@ instance Index ix => Load ID ix where
     let !totalLength = totalElem sz
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       submitRequest scheduler $
-      JobRequest 0 $
+      JobRequest $
       iterLinearM_ sz start totalLength (numWorkers scheduler) (<) $ \ !k !ix ->
         unsafeWrite k $ f ix
     waitTillDone scheduler

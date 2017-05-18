@@ -141,12 +141,12 @@ imapP_ f !arr = do
   splitWork_ [] sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
       submitRequest scheduler $
-      JobRequest 0 $
+      JobRequest $
       iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !i ix -> do
         void $ f ix (unsafeLinearIndex arr i)
     when (slackStart < totalLength) $
       submitRequest scheduler $
-      JobRequest 0 $
+      JobRequest $
       iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i ix -> do
         void $ f ix (unsafeLinearIndex arr i)
 {-# INLINE imapP_ #-}

@@ -15,7 +15,9 @@ module Data.Array.Massiv.Scheduler
   , makeScheduler
   , numWorkers
   , JobRequest(..)
-  , JobResult(..)
+  , JobResult
+  , jobResultId
+  , jobResult
   , submitRequest
   , collectResults
   , waitTillDone
@@ -61,8 +63,7 @@ data JobResult a = JobResult { jobResultId :: Int
                              , jobResult   :: !a }
 
 
-data JobRequest a = JobRequest { jobRequestId     :: Int
-                               , jobRequestAction :: IO a }
+data JobRequest a = JobRequest { jobRequestAction :: IO a }
 
 
 data Workers = Workers { workerIds :: [Int]
@@ -111,13 +112,14 @@ submitRequest Scheduler {..} JobRequest {..} = do
   atomically $ do
     isRetired <- readTVar retiredVar
     when isRetired $ throwM SchedulerRetired
-    modifyTVar' jobsSubmittedVar (+ 1)
+    jId <- readTVar jobsSubmittedVar
+    writeTVar jobsSubmittedVar (jId + 1)
     writeTChan (workersJobQueue workers) $
       Job $ \_wid -> do
         eResult <- catchAny (Right <$> jobRequestAction) (return . Left)
         atomically $ do
           modifyTVar' jobsFinishedVar (+ 1)
-          writeTChan resultsChan (JobResult jobRequestId <$> eResult)
+          writeTChan resultsChan (JobResult jId <$> eResult)
 
 
 -- | Block current thread and wait for all `JobRequest`s to get processed. Use a

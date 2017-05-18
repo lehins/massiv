@@ -33,7 +33,7 @@ module Data.Array.Massiv.Ops.Fold
   , productS
   -- * Parallel folds
   , foldlP
-  , foldlP'
+  --, foldlP'
   , foldrP
   , ifoldlP
   , ifoldrP
@@ -263,17 +263,15 @@ ifoldlOnP wIds g !tAcc f !initAcc !arr = do
   let !sz = size arr
   results <-
     splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      jId <-
-        loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
+      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start -> do
           submitRequest scheduler $
-            JobRequest jId $
+            JobRequest $
             iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
               let res = f acc ix (unsafeLinearIndex arr i)
               in res `deepseq` return res
-          return (jId + 1)
       when (slackStart < totalLength) $
         submitRequest scheduler $
-        JobRequest jId $
+        JobRequest $
         iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
           let res = f acc ix (unsafeLinearIndex arr i)
           in res `deepseq` return res
@@ -281,45 +279,44 @@ ifoldlOnP wIds g !tAcc f !initAcc !arr = do
 {-# INLINE ifoldlOnP #-}
 
 
-foldlP'
-  :: (NFData a, Source r ix e)
-  => (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
-foldlP' g !tAcc f = ifoldlOnP' [] g tAcc (\ x _ -> f x)
-{-# INLINE foldlP' #-}
+-- foldlP'
+--   :: (NFData a, Source r ix e)
+--   => (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
+-- foldlP' g !tAcc f = ifoldlOnP' [] g tAcc (\ x _ -> f x)
+-- {-# INLINE foldlP' #-}
 
 
--- | Just like `ifoldlP`, but allows you to specify which cores to run
--- computation on.
-ifoldlOnP' :: forall r ix a b e . (NFData a, Source r ix e) =>
-           [Int] -> (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
-ifoldlOnP' wIds g !tAcc f !initAcc !arr = do
-  let !sz = size arr
-  mResArrM <- splitWork' wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      let !hasSlack = slackStart < totalLength
-      let !resSize = numWorkers scheduler + if hasSlack then 1 else 0
-      resArrM <- unsafeNew resSize
-      jIdSlack <- loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
-          submitRequest scheduler $
-            JobRequest jId $ do
-              iterRes <- iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
-                let res = f acc ix (unsafeLinearIndex arr i)
-                in res `deepseq` return res
-              unsafeLinearWrite resArrM jId iterRes
-          return (jId + 1)
-      when hasSlack $
-        submitRequest scheduler $
-        JobRequest jIdSlack $ do
-          iterRes <- iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
-            let res = f acc ix (unsafeLinearIndex arr i)
-            in res `deepseq` return res
-          unsafeLinearWrite resArrM jIdSlack iterRes
-      return resArrM
-  case mResArrM of
-    Just resArrM -> do
-      resArr <- unsafeFreeze resArrM
-      return $ foldlS g tAcc (resArr :: Array B DIM1 a)
-    Nothing -> return tAcc
-{-# INLINE ifoldlOnP' #-}
+-- -- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- -- computation on.
+-- ifoldlOnP' :: forall r ix a b e . (NFData a, Source r ix e) =>
+--            [Int] -> (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+-- ifoldlOnP' wIds g !tAcc f !initAcc !arr = do
+--   let !sz = size arr
+--   mResArrM <- splitWork' wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+--       let !hasSlack = slackStart < totalLength
+--       let !resSize = numWorkers scheduler + if hasSlack then 1 else 0
+--       resArrM <- unsafeNew resSize
+--       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start -> do
+--           submitRequest scheduler $
+--             JobRequest $ do
+--               iterRes <- iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
+--                 let res = f acc ix (unsafeLinearIndex arr i)
+--                 in res `deepseq` return res
+--               unsafeLinearWrite resArrM jId iterRes
+--       when hasSlack $
+--         submitRequest scheduler $
+--         JobRequest $ do
+--           iterRes <- iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
+--             let res = f acc ix (unsafeLinearIndex arr i)
+--             in res `deepseq` return res
+--           unsafeLinearWrite resArrM jIdSlack iterRes
+--       return resArrM
+--   case mResArrM of
+--     Just resArrM -> do
+--       resArr <- unsafeFreeze resArrM
+--       return $ foldlS g tAcc (resArr :: Array B DIM1 a)
+--     Nothing -> return tAcc
+-- {-# INLINE ifoldlOnP' #-}
 
 
 ------------------
@@ -499,16 +496,15 @@ ifoldrOnP wIds g !tAcc f !initAcc !arr = do
     splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       when (slackStart < totalLength) $
         submitRequest scheduler $
-        JobRequest 0 $
+        JobRequest $
         iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
           return $ f ix (unsafeLinearIndex arr i) acc
-      loopM slackStart (> 0) (subtract chunkLength) 1 $ \ !start !jId -> do
+      loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
         submitRequest scheduler $
-          JobRequest jId $
+          JobRequest $
           iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
             let res = f ix (unsafeLinearIndex arr i) acc
             in res `deepseq` return res
-        return (jId + 1)
   return $
     F.foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
 {-# INLINE ifoldrOnP #-}

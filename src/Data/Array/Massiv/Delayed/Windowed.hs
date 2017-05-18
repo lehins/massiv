@@ -94,20 +94,20 @@ instance Load WD DIM1 where
     void $
       splitWork wIds wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           iterM_ 0 it 1 (<) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexB ix)
         submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           iterM_ wk sz 1 (<) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexB ix)
         loopM_ it (< (slackStart + it)) (+ chunkLength) $ \ !start ->
           submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           iterM_ start (start + chunkLength) 1 (<) $ \ !k ->
             unsafeWrite k $ indexW k
         submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           iterM_ (slackStart + it) (totalLength + it) 1 (<) $ \ !k ->
             unsafeWrite k (indexW k)
   {-# INLINE loadP #-}
@@ -139,30 +139,30 @@ instance Load WD DIM2 where
             unsafeWrite (toLinearIndex sz ix) (indexW ix)
         {-# INLINE loadBlock #-}
     submitRequest scheduler $
-      JobRequest 0 $
+      JobRequest $
         iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
     submitRequest scheduler $
-      JobRequest 0 $
+      JobRequest $
         iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
     submitRequest scheduler $
-      JobRequest 0 $
+      JobRequest $
         iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
     submitRequest scheduler $
-      JobRequest 0 $
+      JobRequest $
         iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
       let !it' = wid * chunkHeight + it
       submitRequest scheduler $
-        JobRequest 0 $
+        JobRequest $
         loadBlock it' (it' + chunkHeight)
     when (slackHeight > 0) $ do
       let !itSlack = (numWorkers scheduler) * chunkHeight + it
       submitRequest scheduler $
-        JobRequest 0 $
+        JobRequest $
         loadBlock itSlack (itSlack + slackHeight)
     waitTillDone scheduler
   {-# INLINE loadP #-}
@@ -227,11 +227,11 @@ loadWindowedPRec wIds (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) uns
       unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
       {-# INLINE unsafeWriteLowerST #-}
   submitRequest scheduler $
-    JobRequest 0 $
+    JobRequest $
     iterM_ zeroIndex tix 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
   submitRequest scheduler $
-    JobRequest 0 $
+    JobRequest $
     iterM_ (liftIndex2 (+) tix wSz) sz 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
   loopM_ t (< (w + t)) (+ 1) $ \ !i ->
@@ -244,7 +244,7 @@ loadWindowedPRec wIds (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) uns
              wSzL
              (\ !ix -> indexW (consDim i ix)))
     in submitRequest scheduler $
-       JobRequest 0 $
+       JobRequest $
        stToIO $
        loadS
          lowerArr

@@ -129,11 +129,11 @@ instance Index ix => Load D ix where
     void $ splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
         submitRequest scheduler $
-        JobRequest 0 $
+        JobRequest $
         iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> do
           unsafeWrite k $ f ix
       submitRequest scheduler $
-        JobRequest 0 $
+        JobRequest $
         iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> do
           unsafeWrite k (f ix)
   {-# INLINE loadP #-}

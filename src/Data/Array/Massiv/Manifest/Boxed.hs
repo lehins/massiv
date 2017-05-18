@@ -126,11 +126,11 @@ instance Index ix => Load B ix where
       splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !i _ ->
             unsafeWrite i $ V.unsafeIndex v i
         submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i _ ->
             unsafeWrite i $ V.unsafeIndex v i
   {-# INLINE loadP #-}
@@ -193,11 +193,11 @@ deepseqP (BArray sz v) b =
     ((splitWork [] sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
             V.unsafeIndex v k `deepseq` return ()
         submitRequest scheduler $
-          JobRequest 0 $
+          JobRequest $
           loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
             V.unsafeIndex v k `deepseq` return ()) >>
      return (deepseq sz b))
