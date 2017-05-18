@@ -5,7 +5,6 @@ module Main where
 import           Compute
 import           Criterion.Main
 import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Repa                    as R
 import           Data.Foldable
 import qualified Data.Vector.Unboxed                as VU
@@ -73,22 +72,39 @@ main = do
         "Fold"
         [ bgroup
             "Left"
-              -- bench "Array Massiv Lazy" $
-            --   whnf (foldl (+) 0 . arrM) sz
-            -- ,
-            [ bench "Array Massiv Delayed" $
-              whnf (foldl' (+) 0 . arrM) sz
+            [ bench "Array Massiv Delayed" $ whnf (foldl' (+) 0 . arrM) sz
             , bench "Vector Unboxed" $ whnf (VU.foldl' (+) 0 . vecU) sz
             , bench "Array Repa" $ whnf (R.foldAllS (+) 0 . arrR) sz
             ]
         , bgroup
-            "Computed"
-            [ bench "Array Massiv Unboxed" $ whnf (foldlS (+) 0) arrCM
-            , bench "Array Massiv Unboxed 2" $ whnf (foldrS (+) 0) arrCM
-            , bench "Array Massiv Manifest" $ whnf (foldlS (+) 0) arrCMM
-            , bench "Vector Unboxed" $ whnf (VU.foldl' (+) 0) vecCU
-            , bench "Array Repa" $ whnf (R.foldAllS (+) 0) arrCR
+            "Right"
+            [ bench "Array Massiv Delayed" $ whnf (foldrS (+) 0 . arrM) sz
+            , bench "Array Massiv Delayed foldr" $ whnf (foldr (+) 0 . arrM) sz
+            , bench "Array Massiv Delayed foldr'" $ whnf (foldr' (+) 0 . arrM) sz
+            , bench "Vector Unboxed" $ whnf (VU.foldr' (+) 0 . vecU) sz
+            , bench "Array Repa" $ whnf (R.foldAllS (+) 0 . arrR) sz
             ]
+        , bgroup
+            "Computed"
+            [ bench "Array Massiv Unboxed Left Fold" $ whnf (foldlS (+) 0) arrCM
+            --, bench "Array Massiv Unboxed Left Fold'" $ whnf (foldlS' (+) 0) arrCM
+            , bench "Array Massiv Unboxed Right Fold" $ whnf (foldrS (+) 0) arrCM
+            --, bench "Array Massiv Unboxed Right Fold'" $ whnf (foldrS' (+) 0) arrCM
+            , bench "Array Massiv Manifest Left Fold" $ whnf (foldlS (+) 0) arrCMM
+            --, bench "Array Massiv Manifest Left Fold'" $ whnf (foldlS' (+) 0) arrCMM
+            , bench "Array Massiv Manifest Right Fold" $ whnf (foldrS (+) 0) arrCMM
+            --, bench "Array Massiv Manifest Right Fold'" $ whnf (foldrS' (+) 0) arrCMM
+            , bench "Vector Unboxed Left Strict" $ whnf (VU.foldl' (+) 0) vecCU
+            , bench "Vector Unboxed Right Strict" $ whnf (VU.foldr' (+) 0) vecCU
+            , bench "Array Repa FoldAll" $ whnf (R.foldAllS (+) 0) arrCR
+            ]
+        ]
+    , bgroup
+        "toList"
+        [ bench "Array Massiv" $ nf (M.toListS1D . arrM) sz
+        , bench "Array Massiv 2D" $ nf (M.toListS2D . arrM) sz
+        , bench "Array vector" $ whnf (VU.toList . vecU) sz
+        , bench "Array Repa" $ nf (R.toList . arrR) sz
         ]
     , bgroup
         "Fuse"

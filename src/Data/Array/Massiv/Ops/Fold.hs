@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 -- |
 -- Module      : Data.Array.Massiv.Ops.Fold
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -20,8 +22,10 @@ module Data.Array.Massiv.Ops.Fold
   , ifoldrM_
   -- * Sequential folds
   , foldlS
+  --, toListP'
   , lazyFoldlS
   , foldrS
+  , foldrFB
   , lazyFoldrS
   , ifoldlS
   , ifoldrS
@@ -29,6 +33,7 @@ module Data.Array.Massiv.Ops.Fold
   , productS
   -- * Parallel folds
   , foldlP
+  , foldlP'
   , foldrP
   , ifoldlP
   , ifoldrP
@@ -41,14 +46,21 @@ module Data.Array.Massiv.Ops.Fold
   , productP
   ) where
 
-import Data.Functor.Identity
-import           Control.DeepSeq             (NFData, deepseq)
-import           Control.Monad               (void, when)
+--import Prelude hiding (map)
+import           Control.DeepSeq                  (NFData, deepseq)
+import           Control.Monad                    (void, when)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Scheduler
-import qualified Data.Foldable               as F (foldl', foldr')
-import           Data.List                   (sortOn)
-import           System.IO.Unsafe            (unsafePerformIO)
+import qualified Data.Foldable                    as F (foldl', foldr')
+import           Data.Functor.Identity
+import           Data.List                        (sortOn)
+import           System.IO.Unsafe                 (unsafePerformIO)
+
+-- import           Data.Array.Massiv.Common.Shape   (Slice, (!>))
+import           Data.Array.Massiv.Manifest.Boxed
+import           Data.Array.Massiv.Mutable
+-- import GHC.Base (build)
+
 -- TODO: Use CPP to account for sortOn is only available since base-4.8
 --import Data.List (sortBy)
 --import Data.Function (on)
@@ -118,9 +130,7 @@ lazyFoldlS f initAcc arr = go initAcc 0 where
 
 -- | /O(n)/ - Right fold, computed sequentially with lazy accumulator.
 lazyFoldrS :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
-lazyFoldrS f initAcc arr = go initAcc (totalElem (size arr) - 1) where
-  go acc k | k >= 0 = go (f (unsafeLinearIndex arr k) acc) (k - 1)
-           | otherwise = acc
+lazyFoldrS = foldrFB
 {-# INLINE lazyFoldrS #-}
 
 
@@ -130,17 +140,52 @@ foldlS f = ifoldlS (\ a _ e -> f a e)
 {-# INLINE foldlS #-}
 
 
+-- | /O(n)/ - Left fold with an index aware function, computed sequentially.
+ifoldlS :: Source r ix e
+        => (a -> ix -> e -> a) -> a -> Array r ix e -> a
+ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> return $ f a ix e) acc
+{-# INLINE ifoldlS #-}
+
+
 -- | /O(n)/ - Right fold, computed sequentially.
 foldrS :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
 foldrS f = ifoldrS (\_ e a -> f e a)
 {-# INLINE foldrS #-}
 
 
--- | /O(n)/ - Left fold with an index aware function, computed sequentially.
-ifoldlS :: Source r ix e
-        => (a -> ix -> e -> a) -> a -> Array r ix e -> a
-ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> return $ f a ix e) acc
-{-# INLINE ifoldlS #-}
+-- | Version of foldr that supports foldr/build list fusion implemented by GHC.
+foldrFB :: Source r ix e => (e -> b -> b) -> b -> Array r ix e -> b
+foldrFB c n arr = go 0
+  where
+    !k = totalElem (size arr)
+    go !i
+      | i == k = n
+      | otherwise = let !v = unsafeLinearIndex arr i in v `c` go (i + 1)
+{-# INLINE [0] foldrFB #-}
+
+
+-- foldrS :: (Source r ix e) => (e -> a -> a) -> a -> Array r ix e -> a
+-- foldrS f !acc !arr =
+--   iter (liftIndex (subtract 1) (size arr)) zeroIndex (-1) (>=) acc $ \ !ix !acc0 ->
+--     f (unsafeIndex arr ix) acc0
+-- {-# INLINE foldrS #-}
+
+-- foldrS' :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
+-- foldrS' f acc arr =
+--   iter (totalElem sz) 0 (-1) (>=) acc $ \ !i !acc0 ->
+--     f (unsafeLinearIndex arr i) acc0
+--   where
+--     !sz = size arr
+-- {-# INLINE foldrS' #-}
+
+-- foldlS' :: Source r ix e => (a -> e -> a) -> a -> Array r ix e -> a
+-- foldlS' f !acc !arr =
+--   iter zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a (unsafeIndex arr ix)
+--   -- iter 0 (totalElem (size arr)) 1 (<) acc $ \ !i !acc0 ->
+--   --   f acc0 (unsafeLinearIndex arr i)
+-- {-# INLINE foldlS' #-}
+
+
 
 
 -- | /O(n)/ - Right fold with an index aware function, computed sequentially.
@@ -150,17 +195,16 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 
 
 -- | /O(n)/ - Compute sum sequentially.
-sumS :: (Source r ix e, Num e) =>
-        Array r ix e -> e
+sumS :: (Source r ix e, Num e) => Array r ix e -> e
 sumS = foldrS (+) 0
 {-# INLINE sumS #-}
 
 
 -- | /O(n)/ - Compute product sequentially.
-productS :: (Source r ix e, Num e) =>
-            Array r ix e -> e
+productS :: (Source r ix e, Num e) => Array r ix e -> e
 productS = foldrS (*) 1
 {-# INLINE productS #-}
+
 
 
 -- | /O(n)/ - Left fold, computed in parallel. Parallelization of folding
@@ -191,12 +235,10 @@ foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
 
--- | Just like `foldlP`, but allows you to specify which cores to run
+-- | Just like `foldlP`, but allows you to specify which cores (capabilities) to run
 -- computation on.
 --
 -- ==== __Examples__
---
---
 --
 -- The order in which chunked results will be supplied to function @f@ is
 -- guaranteed to be consecutive, i.e. aligned with folding direction.
@@ -238,6 +280,160 @@ ifoldlOnP wIds g !tAcc f !initAcc !arr = do
   return $ F.foldl' g tAcc $ map jobResult $ sortOn jobResultId results
 {-# INLINE ifoldlOnP #-}
 
+
+foldlP'
+  :: (NFData a, Source r ix e)
+  => (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
+foldlP' g !tAcc f = ifoldlOnP' [] g tAcc (\ x _ -> f x)
+{-# INLINE foldlP' #-}
+
+
+-- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- computation on.
+ifoldlOnP' :: forall r ix a b e . (NFData a, Source r ix e) =>
+           [Int] -> (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+ifoldlOnP' wIds g !tAcc f !initAcc !arr = do
+  let !sz = size arr
+  mResArrM <- splitWork' wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      let !hasSlack = slackStart < totalLength
+      let !resSize = numWorkers scheduler + if hasSlack then 1 else 0
+      resArrM <- unsafeNew resSize
+      jIdSlack <- loopM 0 (< slackStart) (+ chunkLength) 0 $ \ !start !jId -> do
+          submitRequest scheduler $
+            JobRequest jId $ do
+              iterRes <- iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
+                let res = f acc ix (unsafeLinearIndex arr i)
+                in res `deepseq` return res
+              unsafeLinearWrite resArrM jId iterRes
+          return (jId + 1)
+      when hasSlack $
+        submitRequest scheduler $
+        JobRequest jIdSlack $ do
+          iterRes <- iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
+            let res = f acc ix (unsafeLinearIndex arr i)
+            in res `deepseq` return res
+          unsafeLinearWrite resArrM jIdSlack iterRes
+      return resArrM
+  case mResArrM of
+    Just resArrM -> do
+      resArr <- unsafeFreeze resArrM
+      return $ foldlS g tAcc (resArr :: Array B DIM1 a)
+    Nothing -> return tAcc
+{-# INLINE ifoldlOnP' #-}
+
+
+------------------
+
+
+-- foldlP' :: (NFData a, Slice r ix e) =>
+--           (b -> a -> b) -- ^ Chunk results folding function @f@.
+--        -> b -- ^ Accumulator for results of chunks folding.
+--        -> (a -> e -> a) -- ^ Chunks folding function @g@.
+--        -> a -- ^ Accumulator for each chunk.
+--        -> Array r ix e -> IO b
+-- foldlP' g !tAcc f = ifoldlOnP' [] g tAcc (\ x _ -> f x)
+-- {-# INLINE foldlP' #-}
+
+
+-- -- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- -- computation on.
+-- ifoldlOnP' :: forall r ix a b e . (NFData a, Slice r ix e) =>
+--            [Int] -> (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+-- ifoldlOnP' wIds g !tAcc f !initAcc !arr = do
+--   let !k = fst $ unconsDim (size arr)
+--   scheduler <- makeScheduler wIds
+--   resArrM <- unsafeNew k
+--   iterM_ 0 k 1 (<) $ \ !i -> do
+--     submitRequest scheduler $
+--       JobRequest i $ do
+--       let res = ifoldlS (\ accI ix -> f accI (consDim i ix)) initAcc (arr !> i)
+--       res `deepseq` unsafeLinearWrite resArrM i res
+--   waitTillDone scheduler
+--   resArr <- unsafeFreeze resArrM
+--   return $ foldlS g tAcc (resArr :: Array B DIM1 a)
+-- {-# INLINE ifoldlOnP' #-}
+
+
+-- foldrP' :: (NFData a, Slice r ix e) =>
+--            (e -> a -> a) -> a -> Array r ix e -> IO [a]
+-- foldrP' f = ifoldrOnP' [] (const f)
+-- {-# INLINE foldrP' #-}
+
+
+-- -- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- -- computation on.
+-- ifoldrOnP' :: forall r ix a e . (NFData a, Slice r ix e) =>
+--             [Int] -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO [a]
+-- ifoldrOnP' wIds f !initAcc !arr = do
+--   let !k = fst $ unconsDim (size arr)
+--   scheduler <- makeScheduler wIds
+--   resArrM <- unsafeNew k
+--   iterM_ 0 k 1 (<) $ \ !i -> do
+--     submitRequest scheduler $
+--       JobRequest i $ do
+--       let res = ifoldrS (\ ix -> f (consDim i ix)) initAcc (arr !> i)
+--       res `deepseq` unsafeLinearWrite resArrM i res
+--   waitTillDone scheduler
+--   resArr <- unsafeFreeze resArrM
+--   return $ build $ \ c n -> toListFB c n (resArr :: Array B DIM1 a)
+-- {-# INLINE ifoldrOnP' #-}
+
+-- -- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- -- computation on.
+-- toListP' :: forall r ix e . (NFData e, Slice r ix e) =>
+--             Array r ix e -> [[e]]
+-- toListP' !arr = resArr `deepseqP` build (\c n -> toListFB c n (resArr :: Array B DIM1 [e]))
+--   where
+--     !k = fst $ unconsDim (size arr)
+--     resArr = makeArray k $ \i -> build (\c n -> toListFB c n (arr !> i))
+-- {-# INLINE toListP' #-}
+
+-- -- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- -- computation on.
+-- toListP'' :: forall r ix e . (NFData e, Slice r ix e) =>
+--             Array r ix e -> IO [[e]]
+-- toListP'' !arr = do
+--   let !k = fst $ unconsDim (size arr)
+--   scheduler <- makeScheduler []
+--   resArrM <- unsafeNew k
+--   iterM_ 0 k 1 (<) $ \ !i -> do
+--     submitRequest scheduler $
+--       JobRequest i $ do
+--       let res = build (\ c n -> toListFB c n (arr !> i))
+--       res `seq` unsafeLinearWrite resArrM i res
+--   waitTillDone scheduler
+--   resArr <- unsafeFreeze resArrM
+--   return $ build $ \ c n -> toListFB c n (resArr :: Array B DIM1 [e])
+-- {-# INLINE toListP'' #-}
+
+
+-- foldrP' :: (NFData a, Slice r ix e) =>
+--            (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
+-- foldrP' g !tAcc f = ifoldrOnP' [] g tAcc (const f)
+-- {-# INLINE foldrP' #-}
+
+
+-- -- | Just like `ifoldlP`, but allows you to specify which cores to run
+-- -- computation on.
+-- ifoldrOnP' :: forall r ix a b e . (NFData a, Slice r ix e) =>
+--             [Int] -> (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
+-- ifoldrOnP' wIds g !tAcc f !initAcc !arr = do
+--   let !k = fst $ unconsDim (size arr)
+--   scheduler <- makeScheduler wIds
+--   resArrM <- unsafeNew k
+--   iterM_ 0 k 1 (<) $ \ !i -> do
+--     submitRequest scheduler $
+--       JobRequest i $ do
+--       let res = ifoldrS (\ ix -> f (consDim i ix)) initAcc (arr !> i)
+--       res `deepseq` unsafeLinearWrite resArrM i res
+--   waitTillDone scheduler
+--   resArr <- unsafeFreeze resArrM
+--   return $ foldrS g tAcc (resArr :: Array B DIM1 a)
+-- {-# INLINE ifoldrOnP' #-}
+
+
+-----------
+
 -- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
 -- like `foldlP`, except that folding function will receive an index of an
 -- element it is being applied to.
@@ -247,8 +443,14 @@ ifoldlP = ifoldlOnP []
 {-# INLINE ifoldlP #-}
 
 
--- | /O(n)/ - Left fold, computed in parallel. Same as `foldlP`, except directed
+-- | /O(n)/ - Right fold, computed in parallel. Same as `foldlP`, except directed
 -- from the last element in the array towards beginning.
+--
+-- ==== __Examples__
+--
+-- >>> foldrP (++) [] (:) [] $ makeArray2D (3,4) id
+-- [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3),(2,0),(2,1),(2,2),(2,3)]
+--
 foldrP :: (NFData a, Source r ix e) =>
           (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
 foldrP g !tAcc f = ifoldrP g tAcc (const f)
@@ -262,14 +464,19 @@ foldrP g !tAcc f = ifoldrP g tAcc (const f)
 --
 -- Number of wokers dictate the result structure:
 --
--- >>> foldrOnP [2,2,3] (:) [] (:) [] $ makeArray1D 9 id
+-- >>> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 9 id
 -- [[0,1,2],[3,4,5],[6,7,8]]
--- >>> foldrOnP [2,2,3] (:) [] (:) [] $ makeArray1D 10 id
+-- >>> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 10 id
 -- [[0,1,2],[3,4,5],[6,7,8],[9]]
--- >>> foldrOnP [2,2,3] (:) [] (:) [] $ makeArray1D 12 id
+-- >>> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 12 id
 -- [[0,1,2,3],[4,5,6,7],[8,9,10,11]]
 --
--- Same as `foldlOnP`, order is quaranteed to be consecutive and in proper direction:
+-- But most of the time that structure is of no importance:
+--
+-- >>> foldrOnP [1,2,3] (++) [] (:) [] $ makeArray1D 10 id
+-- [0,1,2,3,4,5,6,7,8,9]
+--
+-- Same as `foldlOnP`, order is guaranteed to be consecutive and in proper direction:
 --
 -- >>> fmap snd $ foldrOnP [1,2,3] (\x (i, acc) -> (i + 1, (i, x):acc)) (1, []) (:) [] $ makeArray1D 11 id
 -- [(4,[0,1,2]),(3,[3,4,5]),(2,[6,7,8]),(1,[9,10])]

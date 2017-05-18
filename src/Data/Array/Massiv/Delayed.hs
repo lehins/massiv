@@ -21,6 +21,7 @@ import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Scheduler
 import           Data.Foldable
+import           GHC.Base                       (build)
 
 
 
@@ -69,16 +70,14 @@ instance (Index ix, Index (Lower ix)) => Slice D ix e where
     | isSafeIndex m i = Just (DArray szL (\ !ix -> unsafeIndex arr (consDim i ix)))
     | otherwise = Nothing
     where
-      !sz = size arr
-      !(m, szL) = unconsDim sz
+      !(m, szL) = unconsDim (size arr)
   {-# INLINE (!?>) #-}
 
   (<!?) !arr !i
     | isSafeIndex m i = Just (DArray szL (\ !ix -> unsafeIndex arr (snocDim ix i)))
     | otherwise = Nothing
     where
-      !sz = size arr
-      !(szL, m) = unsnocDim sz
+      !(szL, m) = unsnocDim (size arr)
   {-# INLINE (<!?) #-}
 
 
@@ -99,14 +98,13 @@ instance Index ix => Applicative (Array D ix) where
       (uIndex1 (liftIndex2 mod ix sz1)) (uIndex2 (liftIndex2 mod ix sz2))
 
 
-
 -- | Row-major folding over a delayed array.
 instance Index ix => Foldable (Array D ix) where
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
   foldl' = foldlS
   {-# INLINE foldl' #-}
-  foldr = lazyFoldrS
+  foldr = foldrFB
   {-# INLINE foldr #-}
   foldr' = foldrS
   {-# INLINE foldr' #-}
@@ -118,7 +116,7 @@ instance Index ix => Foldable (Array D ix) where
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
-  toList = foldr' (:) []
+  toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 
 

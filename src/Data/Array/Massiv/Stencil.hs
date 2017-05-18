@@ -128,9 +128,9 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
 sobelKernelStencilX
   :: (Eq e, Num e, Unbox e) => Border e -> Stencil DIM2 e e
 sobelKernelStencilX b =
-  mkConvolutionStencilFromKernel b $ fromListsS U [ [ 1, 0, -1 ]
-                                                  , [ 2, 0, -2 ]
-                                                  , [ 1, 0, -1 ] ]
+  mkConvolutionStencilFromKernel b $ fromListS2D' U [ [ 1, 0, -1 ]
+                                                    , [ 2, 0, -2 ]
+                                                    , [ 1, 0, -1 ] ]
 {-# INLINE sobelKernelStencilX #-}
 
 

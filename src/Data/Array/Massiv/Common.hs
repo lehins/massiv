@@ -67,6 +67,7 @@ class Massiv r ix e => Source r ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
+
 class Index ix => Load r ix where
   -- | Load an array into memory sequentially
   loadS

@@ -64,4 +64,3 @@ unsafeLinearWrite' :: (NFData e, PrimMonad m, Mutable r ix e) =>
 unsafeLinearWrite' mv i e = e `deepseq` unsafeLinearWrite mv i e
 {-# INLINE unsafeLinearWrite' #-}
 
-

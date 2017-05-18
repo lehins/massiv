@@ -573,7 +573,7 @@ loopM_ !init' condition increment f = go init' where
 -- | Very efficient monadic loop with an accumulator
 loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
 loopM !init' condition increment !initAcc f = go init' initAcc where
-  go !step acc =
+  go !step !acc =
     case condition step of
       False -> return acc
       True  -> f step acc >>= go (increment step)

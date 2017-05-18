@@ -24,7 +24,7 @@ module Data.Array.Massiv.Manifest.Internal
   ) where
 
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Ops.Fold
+--import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Common.Shape
 import           Data.Foldable
 import qualified Data.Vector                         as V
@@ -67,14 +67,14 @@ toManifest !arr = MArray (size arr) (unsafeLinearIndexM arr) where
 
 
 instance Index ix => Foldable (Array M ix) where
-  foldr = lazyFoldrS
-  {-# INLINE foldr #-}
-  foldr' = foldrS
-  {-# INLINE foldr' #-}
-  foldl = lazyFoldlS
-  {-# INLINE foldl #-}
-  foldl' = foldlS
-  {-# INLINE foldl' #-}
+  -- foldr = lazyFoldrS
+  -- {-# INLINE foldr #-}
+  -- foldr' = foldrS
+  -- {-# INLINE foldr' #-}
+  -- foldl = lazyFoldlS
+  -- {-# INLINE foldl #-}
+  -- foldl' = foldlS
+  -- {-# INLINE foldl' #-}
   sum = foldl' (+) 0
   {-# INLINE sum #-}
   product = foldl' (*) 1
