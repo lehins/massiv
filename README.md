@@ -1,2 +1,2 @@
-# prim-vector
-Vector based on ByteArray
+# massiv
+Efficient Haskell Arrays featuring Parallel computation
