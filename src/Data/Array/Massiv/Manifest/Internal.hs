@@ -96,8 +96,8 @@ instance Index ix => Source M ix e where
 
 instance Index ix => Manifest M ix e where
 
-  unsafeLinearIndexM = mUnsafeLinearIndex
-  {-# INLINE unsafeLinearIndexM #-}
+  -- unsafeLinearIndexM = mUnsafeLinearIndex
+  -- {-# INLINE unsafeLinearIndexM #-}
 
 
 instance Index ix => Shape M ix e where

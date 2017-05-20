@@ -59,7 +59,7 @@ instance Massiv r ix e => Show (Array r ix e) where
 class Massiv r ix e => Source r ix e where
 
   unsafeIndex :: Array r ix e -> ix -> e
-  unsafeIndex !arr !ix = unsafeLinearIndex arr $ toLinearIndex (size arr) ix
+  unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
   {-# INLINE unsafeIndex #-}
 
   unsafeLinearIndex :: Array r ix e -> Int -> e

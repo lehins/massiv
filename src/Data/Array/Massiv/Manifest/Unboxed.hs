@@ -107,7 +107,7 @@ instance (Index ix, VU.Unbox e) => Target U ix e
 
 
 computeUnboxedS :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
-computeUnboxedS !arr = loadTargetS arr
+computeUnboxedS = loadTargetS
 {-# INLINE computeUnboxedS #-}
 
 
