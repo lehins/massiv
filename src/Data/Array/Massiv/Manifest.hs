@@ -22,6 +22,7 @@ module Data.Array.Massiv.Manifest
   , M
   , computeS
   , computeP
+  , computeOnP
   , computeAsS
   , computeAsP
   -- * Boxed
@@ -61,32 +62,39 @@ import           Data.Array.Massiv.Mutable            (Target, loadTargetOnP,
 import           System.IO.Unsafe                     (unsafePerformIO)
 
 
-
-computeAsS
-  :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array r ix e
-computeAsS _ = loadTargetS
-{-# INLINE computeAsS #-}
-
-computeAsP
-  :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array r ix e
-computeAsP _ = unsafePerformIO . loadTargetOnP []
-{-# INLINE computeAsP #-}
-
-
 computeS
   :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array M ix e
-computeS r = toManifest . computeAsS r
+  => Array r' ix e -> Array r ix e
+computeS = loadTargetS
 {-# INLINE computeS #-}
 
 
 computeP
   :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array M ix e
-computeP r = toManifest . computeAsP r
+  => Array r' ix e -> Array r ix e
+computeP = unsafePerformIO . loadTargetOnP []
 {-# INLINE computeP #-}
+
+
+computeOnP
+  :: (Load r' ix e, Target r ix e)
+  => [Int] -> Array r' ix e -> Array r ix e
+computeOnP wIds = unsafePerformIO . loadTargetOnP wIds
+{-# INLINE computeOnP #-}
+
+
+computeAsS
+  :: (Load r' ix e, Target r ix e)
+  => r -> Array r' ix e -> Array r ix e
+computeAsS _ = computeS
+{-# INLINE computeAsS #-}
+
+computeAsP
+  :: (Load r' ix e, Target r ix e)
+  => r -> Array r' ix e -> Array r ix e
+computeAsP _ = computeP
+{-# INLINE computeAsP #-}
+
 
 -- | Infix version of `index`.
 (!) :: Manifest r ix e => Array r ix e -> ix -> e

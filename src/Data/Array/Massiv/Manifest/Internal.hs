@@ -19,6 +19,7 @@ module Data.Array.Massiv.Manifest.Internal
   ( M
   , Manifest(..)
   , Array(..)
+  , (!!>)
   , makeBoxedVector
   , toManifest
   ) where
@@ -106,7 +107,7 @@ instance Index ix => Shape M ix e where
   {-# INLINE unsafeReshape #-}
 
   unsafeExtract !sIx !newSz !arr =
-    MArray newSz $ \ !i ->
+    MArray newSz $ \ i ->
       unsafeIndex arr (liftIndex2 (+) (fromLinearIndex newSz i) sIx)
   {-# INLINE unsafeExtract #-}
 
@@ -114,7 +115,7 @@ instance Index ix => Shape M ix e where
 instance (Index ix, Index (Lower ix)) => Slice M ix e where
 
   (!?>) !arr !i
-    | isSafeIndex m i = Just (MArray szL (\ !k -> unsafeLinearIndex arr (k + kStart)))
+    | isSafeIndex m i = Just (MArray szL (unsafeLinearIndex arr . (+ kStart)))
     | otherwise = Nothing
     where
       !sz = size arr
@@ -123,10 +124,22 @@ instance (Index ix, Index (Lower ix)) => Slice M ix e where
   {-# INLINE (!?>) #-}
 
   (<!?) !arr !i
-    | isSafeIndex m i = Just (MArray szL (\ !k -> unsafeLinearIndex arr (k * m + kStart)))
+    | isSafeIndex m i = Just (MArray szL (\ k -> unsafeLinearIndex arr (k * m + kStart)))
     | otherwise = Nothing
     where
       !sz = size arr
       !(szL, m) = unsnocDim sz
       !kStart = toLinearIndex sz (snocDim (zeroIndex :: Lower ix) i)
   {-# INLINE (<!?) #-}
+
+
+(!!>)
+  :: forall r ix e.
+     (Manifest r ix e, Index (Lower ix))
+  => Array r ix e -> Int -> Array M (Lower ix) e
+(!!>) !arr !i = (MArray szL (\ k -> unsafeLinearIndexM arr (k + kStart)))
+  where
+    !sz = size arr
+    !szL = snd $ unconsDim sz
+    !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
+{-# INLINE (!!>) #-}

@@ -29,6 +29,7 @@ library
                      , Data.Array.Massiv.Manifest.Storable
                      , Data.Array.Massiv.Manifest.Unboxed
                      , Data.Array.Massiv.Mutable
+                     , Data.Array.Massiv.Numeric
                      , Data.Array.Massiv.Scheduler
                      , Data.Array.Massiv.Stencil
                      , Data.Array.Massiv.Stencil.Convolution
@@ -82,9 +83,11 @@ benchmark compute
   ghc-options:         -threaded -O2
   build-depends:       base
                      , criterion
+                     , deepseq
                      , massiv
                      , vector
                      , repa
+                     , repa-algorithms
   default-language:    Haskell2010
 
 benchmark compute-par
@@ -97,6 +100,7 @@ benchmark compute-par
                      , criterion
                      , massiv
                      , repa
+                     , repa-algorithms
                      , vector
   default-language:    Haskell2010
 
@@ -124,7 +128,8 @@ benchmark convolution
                      , criterion
                      , massiv
                      , primitive
-                     , repa >= 3.4.1.2
+                     , repa
+                     , repa-algorithms
                      , vector
   default-language:    Haskell2010
 
@@ -139,8 +144,8 @@ benchmark convolution-par
                      , criterion
                      , deepseq
                      , massiv
-                     , repa >= 3.4.1.2
-                     , repa-algorithms >= 3.4.1.1
+                     , repa
+                     , repa-algorithms
                      , vector
                      , primitive
   default-language:    Haskell2010
@@ -155,6 +160,7 @@ executable massiv
                      , vector
                      , time
                      , repa
+                     , repa-algorithms
   default-language:    Haskell2010
 --   ghc-options:         -threaded -O2
   --ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes

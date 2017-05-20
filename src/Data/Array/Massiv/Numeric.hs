@@ -1,21 +1,23 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
--- Module      : Data.Array.Massiv.Delayed
+-- Module      : Data.Array.Massiv.Numeric
 -- Copyright   : (c) Alexey Kuleshevich 2017
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Ops.Numeric
+module Data.Array.Massiv.Numeric
   -- * Num
   ( (.+)
   , (.-)
   , (.*)
   , (.^)
+  , (|*|)
   , negateA
   , absA
   , signumA
@@ -64,13 +66,17 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
-import           Data.Array.Massiv.Ops.Fold     as M
-import           Data.Array.Massiv.Ops.Map      as M
-import           Prelude                        as P
+
+import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Ops.Fold      as M
+import           Data.Array.Massiv.Ops.Map       as M
+import           Data.Array.Massiv.Ops.Transform as M
+import           Prelude                         as P
 
 
 infixr 8  .^, .^^
-infixl 7  ./, `quotA`, `remA`, `divA`, `modA`
+infixl 7  .*, ./, `quotA`, `remA`, `divA`, `modA`
+infixl 6  .+, .-
 
 (.+)
   :: (Source r1 ix e, Source r2 ix e, Num e)
@@ -96,21 +102,34 @@ infixl 7  ./, `quotA`, `remA`, `divA`, `modA`
 (.^) arr n = liftArray (^ n) arr
 {-# INLINE (.^) #-}
 
-
-(|*|)
-  :: (Manifest r1 ix e, Manifest r2 ix e, Num e, Slice r1 ix e, Slice r2 ix e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(|*|) arr1 arr2
-  | getIndex n1 1 /= Just m2 =
-      error "(|*|)" $
-         "Inner array dimensions must agree, but received: " ++ show arr1 ++ " and " ++ show arr2
-  -- | not (isSafeSize sz1 || isSafeSize sz2) =
-  --     error "(|*|)" $
-  --        "Inner array dimensions must agree, but received: " ++ show arr1 ++ " and " ++ show arr2
-  | otherwise = DArray (consDim m1 n2) $ \ !ix -> sumS ((arr1 !> headDim ix) .* (arr2 <! lastDim ix))
-  where (m1, n1) = unconsDim $ size arr1
-        (m2, n2) = unconsDim $ size arr2
+-- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
+(|*|) :: (Target r1 DIM2 e, Target r2 DIM2 e, Slice r1 DIM2 e, Slice r2 DIM2 e, Num e)
+      => Array r1 DIM2 e -> Array r2 DIM2 e -> Array D DIM2 e
+(|*|) = multArrs
 {-# INLINE (|*|) #-}
+
+
+multArrs :: forall r1 r2 e.
+            ( Target r1 DIM2 e
+            , Target r2 DIM2 e
+            , Slice r1 DIM2 e
+            , Slice r2 DIM2 e
+            , Num e
+            )
+         => Array r1 DIM2 e -> Array r2 DIM2 e -> Array D DIM2 e
+multArrs arr1 arr2
+  | n1 /= m2 =
+    error $
+    "(|*|): Inner array dimensions must agree, but received: " ++
+    show arr1 ++ " and " ++ show arr2
+  | otherwise = DArray (m1, n2) $ \(i, j) -> sumS (arr1 !> i .* arr2' !> j)
+  where
+    (m1, n1) = size arr1
+    (m2, n2) = size arr2
+    arr2' :: Array r2 DIM2 e
+    arr2' = computeP $ transpose arr2
+{-# INLINE multArrs #-}
+
 
 negateA
   :: (Source r ix e, Num e)

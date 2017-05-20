@@ -1,16 +1,19 @@
-{-# LANGUAGE BangPatterns     #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Compute where
 
-import           Data.Array.Massiv                   as M
-import           Data.Array.Massiv.Delayed.Windowed  as M
-import           Data.Array.Repa.Stencil             as R
-import           Data.Array.Repa.Stencil.Dim2        as R
-import           Data.Array.Repa                     as R
-import           Data.Array.Repa.Repr.Partitioned    as R
+import           Data.Array.Massiv                  as M
+import           Data.Array.Massiv.Delayed.Windowed as M
+import           Data.Array.Repa                    as R
+import           Data.Array.Repa.Algorithms.Matrix  as R hiding (mmultP)
+import           Data.Array.Repa.Repr.Partitioned   as R
 import           Data.Array.Repa.Repr.Undefined
-import qualified Data.Vector.Unboxed                 as VU
-import           Prelude                             as P
+import           Data.Array.Repa.Stencil            as R
+import           Data.Array.Repa.Stencil.Dim2       as R
+import           Data.Array.Repa.Unsafe             as R
+import qualified Data.Vector.Unboxed                as VU
+import           Prelude                            as P
 
 
 makeWindowed
@@ -96,6 +99,23 @@ arrWindowedM !arrSz@(m, n) =
 {-# INLINE arrWindowedM #-}
 
 
+
+mmultP  :: Monad m
+        => R.Array R.U R.DIM2 Double
+        -> R.Array R.U R.DIM2 Double
+        -> m (R.Array R.U R.DIM2 Double)
+mmultP arr brr
+ = [arr, brr] `deepSeqArrays`
+   do   trr      <- transpose2P brr
+        let (R.Z :. h1  :. _)  = extent arr
+        let (R.Z :. _   :. w2) = extent brr
+        trr `deepSeqArray` R.computeP
+         $ fromFunction (R.Z :. h1 :. w2)
+         $ \ix   -> R.sumAllS
+                  $ R.zipWith (*)
+                        (R.unsafeSlice arr (Any :. (row ix) :. All))
+                        (R.unsafeSlice trr (Any :. (col ix) :. All))
+{-# NOINLINE mmultP #-}
 
 -- | Repa stencil base Sobel horizontal convolution
 sobelXR

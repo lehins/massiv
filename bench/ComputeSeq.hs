@@ -3,23 +3,33 @@
 module Main where
 
 import           Compute
+
 import           Criterion.Main
-import           Data.Array.Massiv                  as M
-import           Data.Array.Repa                    as R
+import           Data.Array.Massiv                 as M
+import           Data.Array.Massiv.Numeric
+import           Data.Array.Repa                   as R
+import           Data.Array.Repa.Algorithms.Matrix as R
 import           Data.Foldable
-import qualified Data.Vector.Unboxed                as VU
-import           Prelude                            as P
+import qualified Data.Vector.Unboxed               as VU
+import           Prelude                           as P
 
 main :: IO ()
 main = do
   let !sz = (1600, 1200) :: M.DIM2
-  let !ixM = (1000, 999)
-      !ixR = (Z :. 1000 :. 999)
+  let !szs = (600, 200) :: M.DIM2
+  let !ixM = (1600, 1200)
+      !ixR = (Z :. fst sz :. snd sz)
       !ix1D = toLinearIndex sz ixM
   let !arrCM = M.computeUnboxedS $ arrM sz
       !arrCMM = toManifest arrCM
       !arrCR = R.computeUnboxedS $ arrR sz
       !vecCU = vecU sz
+      !ls1D = toListS1D arrCM
+      !ls2D = toListS2D arrCM
+  let !arrCMs = M.computeUnboxedS $ arrM szs
+      !arrCMs' = M.computeUnboxedS (M.transpose arrCMs)
+      !arrCRs = R.computeUnboxedS $ arrR szs
+      !arrCRs' = R.transpose2S arrCRs
   defaultMain
     [ bgroup
         "Indexing"
@@ -35,13 +45,13 @@ main = do
               whnf (maybe (error "impossible") id . M.maybeIndex arrCM) ixM
             , bench "Massiv 2D: index" $ whnf (M.index arrCM) ixM
             , bench "Massiv 2D: (!) . (<!)" $
-              whnf (\ (i, j) -> (toManifest arrCM) <! j M.! i) ixM
+              whnf (\(i, j) -> (toManifest arrCM) <! j M.! i) ixM
             , bench "Massiv 2D: (!) . (!>)" $
-              whnf (\ (i, j) -> (toManifest arrCM) !> i M.! j) ixM
+              whnf (\(i, j) -> (toManifest arrCM) !> i M.! j) ixM
             , bench "Massiv 2D: (!) . (<!>)" $
-              whnf (\ (i, j) -> (toManifest arrCM) <!> (1, i) M.! j) ixM
+              whnf (\(i, j) -> (toManifest arrCM) <!> (1, i) M.! j) ixM
             , bench "Massiv 2D: (!) . (<!>)" $
-              whnf (\ (i, j) -> (toManifest arrCM) <!> (2, j) M.! i) ixM
+              whnf (\(i, j) -> (toManifest arrCM) <!> (2, j) M.! i) ixM
             , bench "Vector 1D" $ whnf (vecCU VU.!) ix1D
             , bench "Repa 2D" $ whnf (R.index arrCR) ixR
             ]
@@ -84,7 +94,8 @@ main = do
             "Right"
             [ bench "Array Massiv Delayed" $ whnf (foldrS (+) 0 . arrM) sz
             , bench "Array Massiv Delayed foldr" $ whnf (foldr (+) 0 . arrM) sz
-            , bench "Array Massiv Delayed foldr'" $ whnf (foldr' (+) 0 . arrM) sz
+            , bench "Array Massiv Delayed foldr'" $
+              whnf (foldr' (+) 0 . arrM) sz
             , bench "Vector Unboxed" $ whnf (VU.foldr' (+) 0 . vecU) sz
             , bench "Array Repa" $ whnf (R.foldAllS (+) 0 . arrR) sz
             ]
@@ -92,11 +103,14 @@ main = do
             "Computed"
             [ bench "Array Massiv Unboxed Left Fold" $ whnf (foldlS (+) 0) arrCM
             --, bench "Array Massiv Unboxed Left Fold'" $ whnf (foldlS' (+) 0) arrCM
-            , bench "Array Massiv Unboxed Right Fold" $ whnf (foldrS (+) 0) arrCM
+            , bench "Array Massiv Unboxed Right Fold" $
+              whnf (foldrS (+) 0) arrCM
             --, bench "Array Massiv Unboxed Right Fold'" $ whnf (foldrS' (+) 0) arrCM
-            , bench "Array Massiv Manifest Left Fold" $ whnf (foldlS (+) 0) arrCMM
+            , bench "Array Massiv Manifest Left Fold" $
+              whnf (foldlS (+) 0) arrCMM
             --, bench "Array Massiv Manifest Left Fold'" $ whnf (foldlS' (+) 0) arrCMM
-            , bench "Array Massiv Manifest Right Fold" $ whnf (foldrS (+) 0) arrCMM
+            , bench "Array Massiv Manifest Right Fold" $
+              whnf (foldrS (+) 0) arrCMM
             --, bench "Array Massiv Manifest Right Fold'" $ whnf (foldrS' (+) 0) arrCMM
             , bench "Vector Unboxed Left Strict" $ whnf (VU.foldl' (+) 0) vecCU
             , bench "Vector Unboxed Right Strict" $ whnf (VU.foldr' (+) 0) vecCU
@@ -109,6 +123,12 @@ main = do
         , bench "Array Massiv 2D" $ nf (M.toListS2D . arrM) sz
         , bench "Array vector" $ whnf (VU.toList . vecU) sz
         , bench "Array Repa" $ nf (R.toList . arrR) sz
+        ]
+    , bgroup
+        "fromList"
+        [ bench "Array Massiv" $ whnf (M.fromListAsS2D M.U) ls2D
+        , bench "Array Repa" $ whnf (R.fromListUnboxed ixR) ls1D
+        , bench "Array Vector" $ whnf VU.fromList ls1D
         ]
     , bgroup
         "Fuse"
@@ -136,5 +156,10 @@ main = do
                 (\sz' -> R.computeUnboxedS $ R.append (arrR sz') (arrR sz'))
                 sz
             ]
+        ]
+    , bgroup
+        "Matrix Multiplication"
+        [ bench "Array Massiv" $ whnf (M.computeUnboxedS . (arrCMs' |*|)) arrCMs
+        , bench "Array Repa" $ whnf (R.mmultS arrCRs') arrCRs
         ]
     ]
