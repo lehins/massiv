@@ -120,6 +120,6 @@ borderIndex border !arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 {-# INLINE borderIndex #-}
 
 index :: Manifest r ix e => Array r ix e -> ix -> e
-index !arr !ix = borderIndex (Fill (errorIx "index" arr ix)) arr ix
+index arr ix = borderIndex (Fill (errorIx "index" arr ix)) arr ix
 {-# INLINE index #-}
 

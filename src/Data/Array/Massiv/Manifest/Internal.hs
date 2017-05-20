@@ -33,7 +33,7 @@ import           GHC.Base                       (build)
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
 -- `(!)`, `(!?)`, etc. are constrained to manifest arrays only.
-class Shape r ix e => Manifest r ix e where
+class Source r ix e => Manifest r ix e where
 
   unsafeLinearIndexM :: Array r ix e -> Int -> e
 
@@ -96,8 +96,8 @@ instance Index ix => Source M ix e where
 
 instance Index ix => Manifest M ix e where
 
-  -- unsafeLinearIndexM = mUnsafeLinearIndex
-  -- {-# INLINE unsafeLinearIndexM #-}
+  unsafeLinearIndexM = mUnsafeLinearIndex
+  {-# INLINE unsafeLinearIndexM #-}
 
 
 instance Index ix => Shape M ix e where
