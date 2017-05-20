@@ -65,13 +65,13 @@ import           System.IO.Unsafe                     (unsafePerformIO)
 computeAsS
   :: (Load r' ix e, Target r ix e)
   => r -> Array r' ix e -> Array r ix e
-computeAsS _ arr = loadTargetS arr
+computeAsS _ = loadTargetS
 {-# INLINE computeAsS #-}
 
 computeAsP
   :: (Load r' ix e, Target r ix e)
   => r -> Array r' ix e -> Array r ix e
-computeAsP _ arr = unsafePerformIO $ loadTargetOnP [] arr
+computeAsP _ = unsafePerformIO . loadTargetOnP []
 {-# INLINE computeAsP #-}
 
 
@@ -88,25 +88,26 @@ computeP
 computeP r = toManifest . computeAsP r
 {-# INLINE computeP #-}
 
-
+-- | Infix version of `index`.
 (!) :: Manifest r ix e => Array r ix e -> ix -> e
 (!) = index
 {-# INLINE (!) #-}
 
 
+-- | Infix version of `maybeIndex`.
 (!?) :: Manifest r ix e => Array r ix e -> ix -> Maybe e
 (!?) = maybeIndex
 {-# INLINE (!?) #-}
 
 
 (?) :: Manifest r ix e => Maybe (Array r ix e) -> ix -> Maybe e
-(?) Nothing _      = Nothing
-(?) (Just arr) !ix = arr !? ix
+(?) Nothing    = const Nothing
+(?) (Just arr) = (arr !?)
 {-# INLINE (?) #-}
 
 
 maybeIndex :: Manifest r ix e => Array r ix e -> ix -> Maybe e
-maybeIndex !arr = handleBorderIndex (Fill Nothing) (size arr) (Just . unsafeIndex arr)
+maybeIndex arr = handleBorderIndex (Fill Nothing) (size arr) (Just . unsafeIndex arr)
 {-# INLINE maybeIndex #-}
 
 
@@ -116,8 +117,9 @@ defaultIndex defVal = borderIndex (Fill defVal)
 
 
 borderIndex :: Manifest r ix e => Border e -> Array r ix e -> ix -> e
-borderIndex border !arr = handleBorderIndex border (size arr) (unsafeIndex arr)
+borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 {-# INLINE borderIndex #-}
+
 
 index :: Manifest r ix e => Array r ix e -> ix -> e
 index arr ix = borderIndex (Fill (errorIx "index" arr ix)) arr ix

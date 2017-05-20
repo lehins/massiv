@@ -34,10 +34,14 @@ main = do
             [ bench "Massiv 2D: maybeIndex" $
               whnf (maybe (error "impossible") id . M.maybeIndex arrCM) ixM
             , bench "Massiv 2D: index" $ whnf (M.index arrCM) ixM
-            , bench "Massiv 2D: (!)" $
-              whnf (\ !(i, j) -> (toManifest arrCM) M.<! i M.! j) ixM
-            , bench "Massiv 2D: (<!>)" $
-              whnf (\ !(i, j) -> (toManifest arrCM) M.<!> (1, i) M.! j) ixM
+            , bench "Massiv 2D: (!) . (<!)" $
+              whnf (\ (i, j) -> (toManifest arrCM) <! j M.! i) ixM
+            , bench "Massiv 2D: (!) . (!>)" $
+              whnf (\ (i, j) -> (toManifest arrCM) !> i M.! j) ixM
+            , bench "Massiv 2D: (!) . (<!>)" $
+              whnf (\ (i, j) -> (toManifest arrCM) <!> (1, i) M.! j) ixM
+            , bench "Massiv 2D: (!) . (<!>)" $
+              whnf (\ (i, j) -> (toManifest arrCM) <!> (2, j) M.! i) ixM
             , bench "Vector 1D" $ whnf (vecCU VU.!) ix1D
             , bench "Repa 2D" $ whnf (R.index arrCR) ixR
             ]

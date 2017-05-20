@@ -22,11 +22,11 @@ module Data.Array.Massiv.Ops.Construct
   , enumFromStepN
   -- * Conversion
   , fromListS1D
-  , fromListS1D'
+  , fromListAsS1D
   , fromListS2D
-  , fromListS2D'
+  , fromListAsS2D
   , fromListS3D
-  , fromListS3D'
+  , fromListAsS3D
   , toListS1D
   , toListS2D
   , toListS3D
@@ -124,9 +124,9 @@ fromListS1D xs =
 {-# INLINE fromListS1D #-}
 
 
-fromListS1D' :: Mutable r DIM1 e => r -> [e] -> Array r DIM1 e
-fromListS1D' _ = fromListS1D
-{-# INLINE fromListS1D' #-}
+fromListAsS1D :: Mutable r DIM1 e => r -> [e] -> Array r DIM1 e
+fromListAsS1D _ = fromListS1D
+{-# INLINE fromListAsS1D #-}
 
 
 loadList2D :: Monad m => Int -> Int -> Int -> (Int -> t -> m a) -> [[t]] -> m ()
@@ -151,9 +151,9 @@ fromListS2D xs =
 {-# INLINE fromListS2D #-}
 
 
-fromListS2D' :: Mutable r DIM2 e => r -> [[e]] -> Array r DIM2 e
-fromListS2D' _ = fromListS2D
-{-# INLINE fromListS2D' #-}
+fromListAsS2D :: Mutable r DIM2 e => r -> [[e]] -> Array r DIM2 e
+fromListAsS2D _ = fromListS2D
+{-# INLINE fromListAsS2D #-}
 
 
 fromListS3D :: Mutable r DIM3 e => [[[e]]] -> Array r DIM3 e
@@ -173,13 +173,10 @@ fromListS3D xs =
 {-# INLINE fromListS3D #-}
 
 
-fromListS3D' :: Mutable r DIM3 e => r -> [[[e]]] -> Array r DIM3 e
-fromListS3D' _ = fromListS3D
-{-# INLINE fromListS3D' #-}
+fromListAsS3D :: Mutable r DIM3 e => r -> [[[e]]] -> Array r DIM3 e
+fromListAsS3D _ = fromListS3D
+{-# INLINE fromListAsS3D #-}
 
--- toListS1D' :: Source r ix e => Array r ix e -> [e]
--- toListS1D' = foldrS (:) []
--- {-# INLINE toListS1D' #-}
 
 -- | Convert an array into a list.
 --

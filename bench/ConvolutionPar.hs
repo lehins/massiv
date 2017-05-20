@@ -9,7 +9,6 @@ import           Criterion.Main
 import           Data.Array.Massiv                   as M
 import           Data.Functor.Identity
 -- import           Data.Array.Massiv.Compute             as M
-import           Data.Array.Massiv.Manifest.Unboxed    as M
 import           Data.Array.Massiv.Stencil           as M
 -- import           Data.Array.Massiv.Stencil.Convolution as M
 import           Data.Array.Repa                     as R
@@ -60,18 +59,19 @@ sobelOperatorR !arr =
 
 sobelOperator'
   :: (Manifest r M.DIM2 Double)
-  => Border Double -> M.Array r M.DIM2 Double -> IO (M.Array M.U M.DIM2 Double)
-sobelOperator' !b !arr = do
-  arrX <- M.computeUnboxedP (mapStencil (sobelStencilX b) arr)
-  arrY <- M.computeUnboxedP (mapStencil (sobelStencilY b) arr)
+  => Border Double -> M.Array r M.DIM2 Double -> M.Array M.U M.DIM2 Double
+sobelOperator' !b !arr =
   M.computeUnboxedP $
     M.map sqrt $
     M.zipWith (+) (M.map (^ (2 :: Int)) arrX) (M.map (^ (2 :: Int)) arrY)
+  where
+    !arrX = M.computeUnboxedP (mapStencil (sobelStencilX b) arr)
+    !arrY = M.computeUnboxedP (mapStencil (sobelStencilY b) arr)
 {-# INLINE sobelOperator' #-}
 
 main :: IO ()
 main = do
-  let !sz = (2502, 2602)
+  let !sz = (1600, 1200)
       !arrCR = R.computeUnboxedS (arrR sz)
       -- !kirschW = kirschWStencil
       -- !kirschW' = kirschWStencil'
@@ -107,7 +107,7 @@ main = do
         ]
     , bgroup
         "Sobel Unfused Operator"
-        [ bench "Massiv" $ whnfIO (sobelOp' arrUM)
+        [ bench "Massiv" $ whnf sobelOp' arrUM
         , bench "Repa" $ whnf (runIdentity . sobelOperatorR') arrCR
         ]
     -- , bgroup

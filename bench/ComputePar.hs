@@ -47,9 +47,7 @@ main = do
         ]
     , bgroup
         "Fold"
-        [ -- bench "Array Massiv Rows" $ nfIO (M.foldlP' (+) 0 (+) 0 . arrM $ sz)
-        -- ,
-          bench "Array Massiv" $ whnf (M.sumP . arrM) sz
+        [ bench "Array Massiv" $ whnf (M.sumP . arrM) sz
         , bench "Array Massiv Nested" $
           whnf (M.sumP . (M.map M.sumP) . nestedArrM) sz
         , bench "Array Repa" $ whnf (runIdentity . sumAllP . arrR) sz
