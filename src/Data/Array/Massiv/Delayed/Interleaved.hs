@@ -19,7 +19,6 @@ import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Scheduler
 
 
-
 -- | Delayed array that will be loaded in an interleaved fasion during parallel
 -- computation.
 data ID
@@ -41,7 +40,7 @@ toInterleaved = IDArray . delay
 {-# INLINE toInterleaved #-}
 
 
-instance Index ix => Load ID ix where
+instance Index ix => Load ID ix e where
   loadS (IDArray arr) unsafeRead unsafeWrite = loadS arr unsafeRead unsafeWrite
   {-# INLINE loadS #-}
   loadP wIds (IDArray (DArray sz f)) _ unsafeWrite = do

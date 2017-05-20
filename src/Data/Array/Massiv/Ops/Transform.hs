@@ -68,7 +68,7 @@ transposeOuter !arr = DArray (transOuter (size arr)) newVal
 
 
 backpermute :: Source r ix1 e => ix -> (ix -> ix1) -> Array r ix1 e -> Array D ix e
-backpermute !sz ixF !arr = DArray sz $ \ !ix -> safeIndex arr (ixF ix)
+backpermute !sz ixF !arr = DArray sz $ \ !ix -> evaluateAt arr (ixF ix)
 {-# INLINE backpermute #-}
 
 

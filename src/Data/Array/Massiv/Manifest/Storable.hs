@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Storable
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -79,8 +78,11 @@ instance (Index ix, VS.Storable e) => Manifest S ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (Manifest S ix e, VS.Storable e) => Mutable S ix e where
+instance (Index ix, VS.Storable e) => Mutable S ix e where
   data MArray s S ix e = MSArray ix (VS.MVector s e)
+
+  msize (MSArray sz _) = sz
+  {-# INLINE msize #-}
 
   unsafeThaw (SArray sz v) = MSArray sz <$> VS.unsafeThaw v
   {-# INLINE unsafeThaw #-}
@@ -98,14 +100,16 @@ instance (Manifest S ix e, VS.Storable e) => Mutable S ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
+instance (Index ix, VS.Storable e) => Target S ix e
 
-computeStorableS :: (Massiv r ix e, Load r ix, Mutable S ix e) => Array r ix e -> Array S ix e
-computeStorableS = computeSeq
+
+computeStorableS :: (Load r ix e, Target S ix e) => Array r ix e -> Array S ix e
+computeStorableS = loadTargetS
 {-# INLINE computeStorableS #-}
 
 
-computeStorableP :: (Massiv r ix e, Load r ix, Mutable S ix e) => Array r ix e -> Array S ix e
-computeStorableP = unsafePerformIO . computePar []
+computeStorableP :: (Load r ix e, Target S ix e) => Array r ix e -> Array S ix e
+computeStorableP = unsafePerformIO . loadTargetOnP []
 {-# INLINE computeStorableP #-}
 
 

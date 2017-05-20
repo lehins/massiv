@@ -20,7 +20,6 @@ import           Control.Monad.ST
 import           Control.Monad.ST.Unsafe
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
---import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Scheduler
 
 
@@ -84,7 +83,7 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex
 
 
 
-instance Load WD DIM1 where
+instance Load WD DIM1 e where
   loadS (WDArray (DArray sz indexB) _ it wk indexW) _ unsafeWrite = do
     iterM_ 0 it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
     iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
@@ -114,7 +113,7 @@ instance Load WD DIM1 where
 
 
 
-instance Load WD DIM2 where
+instance Load WD DIM2 e where
   loadS (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
@@ -167,26 +166,26 @@ instance Load WD DIM2 where
     waitTillDone scheduler
   {-# INLINE loadP #-}
 
-instance Load WD DIM3 where
+instance Load WD DIM3 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
-instance Load WD DIM4 where
+instance Load WD DIM4 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
-instance Load WD DIM5 where
+instance Load WD DIM5 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
 loadWindowedSRec
-  :: (Index ix, Load WD (Lower ix)) =>
+  :: (Index ix, Load WD (Lower ix) e) =>
      Array WD ix e -> (Int -> ST s e) -> (Int -> e -> ST s ()) -> ST s ()
 loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
   let !szL = snd $ unconsDim sz
@@ -214,7 +213,7 @@ loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRe
 
 
 loadWindowedPRec
-  :: (Index ix, Load WD (Lower ix)) =>
+  :: (Index ix, Load WD (Lower ix) e) =>
      [Int] -> Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
 loadWindowedPRec wIds (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
   scheduler <- makeScheduler wIds

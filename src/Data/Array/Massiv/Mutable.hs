@@ -14,20 +14,30 @@
 --
 module Data.Array.Massiv.Mutable
   ( Mutable(..)
-  , unsafeLinearWrite'
+  , Target(..)
+  , loadTargetS
+  , loadTargetOnP
+  , unsafeRead
+  , unsafeWrite
+  , sequenceP
+  , sequenceOnP
   ) where
 
-import           Control.DeepSeq
 import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST                    (runST)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Manifest.Internal
+import           Data.Array.Massiv.Scheduler
 
 
 
 
 class Manifest r ix e => Mutable r ix e where
   data MArray s r ix e :: *
+
+  -- | Get the size of a mutable array.
+  msize :: MArray s r ix e -> ix
 
   unsafeThaw :: PrimMonad m =>
                 Array r ix e -> m (MArray (PrimState m) r ix e)
@@ -44,23 +54,63 @@ class Manifest r ix e => Mutable r ix e where
   unsafeLinearWrite :: PrimMonad m =>
                        MArray (PrimState m) r ix e -> Int -> e -> m ()
 
-  computeSeq :: (Massiv r' ix e, Load r' ix) => Array r' ix e -> Array r ix e
-  computeSeq !arr = runST $ do
+
+class Mutable r ix e => Target r ix e where
+
+  unsafeTargetRead :: PrimMonad m =>
+                      MArray (PrimState m) r ix e -> Int -> m e
+  unsafeTargetRead = unsafeLinearRead
+  {-# INLINE unsafeTargetRead #-}
+
+  unsafeTargetWrite :: PrimMonad m =>
+                       MArray (PrimState m) r ix e -> Int -> e -> m ()
+  unsafeTargetWrite = unsafeLinearWrite
+  {-# INLINE unsafeTargetWrite #-}
+
+
+loadTargetS :: (Load r' ix e, Target r ix e) =>
+               Array r' ix e -> Array r ix e
+loadTargetS !arr =
+  runST $ do
     mArr <- unsafeNew (size arr)
-    loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+    loadS arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
     unsafeFreeze mArr
-  {-# INLINE computeSeq #-}
+{-# INLINE loadTargetS #-}
 
-  computePar :: (Massiv r' ix e, Load r' ix) => [Int] -> Array r' ix e -> IO (Array r ix e)
-  computePar wIds !arr = do
-    mArr <- unsafeNew (size arr)
-    loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-    unsafeFreeze mArr
-  {-# INLINE computePar #-}
+loadTargetOnP :: (Load r' ix e, Target r ix e) =>
+                 [Int] -> Array r' ix e -> IO (Array r ix e)
+loadTargetOnP wIds !arr = do
+  mArr <- unsafeNew (size arr)
+  loadP wIds arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
+  unsafeFreeze mArr
+{-# INLINE loadTargetOnP #-}
 
 
-unsafeLinearWrite' :: (NFData e, PrimMonad m, Mutable r ix e) =>
-                      MArray (PrimState m) r ix e -> Int -> e -> m ()
-unsafeLinearWrite' mv i e = e `deepseq` unsafeLinearWrite mv i e
-{-# INLINE unsafeLinearWrite' #-}
+unsafeRead :: (Mutable r ix e, PrimMonad m) =>
+               MArray (PrimState m) r ix e -> ix -> m e
+unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
+{-# INLINE unsafeRead #-}
+
+unsafeWrite :: (Mutable r ix e, PrimMonad m) =>
+               MArray (PrimState m) r ix e -> ix -> e -> m ()
+unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
+{-# INLINE unsafeWrite #-}
+
+
+sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
+               [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
+sequenceOnP wIds !arr = do
+  resArrM <- unsafeNew (size arr)
+  scheduler <- makeScheduler wIds
+  iforM_ arr $ \ !ix action ->
+    submitRequest scheduler $ JobRequest (action >>= unsafeWrite resArrM ix)
+  waitTillDone scheduler
+  unsafeFreeze resArrM
+{-# INLINE sequenceOnP #-}
+
+
+sequenceP :: (Source r1 ix (IO e), Mutable r ix e) => Array r1 ix (IO e) -> IO (Array r ix e)
+sequenceP = sequenceOnP []
+{-# INLINE sequenceP #-}
+
 

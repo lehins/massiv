@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Primitive
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -77,8 +76,11 @@ instance (Index ix, VP.Prim e) => Manifest P ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (Manifest P ix e, VP.Prim e) => Mutable P ix e where
+instance (Index ix, VP.Prim e) => Mutable P ix e where
   data MArray s P ix e = MPArray ix (VP.MVector s e)
+
+  msize (MPArray sz _) = sz
+  {-# INLINE msize #-}
 
   unsafeThaw (PArray sz v) = MPArray sz <$> VP.unsafeThaw v
   {-# INLINE unsafeThaw #-}
@@ -95,15 +97,16 @@ instance (Manifest P ix e, VP.Prim e) => Mutable P ix e where
   unsafeLinearWrite (MPArray _sz v) i = MVP.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
+instance (VP.Prim e, Index ix) => Target P ix e
 
 
-computePrimitiveS :: (Massiv r ix e, Load r ix, Mutable P ix e) => Array r ix e -> Array P ix e
-computePrimitiveS = computeSeq
+computePrimitiveS :: (Load r ix e, Target P ix e) => Array r ix e -> Array P ix e
+computePrimitiveS = loadTargetS
 {-# INLINE computePrimitiveS #-}
 
 
-computePrimitiveP :: (Massiv r ix e, Load r ix, Mutable P ix e) => Array r ix e -> Array P ix e
-computePrimitiveP = unsafePerformIO . computePar []
+computePrimitiveP :: (Load r ix e, Target P ix e) => Array r ix e -> Array P ix e
+computePrimitiveP = unsafePerformIO . loadTargetOnP []
 {-# INLINE computePrimitiveP #-}
 
 

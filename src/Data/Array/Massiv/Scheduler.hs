@@ -22,7 +22,7 @@ module Data.Array.Massiv.Scheduler
   , collectResults
   , waitTillDone
   , splitWork
-  , splitWork'
+  --, splitWork'
   , splitWork_
   ) where
 
@@ -184,18 +184,18 @@ waitTillDone :: Scheduler a -> IO ()
 waitTillDone scheduler = collectResults scheduler (const id) ()
 
 
-splitWork' :: Index ix
-          => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO (Maybe b)
-splitWork' wIds sz submitWork
-  | totalElem sz == 0 = return Nothing
-  | otherwise = do
-    scheduler <- makeScheduler wIds
-    let !totalLength = totalElem sz
-        !chunkLength = totalLength `quot` numWorkers scheduler
-        !slackStart = chunkLength * numWorkers scheduler
-    res <- submitWork scheduler chunkLength totalLength slackStart
-    waitTillDone scheduler
-    return $ Just res
+-- splitWork' :: Index ix
+--           => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO (Maybe b)
+-- splitWork' wIds sz submitWork
+--   | totalElem sz == 0 = return Nothing
+--   | otherwise = do
+--     scheduler <- makeScheduler wIds
+--     let !totalLength = totalElem sz
+--         !chunkLength = totalLength `quot` numWorkers scheduler
+--         !slackStart = chunkLength * numWorkers scheduler
+--     res <- submitWork scheduler chunkLength totalLength slackStart
+--     waitTillDone scheduler
+--     return $ Just res
 
 splitWork :: Index ix
           => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]

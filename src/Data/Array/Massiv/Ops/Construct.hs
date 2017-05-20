@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 -- |
 -- Module      : Data.Array.Massiv.Ops.Construct
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -29,7 +30,7 @@ module Data.Array.Massiv.Ops.Construct
   , toListS1D
   , toListS2D
   , toListS3D
-  -- , toListP2D
+  , toListP2D
   -- , toListP2D'
   -- , toListP3D
   ) where
@@ -37,19 +38,21 @@ module Data.Array.Massiv.Ops.Construct
 --import           Control.DeepSeq                (NFData)
 import           Control.Monad                  (unless, void)
 import           Control.Monad.ST               (runST)
-import           Data.Array.Massiv.Common       (Array, DIM1, DIM2, DIM3,
-                                                 Index (consDim, totalElem, unconsDim),
+import           Data.Array.Massiv.Common       (Array, DIM1, DIM2, DIM3, Index (consDim, totalElem, unconsDim),
                                                  Lower,
                                                  Massiv (makeArray, size),
                                                  Source (unsafeIndex, unsafeLinearIndex),
                                                  loopM)
+import           Data.Array.Massiv.Common.Ops   (foldrFB, foldrS)
 import           Data.Array.Massiv.Common.Shape (Shape (R), Slice, (!>))
 import           Data.Array.Massiv.Delayed      (Array (DArray), D)
-import           Data.Array.Massiv.Mutable      (Mutable (unsafeFreeze, unsafeLinearWrite, unsafeNew))
-import           Data.Array.Massiv.Ops.Fold     (foldrFB)
+import           Data.Array.Massiv.Manifest     (B)
+import           Data.Array.Massiv.Mutable      (Mutable (unsafeFreeze, unsafeLinearWrite, unsafeNew),
+                                                 sequenceP)
 import           Data.Maybe                     (listToMaybe)
 --import           System.IO.Unsafe               (unsafePerformIO)
-import GHC.Base (build)
+import           Control.DeepSeq                (NFData)
+import           GHC.Base                       (build)
 
 makeArray1D :: Int -> (Int -> e) -> Array D DIM1 e
 makeArray1D = makeArray
@@ -208,6 +211,18 @@ toListS3D :: (Slice (R r) (Lower ix) e, Slice r ix e) => Array r ix e -> [[[e]]]
 toListS3D !arr = build $ \ c n -> foldrFB c n $ fmap toListS2D $ makeArray1D k (arr !>)
   where !k = fst $ unconsDim $ size arr
 {-# INLINE toListS3D #-}
+
+
+--toListP2D :: Slice r ix e => Array r ix e -> IO [[e]]
+toListP2D
+  :: forall r ix e . (NFData e, Slice r ix e) => Array r ix e -> IO [[e]]
+toListP2D !arr = do
+  arrLs <- sequenceP $
+    makeArray1D k (return . toListS1D . (arr !>))
+  return $ foldrS (:) [] (arrLs :: Array B DIM1 [e])
+  where
+    !k = fst $ unconsDim $ size arr
+{-# INLINE toListP2D #-}
 
 
 -- toListP2D :: (NFData e, Slice r ix e) => Array r ix e -> [[e]]

@@ -42,7 +42,7 @@ instance Index ix => Massiv WMD ix e where
   -- {-# INLINE makeArray #-}
 
 
-instance Load WMD DIM2 where
+instance Load WMD DIM2 e where
   loadS wmdArr unsafeRead unsafeWrite = do
     let (WMDArray sz@(m, n) indexB mStencilSz (it, jt) (wm, wn) indexW _deps) =
           wmdArr

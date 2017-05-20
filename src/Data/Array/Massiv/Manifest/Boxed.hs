@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -31,14 +30,16 @@ module Data.Array.Massiv.Manifest.Boxed
 
 import           Control.DeepSeq
 import           Control.Monad                       (void)
-import           Control.Monad.ST                    (runST)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Scheduler
+import           Data.Foldable                       (Foldable (..))
 import qualified Data.Vector                         as V
 import qualified Data.Vector.Mutable                 as MV
+import           GHC.Base                            (build)
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
@@ -85,8 +86,11 @@ instance Index ix => Manifest B ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (NFData e, Manifest B ix e) => Mutable B ix e where
+instance Index ix => Mutable B ix e where
   data MArray s B ix e = MBArray ix (V.MVector s e)
+
+  msize (MBArray sz _) = sz
+  {-# INLINE msize #-}
 
   unsafeThaw (BArray sz v) = MBArray sz <$> V.unsafeThaw v
   {-# INLINE unsafeThaw #-}
@@ -103,49 +107,68 @@ instance (NFData e, Manifest B ix e) => Mutable B ix e where
   unsafeLinearWrite (MBArray _sz v) i = MV.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
-  computeSeq !arr = runST $ do
-    mArr <- unsafeNew (size arr)
-    loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite' mArr)
-    unsafeFreeze mArr
-  {-# INLINE computeSeq #-}
 
-  computePar wIds !arr = do
-    mArr <- unsafeNew (size arr)
-    loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite' mArr)
-    unsafeFreeze mArr
-  {-# INLINE computePar #-}
+-- | Loading a Boxed array in parallel only make sense if it's elements are
+-- fully evaluated into NF.
+instance (Index ix, NFData e) => Target B ix e where
+
+  unsafeTargetWrite !mv !i e = e `deepseq` unsafeLinearWrite mv i e
+  {-# INLINE unsafeTargetWrite #-}
 
 
-instance Index ix => Load B ix where
-  loadS (BArray sz v) _ unsafeWrite =
+instance Index ix => Load B ix e where
+  loadS (BArray sz v) _ uWrite =
     iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !i _ ->
-      unsafeWrite i (V.unsafeIndex v i)
+      uWrite i (V.unsafeIndex v i)
   {-# INLINE loadS #-}
-  loadP wIds (BArray sz v) _ unsafeWrite = do
+  loadP wIds (BArray sz v) _ uWrite = do
     void $
       splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           submitRequest scheduler $
           JobRequest $
           iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !i _ ->
-            unsafeWrite i $ V.unsafeIndex v i
+            uWrite i $ V.unsafeIndex v i
         submitRequest scheduler $
           JobRequest $
           iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i _ ->
-            unsafeWrite i $ V.unsafeIndex v i
+            uWrite i $ V.unsafeIndex v i
   {-# INLINE loadP #-}
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
   rnf (BArray sz v) = sz `deepseq` v `deepseq` ()
 
 
-computeBoxedS :: (Massiv r ix e, Load r ix, Mutable B ix e) => Array r ix e -> Array B ix e
-computeBoxedS = computeSeq
+-- | Row-major folding over a Boxed array.
+instance Index ix => Foldable (Array B ix) where
+  foldl = lazyFoldlS
+  {-# INLINE foldl #-}
+  foldl' = foldlS
+  {-# INLINE foldl' #-}
+  foldr = foldrFB
+  {-# INLINE foldr #-}
+  foldr' = foldrS
+  {-# INLINE foldr' #-}
+  null (BArray sz _) = totalElem sz == 0
+  {-# INLINE null #-}
+  sum = foldl' (+) 0
+  {-# INLINE sum #-}
+  product = foldl' (*) 1
+  {-# INLINE product #-}
+  length = totalElem . size
+  {-# INLINE length #-}
+  toList arr = build (\ c n -> foldrFB c n arr)
+  {-# INLINE toList #-}
+
+
+
+computeBoxedS :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
+computeBoxedS = loadTargetS
 {-# INLINE computeBoxedS #-}
 
 
-computeBoxedP :: (Massiv r ix e, Load r ix, Mutable B ix e) => Array r ix e -> Array B ix e
-computeBoxedP = unsafePerformIO . computePar []
+computeBoxedP :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
+computeBoxedP = unsafePerformIO . loadTargetOnP []
 {-# INLINE computeBoxedP #-}
 
 
@@ -160,7 +183,7 @@ toVectorBoxed = bData
 
 
 generateM :: (Index ix, Monad m) =>
-  ix -> (ix -> m a) -> m (Array B ix a)
+             ix -> (ix -> m a) -> m (Array B ix a)
 generateM sz f =
   BArray sz <$> V.generateM (totalElem sz) (f . fromLinearIndex sz)
 {-# INLINE generateM #-}
@@ -168,10 +191,7 @@ generateM sz f =
 
 mapM :: (Source r ix a, Monad m) =>
   (a -> m b) -> Array r ix a -> m (Array B ix b)
-mapM f arr = do
-  let !sz = size arr
-  v <- V.generateM (totalElem sz) (f . unsafeLinearIndex arr)
-  return $ BArray sz v
+mapM f = imapM (const f)
 {-# INLINE mapM #-}
 
 imapM :: (Source r ix a, Monad m) =>
@@ -180,7 +200,8 @@ imapM f arr = do
   let !sz = size arr
   v <- V.generateM (totalElem sz) $ \ !i ->
          let !ix = fromLinearIndex sz i
-         in f ix (unsafeIndex arr ix)
+             !e = unsafeIndex arr ix
+         in f ix e
   return $ BArray sz v
 {-# INLINE imapM #-}
 

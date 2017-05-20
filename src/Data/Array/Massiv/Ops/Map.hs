@@ -16,6 +16,8 @@ module Data.Array.Massiv.Ops.Map
   -- * Monadic Mapping
   , mapM_
   , imapM_
+  , forM_
+  , iforM_
   -- * Zipping
   , zip
   , zip3
@@ -30,11 +32,11 @@ module Data.Array.Massiv.Ops.Map
 -- import           Control.DeepSeq             (NFData, deepseq)
 import           Control.Monad               (void, when)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Scheduler
 import           Prelude                     hiding (map, mapM_, unzip, unzip3,
                                               zip, zip3, zipWith, zipWith3)
-
 
 
 -- | Map a function over an array
@@ -112,19 +114,6 @@ izipWith3 f !arr1 !arr2 !arr3 =
   DArray (liftIndex2 min (liftIndex2 min (size arr1) (size arr1)) (size arr3)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
-
-
--- | Map a monadic function over an array sequentially, while discarding the result.
-mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
-mapM_ f !arr = iterM_ zeroIndex (size arr) 1 (<) (f . unsafeIndex arr)
-{-# INLINE mapM_ #-}
-
-
--- | Map a monadic index aware function over an array sequentially, while discarding the result.
-imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
-imapM_ f !arr =
-  iterM_ zeroIndex (size arr) 1 (<) $ \ !ix -> f ix (unsafeIndex arr ix)
-{-# INLINE imapM_ #-}
 
 
 -- | Map an IO action, over an array in parallel, while discarding the result.

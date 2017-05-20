@@ -56,33 +56,34 @@ import           Data.Array.Massiv.Manifest.Internal
 import qualified Data.Array.Massiv.Manifest.Primitive as P
 import qualified Data.Array.Massiv.Manifest.Storable  as S
 import qualified Data.Array.Massiv.Manifest.Unboxed   as U
-import           Data.Array.Massiv.Mutable            (Mutable (..))
+import           Data.Array.Massiv.Mutable            (Target, loadTargetOnP,
+                                                       loadTargetS)
 import           System.IO.Unsafe                     (unsafePerformIO)
 
 
 
 computeAsS
-  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
+  :: (Load r' ix e, Target r ix e)
   => r -> Array r' ix e -> Array r ix e
-computeAsS _ arr = computeSeq arr
+computeAsS _ arr = loadTargetS arr
 {-# INLINE computeAsS #-}
 
 computeAsP
-  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
+  :: (Load r' ix e, Target r ix e)
   => r -> Array r' ix e -> Array r ix e
-computeAsP _ arr = unsafePerformIO $ computePar [] arr
+computeAsP _ arr = unsafePerformIO $ loadTargetOnP [] arr
 {-# INLINE computeAsP #-}
 
 
 computeS
-  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
+  :: (Load r' ix e, Target r ix e)
   => r -> Array r' ix e -> Array M ix e
 computeS r = toManifest . computeAsS r
 {-# INLINE computeS #-}
 
 
 computeP
-  :: (Massiv r' ix e, Load r' ix, Mutable r ix e)
+  :: (Load r' ix e, Target r ix e)
   => r -> Array r' ix e -> Array M ix e
 computeP r = toManifest . computeAsP r
 {-# INLINE computeP #-}
@@ -92,15 +93,16 @@ computeP r = toManifest . computeAsP r
 (!) = index
 {-# INLINE (!) #-}
 
+
 (!?) :: Manifest r ix e => Array r ix e -> ix -> Maybe e
 (!?) = maybeIndex
 {-# INLINE (!?) #-}
+
 
 (?) :: Manifest r ix e => Maybe (Array r ix e) -> ix -> Maybe e
 (?) Nothing _      = Nothing
 (?) (Just arr) !ix = arr !? ix
 {-# INLINE (?) #-}
-
 
 
 maybeIndex :: Manifest r ix e => Array r ix e -> ix -> Maybe e

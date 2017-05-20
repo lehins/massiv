@@ -19,7 +19,7 @@ module Data.Array.Massiv.Common
   , Load(..)
   , PrettyShow(..)
   , module Data.Array.Massiv.Common.Index
-  , safeIndex
+  , evaluateAt
   , errorIx
   , errorImpossible
   ) where
@@ -68,26 +68,23 @@ class Massiv r ix e => Source r ix e where
 
 
 
-class Index ix => Load r ix where
+class Massiv r ix e => Load r ix e where
   -- | Load an array into memory sequentially
   loadS
-    :: Massiv r ix e =>
-       Array r ix e -- ^ Array that is being loaded
-    -> (Int -> ST s e) -- ^ Function that reads an element
-    -> (Int -> e -> ST s ()) -- ^ Function that writes an element
+    :: Array r ix e -- ^ Array that is being loaded
+    -> (Int -> ST s e) -- ^ Function that reads an element from target array
+    -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
     -> ST s ()
 
   -- | Load an array into memory in parallel
   loadP
-    :: Massiv r ix e =>
-       [Int] -- ^ List of capabilities to run workers on, as described in
-             -- `Control.Concurrent.forkOn`. Empty will imply all that are available,
-             -- i.e. run on all cores available through @+RTS -N@.
+    :: [Int] -- ^ List of capabilities to run workers on, as described in
+             -- `Control.Concurrent.forkOn`. Empty list will imply all
+             -- capabilities, i.e. run on all cores available through @+RTS -N@.
     -> Array r ix e -- ^ Array that is being loaded
-    -> (Int -> IO e) -- ^ Function that reads an element
-    -> (Int -> e -> IO ()) -- ^ Function that writes an element
+    -> (Int -> IO e) -- ^ Function that reads an element from target array
+    -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
-
 
 
 
@@ -99,14 +96,19 @@ errorIx :: (Massiv r ix e, Index ix') => String -> Array r ix e -> ix' -> a
 errorIx fName arr ix =
   error $ fName ++ ": Index out of bounds: " ++ show ix ++ " for: " ++ show arr
 
-safeIndex :: Source r ix e => Array r ix e -> ix -> e
-safeIndex !arr !ix =
+
+-- | This is just like safe `Data.Array.Massiv.Manifest.index` function, but it
+-- allows getting values from delayed arrays as well as manifest. As the name
+-- suggests indexing into delayed array with the same index multiple times will
+-- cause evaluation of the value each time.
+evaluateAt :: Source r ix e => Array r ix e -> ix -> e
+evaluateAt !arr !ix =
   handleBorderIndex
-    (Fill (errorIx "safeIndex" arr ix))
+    (Fill (errorIx "evaluateAt" arr ix))
     (size arr)
     (unsafeIndex arr)
     ix
-{-# INLINE safeIndex #-}
+{-# INLINE evaluateAt #-}
 
 
 class PrettyShow ix where

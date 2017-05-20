@@ -49,7 +49,7 @@ instance (Typeable m, Monad m, Index ix) => Massiv (MD m) ix e where
 
 
 
-instance (Typeable m, PrimMonad m, Index ix) => Load (MD m) ix where
+instance (Typeable m, PrimMonad m, Index ix) => Load (MD m) ix e where
   loadS (MDArray sz f) _ unsafeWrite =
     iterM_ zeroIndex sz 1 (<) $ \ !ix -> do
       v <- f ix

@@ -24,11 +24,11 @@ module Data.Array.Massiv.Manifest.Internal
   ) where
 
 import           Data.Array.Massiv.Common
---import           Data.Array.Massiv.Ops.Fold
+import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Common.Shape
-import           Data.Foldable
-import qualified Data.Vector                         as V
-
+import           Data.Foldable                  (Foldable (..))
+import qualified Data.Vector                    as V
+import           GHC.Base                       (build)
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
@@ -66,22 +66,25 @@ toManifest !arr = MArray (size arr) (unsafeLinearIndexM arr) where
 {-# INLINE toManifest #-}
 
 
+-- | Row-major folding over a Manifest array.
 instance Index ix => Foldable (Array M ix) where
-  -- foldr = lazyFoldrS
-  -- {-# INLINE foldr #-}
-  -- foldr' = foldrS
-  -- {-# INLINE foldr' #-}
-  -- foldl = lazyFoldlS
-  -- {-# INLINE foldl #-}
-  -- foldl' = foldlS
-  -- {-# INLINE foldl' #-}
+  foldl = lazyFoldlS
+  {-# INLINE foldl #-}
+  foldl' = foldlS
+  {-# INLINE foldl' #-}
+  foldr = foldrFB
+  {-# INLINE foldr #-}
+  foldr' = foldrS
+  {-# INLINE foldr' #-}
+  null (MArray sz _) = totalElem sz == 0
+  {-# INLINE null #-}
   sum = foldl' (+) 0
   {-# INLINE sum #-}
   product = foldl' (*) 1
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
-  toList = foldr' (:) []
+  toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 
 

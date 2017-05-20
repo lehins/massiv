@@ -65,37 +65,37 @@ prop_SliceLeft _ i arr = arr <!? i == arr <!?> (rank (size arr), i)
 
 prop_SliceIndexDim2D :: ArrIx D DIM2 Int -> Bool
 prop_SliceIndexDim2D (ArrIx arr ix@(i, j)) =
-  val == safeIndex (arr <! j) i &&
-  val == safeIndex (arr !> i) j
+  val == evaluateAt (arr <! j) i &&
+  val == evaluateAt (arr !> i) j
   where
     val = unsafeIndex arr ix
 
 
 prop_SliceIndexDim2RankD :: ArrIx D DIM2 Int -> Bool
 prop_SliceIndexDim2RankD (ArrIx arr ix@(i, j)) =
-  val == safeIndex (arr <!> (1, i)) j &&
-  val == safeIndex (arr <!> (2, j)) i
+  val == evaluateAt (arr <!> (1, i)) j &&
+  val == evaluateAt (arr <!> (2, j)) i
   where
     val = unsafeIndex arr ix
 
 
 prop_SliceIndexDim3D :: ArrIx D DIM3 Int -> Bool
 prop_SliceIndexDim3D (ArrIx arr ix@(i, j, k)) =
-  val == safeIndex (arr <! k <! j) i &&
-  val == safeIndex (arr !> i !> j) k &&
-  val == safeIndex (arr <! k !> i) j &&
-  val == safeIndex (arr !> i <! k) j
+  val == evaluateAt (arr <! k <! j) i &&
+  val == evaluateAt (arr !> i !> j) k &&
+  val == evaluateAt (arr <! k !> i) j &&
+  val == evaluateAt (arr !> i <! k) j
   where
     val = unsafeIndex arr ix
 
 prop_SliceIndexDim3RankD :: ArrIx D DIM3 Int -> Bool
 prop_SliceIndexDim3RankD (ArrIx arr ix@(i, j, k)) =
-  val == safeIndex (arr <!> (1, i) <!> (1, j)) k &&
-  val == safeIndex (arr <!> (1, i) <!> (2, k)) j &&
-  val == safeIndex (arr <!> (2, j) <!> (1, i)) k &&
-  val == safeIndex (arr <!> (2, j) <!> (2, k)) i &&
-  val == safeIndex (arr <!> (3, k) <!> (1, i)) j &&
-  val == safeIndex (arr <!> (3, k) <!> (2, j)) i
+  val == evaluateAt (arr <!> (1, i) <!> (1, j)) k &&
+  val == evaluateAt (arr <!> (1, i) <!> (2, k)) j &&
+  val == evaluateAt (arr <!> (2, j) <!> (1, i)) k &&
+  val == evaluateAt (arr <!> (2, j) <!> (2, k)) i &&
+  val == evaluateAt (arr <!> (3, k) <!> (1, i)) j &&
+  val == evaluateAt (arr <!> (3, k) <!> (2, j)) i
   where
     val = unsafeIndex arr ix
 
@@ -139,14 +139,14 @@ prop_SliceIndexDim3RankM (ArrIx arr ix@(i, j, k)) =
 
 prop_SliceIndexDim4D :: ArrIx D DIM4 Int -> Bool
 prop_SliceIndexDim4D (ArrIx arr ix@(i1, i2, i3, i4)) =
-  val == safeIndex (arr !> i1 !> i2 !> i3) i4 &&
-  val == safeIndex (arr !> i1 !> i2 <! i4) i3 &&
-  val == safeIndex (arr !> i1 <! i4 <! i3) i2 &&
-  val == safeIndex (arr !> i1 <! i4 !> i2) i3 &&
-  val == safeIndex (arr <! i4 !> i1 !> i2) i3 &&
-  val == safeIndex (arr <! i4 !> i1 <! i3) i2 &&
-  val == safeIndex (arr <! i4 <! i3 <! i2) i1 &&
-  val == safeIndex (arr <! i4 <! i3 !> i1) i2
+  val == evaluateAt (arr !> i1 !> i2 !> i3) i4 &&
+  val == evaluateAt (arr !> i1 !> i2 <! i4) i3 &&
+  val == evaluateAt (arr !> i1 <! i4 <! i3) i2 &&
+  val == evaluateAt (arr !> i1 <! i4 !> i2) i3 &&
+  val == evaluateAt (arr <! i4 !> i1 !> i2) i3 &&
+  val == evaluateAt (arr <! i4 !> i1 <! i3) i2 &&
+  val == evaluateAt (arr <! i4 <! i3 <! i2) i1 &&
+  val == evaluateAt (arr <! i4 <! i3 !> i1) i2
   where
     val = unsafeIndex arr ix
 
@@ -159,7 +159,7 @@ prop_SliceIndexDim4RankD (ArrIx arr ix@(i1, i2, i3, i4)) =
   val == unsafeIndex (arr <!> (3, i3) <!> (3, i4) !> i1) i2 &&
   val == unsafeIndex (arr <!> (4, i4) !> i1 !> i2) i3
   where
-    val = unsafeIndex arr ix
+    val = evaluateAt arr ix
 
 prop_SliceIndexDim4M :: ArrIx M DIM4 Int -> Bool
 prop_SliceIndexDim4M (ArrIx arr ix@(i1, i2, i3, i4)) =

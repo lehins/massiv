@@ -1,9 +1,9 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Unboxed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -53,12 +53,12 @@ instance (VU.Unbox e, Index ix) => Massiv U ix e where
       !sz' = liftIndex (max 0) sz
   {-# INLINE makeArray #-}
 
-instance (VU.Unbox e, Index ix) => Source U ix e where
+instance (VU.Unbox e, Massiv U ix e) => Source U ix e where
   unsafeLinearIndex (UArray _ v) = VU.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (VU.Unbox e, Index ix) => Shape U ix e where
+instance (VU.Unbox e, Massiv U ix e) => Shape U ix e where
   type R U = M
 
   unsafeReshape !sz !arr = arr { uSize = sz }
@@ -76,13 +76,16 @@ instance (VU.Unbox e, Index ix, Index (Lower ix)) => Slice U ix e where
   (<!?) !arr = (toManifest arr <!?)
   {-# INLINE (<!?) #-}
 
-instance (Index ix, VU.Unbox e) => Manifest U ix e where
+instance (Massiv U ix e, VU.Unbox e) => Manifest U ix e where
 
   unsafeLinearIndexM (UArray _ v) = VU.unsafeIndex v
   {-# INLINE unsafeLinearIndexM #-}
 
 instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
   data MArray s U ix e = MUArray ix (VU.MVector s e)
+
+  msize (MUArray sz _) = sz
+  {-# INLINE msize #-}
 
   unsafeThaw (UArray sz v) = MUArray sz <$> VU.unsafeThaw v
   {-# INLINE unsafeThaw #-}
@@ -100,13 +103,16 @@ instance (Manifest U ix e, VU.Unbox e) => Mutable U ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-computeUnboxedS :: (Massiv r ix e, Load r ix, Mutable U ix e) => Array r ix e -> Array U ix e
-computeUnboxedS !arr = computeSeq arr
+instance (Index ix, VU.Unbox e) => Target U ix e
+
+
+computeUnboxedS :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
+computeUnboxedS !arr = loadTargetS arr
 {-# INLINE computeUnboxedS #-}
 
 
-computeUnboxedP :: (Massiv r ix e, Load r ix, Mutable U ix e) => Array r ix e -> Array U ix e
-computeUnboxedP = unsafePerformIO . computePar []
+computeUnboxedP :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
+computeUnboxedP = unsafePerformIO . loadTargetOnP []
 {-# INLINE computeUnboxedP #-}
 
 

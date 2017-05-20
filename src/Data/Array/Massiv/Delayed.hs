@@ -17,10 +17,10 @@ module Data.Array.Massiv.Delayed where
 
 import           Control.Monad                  (void)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Common.Shape
-import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Scheduler
-import           Data.Foldable
+import           Data.Foldable                  (Foldable (..))
 import           GHC.Base                       (build)
 
 
@@ -120,7 +120,7 @@ instance Index ix => Foldable (Array D ix) where
   {-# INLINE toList #-}
 
 
-instance Index ix => Load D ix where
+instance Index ix => Load D ix e where
   loadS (DArray sz f) _ unsafeWrite =
     iterM_ zeroIndex sz 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (f ix)
