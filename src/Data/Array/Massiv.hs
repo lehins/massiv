@@ -94,7 +94,7 @@ null !arr = 0 == length arr
 
 
 
--- | /O(n1 + n2)/ - Compute equlity sequentially.
+-- | /O(n1 + n2)/ - Compute equality sequentially.
 eqS :: (Source r1 ix e1, Source r2 ix e2) =>
        (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eqS f arr1 arr2 = (size arr1 == size arr2) && foldlS (&&) True (zipWith f arr1 arr2)

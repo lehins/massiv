@@ -29,7 +29,7 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Scheduler
-
+--import Control.DeepSeq
 
 
 
@@ -112,5 +112,26 @@ sequenceOnP wIds !arr = do
 sequenceP :: (Source r1 ix (IO e), Mutable r ix e) => Array r1 ix (IO e) -> IO (Array r ix e)
 sequenceP = sequenceOnP []
 {-# INLINE sequenceP #-}
+
+
+
+-- sequenceOnP' :: (NFData e, Source r1 ix (IO e), Mutable r ix e) =>
+--                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
+-- sequenceOnP' wIds !arr = do
+--   resArrM <- unsafeNew (size arr)
+--   scheduler <- makeScheduler wIds
+--   iforM_ arr $ \ !ix action ->
+--     submitRequest scheduler $ JobRequest $ do
+--       res <- action
+--       res `deepseq` unsafeWrite resArrM ix res
+--   waitTillDone scheduler
+--   unsafeFreeze resArrM
+-- {-# INLINE sequenceOnP' #-}
+
+
+-- sequenceP' :: (NFData e, Source r1 ix (IO e), Mutable r ix e)
+--            => Array r1 ix (IO e) -> IO (Array r ix e)
+-- sequenceP' = sequenceOnP' []
+-- {-# INLINE sequenceP' #-}
 
 

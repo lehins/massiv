@@ -1,10 +1,10 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 module Data.Array.Massiv.CommonSpec (ArrIx(..), spec) where
 
 import           Data.Array.Massiv
---import           Data.Array.Massiv.Common
 import           Test.Hspec
 --import           Test.QuickCheck
 

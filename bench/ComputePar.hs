@@ -62,13 +62,12 @@ main = do
           whnf (M.sumP . (M.map M.sumP) . nestedArrM) sz
         , bench "Array Repa" $ whnf (runIdentity . sumAllP . arrR) sz
         ]
-    , bgroup
-        "toList"
-        [ bench "Array Massiv 2D Seq" $ nf (M.toListS2D . arrM) szf
-    --     , bench "Array Massiv 2D toListP'" $ nf (M.toListP' . arrM) sz
-    --     , bench "Array Massiv 2D'" $ nfIO (M.toListP2D' . arrM $ sz)
-        , bench "Array Massiv 2D" $ nfIO (M.toListP2D . arrM $ szf)
-        ]
+    -- , bgroup
+    --     "toList"
+    --     [ bench "Array Massiv 2D Seq" $ nf (M.toListS2D . arrM) sz
+    --     , bench "Array Massiv 2D" $ nf (M.toListP2D . arrM) sz
+    --     , bench "Array Massiv 2D'" $ whnf (M.toListP2D' . arrM) sz
+    --     ]
     , bgroup
         "fromList"
         [ bench "Array Massiv" $ whnf (M.fromListAsP2D M.U) ls2D

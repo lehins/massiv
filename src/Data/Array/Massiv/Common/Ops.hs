@@ -166,8 +166,6 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 
 
 
-
-
 -- | Map a monadic function over an array sequentially, while discarding the result.
 mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
 mapM_ f !arr = iterM_ zeroIndex (size arr) 1 (<) (f . unsafeIndex arr)
