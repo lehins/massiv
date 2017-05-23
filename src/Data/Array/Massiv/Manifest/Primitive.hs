@@ -23,6 +23,7 @@ module Data.Array.Massiv.Manifest.Primitive
   , imapM
   ) where
 
+import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
@@ -37,6 +38,10 @@ data P = P
 data instance Array P ix e = PArray { pSize :: !ix
                                     , pData :: !(VP.Vector e)
                                     } deriving Eq
+
+instance (Index ix, NFData e) => NFData (Array P ix e) where
+  rnf (PArray sz v) = sz `deepseq` v `deepseq` ()
+
 
 instance (VP.Prim e, Index ix) => Massiv P ix e where
   size = pSize

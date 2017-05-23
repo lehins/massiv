@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Data.Array.Massiv.Common.IndexSpec (Sz(..), Ix(..), spec) where
+module Data.Array.Massiv.Common.IndexSpec (Sz(..), SzZ(..), Ix(..), spec) where
 
 import           Control.Monad
 import           Data.Array.Massiv.Common.Index
@@ -8,15 +8,30 @@ import           Data.Functor.Identity
 import           Test.Hspec
 import           Test.QuickCheck
 
+-- | Size that will result in a non-empty array
 newtype Sz ix = Sz ix deriving Show
+
+-- | Size that can have zero elements
+newtype SzZ ix = SzZ ix deriving Show
 
 instance Functor Sz where
   fmap f (Sz sz) = Sz (f sz)
 
+instance Functor SzZ where
+  fmap f (SzZ sz) = SzZ (f sz)
+
 data Ix ix = Ix (Sz ix) ix deriving Show
 
 instance (Index ix, Arbitrary ix) => Arbitrary (Sz ix) where
-  arbitrary = Sz <$> liftIndex ((+1) . abs) <$> arbitrary
+  arbitrary = do
+    sz <- liftIndex ((+1) . abs) <$> arbitrary
+    if (totalElem sz > 200000)
+      then arbitrary
+      else return $ Sz sz
+
+instance (Index ix, Arbitrary ix) => Arbitrary (SzZ ix) where
+  arbitrary = SzZ <$> liftIndex abs <$> arbitrary
+
 
 instance (Index ix, Arbitrary ix) => Arbitrary (Ix ix) where
   arbitrary = do

@@ -52,6 +52,7 @@ import           Data.Array.Massiv.Common       (Array, DIM1, DIM2, DIM3,
 import           Data.Array.Massiv.Common.Ops   (foldrFB)
 import           Data.Array.Massiv.Common.Shape (Shape (R), Slice, (!>))
 import           Data.Array.Massiv.Delayed      (D)
+import           Prelude                        as P
 --import           Data.Array.Massiv.Manifest     (B)
 import           Data.Array.Massiv.Mutable      (Mutable (unsafeFreeze, unsafeLinearWrite, unsafeNew))
 import           Data.Array.Massiv.Scheduler
@@ -156,15 +157,13 @@ loadListUsing2D :: Monad m =>
   Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[e]] -> m ()
 loadListUsing2D start end step uWrite using xs = do
   leftOver <-
-    loopM start (< end) (+ step) xs $
-    (\ !i ys ->
-       case ys of
-            []      -> error "Column is too short."
-            (x:xs') -> do
-              using (loadList1D i (i + step) uWrite x)
-              return xs'
-    )
-  unless (null leftOver) $ error "Column is too long."
+    loopM start (< end) (+ step) xs $ \ !i ys ->
+      case ys of
+        [] -> error "Column is too short."
+        (x:xs') -> do
+          using (loadList1D i (i + step) uWrite x)
+          return xs'
+  unless (P.null leftOver || P.all P.null leftOver) $ error "Column is too long."
 {-# INLINE loadListUsing2D #-}
 
 
@@ -173,8 +172,7 @@ fromListS2D xs =
   runST $ do
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
     mArr <- unsafeNew sz
-    unless (totalElem sz == 0) $
-      loadListUsing2D 0 (m * n) n (unsafeLinearWrite mArr) id xs
+    loadListUsing2D 0 (m * n) n (unsafeLinearWrite mArr) id xs
     unsafeFreeze mArr
 {-# INLINE fromListS2D #-}
 
@@ -182,6 +180,24 @@ fromListS2D xs =
 fromListAsS2D :: Mutable r DIM2 e => r -> [[e]] -> Array r DIM2 e
 fromListAsS2D _ = fromListS2D
 {-# INLINE fromListAsS2D #-}
+
+
+loadListUsing3D :: Monad m =>
+  Int -> Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[[e]]] -> m ()
+loadListUsing3D start end step lowerStep uWrite using xs = do
+  leftOver <-
+    loopM start (< end) (+ step) xs $ \ !i zs ->
+      case zs of
+        [] -> error "Page is too short"
+        (y:ys) -> do
+          loadListUsing2D i (i + step) lowerStep uWrite using y
+          return ys
+  unless
+    (P.null leftOver ||
+     (P.all (length (head leftOver) ==) (P.map length leftOver) &&
+      P.null (concat (concat leftOver)))) $
+    error "Page is too long."
+{-# INLINE loadListUsing3D #-}
 
 
 fromListS3D :: Mutable r DIM3 e => [[[e]]] -> Array r DIM3 e
@@ -194,9 +210,7 @@ fromListS3D xs =
           , maybe 0 length (mFirstRow >>= listToMaybe))
     mArr <- unsafeNew (l, m, n)
     let !step = m * n
-    void $
-      loopM 0 (< totalElem sz) (+ step) xs $ \ !i (y:ys) ->
-        loadListUsing2D i (i + step) n (unsafeLinearWrite mArr) id y >> return ys
+    loadListUsing3D 0 (totalElem sz) step n (unsafeLinearWrite mArr) id xs
     unsafeFreeze mArr
 {-# INLINE fromListS3D #-}
 
@@ -214,8 +228,13 @@ fromListP2D xs =
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
     scheduler <- makeScheduler []
     mArr <- unsafeNew sz
-    unless (totalElem sz == 0) $
-      loadListUsing2D 0 (m*n) n (unsafeLinearWrite mArr) (submitRequest scheduler . JobRequest) xs
+    loadListUsing2D
+      0
+      (m * n)
+      n
+      (unsafeLinearWrite mArr)
+      (submitRequest scheduler . JobRequest)
+      xs
     waitTillDone scheduler
     unsafeFreeze mArr
 {-# INLINE fromListP2D #-}
@@ -237,16 +256,14 @@ fromListP3D xs =
     scheduler <- makeScheduler []
     mArr <- unsafeNew (l, m, n)
     let !step = m * n
-    void $
-      loopM 0 (< totalElem sz) (+ step) xs $ \i (y:ys) -> do
-        loadListUsing2D
-          i
-          (i + step)
-          n
-          (unsafeLinearWrite mArr)
-          (submitRequest scheduler . JobRequest)
-          y
-        return ys
+    loadListUsing3D
+      0
+      (totalElem sz)
+      step
+      n
+      (unsafeLinearWrite mArr)
+      (submitRequest scheduler . JobRequest)
+      xs
     waitTillDone scheduler
     unsafeFreeze mArr
 {-# INLINE fromListP3D #-}

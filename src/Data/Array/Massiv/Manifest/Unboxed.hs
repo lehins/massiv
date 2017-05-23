@@ -1,9 +1,9 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Unboxed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -25,6 +25,7 @@ module Data.Array.Massiv.Manifest.Unboxed
   , fromUnboxedArray
   ) where
 
+import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
@@ -39,6 +40,10 @@ data U = U
 data instance Array U ix e = UArray { uSize :: !ix
                                     , uData :: !(VU.Vector e)
                                     } deriving Eq
+
+
+instance (Index ix, NFData e) => NFData (Array U ix e) where
+  rnf (UArray sz v) = sz `deepseq` v `deepseq` ()
 
 fromUnboxedArray :: VU.Unbox e => Array U ix e -> Array M ix e
 fromUnboxedArray (UArray sz v) = MArray sz (VU.unsafeIndex v)

@@ -3,10 +3,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.SchedulerSpec (spec) where
 
-import           Control.Exception.Base        (ArithException (DivideByZero),
-                                                catchJust)
+import           Control.Exception.Base        (ArithException (DivideByZero))
 import           Data.Array.Massiv             as M
-import           Data.Array.Massiv.CommonSpec  (ArrIx (..))
+import           Data.Array.Massiv.CommonSpec  (ArrIx (..), assertException)
 import           Data.Array.Massiv.DelayedSpec ()
 import           Data.Array.Massiv.Scheduler
 import           Data.List                     (sortBy)
@@ -15,46 +14,41 @@ import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 
+
+
+
 prop_CatchDivideByZero :: ArrIx D DIM2 Int -> Property
 prop_CatchDivideByZero (ArrIx arr ix) =
-  monadicIO $
-  run $
-  catchJust
-    (\exc ->
-       case exc of
-         DivideByZero -> Just True
-         _            -> Nothing)
-    ((computeUnboxedP $
-      M.imap
-        (\ix' x ->
-           if ix == ix'
-             then x `div` 0
-             else x)
-        arr) `seq`
-     return True)
-    return
+  assertException
+    (== DivideByZero)
+    (return $
+     computeUnboxedP $
+     M.imap
+       (\ix' x ->
+          if ix == ix'
+            then x `div` 0
+            else x)
+       arr)
 
 
-prop_CatchNested :: ArrIx D DIM1 (Array D DIM1 Int) -> Property
+prop_CatchNested :: ArrIx D DIM1 (ArrIx D DIM1 Int) -> Property
 prop_CatchNested (ArrIx arr ix) =
-  monadicIO $
-  run $
-  catchJust
-    (\exc ->
-       case exc of
-         DivideByZero -> Just True
-         _            -> Nothing)
-    ((M.sumP $
-      (M.map M.sumP) $
-      (M.imap
-         (\ix' iarr ->
-            if ix == ix'
-              then M.map (`div` 0) iarr
-              else iarr))
-        arr) `seq`
-     return True)
-    return
-
+  assertException
+    (== DivideByZero)
+    (return $
+     M.sumP $
+     M.map M.sumP $
+     M.imap
+       (\ix' (ArrIx iarr ixi) ->
+          if ix == ix'
+            then M.imap
+                   (\ixi' e ->
+                      if ixi == ixi'
+                        then e `div` 0
+                        else e)
+                   iarr
+            else iarr)
+       arr)
 
 exc_SchedulerRetiredSubmit :: IO ()
 exc_SchedulerRetiredSubmit = do

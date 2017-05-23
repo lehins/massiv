@@ -27,7 +27,7 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Ops.Transform
   -- * Accessors
   -- ** Size information
-  , size
+  --, size
   , null
   -- * Geometric Operators
   ) where
@@ -43,13 +43,13 @@ import           Data.Array.Massiv.Ops.Map
 import           Data.Array.Massiv.Ops.Transform
 import           Prelude                         as P hiding (length, map, null,
                                                        zipWith, zipWith3)
-import Text.Printf
-import qualified Data.Foldable as F
+-- import Text.Printf
+-- import qualified Data.Foldable as F
 -- import qualified Data.List as L
 
 
-showPrintf :: (PrintfArg a, Foldable t) => String -> t a -> String
-showPrintf format arr = concat $ fmap (printf format) $ F.toList arr
+-- showPrintf :: (PrintfArg a, Foldable t) => String -> t a -> String
+-- showPrintf format arr = concat $ fmap (printf format) $ F.toList arr
 
 
 -- instance PrettyShow DIM1 where

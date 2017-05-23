@@ -23,6 +23,7 @@ module Data.Array.Massiv.Manifest.Storable
   , imapM
   ) where
 
+import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
@@ -37,6 +38,11 @@ data S = S
 data instance Array S ix e = SArray { sSize :: !ix
                                     , sData :: !(VS.Vector e)
                                     } deriving Eq
+
+
+instance (Index ix, NFData e) => NFData (Array S ix e) where
+  rnf (SArray sz v) = sz `deepseq` v `deepseq` ()
+
 
 instance (VS.Storable e, Index ix) => Massiv S ix e where
   size = sSize

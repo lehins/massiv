@@ -28,7 +28,7 @@ module Data.Array.Massiv.Manifest.Boxed
   , deepseqP
   ) where
 
-import           Control.DeepSeq
+import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Monad                       (void)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Ops
@@ -48,6 +48,7 @@ data B = B
 data instance Array B ix e = BArray { bSize :: !ix
                                     , bData :: !(V.Vector e)
                                     } deriving Eq
+
 
 instance Index ix => Massiv B ix e where
   size = bSize

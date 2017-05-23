@@ -4,7 +4,7 @@
 module Data.Array.Massiv.Ops.FoldSpec (spec) where
 
 import           Data.Array.Massiv
-import           Data.Array.Massiv.DelayedSpec ()
+import           Data.Array.Massiv.CommonSpec ()
 import           Data.List.NonEmpty            (NonEmpty, toList)
 import           Prelude                       hiding (map)
 import           Test.Hspec

@@ -18,6 +18,8 @@ module Data.Array.Massiv.Ops.Map
   , imapM_
   , forM_
   , iforM_
+  , mapP_
+  , imapP_
   -- * Zipping
   , zip
   , zip3
