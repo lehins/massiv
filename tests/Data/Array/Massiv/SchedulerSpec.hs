@@ -21,8 +21,7 @@ prop_CatchDivideByZero :: ArrIx D DIM2 Int -> Property
 prop_CatchDivideByZero (ArrIx arr ix) =
   assertException
     (== DivideByZero)
-    (return $
-     computeUnboxedP $
+    (computeUnboxedP $
      M.imap
        (\ix' x ->
           if ix == ix'
@@ -35,8 +34,7 @@ prop_CatchNested :: ArrIx D DIM1 (ArrIx D DIM1 Int) -> Property
 prop_CatchNested (ArrIx arr ix) =
   assertException
     (== DivideByZero)
-    (return $
-     M.sumP $
+    (M.sumP $
      M.map M.sumP $
      M.imap
        (\ix' (ArrIx iarr ixi) ->
@@ -79,8 +77,8 @@ prop_SchedulerRequestIdMatch (Positive numJobs) =
   assert
 
 -- | Check weather all jobs have been completed
-prop_SchedulerAllJobsProcessed :: [Int] -> Property
-prop_SchedulerAllJobsProcessed ids =
+prop_SchedulerAllJobsProcessed :: OrderedList Int -> Property
+prop_SchedulerAllJobsProcessed (Ordered ids) =
   monadicIO $ do
     res <-
       run $ do

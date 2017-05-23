@@ -28,7 +28,7 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertSomeException $ return (computeUnboxedS (rangeStep from 0 to))
+  assertSomeException (computeUnboxedS (rangeStep from 0 to))
 
 
 prop_toFromList1D :: DIM1 -> Fun DIM1 Int -> Bool
@@ -47,7 +47,7 @@ prop_excFromToListS2D :: [[Int]] -> Property
 prop_excFromToListS2D ls2 =
   if P.null lsL || all (head lsL ==) lsL
      then label "Expected Success" $ resultLs === ls2
-     else label "Expected Failure" $ assertSomeException $ return resultLs
+     else label "Expected Failure" $ assertSomeException resultLs
   where
     lsL = P.map length ls2
     resultLs = toListS2D (fromListAsS2D U ls2)
@@ -65,7 +65,7 @@ prop_excFromToListS3D ls3 =
       (P.null (head lsLL) || P.and (P.map (all (head (head lsLL) ==)) lsLL)))
     then classify True "Expected Success" $ resultLs === ls3
     else classify True "Expected Failure" $
-         assertSomeException $ return resultLs
+         assertSomeException resultLs
   where
     resultLs = toListS3D (fromListAsS3D U ls3)
     lsL = P.map length ls3
@@ -82,7 +82,7 @@ prop_excFromToListP2D :: [[Int]] -> Property
 prop_excFromToListP2D ls2 =
   if P.null lsL || all (head lsL ==) lsL
     then ls2 === toListS2D (fromListAsP2D U ls2)
-    else assertSomeException $ return res
+    else assertSomeException res
   where
     res = toListS2D (fromListAsP2D U ls2)
     lsL = P.map length ls2
@@ -100,7 +100,7 @@ prop_excFromToListP3D ls3 =
       (P.null (head lsLL) || P.and (P.map (all (head (head lsLL) ==)) lsLL)))
     then classify True "Expected Success" $ resultLs === ls3
     else classify True "Expected Failure" $
-         assertSomeException $ return resultLs
+         assertSomeException resultLs
   where
     resultLs = toListS3D (fromListAsP3D U ls3)
     lsL = P.map length ls3

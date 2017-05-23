@@ -7,11 +7,13 @@ module Data.Array.Massiv.CommonSpec
   , ArrIx(..)
   , assertException
   , assertSomeException
+  , assertExceptionIO
+  , assertSomeExceptionIO
   , spec
   ) where
 
 import           Control.DeepSeq                    (NFData, deepseq)
-import           Control.Exception.Safe             (Exception, SomeException,
+import           Control.Exception                  (Exception, SomeException,
                                                      catch)
 import           Data.Array.Massiv
 import           Data.Array.Massiv.Common.IndexSpec (Ix (..), Sz (..), SzZ (..))
@@ -49,9 +51,20 @@ instance (CoArbitrary ix, Arbitrary ix, Massiv r ix e, Arbitrary e) => Arbitrary
 
 assertException :: (NFData a, Exception exc) =>
                    (exc -> Bool) -- ^ Return True if that is the exception that was expected
-                -> IO a -- ^ IO Action that should throw an exception
+                -> a -- ^ Value that should throw an exception, when fully evaluated
                 -> Property
-assertException isExc action =
+assertException isExc action = assertExceptionIO isExc (return action)
+
+
+assertSomeException :: NFData a => a -> Property
+assertSomeException = assertSomeExceptionIO . return
+
+
+assertExceptionIO :: (NFData a, Exception exc) =>
+                     (exc -> Bool) -- ^ Return True if that is the exception that was expected
+                  -> IO a -- ^ IO Action that should throw an exception
+                  -> Property
+assertExceptionIO isExc action =
   monadicIO $ do
   hasFailed <- run
     (catch
@@ -59,8 +72,8 @@ assertException isExc action =
            res `deepseq` return False) $ \exc -> show exc `deepseq` return (isExc exc))
   assert hasFailed
 
-assertSomeException :: NFData a => IO a -> Property
-assertSomeException = assertException (\exc -> const True (exc :: SomeException))
+assertSomeExceptionIO :: NFData a => IO a -> Property
+assertSomeExceptionIO = assertExceptionIO (\exc -> const True (exc :: SomeException))
 
 
 spec :: Spec
