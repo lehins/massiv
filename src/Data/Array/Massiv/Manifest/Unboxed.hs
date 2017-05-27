@@ -19,7 +19,7 @@ module Data.Array.Massiv.Manifest.Unboxed
   , fromVectorUnboxed
   , toVectorUnboxed
   , computeUnboxedS
-  -- , computeUnboxedP
+  , computeUnboxedP
   -- , mapM
   -- , imapM
   -- , fromUnboxedArray
@@ -34,7 +34,7 @@ import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           Prelude                             hiding (mapM)
--- import           System.IO.Unsafe                    (unsafePerformIO)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 data U = U
 
@@ -120,9 +120,9 @@ computeUnboxedS = loadTargetS
 {-# INLINE computeUnboxedS #-}
 
 
--- computeUnboxedP :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
--- computeUnboxedP = unsafePerformIO . loadTargetOnP []
--- {-# INLINE computeUnboxedP #-}
+computeUnboxedP :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
+computeUnboxedP = unsafePerformIO . loadTargetOnP []
+{-# INLINE computeUnboxedP #-}
 
 
 fromVectorUnboxed :: Index ix => ix -> VU.Vector e -> Array U ix e

@@ -25,10 +25,11 @@ main = do
       !arrCRs' = R.transpose2S arrCRs
       !ls1D = toListS1D arrCM
       !ls2D = toListS2D arrCM
-      nestedArrM !(m, n) = makeArray1D m (arr !>)
+      arrMP sz = setComp (arrM sz) Par
+      nestedArrMP !(m, n) = makeArray1D Par m (arr !>)
         where
-          !arr = arrM (m, n)
-      {-# INLINE nestedArrM #-}
+          !arr = arrMP (m, n)
+      {-# INLINE nestedArrMP #-}
   arrCRs' `R.deepSeqArray` defaultMain
     [ bgroup
         "Load"
@@ -57,9 +58,9 @@ main = do
         ]
     , bgroup
         "Fold"
-        [ bench "Array Massiv" $ whnf (M.sumP . arrM) sz
+        [ bench "Array Massiv" $ whnf (M.sum . arrMP) sz
         , bench "Array Massiv Nested" $
-          whnf (M.sumP . (M.map M.sumP) . nestedArrM) sz
+          whnf (M.sum . (fmap M.sum) . nestedArrMP) sz
         , bench "Array Repa" $ whnf (runIdentity . sumAllP . arrR) sz
         ]
     -- , bgroup
@@ -77,7 +78,7 @@ main = do
     , bgroup
         "Fuse"
         [ bench "Array Massiv" $
-          whnf (M.computeUnboxedP . M.map (+ 25) . arrM) sz
+          whnf (M.computeUnboxedP . fmap (+ 25) . arrM) sz
         , bench "Array Repa" $
           whnf (runIdentity . R.computeUnboxedP . R.map (+ 25) . arrR) sz
         ]

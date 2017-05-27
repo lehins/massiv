@@ -37,7 +37,7 @@ module Data.Array.Massiv.Manifest
   -- * Unboxed
   , U.U(..)
   , U.computeUnboxedS
-  -- , U.computeUnboxedP
+  , U.computeUnboxedP
   -- * Indexing
   , (!)
   , index
