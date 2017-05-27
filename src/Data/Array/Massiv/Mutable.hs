@@ -15,6 +15,10 @@
 module Data.Array.Massiv.Mutable
   ( Mutable(..)
   , Target(..)
+  , compute
+  , computeS
+  , computeP
+  , computeOnP
   , loadTargetS
   , loadTargetOnP
   , unsafeRead
@@ -26,9 +30,10 @@ module Data.Array.Massiv.Mutable
 import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST                    (runST)
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Manifest.Internal
+import           Data.Array.Massiv.Ops.Map           (iforM_)
 import           Data.Array.Massiv.Scheduler
+import           System.IO.Unsafe                    (unsafePerformIO)
 --import Control.DeepSeq
 
 
@@ -46,7 +51,7 @@ class Manifest r ix e => Mutable r ix e where
                   MArray (PrimState m) r ix e -> m (Array r ix e)
 
   unsafeNew :: PrimMonad m =>
-               ix -> m (MArray (PrimState m) r ix e)
+               Comp -> ix -> m (MArray (PrimState m) r ix e)
 
   unsafeLinearRead :: PrimMonad m =>
                       MArray (PrimState m) r ix e -> Int -> m e
@@ -72,7 +77,7 @@ loadTargetS :: (Load r' ix e, Target r ix e) =>
                Array r' ix e -> Array r ix e
 loadTargetS !arr =
   runST $ do
-    mArr <- unsafeNew (size arr)
+    mArr <- unsafeNew (getComp arr) (size arr)
     loadS arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
     unsafeFreeze mArr
 {-# INLINE loadTargetS #-}
@@ -80,10 +85,42 @@ loadTargetS !arr =
 loadTargetOnP :: (Load r' ix e, Target r ix e) =>
                  [Int] -> Array r' ix e -> IO (Array r ix e)
 loadTargetOnP wIds !arr = do
-  mArr <- unsafeNew (size arr)
+  mArr <- unsafeNew (getComp arr) (size arr)
   loadP wIds arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
   unsafeFreeze mArr
 {-# INLINE loadTargetOnP #-}
+
+
+compute
+  :: (Load r' ix e, Target r ix e)
+  => Array r' ix e -> Array r ix e
+compute !arr =
+  case getComp arr of
+    Seq        -> loadTargetS arr
+    Par        -> computeP arr
+    ParOn wIds -> computeOnP wIds arr
+{-# INLINE compute #-}
+
+
+computeS
+  :: (Load r' ix e, Target r ix e)
+  => Array r' ix e -> Array r ix e
+computeS = loadTargetS
+{-# INLINE computeS #-}
+
+
+computeP
+  :: (Load r' ix e, Target r ix e)
+  => Array r' ix e -> Array r ix e
+computeP = unsafePerformIO . loadTargetOnP []
+{-# INLINE computeP #-}
+
+
+computeOnP
+  :: (Load r' ix e, Target r ix e)
+  => [Int] -> Array r' ix e -> Array r ix e
+computeOnP wIds = unsafePerformIO . loadTargetOnP wIds
+{-# INLINE computeOnP #-}
 
 
 unsafeRead :: (Mutable r ix e, PrimMonad m) =>
@@ -100,7 +137,7 @@ unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
 sequenceOnP wIds !arr = do
-  resArrM <- unsafeNew (size arr)
+  resArrM <- unsafeNew (getComp arr) (size arr)
   scheduler <- makeScheduler wIds
   iforM_ arr $ \ !ix action ->
     submitRequest scheduler $ JobRequest (action >>= unsafeWrite resArrM ix)

@@ -16,18 +16,19 @@ import           Prelude                           as P
 main :: IO ()
 main = do
   let !sz = (1600, 1200) :: M.DIM2
+      !szR = (Z :. fst sz :. snd sz)
   let !szs = (600, 200) :: M.DIM2
-  let !ixM = (1600, 1200)
-      !ixR = (Z :. fst sz :. snd sz)
+  let !ixM = (612, 211)
+      !ixR = (Z :. fst ixM :. snd ixM)
       !ix1D = toLinearIndex sz ixM
-  let !arrCM = M.computeUnboxedS $ arrM sz
+  let !arrCM = computeAs U $ arrM sz
       !arrCMM = toManifest arrCM
       !arrCR = R.computeUnboxedS $ arrR sz
       !vecCU = vecU sz
       !ls1D = toListS1D arrCM
       !ls2D = toListS2D arrCM
-  let !arrCMs = M.computeUnboxedS $ arrM szs
-      !arrCMs' = M.computeUnboxedS (M.transpose arrCMs)
+  let !arrCMs = computeAs U $ arrM szs
+      !arrCMs' = computeAs U (M.transpose arrCMs)
       !arrCRs = R.computeUnboxedS $ arrR szs
       !arrCRs' = R.transpose2S arrCRs
   defaultMain
@@ -65,21 +66,21 @@ main = do
     , bgroup
         "Load"
         [ bgroup
-            "Light"
-            [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrM) sz
-            , bench "Vector Unboxed" $ whnf vecU sz
-            , bench "Array Repa" $ whnf (R.computeUnboxedS . arrR) sz
+            "Light Unboxed"
+            [ bench "Massiv" $ whnf (M.computeUnboxedS . arrM) sz
+            , bench "Vector" $ whnf vecU sz
+            , bench "Repa" $ whnf (R.computeUnboxedS . arrR) sz
             ]
         , bgroup
-            "Heavy"
-            [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrM') sz
-            , bench "Vector Unboxed" $ whnf vecU' sz
-            , bench "Array Repa" $ whnf (R.computeUnboxedS . arrR') sz
+            "Heavy Unboxed"
+            [ bench "Massiv" $ whnf (computeAs U . arrM') sz
+            , bench "Vector" $ whnf vecU' sz
+            , bench "Repa" $ whnf (R.computeUnboxedS . arrR') sz
             ]
         , bgroup
             "Windowed"
-            [ bench "Array Massiv" $ whnf (M.computeUnboxedS . arrWindowedM) sz
-            , bench "Array Repa" $ whnf (R.computeUnboxedS . arrWindowedR) sz
+            [ bench "Massiv" $ whnf (computeAs U . arrWindowedM) sz
+            , bench "Repa" $ whnf (R.computeUnboxedS . arrWindowedR) sz
             ]
         ]
     , bgroup
@@ -92,12 +93,15 @@ main = do
             ]
         , bgroup
             "Right"
-            [ bench "Array Massiv Delayed" $ whnf (foldrS (+) 0 . arrM) sz
-            , bench "Array Massiv Delayed foldr" $ whnf (foldr (+) 0 . arrM) sz
-            , bench "Array Massiv Delayed foldr'" $
-              whnf (foldr' (+) 0 . arrM) sz
+            [ bench "Array Massiv Delayed" $ whnf (foldr' (+) 0 . arrM) sz
             , bench "Vector Unboxed" $ whnf (VU.foldr' (+) 0 . vecU) sz
             , bench "Array Repa" $ whnf (R.foldAllS (+) 0 . arrR) sz
+            ]
+        , bgroup
+            "Sum"
+            [ bench "Array Massiv Delayed" $ whnf (M.sum . arrM) sz
+            , bench "Vector Unboxed" $ whnf (VU.sum . vecU) sz
+            , bench "Array Repa" $ whnf (R.sumAllS . arrR) sz
             ]
         , bgroup
             "Computed"
@@ -127,7 +131,7 @@ main = do
     , bgroup
         "fromList"
         [ bench "Array Massiv" $ whnf (M.fromListAsS2D M.U) ls2D
-        , bench "Array Repa" $ whnf (R.fromListUnboxed ixR) ls1D
+        , bench "Array Repa" $ whnf (R.fromListUnboxed szR) ls1D
         , bench "Array Vector" $ whnf VU.fromList ls1D
         ]
     , bgroup
@@ -135,7 +139,7 @@ main = do
         [ bgroup
             "map"
             [ bench "Array Massiv" $
-              whnf (M.computeUnboxedS . M.map (+ 25) . arrM) sz
+              whnf (computeAs U . fmap (+ 25) . arrM) sz
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
             , bench "Array Repa" $
               whnf (R.computeUnboxedS . R.map (+ 25) . arrR) sz
@@ -147,7 +151,7 @@ main = do
             "append"
             [ bench "Array Massiv" $
               whnf
-                (\sz' -> M.computeUnboxedS $ M.append' 1 (arrM sz') (arrM sz'))
+                (\sz' -> computeAs U $ M.append' 1 (arrM sz') (arrM sz'))
                 sz
             , bench "Vector Unboxed" $
               whnf (\sz' -> (vecU sz') VU.++ (vecU sz')) sz
@@ -159,7 +163,7 @@ main = do
         ]
     , bgroup
         "Matrix Multiplication"
-        [ bench "Array Massiv" $ whnf (M.computeUnboxedS . (arrCMs' |*|)) arrCMs
+        [ bench "Array Massiv" $ whnf (computeAs U . (arrCMs' |*|)) arrCMs
         , bench "Array Repa" $ whnf (R.mmultS arrCRs') arrCRs
         ]
     ]

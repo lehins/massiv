@@ -33,8 +33,7 @@ library
                      , Data.Array.Massiv.Scheduler
                      , Data.Array.Massiv.Stencil
                      , Data.Array.Massiv.Stencil.Convolution
-  other-modules:       Data.Array.Massiv.Common.Ops
-                     , Data.Array.Massiv.Stencil.Internal
+  other-modules:       Data.Array.Massiv.Stencil.Internal
                      , Data.Array.Massiv.Manifest.Internal
                      , Data.Array.Massiv.Ops.Construct
                      , Data.Array.Massiv.Ops.Filter

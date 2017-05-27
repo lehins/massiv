@@ -20,27 +20,24 @@ module Data.Array.Massiv.Manifest
     Manifest
   , toManifest
   , M
-  , computeS
-  , computeP
-  , computeOnP
-  , computeAsS
-  , computeAsP
+  , compute
+  , computeAs
   -- * Boxed
   , B.B(..)
-  , B.computeBoxedS
-  , B.computeBoxedP
+  -- , B.computeBoxedS
+  -- , B.computeBoxedP
   -- * Primitive
   , P.P(..)
-  , P.computePrimitiveS
-  , P.computePrimitiveP
+  -- , P.computePrimitiveS
+  -- , P.computePrimitiveP
   -- * Storable
   , S.S(..)
-  , S.computeStorableS
-  , S.computeStorableP
+  -- , S.computeStorableS
+  -- , S.computeStorableP
   -- * Unboxed
   , U.U(..)
   , U.computeUnboxedS
-  , U.computeUnboxedP
+  -- , U.computeUnboxedP
   -- * Indexing
   , (!)
   , index
@@ -57,43 +54,16 @@ import           Data.Array.Massiv.Manifest.Internal
 import qualified Data.Array.Massiv.Manifest.Primitive as P
 import qualified Data.Array.Massiv.Manifest.Storable  as S
 import qualified Data.Array.Massiv.Manifest.Unboxed   as U
-import           Data.Array.Massiv.Mutable            (Target, loadTargetOnP,
-                                                       loadTargetS)
-import           System.IO.Unsafe                     (unsafePerformIO)
+import           Data.Array.Massiv.Mutable            (Target, compute)
 
 
-computeS
-  :: (Load r' ix e, Target r ix e)
-  => Array r' ix e -> Array r ix e
-computeS = loadTargetS
-{-# INLINE computeS #-}
 
 
-computeP
-  :: (Load r' ix e, Target r ix e)
-  => Array r' ix e -> Array r ix e
-computeP = unsafePerformIO . loadTargetOnP []
-{-# INLINE computeP #-}
-
-
-computeOnP
-  :: (Load r' ix e, Target r ix e)
-  => [Int] -> Array r' ix e -> Array r ix e
-computeOnP wIds = unsafePerformIO . loadTargetOnP wIds
-{-# INLINE computeOnP #-}
-
-
-computeAsS
+computeAs
   :: (Load r' ix e, Target r ix e)
   => r -> Array r' ix e -> Array r ix e
-computeAsS _ = computeS
-{-# INLINE computeAsS #-}
-
-computeAsP
-  :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array r ix e
-computeAsP _ = computeP
-{-# INLINE computeAsP #-}
+computeAs _ = compute
+{-# INLINE computeAs #-}
 
 
 -- | Infix version of `index`.
@@ -130,6 +100,6 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 
 
 index :: Manifest r ix e => Array r ix e -> ix -> e
-index arr ix = borderIndex (Fill (errorIx "index" arr ix)) arr ix
+index arr ix = borderIndex (Fill (errorIx "index" (size arr) ix)) arr ix
 {-# INLINE index #-}
 

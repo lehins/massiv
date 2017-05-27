@@ -25,8 +25,9 @@ module Data.Array.Massiv.Manifest.Internal
   ) where
 
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Delayed
+import           Data.Array.Massiv.Ops.Fold     as M
 import           Data.Foldable                  (Foldable (..))
 import qualified Data.Vector                    as V
 import           GHC.Base                       (build)
@@ -42,7 +43,8 @@ class Source r ix e => Manifest r ix e where
 -- | Manifest representation
 data M
 
-data instance Array M ix e = MArray { mSize :: !ix
+data instance Array M ix e = MArray { mComp :: Comp
+                                    , mSize :: !ix
                                     , mUnsafeLinearIndex :: Int -> e }
 
 
@@ -50,20 +52,24 @@ instance Index ix => Massiv M ix e where
   size = mSize
   {-# INLINE size #-}
 
-  makeArray !sz f = MArray sz (V.unsafeIndex (makeBoxedVector sz f))
-  {-# INLINE makeArray #-}
+  getComp = mComp
+  {-# INLINE getComp #-}
+
+  setComp arr c = arr { mComp = c }
+  {-# INLINE setComp #-}
+
+  unsafeMakeArray c !sz f = MArray c sz (V.unsafeIndex (makeBoxedVector sz f))
+  {-# INLINE unsafeMakeArray #-}
 
 
 makeBoxedVector :: Index ix => ix -> (ix -> a) -> V.Vector a
-makeBoxedVector !sz f = V.generate (totalElem sz') (f . fromLinearIndex sz')
-  where
-    !sz' = liftIndex (max 0) sz
+makeBoxedVector !sz f = V.generate (totalElem sz) (f . fromLinearIndex sz)
 {-# INLINE makeBoxedVector #-}
 
 
 -- | _O(1)_ Conversion of manifest arrays to `M` representation.
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
-toManifest !arr = MArray (size arr) (unsafeLinearIndexM arr) where
+toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr) where
 {-# INLINE toManifest #-}
 
 
@@ -77,7 +83,7 @@ instance Index ix => Foldable (Array M ix) where
   {-# INLINE foldr #-}
   foldr' = foldrS
   {-# INLINE foldr' #-}
-  null (MArray sz _) = totalElem sz == 0
+  null (MArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
   sum = foldl' (+) 0
   {-# INLINE sum #-}
@@ -107,24 +113,26 @@ instance Index ix => Shape M ix e where
   {-# INLINE unsafeReshape #-}
 
   unsafeExtract !sIx !newSz !arr =
-    MArray newSz $ \ i ->
+    MArray (getComp arr) newSz $ \ i ->
       unsafeIndex arr (liftIndex2 (+) (fromLinearIndex newSz i) sIx)
   {-# INLINE unsafeExtract #-}
 
 
-instance (Index ix, Index (Lower ix)) => Slice M ix e where
-
+instance (Index ix, Index (Lower ix)) =>
+         Slice M ix e where
   (!?>) !arr !i
-    | isSafeIndex m i = Just (MArray szL (unsafeLinearIndex arr . (+ kStart)))
+    | isSafeIndex m i =
+      Just (MArray (getComp arr) szL (unsafeLinearIndex arr . (+ kStart)))
     | otherwise = Nothing
     where
       !sz = size arr
       !(m, szL) = unconsDim sz
       !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
   {-# INLINE (!?>) #-}
-
   (<!?) !arr !i
-    | isSafeIndex m i = Just (MArray szL (\ k -> unsafeLinearIndex arr (k * m + kStart)))
+    | isSafeIndex m i =
+      Just
+        (MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * m + kStart)))
     | otherwise = Nothing
     where
       !sz = size arr
@@ -137,7 +145,7 @@ instance (Index ix, Index (Lower ix)) => Slice M ix e where
   :: forall r ix e.
      (Manifest r ix e, Index (Lower ix))
   => Array r ix e -> Int -> Array M (Lower ix) e
-(!!>) !arr !i = (MArray szL (\ k -> unsafeLinearIndexM arr (k + kStart)))
+(!!>) !arr !i = (MArray (getComp arr) szL (\ k -> unsafeLinearIndexM arr (k + kStart)))
   where
     !sz = size arr
     !szL = snd $ unconsDim sz

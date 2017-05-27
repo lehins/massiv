@@ -101,21 +101,25 @@ class ( Index (Lower ix)
 (!>) !arr !ix =
   case arr !?> ix of
     Just res -> res
-    Nothing  -> errorIx "(!>)" arr ix
+    Nothing  -> errorIx "(!>)" (size arr) ix
 {-# INLINE (!>) #-}
 
 (<!) :: Slice r ix e => Array r ix e -> Int -> Array (R r) (Lower ix) e
 (<!) !arr !ix =
   case arr <!? ix of
     Just res -> res
-    Nothing  -> errorIx "(<!)" arr ix
+    Nothing  -> errorIx "(<!)" (size arr) ix
 {-# INLINE (<!) #-}
 
 (<!>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Array (R r) (Lower ix) e
 (<!>) !arr !(dim, i) =
   case arr <!?> (dim, i) of
     Just res -> res
-    Nothing  -> if dim < 1 || dim > rank (size arr)
-                then error $ "Invalid dimension: " ++ show dim ++ " for: " ++ show arr
-                else errorIx "(<!>)" arr (dim, i)
+    Nothing ->
+      let arrRank = rank (size arr)
+      in if dim < 1 || dim > arrRank
+           then error $
+                "(<!>): Invalid dimension: " ++
+                show dim ++ " for Array of rank: " ++ show arrRank
+           else errorIx "(<!>)" (size arr) (dim, i)
 {-# INLINE (<!>) #-}

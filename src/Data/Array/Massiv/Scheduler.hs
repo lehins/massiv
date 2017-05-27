@@ -184,19 +184,6 @@ waitTillDone :: Scheduler a -> IO ()
 waitTillDone scheduler = collectResults scheduler (const id) ()
 
 
--- splitWork' :: Index ix
---           => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO (Maybe b)
--- splitWork' wIds sz submitWork
---   | totalElem sz == 0 = return Nothing
---   | otherwise = do
---     scheduler <- makeScheduler wIds
---     let !totalLength = totalElem sz
---         !chunkLength = totalLength `quot` numWorkers scheduler
---         !slackStart = chunkLength * numWorkers scheduler
---     res <- submitWork scheduler chunkLength totalLength slackStart
---     waitTillDone scheduler
---     return $ Just res
-
 splitWork :: Index ix
           => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
 splitWork wIds !sz submitWork
@@ -208,12 +195,10 @@ splitWork wIds !sz submitWork
         !slackStart = chunkLength * numWorkers scheduler
     void $ submitWork scheduler chunkLength totalLength slackStart
     collectResults scheduler (:) []
-    -- res <- submitWork scheduler chunkLength totalLength slackStart
-    -- waitTillDone scheduler
-    -- return res
+
 
 splitWork_ :: Index ix
-          => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
+           => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
 splitWork_ wIds sz = void . splitWork wIds sz
 
 hasGlobalSchedulerVar :: TVar Bool

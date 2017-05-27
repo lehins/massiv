@@ -71,8 +71,8 @@ mkStaticStencilM b !sSz !sCenter relStencil =
     {-# INLINE stencil #-}
     sRank = rank sSz
     defArrA :: Array D ix a
-    defArrA = DArray sSz (const def)
-    defArr = DArray sSz (const def)
+    defArrA = DArray Seq sSz (const def)
+    defArr = DArray Seq sSz (const def)
     deps = toManifest $ fromVectorUnboxed (rank sSz) $ VU.create makeDeps
     -- TODO: switch to mutable Array, once it is implemented.
     makeDeps :: ST s (MVU.MVector s Int)
@@ -180,7 +180,7 @@ validateStencil
   :: Index ix
   => e -> Stencil ix e a -> Stencil ix e a
 validateStencil d s@(Stencil _ sSz sCenter stencil) =
-  let valArr = DArray sSz (const d)
+  let valArr = DArray Seq sSz (const d)
   in stencil (safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
 

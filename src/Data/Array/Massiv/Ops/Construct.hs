@@ -44,14 +44,14 @@ module Data.Array.Massiv.Ops.Construct
 
 import           Control.Monad                  (unless, void)
 import           Control.Monad.ST               (runST)
-import           Data.Array.Massiv.Common       (Array, DIM1, DIM2, DIM3,
+import           Data.Array.Massiv.Common       (Array, Comp (..), DIM1, DIM2,
+                                                 DIM3,
                                                  Index (totalElem, unconsDim),
-                                                 Lower,
-                                                 Massiv (makeArray, size),
-                                                 Source, loopM)
-import           Data.Array.Massiv.Common.Ops   (foldrFB)
+                                                 Lower, Massiv (size), Source,
+                                                 loopM, makeArray)
 import           Data.Array.Massiv.Common.Shape (Shape (R), Slice, (!>))
 import           Data.Array.Massiv.Delayed      (D)
+import           Data.Array.Massiv.Ops.Fold     (foldrFB)
 import           Prelude                        as P
 --import           Data.Array.Massiv.Manifest     (B)
 import           Data.Array.Massiv.Mutable      (Mutable (unsafeFreeze, unsafeLinearWrite, unsafeNew))
@@ -62,16 +62,16 @@ import           System.IO.Unsafe               (unsafePerformIO)
 --import Control.DeepSeq (NFData, deepseq)
 
 
-makeArray1D :: Int -> (Int -> e) -> Array D DIM1 e
+makeArray1D :: Comp -> Int -> (Int -> e) -> Array D DIM1 e
 makeArray1D = makeArray
 {-# INLINE makeArray1D #-}
 
 
-makeArray2D :: (Int, Int) -> ((Int, Int) -> e) -> Array D DIM2 e
+makeArray2D :: Comp -> (Int, Int) -> ((Int, Int) -> e) -> Array D DIM2 e
 makeArray2D = makeArray
 {-# INLINE makeArray2D #-}
 
-makeArray3D :: (Int, Int, Int) -> ((Int, Int, Int) -> e) -> Array D DIM3 e
+makeArray3D :: Comp -> (Int, Int, Int) -> ((Int, Int, Int) -> e) -> Array D DIM3 e
 makeArray3D = makeArray
 {-# INLINE makeArray3D #-}
 
@@ -85,21 +85,22 @@ makeArray3D = makeArray
 -- [1,2,3,4,5]
 -- >>> toList $ range (-2) 3
 -- [-2,-1,0,1,2]
-range :: Int -> Int -> Array D DIM1 Int
-range !from !to = makeArray1D (max 0 (to - from)) (+ from)
+range :: Comp -> Int -> Int -> Array D DIM1 Int
+range comp !from !to = makeArray1D comp (max 0 (to - from)) (+ from)
 {-# INLINE range #-}
 
 
 
-rangeStep :: Int -- ^ Start
+rangeStep :: Comp
+          -> Int -- ^ Start
           -> Int -- ^ Step (Can't be zero)
           -> Int -- ^ End
           -> Array D DIM1 Int
-rangeStep !from !step !to
+rangeStep comp !from !step !to
   | step == 0 = error "rangeStep: Step can't be zero"
   | otherwise =
     let (sz, r) = (to - from) `divMod` step
-    in makeArray1D (sz + signum r) (\i -> from + i * step)
+    in makeArray1D comp (sz + signum r) (\i -> from + i * step)
 {-# INLINE rangeStep #-}
 
 
@@ -109,10 +110,11 @@ rangeStep !from !step !to
 -- [5,6,7]
 --
 enumFromN :: Num e =>
-             e -- ^ Start value
+             Comp
+          -> e -- ^ Start value
           -> Int -- ^ Length of resulting array
           -> Array D DIM1 e
-enumFromN !from !sz = makeArray1D sz $ \ i -> fromIntegral i + from
+enumFromN comp !from !sz = makeArray1D comp sz $ \ i -> fromIntegral i + from
 {-# INLINE enumFromN #-}
 
 -- |
@@ -120,11 +122,12 @@ enumFromN !from !sz = makeArray1D sz $ \ i -> fromIntegral i + from
 -- >>> toList $ enumFromStepN 1 0.1 5
 -- [1.0,1.1,1.2,1.3,1.4]
 enumFromStepN :: Num e =>
-                 e -- ^ Start
+                 Comp
+              -> e -- ^ Start
               -> e -- ^ Step
               -> Int -- ^ Length
               -> Array D DIM1 e
-enumFromStepN !from !step !sz = makeArray1D sz $ \ i -> from + fromIntegral i * step
+enumFromStepN comp !from !step !sz = makeArray1D comp sz $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}
 
 
@@ -142,7 +145,7 @@ fromListS1D :: Mutable r DIM1 e => [e] -> Array r DIM1 e
 fromListS1D xs =
   runST $ do
     let !k = length xs
-    mArr <- unsafeNew k
+    mArr <- unsafeNew Seq k
     loadList1D 0 k (unsafeLinearWrite mArr) xs
     unsafeFreeze mArr
 {-# INLINE fromListS1D #-}
@@ -171,7 +174,7 @@ fromListS2D :: Mutable r DIM2 e => [[e]] -> Array r DIM2 e
 fromListS2D xs =
   runST $ do
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
-    mArr <- unsafeNew sz
+    mArr <- unsafeNew Seq sz
     loadListUsing2D 0 (m * n) n (unsafeLinearWrite mArr) id xs
     unsafeFreeze mArr
 {-# INLINE fromListS2D #-}
@@ -208,7 +211,7 @@ fromListS3D xs =
           ( length xs
           , maybe 0 length mFirstRow
           , maybe 0 length (mFirstRow >>= listToMaybe))
-    mArr <- unsafeNew (l, m, n)
+    mArr <- unsafeNew Par (l, m, n)
     let !step = m * n
     loadListUsing3D 0 (totalElem sz) step n (unsafeLinearWrite mArr) id xs
     unsafeFreeze mArr
@@ -227,7 +230,7 @@ fromListP2D xs =
   unsafePerformIO $ do
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
     scheduler <- makeScheduler []
-    mArr <- unsafeNew sz
+    mArr <- unsafeNew Par sz
     loadListUsing2D
       0
       (m * n)
@@ -254,7 +257,7 @@ fromListP3D xs =
           , maybe 0 length mFirstRow
           , maybe 0 length (mFirstRow >>= listToMaybe))
     scheduler <- makeScheduler []
-    mArr <- unsafeNew (l, m, n)
+    mArr <- unsafeNew Par (l, m, n)
     let !step = m * n
     loadListUsing3D
       0
@@ -290,19 +293,19 @@ toListS1D !arr = build (\ c n -> foldrFB c n arr)
 --
 -- ==== __Examples__
 --
--- >>> toListS2D $ makeArray2D (2, 3) id
+-- >>> toListS2D $ makeArray2D Seq (2, 3) id
 -- [[(0,0),(0,1),(0,2)],[(1,0),(1,1),(1,2)]]
--- >>> toListS2D $ makeArray3D (2, 1, 3) id
+-- >>> toListS2D $ makeArray3D Seq (2, 1, 3) id
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
 toListS2D :: Slice r ix e => Array r ix e -> [[e]]
-toListS2D !arr = build $ \ c n -> foldrFB c n $ fmap toListS1D $ makeArray1D k (arr !>)
+toListS2D !arr = build $ \ c n -> foldrFB c n $ fmap toListS1D $ makeArray1D Seq k (arr !>)
   where !k = fst $ unconsDim $ size arr
 {-# INLINE toListS2D #-}
 
 
 toListS3D :: (Slice (R r) (Lower ix) e, Slice r ix e) => Array r ix e -> [[[e]]]
-toListS3D !arr = build $ \ c n -> foldrFB c n $ fmap toListS2D $ makeArray1D k (arr !>)
+toListS3D !arr = build $ \ c n -> foldrFB c n $ fmap toListS2D $ makeArray1D Seq k (arr !>)
   where !k = fst $ unconsDim $ size arr
 {-# INLINE toListS3D #-}
 

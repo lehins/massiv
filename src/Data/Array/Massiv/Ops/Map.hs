@@ -34,44 +34,42 @@ module Data.Array.Massiv.Ops.Map
 -- import           Control.DeepSeq             (NFData, deepseq)
 import           Control.Monad               (void, when)
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Common.Ops
-import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Scheduler
 import           Prelude                     hiding (map, mapM_, unzip, unzip3,
                                               zip, zip3, zipWith, zipWith3)
 
 
 -- | Map a function over an array
-map :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
-map = liftArray
+map :: (Source r' ix e', Massiv r ix e) => (e' -> e) -> Array r' ix e' -> Array r ix e
+map f = imap (const f)
 {-# INLINE map #-}
 
 -- | Map an index aware function over an array
-imap :: Source r ix b => (ix -> b -> e) -> Array r ix b -> Array D ix e
-imap f !arr = DArray (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+imap :: (Source r' ix e', Massiv r ix e) => (ix -> e' -> e) -> Array r' ix e' -> Array r ix e
+imap f !arr = unsafeMakeArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE imap #-}
 
 -- | Zip two arrays
-zip :: (Source r1 ix a1, Source r2 ix a2)
-    => Array r1 ix a1 -> Array r2 ix a2 -> Array D ix (a1, a2)
+zip :: (Source r1 ix e1, Source r2 ix e2, Massiv r ix (e1, e2))
+    => Array r1 ix e1 -> Array r2 ix e2 -> Array r ix (e1, e2)
 zip = zipWith (,)
 {-# INLINE zip #-}
 
 -- | Zip three arrays
-zip3 :: (Source r1 ix a1, Source r2 ix a2, Source r3 ix a3)
-     => Array r1 ix a1 -> Array r2 ix a2 -> Array r3 ix a3 -> Array D ix (a1, a2, a3)
+zip3 :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Massiv r ix (e1, e2, e3))
+     => Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array r ix (e1, e2, e3)
 zip3 = zipWith3 (,,)
 {-# INLINE zip3 #-}
 
 -- | Unzip two arrays
-unzip :: Source r ix (a1, a2)
-      => Array r ix (a1, a2) -> (Array D ix a1, Array D ix a2)
+unzip :: (Source r' ix (e1, e2), Massiv r ix e1, Massiv r ix e2)
+      => Array r' ix (e1, e2) -> (Array r ix e1, Array r ix e2)
 unzip !arr = (map fst arr, map snd arr)
 {-# INLINE unzip #-}
 
 -- | Unzip three arrays
-unzip3 :: Source r ix (a1, a2, a3)
-       => Array r ix (a1, a2, a3) -> (Array D ix a1, Array D ix a2, Array D ix a3)
+unzip3 :: (Source r' ix (e1, e2, e3), Massiv r ix e1, Massiv r ix e2, Massiv r ix e3)
+       => Array r' ix (e1, e2, e3) -> (Array r ix e1, Array r ix e2, Array r ix e3)
 unzip3 !arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_, _, e) -> e) arr)
 {-# INLINE unzip3 #-}
 
@@ -80,42 +78,72 @@ unzip3 !arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_
 -- | Zip two arrays with a function. Resulting array will be an intersection of
 -- source arrays in case their dimensions do not match.
 zipWith
-  :: (Source r1 ix a1, Source r2 ix a2)
-  => (a1 -> a2 -> e) -> Array r1 ix a1 -> Array r2 ix a2 -> Array D ix e
-zipWith f = izipWith (\ _ a1 a2 -> f a1 a2)
+  :: (Source r1 ix e1, Source r2 ix e2, Massiv r ix e)
+  => (e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r ix e
+zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
 {-# INLINE zipWith #-}
 
 
 -- | Just like `zipWith`, except with an index aware function.
 izipWith
-  :: (Source r1 ix a1, Source r2 ix a2)
-  => (ix -> a1 -> a2 -> e) -> Array r1 ix a1 -> Array r2 ix a2 -> Array D ix e
+  :: (Source r1 ix e1, Source r2 ix e2, Massiv r ix e)
+  => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r ix e
 izipWith f !arr1 !arr2 =
-  DArray (liftIndex2 min (size arr1) (size arr1)) $ \ !ix ->
+  unsafeMakeArray (getComp arr1) (liftIndex2 min (size arr1) (size arr1)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
 {-# INLINE izipWith #-}
 
 
 -- | Just like `zipWith`, except zip three arrays with a function.
 zipWith3
-  :: (Source r1 ix a1, Source r2 ix a2, Source r3 ix a3)
-  => (a1 -> a2 -> a3 -> e) -> Array r1 ix a1 -> Array r2 ix a2 -> Array r3 ix a3 -> Array D ix e
-zipWith3 f = izipWith3 (\ _ a1 a2 a3 -> f a1 a2 a3)
+  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Massiv r ix e)
+  => (e1 -> e2 -> e3 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array r ix e
+zipWith3 f = izipWith3 (\ _ e1 e2 e3 -> f e1 e2 e3)
 {-# INLINE zipWith3 #-}
 
 
 -- | Just like `zipWith3`, except with an index aware function.
 izipWith3
-  :: (Source r1 ix a1, Source r2 ix a2, Source r3 ix a3)
-  => (ix -> a1 -> a2 -> a3 -> e)
-  -> Array r1 ix a1
-  -> Array r2 ix a2
-  -> Array r3 ix a3
-  -> Array D ix e
+  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Massiv r ix e)
+  => (ix -> e1 -> e2 -> e3 -> e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> Array r ix e
 izipWith3 f !arr1 !arr2 !arr3 =
-  DArray (liftIndex2 min (liftIndex2 min (size arr1) (size arr1)) (size arr3)) $ \ !ix ->
+  unsafeMakeArray
+    (getComp arr1)
+    (liftIndex2 min (liftIndex2 min (size arr1) (size arr1)) (size arr3)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
+
+
+
+
+
+-- | Map a monadic function over an array sequentially, while discarding the result.
+mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
+mapM_ f !arr = iterM_ zeroIndex (size arr) 1 (<) (f . unsafeIndex arr)
+{-# INLINE mapM_ #-}
+
+
+-- | Just like `mapM_`, except with flipped arguments.
+forM_ :: (Source r ix a, Monad m) => Array r ix a -> (a -> m b) -> m ()
+forM_ = flip mapM_
+{-# INLINE forM_ #-}
+
+
+-- | Map a monadic index aware function over an array sequentially, while discarding the result.
+imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
+imapM_ f !arr =
+  iterM_ zeroIndex (size arr) 1 (<) $ \ !ix -> f ix (unsafeIndex arr ix)
+{-# INLINE imapM_ #-}
+
+-- | Just like `imapM_`, except with flipped arguments.
+iforM_ :: (Source r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
+iforM_ = flip imapM_
+{-# INLINE iforM_ #-}
+
 
 
 -- | Map an IO action, over an array in parallel, while discarding the result.

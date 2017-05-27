@@ -47,7 +47,7 @@ main = do
   --_ <- repaSobel (16000, 16000)
   --let a = M.computeUnboxedP $ arrM (1600, 1201)
   --let arr = makeArray1D 3037000500 succ
-  let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
+  let arrU = computeAs U $ makeArray1D Seq 1518500250 succ
   let arr = toManifest arrU
   let res = foldlS (+) 0 arr
   -- let arrU = computeUnboxedS $ makeArray1D 1518500250 succ

@@ -65,7 +65,7 @@ module Data.Array.Massiv.Numeric
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
-import           Data.Array.Massiv.Manifest
+-- import           Data.Array.Massiv.Manifest
 
 import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Ops.Fold      as M
@@ -121,11 +121,12 @@ multArrs arr1 arr2
   | n1 /= m2 =
     error $
     "(|*|): Inner array dimensions must agree, but received: " ++
-    show arr1 ++ " and " ++ show arr2
-  | otherwise = DArray (m1, n2) $ \(i, j) -> sumS (arr1 !> i .* arr2' !> j)
+    show (size arr1) ++ " and " ++ show (size arr2)
+  | otherwise = DArray (getComp arr1) (m1, n2) $ \(i, j) -> M.sum (arr1' !> i .* arr2' !> j)
   where
     (m1, n1) = size arr1
     (m2, n2) = size arr2
+    arr1' = setComp arr1 Seq
     arr2' :: Array r2 DIM2 e
     arr2' = computeP $ transpose arr2
 {-# INLINE multArrs #-}
