@@ -34,84 +34,81 @@ module Data.Array.Massiv.Ops.Map
 -- import           Control.DeepSeq             (NFData, deepseq)
 import           Control.Monad               (void, when)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Scheduler
 import           Prelude                     hiding (map, mapM_, unzip, unzip3,
                                               zip, zip3, zipWith, zipWith3)
 
 
 -- | Map a function over an array
-map :: (Source r' ix e', Massiv r ix e) => (e' -> e) -> Array r' ix e' -> Array r ix e
+map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
 map f = imap (const f)
 {-# INLINE map #-}
 
 -- | Map an index aware function over an array
-imap :: (Source r' ix e', Massiv r ix e) => (ix -> e' -> e) -> Array r' ix e' -> Array r ix e
-imap f !arr = unsafeMakeArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+imap :: Source r ix e' => (ix -> e' -> e) -> Array r ix e' -> Array D ix e
+imap f !arr = DArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE imap #-}
 
 -- | Zip two arrays
-zip :: (Source r1 ix e1, Source r2 ix e2, Massiv r ix (e1, e2))
-    => Array r1 ix e1 -> Array r2 ix e2 -> Array r ix (e1, e2)
+zip :: (Source r1 ix e1, Source r2 ix e2)
+    => Array r1 ix e1 -> Array r2 ix e2 -> Array D ix (e1, e2)
 zip = zipWith (,)
 {-# INLINE zip #-}
 
 -- | Zip three arrays
-zip3 :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Massiv r ix (e1, e2, e3))
-     => Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array r ix (e1, e2, e3)
+zip3 :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3)
+     => Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array D ix (e1, e2, e3)
 zip3 = zipWith3 (,,)
 {-# INLINE zip3 #-}
 
 -- | Unzip two arrays
-unzip :: (Source r' ix (e1, e2), Massiv r ix e1, Massiv r ix e2)
-      => Array r' ix (e1, e2) -> (Array r ix e1, Array r ix e2)
-unzip !arr = (map fst arr, map snd arr)
+unzip :: Source r ix (e1, e2) => Array r ix (e1, e2) -> (Array D ix e1, Array D ix e2)
+unzip arr = (map fst arr, map snd arr)
 {-# INLINE unzip #-}
 
 -- | Unzip three arrays
-unzip3 :: (Source r' ix (e1, e2, e3), Massiv r ix e1, Massiv r ix e2, Massiv r ix e3)
-       => Array r' ix (e1, e2, e3) -> (Array r ix e1, Array r ix e2, Array r ix e3)
-unzip3 !arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_, _, e) -> e) arr)
+unzip3 :: Source r ix (e1, e2, e3)
+       => Array r ix (e1, e2, e3) -> (Array D ix e1, Array D ix e2, Array D ix e3)
+unzip3 arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_, _, e) -> e) arr)
 {-# INLINE unzip3 #-}
 
 
 
 -- | Zip two arrays with a function. Resulting array will be an intersection of
 -- source arrays in case their dimensions do not match.
-zipWith
-  :: (Source r1 ix e1, Source r2 ix e2, Massiv r ix e)
-  => (e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r ix e
+zipWith :: (Source r1 ix e1, Source r2 ix e2)
+        => (e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
 zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
 {-# INLINE zipWith #-}
 
 
 -- | Just like `zipWith`, except with an index aware function.
-izipWith
-  :: (Source r1 ix e1, Source r2 ix e2, Massiv r ix e)
-  => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r ix e
-izipWith f !arr1 !arr2 =
-  unsafeMakeArray (getComp arr1) (liftIndex2 min (size arr1) (size arr1)) $ \ !ix ->
+izipWith :: (Source r1 ix e1, Source r2 ix e2)
+         => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
+izipWith f arr1 arr2 =
+  DArray (getComp arr1) (liftIndex2 min (size arr1) (size arr1)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
 {-# INLINE izipWith #-}
 
 
 -- | Just like `zipWith`, except zip three arrays with a function.
-zipWith3
-  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Massiv r ix e)
-  => (e1 -> e2 -> e3 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array r ix e
+zipWith3 :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3)
+         => (e1 -> e2 -> e3 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array D ix e
 zipWith3 f = izipWith3 (\ _ e1 e2 e3 -> f e1 e2 e3)
 {-# INLINE zipWith3 #-}
 
 
 -- | Just like `zipWith3`, except with an index aware function.
 izipWith3
-  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Massiv r ix e)
+  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3)
   => (ix -> e1 -> e2 -> e3 -> e)
   -> Array r1 ix e1
   -> Array r2 ix e2
   -> Array r3 ix e3
-  -> Array r ix e
-izipWith3 f !arr1 !arr2 !arr3 =
-  unsafeMakeArray
+  -> Array D ix e
+izipWith3 f arr1 arr2 arr3 =
+  DArray
     (getComp arr1)
     (liftIndex2 min (liftIndex2 min (size arr1) (size arr1)) (size arr3)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
@@ -119,9 +116,17 @@ izipWith3 f !arr1 !arr2 !arr3 =
 
 
 
-
-
 -- | Map a monadic function over an array sequentially, while discarding the result.
+--
+-- ==== __Examples__
+--
+-- >>> mapM_ print $ rangeStep 10 12 60
+-- 10
+-- 22
+-- 34
+-- 46
+-- 58
+--
 mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
 mapM_ f !arr = iterM_ zeroIndex (size arr) 1 (<) (f . unsafeIndex arr)
 {-# INLINE mapM_ #-}
@@ -134,6 +139,16 @@ forM_ = flip mapM_
 
 
 -- | Map a monadic index aware function over an array sequentially, while discarding the result.
+--
+-- ==== __Examples__
+--
+-- >>> imapM_ (curry print) $ range 10 15
+-- (0,10)
+-- (1,11)
+-- (2,12)
+-- (3,13)
+-- (4,14)
+--
 imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
 imapM_ f !arr =
   iterM_ zeroIndex (size arr) 1 (<) $ \ !ix -> f ix (unsafeIndex arr ix)
@@ -155,9 +170,13 @@ mapP_ f = imapP_ (const f)
 -- | Map an IO action, that is index aware, over an array in parallel, while
 -- discarding the result.
 imapP_ :: Source r ix a => (ix -> a -> IO b) -> Array r ix a -> IO ()
-imapP_ f !arr = do
-  let !sz = size arr
-  splitWork_ [] sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+imapP_ f arr = do
+  let sz = size arr
+      wIds =
+        case getComp arr of
+          ParOn ids -> ids
+          _         -> []
+  splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
       submitRequest scheduler $
       JobRequest $

@@ -15,9 +15,8 @@ import           Prelude                               as P
 main :: IO ()
 main = do
   let !sz = (1600, 1200) :: M.DIM2
-      !ixR = (Z :. fst sz :. snd sz)
+      !szR = (Z :. fst sz :. snd sz)
   let !szs = (600, 200) :: M.DIM2
-  let !szf = (120, 1200) :: M.DIM2
   let !arrCM = M.computeUnboxedS $ arrM sz
       !arrCMs = M.computeUnboxedS $ arrM szs
       !arrCMs' = M.computeUnboxedS (M.transpose arrCMs)
@@ -25,8 +24,8 @@ main = do
       !arrCRs' = R.transpose2S arrCRs
       !ls1D = toListS1D arrCM
       !ls2D = toListS2D arrCM
-      arrMP sz = setComp (arrM sz) Par
-      nestedArrMP !(m, n) = makeArray1D Par m (arr !>)
+      arrMP sz = setComp Par (arrM sz)
+      nestedArrMP !(m, n) = setComp Par $ makeArray1D m (arr !>)
         where
           !arr = arrMP (m, n)
       {-# INLINE nestedArrMP #-}
@@ -73,7 +72,7 @@ main = do
         "fromList"
         [ bench "Array Massiv" $ whnf (M.fromListAsP2D M.U) ls2D
         , bench "Array Massiv Seq" $ whnf (M.fromListAsS2D M.U) ls2D
-        , bench "Array Repa" $ whnf (R.fromListUnboxed ixR) ls1D
+        , bench "Array Repa" $ whnf (R.fromListUnboxed szR) ls1D
         ]
     , bgroup
         "Fuse"

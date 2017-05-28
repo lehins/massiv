@@ -12,8 +12,8 @@
 -- Portability : non-portable
 --
 module Data.Array.Massiv.Numeric
-  -- * Num
-  ( (.+)
+  ( -- * Num
+    (.+)
   , (.-)
   , (.*)
   , (.^)
@@ -126,9 +126,9 @@ multArrs arr1 arr2
   where
     (m1, n1) = size arr1
     (m2, n2) = size arr2
-    arr1' = setComp arr1 Seq
+    arr1' = setComp Seq arr1
     arr2' :: Array r2 DIM2 e
-    arr2' = computeP $ transpose arr2
+    arr2' = setComp Seq $ compute $ transpose arr2
 {-# INLINE multArrs #-}
 
 

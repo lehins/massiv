@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Unboxed
@@ -28,7 +27,6 @@ module Data.Array.Massiv.Manifest.Unboxed
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
-import           Data.Array.Massiv.Delayed           (D)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Unboxed                 as VU
@@ -38,7 +36,7 @@ import           System.IO.Unsafe                    (unsafePerformIO)
 
 data U = U
 
-data instance Array U ix e = UArray { uComp :: !Comp
+data instance Array U ix e = UArray { uComp :: Comp
                                     , uSize :: !ix
                                     , uData :: !(VU.Vector e)
                                     } deriving Eq
@@ -55,10 +53,10 @@ instance (VU.Unbox e, Index ix) => Massiv U ix e where
   getComp = uComp
   {-# INLINE getComp #-}
 
-  setComp arr c = arr { uComp = c }
+  setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray !c !sz f = compute (unsafeMakeArray c sz f :: Array D ix e)
+  unsafeMakeArray c !sz f = UArray c sz $ VU.generate (totalElem sz) (f . fromLinearIndex sz)
   {-# INLINE unsafeMakeArray #-}
 
 
@@ -99,7 +97,7 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   unsafeThaw (UArray _ sz v) = MUArray sz <$> VU.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MUArray sz v) = UArray Seq sz <$> VU.unsafeFreeze v
+  unsafeFreeze comp (MUArray sz v) = UArray comp sz <$> VU.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
   unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)

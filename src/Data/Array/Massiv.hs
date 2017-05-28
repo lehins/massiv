@@ -19,7 +19,8 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Common.Shape
   , module Data.Array.Massiv.Delayed
   , module Data.Array.Massiv.Manifest
-  , module Data.Array.Massiv.Ops.Map
+  , module Data.Array.Massiv.Mutable
+  , module  Data.Array.Massiv.Ops.Map
   , module Data.Array.Massiv.Ops.Fold
   , module Data.Array.Massiv.Ops.Construct
   , module Data.Array.Massiv.Ops.Transform
@@ -27,19 +28,20 @@ module Data.Array.Massiv
   -- ** Size information
   --, size
   , null
-  -- * Geometric Operators
   ) where
 
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
--- import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Ops.Construct
 import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Ops.Map
 import           Data.Array.Massiv.Ops.Transform
-import           Prelude                         as P hiding (length, map, null,
+import           Prelude                         as P hiding (length, map,
+                                                       mapM_, null, unzip,
+                                                       unzip3, zip, zip3,
                                                        zipWith, zipWith3)
 -- import Text.Printf
 -- import qualified Data.Foldable as F
@@ -89,5 +91,4 @@ length = totalElem . size
 null :: Massiv r ix e => Array r ix e -> Bool
 null !arr = 0 == length arr
 {-# INLINE null #-}
-
 

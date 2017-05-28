@@ -65,7 +65,7 @@ instance Index ix => Massiv B ix e where
   getComp = bComp
   {-# INLINE getComp #-}
 
-  setComp arr c = arr { bComp = c }
+  setComp c arr = arr { bComp = c }
   {-# INLINE setComp #-}
 
   unsafeMakeArray c sz = BArray c sz . makeBoxedVector sz
@@ -110,7 +110,7 @@ instance Index ix => Mutable B ix e where
   unsafeThaw (BArray _ sz v) = MBArray sz <$> V.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MBArray sz v) = BArray Seq sz <$> V.unsafeFreeze v
+  unsafeFreeze comp (MBArray sz v) = BArray comp sz <$> V.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
   unsafeNew sz = MBArray sz <$> MV.unsafeNew (totalElem sz)

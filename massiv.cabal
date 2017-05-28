@@ -31,6 +31,7 @@ library
                      , Data.Array.Massiv.Mutable
                      , Data.Array.Massiv.Numeric
                      , Data.Array.Massiv.Scheduler
+                     , Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Stencil
                      , Data.Array.Massiv.Stencil.Convolution
   other-modules:       Data.Array.Massiv.Stencil.Internal
@@ -38,7 +39,7 @@ library
                      , Data.Array.Massiv.Ops.Construct
                      , Data.Array.Massiv.Ops.Filter
                      , Data.Array.Massiv.Ops.Fold
-                     , Data.Array.Massiv.Ops.Map
+                     --, Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Ops.Transform
   build-depends:       base >= 4.6 && < 5
                      , data-default

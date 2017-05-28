@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Storable
@@ -27,7 +26,6 @@ module Data.Array.Massiv.Manifest.Storable
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
-import           Data.Array.Massiv.Delayed           (D)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Storable                as VS
@@ -54,10 +52,10 @@ instance (VS.Storable e, Index ix) => Massiv S ix e where
   getComp = sComp
   {-# INLINE getComp #-}
 
-  setComp arr c = arr { sComp = c }
+  setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c !sz f = compute (unsafeMakeArray c sz f :: Array D ix e)
+  unsafeMakeArray c !sz f = SArray c sz $ VS.generate (totalElem sz) (f . fromLinearIndex sz)
   {-# INLINE unsafeMakeArray #-}
 
 
@@ -100,7 +98,7 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   unsafeThaw (SArray _ sz v) = MSArray sz <$> VS.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MSArray sz v) = SArray Seq sz <$> VS.unsafeFreeze v
+  unsafeFreeze comp (MSArray sz v) = SArray comp sz <$> VS.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
   unsafeNew sz = MSArray sz <$> MVS.unsafeNew (totalElem sz)

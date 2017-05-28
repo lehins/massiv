@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Primitive
@@ -27,7 +26,6 @@ module Data.Array.Massiv.Manifest.Primitive
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
-import           Data.Array.Massiv.Delayed           (D)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Primitive               as VP
@@ -54,10 +52,10 @@ instance (VP.Prim e, Index ix) => Massiv P ix e where
   getComp = pComp
   {-# INLINE getComp #-}
 
-  setComp arr c = arr { pComp = c }
+  setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c !sz f = compute (unsafeMakeArray c sz f :: Array D ix e)
+  unsafeMakeArray c !sz f = PArray c sz $ VP.generate (totalElem sz) (f . fromLinearIndex sz)
   {-# INLINE unsafeMakeArray #-}
 
 instance (VP.Prim e, Index ix) => Source P ix e where
@@ -98,7 +96,7 @@ instance (Index ix, VP.Prim e) => Mutable P ix e where
   unsafeThaw (PArray _ sz v) = MPArray sz <$> VP.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MPArray sz v) = PArray Seq sz <$> VP.unsafeFreeze v
+  unsafeFreeze comp (MPArray sz v) = PArray comp sz <$> VP.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
   unsafeNew sz = MPArray sz <$> MVP.unsafeNew (totalElem sz)

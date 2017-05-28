@@ -73,7 +73,6 @@ main :: IO ()
 main = do
   let !sz = (1600, 1200)
       !arrCR = R.computeUnboxedS (arrR sz)
-      !arrCR' = R.transpose2S arrCR
       -- !kirschW = kirschWStencil
       -- !kirschW' = kirschWStencil'
       !arrCM = M.computeUnboxedS (arrM sz)

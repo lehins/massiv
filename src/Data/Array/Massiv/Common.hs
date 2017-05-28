@@ -1,7 +1,9 @@
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
@@ -18,7 +20,9 @@ module Data.Array.Massiv.Common
   , Massiv(..)
   , Source(..)
   , Load(..)
-  , Comp(..)
+  -- * Computation
+  , Comp(.., Par)
+  , pattern Par
   , PrettyShow(..)
   , module Data.Array.Massiv.Common.Index
   , evaluateAt
@@ -36,9 +40,15 @@ import           Text.Printf
 
 data family Array r ix e :: *
 
+-- | Computation type to use.
+data Comp = Seq -- ^ Sequential computation
+          | ParOn [Int] -- ^ Parallel computation with a list of capabilities to
+                        -- run computation on. Use `Par` to run on all cores.
+          deriving (Show, Eq)
 
-data Comp = Seq | Par | ParOn [Int] deriving (Show, Eq)
-
+-- | Parallel computation using all available cores.
+pattern Par :: Comp
+pattern Par = ParOn []
 
 instance NFData Comp where
   rnf comp =
@@ -56,9 +66,9 @@ class Index ix => Massiv r ix e where
 
   getComp :: Array r ix e -> Comp
 
-  setComp :: Array r ix e -> Comp -> Array r ix e
+  setComp :: Comp -> Array r ix e -> Array r ix e
 
-  unsafeMakeArray :: Index ix => Comp -> ix -> (ix -> e) -> Array r ix e
+  unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
 
 
 makeArray :: Massiv r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
@@ -70,8 +80,8 @@ makeArray !c = unsafeMakeArray c . liftIndex (max 0)
 instance (Typeable r, Typeable e, Massiv r ix e) => Show (Array r ix e) where
   show arr =
     "<Array " ++
-    showsTypeRep (typeRep (Proxy :: Proxy r)) "(" ++ show (size arr) ++ ") " ++
-    showsTypeRep (typeRep (Proxy :: Proxy e)) ">"
+    showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+    (show (size arr)) ++ " " ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ">"
 
 
 class Massiv r ix e => Source r ix e where

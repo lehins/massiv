@@ -19,7 +19,6 @@ import           Control.Monad                  (void)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Ops.Fold     as M
-import           Data.Array.Massiv.Ops.Map
 import           Data.Array.Massiv.Scheduler
 import           Data.Foldable                  (Foldable (..))
 import           GHC.Base                       (build)
@@ -30,7 +29,7 @@ import           Prelude                        hiding (zipWith)
 data D
 
 
-data instance Array D ix e = DArray { dComp :: !Comp
+data instance Array D ix e = DArray { dComp :: Comp
                                     , dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
 
@@ -49,7 +48,7 @@ instance Index ix => Massiv D ix e where
   getComp = dComp
   {-# INLINE getComp #-}
 
-  setComp !arr !c = arr { dComp = c }
+  setComp c arr = arr { dComp = c }
   {-# INLINE setComp #-}
 
   unsafeMakeArray = DArray
@@ -94,7 +93,11 @@ eq :: forall r1 r2 ix e1 e2 . (Source r1 ix e1, Source r2 ix e2) =>
        (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
-  M.fold (&&) True (zipWith f arr1 arr2 :: Array D ix Bool)
+  M.fold
+    (&&)
+    True
+    (DArray (getComp arr1) (size arr1) $ \ix ->
+       f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE eq #-}
 
 

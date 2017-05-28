@@ -20,8 +20,6 @@ module Data.Array.Massiv.Manifest
     Manifest
   , toManifest
   , M
-  , compute
-  , computeAs
   -- * Boxed
   , B.B(..)
   -- , B.computeBoxedS
@@ -54,16 +52,6 @@ import           Data.Array.Massiv.Manifest.Internal
 import qualified Data.Array.Massiv.Manifest.Primitive as P
 import qualified Data.Array.Massiv.Manifest.Storable  as S
 import qualified Data.Array.Massiv.Manifest.Unboxed   as U
-import           Data.Array.Massiv.Mutable            (Target, compute)
-
-
-
-
-computeAs
-  :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array r ix e
-computeAs _ = compute
-{-# INLINE computeAs #-}
 
 
 -- | Infix version of `index`.

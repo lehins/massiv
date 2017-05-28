@@ -55,7 +55,7 @@ instance Index ix => Massiv M ix e where
   getComp = mComp
   {-# INLINE getComp #-}
 
-  setComp arr c = arr { mComp = c }
+  setComp c arr = arr { mComp = c }
   {-# INLINE setComp #-}
 
   unsafeMakeArray c !sz f = MArray c sz (V.unsafeIndex (makeBoxedVector sz f))

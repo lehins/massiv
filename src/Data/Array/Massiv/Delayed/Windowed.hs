@@ -41,7 +41,7 @@ instance Index ix => Massiv WD ix e where
   getComp = dComp . wdArray
   {-# INLINE getComp #-}
 
-  setComp arr c = arr { wdArray = (wdArray arr) { dComp = c } }
+  setComp c arr = arr { wdArray = (wdArray arr) { dComp = c } }
   {-# INLINE setComp #-}
 
   unsafeMakeArray c sz f = WDArray (unsafeMakeArray c sz f) Nothing zeroIndex zeroIndex f

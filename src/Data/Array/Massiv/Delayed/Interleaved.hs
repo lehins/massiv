@@ -31,7 +31,7 @@ instance Index ix => Massiv ID ix e where
   getComp = dComp . idArray
   {-# INLINE getComp #-}
 
-  setComp arr c = arr { idArray = (idArray arr) { dComp = c } }
+  setComp c arr = arr { idArray = (idArray arr) { dComp = c } }
   {-# INLINE setComp #-}
 
   unsafeMakeArray c sz = IDArray . unsafeMakeArray c sz
