@@ -92,24 +92,24 @@ instance (Index ix, VS.Storable e) => Manifest S ix e where
 
 
 instance (Index ix, VS.Storable e) => Mutable S ix e where
-  data MArray s S ix e = MSArray Comp !ix !(VS.MVector s e)
+  data MArray s S ix e = MSArray !ix !(VS.MVector s e)
 
-  msize (MSArray _ sz _) = sz
+  msize (MSArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (SArray c sz v) = MSArray c sz <$> VS.unsafeThaw v
+  unsafeThaw (SArray _ sz v) = MSArray sz <$> VS.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MSArray c sz v) = SArray c sz <$> VS.unsafeFreeze v
+  unsafeFreeze (MSArray sz v) = SArray Seq sz <$> VS.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew c sz = MSArray c sz <$> MVS.unsafeNew (totalElem sz)
+  unsafeNew sz = MSArray sz <$> MVS.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MSArray _ _ v) i = MVS.unsafeRead v i
+  unsafeLinearRead (MSArray _ v) i = MVS.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MSArray _ _ v) i = MVS.unsafeWrite v i
+  unsafeLinearWrite (MSArray _ v) i = MVS.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
 

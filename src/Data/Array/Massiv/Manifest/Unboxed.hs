@@ -91,24 +91,24 @@ instance (VU.Unbox e, Index ix) => Manifest U ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 instance (VU.Unbox e, Index ix) => Mutable U ix e where
-  data MArray s U ix e = MUArray !Comp !ix !(VU.MVector s e)
+  data MArray s U ix e = MUArray ix (VU.MVector s e)
 
-  msize (MUArray _ sz _) = sz
+  msize (MUArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (UArray c sz v) = MUArray c sz <$> VU.unsafeThaw v
+  unsafeThaw (UArray _ sz v) = MUArray sz <$> VU.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MUArray c sz v) = UArray c sz <$> VU.unsafeFreeze v
+  unsafeFreeze (MUArray sz v) = UArray Seq sz <$> VU.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew !c !sz = MUArray c sz <$> MVU.unsafeNew (totalElem sz)
+  unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MUArray _ _ v) i = MVU.unsafeRead v i
+  unsafeLinearRead (MUArray _ v) i = MVU.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MUArray _ _ v) i = MVU.unsafeWrite v i
+  unsafeLinearWrite (MUArray _ v) i = MVU.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
 

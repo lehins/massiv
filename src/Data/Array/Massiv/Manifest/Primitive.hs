@@ -90,24 +90,24 @@ instance (Index ix, VP.Prim e) => Manifest P ix e where
 
 
 instance (Index ix, VP.Prim e) => Mutable P ix e where
-  data MArray s P ix e = MPArray Comp !ix !(VP.MVector s e)
+  data MArray s P ix e = MPArray !ix !(VP.MVector s e)
 
-  msize (MPArray _ sz _) = sz
+  msize (MPArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (PArray c sz v) = MPArray c sz <$> VP.unsafeThaw v
+  unsafeThaw (PArray _ sz v) = MPArray sz <$> VP.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MPArray c sz v) = PArray c sz <$> VP.unsafeFreeze v
+  unsafeFreeze (MPArray sz v) = PArray Seq sz <$> VP.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew c sz = MPArray c sz <$> MVP.unsafeNew (totalElem sz)
+  unsafeNew sz = MPArray sz <$> MVP.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MPArray _ _ v) i = MVP.unsafeRead v i
+  unsafeLinearRead (MPArray _ v) i = MVP.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MPArray _ _ v) i = MVP.unsafeWrite v i
+  unsafeLinearWrite (MPArray _ v) i = MVP.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
 instance (VP.Prim e, Index ix) => Target P ix e

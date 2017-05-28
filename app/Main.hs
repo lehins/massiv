@@ -1,17 +1,26 @@
+{-# LANGUAGE BangPatterns          #-}
 module Main where
 
 
 --import           Compute
 --import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Manifest.Unboxed
+-- import           Data.Array.Massiv.Manifest.Unboxed
 
 -- import           Data.Array.Massiv.Stencil
 
 -- import           Data.Array.Repa                     as R
 
 
+lightF :: Num b => (Int, Int) -> b
+lightF !(i, j) =
+  fromIntegral
+    (round (sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Float)) :: Int)
+{-# INLINE lightF #-}
 
+arrMLight :: (Int, Int) -> M.Array M.D M.DIM2 Double
+arrMLight !arrSz = makeArray2D Seq arrSz lightF
+{-# INLINE arrMLight #-}
 
 -- repaSobel :: (Int, Int) -> IO (R.Array R.U R.DIM2 Double)
 -- repaSobel sz = do
@@ -45,14 +54,13 @@ main = do
   --_ <- massivSobel (16000, 16000)
   --_ <- unboxSobel (16000, 16000)
   --_ <- repaSobel (16000, 16000)
-  --let a = M.computeUnboxedP $ arrM (1600, 1201)
-  --let arr = makeArray1D 3037000500 succ
-  let arrU = computeAs U $ makeArray1D Seq 1518500250 succ
-  let arr = toManifest arrU
-  let res = foldlS (+) 0 arr
+  -- let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
+  -- let arr = toManifest arrU
+  -- let res = foldlS (+) 0 arr
   -- let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
   -- let arr = arrU `seq` toManifest arrU
   -- let res = arr `seq` foldlS (+) 0 arr
-  print res
+  let arrCM = M.computeUnboxedS $ arrMLight (1600, 1200)
+  print arrCM
 
 

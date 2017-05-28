@@ -62,7 +62,7 @@ class Index ix => Massiv r ix e where
 
 
 makeArray :: Massiv r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
-makeArray c = unsafeMakeArray c . liftIndex (max 0)
+makeArray !c = unsafeMakeArray c . liftIndex (max 0)
 {-# INLINE makeArray #-}
 
 

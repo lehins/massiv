@@ -145,7 +145,7 @@ fromListS1D :: Mutable r DIM1 e => [e] -> Array r DIM1 e
 fromListS1D xs =
   runST $ do
     let !k = length xs
-    mArr <- unsafeNew Seq k
+    mArr <- unsafeNew k
     loadList1D 0 k (unsafeLinearWrite mArr) xs
     unsafeFreeze mArr
 {-# INLINE fromListS1D #-}
@@ -174,7 +174,7 @@ fromListS2D :: Mutable r DIM2 e => [[e]] -> Array r DIM2 e
 fromListS2D xs =
   runST $ do
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
-    mArr <- unsafeNew Seq sz
+    mArr <- unsafeNew sz
     loadListUsing2D 0 (m * n) n (unsafeLinearWrite mArr) id xs
     unsafeFreeze mArr
 {-# INLINE fromListS2D #-}
@@ -211,7 +211,7 @@ fromListS3D xs =
           ( length xs
           , maybe 0 length mFirstRow
           , maybe 0 length (mFirstRow >>= listToMaybe))
-    mArr <- unsafeNew Par (l, m, n)
+    mArr <- unsafeNew (l, m, n)
     let !step = m * n
     loadListUsing3D 0 (totalElem sz) step n (unsafeLinearWrite mArr) id xs
     unsafeFreeze mArr
@@ -230,7 +230,7 @@ fromListP2D xs =
   unsafePerformIO $ do
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
     scheduler <- makeScheduler []
-    mArr <- unsafeNew Par sz
+    mArr <- unsafeNew sz
     loadListUsing2D
       0
       (m * n)
@@ -257,7 +257,7 @@ fromListP3D xs =
           , maybe 0 length mFirstRow
           , maybe 0 length (mFirstRow >>= listToMaybe))
     scheduler <- makeScheduler []
-    mArr <- unsafeNew Par (l, m, n)
+    mArr <- unsafeNew (l, m, n)
     let !step = m * n
     loadListUsing3D
       0

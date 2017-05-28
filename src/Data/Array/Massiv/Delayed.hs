@@ -38,7 +38,7 @@ data instance Array D ix e = DArray { dComp :: !Comp
 
 -- | /O(1)/ Conversion from a source array to `D` representation.
 delay :: Source r ix e => Array r ix e -> Array D ix e
-delay !arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
+delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE delay #-}
 
 

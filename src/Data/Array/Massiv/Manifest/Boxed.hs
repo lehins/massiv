@@ -102,24 +102,24 @@ instance Index ix => Manifest B ix e where
 
 
 instance Index ix => Mutable B ix e where
-  data MArray s B ix e = MBArray Comp !ix !(V.MVector s e)
+  data MArray s B ix e = MBArray !ix !(V.MVector s e)
 
-  msize (MBArray _ sz _) = sz
+  msize (MBArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (BArray c sz v) = MBArray c sz <$> V.unsafeThaw v
+  unsafeThaw (BArray _ sz v) = MBArray sz <$> V.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MBArray c sz v) = BArray c sz <$> V.unsafeFreeze v
+  unsafeFreeze (MBArray sz v) = BArray Seq sz <$> V.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew c sz = MBArray c sz <$> MV.unsafeNew (totalElem sz)
+  unsafeNew sz = MBArray sz <$> MV.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MBArray _ _ v) i = MV.unsafeRead v i
+  unsafeLinearRead (MBArray _ v) i = MV.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBArray _ _ v) i = MV.unsafeWrite v i
+  unsafeLinearWrite (MBArray _ v) i = MV.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
 

@@ -51,7 +51,7 @@ class Manifest r ix e => Mutable r ix e where
                   MArray (PrimState m) r ix e -> m (Array r ix e)
 
   unsafeNew :: PrimMonad m =>
-               Comp -> ix -> m (MArray (PrimState m) r ix e)
+               ix -> m (MArray (PrimState m) r ix e)
 
   unsafeLinearRead :: PrimMonad m =>
                       MArray (PrimState m) r ix e -> Int -> m e
@@ -77,7 +77,7 @@ loadTargetS :: (Load r' ix e, Target r ix e) =>
                Array r' ix e -> Array r ix e
 loadTargetS !arr =
   runST $ do
-    mArr <- unsafeNew (getComp arr) (size arr)
+    mArr <- unsafeNew (size arr)
     loadS arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
     unsafeFreeze mArr
 {-# INLINE loadTargetS #-}
@@ -85,7 +85,7 @@ loadTargetS !arr =
 loadTargetOnP :: (Load r' ix e, Target r ix e) =>
                  [Int] -> Array r' ix e -> IO (Array r ix e)
 loadTargetOnP wIds !arr = do
-  mArr <- unsafeNew (getComp arr) (size arr)
+  mArr <- unsafeNew (size arr)
   loadP wIds arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
   unsafeFreeze mArr
 {-# INLINE loadTargetOnP #-}
@@ -137,7 +137,7 @@ unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
 sequenceOnP wIds !arr = do
-  resArrM <- unsafeNew (getComp arr) (size arr)
+  resArrM <- unsafeNew (size arr)
   scheduler <- makeScheduler wIds
   iforM_ arr $ \ !ix action ->
     submitRequest scheduler $ JobRequest (action >>= unsafeWrite resArrM ix)
