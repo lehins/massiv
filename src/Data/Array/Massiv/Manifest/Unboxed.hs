@@ -27,9 +27,11 @@ module Data.Array.Massiv.Manifest.Unboxed
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Unboxed                 as VU
+-- import qualified Data.Vector.Generic                 as VG
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
@@ -39,7 +41,7 @@ data U = U
 data instance Array U ix e = UArray { uComp :: Comp
                                     , uSize :: !ix
                                     , uData :: !(VU.Vector e)
-                                    } deriving Eq
+                                    }
 
 
 instance (Index ix, NFData e) => NFData (Array U ix e) where
@@ -58,6 +60,11 @@ instance (VU.Unbox e, Index ix) => Massiv U ix e where
 
   unsafeMakeArray c !sz f = UArray c sz $ VU.generate (totalElem sz) (f . fromLinearIndex sz)
   {-# INLINE unsafeMakeArray #-}
+
+
+instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
+  (==) = eq (==)
+  {-# INLINE (==) #-}
 
 
 instance (VU.Unbox e, Index ix) => Source U ix e where
@@ -122,6 +129,9 @@ computeUnboxedP :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
 computeUnboxedP = unsafePerformIO . loadTargetOnP []
 {-# INLINE computeUnboxedP #-}
 
+-- fromVector :: (VG.Vector v e, Index ix) => ix -> v e -> Array U ix e
+-- fromVector sz v = UArray { uComp = Seq, uSize = sz, uData = v }
+-- {-# INLINE fromVector #-}
 
 fromVectorUnboxed :: Index ix => ix -> VU.Vector e -> Array U ix e
 fromVectorUnboxed sz v = UArray { uComp = Seq, uSize = sz, uData = v }

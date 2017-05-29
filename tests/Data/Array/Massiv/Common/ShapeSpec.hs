@@ -39,7 +39,7 @@ prop_ExtractEqualsExtractFromTo _ (Ix (Sz eIx) sIx) arr =
 
 
 specShapeN
-  :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Arbitrary ix, Shape r ix e)
+  :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Shape r ix e)
   => proxy (r, ix, e) -> Spec
 specShapeN proxy = do
   describe "extract" $ do
@@ -188,7 +188,7 @@ prop_SliceIndexDim4RankM (ArrIx arr ix@(i1, i2, i3, i4)) =
 
 
 specSliceN
-  :: (Eq (Array (R r) (Lower ix) e), Arbitrary (Array r ix e), Arbitrary ix, Slice r ix e)
+  :: (Eq (Array (R r) (Lower ix) e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Slice r ix e)
   => proxy (r, ix, e) -> Spec
 specSliceN proxy = do
   describe "Slice" $ do

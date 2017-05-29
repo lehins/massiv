@@ -133,6 +133,18 @@ mapM_ f !arr = iterM_ zeroIndex (size arr) 1 (<) (f . unsafeIndex arr)
 
 
 -- | Just like `mapM_`, except with flipped arguments.
+--
+-- ==== __Examples__
+--
+-- Here is a common way of iterating N times using a for loop in an imperative
+-- language with mutation being an obvious side effect:
+--
+-- >>> :m + Data.IORef
+-- >>> var <- newIORef 0 :: IO (IORef Int)
+-- >>> forM_ (range 0 1000) $ \ i -> modifyIORef' var (+i)
+-- >>> readIORef var
+-- 499500
+--
 forM_ :: (Source r ix a, Monad m) => Array r ix a -> (a -> m b) -> m ()
 forM_ = flip mapM_
 {-# INLINE forM_ #-}

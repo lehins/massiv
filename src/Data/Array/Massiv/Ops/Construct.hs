@@ -67,11 +67,11 @@ makeArray1D = makeArray Seq
 {-# INLINE makeArray1D #-}
 
 
-makeArray2D :: (Int, Int) -> ((Int, Int) -> e) -> Array D DIM2 e
+makeArray2D :: DIM2 -> (DIM2 -> e) -> Array D DIM2 e
 makeArray2D = makeArray Seq
 {-# INLINE makeArray2D #-}
 
-makeArray3D :: (Int, Int, Int) -> ((Int, Int, Int) -> e) -> Array D DIM3 e
+makeArray3D :: DIM3 -> (DIM3 -> e) -> Array D DIM3 e
 makeArray3D = makeArray Seq
 {-# INLINE makeArray3D #-}
 

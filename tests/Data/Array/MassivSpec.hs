@@ -4,15 +4,12 @@
 module Data.Array.MassivSpec (spec) where
 
 import           Data.Array.Massiv
-import           Data.Array.Massiv.DelayedSpec()
-import           Data.Array.Massiv.CommonSpec (ArrIx (..))
+import           Data.Array.Massiv.CommonSpec   (ArrIx (..))
+import           Data.Array.Massiv.DelayedSpec  ()
 import           Data.Array.Massiv.ManifestSpec ()
+import           Data.Typeable
 import           Test.Hspec
 import           Test.QuickCheck
-
-
-
-
 
 
 prop_ExtractAppend
@@ -32,14 +29,14 @@ prop_ExtractAppend _ thresh dim (ArrIx arr ix) =
 
 
 massivSpecNDelayed
-  :: (Eq e, Shape D ix e, Arbitrary (ArrIx D ix e))
+  :: (Eq e, Shape D ix e, Typeable e, Arbitrary (ArrIx D ix e))
   => proxy (D, ix, e) -> Spec
 massivSpecNDelayed r = do
   it "ExtractAppend" $ property $ prop_ExtractAppend r 100000
   it "ExtractAppend" $ property $ prop_ExtractAppend r 100000
 
 massivSpecNManifest
-  :: (Eq e, Shape M ix e, Arbitrary (ArrIx M ix e))
+  :: (Eq e, Shape M ix e, Typeable e, Arbitrary (ArrIx M ix e))
   => proxy (M, ix, e) -> Spec
 massivSpecNManifest r = do
   it "ExtractAppend" $ property $ prop_ExtractAppend r 100000

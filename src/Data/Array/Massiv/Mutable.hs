@@ -19,6 +19,7 @@ module Data.Array.Massiv.Mutable
   , computeAs
   , computeOn
   , computeAsOn
+  , copy
   , loadTargetS
   , loadTargetOnP
   , unsafeRead
@@ -30,6 +31,7 @@ module Data.Array.Massiv.Mutable
 import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST                    (runST)
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Delayed           (delay)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Ops.Map           (iforM_)
 import           Data.Array.Massiv.Scheduler
@@ -79,7 +81,7 @@ loadTargetS !arr =
   runST $ do
     mArr <- unsafeNew (size arr)
     loadS arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
-    unsafeFreeze (getComp arr) mArr
+    unsafeFreeze Seq mArr
 {-# INLINE loadTargetS #-}
 
 loadTargetOnP :: (Load r' ix e, Target r ix e) =>
@@ -87,7 +89,7 @@ loadTargetOnP :: (Load r' ix e, Target r ix e) =>
 loadTargetOnP wIds !arr = do
   mArr <- unsafeNew (size arr)
   loadP wIds arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
-  unsafeFreeze (getComp arr) mArr
+  unsafeFreeze (ParOn wIds) mArr
 {-# INLINE loadTargetOnP #-}
 
 
@@ -115,25 +117,9 @@ computeAsOn _ = computeOn
 {-# INLINE computeAsOn #-}
 
 
--- computeS
---   :: (Load r' ix e, Target r ix e)
---   => Array r' ix e -> Array r ix e
--- computeS = loadTargetS
--- {-# INLINE computeS #-}
-
-
--- computeP
---   :: (Load r' ix e, Target r ix e)
---   => Array r' ix e -> Array r ix e
--- computeP = unsafePerformIO . loadTargetOnP []
--- {-# INLINE computeP #-}
-
-
--- computeOnP
---   :: (Load r' ix e, Target r ix e)
---   => [Int] -> Array r' ix e -> Array r ix e
--- computeOnP wIds = unsafePerformIO . loadTargetOnP wIds
--- {-# INLINE computeOnP #-}
+copy :: Target r ix e => Array r ix e -> Array r ix e
+copy = compute . delay
+{-# INLINE copy #-}
 
 
 unsafeRead :: (Mutable r ix e, PrimMonad m) =>

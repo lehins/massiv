@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 module Main where
 
-
+import Data.IORef
 --import           Compute
 --import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
@@ -71,12 +71,23 @@ main = do
   --_ <- unboxSobel (16000, 16000)
   --_ <- repaSobel (16000, 16000)
   -- let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
-  -- let arr = toManifest arrU
-  -- let res = foldlS (+) 0 arr
-  -- let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
   -- let arr = arrU `seq` toManifest arrU
   -- let res = arr `seq` foldlS (+) 0 arr
-  let arrCM = magnitude $ arrMLight (1600, 1200)
-  print arrCM
+  -- let arrCM = magnitude $ arrMLight (1600, 1200)
+  -- print arrCM
+  -- >>> :m + Data.IORef
+  -- >>> var <- newIORef 0 :: IO (IORef Int)
+  -- >>> forM_ (range 0 1000) $ \ i -> modifyIORef' var (+i)
+-- >>> readIORef var
+  let arr = computeAs U $ makeArray1D 1518500250 id
+  var <- newIORef 0 :: IO (IORef Int)
+  forM_ arr $ \ i -> modifyIORef' var (+i)
+  res <- readIORef var
+  -- let arr = computeAs U $ makeArray1D 1518500250 id
+  -- let res = M.sum arr
+  putStrLn $ "Result is: " ++ show res
 
 
+  -- let arr = computeAs U $ setComp Par $ makeArray1D 1518500250 id
+  -- let res = M.sum arr
+  -- putStrLn $ "Result is: " ++ show res
