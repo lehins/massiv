@@ -179,6 +179,7 @@ Test-Suite massiv-tests
                     , Data.Array.Massiv.ManifestSpec
                     , Data.Array.Massiv.Ops.ConstructSpec
                     , Data.Array.Massiv.Ops.FoldSpec
+                    , Data.Array.Massiv.Ops.TransformSpec
                     , Data.Array.Massiv.SchedulerSpec
                     , Data.Array.MassivSpec
   Build-Depends:      base            >= 4.5 && < 5
