@@ -508,9 +508,14 @@ ifoldrP = ifoldrOnP []
 
 
 
--- | /O(n)/ - Unstructured fold, computed in parallel.
+-- | /O(n)/ - Unstructured fold of an array.
 fold :: (Source r ix e) =>
-         (e -> e -> e) -> e -> Array r ix e -> e
+        (e -> e -> e) -- ^ Folding function (like with left fold, first argument
+                      -- is an accumulator)
+     -> e -- ^ Initial element, that is neutral with respect to the folding
+          -- function.
+     -> Array r ix e -- ^ Source array
+     -> e
 fold f !initAcc arr =
   case getComp arr of
     Seq        -> foldlS f initAcc arr

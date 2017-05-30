@@ -21,6 +21,8 @@ module Data.Array.Massiv.Ops.Transform
   , append
   , append'
   , splitAt
+  , traverse
+  , traverse2
   ) where
 
 import           Control.Monad                  (guard)
@@ -28,7 +30,7 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 import           Data.Maybe                     (fromMaybe)
-import           Prelude                        hiding (splitAt)
+import           Prelude                        hiding (splitAt, traverse)
 
 
 transpose :: Source r DIM2 e => Array r DIM2 e -> Array D DIM2 e
@@ -118,3 +120,24 @@ splitAt dim ix arr = do
   arr2 <- extractFromTo sIx sz arr
   return (arr1, arr2)
 {-# INLINE splitAt #-}
+
+
+traverse
+  :: (Source r1 ix1 e1, Index ix)
+  => ix
+  -> ((ix1 -> e1) -> ix -> e)
+  -> Array r1 ix1 e1
+  -> Array D ix e
+traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluateAt arr1))
+{-# INLINE traverse #-}
+
+
+traverse2
+  :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
+  => ix
+  -> ((ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
+  -> Array r1 ix1 e1
+  -> Array r2 ix2 e2
+  -> Array D ix e
+traverse2 sz f arr1 arr2 = makeArray (getComp arr1) sz (f (evaluateAt arr1) (evaluateAt arr2))
+{-# INLINE traverse2 #-}
