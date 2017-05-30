@@ -1,12 +1,10 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.Ops.ConstructSpec (spec) where
 
 
 import           Data.Array.Massiv                  as M
 import           Data.Array.Massiv.Common.IndexSpec (Sz (..))
-import           Data.Array.Massiv.CommonSpec       (Arr(..), assertSomeException)
+import           Data.Array.Massiv.CommonSpec       (Arr (..),
+                                                     assertSomeException)
 import           Data.Array.Massiv.DelayedSpec      ()
 import           Prelude                            as P
 import           Prelude                            hiding (map)
@@ -28,7 +26,7 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertSomeException (computeUnboxedS (rangeStep from 0 to))
+  assertSomeException (computeAs U (rangeStep from 0 to))
 
 
 prop_toFromList1D :: DIM1 -> Fun DIM1 Int -> Bool

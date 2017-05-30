@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Array.Massiv.Mutable
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -20,6 +21,9 @@ module Data.Array.Massiv.Mutable
   , computeOn
   , computeAsOn
   , copy
+  , convert
+  , convertAs
+  , gcastArr
   , loadTargetS
   , loadTargetOnP
   , unsafeRead
@@ -37,7 +41,8 @@ import           Data.Array.Massiv.Ops.Map           (iforM_)
 import           Data.Array.Massiv.Scheduler
 import           System.IO.Unsafe                    (unsafePerformIO)
 --import Control.DeepSeq
-
+import           Data.Maybe                          (fromMaybe)
+import           Data.Typeable
 
 
 class Manifest r ix e => Mutable r ix e where
@@ -120,6 +125,25 @@ computeAsOn _ = computeOn
 copy :: Target r ix e => Array r ix e -> Array r ix e
 copy = compute . delay
 {-# INLINE copy #-}
+
+
+-- | Cast over Array representation
+gcastArr :: forall r' r ix e. (Typeable r, Typeable r')
+       => Array r' ix e -> Maybe (Array r ix e)
+gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
+
+convert :: (Target r' ix e, Target r ix e)
+        => Array r' ix e -> Array r ix e
+convert arr =
+  fromMaybe (compute $ delay arr) (gcastArr arr)
+{-# INLINE convert #-}
+
+
+convertAs :: (Target r' ix e, Target r ix e, Typeable ix, Typeable e)
+          => r -> Array r' ix e -> Array r ix e
+convertAs _ = convert
+{-# INLINE convertAs #-}
+
 
 
 unsafeRead :: (Mutable r ix e, PrimMonad m) =>

@@ -28,15 +28,17 @@ class (Source r ix e, Source (R r) ix e) => Shape r ix e where
 
 extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
 extract !sIx !newSz !arr
-  | isSafeIndex (size arr) sIx && isSafeIndex eIx sIx && eIx <= size arr =
+  | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
     Just $ unsafeExtract sIx newSz arr
   | otherwise = Nothing
   where
+    sz1 = liftIndex (+1) (size arr)
+    eIx1 = liftIndex (+1) eIx
     eIx = liftIndex2 (+) sIx newSz
 {-# INLINE extract #-}
 
 extractFromTo :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
-extractFromTo !sIx !eIx !arr = extract sIx newSz arr
+extractFromTo sIx eIx = extract sIx newSz
   where
     newSz = liftIndex2 (-) eIx sIx
 {-# INLINE extractFromTo #-}

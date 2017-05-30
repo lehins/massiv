@@ -187,6 +187,7 @@ Test-Suite massiv-tests
                     , massiv
                     , hspec
                     , QuickCheck
+                    , vector
   Default-Language:   Haskell2010
   GHC-Options:        -Wall -O2 -fno-warn-orphans -threaded -with-rtsopts=-N6
 

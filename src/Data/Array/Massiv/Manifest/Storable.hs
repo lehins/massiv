@@ -13,6 +13,7 @@
 --
 module Data.Array.Massiv.Manifest.Storable
   ( S (..)
+  , Array(..)
   , VS.Storable
   -- , generateM
   -- , fromVectorStorable

@@ -14,14 +14,7 @@
 module Data.Array.Massiv.Manifest.Unboxed
   ( U (..)
   , VU.Unbox
-  -- , generateM
-  , fromVectorUnboxed
-  , toVectorUnboxed
-  , computeUnboxedS
-  , computeUnboxedP
-  -- , mapM
-  -- , imapM
-  -- , fromUnboxedArray
+  , Array(..)
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
@@ -31,10 +24,10 @@ import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Unboxed                 as VU
--- import qualified Data.Vector.Generic                 as VG
+
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
+
 
 data U = U
 
@@ -118,29 +111,6 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
 
 
 instance (Index ix, VU.Unbox e) => Target U ix e
-
-
-computeUnboxedS :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
-computeUnboxedS = loadTargetS
-{-# INLINE computeUnboxedS #-}
-
-
-computeUnboxedP :: (Load r ix e, Target U ix e) => Array r ix e -> Array U ix e
-computeUnboxedP = unsafePerformIO . loadTargetOnP []
-{-# INLINE computeUnboxedP #-}
-
--- fromVector :: (VG.Vector v e, Index ix) => ix -> v e -> Array U ix e
--- fromVector sz v = UArray { uComp = Seq, uSize = sz, uData = v }
--- {-# INLINE fromVector #-}
-
-fromVectorUnboxed :: Index ix => ix -> VU.Vector e -> Array U ix e
-fromVectorUnboxed sz v = UArray { uComp = Seq, uSize = sz, uData = v }
-{-# INLINE fromVectorUnboxed #-}
-
-
-toVectorUnboxed :: Array U ix e -> VU.Vector e
-toVectorUnboxed = uData
-{-# INLINE toVectorUnboxed #-}
 
 
 -- fromUnboxedArray :: VU.Unbox e => Array U ix e -> Array M ix e

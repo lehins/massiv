@@ -60,7 +60,7 @@ instance NFData Comp where
 
 
 -- | Index and size polymorphic arrays.
-class Index ix => Massiv r ix e where
+class (Typeable r, Index ix) => Massiv r ix e where
 
   size :: Array r ix e -> ix
 
@@ -77,7 +77,7 @@ makeArray !c = unsafeMakeArray c . liftIndex (max 0)
 
 
 
-instance (Typeable r, Typeable e, Massiv r ix e) => Show (Array r ix e) where
+instance (Typeable e, Massiv r ix e) => Show (Array r ix e) where
   show arr =
     "<Array " ++
     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++

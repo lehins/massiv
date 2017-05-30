@@ -20,6 +20,7 @@ module Data.Array.Massiv.Ops.Transform
   , extractFromTo
   , append
   , append'
+  , splitAt
   ) where
 
 import           Control.Monad                  (guard)
@@ -27,15 +28,15 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 import           Data.Maybe                     (fromMaybe)
+import           Prelude                        hiding (splitAt)
 
 
 transpose :: Source r DIM2 e => Array r DIM2 e -> Array D DIM2 e
 transpose = transposeInner
 {-# INLINE transpose #-}
 
-transposeInner
-  :: (Index (Lower ix), Source r' ix e, Massiv r ix e)
-  => Array r' ix e -> Array r ix e
+transposeInner :: (Index (Lower ix), Source r' ix e)
+               => Array r' ix e -> Array D ix e
 transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newVal
   where
     transInner !ix =
@@ -45,13 +46,12 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
         ix' <- setIndex ix (rank ix) m
         setIndex ix' (rank ix - 1) n
     {-# INLINE transInner #-}
-    newVal !ix = unsafeIndex arr (transInner ix)
+    newVal = unsafeIndex arr . transInner
     {-# INLINE newVal #-}
 {-# INLINE transposeInner #-}
 
-transposeOuter
-  :: (Index (Lower ix), Source r' ix e, Massiv r ix e)
-  => Array r' ix e -> Array r ix e
+transposeOuter :: (Index (Lower ix), Source r' ix e)
+               => Array r' ix e -> Array D ix e
 transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newVal
   where
     transOuter !ix =
@@ -61,23 +61,23 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
         ix' <- setIndex ix 1 m
         setIndex ix' 2 n
     {-# INLINE transOuter #-}
-    newVal !ix = unsafeIndex arr (transOuter ix)
+    newVal = unsafeIndex arr . transOuter
     {-# INLINE newVal #-}
 {-# INLINE transposeOuter #-}
 
 
-backpermute :: (Source r' ix' e, Massiv r ix e) =>
-               ix -> (ix -> ix') -> Array r' ix' e -> Array r ix e
-backpermute !sz ixF !arr = unsafeMakeArray (getComp arr) sz $ \ !ix -> evaluateAt arr (ixF ix)
+backpermute :: (Source r' ix' e, Index ix) =>
+               ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
+backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
 {-# INLINE backpermute #-}
 
 
 
-append :: (Source r1 ix e, Source r ix e) =>
-          Int -> Array r1 ix e -> Array r ix e -> Maybe (Array D ix e)
-append !n !arr1 !arr2 = do
-  let !sz1 = size arr1
-      !sz2 = size arr2
+append :: (Source r1 ix e, Source r2 ix e) =>
+          Int -> Array r1 ix e -> Array r2 ix e -> Maybe (Array D ix e)
+append n !arr1 !arr2 = do
+  let sz1 = size arr1
+      sz2 = size arr2
   k1 <- getIndex sz1 n
   k2 <- getIndex sz2 n
   sz1' <- setIndex sz2 n k1
@@ -97,7 +97,7 @@ append !n !arr1 !arr2 = do
 
 append' :: (Source r1 ix e, Source r2 ix e) =>
            Int -> Array r1 ix e -> Array r2 ix e -> Array D ix e
-append' !n !arr1 !arr2 =
+append' n arr1 arr2 =
   case append n arr1 arr2 of
     Just arr -> arr
     Nothing ->
@@ -106,3 +106,15 @@ append' !n !arr1 !arr2 =
         then "append': Dimension mismatch: " ++ show (size arr1) ++ " and " ++ show (size arr2)
         else "append': Invalid dimension index: " ++ show n
 {-# INLINE append' #-}
+
+-- | /O(1)/ - Split an array at an index in a particular dimension.
+splitAt :: Shape r ix e => Int -> ix -> Array r ix e -> Maybe (Array (R r) ix e, Array (R r) ix e)
+splitAt dim ix arr = do
+  let sz = size arr
+  i <- getIndex ix dim
+  eIx <- setIndex sz dim i
+  sIx <- setIndex zeroIndex dim i
+  arr1 <- extractFromTo zeroIndex eIx arr
+  arr2 <- extractFromTo sIx sz arr
+  return (arr1, arr2)
+{-# INLINE splitAt #-}

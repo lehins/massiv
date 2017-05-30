@@ -17,18 +17,6 @@ import           Test.QuickCheck
 
 -- extract
 
-prop_ExtractUnsafeCheck
-  :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Shape r ix e)
-  => proxy (r, ix, e) -> ix -> ix -> Array r ix e -> Property
-prop_ExtractUnsafeCheck _ sIx newSz arr =
-  not (isSafeIndex (size arr) sIx) || newSz > size arr ==> extract sIx newSz arr == Nothing
-
-prop_ExtractFromToUnsafeCheck
-  :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Shape r ix e)
-  => proxy (r, ix, e) -> ix -> ix -> Array r ix e -> Property
-prop_ExtractFromToUnsafeCheck _ sIx eIx arr =
-  not (isSafeIndex eIx sIx) || eIx > size arr ==> extractFromTo sIx eIx arr == Nothing
-
 prop_ExtractEqualsExtractFromTo
   :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Shape r ix e)
   => proxy (r, ix, e) -> Ix ix -> Array r ix e -> Bool
@@ -43,8 +31,6 @@ specShapeN
   => proxy (r, ix, e) -> Spec
 specShapeN proxy = do
   describe "extract" $ do
-    it "ExtractUnsafeCheck" $ property $ prop_ExtractUnsafeCheck proxy
-    it "ExtractFromToUnsafeCheck" $ property $ prop_ExtractFromToUnsafeCheck proxy
     it "ExtractEqualsExtractFromTo" $ property $ prop_ExtractEqualsExtractFromTo proxy
 
 
@@ -187,9 +173,13 @@ prop_SliceIndexDim4RankM (ArrIx arr ix@(i1, i2, i3, i4)) =
     val = unsafeIndex arr ix
 
 
-specSliceN
-  :: (Eq (Array (R r) (Lower ix) e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Slice r ix e)
-  => proxy (r, ix, e) -> Spec
+specSliceN :: ( Eq (Array (R r) (Lower ix) e)
+              , Arbitrary (Array r ix e)
+              , Show (Array r ix e)
+              , Arbitrary ix
+              , Slice r ix e
+              )
+           => proxy (r, ix, e) -> Spec
 specSliceN proxy = do
   describe "Slice" $ do
     it "SliceRight" $ property $ prop_SliceRight proxy

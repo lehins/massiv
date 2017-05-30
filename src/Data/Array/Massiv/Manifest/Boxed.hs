@@ -13,6 +13,7 @@
 --
 module Data.Array.Massiv.Manifest.Boxed
   ( B (..)
+  , Array(..)
   -- * Creation
   -- , generateM
   -- -- * Mapping

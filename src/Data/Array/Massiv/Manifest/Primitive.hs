@@ -13,6 +13,7 @@
 --
 module Data.Array.Massiv.Manifest.Primitive
   ( P (..)
+  , Array(..)
   , VP.Prim
   -- , generateM
   -- , fromVectorPrimitive
@@ -26,6 +27,7 @@ module Data.Array.Massiv.Manifest.Primitive
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Delayed           (eq)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Primitive               as VP
@@ -37,12 +39,16 @@ data P = P
 
 data instance Array P ix e = PArray { pComp :: Comp
                                     , pSize :: !ix
-                                    , _pData :: !(VP.Vector e)
+                                    , pData :: !(VP.Vector e)
                                     }
 
 instance (Index ix, NFData e) => NFData (Array P ix e) where
   rnf (PArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
+
+instance (VP.Prim e, Eq e, Index ix) => Eq (Array P ix e) where
+  (==) = eq (==)
+  {-# INLINE (==) #-}
 
 
 instance (VP.Prim e, Index ix) => Massiv P ix e where
