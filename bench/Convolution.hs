@@ -1,15 +1,11 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE UnboxedTuples         #-}
 module Main where
 
 import           Compute
 import           Criterion.Main
 import           Data.Array.Massiv         as M
-import           Data.Array.Massiv.Manifest.Unboxed as M
 import           Data.Array.Massiv.Stencil as M
 import           Data.Array.Repa           as R
 

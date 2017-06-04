@@ -25,7 +25,7 @@ data Ix ix = Ix (Sz ix) ix deriving Show
 instance (Index ix, Arbitrary ix) => Arbitrary (Sz ix) where
   arbitrary = do
     sz <- liftIndex ((+1) . abs) <$> arbitrary
-    if (totalElem sz > 200000)
+    if totalElem sz > 200000
       then arbitrary
       else return $ Sz sz
 

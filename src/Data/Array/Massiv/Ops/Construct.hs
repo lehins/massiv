@@ -42,16 +42,16 @@ module Data.Array.Massiv.Ops.Construct
   -- , toListP3D
   ) where
 
-import           Control.Monad                  (unless, void)
+import           Control.Monad                  (unless)
 import           Control.Monad.ST               (runST)
-import           Data.Array.Massiv.Common       (Array, DIM1, DIM2, DIM3,
+import           Data.Array.Massiv.Common       (Array, Comp (..), DIM1, DIM2,
+                                                 DIM3,
                                                  Index (totalElem, unconsDim),
-                                                 Lower,
-                                                 Massiv (makeArray, size),
-                                                 Source, loopM)
-import           Data.Array.Massiv.Common.Ops   (foldrFB)
+                                                 Lower, Massiv (size), Source,
+                                                 loopM, makeArray)
 import           Data.Array.Massiv.Common.Shape (Shape (R), Slice, (!>))
 import           Data.Array.Massiv.Delayed      (D)
+import           Data.Array.Massiv.Ops.Fold     (foldrFB)
 import           Prelude                        as P
 --import           Data.Array.Massiv.Manifest     (B)
 import           Data.Array.Massiv.Mutable      (Mutable (unsafeFreeze, unsafeLinearWrite, unsafeNew))
@@ -62,17 +62,17 @@ import           System.IO.Unsafe               (unsafePerformIO)
 --import Control.DeepSeq (NFData, deepseq)
 
 
-makeArray1D :: Int -> (Int -> e) -> Array D DIM1 e
-makeArray1D = makeArray
+makeArray1D :: DIM1 -> (DIM1 -> e) -> Array D DIM1 e
+makeArray1D = makeArray Seq
 {-# INLINE makeArray1D #-}
 
 
-makeArray2D :: (Int, Int) -> ((Int, Int) -> e) -> Array D DIM2 e
-makeArray2D = makeArray
+makeArray2D :: DIM2 -> (DIM2 -> e) -> Array D DIM2 e
+makeArray2D = makeArray Seq
 {-# INLINE makeArray2D #-}
 
-makeArray3D :: (Int, Int, Int) -> ((Int, Int, Int) -> e) -> Array D DIM3 e
-makeArray3D = makeArray
+makeArray3D :: DIM3 -> (DIM3 -> e) -> Array D DIM3 e
+makeArray3D = makeArray Seq
 {-# INLINE makeArray3D #-}
 
 
@@ -119,10 +119,11 @@ enumFromN !from !sz = makeArray1D sz $ \ i -> fromIntegral i + from
 --
 -- >>> toList $ enumFromStepN 1 0.1 5
 -- [1.0,1.1,1.2,1.3,1.4]
+--
 enumFromStepN :: Num e =>
-                 e -- ^ Start
-              -> e -- ^ Step
-              -> Int -- ^ Length
+                 e -- ^ Start value
+              -> e -- ^ Step value
+              -> Int -- ^ Length of resulting array
               -> Array D DIM1 e
 enumFromStepN !from !step !sz = makeArray1D sz $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}
@@ -144,7 +145,7 @@ fromListS1D xs =
     let !k = length xs
     mArr <- unsafeNew k
     loadList1D 0 k (unsafeLinearWrite mArr) xs
-    unsafeFreeze mArr
+    unsafeFreeze Seq mArr
 {-# INLINE fromListS1D #-}
 
 
@@ -173,7 +174,7 @@ fromListS2D xs =
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
     mArr <- unsafeNew sz
     loadListUsing2D 0 (m * n) n (unsafeLinearWrite mArr) id xs
-    unsafeFreeze mArr
+    unsafeFreeze Seq mArr
 {-# INLINE fromListS2D #-}
 
 
@@ -211,7 +212,7 @@ fromListS3D xs =
     mArr <- unsafeNew (l, m, n)
     let !step = m * n
     loadListUsing3D 0 (totalElem sz) step n (unsafeLinearWrite mArr) id xs
-    unsafeFreeze mArr
+    unsafeFreeze Seq mArr
 {-# INLINE fromListS3D #-}
 
 
@@ -221,7 +222,8 @@ fromListAsS3D _ = fromListS3D
 
 
 
--- | Convert a list of lists into a 2 dimensional array in parallel.
+-- | Convert a list of lists into a 2 dimensional array in parallel, while
+-- splitting loading of all rows among all cores/capabilites.
 fromListP2D :: Mutable r DIM2 e => [[e]] -> Array r DIM2 e
 fromListP2D xs =
   unsafePerformIO $ do
@@ -236,7 +238,7 @@ fromListP2D xs =
       (submitRequest scheduler . JobRequest)
       xs
     waitTillDone scheduler
-    unsafeFreeze mArr
+    unsafeFreeze Par mArr
 {-# INLINE fromListP2D #-}
 
 
@@ -265,7 +267,7 @@ fromListP3D xs =
       (submitRequest scheduler . JobRequest)
       xs
     waitTillDone scheduler
-    unsafeFreeze mArr
+    unsafeFreeze Par mArr
 {-# INLINE fromListP3D #-}
 
 
@@ -290,9 +292,9 @@ toListS1D !arr = build (\ c n -> foldrFB c n arr)
 --
 -- ==== __Examples__
 --
--- >>> toListS2D $ makeArray2D (2, 3) id
+-- >>> toListS2D $ makeArray2D Seq (2, 3) id
 -- [[(0,0),(0,1),(0,2)],[(1,0),(1,1),(1,2)]]
--- >>> toListS2D $ makeArray3D (2, 1, 3) id
+-- >>> toListS2D $ makeArray3D Seq (2, 1, 3) id
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
 toListS2D :: Slice r ix e => Array r ix e -> [[e]]

@@ -13,28 +13,29 @@
 --
 module Data.Array.Massiv.Manifest.Boxed
   ( B (..)
+  , Array(..)
   -- * Creation
-  , generateM
-  -- * Mapping
-  , mapM
-  , imapM
-  -- * Conversion
-  , fromVectorBoxed
-  , toVectorBoxed
-  -- * Evaluation
-  , computeBoxedS
-  , computeBoxedP
-  , deepseq
-  , deepseqP
+  -- , generateM
+  -- -- * Mapping
+  -- , mapM
+  -- , imapM
+  -- -- * Conversion
+  -- , fromVectorBoxed
+  -- , toVectorBoxed
+  -- -- * Evaluation
+  -- , computeBoxedS
+  -- , computeBoxedP
+  -- , deepseq
+  -- , deepseqP
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Monad                       (void)
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Common.Ops
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Scheduler
 import           Data.Foldable                       (Foldable (..))
 import qualified Data.Vector                         as V
@@ -45,20 +46,34 @@ import           System.IO.Unsafe                    (unsafePerformIO)
 
 data B = B
 
-data instance Array B ix e = BArray { bSize :: !ix
+data instance Array B ix e = BArray { bComp :: Comp
+                                    , bSize :: !ix
                                     , bData :: !(V.Vector e)
                                     } deriving Eq
+
+instance (Index ix, NFData e) => NFData (Array B ix e) where
+  rnf arr@(BArray comp sz v) =
+    case comp of
+      Seq        -> sz `deepseq` v `deepseq` ()
+      Par        -> arr `deepseqP` ()
+      ParOn wIds -> deepseqOnP wIds arr ()
 
 
 instance Index ix => Massiv B ix e where
   size = bSize
   {-# INLINE size #-}
 
-  makeArray sz = BArray sz . makeBoxedVector sz
-  {-# INLINE makeArray #-}
+  getComp = bComp
+  {-# INLINE getComp #-}
+
+  setComp c arr = arr { bComp = c }
+  {-# INLINE setComp #-}
+
+  unsafeMakeArray c sz = BArray c sz . makeBoxedVector sz
+  {-# INLINE unsafeMakeArray #-}
 
 instance Index ix => Source B ix e where
-  unsafeLinearIndex (BArray _ v) = V.unsafeIndex v
+  unsafeLinearIndex (BArray _ _ v) = V.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -83,29 +98,29 @@ instance (Index ix, Index (Lower ix)) => Slice B ix e where
 
 instance Index ix => Manifest B ix e where
 
-  unsafeLinearIndexM (BArray _ v) = V.unsafeIndex v
+  unsafeLinearIndexM (BArray _ _ v) = V.unsafeIndex v
   {-# INLINE unsafeLinearIndexM #-}
 
 
 instance Index ix => Mutable B ix e where
-  data MArray s B ix e = MBArray ix (V.MVector s e)
+  data MArray s B ix e = MBArray !ix !(V.MVector s e)
 
   msize (MBArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (BArray sz v) = MBArray sz <$> V.unsafeThaw v
+  unsafeThaw (BArray _ sz v) = MBArray sz <$> V.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MBArray sz v) = BArray sz <$> V.unsafeFreeze v
+  unsafeFreeze comp (MBArray sz v) = BArray comp sz <$> V.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
   unsafeNew sz = MBArray sz <$> MV.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MBArray _sz v) i = MV.unsafeRead v i
+  unsafeLinearRead (MBArray _ v) i = MV.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBArray _sz v) i = MV.unsafeWrite v i
+  unsafeLinearWrite (MBArray _ v) i = MV.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
 
@@ -118,11 +133,11 @@ instance (Index ix, NFData e) => Target B ix e where
 
 
 instance Index ix => Load B ix e where
-  loadS (BArray sz v) _ uWrite =
+  loadS (BArray _ sz v) _ uWrite =
     iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !i _ ->
       uWrite i (V.unsafeIndex v i)
   {-# INLINE loadS #-}
-  loadP wIds (BArray sz v) _ uWrite = do
+  loadP wIds (BArray _ sz v) _ uWrite = do
     void $
       splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
@@ -136,9 +151,6 @@ instance Index ix => Load B ix e where
             uWrite i $ V.unsafeIndex v i
   {-# INLINE loadP #-}
 
-instance (Index ix, NFData e) => NFData (Array B ix e) where
-  rnf (BArray sz v) = sz `deepseq` v `deepseq` ()
-
 
 -- | Row-major folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
@@ -150,7 +162,7 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE foldr #-}
   foldr' = foldrS
   {-# INLINE foldr' #-}
-  null (BArray sz _) = totalElem sz == 0
+  null (BArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
   sum = foldl' (+) 0
   {-# INLINE sum #-}
@@ -163,64 +175,69 @@ instance Index ix => Foldable (Array B ix) where
 
 
 
-computeBoxedS :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
-computeBoxedS = loadTargetS
-{-# INLINE computeBoxedS #-}
+-- computeBoxedS :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
+-- computeBoxedS = loadTargetS
+-- {-# INLINE computeBoxedS #-}
 
 
-computeBoxedP :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
-computeBoxedP = unsafePerformIO . loadTargetOnP []
-{-# INLINE computeBoxedP #-}
+-- computeBoxedP :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
+-- computeBoxedP = unsafePerformIO . loadTargetOnP []
+-- {-# INLINE computeBoxedP #-}
 
 
-fromVectorBoxed :: Index ix => ix -> V.Vector e -> Array B ix e
-fromVectorBoxed sz v = BArray { bSize = sz, bData = v }
-{-# INLINE fromVectorBoxed #-}
+-- fromVectorBoxed :: Index ix => ix -> V.Vector e -> Array B ix e
+-- fromVectorBoxed sz v = BArray { bSize = sz, bData = v }
+-- {-# INLINE fromVectorBoxed #-}
 
 
-toVectorBoxed :: Array B ix e -> V.Vector e
-toVectorBoxed = bData
-{-# INLINE toVectorBoxed #-}
+-- toVectorBoxed :: Array B ix e -> V.Vector e
+-- toVectorBoxed = bData
+-- {-# INLINE toVectorBoxed #-}
 
 
-generateM :: (Index ix, Monad m) =>
-             ix -> (ix -> m a) -> m (Array B ix a)
-generateM sz f =
-  BArray sz <$> V.generateM (totalElem sz) (f . fromLinearIndex sz)
-{-# INLINE generateM #-}
+-- generateM :: (Index ix, Monad m) =>
+--              ix -> (ix -> m a) -> m (Array B ix a)
+-- generateM sz f =
+--   BArray sz <$> V.generateM (totalElem sz) (f . fromLinearIndex sz)
+-- {-# INLINE generateM #-}
 
 
-mapM :: (Source r ix a, Monad m) =>
-  (a -> m b) -> Array r ix a -> m (Array B ix b)
-mapM f = imapM (const f)
-{-# INLINE mapM #-}
+-- mapM :: (Source r ix a, Monad m) =>
+--   (a -> m b) -> Array r ix a -> m (Array B ix b)
+-- mapM f = imapM (const f)
+-- {-# INLINE mapM #-}
 
-imapM :: (Source r ix a, Monad m) =>
-  (ix -> a -> m b) -> Array r ix a -> m (Array B ix b)
-imapM f arr = do
-  let !sz = size arr
-  v <- V.generateM (totalElem sz) $ \ !i ->
-         let !ix = fromLinearIndex sz i
-             !e = unsafeIndex arr ix
-         in f ix e
-  return $ BArray sz v
-{-# INLINE imapM #-}
+-- imapM :: (Source r ix a, Monad m) =>
+--   (ix -> a -> m b) -> Array r ix a -> m (Array B ix b)
+-- imapM f arr = do
+--   let !sz = size arr
+--   v <- V.generateM (totalElem sz) $ \ !i ->
+--          let !ix = fromLinearIndex sz i
+--              !e = unsafeIndex arr ix
+--          in f ix e
+--   return $ BArray sz v
+-- {-# INLINE imapM #-}
 
 
 -- | Parallel version of `deepseq`: fully evaluate all elements of a boxed array in
 -- parallel, while returning back the second argument.
 deepseqP :: (Index ix, NFData a) => Array B ix a -> b -> b
-deepseqP (BArray sz v) b =
-  unsafePerformIO
-    ((splitWork [] sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-          submitRequest scheduler $
-          JobRequest $
-          loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
-            V.unsafeIndex v k `deepseq` return ()
-        submitRequest scheduler $
-          JobRequest $
-          loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
-            V.unsafeIndex v k `deepseq` return ()) >>
-     return (deepseq sz b))
+deepseqP = deepseqOnP []
 {-# INLINE deepseqP #-}
+
+
+deepseqOnP :: (Index ix, NFData a) => [Int] -> Array B ix a -> b -> b
+deepseqOnP wIds (BArray _ sz v) b =
+  unsafePerformIO $ do
+    splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        submitRequest scheduler $
+        JobRequest $
+        loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
+          V.unsafeIndex v k `deepseq` return ()
+      submitRequest scheduler $
+        JobRequest $
+        loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
+          V.unsafeIndex v k `deepseq` return ()
+    return b
+{-# INLINE deepseqOnP #-}

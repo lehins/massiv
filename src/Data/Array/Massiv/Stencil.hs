@@ -47,7 +47,7 @@ mapStencil :: (Source r ix e, Eq e, Num e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array WD ix a
 mapStencil (Stencil b sSz sCenter stencilF) !arr =
   WDArray
-    (DArray sz (stencilF (borderIndex b arr)))
+    (DArray (getComp arr) sz (stencilF (borderIndex b arr)))
     (Just sSz)
     sCenter
     (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))

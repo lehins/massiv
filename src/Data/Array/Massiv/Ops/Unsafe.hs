@@ -15,8 +15,11 @@ module Data.Array.Massiv.Ops.Unsafe
   ) where
 
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Delayed
 
-unsafeBackpermute :: Source r ix1 e => ix -> (ix -> ix1) -> Array r ix1 e -> Array D ix e
-unsafeBackpermute !sz ixF !arr = DArray sz $ \ !ix -> unsafeIndex arr (ixF ix)
+
+unsafeBackpermute :: (Source r' ix' e, Massiv r ix e) =>
+                     ix -> (ix -> ix') -> Array r' ix' e -> Array r ix e
+unsafeBackpermute !sz ixF !arr =
+  unsafeMakeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
 {-# INLINE unsafeBackpermute #-}
+

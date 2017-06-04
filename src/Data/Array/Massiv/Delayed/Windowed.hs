@@ -38,8 +38,14 @@ instance Index ix => Massiv WD ix e where
   size = size . wdArray
   {-# INLINE size #-}
 
-  makeArray sz f = WDArray (makeArray sz f) Nothing zeroIndex zeroIndex f
-  {-# INLINE makeArray #-}
+  getComp = dComp . wdArray
+  {-# INLINE getComp #-}
+
+  setComp c arr = arr { wdArray = (wdArray arr) { dComp = c } }
+  {-# INLINE setComp #-}
+
+  unsafeMakeArray c sz f = WDArray (unsafeMakeArray c sz f) Nothing zeroIndex zeroIndex f
+  {-# INLINE unsafeMakeArray #-}
 
 
 instance Functor (Array WD ix) where
@@ -64,11 +70,11 @@ makeArrayWindowed
 makeArrayWindowed !arr !wIx !wSz wUnsafeIndex
   | not (isSafeIndex sz wIx) =
     error $
-    "Incorrect window starting index: " ++ show wIx ++ " for: " ++ show arr
+    "Incorrect window starting index: " ++ show wIx ++ " for: " ++ show (size arr)
   | liftIndex2 (+) wIx wSz > sz =
     error $
     "Incorrect window size: " ++
-    show wSz ++ " and/or placement: " ++ show wIx ++ " for: " ++ show arr
+    show wSz ++ " and/or placement: " ++ show wIx ++ " for: " ++ show (size arr)
   | otherwise =
     WDArray
     { wdArray = delay arr
@@ -84,12 +90,12 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex
 
 
 instance Load WD DIM1 e where
-  loadS (WDArray (DArray sz indexB) _ it wk indexW) _ unsafeWrite = do
+  loadS (WDArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
     iterM_ 0 it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
     iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
     iterM_ wk sz 1 (<) $ \ !i -> unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
-  loadP wIds (WDArray (DArray sz indexB) _ it wk indexW) _ unsafeWrite = do
+  loadP wIds (WDArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
     void $
       splitWork wIds wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         submitRequest scheduler $
@@ -114,7 +120,7 @@ instance Load WD DIM1 e where
 
 
 instance Load WD DIM2 e where
-  loadS (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
+  loadS (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
     iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
@@ -128,7 +134,7 @@ instance Load WD DIM2 e where
     unrollAndJam blockHeight (it, ib) (jt, jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
   {-# INLINE loadS #-}
-  loadP wIds (WDArray (DArray sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
+  loadP wIds (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
     scheduler <- makeScheduler wIds
     let !(ib, jb) = (wm + it, wn + jt)
         !blockHeight = maybe 1 fst mStencilSz
@@ -187,7 +193,7 @@ instance Load WD DIM5 e where
 loadWindowedSRec
   :: (Index ix, Load WD (Lower ix) e) =>
      Array WD ix e -> (Int -> ST s e) -> (Int -> e -> ST s ()) -> ST s ()
-loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
+loadWindowedSRec (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
   let !szL = snd $ unconsDim sz
       !(t, tixL) = unconsDim tix
       !(w, wSzL) = unconsDim wSz
@@ -202,7 +208,7 @@ loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRe
   loopM_ t (< (w + t)) (+ 1) $ \ !i ->
     let !lowerArr =
           (WDArray
-             (DArray szL (\ !ix -> indexB (consDim i ix)))
+             (DArray c szL (\ !ix -> indexB (consDim i ix)))
              ((snd . unconsDim) <$> mStencilSz) -- can safely drop the dim, only
                                                 -- last 2 matter anyways
              tixL
@@ -215,7 +221,7 @@ loadWindowedSRec (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRe
 loadWindowedPRec
   :: (Index ix, Load WD (Lower ix) e) =>
      [Int] -> Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
-loadWindowedPRec wIds (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
+loadWindowedPRec wIds (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
   scheduler <- makeScheduler wIds
   let !szL = snd $ unconsDim sz
       !(t, tixL) = unconsDim tix
@@ -236,7 +242,7 @@ loadWindowedPRec wIds (WDArray (DArray sz indexB) mStencilSz tix wSz indexW) uns
   loopM_ t (< (w + t)) (+ 1) $ \ !i ->
     let !lowerArr =
           (WDArray
-             (DArray szL (\ !ix -> indexB (consDim i ix)))
+             (DArray c szL (\ !ix -> indexB (consDim i ix)))
              ((snd . unconsDim) <$> mStencilSz) -- can safely drop the dim, only
                                                 -- last 2 matter anyways
              tixL

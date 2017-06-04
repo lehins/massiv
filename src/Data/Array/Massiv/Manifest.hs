@@ -1,12 +1,9 @@
-{-# LANGUAGE BangPatterns              #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE RecordWildCards           #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -20,27 +17,24 @@ module Data.Array.Massiv.Manifest
     Manifest
   , toManifest
   , M
-  , computeS
-  , computeP
-  , computeOnP
-  , computeAsS
-  , computeAsP
   -- * Boxed
-  , B.B(..)
-  , B.computeBoxedS
-  , B.computeBoxedP
+  , B(..)
   -- * Primitive
-  , P.P(..)
-  , P.computePrimitiveS
-  , P.computePrimitiveP
+  , P(..)
+  , Prim
   -- * Storable
-  , S.S(..)
-  , S.computeStorableS
-  , S.computeStorableP
+  , S(..)
+  , Storable
   -- * Unboxed
-  , U.U(..)
-  , U.computeUnboxedS
-  , U.computeUnboxedP
+  , U(..)
+  , Unbox
+  -- * Vector Conversion
+  , toVector
+  , toVector'
+  , fromVector
+  , fromVector'
+  , ARepr
+  , VRepr
   -- * Indexing
   , (!)
   , index
@@ -51,49 +45,34 @@ module Data.Array.Massiv.Manifest
   , borderIndex
   ) where
 
+import           Control.Monad                        (guard, join, msum)
 import           Data.Array.Massiv.Common
-import qualified Data.Array.Massiv.Manifest.Boxed     as B
+import           Data.Array.Massiv.Manifest.Boxed
 import           Data.Array.Massiv.Manifest.Internal
-import qualified Data.Array.Massiv.Manifest.Primitive as P
-import qualified Data.Array.Massiv.Manifest.Storable  as S
-import qualified Data.Array.Massiv.Manifest.Unboxed   as U
-import           Data.Array.Massiv.Mutable            (Target, loadTargetOnP,
-                                                       loadTargetS)
-import           System.IO.Unsafe                     (unsafePerformIO)
+import           Data.Array.Massiv.Manifest.Primitive
+import           Data.Array.Massiv.Manifest.Storable
+import           Data.Array.Massiv.Manifest.Unboxed
+import           Data.Array.Massiv.Mutable
+import           Data.Maybe                           (fromMaybe)
+import           Data.Typeable
+import qualified Data.Vector                          as VB
+import qualified Data.Vector.Generic                  as VG
+import qualified Data.Vector.Primitive                as VP
+import qualified Data.Vector.Storable                 as VS
+import qualified Data.Vector.Unboxed                  as VU
 
 
-computeS
-  :: (Load r' ix e, Target r ix e)
-  => Array r' ix e -> Array r ix e
-computeS = loadTargetS
-{-# INLINE computeS #-}
+type family ARepr (v :: * -> *) :: *
+type family VRepr r :: * -> *
 
-
-computeP
-  :: (Load r' ix e, Target r ix e)
-  => Array r' ix e -> Array r ix e
-computeP = unsafePerformIO . loadTargetOnP []
-{-# INLINE computeP #-}
-
-
-computeOnP
-  :: (Load r' ix e, Target r ix e)
-  => [Int] -> Array r' ix e -> Array r ix e
-computeOnP wIds = unsafePerformIO . loadTargetOnP wIds
-{-# INLINE computeOnP #-}
-
-
-computeAsS
-  :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array r ix e
-computeAsS _ = computeS
-{-# INLINE computeAsS #-}
-
-computeAsP
-  :: (Load r' ix e, Target r ix e)
-  => r -> Array r' ix e -> Array r ix e
-computeAsP _ = computeP
-{-# INLINE computeAsP #-}
+type instance ARepr VU.Vector = U
+type instance ARepr VS.Vector = S
+type instance ARepr VP.Vector = P
+type instance ARepr VB.Vector = B
+type instance VRepr U = VU.Vector
+type instance VRepr S = VS.Vector
+type instance VRepr P = VP.Vector
+type instance VRepr B = VB.Vector
 
 
 -- | Infix version of `index`.
@@ -130,6 +109,78 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 
 
 index :: Manifest r ix e => Array r ix e -> ix -> e
-index arr ix = borderIndex (Fill (errorIx "index" arr ix)) arr ix
+index arr ix = borderIndex (Fill (errorIx "index" (size arr) ix)) arr ix
 {-# INLINE index #-}
 
+-- | /O(1)/ conversion from vector to an array with a corresponding
+-- representation. Will return `Nothing` if there is a size mismatch or some
+-- uncommon vector type is supplied.
+fromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Target r ix e, ARepr v ~ r)
+           => ix -- ^ Size of the result Array
+           -> v e -- ^ Source Vector
+           -> Maybe (Array r ix e)
+fromVector sz vector = do
+  guard (totalElem sz == VG.length vector)
+  msum
+    [ do Refl <- eqT :: Maybe (v :~: VU.Vector)
+         uVector <- join $ gcast1 (Just vector)
+         return $ UArray {uComp = Seq, uSize = sz, uData = uVector}
+    , do Refl <- eqT :: Maybe (v :~: VS.Vector)
+         sVector <- join $ gcast1 (Just vector)
+         return $ SArray {sComp = Seq, sSize = sz, sData = sVector}
+    , do Refl <- eqT :: Maybe (v :~: VP.Vector)
+         pVector <- join $ gcast1 (Just vector)
+         return $ PArray {pComp = Seq, pSize = sz, pData = pVector}
+    , do Refl <- eqT :: Maybe (v :~: VB.Vector)
+         bVector <- join $ gcast1 (Just vector)
+         return $ BArray {bComp = Seq, bSize = sz, bData = bVector}
+    ]
+{-# INLINE fromVector #-}
+
+
+-- | Just like `fromVector`, but will throw an appropriate error message
+fromVector' :: (VG.Vector v e, Typeable v, Target r ix e, ARepr v ~ r)
+            => ix -> v e -> Array r ix e
+fromVector' sz vector =
+  case fromVector sz vector of
+    Just arr -> arr
+    Nothing ->
+      error $
+      "fromVector': " ++
+      if (totalElem sz == VG.length vector)
+        then "Supplied size: " ++
+             show sz ++
+             " doesn't match vector length: " ++ show (VG.length vector)
+        else "Unsupported Vector type"
+{-# INLINE fromVector' #-}
+
+
+-- | /O(1)/ conversion from `Target` array to a corresponding vector. Will
+-- return `Nothing` only if source array representation was not one of `B`,
+-- `P`, `S` or `U`
+toVector :: forall v r ix e . (VG.Vector v e, Target r ix e, VRepr r ~ v)
+         => Array r ix e -> Maybe (v e)
+toVector arr =
+  msum
+    [ do Refl <- eqT :: Maybe (r :~: U)
+         uArr <- gcastArr arr
+         return $ uData uArr
+    , do Refl <- eqT :: Maybe (r :~: S)
+         sArr <- gcastArr arr
+         return $ sData sArr
+    , do Refl <- eqT :: Maybe (r :~: P)
+         pArr <- gcastArr arr
+         return $ pData pArr
+    , do Refl <- eqT :: Maybe (r :~: B)
+         bArr <- gcastArr arr
+         return $ bData bArr
+    ]
+{-# INLINE toVector #-}
+
+
+-- | Just like `toVector`, but will throw an appropriate error message
+toVector' :: (VG.Vector v e, Target r ix e, VRepr r ~ v)
+          => Array r ix e -> v e
+toVector' =
+  fromMaybe (error "toVector': Unsupported Array representation type") . toVector
+{-# INLINE toVector' #-}

@@ -13,47 +13,59 @@
 --
 module Data.Array.Massiv.Manifest.Primitive
   ( P (..)
+  , Array(..)
   , VP.Prim
-  , generateM
-  , fromVectorPrimitive
-  , toVectorPrimitive
-  , computePrimitiveS
-  , computePrimitiveP
-  , mapM
-  , imapM
+  -- , generateM
+  -- , fromVectorPrimitive
+  -- , toVectorPrimitive
+  -- , computePrimitiveS
+  -- , computePrimitiveP
+  -- , mapM
+  -- , imapM
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Delayed           (eq)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Primitive               as VP
 import qualified Data.Vector.Primitive.Mutable       as MVP
 import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
+--import           System.IO.Unsafe                    (unsafePerformIO)
 
 data P = P
 
-data instance Array P ix e = PArray { pSize :: !ix
+data instance Array P ix e = PArray { pComp :: Comp
+                                    , pSize :: !ix
                                     , pData :: !(VP.Vector e)
-                                    } deriving Eq
+                                    }
 
 instance (Index ix, NFData e) => NFData (Array P ix e) where
-  rnf (PArray sz v) = sz `deepseq` v `deepseq` ()
+  rnf (PArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
+  {-# INLINE rnf #-}
+
+instance (VP.Prim e, Eq e, Index ix) => Eq (Array P ix e) where
+  (==) = eq (==)
+  {-# INLINE (==) #-}
 
 
 instance (VP.Prim e, Index ix) => Massiv P ix e where
   size = pSize
   {-# INLINE size #-}
 
-  makeArray !sz f = PArray sz' $ VP.generate (totalElem sz') (f . fromLinearIndex sz')
-    where
-      !sz' = liftIndex (max 0) sz
-  {-# INLINE makeArray #-}
+  getComp = pComp
+  {-# INLINE getComp #-}
+
+  setComp c arr = arr { pComp = c }
+  {-# INLINE setComp #-}
+
+  unsafeMakeArray c !sz f = PArray c sz $ VP.generate (totalElem sz) (f . fromLinearIndex sz)
+  {-# INLINE unsafeMakeArray #-}
 
 instance (VP.Prim e, Index ix) => Source P ix e where
-  unsafeLinearIndex (PArray _ v) = VP.unsafeIndex v
+  unsafeLinearIndex (PArray _ _ v) = VP.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -77,76 +89,76 @@ instance (VP.Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
 
 instance (Index ix, VP.Prim e) => Manifest P ix e where
 
-  unsafeLinearIndexM (PArray _ v) = VP.unsafeIndex v
+  unsafeLinearIndexM (PArray _ _ v) = VP.unsafeIndex v
   {-# INLINE unsafeLinearIndexM #-}
 
 
 instance (Index ix, VP.Prim e) => Mutable P ix e where
-  data MArray s P ix e = MPArray ix (VP.MVector s e)
+  data MArray s P ix e = MPArray !ix !(VP.MVector s e)
 
   msize (MPArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (PArray sz v) = MPArray sz <$> VP.unsafeThaw v
+  unsafeThaw (PArray _ sz v) = MPArray sz <$> VP.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze (MPArray sz v) = PArray sz <$> VP.unsafeFreeze v
+  unsafeFreeze comp (MPArray sz v) = PArray comp sz <$> VP.unsafeFreeze v
   {-# INLINE unsafeFreeze #-}
 
   unsafeNew sz = MPArray sz <$> MVP.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MPArray _sz v) i = MVP.unsafeRead v i
+  unsafeLinearRead (MPArray _ v) i = MVP.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MPArray _sz v) i = MVP.unsafeWrite v i
+  unsafeLinearWrite (MPArray _ v) i = MVP.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
 instance (VP.Prim e, Index ix) => Target P ix e
 
 
-computePrimitiveS :: (Load r ix e, Target P ix e) => Array r ix e -> Array P ix e
-computePrimitiveS = loadTargetS
-{-# INLINE computePrimitiveS #-}
+-- computePrimitiveS :: (Load r ix e, Target P ix e) => Array r ix e -> Array P ix e
+-- computePrimitiveS = loadTargetS
+-- {-# INLINE computePrimitiveS #-}
 
 
-computePrimitiveP :: (Load r ix e, Target P ix e) => Array r ix e -> Array P ix e
-computePrimitiveP = unsafePerformIO . loadTargetOnP []
-{-# INLINE computePrimitiveP #-}
+-- computePrimitiveP :: (Load r ix e, Target P ix e) => Array r ix e -> Array P ix e
+-- computePrimitiveP = unsafePerformIO . loadTargetOnP []
+-- {-# INLINE computePrimitiveP #-}
 
 
-fromVectorPrimitive :: Index ix => ix -> VP.Vector e -> Array P ix e
-fromVectorPrimitive sz v = PArray { pSize = sz, pData = v }
-{-# INLINE fromVectorPrimitive #-}
+-- fromVectorPrimitive :: Index ix => ix -> VP.Vector e -> Array P ix e
+-- fromVectorPrimitive sz v = PArray { pSize = sz, pData = v }
+-- {-# INLINE fromVectorPrimitive #-}
 
 
-toVectorPrimitive :: Array P ix e -> VP.Vector e
-toVectorPrimitive = pData
-{-# INLINE toVectorPrimitive #-}
+-- toVectorPrimitive :: Array P ix e -> VP.Vector e
+-- toVectorPrimitive = pData
+-- {-# INLINE toVectorPrimitive #-}
 
 
-generateM :: (Index ix, VP.Prim a, Monad m) =>
-  ix -> (ix -> m a) -> m (Array P ix a)
-generateM sz f =
-  PArray sz <$> VP.generateM (totalElem sz) (f . fromLinearIndex sz)
-{-# INLINE generateM #-}
+-- generateM :: (Index ix, VP.Prim a, Monad m) =>
+--   ix -> (ix -> m a) -> m (Array P ix a)
+-- generateM sz f =
+--   PArray sz <$> VP.generateM (totalElem sz) (f . fromLinearIndex sz)
+-- {-# INLINE generateM #-}
 
 
-mapM :: (VP.Prim b, Source r ix a, Monad m) =>
-  (a -> m b) -> Array r ix a -> m (Array P ix b)
-mapM f arr = do
-  let !sz = size arr
-  v <- VP.generateM (totalElem sz) (f . unsafeLinearIndex arr)
-  return $ PArray sz v
-{-# INLINE mapM #-}
+-- mapM :: (VP.Prim b, Source r ix a, Monad m) =>
+--   (a -> m b) -> Array r ix a -> m (Array P ix b)
+-- mapM f arr = do
+--   let !sz = size arr
+--   v <- VP.generateM (totalElem sz) (f . unsafeLinearIndex arr)
+--   return $ PArray sz v
+-- {-# INLINE mapM #-}
 
-imapM :: (VP.Prim b, Source r ix a, Monad m) =>
-  (ix -> a -> m b) -> Array r ix a -> m (Array P ix b)
-imapM f arr = do
-  let !sz = size arr
-  v <- VP.generateM (totalElem sz) $ \ !i ->
-         let !ix = fromLinearIndex sz i
-         in f ix (unsafeIndex arr ix)
-  return $ PArray sz v
-{-# INLINE imapM #-}
+-- imapM :: (VP.Prim b, Source r ix a, Monad m) =>
+--   (ix -> a -> m b) -> Array r ix a -> m (Array P ix b)
+-- imapM f arr = do
+--   let !sz = size arr
+--   v <- VP.generateM (totalElem sz) $ \ !i ->
+--          let !ix = fromLinearIndex sz i
+--          in f ix (unsafeIndex arr ix)
+--   return $ PArray sz v
+-- {-# INLINE imapM #-}
 

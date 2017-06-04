@@ -1,7 +1,9 @@
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
@@ -14,9 +16,13 @@
 --
 module Data.Array.Massiv.Common
   ( Array
+  , makeArray
   , Massiv(..)
   , Source(..)
   , Load(..)
+  -- * Computation
+  , Comp(.., Par)
+  , pattern Par
   , PrettyShow(..)
   , module Data.Array.Massiv.Common.Index
   , evaluateAt
@@ -24,6 +30,7 @@ module Data.Array.Massiv.Common
   , errorImpossible
   ) where
 
+import           Control.DeepSeq                (NFData (..), deepseq)
 import           Control.Monad.ST               (ST)
 import           Data.Array.Massiv.Common.Index hiding (Z)
 import           Data.Proxy
@@ -33,27 +40,48 @@ import           Text.Printf
 
 data family Array r ix e :: *
 
+-- | Computation type to use.
+data Comp = Seq -- ^ Sequential computation
+          | ParOn [Int] -- ^ Parallel computation with a list of capabilities to
+                        -- run computation on. Use `Par` to run on all cores.
+          deriving (Show, Eq)
+
+-- | Parallel computation using all available cores.
+pattern Par :: Comp
+pattern Par = ParOn []
+
+instance NFData Comp where
+  rnf comp =
+    case comp of
+      Seq        -> ()
+      Par        -> ()
+      ParOn wIds -> wIds `deepseq` ()
+  {-# INLINE rnf #-}
+
 
 -- | Index and size polymorphic arrays.
 class (Typeable r, Index ix) => Massiv r ix e where
 
   size :: Array r ix e -> ix
 
-  makeArray :: Index ix => ix -> (ix -> e) -> Array r ix e
+  getComp :: Array r ix e -> Comp
+
+  setComp :: Comp -> Array r ix e -> Array r ix e
+
+  unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
+
+
+makeArray :: Massiv r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
+makeArray !c = unsafeMakeArray c . liftIndex (max 0)
+{-# INLINE makeArray #-}
 
 
 
-instance Massiv r ix e => Show (Array r ix e) where
+instance (Typeable e, Massiv r ix e) => Show (Array r ix e) where
   show arr =
     "<Array " ++
-    showsTypeRep (typeRep (Proxy :: Proxy r)) ": " ++ show (size arr) ++ ">"
-
-
--- instance (Show e, Source r DIM1 e) => Show (Array r DIM1 e) where
---   show arr = "<Array DIM1 (" ++ show (size arr) ++ ")>:\n" ++ show (foldrA (:) [] arr)
-
--- instance (Show e, Source r DIM2 e) => Show (Array r DIM2 e) where
---   show arr = "<Array DIM2 " ++ show (size arr) ++ ">:\n" ++ show (foldrA (:) [] arr)
+    showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+    (show (size arr)) ++ " " ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ">"
 
 
 class Massiv r ix e => Source r ix e where
@@ -92,9 +120,11 @@ errorImpossible :: String -> a
 errorImpossible fName =
   error $ fName ++ ": Impossible happened. Please report this error."
 
-errorIx :: (Massiv r ix e, Index ix') => String -> Array r ix e -> ix' -> a
-errorIx fName arr ix =
-  error $ fName ++ ": Index out of bounds: " ++ show ix ++ " for: " ++ show arr
+errorIx :: (Index ix, Index ix') => String -> ix -> ix' -> a
+errorIx fName sz ix =
+  error $
+  fName ++
+  ": Index out of bounds: " ++ show ix ++ " for Array of size: " ++ show sz
 
 
 -- | This is just like safe `Data.Array.Massiv.Manifest.index` function, but it
@@ -104,7 +134,7 @@ errorIx fName arr ix =
 evaluateAt :: Source r ix e => Array r ix e -> ix -> e
 evaluateAt !arr !ix =
   handleBorderIndex
-    (Fill (errorIx "evaluateAt" arr ix))
+    (Fill (errorIx "evaluateAt" (size arr) ix))
     (size arr)
     (unsafeIndex arr)
     ix

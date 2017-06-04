@@ -31,15 +31,15 @@ library
                      , Data.Array.Massiv.Mutable
                      , Data.Array.Massiv.Numeric
                      , Data.Array.Massiv.Scheduler
+                     , Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Stencil
                      , Data.Array.Massiv.Stencil.Convolution
-  other-modules:       Data.Array.Massiv.Common.Ops
-                     , Data.Array.Massiv.Stencil.Internal
+  other-modules:       Data.Array.Massiv.Stencil.Internal
                      , Data.Array.Massiv.Manifest.Internal
                      , Data.Array.Massiv.Ops.Construct
                      , Data.Array.Massiv.Ops.Filter
                      , Data.Array.Massiv.Ops.Fold
-                     , Data.Array.Massiv.Ops.Map
+                     --, Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Ops.Transform
   build-depends:       base >= 4.6 && < 5
                      , data-default
@@ -162,10 +162,11 @@ executable massiv
                      , repa
                      , repa-algorithms
   default-language:    Haskell2010
---   ghc-options:         -threaded -O2
-  --ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
-  --ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
+  ghc-options:         -O2
+  --ghc-options:         -threaded -O2
+  --ghc-options:         -threaded -rtsopts -with-rtsopts=-N7 -O2
   --ghc-options:         -Wall -O2 -threaded -prof -fprof-auto
+  --ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
 
 Test-Suite massiv-tests
   Type:               exitcode-stdio-1.0
@@ -178,6 +179,7 @@ Test-Suite massiv-tests
                     , Data.Array.Massiv.ManifestSpec
                     , Data.Array.Massiv.Ops.ConstructSpec
                     , Data.Array.Massiv.Ops.FoldSpec
+                    , Data.Array.Massiv.Ops.TransformSpec
                     , Data.Array.Massiv.SchedulerSpec
                     , Data.Array.MassivSpec
   Build-Depends:      base            >= 4.5 && < 5
@@ -186,6 +188,7 @@ Test-Suite massiv-tests
                     , massiv
                     , hspec
                     , QuickCheck
+                    , vector
   Default-Language:   Haskell2010
   GHC-Options:        -Wall -O2 -fno-warn-orphans -threaded -with-rtsopts=-N6
 

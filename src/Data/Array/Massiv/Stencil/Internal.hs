@@ -23,7 +23,6 @@ import           Control.Monad.ST
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
-import           Data.Array.Massiv.Manifest.Unboxed
 import           Data.Default                       (Default (def))
 import           GHC.Exts                           (inline)
 
@@ -49,7 +48,7 @@ data StencilM ix e a = StencilM
   }
 
 
-
+-- | __Warning__: Highly experimental and untested, use at your own risk.
 mkStaticStencilM
   :: forall ix e a . (Index ix, Default e, Default a)
   => Border e
@@ -71,9 +70,9 @@ mkStaticStencilM b !sSz !sCenter relStencil =
     {-# INLINE stencil #-}
     sRank = rank sSz
     defArrA :: Array D ix a
-    defArrA = DArray sSz (const def)
-    defArr = DArray sSz (const def)
-    deps = toManifest $ fromVectorUnboxed (rank sSz) $ VU.create makeDeps
+    defArrA = DArray Seq sSz (const def)
+    defArr = DArray Seq sSz (const def)
+    deps = toManifest $ fromVector' (rank sSz) $ VU.create makeDeps
     -- TODO: switch to mutable Array, once it is implemented.
     makeDeps :: ST s (MVU.MVector s Int)
     makeDeps = do
@@ -180,7 +179,7 @@ validateStencil
   :: Index ix
   => e -> Stencil ix e a -> Stencil ix e a
 validateStencil d s@(Stencil _ sSz sCenter stencil) =
-  let valArr = DArray sSz (const d)
+  let valArr = DArray Seq sSz (const d)
   in stencil (safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
 

@@ -28,15 +28,17 @@ class (Source r ix e, Source (R r) ix e) => Shape r ix e where
 
 extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
 extract !sIx !newSz !arr
-  | isSafeIndex (size arr) sIx && isSafeIndex eIx sIx && eIx <= size arr =
+  | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
     Just $ unsafeExtract sIx newSz arr
   | otherwise = Nothing
   where
+    sz1 = liftIndex (+1) (size arr)
+    eIx1 = liftIndex (+1) eIx
     eIx = liftIndex2 (+) sIx newSz
 {-# INLINE extract #-}
 
 extractFromTo :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
-extractFromTo !sIx !eIx !arr = extract sIx newSz arr
+extractFromTo sIx eIx = extract sIx newSz
   where
     newSz = liftIndex2 (-) eIx sIx
 {-# INLINE extractFromTo #-}
@@ -101,21 +103,25 @@ class ( Index (Lower ix)
 (!>) !arr !ix =
   case arr !?> ix of
     Just res -> res
-    Nothing  -> errorIx "(!>)" arr ix
+    Nothing  -> errorIx "(!>)" (size arr) ix
 {-# INLINE (!>) #-}
 
 (<!) :: Slice r ix e => Array r ix e -> Int -> Array (R r) (Lower ix) e
 (<!) !arr !ix =
   case arr <!? ix of
     Just res -> res
-    Nothing  -> errorIx "(<!)" arr ix
+    Nothing  -> errorIx "(<!)" (size arr) ix
 {-# INLINE (<!) #-}
 
 (<!>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Array (R r) (Lower ix) e
 (<!>) !arr !(dim, i) =
   case arr <!?> (dim, i) of
     Just res -> res
-    Nothing  -> if dim < 1 || dim > rank (size arr)
-                then error $ "Invalid dimension: " ++ show dim ++ " for: " ++ show arr
-                else errorIx "(<!>)" arr (dim, i)
+    Nothing ->
+      let arrRank = rank (size arr)
+      in if dim < 1 || dim > arrRank
+           then error $
+                "(<!>): Invalid dimension: " ++
+                show dim ++ " for Array of rank: " ++ show arrRank
+           else errorIx "(<!>)" (size arr) (dim, i)
 {-# INLINE (<!>) #-}

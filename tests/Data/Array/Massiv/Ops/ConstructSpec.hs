@@ -1,12 +1,10 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.Ops.ConstructSpec (spec) where
 
 
 import           Data.Array.Massiv                  as M
 import           Data.Array.Massiv.Common.IndexSpec (Sz (..))
-import           Data.Array.Massiv.CommonSpec       (assertSomeException)
+import           Data.Array.Massiv.CommonSpec       (Arr (..),
+                                                     assertSomeException)
 import           Data.Array.Massiv.DelayedSpec      ()
 import           Prelude                            as P
 import           Prelude                            hiding (map)
@@ -28,19 +26,17 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertSomeException (computeUnboxedS (rangeStep from 0 to))
+  assertSomeException (computeAs U (rangeStep from 0 to))
 
 
 prop_toFromList1D :: DIM1 -> Fun DIM1 Int -> Bool
 prop_toFromList1D sz f =
-  let arr = makeArray sz (apply f)
+  let arr = makeArray Seq sz (apply f)
   in arr == fromListAsS1D U (toListS1D arr)
 
 
-prop_toFromListS2D :: Sz DIM2 -> Fun DIM2 Int -> Property
-prop_toFromListS2D (Sz sz) f = arr === fromListAsS2D U (toListS2D arr)
-  where
-    arr = makeArray sz (apply f)
+prop_toFromListS2D :: Arr U DIM2 Int -> Property
+prop_toFromListS2D (Arr arr) = arr === fromListAsS2D U (toListS2D arr)
 
 
 prop_excFromToListS2D :: [[Int]] -> Property
@@ -53,10 +49,9 @@ prop_excFromToListS2D ls2 =
     resultLs = toListS2D (fromListAsS2D U ls2)
 
 
-prop_toFromListS3D :: Sz DIM3 -> Fun DIM3 Int -> Property
-prop_toFromListS3D (Sz sz) f =
-  arr === fromListAsS3D U (toListS3D arr)
-  where arr = makeArray sz (apply f)
+prop_toFromListS3D :: Arr U DIM3 Int -> Property
+prop_toFromListS3D (Arr arr) = arr === fromListAsS3D U (toListS3D arr)
+
 
 prop_excFromToListS3D :: [[[Int]]] -> Property
 prop_excFromToListS3D ls3 =
@@ -74,7 +69,7 @@ prop_excFromToListS3D ls3 =
 
 prop_toFromListP2D :: Sz DIM2 -> Fun DIM2 Int -> Property
 prop_toFromListP2D (Sz sz) f =
-  computeUnboxedP arr === fromListAsP2D U (toListS2D arr)
+  compute arr === fromListAsP2D U (toListS2D arr)
   where
     arr = makeArray2D sz (apply f)
 
@@ -89,7 +84,7 @@ prop_excFromToListP2D ls2 =
 
 prop_toFromListP3D :: Sz DIM3 -> Fun DIM3 Int -> Property
 prop_toFromListP3D (Sz sz) f =
-  computeUnboxedP arr === fromListAsP3D U (toListS3D arr)
+  compute arr === fromListAsP3D U (toListS3D arr)
   where
     arr = makeArray3D sz (apply f)
 

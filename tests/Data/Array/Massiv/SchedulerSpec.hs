@@ -5,7 +5,7 @@ module Data.Array.Massiv.SchedulerSpec (spec) where
 
 import           Control.Exception.Base        (ArithException (DivideByZero))
 import           Data.Array.Massiv             as M
-import           Data.Array.Massiv.CommonSpec  (ArrIx (..), assertException)
+import           Data.Array.Massiv.CommonSpec  (ArrIxP (..), assertException)
 import           Data.Array.Massiv.DelayedSpec ()
 import           Data.Array.Massiv.Scheduler
 import           Data.List                     (sortBy)
@@ -17,11 +17,11 @@ import           Test.QuickCheck.Monadic
 
 
 
-prop_CatchDivideByZero :: ArrIx D DIM2 Int -> Property
-prop_CatchDivideByZero (ArrIx arr ix) =
+prop_CatchDivideByZero :: ArrIxP D DIM2 Int -> Property
+prop_CatchDivideByZero (ArrIxP arr ix) =
   assertException
     (== DivideByZero)
-    (computeUnboxedP $
+    (computeAs U $
      M.imap
        (\ix' x ->
           if ix == ix'
@@ -30,14 +30,14 @@ prop_CatchDivideByZero (ArrIx arr ix) =
        arr)
 
 
-prop_CatchNested :: ArrIx D DIM1 (ArrIx D DIM1 Int) -> Property
-prop_CatchNested (ArrIx arr ix) =
+prop_CatchNested :: ArrIxP D DIM1 (ArrIxP D DIM1 Int) -> Property
+prop_CatchNested (ArrIxP arr ix) =
   assertException
     (== DivideByZero)
-    (M.sumP $
-     M.map M.sumP $
+    (M.sum $
+     M.map M.sum $
      M.imap
-       (\ix' (ArrIx iarr ixi) ->
+       (\ix' (ArrIxP iarr ixi) ->
           if ix == ix'
             then M.imap
                    (\ixi' e ->
