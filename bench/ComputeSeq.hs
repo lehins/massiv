@@ -13,6 +13,12 @@ import           Data.Foldable
 import qualified Data.Vector.Unboxed               as VU
 import           Prelude                           as P
 
+
+sarrM :: (Int, Int) -> M.Array M.U M.DIM2 Double
+sarrM arrSz = smakeArray Seq arrSz lightF
+{-# INLINE sarrM #-}
+
+
 main :: IO ()
 main = do
   let !sz = (1600, 1200) :: M.DIM2
@@ -67,7 +73,7 @@ main = do
         "Load"
         [ bgroup
             "Light Unboxed"
-            [ bench "Massiv" $ whnf (M.computeUnboxedS . arrM) sz
+            [ bench "Massiv" $ whnf (M.computeAs U . arrM) sz
             , bench "Vector" $ whnf vecU sz
             , bench "Repa" $ whnf (R.computeUnboxedS . arrR) sz
             ]
@@ -139,6 +145,8 @@ main = do
         [ bgroup
             "map"
             [ bench "Array Massiv" $
+              whnf (M.smap (+ 25) . sarrM) sz
+            , bench "Array Massiv" $
               whnf (computeAs U . fmap (+ 25) . arrM) sz
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
             , bench "Array Repa" $

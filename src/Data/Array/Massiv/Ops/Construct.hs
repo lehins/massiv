@@ -62,7 +62,7 @@ import           System.IO.Unsafe               (unsafePerformIO)
 --import Control.DeepSeq (NFData, deepseq)
 
 
-makeArray1D :: Int -> (Int -> e) -> Array D DIM1 e
+makeArray1D :: DIM1 -> (DIM1 -> e) -> Array D DIM1 e
 makeArray1D = makeArray Seq
 {-# INLINE makeArray1D #-}
 

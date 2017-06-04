@@ -26,7 +26,7 @@ import           Prelude                        hiding (zipWith)
 
 
 -- | Delayed representation.
-data D
+data D = D
 
 
 data instance Array D ix e = DArray { dComp :: Comp

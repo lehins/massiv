@@ -21,10 +21,13 @@ module Data.Array.Massiv.Manifest
   , B(..)
   -- * Primitive
   , P(..)
+  , Prim
   -- * Storable
   , S(..)
+  , Storable
   -- * Unboxed
   , U(..)
+  , Unbox
   -- * Vector Conversion
   , toVector
   , toVector'

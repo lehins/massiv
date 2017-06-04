@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleContexts      #-}
 module Main where
 
-import Data.IORef
+
 --import           Compute
 --import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
-import           Data.Array.Massiv.Ops.Map          as O
+
 -- import           Data.Array.Massiv.Manifest.Unboxed
 
 --import           Data.Array.Massiv.Stencil
@@ -13,23 +13,21 @@ import           Data.Array.Massiv.Ops.Map          as O
 -- import           Data.Array.Repa                     as R
 
 
-arrMLight :: (Int, Int) -> M.Array M.D M.DIM2 Double
---arrMLight !arrSz = makeArray2D arrSz $ \(i, j) -> fromIntegral (i + j)
-arrMLight arrSz = unsafeMakeArray Seq arrSz $ \(i, j) -> fromIntegral (i + j)
+arrMLight :: (Int, Int) -> M.Array U DIM2 Double
+arrMLight arrSz = smakeArray Seq arrSz $ \(i, j) -> fromIntegral (i + j)
 {-# INLINE arrMLight #-}
 
 
-magnitude :: (Source r M.DIM2 Double)
-          => M.Array r M.DIM2 Double -> M.Array D M.DIM2 Double
-magnitude arr = O.zipWith (+) arrX2 arrY2 -- (M.map (*2) arr) (M.map (*2) arr)
+magnitude :: Array U DIM2 Double -> Array U DIM2 Double
+magnitude arr = szipWith (+) (smap (*2) arr) (smap (*2) arr)
   where
-    arrX2 = M.map (*2) arr :: M.Array D M.DIM2 Double
-    arrY2 = M.map (*2) arr :: M.Array D M.DIM2 Double
+    -- arrX2 = smap (*2) arr
+    -- arrY2 = smap (*2) arr
     -- !arrX2 = M.map (^ (2 :: Int)) $ M.computeUnboxedS (mapStencil sX arr)
     -- !arrY2 = M.map (^ (2 :: Int)) $ M.computeUnboxedS (mapStencil sY arr)
     -- !sX = sobelStencilX b
     -- !sY = sobelStencilY b
---{-# INLINE sobelOperator' #-}
+{-# INLINE magnitude #-}
 
 -- magnitude :: (Source r M.DIM2 Double)
 --           => M.Array r M.DIM2 Double -> M.Array M.U M.DIM2 Double
@@ -73,19 +71,19 @@ main = do
   -- let arrU = computeUnboxedS $ makeArray1D 1518500250 succ
   -- let arr = arrU `seq` toManifest arrU
   -- let res = arr `seq` foldlS (+) 0 arr
-  -- let arrCM = magnitude $ arrMLight (1600, 1200)
-  -- print arrCM
+  let arrCM = stranspose $ magnitude $ arrMLight (1600, 1200)
+  print arrCM
   -- >>> :m + Data.IORef
   -- >>> var <- newIORef 0 :: IO (IORef Int)
   -- >>> forM_ (range 0 1000) $ \ i -> modifyIORef' var (+i)
 -- >>> readIORef var
-  let arr = computeAs U $ makeArray1D 1518500250 id
-  var <- newIORef 0 :: IO (IORef Int)
-  forM_ arr $ \ i -> modifyIORef' var (+i)
-  res <- readIORef var
+  -- let arr = computeAs U $ makeArray1D 1518500250 id
+  -- var <- newIORef 0 :: IO (IORef Int)
+  -- forM_ arr $ \ i -> modifyIORef' var (+i)
+  -- res <- readIORef var
   -- let arr = computeAs U $ makeArray1D 1518500250 id
   -- let res = M.sum arr
-  putStrLn $ "Result is: " ++ show res
+  --putStrLn $ "Result is: " ++ show res
 
 
   -- let arr = computeAs U $ setComp Par $ makeArray1D 1518500250 id
