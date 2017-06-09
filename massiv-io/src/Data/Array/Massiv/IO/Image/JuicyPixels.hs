@@ -215,6 +215,15 @@ instance FileFormat GIF where
   ext _ = ".gif"
 
 
+data GIFSeqOptions =
+  GIFSeqOptions (Maybe JP.PaletteOptions)
+                (Maybe JP.GifLooping)
+
+instance FileFormat (Sequence GIF) where
+  type WriteOptions (Sequence GIF) = Maybe GIFSeqOptions
+  ext _ = ext GIF
+
+
 instance (ColorSpace cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
          Writable GIF (Image r cs e) where
   encode _ opt = encodeEither GIF (encodeGIF opt)

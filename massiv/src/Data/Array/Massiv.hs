@@ -24,7 +24,6 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Ops.Fold
   , module Data.Array.Massiv.Ops.Construct
   , module Data.Array.Massiv.Ops.Transform
-  , module Data.Array.Massiv.Mutable
   -- * Accessors
   -- ** Size information
   --, size

@@ -30,7 +30,6 @@ type DIM5 = (Int, Int, Int, Int, Int)
 type family Lower ix :: *
 type family Higher ix :: *
 
---type instance Lower Z = DIM5
 type instance Lower DIM1 = Z
 type instance Lower DIM2 = DIM1
 type instance Lower DIM3 = DIM2
@@ -42,7 +41,6 @@ type instance Higher DIM1 = DIM2
 type instance Higher DIM2 = DIM3
 type instance Higher DIM3 = DIM4
 type instance Higher DIM4 = DIM5
---type instance Higher DIM5 = Z
 
 
 
