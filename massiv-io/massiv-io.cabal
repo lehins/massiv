@@ -1,0 +1,48 @@
+name:                massiv-io
+version:             0.1.0.0
+synopsis:            Import/export of Image files into Arrays
+description:         Massiv (Масси́в) is a Russian word for an Array.
+homepage:            https://github.com/lehins/massiv
+license:             BSD3
+license-file:        LICENSE
+author:              Alexey Kuleshevich
+maintainer:          lehins@yandex.ru
+copyright:           2017 Alexey Kuleshevich
+category:            Data, Data Structures
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Graphics.ColorSpace
+                     , Graphics.ColorSpace.Binary
+                     , Graphics.ColorSpace.CMYK
+                     , Graphics.ColorSpace.Complex
+                     , Graphics.ColorSpace.HSI
+                     , Graphics.ColorSpace.RGB
+                     , Graphics.ColorSpace.X
+                     , Graphics.ColorSpace.Y
+                     , Graphics.ColorSpace.YCbCr
+                     --, Data.Array.Massiv.IO
+                     , Data.Array.Massiv.IO.Image
+  other-modules:       Graphics.ColorSpace.Elevator
+                     , Graphics.ColorSpace.Internal
+                     , Data.Array.Massiv.IO.Base
+                     , Data.Array.Massiv.IO.Image.JuicyPixels
+                     -- , Data.Array.Massiv.IO.Image.Netpbm
+  build-depends:       base            >= 4.7 && < 5
+                     , bytestring
+                     , deepseq
+                     , directory
+                     , filepath        >= 1.0
+                     , massiv
+                     , process
+                     , JuicyPixels     >= 3.2.7
+                     , vector          >= 0.10
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+
+source-repository head
+  type:     git
+  location: https://github.com/lehins/massiv

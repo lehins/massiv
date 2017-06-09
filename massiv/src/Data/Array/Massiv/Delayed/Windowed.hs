@@ -286,3 +286,6 @@ unrollAndJam !bH !(it, ib) !(jt, jb) f = do
     loopM_ jt (< jb) (+ 1) $ \ !j ->
       f (i, j)
 {-# INLINE unrollAndJam #-}
+
+
+-- TODO: Implement Hilbert curve

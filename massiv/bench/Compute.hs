@@ -81,21 +81,21 @@ arrWindowedR sh@(m, n) =
   makeWindowed (Z :. 20 :. 25) (Z :. m - 20 :. n - 25) (arrR sh) (arrR' sh)
 {-# INLINE arrWindowedR #-}
 
-arrMLight :: (Num a) => (Int, Int) -> M.Array M.D M.DIM2 a
-arrMLight !arrSz = makeArray Seq arrSz lightF
+arrMLight :: (Num a) => Comp -> (Int, Int) -> M.Array M.D M.DIM2 a
+arrMLight comp !arrSz = makeArray comp arrSz lightF
 {-# INLINE arrMLight #-}
 
-arrM :: (Int, Int) -> M.Array M.D M.DIM2 Double
+arrM :: Comp -> (Int, Int) -> M.Array M.D M.DIM2 Double
 arrM = arrMLight
 {-# INLINE arrM #-}
 
-arrM' :: (Int, Int) -> M.Array M.D M.DIM2 Double
-arrM' !arrSz = makeArray Seq arrSz heavyF
+arrM' :: Comp -> (Int, Int) -> M.Array M.D M.DIM2 Double
+arrM' comp !arrSz = makeArray comp arrSz heavyF
 {-# INLINE arrM' #-}
 
 arrWindowedM :: (Int, Int) -> M.Array WD M.DIM2 Double
 arrWindowedM !arrSz@(m, n) =
-  makeArrayWindowed (arrM' arrSz) (20, 25) (m - 20, n - 25) lightF
+  makeArrayWindowed (arrM' Par arrSz) (20, 25) (m - 20, n - 25) lightF
 {-# INLINE arrWindowedM #-}
 
 

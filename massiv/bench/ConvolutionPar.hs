@@ -61,12 +61,12 @@ sobelOperator'
   :: (Manifest r M.DIM2 Double)
   => Border Double -> M.Array r M.DIM2 Double -> M.Array M.U M.DIM2 Double
 sobelOperator' !b !arr =
-  M.computeUnboxedP $
+  M.computeAs M.U $
     M.map sqrt $
     M.zipWith (+) (M.map (^ (2 :: Int)) arrX) (M.map (^ (2 :: Int)) arrY)
   where
-    !arrX = M.computeUnboxedP (mapStencil (sobelStencilX b) arr)
-    !arrY = M.computeUnboxedP (mapStencil (sobelStencilY b) arr)
+    !arrX = M.computeAs M.U (mapStencil (sobelStencilX b) arr)
+    !arrY = M.computeAs M.U (mapStencil (sobelStencilY b) arr)
 {-# INLINE sobelOperator' #-}
 
 main :: IO ()
@@ -75,8 +75,8 @@ main = do
       !arrCR = R.computeUnboxedS (arrR sz)
       -- !kirschW = kirschWStencil
       -- !kirschW' = kirschWStencil'
-      !arrCM = M.computeUnboxedS (arrM sz)
-      !arrCM' = M.computeUnboxedS (M.transpose arrCM)
+      !arrCM = M.computeAs M.U (arrM Par sz)
+      -- !arrCM' = M.computeAs M.U (M.transpose arrCM)
       !sobel = sobelStencilX Edge
       !sobelKern = sobelKernelStencilX Edge
       !sobelOp = sobelOperator Edge
@@ -88,19 +88,19 @@ main = do
     [ bgroup
         "Sobel Horizontal"
         [ bench "Massiv mapStencil" $
-          whnf (M.computeUnboxedP . mapStencil sobel) arrCM
+          whnf (M.computeAs M.U . mapStencil sobel) arrCM
         , bench "Repa Sobel" $ whnf (runIdentity . R.computeUnboxedP . sobelXR) arrCR
         ]
     , bgroup
         "Sobel Kernel Horizontal"
         [ bench "Massiv mapStencil" $
-          whnf (M.computeUnboxedP . mapStencil sobelKern) arrCM
+          whnf (M.computeAs M.U . mapStencil sobelKern) arrCM
         , bench "repa R Agorithms" $ whnfIO (sobelKernRP arrCR)
         ]
     , bgroup
         "Sobel Operator"
         [ bench "Massiv stencil operator" $
-          whnf (M.computeUnboxedP . mapStencil sobelOp) arrCM
+          whnf (M.computeAs M.U . mapStencil sobelOp) arrCM
         --, bench "Massiv unfused" $ whnfIO (sobelOp' arrUM)
         , bench "Repa fused" $ whnf (runIdentity . sobelOperatorR) arrCR
         --, bench "Repa unfused" $ whnfIO (sobelOperatorR' arrCR)
@@ -113,7 +113,7 @@ main = do
     , bgroup
         "Fuse"
         [ bench "Array Massiv" $
-          whnf (M.computeUnboxedP . M.map (+ 25) . arrM) sz
+          whnf (M.computeAs M.U . M.map (+ 25) . arrM Par) sz
         , bench "Array Repa" $
           whnf (runIdentity . R.computeUnboxedP . R.map (+ 25) . arrR) sz
         ]

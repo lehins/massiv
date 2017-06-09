@@ -64,10 +64,10 @@ sobelOperatorR arr =
 sobelOperator'
   :: (Manifest r M.DIM2 Double)
   => Border Double -> M.Array r M.DIM2 Double -> M.Array M.U M.DIM2 Double
-sobelOperator' b arr = M.computeUnboxedS $ M.map sqrt $ M.zipWith (+) arrX2 arrY2
+sobelOperator' b arr = M.computeAs M.U $ M.map sqrt $ M.zipWith (+) arrX2 arrY2
   where
-    !arrX2 = M.map (^ (2 :: Int)) $ M.computeUnboxedS (mapStencil sX arr)
-    !arrY2 = M.map (^ (2 :: Int)) $ M.computeUnboxedS (mapStencil sY arr)
+    !arrX2 = M.map (^ (2 :: Int)) $ M.computeAs M.U (mapStencil sX arr)
+    !arrY2 = M.map (^ (2 :: Int)) $ M.computeAs M.U (mapStencil sY arr)
     !sX = sobelStencilX b
     !sY = sobelStencilY b
 
@@ -88,7 +88,7 @@ main = do
       -- !kirschW = kirschWStencil
       -- !kirschW' = kirschWStencil'
       arrUM :: M.Array M.U M.DIM2 Double
-      !arrUM = M.computeUnboxedS (arrM sz)
+      !arrUM = M.computeAs M.U (arrM Seq sz)
       !sobel = sobelStencilX Edge
       !sobelOp = sobelOperator Edge
       !sobelOp' = sobelOperator' Edge
@@ -98,15 +98,15 @@ main = do
     [ bgroup
         "Sobel Horizontal"
         [ bench "Massiv mapStencil" $
-          whnf (M.computeUnboxedS . mapStencil sobel) arrUM
+          whnf (M.computeAs M.U . mapStencil sobel) arrUM
         , bench "Repa Sobel" $ whnf (R.computeUnboxedS . sobelXR) arrCR
         ]
     , bgroup
         "Sobel Operator"
         [ bench "Massiv stencil operator" $
-          whnf (M.computeUnboxedS . mapStencil sobelOp) arrUM
+          whnf (M.computeAs M.U . mapStencil sobelOp) arrUM
         , bench "Massiv stencil operator local" $
-          whnf (M.computeUnboxedS . mapStencil sobelOp'') arrUM
+          whnf (M.computeAs M.U . mapStencil sobelOp'') arrUM
         , bench "Massiv unfused" $ whnf sobelOp' arrUM
         , bench "Repa fused" $ whnf sobelOperatorR arrCR
         , bench "Repa unfused" $ whnf sobelOperatorR' arrCR

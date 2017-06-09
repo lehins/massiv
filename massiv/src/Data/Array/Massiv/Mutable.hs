@@ -18,6 +18,7 @@ module Data.Array.Massiv.Mutable
   , Target(..)
   , compute
   , computeAs
+  , computeSource
   , computeOn
   , computeAsOn
   , copy
@@ -40,7 +41,6 @@ import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Ops.Map           (iforM_)
 import           Data.Array.Massiv.Scheduler
 import           System.IO.Unsafe                    (unsafePerformIO)
---import Control.DeepSeq
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 
@@ -109,6 +109,14 @@ compute !arr =
 computeAs :: (Load r' ix e, Target r ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
 {-# INLINE computeAs #-}
+
+
+computeSource :: forall r' r ix e . (Source r' ix e, Target r ix e)
+              => Array r' ix e -> Array r ix e
+computeSource arr =
+  fromMaybe (compute $ delay arr) $ fmap (\Refl -> arr) (eqT :: Maybe (r' :~: r))
+{-# INLINE computeSource #-}
+
 
 
 computeOn :: (Load r' ix e, Target r ix e) =>

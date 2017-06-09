@@ -27,13 +27,13 @@ main = do
   let !ixM = (612, 211)
       !ixR = (Z :. fst ixM :. snd ixM)
       !ix1D = toLinearIndex sz ixM
-  let !arrCM = computeAs U $ arrM sz
+  let !arrCM = computeAs U $ arrM Seq sz
       !arrCMM = toManifest arrCM
       !arrCR = R.computeUnboxedS $ arrR sz
       !vecCU = vecU sz
       !ls1D = toListS1D arrCM
       !ls2D = toListS2D arrCM
-  let !arrCMs = computeAs U $ arrM szs
+  let !arrCMs = computeAs U $ arrM Seq szs
       !arrCMs' = computeAs U (M.transpose arrCMs)
       !arrCRs = R.computeUnboxedS $ arrR szs
       !arrCRs' = R.transpose2S arrCRs
@@ -73,13 +73,13 @@ main = do
         "Load"
         [ bgroup
             "Light Unboxed"
-            [ bench "Massiv" $ whnf (M.computeAs U . arrM) sz
+            [ bench "Massiv" $ whnf (M.computeAs U . arrM Seq) sz
             , bench "Vector" $ whnf vecU sz
             , bench "Repa" $ whnf (R.computeUnboxedS . arrR) sz
             ]
         , bgroup
             "Heavy Unboxed"
-            [ bench "Massiv" $ whnf (computeAs U . arrM') sz
+            [ bench "Massiv" $ whnf (computeAs U . arrM' Seq) sz
             , bench "Vector" $ whnf vecU' sz
             , bench "Repa" $ whnf (R.computeUnboxedS . arrR') sz
             ]
@@ -93,19 +93,19 @@ main = do
         "Fold"
         [ bgroup
             "Left"
-            [ bench "Array Massiv Delayed" $ whnf (foldl' (+) 0 . arrM) sz
+            [ bench "Array Massiv Delayed" $ whnf (foldl' (+) 0 . arrM Seq) sz
             , bench "Vector Unboxed" $ whnf (VU.foldl' (+) 0 . vecU) sz
             , bench "Array Repa" $ whnf (R.foldAllS (+) 0 . arrR) sz
             ]
         , bgroup
             "Right"
-            [ bench "Array Massiv Delayed" $ whnf (foldr' (+) 0 . arrM) sz
+            [ bench "Array Massiv Delayed" $ whnf (foldr' (+) 0 . arrM Seq) sz
             , bench "Vector Unboxed" $ whnf (VU.foldr' (+) 0 . vecU) sz
             , bench "Array Repa" $ whnf (R.foldAllS (+) 0 . arrR) sz
             ]
         , bgroup
             "Sum"
-            [ bench "Array Massiv Delayed" $ whnf (M.sum . arrM) sz
+            [ bench "Array Massiv Delayed" $ whnf (M.sum . arrM Seq) sz
             , bench "Vector Unboxed" $ whnf (VU.sum . vecU) sz
             , bench "Array Repa" $ whnf (R.sumAllS . arrR) sz
             ]
@@ -129,8 +129,8 @@ main = do
         ]
     , bgroup
         "toList"
-        [ bench "Array Massiv" $ nf (M.toListS1D . arrM) sz
-        , bench "Array Massiv 2D" $ nf (M.toListS2D . arrM) sz
+        [ bench "Array Massiv" $ nf (M.toListS1D . arrM Seq) sz
+        , bench "Array Massiv 2D" $ nf (M.toListS2D . arrM Seq) sz
         , bench "Array vector" $ whnf (VU.toList . vecU) sz
         , bench "Array Repa" $ nf (R.toList . arrR) sz
         ]
@@ -147,7 +147,7 @@ main = do
             [ bench "Array Massiv" $
               whnf (M.smap (+ 25) . sarrM) sz
             , bench "Array Massiv" $
-              whnf (computeAs U . fmap (+ 25) . arrM) sz
+              whnf (computeAs U . fmap (+ 25) . arrM Seq) sz
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
             , bench "Array Repa" $
               whnf (R.computeUnboxedS . R.map (+ 25) . arrR) sz
@@ -159,7 +159,7 @@ main = do
             "append"
             [ bench "Array Massiv" $
               whnf
-                (\sz' -> computeAs U $ M.append' 1 (arrM sz') (arrM sz'))
+                (\sz' -> computeAs U $ M.append' 1 (arrM Seq sz') (arrM Seq sz'))
                 sz
             , bench "Vector Unboxed" $
               whnf (\sz' -> (vecU sz') VU.++ (vecU sz')) sz

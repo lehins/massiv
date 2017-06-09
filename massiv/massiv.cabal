@@ -1,14 +1,14 @@
 name:                massiv
 version:             0.1.0.0
-synopsis:            Simple multi-dimensional Arrays
-description:         Massiv (Масси́в) is a Russian word for an Array.
+synopsis:            Massiv (Масси́в) is an Array in Russian.
+description:         Multi-dimensional Arrays with automatic fusion and parallel computation.
 homepage:            https://github.com/lehins/massiv
 license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          lehins@yandex.ru
 copyright:           2017 Alexey Kuleshevich
-category:            Web
+category:            Data, Data Structures
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
@@ -41,7 +41,7 @@ library
                      , Data.Array.Massiv.Ops.Fold
                      --, Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Ops.Transform
-  build-depends:       base >= 4.6 && < 5
+  build-depends:       base            >= 4.7 && < 5
                      , data-default
                      , deepseq
                      , primitive
@@ -194,4 +194,4 @@ Test-Suite massiv-tests
 
 source-repository head
   type:     git
-  location: https://github.com/lehins/prim-vector
+  location: https://github.com/lehins/massiv

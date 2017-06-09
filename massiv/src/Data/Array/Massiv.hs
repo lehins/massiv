@@ -20,10 +20,11 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Delayed
   , module Data.Array.Massiv.Manifest
   , module Data.Array.Massiv.Mutable
-  , module  Data.Array.Massiv.Ops.Map
+  , module Data.Array.Massiv.Ops.Map
   , module Data.Array.Massiv.Ops.Fold
   , module Data.Array.Massiv.Ops.Construct
   , module Data.Array.Massiv.Ops.Transform
+  , module Data.Array.Massiv.Mutable
   -- * Accessors
   -- ** Size information
   --, size

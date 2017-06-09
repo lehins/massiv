@@ -17,14 +17,14 @@ main = do
   let !sz = (1600, 1200) :: M.DIM2
       !szR = (Z :. fst sz :. snd sz)
   let !szs = (600, 200) :: M.DIM2
-  let !arrCM = M.computeUnboxedS $ arrM sz
-      !arrCMs = M.computeUnboxedS $ arrM szs
-      !arrCMs' = M.computeUnboxedS (M.transpose arrCMs)
+  let !arrCM = M.computeAs M.U (arrM Par sz)
+      !arrCMs = M.computeAs M.U $ arrM Par szs
+      !arrCMs' = M.computeAs M.U (M.transpose arrCMs)
       !arrCRs = R.computeUnboxedS $ arrR szs
       !arrCRs' = R.transpose2S arrCRs
       !ls1D = toListS1D arrCM
       !ls2D = toListS2D arrCM
-      arrMP sz = setComp Par (arrM sz)
+      arrMP sz = arrM Par sz
       nestedArrMP !(m, n) = setComp Par $ makeArray1D m (arr !>)
         where
           !arr = arrMP (m, n)
@@ -34,23 +34,23 @@ main = do
         "Load"
         [ bgroup
             "Light"
-            [ bench "Array Massiv" $ whnf (M.computeUnboxedP . arrM) sz
+            [ bench "Array Massiv" $ whnf (M.computeAs M.U . arrM Par) sz
             , bench "Array Massiv ID" $
-              whnf (M.computeUnboxedP . toInterleaved . arrM) sz
+              whnf (M.computeAs M.U . toInterleaved . arrM Par) sz
             , bench "Array Repa" $
               whnf (runIdentity . R.computeUnboxedP . arrR) sz
             ]
         , bgroup
             "Heavy"
-            [ bench "Array Massiv" $ whnf (M.computeUnboxedP . arrM') sz
+            [ bench "Array Massiv" $ whnf (M.computeAs M.U . arrM' Par) sz
             , bench "Array Massiv ID" $
-              whnf (M.computeUnboxedP . toInterleaved . arrM') sz
+              whnf (M.computeAs M.U . toInterleaved . arrM' Par) sz
             , bench "Array Repa" $
               whnf (runIdentity . R.computeUnboxedP . arrR') sz
             ]
         , bgroup
             "Windowed"
-            [ bench "Array Massiv" $ whnf (M.computeUnboxedP . arrWindowedM) sz
+            [ bench "Array Massiv" $ whnf (M.computeAs M.U . arrWindowedM) sz
             , bench "Array Repa" $
               whnf (runIdentity . R.computeUnboxedP . arrWindowedR) sz
             ]
@@ -77,13 +77,13 @@ main = do
     , bgroup
         "Fuse"
         [ bench "Array Massiv" $
-          whnf (M.computeUnboxedP . fmap (+ 25) . arrM) sz
+          whnf (M.computeAs M.U . M.map (+ 25) . arrM Par) sz
         , bench "Array Repa" $
           whnf (runIdentity . R.computeUnboxedP . R.map (+ 25) . arrR) sz
         ]
     , bgroup
         "Matrix Multiplication"
-        [ bench "Array Massiv" $ whnf (M.computeUnboxedP . (arrCMs' |*|)) arrCMs
+        [ bench "Array Massiv" $ whnf (M.computeAs M.U . (arrCMs' |*|)) arrCMs
         , bench "Array Repa" $ whnf (runIdentity . mmultP arrCRs') arrCRs
         ]
     ]

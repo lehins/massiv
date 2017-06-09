@@ -35,7 +35,7 @@ import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Delayed.Windowed
 --import           Data.Array.Massiv.Delayed.WindowedM
 import           Data.Array.Massiv.Manifest
-import           Data.Array.Massiv.Manifest.Unboxed
+
 import           Data.Array.Massiv.Ops.Construct
 import           Data.Array.Massiv.Ops.Fold         (ifoldlS)
 import           Data.Array.Massiv.Stencil.Internal
