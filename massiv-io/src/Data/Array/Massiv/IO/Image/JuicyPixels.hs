@@ -21,11 +21,11 @@ module Data.Array.Massiv.IO.Image.JuicyPixels
   , encodeBMP
   , encodePNG
     -- ** GIF
-  -- , GIF(..)
-  -- , JP.GifDelay
-  -- , JP.GifLooping(..)
-  -- , JP.PaletteOptions(..)
-  -- , JP.PaletteCreationMethod(..)
+  , GIF(..)
+  , JP.GifDelay
+  , JP.GifLooping(..)
+  , JP.PaletteOptions(..)
+  , JP.PaletteCreationMethod(..)
   -- -- ** HDR
   -- , HDR(..)
   -- -- ** JPG
@@ -72,15 +72,16 @@ module Data.Array.Massiv.IO.Image.JuicyPixels
 import           Prelude                   as P
 
 import qualified Codec.Picture             as JP
---import qualified Codec.Picture.Gif         as JP
 import qualified Codec.Picture.ColorQuant  as JP
+import qualified Codec.Picture.Gif         as JP
 -- import qualified Codec.Picture.Jpg         as JP
-import           Control.Monad             (msum)
+import           Control.Monad             (msum, join)
 import           Data.Array.Massiv         as M
 import           Data.Array.Massiv.IO.Base
 
+import qualified Data.ByteString           as B (ByteString)
 import qualified Data.ByteString.Lazy      as BL (ByteString)
--- import           Data.Maybe                (fromMaybe)
+import           Data.Maybe                (fromMaybe)
 -- import qualified Data.Monoid               as M (mempty)
 import           Data.Typeable
 import qualified Data.Vector.Storable      as V
@@ -220,15 +221,16 @@ data GIFSeqOptions =
                 (Maybe JP.GifLooping)
 
 instance FileFormat (Sequence GIF) where
+
   type WriteOptions (Sequence GIF) = Maybe GIFSeqOptions
   ext _ = ext GIF
 
 
-instance (ColorSpace cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
+instance (ColorSpace cs e, ToRGB cs e, Source r DIM2 (Pixel cs e)) =>
          Writable GIF (Image r cs e) where
-  encode _ opt = encodeEither GIF (encodeGIF opt)
+  encode _ opt = encodeGIF opt
   keenEncode _ opt =
-    encodeEither GIF (encodeAny (encodeGIF opt) id toPixelRGBA toPixelRGB toPixelRGBA)
+    join . encodeEither GIF (encodeAny (return . encodeGIF opt) toPixelRGB id toPixelRGB toPixelRGB)
 
 
 instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable GIF (Image S cs e) where
@@ -237,35 +239,151 @@ instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable GIF (Image S cs e)
 
 
 
-encodeGIFRGB8 :: Source r DIM2 (Pixel RGB Word8) =>
-                 WriteOptions GIF
-              -> Image r RGB Word8
-              -> BL.ByteString
-encodeGIFRGB8 Nothing =
-  either error id . uncurry JP.encodeGifImageWithPalette .
-  JP.palettize JP.defaultPaletteOptions . toJPImageRGB8
-encodeGIFRGB8 (Just palOpts) =
-  either error id . uncurry JP.encodeGifImageWithPalette .
-  JP.palettize palOpts . toJPImageRGB8
-{-# INLINE encodeGIFRGB8 #-}
+
+instance (ColorSpace cs e, Storable (Pixel cs e)) =>
+         Readable (Sequence GIF) (Array B DIM1 (Image S cs e)) where
+  decode _ _ bs = decodeGIFs fromDynamicImage bs
+  keenDecode _ _ bs = decodeGIFs fromDynamicImage bs
+
+
+-- instance (ColorSpace cs e, ToYA cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
+--          Writable (Sequence GIF) (Array B DIM1 (Image r cs e)) where
+--   encode _ opt = encodeEither GIF (encodeGIFs opt)
+--   keenEncode _ opt =
+--     encodeEither GIF (encodeAny (encodeGIFs opt) toPixelRGB toPixelRGB toPixelRGB toPixelRGBA)
+
+
+instance (ColorSpace cs e, Storable (Pixel cs e)) =>
+         Readable (Sequence GIF) (Array B DIM1 (JP.GifDelay, Image S cs e)) where
+  decode _ _ bs = decodeGIFsWithDelays fromDynamicImage bs
+  keenDecode _ _ bs = decodeGIFsWithDelays fromDynamicImage bs
+
+
+
+-- Animated GIF Format frames reading into a list
+
+decodeGIFs :: (JP.DynamicImage -> Maybe (Image S cs e))
+           -> B.ByteString -> Either String (Array B DIM1 (Image S cs e))
+decodeGIFs decoder bs = do
+  jpImgsLs <- JP.decodeGifImages bs
+  case sequence $ fmap decoder jpImgsLs of
+    Nothing     -> Left $ "Could not do an appropriate conversion"
+    Just imgsLs -> Right $ fromListS1D imgsLs
+{-# INLINE decodeGIFs #-}
+
+decodeGIFsWithDelays :: (JP.DynamicImage -> Maybe (Image S cs e))
+           -> B.ByteString -> Either String (Array B DIM1 (JP.GifDelay, Image S cs e))
+decodeGIFsWithDelays decoder bs = do
+  jpImgsLs <- JP.decodeGifImages bs
+  delays <- JP.getDelaysGifImages bs
+  case sequence $ fmap decoder jpImgsLs of
+    Nothing     -> Left $ "Could not do an appropriate conversion"
+    Just imgsLs -> Right $ fromListS1D $ P.zip delays imgsLs
+{-# INLINE decodeGIFsWithDelays #-}
+
 
 
 encodeGIF :: forall r cs e . (ColorSpace cs e, Source r DIM2 (Pixel cs e))
-          => WriteOptions GIF
+          => Maybe JP.PaletteOptions
           -> Image r cs e
-          -> Maybe BL.ByteString
-encodeGIF opt img = do
-  Refl <- eqT :: Maybe (cs :~: RGB)
+          -> Either String BL.ByteString
+encodeGIF mPal img =
   msum
-    [ do Refl <- eqT :: Maybe (e :~: Word8)
-         return $ encodeGIFRGB8 opt img
-    , return $ encodeGIFRGB8 opt $ M.map toWord8 img
+    [ maybe encodeErr Right $ do
+        Refl <- eqT :: Maybe (cs :~: Y)
+        msum
+          [ do Refl <- eqT :: Maybe (e :~: Word8)
+               return $ JP.encodeGifImage $ toJPImageY8 img
+          , return $ JP.encodeGifImage $ toJPImageY8 $ M.map toWord8 img
+          ]
+    , do palImg <-
+           maybe encodeErr Right $ do
+             Refl <- eqT :: Maybe (cs :~: RGB)
+             msum
+               [ do Refl <- eqT :: Maybe (e :~: Word8)
+                    palettizeRGB pal img
+               , palettizeRGB pal $ M.map toWord8 img
+               ]
+         uncurry JP.encodeGifImageWithPalette palImg
     ]
+  where
+    encodeErr = Left "Could not encode GIF"
+    pal = fromMaybe JP.defaultPaletteOptions mPal
 {-# INLINE encodeGIF #-}
 
 
+
+-- encodeGIFs :: forall r cs e . (ColorSpace cs e, Source r DIM2 (Pixel cs e))
+--           => Maybe JP.PaletteOptions
+--           -> Image r cs e
+--           -> Either String BL.ByteString
+-- encodeGIFs mPal img =
+--   msum
+--     [ maybe encodeErr Right $ do
+--         Refl <- eqT :: Maybe (cs :~: Y)
+--         msum
+--           [ do Refl <- eqT :: Maybe (e :~: Word8)
+--                return $ JP.encodeGifImage $ toJPImageY8 img
+--           , return $ JP.encodeGifImage $ toJPImageY8 $ M.map toWord8 img
+--           ]
+--     , do palImg <-
+--            maybe encodeErr Right $ do
+--              Refl <- eqT :: Maybe (cs :~: RGB)
+--              msum
+--                [ do Refl <- eqT :: Maybe (e :~: Word8)
+--                     palettizeRGB pal img
+--                , palettizeRGB pal $ M.map toWord8 img
+--                ]
+--          uncurry JP.encodeGifImageWithPalette palImg
+--     ]
+--   where
+--     encodeErr = Left "Could not encode GIF"
+--     pal = fromMaybe JP.defaultPaletteOptions mPal
+-- {-# INLINE encodeGIFs #-}
+
+
+
+-- encodeGIFSeq :: GIFSeqOptions
+--              -> Array B DIM1 (JP.GifDelay, Image S RGB Word8) -> Either String BL.ByteString
+-- encodeGIFSeq (GIFSeqOptions mPal mLooping) imgs =
+--   JP.encodeGifImages (getGIFSeqLoop opts) . M.map palletizeRGB where
+--   looping = fromMaybe LoopingNever mLooping
+--   pal = fromMaybe JP.defaultPaletteOptions mPal
+--   (delays, imgs) = M.unzip arr
+--   (pallets, imgsY8)
+--     getGIFSeqLoop []                  = JP.LoopingNever
+--     getGIFSeqLoop (GIFSeqLooping l:_) = l
+--     getGIFSeqLoop (_:xs)              = getGIFSeqLoop xs
+--     getGIFSeqPal []                        = JP.defaultPaletteOptions
+--     getGIFSeqPal (GIFSeqPalette palOpts:_) = palOpts
+--     getGIFSeqPal (_:xs)                    = getGIFSeqPal xs
+--     palletizeGif !(d, img) = (p, d, jimg) where
+--       !(jimg, p) = JP.palettize (getGIFSeqPal opts) $ toJPImageRGB8 img
+--     {-# INLINE palletizeGif #-}
+-- {-# INLINE encodeGIFSeq #-}
+
+
+
+palettizeRGB :: forall r e . (ColorSpace RGB e, Source r DIM2 (Pixel RGB e))
+          => JP.PaletteOptions
+          -> Image r RGB e
+          -> Maybe (JP.Image JP.Pixel8, JP.Palette)
+palettizeRGB pal img = do
+  msum
+    [ do Refl <- eqT :: Maybe (e :~: Word8)
+         return $ palettize' img
+    , return $ palettize' $ M.map toWord8 img
+    ]
+  where
+    palettize' :: forall r' . Source r' DIM2 (Pixel RGB Word8) =>
+                  Image r' RGB Word8 -> (JP.Image JP.Pixel8, JP.Palette)
+    palettize' = JP.palettize pal . toJPImageRGB8
+    {-# INLINE palettize' #-}
+{-# INLINE palettizeRGB #-}
+
+
 encodeAny
-  :: forall r cs e csY eY csYA eYA csC eC csCA eCA.
+  :: forall r cs e a csY eY csYA eYA csC eC csCA eCA.
      ( ColorSpace cs e
      , ColorSpace csC eC
      , ColorSpace csCA eCA
@@ -274,13 +392,13 @@ encodeAny
      , Source r DIM2 (Pixel cs e)
      )
   => (forall r' cs' e'. (Source r' DIM2 (Pixel cs' e'), ColorSpace cs' e') =>
-                          Image r' cs' e' -> Maybe BL.ByteString)
+                          Image r' cs' e' -> Maybe a)
   -> (Pixel cs e -> Pixel csY eY) -- ^ To preferred from Luma
   -> (Pixel cs e -> Pixel csYA eYA) -- ^ To preferred from Luma with Alpha
   -> (Pixel cs e -> Pixel csC eC) -- ^ To preferred from any color
   -> (Pixel cs e -> Pixel csCA eCA) -- ^ To preferred from any color with Alpha
   -> Image r cs e
-  -> Maybe BL.ByteString
+  -> Maybe a
 encodeAny enc toLuma toLumaA toColor toColorA img =
   msum
     [ enc img
@@ -307,6 +425,8 @@ encodeAny enc toLuma toLumaA toColor toColorA img =
     , do Refl <- eqT :: Maybe (Pixel cs e :~: Pixel X Bit)
          enc $ M.map fromPixelBinary img
     ]
+
+
 
 
 elevate
@@ -446,8 +566,9 @@ toAnyCS img =
     ]
 
 
-encodeEither :: f -> (Image r cs e -> Maybe bs)
-             -> Image r cs e
+encodeEither :: f
+             -> (a -> Maybe bs)
+             -> a
              -> Either String bs
 encodeEither _f enc img =
   case enc img of
