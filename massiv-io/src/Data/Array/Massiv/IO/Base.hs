@@ -9,15 +9,23 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.IO.Base (
-  FileFormat(..), Readable(..), Writable(..), Sequence(..), Image
+module Data.Array.Massiv.IO.Base
+  ( FileFormat(..)
+  , Readable(..)
+  , Writable(..)
+  , Sequence(..)
+  , Keen(..)
+  , Image
+  , defaultReadOptions
+  , defaultWriteOptions
   ) where
 
-import           Data.Array.Massiv
+import           Data.Array.Massiv    (Array, DIM2)
 import qualified Data.ByteString      as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
+import           Data.Default         (Default (..))
 import           Data.Typeable        (Typeable)
-import           Graphics.ColorSpace
+import           Graphics.ColorSpace  (Pixel)
 
 type Image r cs e = Array r DIM2 (Pixel cs e)
 
@@ -26,50 +34,66 @@ type Image r cs e = Array r DIM2 (Pixel cs e)
 
 -- data UnsupportedArrayType
 
+-- | Generate default read options for a file format
+defaultReadOptions :: FileFormat f => f -> ReadOptions f
+defaultReadOptions _ = def
+
+
+-- | Generate default write options for a file format
+defaultWriteOptions :: FileFormat f => f -> WriteOptions f
+defaultWriteOptions _ = def
 
 
 -- | Special wrapper for formats that support encoding/decoding sequence of array.
 newtype Sequence f = Sequence f
 
+newtype Keen f = Keen f
+
 -- | File format. Helps in guessing file format from a file extension,
 -- as well as supplying format specific options during saving the file.
-class Typeable format => FileFormat format where
+class (Default (ReadOptions f), Default (WriteOptions f), Typeable f) => FileFormat f where
   -- | Options that can be used during reading a file in this format.
-  type ReadOptions format
-  type ReadOptions format = ()
+  type ReadOptions f
+  type ReadOptions f = ()
 
   -- | Options that can be used during writing a file in this format.
-  type WriteOptions format
-  type WriteOptions format = ()
+  type WriteOptions f
+  type WriteOptions f = ()
 
   -- | Default file extension for this file format.
-  ext :: format -> String
+  ext :: f -> String
 
   -- | Other known file extensions for this file format, eg. ".jpeg", ".jpg".
-  exts :: format -> [String]
+  exts :: f -> [String]
   exts f = [ext f]
 
   -- | Checks if a file extension corresponds to the format, eg.
   -- @isFormat ".png" PNG == True@
-  isFormat :: String -> format -> Bool
+  isFormat :: String -> f -> Bool
   isFormat e f = e `elem` exts f
 
 
+instance FileFormat f => FileFormat (Keen f) where
+  type ReadOptions (Keen f) = ReadOptions f
+  type WriteOptions (Keen f) = WriteOptions f
+
+  ext (Keen f) = ext f
+
 -- | File formats that can be read into an Array.
-class FileFormat format => Readable format arr where
+class FileFormat f => Readable f arr where
 
   -- | Decode a `B.ByteString` into an Array.
-  decode :: format -> ReadOptions format -> B.ByteString -> Either String arr
+  decode :: f -> ReadOptions f -> B.ByteString -> Either String arr
 
   -- | Decode a `B.ByteString` into an Array.
-  keenDecode :: format -> ReadOptions format -> B.ByteString -> Either String arr
+  -- keenDecode :: f -> ReadOptions f -> B.ByteString -> Either String arr
 
 
 -- | Arrays that can be written into a file.
-class FileFormat format => Writable format arr where
+class FileFormat f => Writable f arr where
 
   -- | Encode an array into a `BL.ByteString`.
-  encode :: format -> WriteOptions format -> arr -> Either String BL.ByteString
+  encode :: f -> WriteOptions f -> arr -> Either String BL.ByteString
 
   -- | Encode an array into a `BL.ByteString`.
-  keenEncode :: format -> WriteOptions format -> arr -> Either String BL.ByteString
+  --keenEncode :: f -> WriteOptions f -> arr -> Either String BL.ByteString

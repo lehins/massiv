@@ -104,7 +104,7 @@ guessFormat path =
 instance FileFormat ImageFormat where
 
   ext ImageBMP = ext BMP
-  -- ext ImageGIF = ext GIF
+  ext ImageGIF = ext GIF
   -- ext ImageHDR = ext HDR
   -- ext ImageJPG = ext JPG
   ext ImagePNG = ext PNG
@@ -113,7 +113,7 @@ instance FileFormat ImageFormat where
   -- ext ImagePNM = ext PPM
 
   exts ImageBMP = exts BMP
-  -- exts ImageGIF = exts GIF
+  exts ImageGIF = exts GIF
   -- exts ImageHDR = exts HDR
   -- exts ImageJPG = exts JPG
   exts ImagePNG = exts PNG
@@ -124,26 +124,20 @@ instance FileFormat ImageFormat where
 data ImageFormat
   = ImageBMP
   | ImagePNG
+  | ImageGIF
   deriving (Enum, Show)
 
 instance (Storable (Pixel cs e), ColorSpace cs e) => Readable ImageFormat (Image S cs e) where
 
-  decode ImageBMP _ = decode BMP []
-  decode ImagePNG _ = decode PNG []
-
-  keenDecode ImageBMP _ = keenDecode BMP []
-  keenDecode ImagePNG _ = keenDecode PNG []
+  decode ImageBMP _ = decode (Keen BMP) ()
+  decode ImagePNG _ = decode (Keen PNG) ()
 
 
 instance (Storable (Pixel cs e), ToRGBA cs e, ToYA cs e, ColorSpace cs e) =>
   Writable ImageFormat (Image S cs e) where
 
-  encode ImageBMP _ = encode BMP []
-  encode ImagePNG _ = encode PNG []
-
-  keenEncode ImageBMP _ = keenEncode BMP []
-  keenEncode ImagePNG _ = keenEncode PNG []
-
+  encode ImageBMP _ = encode BMP ()
+  encode ImagePNG _ = encode PNG ()
 
 -- | This function will try to guess an image format from file's extension,
 -- then it will attempt to decode it as such. It will fall back onto the rest of
@@ -162,7 +156,7 @@ readImage path = do
   bs <- B.readFile path
   return $ do
     f :: ImageFormat <- guessFormat path
-    keenDecode f [] bs
+    decode f () bs
 {-# INLINE readImage #-}
 
 
@@ -223,13 +217,13 @@ readImage path = do
 -- highest precision 'GIF' supports and it currently cannot be saved with
 -- transparency.
 writeImage :: (Writable ImageFormat (Image r cs e)) =>
-              FilePath            -- ^ Location where an image should be written.
+              FilePath     -- ^ Location where an image should be written.
            -> Image r cs e -- ^ An image to write.
            -> IO ()
 writeImage path img = do
   let eEncoded = do
         f :: ImageFormat <- guessFormat path
-        keenEncode f [] img
+        encode f () img
   case eEncoded of
     Left err -> error err
     Right bs -> BL.writeFile path bs

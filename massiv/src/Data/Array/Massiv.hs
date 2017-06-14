@@ -121,7 +121,7 @@ smakeArrayR _ c sz f = computeF (makeArrayR D c sz f)
 
 
 smap :: (Target r ix e', Target r ix e) => (e' -> e) -> Array r ix e' -> Array r ix e
-smap f arr = computeF (map f arr)
+smap f = computeF . map f . uncomputeF
 {-# INLINE [2] smap #-}
 
 
@@ -137,5 +137,5 @@ stranspose = computeF . transpose . uncomputeF
 {-# INLINE [2] stranspose #-}
 
 {-# RULES
-"stream/unstream" forall arr . uncomputeF (computeF arr) = arr
+"uncomupte/compute" forall arr . uncomputeF (computeF arr) = arr
  #-}

@@ -33,6 +33,7 @@ library
                      -- , Data.Array.Massiv.IO.Image.Netpbm
   build-depends:       base            >= 4.7 && < 5
                      , bytestring
+                     , data-default
                      , deepseq
                      , directory
                      , filepath        >= 1.0
