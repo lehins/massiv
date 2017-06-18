@@ -17,10 +17,11 @@ module Graphics.ColorSpace.Elevator (
   , clamp01
   ) where
 
-import qualified Data.Complex        as C
+import qualified Data.Complex         as C
 import           Data.Int
 import           Data.Typeable
-import           Data.Vector.Unboxed (Unbox)
+import           Data.Vector.Storable (Storable)
+import           Data.Vector.Unboxed  (Unbox)
 import           Data.Word
 import           GHC.Float
 
@@ -34,7 +35,7 @@ import           GHC.Float
 -- >>> eToWord16 <$> rgb
 -- <RGB:(0|32768|65535)>
 --
-class (Eq e, Num e, Typeable e, Unbox e) => Elevator e where
+class (Eq e, Num e, Typeable e, Unbox e, Storable e) => Elevator e where
 
   -- | Values are scaled to @[0, 255]@ range.
   eToWord8 :: e -> Word8

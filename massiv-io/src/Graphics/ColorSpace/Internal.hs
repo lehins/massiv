@@ -25,6 +25,7 @@ import           Data.Maybe                   (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector.Generic          as V
 import qualified Data.Vector.Generic.Mutable  as VM
+import qualified Data.Vector.Storable         as VS
 import qualified Data.Vector.Unboxed          as VU
 import           Graphics.ColorSpace.Elevator
 
@@ -34,7 +35,7 @@ data family Pixel cs e :: *
 
 
 class (Eq cs, Enum cs, Show cs, Bounded cs, Typeable cs,
-      Eq (Pixel cs e), VU.Unbox (Components cs e), Elevator e)
+      Eq (Pixel cs e), VU.Unbox (Components cs e), VS.Storable (Pixel cs e), Elevator e)
       => ColorSpace cs e where
 
   type Components cs e

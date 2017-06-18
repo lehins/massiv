@@ -34,9 +34,11 @@ data instance Array D ix e = DArray { dComp :: Comp
                                     , dUnsafeIndex :: ix -> e }
 
 
+-- data instance Array F ix e = FLeft (Array D ix e)
+--                            | FRight (Array D ix e)
+
+
 -- data F = F
-
-
 
 -- data instance Array F ix e = FArray { fComp :: Comp
 --                                     , fSize :: Maybe ix

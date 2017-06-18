@@ -24,13 +24,13 @@ library
                      , Graphics.ColorSpace.X
                      , Graphics.ColorSpace.Y
                      , Graphics.ColorSpace.YCbCr
-                     --, Data.Array.Massiv.IO
-                     , Data.Array.Massiv.IO.Image
+                     , Data.Array.Massiv.IO
   other-modules:       Graphics.ColorSpace.Elevator
                      , Graphics.ColorSpace.Internal
                      , Data.Array.Massiv.IO.Base
+                     , Data.Array.Massiv.IO.Image
                      , Data.Array.Massiv.IO.Image.JuicyPixels
-                     -- , Data.Array.Massiv.IO.Image.Netpbm
+                     , Data.Array.Massiv.IO.Image.Netpbm
   build-depends:       base            >= 4.7 && < 5
                      , bytestring
                      , data-default
@@ -40,9 +40,18 @@ library
                      , massiv
                      , process
                      , JuicyPixels     >= 3.2.7
+                     , netpbm
                      , vector          >= 0.10
   default-language:    Haskell2010
   ghc-options:         -Wall
+  if os(windows)
+    CPP-options:      -DOS_Win32
+  else
+    if os(linux)
+      CPP-options:    -DOS_Linux
+    else
+      if os(darwin)
+        CPP-options:  -DOS_Mac
 
 source-repository head
   type:     git

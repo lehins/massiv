@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE Rank2Types            #-}
+{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -49,6 +49,8 @@ module Data.Array.Massiv.IO.Image.JuicyPixels
   -- * JuciyPixels conversion
   -- ** To JuicyPixels
   -- O(1) Conversion to JuicyPixels images
+  , toAnyCS
+  , decodeEither
   , toJPImageY8
   , toJPImageYA8
   , toJPImageY16
@@ -64,19 +66,19 @@ module Data.Array.Massiv.IO.Image.JuicyPixels
   , toJPImageCMYK16
   -- ** From JuicyPixels
   -- O(1) Conversion from JuicyPixels images
-  , fromJPImageY8
-  , fromJPImageYA8
-  , fromJPImageY16
-  , fromJPImageYA16
-  , fromJPImageYF
-  , fromJPImageRGB8
-  , fromJPImageRGBA8
-  , fromJPImageRGB16
-  , fromJPImageRGBA16
-  , fromJPImageRGBF
-  , fromJPImageYCbCr8
-  , fromJPImageCMYK8
-  , fromJPImageCMYK16
+  -- , fromJPImageY8
+  -- , fromJPImageYA8
+  -- , fromJPImageY16
+  -- , fromJPImageYA16
+  -- , fromJPImageYF
+  -- , fromJPImageRGB8
+  -- , fromJPImageRGBA8
+  -- , fromJPImageRGB16
+  -- , fromJPImageRGBA16
+  -- , fromJPImageRGBF
+  -- , fromJPImageYCbCr8
+  -- , fromJPImageCMYK8
+  -- , fromJPImageCMYK16
   ) where
 
 import           Prelude                   as P
@@ -113,17 +115,17 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
   encode _ _ = encodeEither BMP encodeBMP
 
 instance (ColorSpace cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
-         Writable (Keen BMP) (Image r cs e) where
+         Writable (Auto BMP) (Image r cs e) where
   encode _ _ =
     encodeEither BMP (encodeAny encodeBMP id toPixelRGBA toPixelRGB toPixelRGBA)
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable BMP (Image S cs e) where
-  decode _ _ bs = JP.decodeBitmap bs >>= decodeEither fromDynamicImage
+instance ColorSpace cs e => Readable BMP (Image S cs e) where
+  decode _ _ bs = JP.decodeBitmap bs >>= decodeEither showJP fromDynamicImage
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable (Keen BMP) (Image S cs e) where
-  decode _ _ bs = JP.decodeBitmap bs >>= decodeEither fromAnyDynamicImage
+instance ColorSpace cs e => Readable (Auto BMP) (Image S cs e) where
+  decode _ _ bs = JP.decodeBitmap bs >>= decodeEither showJP fromAnyDynamicImage
 
 
 encodeBMP :: forall r cs e . (ColorSpace cs e, Source r DIM2 (Pixel cs e))
@@ -168,16 +170,16 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
 
 
 instance (ColorSpace cs e, ToYA cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
-         Writable (Keen PNG) (Image r cs e) where
+         Writable (Auto PNG) (Image r cs e) where
   encode _ _ =
     encodeEither PNG (encodeAny encodePNG id toPixelYA toPixelRGB toPixelRGBA)
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable PNG (Image S cs e) where
-  decode _ _ bs = JP.decodePng bs >>= decodeEither fromDynamicImage
+instance ColorSpace cs e => Readable PNG (Image S cs e) where
+  decode _ _ bs = JP.decodePng bs >>= decodeEither showJP fromDynamicImage
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable (Keen PNG) (Image S cs e) where
-  decode _ _ bs = JP.decodePng bs >>= decodeEither fromAnyDynamicImage
+instance ColorSpace cs e => Readable (Auto PNG) (Image S cs e) where
+  decode _ _ bs = JP.decodePng bs >>= decodeEither showJP fromAnyDynamicImage
 
 
 
@@ -272,21 +274,21 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
   encode _ opt = encodeGIF opt
 
 instance (ColorSpace cs e, ToRGB cs e, Source r DIM2 (Pixel cs e)) =>
-         Writable (Keen GIF) (Image r cs e) where
+         Writable (Auto GIF) (Image r cs e) where
   encode _ opt =
     join . encodeEither GIF (encodeAny (return . encodeGIF opt) toPixelRGB id toPixelRGB toPixelRGB)
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable GIF (Image S cs e) where
-  decode _ _ bs = JP.decodeGif bs >>= decodeEither fromDynamicImage
+instance ColorSpace cs e => Readable GIF (Image S cs e) where
+  decode _ _ bs = JP.decodeGif bs >>= decodeEither showJP fromDynamicImage
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable (Keen GIF) (Image S cs e) where
-  decode _ _ bs = JP.decodeGif bs >>= decodeEither fromAnyDynamicImage
-
-
+instance ColorSpace cs e => Readable (Auto GIF) (Image S cs e) where
+  decode _ _ bs = JP.decodeGif bs >>= decodeEither showJP fromAnyDynamicImage
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) =>
+
+
+instance ColorSpace cs e =>
          Readable (Sequence GIF) (Array B DIM1 (Image S cs e)) where
   decode _ _ bs = decodeGIFs fromDynamicImage bs
 
@@ -297,7 +299,7 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
   encode _ opts = encodeGIFs opts
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) =>
+instance ColorSpace cs e =>
          Readable (Sequence GIF) (Array B DIM1 (JP.GifDelay, Image S cs e)) where
   decode _ _ bs = decodeGIFsWithDelays fromDynamicImage bs
 
@@ -434,16 +436,16 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
 
 
 instance (ColorSpace cs e, ToRGB cs e, Source r DIM2 (Pixel cs e)) =>
-         Writable (Keen HDR) (Image r cs e) where
+         Writable (Auto HDR) (Image r cs e) where
   encode _ _ =
     encodeEither HDR (encodeAny encodeHDR toPixelRGB toPixelRGB toPixelRGB toPixelRGB)
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable HDR (Image S cs e) where
-  decode _ _ bs = JP.decodePng bs >>= decodeEither fromDynamicImage
+instance ColorSpace cs e => Readable HDR (Image S cs e) where
+  decode _ _ bs = JP.decodePng bs >>= decodeEither showJP fromDynamicImage
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable (Keen HDR) (Image S cs e) where
-  decode _ _ bs = JP.decodePng bs >>= decodeEither fromAnyDynamicImage
+instance ColorSpace cs e => Readable (Auto HDR) (Image S cs e) where
+  decode _ _ bs = JP.decodePng bs >>= decodeEither showJP fromAnyDynamicImage
 
 
 
@@ -491,16 +493,16 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
 
 
 instance (ColorSpace cs e, ToYCbCr cs e, Source r DIM2 (Pixel cs e)) =>
-         Writable (Keen JPG) (Image r cs e) where
+         Writable (Auto JPG) (Image r cs e) where
   encode _ opts =
     encodeEither JPG (encodeAny (encodeJPG opts) toPixelYCbCr toPixelYCbCr toPixelYCbCr toPixelYCbCr)
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable JPG (Image S cs e) where
-  decode _ _ bs = JP.decodeJpeg bs >>= decodeEither fromDynamicImage
+instance ColorSpace cs e => Readable JPG (Image S cs e) where
+  decode _ _ bs = JP.decodeJpeg bs >>= decodeEither showJP fromDynamicImage
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable (Keen JPG) (Image S cs e) where
-  decode _ _ bs = JP.decodeJpeg bs >>= decodeEither fromAnyDynamicImage
+instance ColorSpace cs e => Readable (Auto JPG) (Image S cs e) where
+  decode _ _ bs = JP.decodeJpeg bs >>= decodeEither showJP fromAnyDynamicImage
 
 
 
@@ -561,17 +563,17 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
   encode _ _ = encodeEither TGA encodeTGA
 
 instance (ColorSpace cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
-         Writable (Keen TGA) (Image r cs e) where
+         Writable (Auto TGA) (Image r cs e) where
   encode _ _ =
     encodeEither TGA (encodeAny encodeTGA id toPixelRGBA toPixelRGB toPixelRGBA)
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable TGA (Image S cs e) where
-  decode _ _ bs = JP.decodeTga bs >>= decodeEither fromDynamicImage
+instance ColorSpace cs e => Readable TGA (Image S cs e) where
+  decode _ _ bs = JP.decodeTga bs >>= decodeEither showJP fromDynamicImage
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable (Keen TGA) (Image S cs e) where
-  decode _ _ bs = JP.decodeTga bs >>= decodeEither fromAnyDynamicImage
+instance ColorSpace cs e => Readable (Auto TGA) (Image S cs e) where
+  decode _ _ bs = JP.decodeTga bs >>= decodeEither showJP fromAnyDynamicImage
 
 
 encodeTGA :: forall r cs e . (ColorSpace cs e, Source r DIM2 (Pixel cs e))
@@ -622,15 +624,15 @@ instance (ColorSpace cs e, Source r DIM2 (Pixel cs e)) =>
 
 
 instance (ColorSpace cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
-         Writable (Keen TIF) (Image r cs e) where
+         Writable (Auto TIF) (Image r cs e) where
   encode _ _ = encodeEither TIF (encodeAny encodeTIF id id id toPixelRGBA)
 
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable TIF (Image S cs e) where
-  decode _ _ bs = JP.decodeTiff bs >>= decodeEither fromDynamicImage
+instance ColorSpace cs e => Readable TIF (Image S cs e) where
+  decode _ _ bs = JP.decodeTiff bs >>= decodeEither showJP fromDynamicImage
 
-instance (ColorSpace cs e, Storable (Pixel cs e)) => Readable (Keen TIF) (Image S cs e) where
-  decode _ _ bs = JP.decodeTiff bs >>= decodeEither fromAnyDynamicImage
+instance ColorSpace cs e => Readable (Auto TIF) (Image S cs e) where
+  decode _ _ bs = JP.decodeTiff bs >>= decodeEither showJP fromAnyDynamicImage
 
 
 
@@ -771,87 +773,80 @@ fromDynamicImage jpDynImg =
   case jpDynImg of
     JP.ImageY8 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Word8)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageY16 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Word16)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageYF jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Float)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageYA8 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel YA Word8)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageYA16 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel YA Word16)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageRGB8 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel RGB Word8)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageRGB16 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel RGB Word16)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageRGBF jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel RGB Float)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageRGBA8 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel RGBA Word8)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageRGBA16 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel RGBA Word16)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageYCbCr8 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel YCbCr Word8)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageCMYK8 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel CMYK Word8)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
     JP.ImageCMYK16 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel CMYK Word16)
-      return $ fromJPImageUnsafe jimg
+      fromJPImageUnsafe jimg
 
 
 
-fromAnyDynamicImage :: (ColorSpace cs e, Storable (Pixel cs e))
-                    => JP.DynamicImage -> Maybe (Image S cs e)
+fromAnyDynamicImage :: ColorSpace cs e => JP.DynamicImage -> Maybe (Image S cs e)
 fromAnyDynamicImage jpDynImg = do
   case jpDynImg of
-    JP.ImageY8 jimg     -> toAnyCS (fromJPImageUnsafe jimg :: Image S Y Word8)
-    JP.ImageY16 jimg    -> toAnyCS (fromJPImageUnsafe jimg :: Image S Y Word16)
-    JP.ImageYF jimg     -> toAnyCS (fromJPImageUnsafe jimg :: Image S Y Float)
-    JP.ImageYA8 jimg    -> toAnyCS (fromJPImageUnsafe jimg :: Image S YA Word8)
-    JP.ImageYA16 jimg   -> toAnyCS (fromJPImageUnsafe jimg :: Image S YA Word16)
-    JP.ImageRGB8 jimg   -> toAnyCS (fromJPImageUnsafe jimg :: Image S RGB Word8)
-    JP.ImageRGB16 jimg  -> toAnyCS (fromJPImageUnsafe jimg :: Image S RGB Word16)
-    JP.ImageRGBF jimg   -> toAnyCS (fromJPImageUnsafe jimg :: Image S RGB Float)
-    JP.ImageRGBA8 jimg  -> toAnyCS (fromJPImageUnsafe jimg :: Image S RGBA Word8)
-    JP.ImageRGBA16 jimg -> toAnyCS (fromJPImageUnsafe jimg :: Image S RGBA Word16)
-    JP.ImageYCbCr8 jimg -> toAnyCS (fromJPImageUnsafe jimg :: Image S YCbCr Word8)
-    JP.ImageCMYK8 jimg  -> toAnyCS (fromJPImageUnsafe jimg :: Image S CMYK Word8)
-    JP.ImageCMYK16 jimg -> toAnyCS (fromJPImageUnsafe jimg :: Image S CMYK Word16)
+    JP.ImageY8 jimg     -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word8))     >>= toAnyCS
+    JP.ImageY16 jimg    -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word16))    >>= toAnyCS
+    JP.ImageYF jimg     -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Float))     >>= toAnyCS
+    JP.ImageYA8 jimg    -> (fromJPImageUnsafe jimg :: Maybe (Image S YA Word8))    >>= toAnyCS
+    JP.ImageYA16 jimg   -> (fromJPImageUnsafe jimg :: Maybe (Image S YA Word16))   >>= toAnyCS
+    JP.ImageRGB8 jimg   -> (fromJPImageUnsafe jimg :: Maybe (Image S RGB Word8))   >>= toAnyCS
+    JP.ImageRGB16 jimg  -> (fromJPImageUnsafe jimg :: Maybe (Image S RGB Word16))  >>= toAnyCS
+    JP.ImageRGBF jimg   -> (fromJPImageUnsafe jimg :: Maybe (Image S RGB Float))   >>= toAnyCS
+    JP.ImageRGBA8 jimg  -> (fromJPImageUnsafe jimg :: Maybe (Image S RGBA Word8))  >>= toAnyCS
+    JP.ImageRGBA16 jimg -> (fromJPImageUnsafe jimg :: Maybe (Image S RGBA Word16)) >>= toAnyCS
+    JP.ImageYCbCr8 jimg -> (fromJPImageUnsafe jimg :: Maybe (Image S YCbCr Word8)) >>= toAnyCS
+    JP.ImageCMYK8 jimg  -> (fromJPImageUnsafe jimg :: Maybe (Image S CMYK Word8))  >>= toAnyCS
+    JP.ImageCMYK16 jimg -> (fromJPImageUnsafe jimg :: Maybe (Image S CMYK Word16)) >>= toAnyCS
 
 
 
 toAnyCS
-  :: forall cs' e' cs e.
-     ( ColorSpace cs' e'
-     , Storable (Pixel cs' e')
+  :: forall r cs' e' cs e.
+     ( Source r DIM2 (Pixel cs' e')
      , Storable (Pixel cs e)
      , ColorSpace cs e
-     , ToY cs' e'
      , ToYA cs' e'
-     , ToRGB cs' e'
      , ToRGBA cs' e'
-     , ToHSI cs' e'
      , ToHSIA cs' e'
-     , ToCMYK cs' e'
      , ToCMYKA cs' e'
-     , ToYCbCr cs' e'
      , ToYCbCrA cs' e'
      )
-  => Image S cs' e' -> Maybe (Image S cs e)
+  => Image r cs' e' -> Maybe (Image S cs e)
 toAnyCS img =
   msum
-    [ fmap (\Refl -> img) (eqT :: Maybe (Image S cs' e' :~: Image S cs e))
+    [ fmap (\Refl -> computeSource img) (eqT :: Maybe (Pixel cs' e' :~: Pixel cs e))
     , msum
         [ do Refl <- eqT :: Maybe (cs :~: Y)
              compute <$> elevate (M.map toPixelY img)
@@ -879,25 +874,68 @@ toAnyCS img =
     ]
 
 
-encodeEither :: f
-             -> (a -> Maybe bs)
-             -> a
-             -> Either String bs
-encodeEither _f enc img =
+encodeEither
+  :: forall f r cs e bs. (ColorSpace cs e, FileFormat f, Typeable f)
+  => f -> (Image r cs e -> Maybe bs) -> Image r cs e -> Either String bs
+encodeEither f enc img =
   case enc img of
-    Nothing -> Left "Format does not support image .... Show format and image"
+    Nothing ->
+      Left $
+      "Format " ++
+      showsTypeRep (typeOf f) " cannot be encoded as (" ++
+      showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+      showsTypeRep (typeRep (Proxy :: Proxy e)) ")"
     Just bs -> Right bs
 
-decodeEither :: (ColorSpace cs e, Storable (Pixel cs e)) =>
-                (JP.DynamicImage -> Maybe (Image S cs e))
-             -> JP.DynamicImage
-             -> Either String (Image S cs e)
-decodeEither conv jpDynImg =
-  maybe
-    (Left $ "Couldn't decode image: " ++ jpImageShowCS jpDynImg ++ " into XXX")
-    Right
-    (conv jpDynImg)
+-- decodeEither :: forall cs e. ColorSpace cs e =>
+--                 (JP.DynamicImage -> Maybe (Image S cs e))
+--              -> JP.DynamicImage
+--              -> Either String (Image S cs e)
+-- decodeEither conv jpDynImg =
+--   maybe
+--     (Left $
+--      "Cannot decode image: <" ++
+--      jpImageShowCS jpDynImg ++
+--      "> into " ++
+--      "<Image S " ++
+--      showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+--      showsTypeRep (typeRep (Proxy :: Proxy e)) ">")
+--     Right
+--     (conv jpDynImg)
 
+
+decodeEither :: forall cs e a. ColorSpace cs e =>
+                (a -> String)
+             -> (a -> Maybe (Image S cs e))
+             -> a
+             -> Either String (Image S cs e)
+decodeEither showCS conv eImg =
+  maybe
+    (Left $
+     "Cannot decode image: <" ++
+     showCS eImg ++
+     "> into " ++
+     "<Image S " ++
+     showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+     showsTypeRep (typeRep (Proxy :: Proxy e)) ">")
+    Right
+    (conv eImg)
+
+
+showJP :: JP.DynamicImage -> String
+showJP (JP.ImageY8     _) = "Image S Y Word8"
+showJP (JP.ImageY16    _) = "Image S Y Word16"
+showJP (JP.ImageYF     _) = "Image S Y Float"
+showJP (JP.ImageYA8    _) = "Image S YA Word8"
+showJP (JP.ImageYA16   _) = "Image S YA Word16"
+showJP (JP.ImageRGB8   _) = "Image S RGB Word8"
+showJP (JP.ImageRGB16  _) = "Image S RGB Word16"
+showJP (JP.ImageRGBF   _) = "Image S RGB Float"
+showJP (JP.ImageRGBA8  _) = "Image S RGBA Word8"
+showJP (JP.ImageRGBA16 _) = "Image S RGBA Word16"
+showJP (JP.ImageYCbCr8 _) = "Image S YCbCr Word8"
+showJP (JP.ImageCMYK8  _) = "Image S CMYK Word8"
+showJP (JP.ImageCMYK16 _) = "Image S CMYK Word16"
 
 
 -- Encoding
@@ -973,874 +1011,7 @@ toJPImageCMYK16 = toJPImageUnsafe
 
 -- | TODO: Validate size
 fromJPImageUnsafe :: (Storable (Pixel cs e), JP.Pixel jpx) =>
-                        JP.Image jpx -> Image S cs e
-fromJPImageUnsafe (JP.Image n m !v) = fromVector' (m, n) $ V.unsafeCast v
+                     JP.Image jpx -> Maybe (Image S cs e)
+fromJPImageUnsafe (JP.Image n m !v) = fromVector (m, n) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 
-
-fromJPImageY8 :: JP.Image JP.Pixel8 -> Image S Y Word8
-fromJPImageY8 = fromJPImageUnsafe
-{-# INLINE fromJPImageY8 #-}
-
-fromJPImageY16 :: JP.Image JP.Pixel16 -> Image S Y Word16
-fromJPImageY16 = fromJPImageUnsafe
-{-# INLINE fromJPImageY16 #-}
-
-fromJPImageYF :: JP.Image JP.PixelF -> Image S Y Float
-fromJPImageYF = fromJPImageUnsafe
-{-# INLINE fromJPImageYF #-}
-
-fromJPImageYA8 :: JP.Image JP.PixelYA8 -> Image S YA Word8
-fromJPImageYA8 = fromJPImageUnsafe
-{-# INLINE fromJPImageYA8 #-}
-
-fromJPImageYA16 :: JP.Image JP.PixelYA16 -> Image S YA Word16
-fromJPImageYA16 = fromJPImageUnsafe
-{-# INLINE fromJPImageYA16 #-}
-
-fromJPImageRGB8 :: JP.Image JP.PixelRGB8 -> Image S RGB Word8
-fromJPImageRGB8 = fromJPImageUnsafe
-{-# INLINE fromJPImageRGB8 #-}
-
-fromJPImageRGBA8 :: JP.Image JP.PixelRGBA8 -> Image S RGBA Word8
-fromJPImageRGBA8 = fromJPImageUnsafe
-{-# INLINE fromJPImageRGBA8 #-}
-
-fromJPImageRGB16 :: JP.Image JP.PixelRGB16 -> Image S RGB Word16
-fromJPImageRGB16 = fromJPImageUnsafe
-{-# INLINE fromJPImageRGB16 #-}
-
-fromJPImageRGBA16 :: JP.Image JP.PixelRGBA16 -> Image S RGBA Word16
-fromJPImageRGBA16 = fromJPImageUnsafe
-{-# INLINE fromJPImageRGBA16 #-}
-
-fromJPImageRGBF :: JP.Image JP.PixelRGBF -> Image S RGB Float
-fromJPImageRGBF = fromJPImageUnsafe
-{-# INLINE fromJPImageRGBF #-}
-
-fromJPImageYCbCr8 :: JP.Image JP.PixelYCbCr8 -> Image S YCbCr Word8
-fromJPImageYCbCr8 = fromJPImageUnsafe
-{-# INLINE fromJPImageYCbCr8 #-}
-
-fromJPImageCMYK8 :: JP.Image JP.PixelCMYK8 -> Image S CMYK Word8
-fromJPImageCMYK8 = fromJPImageUnsafe
-{-# INLINE fromJPImageCMYK8 #-}
-
-fromJPImageCMYK16 :: JP.Image JP.PixelCMYK16 -> Image S CMYK Word16
-fromJPImageCMYK16 = fromJPImageUnsafe
-{-# INLINE fromJPImageCMYK16 #-}
-
-
-
-jpImageShowCS :: JP.DynamicImage -> String
-jpImageShowCS (JP.ImageY8     _) = "Image Y Word8"
-jpImageShowCS (JP.ImageY16    _) = "Image Y Word16"
-jpImageShowCS (JP.ImageYF     _) = "Image Y Float"
-jpImageShowCS (JP.ImageYA8    _) = "Image YA Word8"
-jpImageShowCS (JP.ImageYA16   _) = "Image YA Word16"
-jpImageShowCS (JP.ImageRGB8   _) = "Image RGB Word8"
-jpImageShowCS (JP.ImageRGB16  _) = "Image RGB Word16"
-jpImageShowCS (JP.ImageRGBF   _) = "Image RGB Float"
-jpImageShowCS (JP.ImageRGBA8  _) = "Image RGBA Word8"
-jpImageShowCS (JP.ImageRGBA16 _) = "Image RGBA Word16"
-jpImageShowCS (JP.ImageYCbCr8 _) = "Image YCbCr Word8"
-jpImageShowCS (JP.ImageCMYK8  _) = "Image CMYK Word8"
-jpImageShowCS (JP.ImageCMYK16 _) = "Image CMYK Word16"
-
-
-
-
--- --------------------------------------------------------------------------------
--- -- Decoding BMP Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Readable (Image S X Bit) BMP where
---   decode _ = fmap toImageBinary . jpImageY8ToImage <=< JP.decodeBitmap
---   {-# INLINE decode #-}
-
--- instance Readable (Image S Y Word8) BMP where
---   decode _ = jpImageY8ToImage <=< JP.decodeBitmap
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Word8) BMP where
---   decode _ = jpImageRGB8ToImage <=< JP.decodeBitmap
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Word8) BMP where
---   decode _ = jpImageRGBA8ToImage <=< JP.decodeBitmap
---   {-# INLINE decode #-}
-
-
--- instance Readable (Image S Y Double) BMP where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeBitmap
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Double) BMP where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeBitmap
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Double) BMP where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeBitmap
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Double) BMP where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeBitmap
---   {-# INLINE decode #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Encoding BMP Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Writable (Image S Y Word8) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageY8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Word8) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageRGB8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Word8) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageRGBA8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S X Bit) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageY8 . fromImageBinary
---   {-# INLINE encode #-}
-
-
--- instance Writable (Image S Y Double) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageY8 . toImageWord8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Double) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageY8 . toImageWord8 . toImageY
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Double) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageRGB8 . toImageWord8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Double) BMP where
---   encode _ _ = JP.encodeBitmap . toJPImageRGBA8 . toImageWord8
---   {-# INLINE encode #-}
-
-
-
--- -- | Graphics Interchange Format image with @.gif@ extension.
--- data GIF = GIF deriving Show
-
--- instance ImageFormat GIF where
---   data SaveOption GIF = GIFPalette JP.PaletteOptions
-
---   ext _ = ".gif"
-
-
--- instance ImageFormat (Seq GIF) where
---   data SaveOption (Seq GIF) = GIFSeqPalette JP.PaletteOptions
---                             | GIFSeqLooping JP.GifLooping
---   ext _ = ext GIF
-
-
-
--- --------------------------------------------------------------------------------
--- -- Decoding GIF Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Readable (Image S RGB Word8) GIF where
---   decode _ = jpImageRGB8ToImage <=< JP.decodeGif
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Word8) GIF where
---   decode _ = jpImageRGBA8ToImage <=< JP.decodeGif
---   {-# INLINE decode #-}
-
-
--- instance Readable (Image S Y Double) GIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeGif
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Double) GIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeGif
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Double) GIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeGif
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Double) GIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeGif
---   {-# INLINE decode #-}
-
-
--- -- Animated GIF Format frames reading into a list
-
--- decodeGifs :: (JP.DynamicImage -> Either String img)
---            -> B.ByteString -> Either String [img]
--- decodeGifs decoder bs = do
---   imgs <- JP.decodeGifImages bs
---   sequence $ fmap decoder imgs
--- {-# INLINE decodeGifs #-}
-
-
--- decodeGifsDelays :: (JP.DynamicImage -> Either String img)
---                  -> B.ByteString -> Either String [(JP.GifDelay, img)]
--- decodeGifsDelays decoder bs = do
---   imgs <- JP.decodeGifImages bs
---   delays <- JP.getDelaysGifImages bs
---   gifs <- sequence $ fmap decoder imgs
---   return $ zip delays gifs
--- {-# INLINE decodeGifsDelays #-}
-
-
-
--- instance Readable [Image S RGB Word8] (Seq GIF) where
---   decode _ = decodeGifs jpImageRGB8ToImage
---   {-# INLINE decode #-}
-
--- instance Readable [Image S RGBA Word8] (Seq GIF) where
---   decode _ = decodeGifs jpImageRGBA8ToImage
---   {-# INLINE decode #-}
-
--- instance Readable [(JP.GifDelay, Image S RGB Word8)] (Seq GIF) where
---   decode _ = decodeGifsDelays jpImageRGB8ToImage
---   {-# INLINE decode #-}
-
--- instance Readable [(JP.GifDelay, Image S RGBA Word8)] (Seq GIF) where
---   decode _ = decodeGifsDelays jpImageRGBA8ToImage
---   {-# INLINE decode #-}
-
-
-
--- instance Readable [Image S Y Double] (Seq GIF) where
---   decode _ = decodeGifs (Right . jpDynamicImageToImage)
---   {-# INLINE decode #-}
-
--- instance Readable [Image S YA Double] (Seq GIF) where
---   decode _ = decodeGifs (Right . jpDynamicImageToImage)
---   {-# INLINE decode #-}
-
--- instance Readable [Image S RGB Double] (Seq GIF) where
---   decode _ = decodeGifs (Right . jpDynamicImageToImage)
---   {-# INLINE decode #-}
-
--- instance Readable [Image S RGBA Double] (Seq GIF) where
---   decode _ = decodeGifs (Right . jpDynamicImageToImage)
---   {-# INLINE decode #-}
-
-
-
--- --------------------------------------------------------------------------------
--- -- Encoding GIF Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- encodeGIF :: [SaveOption GIF]
---           -> Image S RGB Word8
---           -> BL.ByteString
--- encodeGIF []                     =
---   either error id . uncurry JP.encodeGifImageWithPalette .
---   JP.palettize JP.defaultPaletteOptions . toJPImageRGB8
--- encodeGIF (GIFPalette palOpts:_) =
---   either error id . uncurry JP.encodeGifImageWithPalette .
---   JP.palettize palOpts . toJPImageRGB8
--- {-# INLINE encodeGIF #-}
-
--- instance Writable (Image S RGB Word8) GIF where
---   encode _ = encodeGIF
---   {-# INLINE encode #-}
-
--- instance Writable (Image S Y Double) GIF where
---   encode _ _ = JP.encodeGifImage . toJPImageY8 . toImageWord8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Double) GIF where
---   encode f opts = encode f opts . toImageY
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Double) GIF where
---   encode _ opts = encodeGIF opts . toImageWord8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Double) GIF where
---   encode f opts = encode f opts . toImageRGB
---   {-# INLINE encode #-}
-
-
-
--- encodeGIFSeq :: [SaveOption (Seq GIF)]
---            -> [(JP.GifDelay, Image S RGB Word8)] -> BL.ByteString
--- encodeGIFSeq !opts =
---   either error id . JP.encodeGifImages (getGIFSeqLoop opts) . P.map palletizeGif where
---     getGIFSeqLoop []                  = JP.LoopingNever
---     getGIFSeqLoop (GIFSeqLooping l:_) = l
---     getGIFSeqLoop (_:xs)              = getGIFSeqLoop xs
---     getGIFSeqPal []                        = JP.defaultPaletteOptions
---     getGIFSeqPal (GIFSeqPalette palOpts:_) = palOpts
---     getGIFSeqPal (_:xs)                    = getGIFSeqPal xs
---     palletizeGif !(d, img) = (p, d, jimg) where
---       !(jimg, p) = JP.palettize (getGIFSeqPal opts) $ toJPImageRGB8 img
---     {-# INLINE palletizeGif #-}
--- {-# INLINE encodeGIFSeq #-}
-
--- instance Writable [(JP.GifDelay, Image S RGB Word8)] (Seq GIF) where
---   encode _ opts = encodeGIFSeq opts
---   {-# INLINE encode #-}
-
--- instance Writable [(JP.GifDelay, Image S RGB Double)] (Seq GIF) where
---   encode _ opts = encodeGIFSeq opts . fmap (fmap toImageWord8)
---   {-# INLINE encode #-}
-
-
-
--- -- | High-dynamic-range image with @.hdr@ or @.pic@ extension.
--- data HDR = HDR deriving Show
-
--- instance ImageFormat HDR where
---   data SaveOption HDR
-
---   ext _ = ".hdr"
-
---   exts _ = [".hdr", ".pic"]
-
-
--- --------------------------------------------------------------------------------
--- -- Decoding HDR Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Readable (Image S RGB Float) HDR where
---   decode _ = jpImageRGBFToImage <=< JP.decodeHDR
---   {-# INLINE decode #-}
-
-
--- instance Readable (Image S Y Double) HDR where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeHDR
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Double) HDR where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeHDR
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Double) HDR where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeHDR
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Double) HDR where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeHDR
---   {-# INLINE decode #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Encoding HDR Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Writable (Image S RGB Float) HDR where
---   encode _ _ = JP.encodeHDR . toJPImageRGBF
---   {-# INLINE encode #-}
-
--- instance Writable (Image S Y Double) HDR where
---   encode _ _ = JP.encodeHDR . toJPImageRGBF . toImageFloat . toImageRGB
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Double) HDR where
---   encode _ _ = JP.encodeHDR . toJPImageRGBF . toImageFloat . toImageRGB
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Double) HDR where
---   encode _ _ = JP.encodeHDR . toJPImageRGBF . toImageFloat
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Double) HDR where
---   encode _ _ = JP.encodeHDR . toJPImageRGBF . toImageFloat . toImageRGB
---   {-# INLINE encode #-}
-
-
--- -- | Joint Photographic Experts Group image with @.jpg@ or @.jpeg@ extension.
--- data JPG = JPG deriving Show
-
--- instance ImageFormat JPG where
---   data SaveOption JPG = JPGQuality Word8
-
---   ext _ = ".jpg"
-
---   exts _ = [".jpg", ".jpeg"]
-
-
--- --------------------------------------------------------------------------------
--- -- Decoding JPG Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Readable (Image S Y Word8) JPG where
---   decode _ = jpImageY8ToImage <=< JP.decodeJpeg
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Word8) JPG where
---   decode _ = jpImageYA8ToImage <=< JP.decodeJpeg
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Word8) JPG where
---   decode _ = jpImageRGB8ToImage <=< JP.decodeJpeg
---   {-# INLINE decode #-}
-
--- instance Readable (Image S CMYK Word8) JPG where
---   decode _ = jpImageCMYK8ToImage <=< JP.decodeJpeg
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YCbCr Word8) JPG where
---   decode _ = jpImageYCbCr8ToImage <=< JP.decodeJpeg
---   {-# INLINE decode #-}
-
-
--- instance Readable (Image S Y Double) JPG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeJpeg
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Double) JPG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeJpeg
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Double) JPG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeJpeg
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Double) JPG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeJpeg
---   {-# INLINE decode #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Encoding JPG Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- encodeJPG
---   :: JP.JpgEncodable px
---   => [SaveOption JPG] -> JP.Image px -> BL.ByteString
--- encodeJPG []               =
---   JP.encodeDirectJpegAtQualityWithMetadata 100 M.mempty
--- encodeJPG (JPGQuality q:_) =
---   JP.encodeDirectJpegAtQualityWithMetadata q M.mempty
--- {-# INLINE encodeJPG #-}
-
--- instance Writable (Image S Y Word8) JPG where
---   encode _ opts = encodeJPG opts . toJPImageY8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Word8) JPG where
---   encode _ opts = encodeJPG opts . toJPImageRGB8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S CMYK Word8) JPG where
---   encode _ opts = encodeJPG opts . toJPImageCMYK8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YCbCr Word8) JPG where
---   encode _ opts = encodeJPG opts . toJPImageYCbCr8
---   {-# INLINE encode #-}
-
--- -- | Image is converted `YCbCr` color space prior to encoding.
--- instance Writable (Image S Y Double) JPG where
---   encode _ opts = encodeJPG opts . toJPImageYCbCr8 . toImageWord8 . toImageYCbCr
---   {-# INLINE encode #-}
-
--- -- | Image is converted `YCbCr` color space prior to encoding.
--- instance Writable (Image S YA Double) JPG where
---   encode _ opts = encodeJPG opts . toJPImageYCbCr8 . toImageWord8 . toImageYCbCr
---   {-# INLINE encode #-}
-
--- -- | Image is converted `YCbCr` color space prior to encoding.
--- instance Writable (Image S RGB Double) JPG where
---   encode _ opts = encodeJPG opts . toJPImageYCbCr8 . toImageWord8 . toImageYCbCr
---   {-# INLINE encode #-}
-
--- -- | Image is converted `YCbCr` color space prior to encoding.
--- instance Writable (Image S RGBA Double) JPG where
---   encode _ opts = encodeJPG opts . toJPImageYCbCr8 . toImageWord8 . toImageYCbCr
---   {-# INLINE encode #-}
-
-
-
-
--- --------------------------------------------------------------------------------
--- -- Decoding PNG Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Readable (Image S X Bit) PNG where
---   decode _ = fmap toImageBinary . jpImageY8ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S Y Word8) PNG where
---   decode _ = jpImageY8ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S Y Word16) PNG where
---   decode _ = jpImageY16ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Word8) PNG where
---   decode _ = jpImageYA8ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Word16) PNG where
---   decode _ = jpImageYA16ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Word8) PNG where
---   decode _ = jpImageRGB8ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Word16) PNG where
---   decode _ = jpImageRGB16ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Word8) PNG where
---   decode _ = jpImageRGBA8ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Word16) PNG where
---   decode _ = jpImageRGBA16ToImage <=< JP.decodePng
---   {-# INLINE decode #-}
-
-
--- instance Readable (Image S Y Double) PNG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Double) PNG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Double) PNG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodePng
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Double) PNG where
---   decode _ = fmap jpDynamicImageToImage . JP.decodePng
---   {-# INLINE decode #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Encoding PNG Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Writable (Image S X Bit) PNG where
---   encode _ _ = JP.encodePng . toJPImageY8 . fromImageBinary
---   {-# INLINE encode #-}
-
--- instance Writable (Image S Y Word8) PNG where
---   encode _ _ = JP.encodePng . toJPImageY8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S Y Word16) PNG where
---   encode _ _ = JP.encodePng . toJPImageY16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Word8) PNG where
---   encode _ _ = JP.encodePng . toJPImageYA8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Word16) PNG where
---   encode _ _ = JP.encodePng . toJPImageYA16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Word8) PNG where
---   encode _ _ = JP.encodePng . toJPImageRGB8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Word16) PNG where
---   encode _ _ = JP.encodePng . toJPImageRGB16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Word8) PNG where
---   encode _ _ = JP.encodePng . toJPImageRGBA8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Word16) PNG where
---   encode _ _ = JP.encodePng . toJPImageRGBA16
---   {-# INLINE encode #-}
-
-
--- instance Writable (Image S Y Double) PNG where
---   encode _ _ = JP.encodePng . toJPImageY16 . toImageWord16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Double) PNG where
---   encode _ _ = JP.encodePng . toJPImageYA16 . toImageWord16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Double) PNG where
---   encode _ _ = JP.encodePng . toJPImageRGB16 . toImageWord16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Double) PNG where
---   encode _ _ = JP.encodePng . toJPImageRGBA16 . toImageWord16
---   {-# INLINE encode #-}
-
-
-
-
-
-
--- -- | Truevision Graphics Adapter image with .tga extension.
--- data TGA = TGA
-
--- instance ImageFormat TGA where
---   data SaveOption TGA
-
---   ext _ = ".tga"
---   {-# INLINE ext #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Decoding TGA Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Readable (Image S X Bit) TGA where
---   decode _ = fmap toImageBinary . jpImageY8ToImage <=< JP.decodeTga
---   {-# INLINE decode #-}
-
--- instance Readable (Image S Y Word8) TGA where
---   decode _ = jpImageY8ToImage <=< JP.decodeTga
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Word8) TGA where
---   decode _ = jpImageRGB8ToImage <=< JP.decodeTga
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Word8) TGA where
---   decode _ = jpImageRGBA8ToImage <=< JP.decodeTga
---   {-# INLINE decode #-}
-
-
--- instance Readable (Image S Y Double) TGA where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTga
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Double) TGA where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTga
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Double) TGA where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTga
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Double) TGA where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTga
---   {-# INLINE decode #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Encoding TGA Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Writable (Image S X Bit) TGA where
---   encode _ _ = JP.encodeTga . toJPImageY8 . fromImageBinary
---   {-# INLINE encode #-}
-
--- instance Writable (Image S Y Word8) TGA where
---   encode _ _ = JP.encodeTga . toJPImageY8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Word8) TGA where
---   encode _ _ = JP.encodeTga . toJPImageRGB8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Word8) TGA where
---   encode _ _ = JP.encodeTga . toJPImageRGBA8
---   {-# INLINE encode #-}
-
-
--- instance Writable (Image S Y Double) TGA where
---   encode _ _ = JP.encodeTga . toJPImageY8 . toImageWord8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Double) TGA where
---   encode _ _ = JP.encodeTga . toJPImageY8 . toImageWord8 . toImageY
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Double) TGA where
---   encode _ _ = JP.encodeTga . toJPImageRGB8 . toImageWord8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Double) TGA where
---   encode _ _ = JP.encodeTga . toJPImageRGBA8 . toImageWord8
---   {-# INLINE encode #-}
-
-
-
--- -- | Tagged Image File Format image with @.tif@ or @.tiff@ extension.
--- data TIF = TIF deriving Show
-
--- instance ImageFormat TIF where
---   data SaveOption TIF
-
---   ext _ = ".tif"
---   {-# INLINE ext #-}
-
---   exts _ = [".tif", ".tiff"]
---   {-# INLINE exts #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Decoding TIF Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Readable (Image S X Bit) TIF where
---   decode _ = fmap toImageBinary . jpImageY8ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S Y Word8) TIF where
---   decode _ = jpImageY8ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S Y Word16) TIF where
---   decode _ = jpImageY16ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Word8) TIF where
---   decode _ = jpImageYA8ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Word16) TIF where
---   decode _ = jpImageYA16ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Word8) TIF where
---   decode _ = jpImageRGB8ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Word16) TIF where
---   decode _ = jpImageRGB16ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Word8) TIF where
---   decode _ = jpImageRGBA8ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Word16) TIF where
---   decode _ = jpImageRGBA16ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S CMYK Word8) TIF where
---   decode _ = jpImageCMYK8ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S CMYK Word16) TIF where
---   decode _ = jpImageCMYK16ToImage <=< JP.decodeTiff
---   {-# INLINE decode #-}
-
-
--- instance Readable (Image S Y Double) TIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S YA Double) TIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGB Double) TIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTiff
---   {-# INLINE decode #-}
-
--- instance Readable (Image S RGBA Double) TIF where
---   decode _ = fmap jpDynamicImageToImage . JP.decodeTiff
---   {-# INLINE decode #-}
-
-
--- --------------------------------------------------------------------------------
--- -- Encoding TIF Format ---------------------------------------------------------
--- --------------------------------------------------------------------------------
-
--- instance Writable (Image S Y Word8) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageY8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S Y Word16) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageY16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Word8) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageYA8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Word16) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageYA16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Word8) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageRGB8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Word16) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageRGB16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Word8) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageRGBA8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Word16) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageRGBA16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YCbCr Word8) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageYCbCr8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S CMYK Word8) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageCMYK8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S CMYK Word16) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageCMYK16
---   {-# INLINE encode #-}
-
-
--- instance Writable (Image S X Bit) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageY8 . fromImageBinary
---   {-# INLINE encode #-}
-
--- instance Writable (Image S Y Double) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageY16 . toImageWord16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YA Double) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageYA16 . toImageWord16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGB Double) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageRGB16 . toImageWord16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S RGBA Double) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageRGBA16 . toImageWord16
---   {-# INLINE encode #-}
-
--- instance Writable (Image S YCbCr Double) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageYCbCr8 . toImageWord8
---   {-# INLINE encode #-}
-
--- instance Writable (Image S CMYK Double) TIF where
---   encode _ _ = JP.encodeTiff . toJPImageCMYK16 . toImageWord16
---   {-# INLINE encode #-}
-
-
-
--- encodeAnyBMP :: forall r cs e . (ColorSpace cs e, Source r DIM2 (Pixel cs e))
---           => Image r cs e -> Maybe BL.ByteString
--- encodeAnyBMP img =
---   msum
---     [ encodeBMP img
---     , do Refl <- eqT :: Maybe (cs :~: YA)
---          encodeBMP $ M.map toPixelRGBA img
---     , do Refl <- eqT :: Maybe (cs :~: HSI)
---          encodeBMP $ M.map toPixelRGB img
---     , do Refl <- eqT :: Maybe (cs :~: HSIA)
---          encodeBMP $ M.map toPixelRGBA img
---     , do Refl <- eqT :: Maybe (cs :~: YCbCr)
---          encodeBMP $ M.map toPixelRGB img
---     , do Refl <- eqT :: Maybe (cs :~: YCbCrA)
---          encodeBMP $ M.map toPixelRGBA img
---     , do Refl <- eqT :: Maybe (cs :~: CMYK)
---          encodeBMP $ M.map toPixelRGB img
---     , do Refl <- eqT :: Maybe (cs :~: CMYKA)
---          encodeBMP $ M.map toPixelRGBA img
---     ]

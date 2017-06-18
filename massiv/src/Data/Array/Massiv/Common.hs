@@ -81,7 +81,7 @@ instance (Typeable e, Massiv r ix e) => Show (Array r ix e) where
   show arr =
     "<Array " ++
     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-    (show (size arr)) ++ " " ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ">"
+    (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
 
 
 class Massiv r ix e => Source r ix e where

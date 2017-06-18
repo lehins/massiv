@@ -1,10 +1,11 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 -- |
 -- Module      : Graphics.Image.IO
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -13,7 +14,7 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Graphics.Image.IO (
+module Data.Array.Massiv.IO
   -- -- * Reading
   -- readImage, readImage',
   -- readImageExact, readImageExact',
@@ -39,26 +40,25 @@ module Graphics.Image.IO (
   -- ** Animated GIF
 
   -- $animation
-  ) where
+  where
 
 import           Control.Concurrent         (forkIO)
 import           Control.Exception          (bracket)
 import           Control.Monad              (guard, msum, void)
-import qualified Control.Monad              as M (foldM)
-import qualified Data.ByteString            as B (readFile)
-import qualified Data.ByteString.Lazy       as BL (hPut, writeFile)
-import           Data.Char                  (toLower)
-import           Data.Maybe                 (fromMaybe)
-
+--import qualified Control.Monad              as M (foldM)
 import           Data.Array.Massiv
 import           Data.Array.Massiv.IO.Base
 import           Data.Array.Massiv.IO.Image
-import           Data.Proxy
+import qualified Data.ByteString            as B
+import qualified Data.ByteString.Lazy       as BL
+-- import           Data.Maybe                 (fromMaybe)
+-- import           Data.Proxy
+import           Data.Default               (def)
 import           Graphics.ColorSpace
 import           Prelude                    as P hiding (readFile, writeFile)
 import           System.Directory           (createDirectoryIfMissing,
                                              getTemporaryDirectory)
-import           System.FilePath            (takeExtension, (</>))
+import           System.FilePath
 import           System.IO                  (hClose, openBinaryTempFile)
 import           System.Process             (readProcess)
 
@@ -74,90 +74,88 @@ data ExternalViewer =
   deriving Show
 
 
-guessFormat :: (FileFormat f, Enum f) => FilePath -> Either String f
-guessFormat path =
-  maybe (Left $ "Could not deduce format from file name: " ++ path) Right $
-  headMaybe . dropWhile (not . isFormat e) . enumFrom . toEnum $ 0
-  where
-    e = P.map toLower . takeExtension $ path
-    headMaybe ls =
-      if P.null ls
-        then Nothing
-        else Just $ head ls
 
 
--- checkFormat :: FileFormat f => f -> FilePath -> Bool
--- checkFormat f path = isFormat e f
---   where e = P.map toLower . takeExtension $ path
---         headMaybe ls = if P.null ls then Nothing else Just $ head ls
+readArrayEither :: Readable f arr =>
+                   f -> ReadOptions f -> FilePath -> IO (Either String arr)
+readArrayEither format opts path = decode format opts <$> B.readFile path
 
--- getReadbleFormat :: Readable f arr => Proxy arr -> FilePath -> Maybe f
--- getReadbleFormat _ path =
---   msum
---     [ do guard (checkFormat BMP path)
---          return BMP
---     , do guard (checkFormat PNG path)
---          return PNG
---     ]
+readArray :: Readable f b => f -> ReadOptions f -> FilePath -> IO b
+readArray format opts path = either error id <$> readArrayEither format opts path
 
 
-instance FileFormat ImageFormat where
-
-  ext ImageBMP = ext BMP
-  ext ImageGIF = ext GIF
-  -- ext ImageHDR = ext HDR
-  -- ext ImageJPG = ext JPG
-  ext ImagePNG = ext PNG
-  -- ext ImageTGA = ext TGA
-  -- ext ImageTIF = ext TIF
-  -- ext ImagePNM = ext PPM
-
-  exts ImageBMP = exts BMP
-  exts ImageGIF = exts GIF
-  -- exts ImageHDR = exts HDR
-  -- exts ImageJPG = exts JPG
-  exts ImagePNG = exts PNG
-  -- exts ImageTGA = exts TGA
-  -- exts ImageTIF = exts TIF
-  -- exts ImagePNM = [ext PBM, ext PGM, ext PPM]
-
-data ImageFormat
-  = ImageBMP
-  | ImagePNG
-  | ImageGIF
-  deriving (Enum, Show)
-
-instance (Storable (Pixel cs e), ColorSpace cs e) => Readable ImageFormat (Image S cs e) where
-
-  decode ImageBMP _ = decode (Keen BMP) ()
-  decode ImagePNG _ = decode (Keen PNG) ()
+-- | Just like `readImage`, but will return `Left` `Exception` instead of
+-- throwing it upon a decoding error.
+readImageEither :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
+                   FilePath -- ^ File path for an image
+                -> IO (Either String (Image S cs e))
+readImageEither path = do
+  bs <- B.readFile path
+  return $ decodeImage imageReadFormats path bs
 
 
-instance (Storable (Pixel cs e), ToRGBA cs e, ToYA cs e, ColorSpace cs e) =>
-  Writable ImageFormat (Image S cs e) where
-
-  encode ImageBMP _ = encode BMP ()
-  encode ImagePNG _ = encode PNG ()
-
--- | This function will try to guess an image format from file's extension,
--- then it will attempt to decode it as such. It will fall back onto the rest of
--- the supported formats and will try to read them regarless of file's
--- extension. Whenever image cannot be decoded, 'Left' containing all errors for
--- each attempted format will be returned, and 'Right' containing an image
--- otherwise. Image will be read with a type signature specified:
+-- | This function will try to guess an image format from file's extension, then
+-- it will attempt to decode it as such. Whenever image cannot be decoded,
+-- 'Left' containing all errors for each attempted format will be returned, and
+-- 'Right' containing an image otherwise. Image will be read with a type
+-- signature specified:
 --
---  >>> frog <- readImage "images/frog.jpg" :: IO (Either String (Image S RGB Word8))
+--  >>> frog :: Image S YCbCr Word8 <- readImage "images/frog.jpg"
 --  >>> displayImage frog
 --
-readImage :: Readable ImageFormat (Image S cs e) =>
-             FilePath -- ^ File path for an image
-          -> IO (Either String (Image S cs e))
+readImage :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
+              FilePath -- ^ File path for an image
+           -> IO (Image S cs e)
 readImage path = do
-  bs <- B.readFile path
-  return $ do
-    f :: ImageFormat <- guessFormat path
-    decode f () bs
+  eImg <- readImageEither path
+  case eImg of
+    Left err  -> error err
+    Right img -> return img
 {-# INLINE readImage #-}
+
+
+
+readImageAuto :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
+                  FilePath -- ^ File path for an image
+               -> IO (Image S cs e)
+readImageAuto path = do
+  bs <- B.readFile path
+  case decodeImage imageReadAutoFormats path bs of
+    Left err  -> error err
+    Right img -> return img
+
+
+
+-- | Just like 'readImage', this function will guess an output file format from the
+-- extension and write to file any image that is in one of 'Y', 'YA', 'RGB' or
+-- 'RGBA' color spaces with 'Double' precision. While doing necessary
+-- conversions the choice will be given to the most suited color space supported
+-- by the format. For instance, in case of a 'PNG' format, an ('Image' @arr@
+-- 'RGBA' 'Double') would be written as @RGBA16@, hence preserving transparency
+-- and using highest supported precision 'Word16'. At the same time, writing
+-- that image in 'GIF' format would save it in @RGB8@, since 'Word8' is the
+-- highest precision 'GIF' supports and it currently cannot be saved with
+-- transparency.
+writeImage' :: (Source r DIM2 (Pixel cs e), ColorSpace cs e) =>
+               FilePath -> Image r cs e -> IO ()
+writeImage' path img = do
+  case encodeImage imageWriteFormats path img of
+    Left err -> error err
+    Right bs ->  BL.writeFile path bs
+
+writeImageAuto
+  :: ( Source r DIM2 (Pixel cs e)
+     , ColorSpace cs e
+     , ToYA cs e
+     , ToRGBA cs e
+     , ToYCbCr cs e
+     , ToCMYK cs e
+     )
+  => FilePath -> Image r cs e -> IO ()
+writeImageAuto path img = do
+  case encodeImage imageWriteAutoFormats path img of
+    Left err -> error err
+    Right bs ->  BL.writeFile path bs
 
 
 
@@ -206,51 +204,8 @@ readImage path = do
 -- {-# INLINE readImageExact' #-}
 
 
--- | Just like 'readImage', this function will guess an output file format from the
--- extension and write to file any image that is in one of 'Y', 'YA', 'RGB' or
--- 'RGBA' color spaces with 'Double' precision. While doing necessary
--- conversions the choice will be given to the most suited color space supported
--- by the format. For instance, in case of a 'PNG' format, an ('Image' @arr@
--- 'RGBA' 'Double') would be written as @RGBA16@, hence preserving transparency
--- and using highest supported precision 'Word16'. At the same time, writing
--- that image in 'GIF' format would save it in @RGB8@, since 'Word8' is the
--- highest precision 'GIF' supports and it currently cannot be saved with
--- transparency.
-writeImage :: (Writable ImageFormat (Image r cs e)) =>
-              FilePath     -- ^ Location where an image should be written.
-           -> Image r cs e -- ^ An image to write.
-           -> IO ()
-writeImage path img = do
-  let eEncoded = do
-        f :: ImageFormat <- guessFormat path
-        encode f () img
-  case eEncoded of
-    Left err -> error err
-    Right bs -> BL.writeFile path bs
-{-# INLINE writeImage #-}
 
 
--- writeImage'
---   :: Array2D r cs e
---   => FilePath -- ^ Location where an image should be written.
---   -> Image r cs e -- ^ An image to write.
---   -> IO ()
--- writeImage' path img =
---   case mEncoded of
---     Just encoded -> BL.writeFile path encoded
---     Nothing ->
---       error $
---       "writeImage: Could not guess output format. Use 'writeImageExact' " ++
---       "or supply a filename with supported format."
---   where
---     mEncoded = do
---       msum
---         [ do guard (checkFormat BMP path)
---              return $ encodeBMP img
---         , do guard (checkFormat PNG path)
---              return $ encodePNG img
---         ]
--- {-# INLINE writeImage' #-}
 
 -- -- | Write an image in a specific format, while supplying any format specific
 -- -- options. Precision and color space, that an image will be written as, is decided
@@ -269,58 +224,61 @@ writeImage path img = do
 -- {-# INLINE writeImageExact #-}
 
 
--- -- | An image is written as a @.tiff@ file into an operating system's temporary
--- -- directory and passed as an argument to the external viewer program.
--- displayImageUsing :: (Array2D r cs e, Storable (Pixel cs e),
---                       Writable (Image S cs e) TIF) =>
---                      ExternalViewer -- ^ External viewer to use
---                   -> Bool -- ^ Should the call be blocking
---                   -> Image r cs e -- ^ Image to display
---                   -> IO ()
--- displayImageUsing viewer block img = do
---   let display = do
---         tmpDir <- fmap (</> "hip") getTemporaryDirectory
---         createDirectoryIfMissing True tmpDir
---         bracket (openBinaryTempFile tmpDir "tmp-img.tiff")
---           (hClose . snd)
---           (\ (imgPath, imgHandle) -> do
---               BL.hPut imgHandle $ encode TIF [] $ exchange S img
---               hClose imgHandle
---               displayImageFile viewer imgPath)
---   if block
---     then display
---     else void $ forkIO display
+-- | An image is written as a @.tiff@ file into an operating system's temporary
+-- directory and passed as an argument to the external viewer program.
+-- displayImageUsing :: Writable (Auto TIF) (Image r cs e) =>
+--                      ExternalViewer -- ^ Image viewer program
+--                   -> Bool -- ^ Should a call block the cuurrent thread untul viewer is closed.
+--                   -> Image r cs e -> IO ()
+displayImageUsing :: Writable (Auto TIF) (Image r cs e) =>
+                     ExternalViewer -- ^ Image viewer program
+                  -> Bool -- ^ Should a call block the cuurrent thread untul viewer is closed.
+                  -> Image r cs e -> IO ()
+displayImageUsing viewer block img =
+  if block
+    then display
+    else void $ forkIO display
+  where
+    bsImg = case encode (Auto TIF) () img of
+      Left err -> error err
+      Right bs -> bs
+    display = do
+        tmpDir <- fmap (</> "hip") getTemporaryDirectory
+        createDirectoryIfMissing True tmpDir
+        bracket (openBinaryTempFile tmpDir "tmp-img.tiff")
+          (hClose . snd)
+          (\ (imgPath, imgHandle) -> do
+              BL.hPut imgHandle bsImg
+              hClose imgHandle
+              displayImageFile viewer imgPath)
 
 
 
--- -- | Displays an image file by calling an external image viewer.
--- displayImageFile :: ExternalViewer -> FilePath -> IO ()
--- displayImageFile (ExternalViewer exe args ix) imgPath =
---   void $ readProcess exe (argsBefore ++ [imgPath] ++ argsAfter) ""
---   where (argsBefore, argsAfter) = splitAt ix args
+-- | Displays an image file by calling an external image viewer.
+displayImageFile :: ExternalViewer -> FilePath -> IO ()
+displayImageFile (ExternalViewer exe args ix) imgPath =
+  void $ readProcess exe (argsBefore ++ [imgPath] ++ argsAfter) ""
+  where (argsBefore, argsAfter) = P.splitAt ix args
 
 
--- -- | Makes a call to an external viewer that is set as a default image viewer by
--- -- the OS. This is a non-blocking function call, so it might take some time
--- -- before an image will appear.
--- displayImage :: (Array2D r cs e, Storable (Pixel cs e),
---                  Writable (Image S cs e) TIF) =>
---                 Image r cs e -- ^ Image to be displayed
---              -> IO ()
--- displayImage = displayImageUsing defaultViewer False
+-- | Makes a call to an external viewer that is set as a default image viewer by
+-- the OS. This is a non-blocking function call, so it might take some time
+-- before an image will appear.
+displayImage :: Writable (Auto TIF) (Image r cs e) => Image r cs e -> IO ()
+displayImage = displayImageUsing defaultViewer False
 
--- -- | Default viewer is inferred from the operating system.
--- defaultViewer :: ExternalViewer
--- defaultViewer =
--- #if defined(OS_Win32)
---   (ExternalViewer "explorer.exe" [] 0)
--- #elif defined(OS_Linux)
---   (ExternalViewer "xdg-open" [] 0)
--- #elif defined(OS_Mac)
---   (ExternalViewer "open" [] 0)
--- #else
---   error "Graphics.Image.IO.defaultViewer: Could not determine default viewer."
--- #endif
+-- | Default viewer is inferred from the operating system.
+defaultViewer :: ExternalViewer
+defaultViewer =
+#if defined(OS_Win32)
+  ExternalViewer "explorer.exe" [] 0
+#elif defined(OS_Linux)
+  ExternalViewer "xdg-open" [] 0
+#elif defined(OS_Mac)
+  ExternalViewer "open" [] 0
+#else
+  error "Graphics.Image.IO.defaultViewer: Could not determine default viewer."
+#endif
 
 
 -- | @eog \/tmp\/hip\/img.tiff@

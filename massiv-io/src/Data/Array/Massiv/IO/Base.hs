@@ -14,7 +14,7 @@ module Data.Array.Massiv.IO.Base
   , Readable(..)
   , Writable(..)
   , Sequence(..)
-  , Keen(..)
+  , Auto(..)
   , Image
   , defaultReadOptions
   , defaultWriteOptions
@@ -24,7 +24,7 @@ import           Data.Array.Massiv    (Array, DIM2)
 import qualified Data.ByteString      as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import           Data.Default         (Default (..))
-import           Data.Typeable        (Typeable)
+
 import           Graphics.ColorSpace  (Pixel)
 
 type Image r cs e = Array r DIM2 (Pixel cs e)
@@ -47,11 +47,11 @@ defaultWriteOptions _ = def
 -- | Special wrapper for formats that support encoding/decoding sequence of array.
 newtype Sequence f = Sequence f
 
-newtype Keen f = Keen f
+newtype Auto f = Auto f
 
 -- | File format. Helps in guessing file format from a file extension,
 -- as well as supplying format specific options during saving the file.
-class (Default (ReadOptions f), Default (WriteOptions f), Typeable f) => FileFormat f where
+class (Default (ReadOptions f), Default (WriteOptions f)) => FileFormat f where
   -- | Options that can be used during reading a file in this format.
   type ReadOptions f
   type ReadOptions f = ()
@@ -73,27 +73,22 @@ class (Default (ReadOptions f), Default (WriteOptions f), Typeable f) => FileFor
   isFormat e f = e `elem` exts f
 
 
-instance FileFormat f => FileFormat (Keen f) where
-  type ReadOptions (Keen f) = ReadOptions f
-  type WriteOptions (Keen f) = WriteOptions f
+instance FileFormat f => FileFormat (Auto f) where
+  type ReadOptions (Auto f) = ReadOptions f
+  type WriteOptions (Auto f) = WriteOptions f
 
-  ext (Keen f) = ext f
+  ext (Auto f) = ext f
 
 -- | File formats that can be read into an Array.
-class FileFormat f => Readable f arr where
+class Readable f arr where
 
   -- | Decode a `B.ByteString` into an Array.
   decode :: f -> ReadOptions f -> B.ByteString -> Either String arr
 
-  -- | Decode a `B.ByteString` into an Array.
-  -- keenDecode :: f -> ReadOptions f -> B.ByteString -> Either String arr
-
 
 -- | Arrays that can be written into a file.
-class FileFormat f => Writable f arr where
+class Writable f arr where
 
   -- | Encode an array into a `BL.ByteString`.
   encode :: f -> WriteOptions f -> arr -> Either String BL.ByteString
 
-  -- | Encode an array into a `BL.ByteString`.
-  --keenEncode :: f -> WriteOptions f -> arr -> Either String BL.ByteString
