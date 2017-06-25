@@ -76,22 +76,10 @@ data ExternalViewer =
 
 
 
-readArrayEither :: Readable f arr =>
-                   f -> ReadOptions f -> FilePath -> IO (Either String arr)
-readArrayEither format opts path = decode format opts <$> B.readFile path
+readArray :: Readable f arr =>
+             f -> ReadOptions f -> FilePath -> IO arr
+readArray format opts path = decode format opts <$> B.readFile path
 
-readArray :: Readable f b => f -> ReadOptions f -> FilePath -> IO b
-readArray format opts path = either error id <$> readArrayEither format opts path
-
-
--- | Just like `readImage`, but will return `Left` `Exception` instead of
--- throwing it upon a decoding error.
-readImageEither :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
-                   FilePath -- ^ File path for an image
-                -> IO (Either String (Image S cs e))
-readImageEither path = do
-  bs <- B.readFile path
-  return $ decodeImage imageReadFormats path bs
 
 
 -- | This function will try to guess an image format from file's extension, then
@@ -106,11 +94,7 @@ readImageEither path = do
 readImage :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
               FilePath -- ^ File path for an image
            -> IO (Image S cs e)
-readImage path = do
-  eImg <- readImageEither path
-  case eImg of
-    Left err  -> error err
-    Right img -> return img
+readImage path = decodeImage imageReadFormats path <$> B.readFile path
 {-# INLINE readImage #-}
 
 
@@ -118,11 +102,7 @@ readImage path = do
 readImageAuto :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
                   FilePath -- ^ File path for an image
                -> IO (Image S cs e)
-readImageAuto path = do
-  bs <- B.readFile path
-  case decodeImage imageReadAutoFormats path bs of
-    Left err  -> error err
-    Right img -> return img
+readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
 
 
 
@@ -136,12 +116,12 @@ readImageAuto path = do
 -- that image in 'GIF' format would save it in @RGB8@, since 'Word8' is the
 -- highest precision 'GIF' supports and it currently cannot be saved with
 -- transparency.
-writeImage' :: (Source r DIM2 (Pixel cs e), ColorSpace cs e) =>
+writeImage :: (Source r DIM2 (Pixel cs e), ColorSpace cs e) =>
                FilePath -> Image r cs e -> IO ()
-writeImage' path img = do
-  case encodeImage imageWriteFormats path img of
-    Left err -> error err
-    Right bs ->  BL.writeFile path bs
+writeImage path img = do
+  BL.writeFile path $ encodeImage imageWriteFormats path img
+
+
 
 writeImageAuto
   :: ( Source r DIM2 (Pixel cs e)
@@ -152,10 +132,8 @@ writeImageAuto
      , ToCMYK cs e
      )
   => FilePath -> Image r cs e -> IO ()
-writeImageAuto path img = do
-  case encodeImage imageWriteAutoFormats path img of
-    Left err -> error err
-    Right bs ->  BL.writeFile path bs
+writeImageAuto path img =
+  BL.writeFile path $ encodeImage imageWriteAutoFormats path img
 
 
 
@@ -239,18 +217,16 @@ displayImageUsing viewer block img =
     then display
     else void $ forkIO display
   where
-    bsImg = case encode (Auto TIF) () img of
-      Left err -> error err
-      Right bs -> bs
     display = do
-        tmpDir <- fmap (</> "hip") getTemporaryDirectory
-        createDirectoryIfMissing True tmpDir
-        bracket (openBinaryTempFile tmpDir "tmp-img.tiff")
-          (hClose . snd)
-          (\ (imgPath, imgHandle) -> do
-              BL.hPut imgHandle bsImg
-              hClose imgHandle
-              displayImageFile viewer imgPath)
+      tmpDir <- fmap (</> "hip") getTemporaryDirectory
+      createDirectoryIfMissing True tmpDir
+      bracket
+        (openBinaryTempFile tmpDir "tmp-img.tiff")
+        (hClose . snd)
+        (\(imgPath, imgHandle) -> do
+           BL.hPut imgHandle (encode (Auto TIF) () img)
+           hClose imgHandle
+           displayImageFile viewer imgPath)
 
 
 

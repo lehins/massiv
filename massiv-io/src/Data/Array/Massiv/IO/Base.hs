@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.IO.Base
@@ -13,26 +15,42 @@ module Data.Array.Massiv.IO.Base
   ( FileFormat(..)
   , Readable(..)
   , Writable(..)
+  , ConvertError(..)
+  , EncodeError(..)
+  , DecodeError(..)
   , Sequence(..)
   , Auto(..)
   , Image
   , defaultReadOptions
   , defaultWriteOptions
+  , toProxy
+  , fromMaybeEncode
+  , fromEitherDecode
   ) where
 
-import           Data.Array.Massiv    (Array, DIM2)
+import           Control.Exception
+import           Data.Array.Massiv    (Array, DIM2, S)
 import qualified Data.ByteString      as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import           Data.Default         (Default (..))
-
-import           Graphics.ColorSpace  (Pixel)
+import           Data.Maybe           (fromMaybe)
+import           Data.Typeable
+import           Graphics.ColorSpace  (ColorSpace, Pixel)
 
 type Image r cs e = Array r DIM2 (Pixel cs e)
 
+newtype ConvertError = ConvertError String deriving Show
 
--- data UnknownExtension
+instance Exception ConvertError
 
--- data UnsupportedArrayType
+newtype DecodeError = DecodeError String deriving Show
+
+instance Exception DecodeError
+
+newtype EncodeError = EncodeError String deriving Show
+
+instance Exception EncodeError
+
 
 -- | Generate default read options for a file format
 defaultReadOptions :: FileFormat f => f -> ReadOptions f
@@ -45,13 +63,13 @@ defaultWriteOptions _ = def
 
 
 -- | Special wrapper for formats that support encoding/decoding sequence of array.
-newtype Sequence f = Sequence f
+newtype Sequence f = Sequence f deriving Show
 
-newtype Auto f = Auto f
+newtype Auto f = Auto f deriving Show
 
 -- | File format. Helps in guessing file format from a file extension,
 -- as well as supplying format specific options during saving the file.
-class (Default (ReadOptions f), Default (WriteOptions f)) => FileFormat f where
+class (Default (ReadOptions f), Default (WriteOptions f), Show f) => FileFormat f where
   -- | Options that can be used during reading a file in this format.
   type ReadOptions f
   type ReadOptions f = ()
@@ -83,12 +101,81 @@ instance FileFormat f => FileFormat (Auto f) where
 class Readable f arr where
 
   -- | Decode a `B.ByteString` into an Array.
-  decode :: f -> ReadOptions f -> B.ByteString -> Either String arr
+  decode :: f -> ReadOptions f -> B.ByteString -> arr
 
 
 -- | Arrays that can be written into a file.
 class Writable f arr where
 
   -- | Encode an array into a `BL.ByteString`.
-  encode :: f -> WriteOptions f -> arr -> Either String BL.ByteString
+  encode :: f -> WriteOptions f -> arr -> BL.ByteString
 
+
+toProxy :: a -> Proxy a
+toProxy _ = Proxy
+
+
+fromMaybeEncode
+  :: forall f r cs e b. (ColorSpace cs e, FileFormat f, Typeable r)
+  => f -> Proxy (Image r cs e) -> Maybe b -> b
+fromMaybeEncode _ _         (Just b) = b
+fromMaybeEncode f _imgProxy Nothing =
+  throw $
+  ConvertError
+    ("Format " ++
+     show f ++
+     " cannot be encoded as <Image " ++
+     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+     showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+     showsTypeRep (typeRep (Proxy :: Proxy e)) ">")
+
+-- encodeEither
+--   :: forall f r cs e b. (ColorSpace cs e, FileFormat f, Typeable r)
+--   => f -> Proxy (Image r cs e) -> Maybe b -> Either EncodeError b
+-- encodeEither f _imgProxy enc =
+--   case enc of
+--     Nothing ->
+--       Left $ EncodeError $
+--       "Format " ++
+--       show f ++ " cannot be encoded as <Image " ++
+--       showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+--       showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+--       showsTypeRep (typeRep (Proxy :: Proxy e)) ">"
+--     Just b -> Right b
+
+
+fromEitherDecode :: forall cs e a. ColorSpace cs e =>
+                    (a -> String)
+                 -> (a -> Maybe (Image S cs e))
+                 -> Either String a
+                 -> Image S cs e
+fromEitherDecode _      _    (Left err)   = throw $ DecodeError err
+fromEitherDecode showCS conv (Right eImg) =
+  fromMaybe
+    (throw $
+     ConvertError
+       ("Cannot decode image: <" ++
+        showCS eImg ++
+        "> into " ++
+        "<Image S " ++
+        showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+        showsTypeRep (typeRep (Proxy :: Proxy e)) ">"))
+    (conv eImg)
+
+
+-- decodeEither :: forall cs e a. ColorSpace cs e =>
+--                 (a -> String)
+--              -> (a -> Maybe (Image S cs e))
+--              -> a
+--              -> Either String (Image S cs e)
+-- decodeEither showCS conv eImg =
+--   maybe
+--     (Left $
+--      "Cannot decode image: <" ++
+--      showCS eImg ++
+--      "> into " ++
+--      "<Image S " ++
+--      showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+--      showsTypeRep (typeRep (Proxy :: Proxy e)) ">")
+--     Right
+--     (conv eImg)

@@ -24,6 +24,7 @@ module Data.Array.Massiv.IO.Image
   , module Data.Array.Massiv.IO.Image.Netpbm
   ) where
 
+import           Control.Exception                      (throw)
 import           Data.Array.Massiv
 import           Data.Array.Massiv.IO.Base
 import           Data.Array.Massiv.IO.Image.JuicyPixels
@@ -40,6 +41,8 @@ import           System.FilePath                        (takeExtension)
 data Encode out where
   EncodeAs :: (FileFormat f, Writable f out) => f -> Encode out
 
+instance Show (Encode out) where
+  show (EncodeAs f) = show f
 
 instance FileFormat (Encode (Image r cs e)) where
   ext (EncodeAs f) = ext f
@@ -52,12 +55,12 @@ encodeImage
   :: (Source r DIM2 (Pixel cs e), ColorSpace cs e)
   => [Encode (Image r cs e)]
   -> FilePath
-  -> (Image r cs e)
-  -> Either String BL.ByteString
+  -> Image r cs e
+  -> BL.ByteString
 encodeImage formats path img = do
   let ext' = P.map toLower . takeExtension $ path
   case dropWhile (not . isFormat ext') formats of
-    [] -> Left $ "File format is not supported: " ++ ext'
+    []    -> throw $ EncodeError $ "File format is not supported: " ++ ext'
     (f:_) -> encode f () img
 
 
@@ -96,6 +99,9 @@ imageWriteAutoFormats =
 data Decode out where
   DecodeAs :: (FileFormat f, Readable f out) => f -> Decode out
 
+instance Show (Decode out) where
+  show (DecodeAs f) = show f
+
 instance FileFormat (Decode (Image r cs e)) where
   ext (DecodeAs f) = ext f
 
@@ -108,11 +114,11 @@ decodeImage
   => [Decode (Image r cs e)]
   -> FilePath
   -> B.ByteString
-  -> Either String (Image r cs e)
+  -> Image r cs e
 decodeImage formats path bs = do
   let ext' = P.map toLower . takeExtension $ path
   case dropWhile (not . isFormat ext') formats of
-    [] -> Left $ "File format is not supported: " ++ ext'
+    []    -> throw $ DecodeError $ "File format is not supported: " ++ ext'
     (f:_) -> decode f () bs
 
 
