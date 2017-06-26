@@ -39,14 +39,22 @@ import           Graphics.ColorSpace  (ColorSpace, Pixel)
 
 type Image r cs e = Array r DIM2 (Pixel cs e)
 
+-- | Conversion error, which is thrown when there is a mismatch between the
+-- expected array type and the one supported by the file format. It is also
+-- thrown upon a failure of automatic conversion between those types, in case
+-- such conversion is utilized.
 newtype ConvertError = ConvertError String deriving Show
 
 instance Exception ConvertError
 
+-- | This exception can be thrown while reading/decoding a file and indicates an
+-- error in the file itself.
 newtype DecodeError = DecodeError String deriving Show
 
 instance Exception DecodeError
 
+-- | This exception can be thrown while writing/encoding into a file and
+-- indicates an error in an array that is being encoded.
 newtype EncodeError = EncodeError String deriving Show
 
 instance Exception EncodeError
@@ -111,10 +119,11 @@ class Writable f arr where
   encode :: f -> WriteOptions f -> arr -> BL.ByteString
 
 
+-- | Helper function to create a `Proxy` from the value.
 toProxy :: a -> Proxy a
 toProxy _ = Proxy
 
-
+-- | Encode an image using the supplied function or throw an error in case of failure.
 fromMaybeEncode
   :: forall f r cs e b. (ColorSpace cs e, FileFormat f, Typeable r)
   => f -> Proxy (Image r cs e) -> Maybe b -> b
@@ -129,53 +138,23 @@ fromMaybeEncode f _imgProxy Nothing =
      showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
      showsTypeRep (typeRep (Proxy :: Proxy e)) ">")
 
--- encodeEither
---   :: forall f r cs e b. (ColorSpace cs e, FileFormat f, Typeable r)
---   => f -> Proxy (Image r cs e) -> Maybe b -> Either EncodeError b
--- encodeEither f _imgProxy enc =
---   case enc of
---     Nothing ->
---       Left $ EncodeError $
---       "Format " ++
---       show f ++ " cannot be encoded as <Image " ++
---       showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
---       showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
---       showsTypeRep (typeRep (Proxy :: Proxy e)) ">"
---     Just b -> Right b
 
-
-fromEitherDecode :: forall cs e a. ColorSpace cs e =>
-                    (a -> String)
+-- | Decode an image using the supplied function or throw an error in case of failure.
+fromEitherDecode :: forall cs e a f. (ColorSpace cs e, FileFormat f) =>
+                    f
+                 -> (a -> String)
                  -> (a -> Maybe (Image S cs e))
                  -> Either String a
                  -> Image S cs e
-fromEitherDecode _      _    (Left err)   = throw $ DecodeError err
-fromEitherDecode showCS conv (Right eImg) =
+fromEitherDecode _ _      _    (Left err)   = throw $ DecodeError err
+fromEitherDecode f showCS conv (Right eImg) =
   fromMaybe
     (throw $
      ConvertError
-       ("Cannot decode image: <" ++
+       ("Cannot decode " ++ show f ++ " image <" ++
         showCS eImg ++
-        "> into " ++
+        "> as " ++
         "<Image S " ++
         showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
         showsTypeRep (typeRep (Proxy :: Proxy e)) ">"))
     (conv eImg)
-
-
--- decodeEither :: forall cs e a. ColorSpace cs e =>
---                 (a -> String)
---              -> (a -> Maybe (Image S cs e))
---              -> a
---              -> Either String (Image S cs e)
--- decodeEither showCS conv eImg =
---   maybe
---     (Left $
---      "Cannot decode image: <" ++
---      showCS eImg ++
---      "> into " ++
---      "<Image S " ++
---      showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
---      showsTypeRep (typeRep (Proxy :: Proxy e)) ">")
---     Right
---     (conv eImg)

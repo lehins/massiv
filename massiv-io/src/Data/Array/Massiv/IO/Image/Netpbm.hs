@@ -44,20 +44,28 @@ data PBM = PBM deriving Show
 instance FileFormat PBM where
   ext _ = ".pbm"
 
+instance FileFormat (Sequence PBM) where
+  type WriteOptions (Sequence PBM) = WriteOptions PBM
+  ext _ = ext PBM
+
+instance FileFormat (Sequence (Auto PBM)) where
+  type WriteOptions (Sequence (Auto PBM)) = WriteOptions PBM
+  ext _ = ext PBM
+
 
 instance ColorSpace cs e => Readable PBM (Image S cs e) where
-  decode _ _ = decodePPM fromNetpbmImage
+  decode f _ = decodePPM f fromNetpbmImage
 
 
 instance ColorSpace cs e => Readable (Auto PBM) (Image S cs e) where
-  decode _ _ = decodePPM fromNetpbmImageAuto
+  decode f _ = decodePPM f fromNetpbmImageAuto
 
 
 instance ColorSpace cs e => Readable (Sequence PBM) (Array B DIM1 (Image S cs e)) where
-  decode _ _ = decodePPMs fromNetpbmImage
+  decode f _ = decodePPMs f fromNetpbmImage
 
 instance ColorSpace cs e => Readable (Sequence (Auto PBM)) (Array B DIM1 (Image S cs e)) where
-  decode _ _ = decodePPMs fromNetpbmImageAuto
+  decode f _ = decodePPMs f fromNetpbmImageAuto
 
 
 
@@ -67,21 +75,29 @@ data PGM = PGM deriving Show
 instance FileFormat PGM where
   ext _ = ".pgm"
 
+instance FileFormat (Sequence PGM) where
+  type WriteOptions (Sequence PGM) = WriteOptions PGM
+  ext _ = ext PGM
+
+instance FileFormat (Sequence (Auto PGM)) where
+  type WriteOptions (Sequence (Auto PGM)) = WriteOptions PGM
+  ext _ = ext PGM
+
 
 instance ColorSpace cs e => Readable PGM (Image S cs e) where
-  decode _ _ = decodePPM fromNetpbmImage
+  decode f _ = decodePPM f fromNetpbmImage
 
 
 instance ColorSpace cs e => Readable (Auto PGM) (Image S cs e) where
-  decode _ _ = decodePPM fromNetpbmImageAuto
+  decode f _ = decodePPM f fromNetpbmImageAuto
 
 
 instance ColorSpace cs e => Readable (Sequence PGM) (Array B DIM1 (Image S cs e)) where
-  decode _ _ = decodePPMs fromNetpbmImage
+  decode f _ = decodePPMs f fromNetpbmImage
 
 
 instance ColorSpace cs e => Readable (Sequence (Auto PGM)) (Array B DIM1 (Image S cs e)) where
-  decode _ _ = decodePPMs fromNetpbmImageAuto
+  decode f _ = decodePPMs f fromNetpbmImageAuto
 
 
 -- | Netpbm: portable pixmap image with @.ppm@ extension.
@@ -90,37 +106,47 @@ data PPM = PPM deriving Show
 instance FileFormat PPM where
   ext _ = ".ppm"
 
+instance FileFormat (Sequence PPM) where
+  type WriteOptions (Sequence PPM) = WriteOptions PPM
+  ext _ = ext PPM
+
+instance FileFormat (Sequence (Auto PPM)) where
+  type WriteOptions (Sequence (Auto PPM)) = WriteOptions PPM
+  ext _ = ext PPM
+
 
 instance ColorSpace cs e => Readable PPM (Image S cs e) where
-  decode _ _ = decodePPM fromNetpbmImage
+  decode f _ = decodePPM f fromNetpbmImage
 
 instance ColorSpace cs e => Readable (Auto PPM) (Image S cs e) where
-  decode _ _ = decodePPM fromNetpbmImageAuto
+  decode f _ = decodePPM f fromNetpbmImageAuto
 
 instance ColorSpace cs e => Readable (Sequence PPM) (Array B DIM1 (Image S cs e)) where
-  decode _ _ = decodePPMs fromNetpbmImage
+  decode f _ = decodePPMs f fromNetpbmImage
 
 instance ColorSpace cs e => Readable (Sequence (Auto PPM)) (Array B DIM1 (Image S cs e)) where
-  decode _ _ = decodePPMs fromNetpbmImageAuto
+  decode f _ = decodePPMs f fromNetpbmImageAuto
 
 
 
-decodePPMs :: ColorSpace cs e =>
-                (Netpbm.PPM -> Maybe (Image S cs e))
-             -> B.ByteString
-             -> Array B DIM1 (Image S cs e)
-decodePPMs converter bs =
+decodePPMs :: (FileFormat f, ColorSpace cs e) =>
+              f
+           -> (Netpbm.PPM -> Maybe (Image S cs e))
+           -> B.ByteString
+           -> Array B DIM1 (Image S cs e)
+decodePPMs f converter bs =
   either (throw . DecodeError) fromListS1D $
-  (P.map (fromEitherDecode showNetpbmCS converter . Right) . fst) <$>
+  (P.map (fromEitherDecode f showNetpbmCS converter . Right) . fst) <$>
   parsePPM bs
 {-# INLINE decodePPMs #-}
 
 
-decodePPM :: ColorSpace cs e =>
-             (Netpbm.PPM -> Maybe (Image S cs e))
+decodePPM :: (FileFormat f, ColorSpace cs e) =>
+             f
+          -> (Netpbm.PPM -> Maybe (Image S cs e))
           -> B.ByteString
           -> Image S cs e
-decodePPM decoder bs = fromEitherDecode showNetpbmCS decoder $ do
+decodePPM f decoder bs = fromEitherDecode f showNetpbmCS decoder $ do
   (ppms, _) <- parsePPM bs
   case ppms of
     []      -> Left "Cannot parse PNM image"

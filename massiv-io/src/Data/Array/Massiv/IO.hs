@@ -44,7 +44,7 @@ module Data.Array.Massiv.IO
 
 import           Control.Concurrent         (forkIO)
 import           Control.Exception          (bracket)
-import           Control.Monad              (guard, msum, void)
+import           Control.Monad              (void)
 --import qualified Control.Monad              as M (foldM)
 import           Data.Array.Massiv
 import           Data.Array.Massiv.IO.Base
@@ -53,7 +53,6 @@ import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
 -- import           Data.Maybe                 (fromMaybe)
 -- import           Data.Proxy
-import           Data.Default               (def)
 import           Graphics.ColorSpace
 import           Prelude                    as P hiding (readFile, writeFile)
 import           System.Directory           (createDirectoryIfMissing,
@@ -82,14 +81,19 @@ readArray format opts path = decode format opts <$> B.readFile path
 
 
 
--- | This function will try to guess an image format from file's extension, then
--- it will attempt to decode it as such. Whenever image cannot be decoded,
--- 'Left' containing all errors for each attempted format will be returned, and
--- 'Right' containing an image otherwise. Image will be read with a type
--- signature specified:
+-- | Try to guess an image format from file's extension, then attempt to decode
+-- it as such. In order to supply the format manually and thus avoid this
+-- guessing technique, use `readArray` instead.
 --
---  >>> frog :: Image S YCbCr Word8 <- readImage "images/frog.jpg"
---  >>> displayImage frog
+-- Result image will be read as specified by the type signature:
+--
+-- >>> frog :: Image S YCbCr Word8 <- readImage "files/frog.jpg"
+-- >>> displayImage frog
+--
+-- In case when the result image type does not match the color space or
+-- precision of the actual image file, a `CovertError` will be thrown.
+--
+-- >>> frog :: Image S YCbCr Double <- readImage "files/frog.jpg"
 --
 readImage :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
               FilePath -- ^ File path for an image
@@ -103,6 +107,7 @@ readImageAuto :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
                   FilePath -- ^ File path for an image
                -> IO (Image S cs e)
 readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
+{-# INLINE readImageAuto #-}
 
 
 
