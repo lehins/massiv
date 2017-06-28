@@ -3,18 +3,20 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.SchedulerSpec (spec) where
 
-import           Control.Exception.Base        (ArithException (DivideByZero))
+import           Control.Concurrent
+import           Control.Exception.Base        (ArithException (DivideByZero),
+                                                AsyncException (ThreadKilled))
 import           Data.Array.Massiv             as M
-import           Data.Array.Massiv.CommonSpec  (ArrIxP (..), assertException)
+import           Data.Array.Massiv.CommonSpec  (ArrIxP (..), assertException,
+                                                assertExceptionIO)
 import           Data.Array.Massiv.DelayedSpec ()
 import           Data.Array.Massiv.Scheduler
 import           Data.List                     (sortBy)
+import           Data.List.NonEmpty            (NonEmpty, toList)
 import           Prelude                       as P
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
-
-
 
 
 prop_CatchDivideByZero :: ArrIxP D DIM2 Int -> Property
@@ -64,11 +66,11 @@ exc_SchedulerRetiredCollect = do
 
 
 -- | Check weather `jobRequestId` matches `jobResultId` for all jobs
-prop_SchedulerRequestIdMatch :: Positive Int -> Property
-prop_SchedulerRequestIdMatch (Positive numJobs) =
+prop_SchedulerRequestIdMatch :: [Int] -> Positive Int -> Property
+prop_SchedulerRequestIdMatch wIds (Positive numJobs) =
   monadicIO $
   (run $ do
-     scheduler <- makeScheduler []
+     scheduler <- makeScheduler wIds
      P.mapM_ (\jId -> submitRequest scheduler (JobRequest (return jId))) [0..numJobs]
      collectResults
        scheduler
@@ -77,12 +79,12 @@ prop_SchedulerRequestIdMatch (Positive numJobs) =
   assert
 
 -- | Check weather all jobs have been completed
-prop_SchedulerAllJobsProcessed :: OrderedList Int -> Property
-prop_SchedulerAllJobsProcessed (Ordered ids) =
+prop_SchedulerAllJobsProcessed :: [Int] -> OrderedList Int -> Property
+prop_SchedulerAllJobsProcessed wIds (Ordered ids) =
   monadicIO $ do
     res <-
       run $ do
-        scheduler <- makeScheduler []
+        scheduler <- makeScheduler wIds
         P.mapM_
           (\jId -> submitRequest scheduler (JobRequest (return jId)))
           ids
@@ -90,11 +92,24 @@ prop_SchedulerAllJobsProcessed (Ordered ids) =
     assert (sortBy compare ids == sortBy compare res)
 
 
+-- | Make sure there is no deadlock if all workers get killed
+prop_AllWorkersDied :: [Int] -> NonEmpty Int -> Property
+prop_AllWorkersDied wIds idsNE =
+  assertExceptionIO
+    (maybe False (== ThreadKilled) . fromWorkerException)
+    (do scheduler <- makeScheduler wIds
+        P.mapM_
+          (\_ ->
+             submitRequest scheduler (JobRequest $ myThreadId >>= killThread))
+          (toList idsNE)
+        waitTillDone scheduler)
+
 spec :: Spec
 spec = do
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchNested" $ property prop_CatchNested
+    it "AllWorkersDied" $ property prop_AllWorkersDied
     it "SchedulerRetiredSubmit" $
       exc_SchedulerRetiredSubmit `shouldThrow` (== SchedulerRetired)
     it "SchedulerRetiredCollect" $

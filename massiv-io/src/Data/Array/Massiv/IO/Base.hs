@@ -28,8 +28,8 @@ module Data.Array.Massiv.IO.Base
   , fromEitherDecode
   ) where
 
-import           Control.Exception
-import           Data.Array.Massiv    (Array, DIM2, S)
+import           Control.Exception    (throw, Exception)
+import           Data.Array.Massiv    (Array, DIM2)
 import qualified Data.ByteString      as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import           Data.Default         (Default (..))
@@ -140,12 +140,12 @@ fromMaybeEncode f _imgProxy Nothing =
 
 
 -- | Decode an image using the supplied function or throw an error in case of failure.
-fromEitherDecode :: forall cs e a f. (ColorSpace cs e, FileFormat f) =>
+fromEitherDecode :: forall r cs e a f. (ColorSpace cs e, FileFormat f, Typeable r) =>
                     f
                  -> (a -> String)
-                 -> (a -> Maybe (Image S cs e))
+                 -> (a -> Maybe (Image r cs e))
                  -> Either String a
-                 -> Image S cs e
+                 -> Image r cs e
 fromEitherDecode _ _      _    (Left err)   = throw $ DecodeError err
 fromEitherDecode f showCS conv (Right eImg) =
   fromMaybe
@@ -154,7 +154,8 @@ fromEitherDecode f showCS conv (Right eImg) =
        ("Cannot decode " ++ show f ++ " image <" ++
         showCS eImg ++
         "> as " ++
-        "<Image S " ++
+        "<Image " ++
+        showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
         showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
         showsTypeRep (typeRep (Proxy :: Proxy e)) ">"))
     (conv eImg)

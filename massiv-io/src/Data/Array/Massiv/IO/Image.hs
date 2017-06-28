@@ -139,8 +139,8 @@ imageReadFormats =
   ]
 
 imageReadAutoFormats
-  :: (Source S DIM2 (Pixel cs e), ColorSpace cs e)
-  => [Decode (Image S cs e)]
+  :: (Target r DIM2 (Pixel cs e), ColorSpace cs e)
+  => [Decode (Image r cs e)]
 imageReadAutoFormats =
   [ DecodeAs (Auto BMP)
   , DecodeAs (Auto GIF)

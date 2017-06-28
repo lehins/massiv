@@ -11,7 +11,9 @@
 --
 module Data.Array.Massiv.Scheduler
   ( Scheduler
-  , SchedulerRetired(..)
+  , SchedulerException(..)
+  , WorkerException
+  , fromWorkerException
   , makeScheduler
   , numWorkers
   , JobRequest(..)
@@ -22,35 +24,51 @@ module Data.Array.Massiv.Scheduler
   , collectResults
   , waitTillDone
   , splitWork
-  --, splitWork'
   , splitWork_
   ) where
 
+import           Control.Applicative
 import           Control.Concurrent             (ThreadId, forkOn,
                                                  getNumCapabilities, killThread)
 import           Control.Concurrent.STM.TChan   (TChan, isEmptyTChan, newTChan,
                                                  newTChanIO, readTChan,
                                                  tryReadTChan, writeTChan)
+import           Control.Concurrent.STM.TMVar
 import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVar,
                                                  newTVarIO, readTVar, writeTVar)
-import           Control.Exception.Safe         (Exception, SomeException,
-                                                 catchAny, throw, throwM)
+import           Control.Exception.Safe         (Exception (..), SomeException,
+                                                 catchAsync, isAsyncException,
+                                                 throw)
 import           Control.Monad                  (unless, void, when)
 import           Control.Monad.STM              (STM, atomically)
 import           Data.Array.Massiv.Common.Index
-import           Data.Either                    (isLeft)
 import           System.IO.Unsafe               (unsafePerformIO)
+
+
 
 data Job = Job (Int -> IO ())
          | Retire
 
 
-data SchedulerRetired = SchedulerRetired deriving (Eq, Show)
+data SchedulerException = SchedulerRetired deriving (Eq, Show)
 
-instance Exception SchedulerRetired
+instance Exception SchedulerException
+
+data WorkerException = forall e. Exception e => WorkerDied e
+
+instance Show WorkerException where
+  show (WorkerDied exc) = "WorkerDied: " ++ show exc
+
+instance Exception WorkerException
+
+
+-- | A way to check which asyncronous exception was the cause of a worker's death.
+fromWorkerException :: Exception e => WorkerException -> Maybe e
+fromWorkerException (WorkerDied exc) = fromException $ toException exc
+
 
 data Scheduler a = Scheduler
-  { resultsChan       :: TChan (Either SomeException (JobResult a))
+  { resultsChan       :: TChan (JobResult a)
   , jobsSubmittedVar  :: TVar Int
   , jobsFinishedVar   :: TVar Int
   , workers           :: Workers
@@ -66,9 +84,10 @@ data JobResult a = JobResult { jobResultId :: Int
 data JobRequest a = JobRequest { jobRequestAction :: IO a }
 
 
-data Workers = Workers { workerIds :: [Int]
-                       , workerThreadIds :: [ThreadId]
-                       , workersJobQueue  :: TChan Job }
+data Workers = Workers { workerIds        :: [Int]
+                       , workerThreadIds  :: [ThreadId]
+                       , workersJobQueue  :: TChan Job
+                       , workersException :: TMVar SomeException }
 
 -- | Create a `Scheduler` that can be used to submit `JobRequest`s and collect
 -- work done by the workers using `collectResults`.
@@ -111,50 +130,58 @@ submitRequest :: Scheduler a -> JobRequest a -> IO ()
 submitRequest Scheduler {..} JobRequest {..} = do
   atomically $ do
     isRetired <- readTVar retiredVar
-    when isRetired $ throwM SchedulerRetired
+    when isRetired $ throw SchedulerRetired
     jId <- readTVar jobsSubmittedVar
     writeTVar jobsSubmittedVar (jId + 1)
     writeTChan (workersJobQueue workers) $
       Job $ \_wid -> do
-        eResult <- catchAny (Right <$> jobRequestAction) (return . Left)
+        result <- jobRequestAction
         atomically $ do
           modifyTVar' jobsFinishedVar (+ 1)
-          writeTChan resultsChan (JobResult jId <$> eResult)
+          writeTChan resultsChan (JobResult jId result)
 
 
 -- | Block current thread and wait for all `JobRequest`s to get processed. Use a
 -- supplied function to collect all of the results produced by submitted
 -- jobs. If any job throws an exception, the whole scheduler is retired, all
--- jobs are immediately cancelled and the exception is re-thrown. `Scheduler` is
--- retired after results are collected and can not be used again, doing so will
--- result in a synchronous exception `SchedulerRetired`.
+-- jobs are immediately cancelled and the exception is re-thrown in the main
+-- thread. Same thing happens if a worker dies because of an asynchronous
+-- exception, but with a `WorkerException` being thrown in a main
+-- thread. `Scheduler` is also retired as soon as all of the results are
+-- collected, after that it can not be used again, thus doing so will result in
+-- a `SchedulerRetired` exception.
 collectResults :: Scheduler a -> (JobResult a -> b -> b) -> b -> IO b
 collectResults scheduler@(Scheduler {..}) f initAcc = do
-  jobsSubmitted <- atomically $ do
-    isRetired <- readTVar retiredVar
-    when isRetired $ throwM SchedulerRetired
-    readTVar jobsSubmittedVar
+  jobsSubmitted <-
+    atomically $ do
+      isRetired <- readTVar retiredVar
+      when isRetired $ throw SchedulerRetired
+      readTVar jobsSubmittedVar
   if jobsSubmitted == 0
     then return initAcc
     else collect initAcc
   where
     collect !acc = do
-      (eJRes, stop) <-
+      eResStop <-
         atomically $ do
-          eJRes <- readTChan resultsChan
-          -- prevent any new jobs from starting in case of an exception
-          when (isLeft eJRes) $ do
-            clearJobQueue scheduler
-            writeTVar retiredVar True
-          resEmpty <- isEmptyTChan resultsChan
-          if resEmpty
-            then do
-              jobsSubmitted <- readTVar jobsSubmittedVar
-              jobsFinished <- readTVar jobsFinishedVar
-              return (eJRes, jobsSubmitted == jobsFinished)
-            else return (eJRes, False)
-      case eJRes of
-        Right jRes ->
+          eRes <-
+            (Right <$> readTChan resultsChan) <|>
+            (Left <$> readTMVar (workersException workers))
+          case eRes of
+            Right res -> do
+              resEmpty <- isEmptyTChan resultsChan
+              if resEmpty
+                then do
+                  jobsSubmitted <- readTVar jobsSubmittedVar
+                  jobsFinished <- readTVar jobsFinishedVar
+                  return $ Right (res, jobsSubmitted == jobsFinished)
+                else return $ Right (res, False)
+            Left exc -> do
+              clearJobQueue scheduler
+              writeTVar retiredVar True
+              return $ Left exc
+      case eResStop of
+        Right (res, stop) ->
           if stop
             then do
               atomically $ do
@@ -163,12 +190,12 @@ collectResults scheduler@(Scheduler {..}) f initAcc = do
                   then writeTVar hasGlobalSchedulerVar False
                   else loopM_ 0 (< numWorkers) (+ 1) $ \ !_ ->
                          writeTChan (workersJobQueue workers) Retire
-              return $! f jRes acc
-            else collect $ f jRes acc
+              return $! f res acc
+            else collect $ f res acc
         Left exc -> do
           mapM_ killThread (workerThreadIds workers)
           -- kill all workers. Recreate the workers only if killed ones were the
-          -- primary workers.
+          -- global ones.
           when isGlobalScheduler $ do
             globalWorkers <- hireWorkers []
             atomically $ do
@@ -186,7 +213,7 @@ waitTillDone scheduler = collectResults scheduler (const id) ()
 
 splitWork :: Index ix
           => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
-splitWork wIds !sz submitWork
+splitWork wIds sz submitWork
   | totalElem sz == 0 = return []
   | otherwise = do
     scheduler <- makeScheduler wIds
@@ -220,7 +247,8 @@ hireWorkers wIds = do
         return [0 .. wNum-1]
       else return wIds
   workersJobQueue <- newTChanIO
-  workerThreadIds <- startWorkers workersJobQueue workerIds
+  workersException <- newEmptyTMVarIO
+  workerThreadIds <- startWorkers workersException workersJobQueue workerIds
   return Workers {..}
 
 
@@ -234,6 +262,15 @@ runWorker jQueue wid = do
     Retire -> return ()
 
 
-startWorkers :: TChan Job -> [Int] -> IO [ThreadId]
-startWorkers jQueue = mapM (\ !wId -> forkOn wId (runWorker jQueue wId))
-
+startWorkers :: TMVar SomeException -> TChan Job -> [Int] -> IO [ThreadId]
+startWorkers wExcMVar jQueue =
+  mapM
+    (\ !wId ->
+       forkOn wId $
+       catchAsync (runWorker jQueue wId) $ \exc ->
+         atomically $
+         void $
+         tryPutTMVar wExcMVar $
+         if isAsyncException exc
+           then toException $ WorkerDied exc
+           else exc)

@@ -74,16 +74,33 @@ data ExternalViewer =
 
 
 
-
+-- | Read an array from one of the supported file formats.
 readArray :: Readable f arr =>
-             f -> ReadOptions f -> FilePath -> IO arr
+             f -- ^ File format that should be used while decoding the file
+          -> ReadOptions f -- ^ Any file format related decoding options. Use `def` for default.
+          -> FilePath -- ^ Path to the file
+          -> IO arr
 readArray format opts path = decode format opts <$> B.readFile path
+{-# INLINE readArray #-}
 
+
+writeArray :: Writable f arr =>
+              f -- ^ Format to use while encoding the array
+           -> WriteOptions f -- ^ Any file format related encoding options. Use `def` for default.
+           -> FilePath
+           -> arr -> IO ()
+writeArray format opts path arr = BL.writeFile path (encode format opts arr)
+{-# INLINE writeArray #-}
 
 
 -- | Try to guess an image format from file's extension, then attempt to decode
 -- it as such. In order to supply the format manually and thus avoid this
--- guessing technique, use `readArray` instead.
+-- guessing technique, use `readArray` instead. Color space and precision of the
+-- result array must match exactly that of the actual image, in order to apply
+-- auto conversion use `readImageAuto` instead.
+--
+-- Might throw `ConvertError`, `DecodeError` and other standard errors related
+-- to file IO.
 --
 -- Result image will be read as specified by the type signature:
 --
@@ -91,9 +108,11 @@ readArray format opts path = decode format opts <$> B.readFile path
 -- >>> displayImage frog
 --
 -- In case when the result image type does not match the color space or
--- precision of the actual image file, a `CovertError` will be thrown.
+-- precision of the actual image file, `ConvertError` will be thrown.
 --
 -- >>> frog :: Image S YCbCr Double <- readImage "files/frog.jpg"
+-- >>> frog `seq` ()
+-- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S YCbCr Double>"
 --
 readImage :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
               FilePath -- ^ File path for an image
@@ -102,29 +121,32 @@ readImage path = decodeImage imageReadFormats path <$> B.readFile path
 {-# INLINE readImage #-}
 
 
-
-readImageAuto :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
+-- | Same as `readImage`, but will perform any possible color space and
+-- precision conversions in order to match the result image type. Very useful
+-- whenever image format isn't known at compile time.
+readImageAuto :: (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
                   FilePath -- ^ File path for an image
-               -> IO (Image S cs e)
+               -> IO (Image r cs e)
 readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
 {-# INLINE readImageAuto #-}
 
 
 
--- | Just like 'readImage', this function will guess an output file format from the
--- extension and write to file any image that is in one of 'Y', 'YA', 'RGB' or
--- 'RGBA' color spaces with 'Double' precision. While doing necessary
--- conversions the choice will be given to the most suited color space supported
--- by the format. For instance, in case of a 'PNG' format, an ('Image' @arr@
--- 'RGBA' 'Double') would be written as @RGBA16@, hence preserving transparency
--- and using highest supported precision 'Word16'. At the same time, writing
--- that image in 'GIF' format would save it in @RGB8@, since 'Word8' is the
--- highest precision 'GIF' supports and it currently cannot be saved with
--- transparency.
+-- | Inverse of the 'readImage', but similarly to it, will guess an output file
+-- format from the file extension and will write to file any image with the
+-- color space that is supported by that format. Precision of the image might be
+-- adjusted using `Elevator` if precision of the source array is not supported
+-- by the image file format. For instance, <'Image' @r@ 'RGBA' 'Double'> being
+-- saved as 'PNG' file would be written as <'Image' @r@ 'RGBA' 'Word16'>, thus
+-- using highest supported precision 'Word16' for that format. If automatic
+-- colors space is also desired, `writeImageAuto` can be used instead.
+--
+-- Might throw `ConvertError`, `EncodeError` and other standard errors related
+-- to file IO.
+--
 writeImage :: (Source r DIM2 (Pixel cs e), ColorSpace cs e) =>
                FilePath -> Image r cs e -> IO ()
-writeImage path img = do
-  BL.writeFile path $ encodeImage imageWriteFormats path img
+writeImage path = BL.writeFile path . encodeImage imageWriteFormats path
 
 
 
@@ -137,8 +159,7 @@ writeImageAuto
      , ToCMYK cs e
      )
   => FilePath -> Image r cs e -> IO ()
-writeImageAuto path img =
-  BL.writeFile path $ encodeImage imageWriteAutoFormats path img
+writeImageAuto path = BL.writeFile path . encodeImage imageWriteAutoFormats path
 
 
 

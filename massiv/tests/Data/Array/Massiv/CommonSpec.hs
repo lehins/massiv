@@ -90,11 +90,13 @@ assertExceptionIO :: (NFData a, Exception exc) =>
                   -> Property
 assertExceptionIO isExc action =
   monadicIO $ do
-  hasFailed <- run
-    (catch
-       (do res <- action
-           res `deepseq` return False) $ \exc -> show exc `deepseq` return (isExc exc))
-  assert hasFailed
+    hasFailed <-
+      run
+        (catch
+           (do res <- action
+               res `deepseq` return False) $ \exc ->
+           show exc `deepseq` return (isExc exc))
+    assert hasFailed
 
 assertSomeExceptionIO :: NFData a => IO a -> Property
 assertSomeExceptionIO = assertExceptionIO (\exc -> const True (exc :: SomeException))

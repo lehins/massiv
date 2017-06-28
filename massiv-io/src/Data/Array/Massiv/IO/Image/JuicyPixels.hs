@@ -124,7 +124,8 @@ instance ColorSpace cs e => Readable BMP (Image S cs e) where
   decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodeBitmap
 
 
-instance ColorSpace cs e => Readable (Auto BMP) (Image S cs e) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Auto BMP) (Image r cs e) where
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodeBitmap
 
 
@@ -177,7 +178,8 @@ instance (ColorSpace cs e, ToYA cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =
 instance ColorSpace cs e => Readable PNG (Image S cs e) where
   decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodePng
 
-instance ColorSpace cs e => Readable (Auto PNG) (Image S cs e) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Auto PNG) (Image r cs e) where
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodePng
 
 
@@ -286,7 +288,8 @@ instance (ColorSpace cs e, ToY cs e, ToRGB cs e, Source r DIM2 (Pixel cs e)) =>
 instance ColorSpace cs e => Readable GIF (Image S cs e) where
   decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodeGif
 
-instance ColorSpace cs e => Readable (Auto GIF) (Image S cs e) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Auto GIF) (Image r cs e) where
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodeGif
 
 
@@ -296,8 +299,8 @@ instance ColorSpace cs e =>
          Readable (Sequence GIF) (Array B DIM1 (Image S cs e)) where
   decode f _ bs = decodeGIFs f fromDynamicImage bs
 
-instance ColorSpace cs e =>
-         Readable (Sequence (Auto GIF)) (Array B DIM1 (Image S cs e)) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Sequence (Auto GIF)) (Array B DIM1 (Image r cs e)) where
   decode f _ bs = decodeGIFs f fromAnyDynamicImage bs
 
 
@@ -316,11 +319,11 @@ instance ColorSpace cs e =>
 -- Animated GIF Format frames reading into an Array of Images
 
 decodeGIFs
-  :: (FileFormat f, ColorSpace cs e)
+  :: (FileFormat f, Target r DIM2 (Pixel cs e), ColorSpace cs e)
   => f
-  -> (JP.DynamicImage -> Maybe (Image S cs e))
+  -> (JP.DynamicImage -> Maybe (Image r cs e))
   -> B.ByteString
-  -> Array B DIM1 (Image S cs e)
+  -> Array B DIM1 (Image r cs e)
 decodeGIFs f decoder bs = do
   either
     (throw . DecodeError)
@@ -447,7 +450,8 @@ instance (ColorSpace cs e, ToRGB cs e, Source r DIM2 (Pixel cs e)) =>
 instance ColorSpace cs e => Readable HDR (Image S cs e) where
   decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodePng
 
-instance ColorSpace cs e => Readable (Auto HDR) (Image S cs e) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Auto HDR) (Image r cs e) where
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodePng
 
 
@@ -504,7 +508,8 @@ instance (ColorSpace cs e, ToYCbCr cs e, Source r DIM2 (Pixel cs e)) =>
 instance ColorSpace cs e => Readable JPG (Image S cs e) where
   decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodeJpeg
 
-instance ColorSpace cs e => Readable (Auto JPG) (Image S cs e) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Auto JPG) (Image r cs e) where
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodeJpeg
 
 
@@ -574,7 +579,8 @@ instance ColorSpace cs e => Readable TGA (Image S cs e) where
   decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodeTga
 
 
-instance ColorSpace cs e => Readable (Auto TGA) (Image S cs e) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Auto TGA) (Image r cs e) where
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodeTga
 
 
@@ -633,7 +639,8 @@ instance (ColorSpace cs e, ToRGBA cs e, Source r DIM2 (Pixel cs e)) =>
 instance ColorSpace cs e => Readable TIF (Image S cs e) where
   decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodeTiff
 
-instance ColorSpace cs e => Readable (Auto TIF) (Image S cs e) where
+instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Auto TIF) (Image r cs e) where
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodeTiff
 
 
@@ -817,7 +824,8 @@ fromDynamicImage jpDynImg =
 
 
 
-fromAnyDynamicImage :: ColorSpace cs e => JP.DynamicImage -> Maybe (Image S cs e)
+fromAnyDynamicImage :: (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+                       JP.DynamicImage -> Maybe (Image r cs e)
 fromAnyDynamicImage jpDynImg = do
   case jpDynImg of
     JP.ImageY8 jimg     -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word8))     >>= toAnyCS
@@ -835,10 +843,10 @@ fromAnyDynamicImage jpDynImg = do
     JP.ImageCMYK16 jimg -> (fromJPImageUnsafe jimg :: Maybe (Image S CMYK Word16)) >>= toAnyCS
 
 
-
 toAnyCS
-  :: forall r cs' e' cs e.
-     ( Source r DIM2 (Pixel cs' e')
+  :: forall r' cs' e' r cs e.
+     ( Source r' DIM2 (Pixel cs' e')
+     , Target r DIM2 (Pixel cs e)
      , Storable (Pixel cs e)
      , ColorSpace cs e
      , ToYA cs' e'
@@ -847,7 +855,7 @@ toAnyCS
      , ToCMYKA cs' e'
      , ToYCbCrA cs' e'
      )
-  => Image r cs' e' -> Maybe (Image S cs e)
+  => Image r' cs' e' -> Maybe (Image r cs e)
 toAnyCS img =
   msum
     [ (\Refl -> computeSource img) <$>
