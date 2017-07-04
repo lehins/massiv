@@ -133,7 +133,7 @@ instance (Index ix, Index (Lower ix)) => Slice D ix e where
 
 -- | /O(n1 + n2)/ - Compute array equality by applying a comparing function to each element.
 eq :: forall r1 r2 ix e1 e2 . (Source r1 ix e1, Source r2 ix e2) =>
-       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
+      (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
   M.fold

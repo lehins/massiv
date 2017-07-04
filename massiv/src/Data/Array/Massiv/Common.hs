@@ -32,7 +32,7 @@ module Data.Array.Massiv.Common
 
 import           Control.DeepSeq                (NFData (..), deepseq)
 import           Control.Monad.ST               (ST)
-import           Data.Array.Massiv.Common.Index hiding (Z)
+import           Data.Array.Massiv.Common.Index
 import           Data.Proxy
 import           Data.Typeable                  (Typeable, showsTypeRep,
                                                  typeRep)
@@ -46,9 +46,38 @@ data Comp = Seq -- ^ Sequential computation
                         -- run computation on. Use `Par` to run on all cores.
           deriving (Show, Eq)
 
+
+instance Monoid Comp where
+  mempty = Seq
+  mappend = joinComp
+
+joinComp :: Comp -> Comp -> Comp
+joinComp Par         _           = Par
+joinComp _           Par         = Par
+joinComp (ParOn w1)  (ParOn w2)  = ParOn $ w1 ++ w2
+joinComp c@(ParOn _) _           = c
+joinComp _           c@(ParOn _) = c
+joinComp _           _           = Seq
+
+
 -- | Parallel computation using all available cores.
 pattern Par :: Comp
 pattern Par = ParOn []
+
+
+
+-- data CompAs r = SeqAs r
+--               | ParAs r
+--               | ParAsOn r [Int]
+
+-- toComp :: CompAs r -> Comp
+-- toComp (SeqAs _) = Seq
+-- toComp (ParAs _) = Par
+-- toComp (ParAsOn _ wIds) = ParOn wIds
+
+
+-- mArr :: Massiv r ix e => CompAs r -> ix -> (ix -> e) -> Array r ix e
+-- mArr compR = makeArray (toComp compR)
 
 instance NFData Comp where
   rnf comp =

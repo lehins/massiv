@@ -32,11 +32,11 @@ prop_rangeStepExc from to =
 prop_toFromList1D :: DIM1 -> Fun DIM1 Int -> Bool
 prop_toFromList1D sz f =
   let arr = makeArray Seq sz (apply f)
-  in arr == fromListAsS1D U (toListS1D arr)
+  in arr == fromListAs1D U Seq (toList1D arr)
 
 
 prop_toFromListS2D :: Arr U DIM2 Int -> Property
-prop_toFromListS2D (Arr arr) = arr === fromListAsS2D U (toListS2D arr)
+prop_toFromListS2D (Arr arr) = arr === fromListAs2D U Seq (toList2D arr)
 
 
 prop_excFromToListS2D :: [[Int]] -> Property
@@ -46,11 +46,11 @@ prop_excFromToListS2D ls2 =
      else label "Expected Failure" $ assertSomeException resultLs
   where
     lsL = P.map length ls2
-    resultLs = toListS2D (fromListAsS2D U ls2)
+    resultLs = toList2D (fromListAs2D U Seq ls2)
 
 
 prop_toFromListS3D :: Arr U DIM3 Int -> Property
-prop_toFromListS3D (Arr arr) = arr === fromListAsS3D U (toListS3D arr)
+prop_toFromListS3D (Arr arr) = arr === fromListAs3D U Seq (toList3D arr)
 
 
 prop_excFromToListS3D :: [[[Int]]] -> Property
@@ -62,31 +62,31 @@ prop_excFromToListS3D ls3 =
     else classify True "Expected Failure" $
          assertSomeException resultLs
   where
-    resultLs = toListS3D (fromListAsS3D U ls3)
+    resultLs = toList3D (fromListAs3D U Seq ls3)
     lsL = P.map length ls3
     lsLL = P.map (P.map length) ls3
 
 
 prop_toFromListP2D :: Sz DIM2 -> Fun DIM2 Int -> Property
 prop_toFromListP2D (Sz sz) f =
-  compute arr === fromListAsP2D U (toListS2D arr)
+  compute arr === fromListAs2D U Par (toList2D arr)
   where
-    arr = makeArray2D sz (apply f)
+    arr = makeArray2D Par sz (apply f)
 
 prop_excFromToListP2D :: [[Int]] -> Property
 prop_excFromToListP2D ls2 =
   if P.null lsL || all (head lsL ==) lsL
-    then ls2 === toListS2D (fromListAsP2D U ls2)
+    then ls2 === toList2D (fromListAs2D U Par ls2)
     else assertSomeException res
   where
-    res = toListS2D (fromListAsP2D U ls2)
+    res = toList2D (fromListAs2D U Par ls2)
     lsL = P.map length ls2
 
 prop_toFromListP3D :: Sz DIM3 -> Fun DIM3 Int -> Property
 prop_toFromListP3D (Sz sz) f =
-  compute arr === fromListAsP3D U (toListS3D arr)
+  compute arr === fromListAs3D U Par (toList3D arr)
   where
-    arr = makeArray3D sz (apply f)
+    arr = makeArray3D Par sz (apply f)
 
 prop_excFromToListP3D :: [[[Int]]] -> Property
 prop_excFromToListP3D ls3 =
@@ -97,7 +97,7 @@ prop_excFromToListP3D ls3 =
     else classify True "Expected Failure" $
          assertSomeException resultLs
   where
-    resultLs = toListS3D (fromListAsP3D U ls3)
+    resultLs = toList3D (fromListAs3D U Par ls3)
     lsL = P.map length ls3
     lsLL = P.map (P.map length) ls3
 

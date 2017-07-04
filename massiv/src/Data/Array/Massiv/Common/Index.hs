@@ -28,21 +28,12 @@ type DIM4 = (Int, Int, Int, Int)
 type DIM5 = (Int, Int, Int, Int, Int)
 
 type family Lower ix :: *
-type family Higher ix :: *
 
-type instance Lower DIM1 = Z
+type instance Lower DIM1 = ZeroDim
 type instance Lower DIM2 = DIM1
 type instance Lower DIM3 = DIM2
 type instance Lower DIM4 = DIM3
 type instance Lower DIM5 = DIM4
-
-type instance Higher Z = DIM1
-type instance Higher DIM1 = DIM2
-type instance Higher DIM2 = DIM3
-type instance Higher DIM3 = DIM4
-type instance Higher DIM4 = DIM5
-
-
 
 class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
@@ -94,7 +85,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
 
 
-data Z = Z deriving (Eq, Ord, Show)
+data ZeroDim = ZeroDim deriving (Eq, Ord, Show)
 
 -- errorBelowZero :: a
 -- errorBelowZero = error "There is no dimension that is lower than DIM0"
@@ -160,11 +151,11 @@ instance Index DIM1 where
   {-# INLINE repairIndex #-}
   consDim i _ = i
   {-# INLINE consDim #-}
-  unconsDim i = (i, Z)
+  unconsDim i = (i, ZeroDim)
   {-# INLINE unconsDim #-}
   snocDim _ i = i
   {-# INLINE snocDim #-}
-  unsnocDim i = (Z, i)
+  unsnocDim i = (ZeroDim, i)
   {-# INLINE unsnocDim #-}
   getIndex i 1 = Just i
   getIndex _ _ = Nothing
@@ -172,7 +163,7 @@ instance Index DIM1 where
   setIndex _ 1 i = Just i
   setIndex _ _ _ = Nothing
   {-# INLINE setIndex #-}
-  dropIndex _ 1 = Just Z
+  dropIndex _ 1 = Just ZeroDim
   dropIndex _ _ = Nothing
   {-# INLINE dropIndex #-}
   liftIndex f = f

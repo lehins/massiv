@@ -21,40 +21,33 @@ module Data.Array.Massiv.Ops.Construct
   , enumFromN
   , enumFromStepN
   -- * Conversion
-  -- ** From List Sequentially
-  , fromListS1D
-  , fromListAsS1D
-  , fromListS2D
-  , fromListAsS2D
-  , fromListS3D
-  , fromListAsS3D
-  -- ** From List in Parallel
-  , fromListP2D
-  , fromListAsP2D
-  , fromListP3D
-  , fromListAsP3D
-  -- ** To List Sequentially
-  , toListS1D
-  , toListS2D
-  , toListS3D
-  -- -- ** To List in Parallel
-  -- , toListP2D
-  -- , toListP3D
+  -- ** From List
+  , fromList1D
+  , fromListAs1D
+  , fromList2D
+  , fromListAs2D
+  , fromList3D
+  , fromListAs3D
+  -- ** To List
+  --
+  -- Conversion to List is done sequentially regardless of the internal
+  -- computation type, because constructing nested lists in parallel turns out
+  -- to be slower then doing so sequentially.
+  , toList1D
+  , toList2D
+  , toList3D
   ) where
 
 import           Control.Monad                  (unless)
 import           Control.Monad.ST               (runST)
-import           Data.Array.Massiv.Common       (Array, Comp (..), DIM1, DIM2,
-                                                 DIM3,
-                                                 Index (totalElem, unconsDim),
-                                                 Lower, Massiv (size), Source,
-                                                 loopM, makeArray)
+import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape (Shape (R), Slice, (!>))
 import           Data.Array.Massiv.Delayed      (D)
 import           Data.Array.Massiv.Ops.Fold     (foldrFB)
 import           Prelude                        as P
 --import           Data.Array.Massiv.Manifest     (B)
-import           Data.Array.Massiv.Mutable      (Mutable (unsafeFreeze, unsafeLinearWrite, unsafeNew))
+import           Data.Array.Massiv.Mutable      (Mutable (unsafeFreeze, unsafeNew),
+                                                 Mutable (unsafeLinearWrite))
 import           Data.Array.Massiv.Scheduler
 import           Data.Maybe                     (listToMaybe)
 import           GHC.Base                       (build)
@@ -62,17 +55,17 @@ import           System.IO.Unsafe               (unsafePerformIO)
 --import Control.DeepSeq (NFData, deepseq)
 
 
-makeArray1D :: DIM1 -> (DIM1 -> e) -> Array D DIM1 e
-makeArray1D = makeArray Seq
+makeArray1D :: Comp -> DIM1 -> (Int -> e) -> Array D DIM1 e
+makeArray1D = makeArray
 {-# INLINE makeArray1D #-}
 
 
-makeArray2D :: DIM2 -> (DIM2 -> e) -> Array D DIM2 e
-makeArray2D = makeArray Seq
+makeArray2D :: Comp -> DIM2 -> ((Int, Int) -> e) -> Array D DIM2 e
+makeArray2D = makeArray
 {-# INLINE makeArray2D #-}
 
-makeArray3D :: DIM3 -> (DIM3 -> e) -> Array D DIM3 e
-makeArray3D = makeArray Seq
+makeArray3D :: Comp -> DIM3 -> ((Int, Int, Int) -> e) -> Array D DIM3 e
+makeArray3D = makeArray
 {-# INLINE makeArray3D #-}
 
 
@@ -86,7 +79,7 @@ makeArray3D = makeArray Seq
 -- >>> toList $ range (-2) 3
 -- [-2,-1,0,1,2]
 range :: Int -> Int -> Array D DIM1 Int
-range !from !to = makeArray1D (max 0 (to - from)) (+ from)
+range !from !to = makeArray1D Seq (max 0 (to - from)) (+ from)
 {-# INLINE range #-}
 
 
@@ -99,7 +92,7 @@ rangeStep !from !step !to
   | step == 0 = error "rangeStep: Step can't be zero"
   | otherwise =
     let (sz, r) = (to - from) `divMod` step
-    in makeArray1D (sz + signum r) (\i -> from + i * step)
+    in makeArray1D Seq (sz + signum r) (\i -> from + i * step)
 {-# INLINE rangeStep #-}
 
 
@@ -112,7 +105,7 @@ enumFromN :: Num e =>
              e -- ^ Start value
           -> Int -- ^ Length of resulting array
           -> Array D DIM1 e
-enumFromN !from !sz = makeArray1D sz $ \ i -> fromIntegral i + from
+enumFromN !from !sz = makeArray1D Seq sz $ \ i -> fromIntegral i + from
 {-# INLINE enumFromN #-}
 
 -- |
@@ -125,16 +118,51 @@ enumFromStepN :: Num e =>
               -> e -- ^ Step value
               -> Int -- ^ Length of resulting array
               -> Array D DIM1 e
-enumFromStepN !from !step !sz = makeArray1D sz $ \ i -> from + fromIntegral i * step
+enumFromStepN !from !step !sz = makeArray1D Seq sz $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}
+
+
+fromList1D :: Mutable r DIM1 e => Comp -> [e] -> Array r DIM1 e
+fromList1D Seq  = fromListS1D
+fromList1D comp = setComp comp . fromListS1D
+{-# INLINE fromList1D #-}
+
+
+-- | fromListAs1D U Par [1,2,3]
+fromListAs1D :: Mutable r DIM1 e => r -> Comp -> [e] -> Array r DIM1 e
+fromListAs1D _ = fromList1D
+{-# INLINE fromListAs1D #-}
+
+
+fromList2D :: Mutable r DIM2 e => Comp -> [[e]] -> Array r DIM2 e
+fromList2D Seq          = fromListS2D
+fromList2D (ParOn wIds) = fromListP2D wIds
+{-# INLINE fromList2D #-}
+
+
+fromListAs2D :: Mutable r DIM2 e => r -> Comp -> [[e]] -> Array r DIM2 e
+fromListAs2D _ = fromList2D
+{-# INLINE fromListAs2D #-}
+
+
+
+fromList3D :: Mutable r DIM3 e => Comp -> [[[e]]] -> Array r DIM3 e
+fromList3D Seq          = fromListS3D
+fromList3D (ParOn wIds) = fromListP3D wIds
+{-# INLINE fromList3D #-}
+
+
+fromListAs3D :: Mutable r DIM3 e => r -> Comp -> [[[e]]] -> Array r DIM3 e
+fromListAs3D _ = fromList3D
+{-# INLINE fromListAs3D #-}
 
 
 loadList1D :: Monad m => Int -> Int -> (Int -> t -> m a) -> [t] -> m ()
 loadList1D start end uWrite xs = do
-  leftOver <- loopM start (< end) (+ 1) xs $ \ !i xs' ->
+  leftOver <- loopM start (< end) (+ 1) xs $ \ i xs' ->
     case xs' of
-      []     -> error $ "Row is too short"
       (y:ys) -> uWrite i y >> return ys
+      []     -> error $ "Row is too short"
   unless (null leftOver) $ error "Row is too long"
 {-# INLINE loadList1D #-}
 
@@ -149,21 +177,17 @@ fromListS1D xs =
 {-# INLINE fromListS1D #-}
 
 
-fromListAsS1D :: Mutable r DIM1 e => r -> [e] -> Array r DIM1 e
-fromListAsS1D _ = fromListS1D
-{-# INLINE fromListAsS1D #-}
-
-
-loadListUsing2D :: Monad m =>
-  Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[e]] -> m ()
+loadListUsing2D
+  :: Monad m
+  => Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[e]] -> m ()
 loadListUsing2D start end step uWrite using xs = do
   leftOver <-
     loopM start (< end) (+ step) xs $ \ !i ys ->
       case ys of
-        [] -> error "Column is too short."
         (x:xs') -> do
           using (loadList1D i (i + step) uWrite x)
           return xs'
+        [] -> error "Column is too short."
   unless (P.null leftOver || P.all P.null leftOver) $ error "Column is too long."
 {-# INLINE loadListUsing2D #-}
 
@@ -177,10 +201,6 @@ fromListS2D xs =
     unsafeFreeze Seq mArr
 {-# INLINE fromListS2D #-}
 
-
-fromListAsS2D :: Mutable r DIM2 e => r -> [[e]] -> Array r DIM2 e
-fromListAsS2D _ = fromListS2D
-{-# INLINE fromListAsS2D #-}
 
 
 loadListUsing3D :: Monad m =>
@@ -216,19 +236,13 @@ fromListS3D xs =
 {-# INLINE fromListS3D #-}
 
 
-fromListAsS3D :: Mutable r DIM3 e => r -> [[[e]]] -> Array r DIM3 e
-fromListAsS3D _ = fromListS3D
-{-# INLINE fromListAsS3D #-}
-
-
-
 -- | Convert a list of lists into a 2 dimensional array in parallel, while
 -- splitting loading of all rows among all cores/capabilites.
-fromListP2D :: Mutable r DIM2 e => [[e]] -> Array r DIM2 e
-fromListP2D xs =
+fromListP2D :: Mutable r DIM2 e => [Int] -> [[e]] -> Array r DIM2 e
+fromListP2D wIds xs =
   unsafePerformIO $ do
     let sz@(m, n) = (length xs, maybe 0 length $ listToMaybe xs)
-    scheduler <- makeScheduler []
+    scheduler <- makeScheduler wIds
     mArr <- unsafeNew sz
     loadListUsing2D
       0
@@ -242,20 +256,16 @@ fromListP2D xs =
 {-# INLINE fromListP2D #-}
 
 
-fromListAsP2D :: Mutable r DIM2 e => r -> [[e]] -> Array r DIM2 e
-fromListAsP2D _ = fromListP2D
-{-# INLINE fromListAsP2D #-}
 
-
-fromListP3D :: Mutable r DIM3 e => [[[e]]] -> Array r DIM3 e
-fromListP3D xs =
+fromListP3D :: Mutable r DIM3 e => [Int] -> [[[e]]] -> Array r DIM3 e
+fromListP3D wIds xs =
   unsafePerformIO $ do
     let mFirstRow = listToMaybe xs
     let !sz@(l, m, n) =
           ( length xs
           , maybe 0 length mFirstRow
           , maybe 0 length (mFirstRow >>= listToMaybe))
-    scheduler <- makeScheduler []
+    scheduler <- makeScheduler wIds
     mArr <- unsafeNew (l, m, n)
     let !step = m * n
     loadListUsing3D
@@ -271,20 +281,14 @@ fromListP3D xs =
 {-# INLINE fromListP3D #-}
 
 
-fromListAsP3D :: Mutable r DIM3 e => r -> [[[e]]] -> Array r DIM3 e
-fromListAsP3D _ = fromListP3D
-{-# INLINE fromListAsP3D #-}
-
-
-
 -- | Convert an array into a list.
 --
--- >>> toListS1D $ makeArray2D (2, 3) id
+-- >>> toList1D $ makeArray2D (2, 3) id
 -- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
 --
-toListS1D :: Source r ix e => Array r ix e -> [e]
-toListS1D !arr = build (\ c n -> foldrFB c n arr)
-{-# INLINE toListS1D #-}
+toList1D :: Source r ix e => Array r ix e -> [e]
+toList1D !arr = build (\ c n -> foldrFB c n arr)
+{-# INLINE toList1D #-}
 
 
 -- | Convert an array with at least 2 dimensions into a list of lists. Inner
@@ -292,21 +296,21 @@ toListS1D !arr = build (\ c n -> foldrFB c n arr)
 --
 -- ==== __Examples__
 --
--- >>> toListS2D $ makeArray2D Seq (2, 3) id
+-- >>> toList2D $ makeArray2D Seq (2, 3) id
 -- [[(0,0),(0,1),(0,2)],[(1,0),(1,1),(1,2)]]
--- >>> toListS2D $ makeArray3D Seq (2, 1, 3) id
+-- >>> toList2D $ makeArray3D Seq (2, 1, 3) id
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
-toListS2D :: Slice r ix e => Array r ix e -> [[e]]
-toListS2D !arr = build $ \ c n -> foldrFB c n $ fmap toListS1D $ makeArray1D k (arr !>)
+toList2D :: Slice r ix e => Array r ix e -> [[e]]
+toList2D !arr = build $ \ c n -> foldrFB c n $ fmap toList1D $ makeArray1D Seq k (arr !>)
   where !k = fst $ unconsDim $ size arr
-{-# INLINE toListS2D #-}
+{-# INLINE toList2D #-}
 
 
-toListS3D :: (Slice (R r) (Lower ix) e, Slice r ix e) => Array r ix e -> [[[e]]]
-toListS3D !arr = build $ \ c n -> foldrFB c n $ fmap toListS2D $ makeArray1D k (arr !>)
+toList3D :: (Slice (R r) (Lower ix) e, Slice r ix e) => Array r ix e -> [[[e]]]
+toList3D !arr = build $ \ c n -> foldrFB c n $ fmap toList2D $ makeArray1D Seq k (arr !>)
   where !k = fst $ unconsDim $ size arr
-{-# INLINE toListS3D #-}
+{-# INLINE toList3D #-}
 
 
 -- toListP2D

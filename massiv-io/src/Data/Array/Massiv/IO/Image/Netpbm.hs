@@ -139,7 +139,7 @@ decodePPMs :: (FileFormat f, Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
            -> B.ByteString
            -> Array B DIM1 (Image r cs e)
 decodePPMs f converter bs =
-  either (throw . DecodeError) fromListS1D $
+  either (throw . DecodeError) (fromList1D Seq) $
   (P.map (fromEitherDecode f showNetpbmCS converter . Right) . fst) <$>
   parsePPM bs
 {-# INLINE decodePPMs #-}

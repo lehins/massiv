@@ -22,10 +22,10 @@ main = do
       !arrCMs' = M.computeAs M.U (M.transpose arrCMs)
       !arrCRs = R.computeUnboxedS $ arrR szs
       !arrCRs' = R.transpose2S arrCRs
-      !ls1D = toListS1D arrCM
-      !ls2D = toListS2D arrCM
-      arrMP sz = arrM Par sz
-      nestedArrMP !(m, n) = setComp Par $ makeArray1D m (arr !>)
+      !ls1D = toList1D arrCM
+      !ls2D = toList2D arrCM
+      arrMP = arrM Par
+      nestedArrMP !(m, n) = makeArray1D Par m (arr !>)
         where
           !arr = arrMP (m, n)
       {-# INLINE nestedArrMP #-}
@@ -70,8 +70,8 @@ main = do
     --     ]
     , bgroup
         "fromList"
-        [ bench "Array Massiv" $ whnf (M.fromListAsP2D M.U) ls2D
-        , bench "Array Massiv Seq" $ whnf (M.fromListAsS2D M.U) ls2D
+        [ bench "Array Massiv" $ whnf (M.fromListAs2D M.U Par) ls2D
+        , bench "Array Massiv Seq" $ whnf (M.fromListAs2D M.U Seq) ls2D
         , bench "Array Repa" $ whnf (R.fromListUnboxed szR) ls1D
         ]
     , bgroup

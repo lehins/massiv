@@ -183,7 +183,9 @@ instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
   decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodePng
 
 
++37529-317-8899
 
+белинского 54
 
 encodePNG :: forall r cs e. (ColorSpace cs e, Source r DIM2 (Pixel cs e))
           => Image r cs e -> Maybe BL.ByteString
@@ -327,7 +329,7 @@ decodeGIFs
 decodeGIFs f decoder bs = do
   either
     (throw . DecodeError)
-    fromListS1D
+    (fromList1D Seq)
     (P.map (fromEitherDecode f showJP decoder . Right) <$> JP.decodeGifImages bs)
 {-# INLINE decodeGIFs #-}
 
@@ -340,7 +342,7 @@ decodeGIFsWithDelays
   -> B.ByteString
   -> Array B DIM1 (JP.GifDelay, Image S cs e)
 decodeGIFsWithDelays f decoder bs =
-  either (throw . DecodeError) fromListS1D $ do
+  either (throw . DecodeError) (fromList1D Seq) $ do
     jpImgsLs <- JP.decodeGifImages bs
     delays <- JP.getDelaysGifImages bs
     return $
@@ -398,8 +400,8 @@ encodeGIFs (WriteOptionsSequenceGIF pal looping) arr = do
   return $
     either (throw . EncodeError) id $ JP.encodeGifImages looping palDelImgsLs
   where
-    delaysLs = toListS1D delays
-    imgsLs = toListS1D imgs
+    delaysLs = toList1D delays
+    imgsLs = toList1D imgs
     (delays, imgs) = M.unzip arr
 {-# INLINE encodeGIFs #-}
 

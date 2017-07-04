@@ -18,6 +18,7 @@ library
   exposed-modules:     Data.Array.Massiv
                      , Data.Array.Massiv.Common
                      , Data.Array.Massiv.Common.Index
+                     , Data.Array.Massiv.Common.Ix
                      , Data.Array.Massiv.Common.Shape
                      , Data.Array.Massiv.Delayed
                      , Data.Array.Massiv.Delayed.Interleaved

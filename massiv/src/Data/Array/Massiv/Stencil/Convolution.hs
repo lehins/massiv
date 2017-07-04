@@ -10,10 +10,8 @@
 --
 module Data.Array.Massiv.Stencil.Convolution where
 
--- import Control.Applicative
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest
-import           Data.Array.Massiv.Manifest.Unboxed
 import           Data.Array.Massiv.Ops.Construct
 import           Data.Array.Massiv.Ops.Fold         (ifoldlS)
 import           Data.Array.Massiv.Stencil.Internal
@@ -61,9 +59,9 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
 sobelKernelStencilX
   :: (Eq e, Num e, Unbox e) => Border e -> Stencil DIM2 e e
 sobelKernelStencilX b =
-  mkConvolutionStencilFromKernel b $ fromListAsS2D U [ [ 1, 0, -1 ]
-                                                     , [ 2, 0, -2 ]
-                                                     , [ 1, 0, -1 ] ]
+  mkConvolutionStencilFromKernel b $ fromListAs2D U Seq [ [ 1, 0, -1 ]
+                                                        , [ 2, 0, -2 ]
+                                                        , [ 1, 0, -1 ] ]
 {-# INLINE sobelKernelStencilX #-}
 
 

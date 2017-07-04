@@ -174,23 +174,23 @@ collectResults scheduler@(Scheduler {..}) f initAcc = do
                 then do
                   jobsSubmitted <- readTVar jobsSubmittedVar
                   jobsFinished <- readTVar jobsFinishedVar
-                  return $ Right (res, jobsSubmitted == jobsFinished)
+                  let stop = jobsSubmitted == jobsFinished
+                  when stop $ do
+                    writeTVar retiredVar True
+                    if isGlobalScheduler
+                      then writeTVar hasGlobalSchedulerVar False
+                      else loopM_ 0 (< numWorkers) (+ 1) $ \ !_ ->
+                             writeTChan (workersJobQueue workers) Retire
+                  return $ Right (res, stop)
                 else return $ Right (res, False)
             Left exc -> do
-              clearJobQueue scheduler
               writeTVar retiredVar True
+              clearJobQueue scheduler
               return $ Left exc
       case eResStop of
         Right (res, stop) ->
           if stop
-            then do
-              atomically $ do
-                writeTVar retiredVar True
-                if isGlobalScheduler
-                  then writeTVar hasGlobalSchedulerVar False
-                  else loopM_ 0 (< numWorkers) (+ 1) $ \ !_ ->
-                         writeTChan (workersJobQueue workers) Retire
-              return $! f res acc
+            then return $! f res acc
             else collect $ f res acc
         Left exc -> do
           mapM_ killThread (workerThreadIds workers)

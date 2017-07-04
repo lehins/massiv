@@ -6,6 +6,7 @@ import           Compute
 
 import           Criterion.Main
 import           Data.Array.Massiv                 as M
+import           Data.Array.Massiv.Common.Ix       as M
 import           Data.Array.Massiv.Numeric
 import           Data.Array.Repa                   as R
 import           Data.Array.Repa.Algorithms.Matrix as R
@@ -18,21 +19,29 @@ sarrM :: (Int, Int) -> M.Array M.U M.DIM2 Double
 sarrM arrSz = smakeArray Seq arrSz lightF
 {-# INLINE sarrM #-}
 
+toIx2 :: (Int, Int) -> Ix2
+toIx2 (i, j) = i :! j
+
+toIxArr
+  :: M.Source r (Int, Int) e
+  => M.Array r (Int, Int) e -> M.Array M.D Ix2 e
+toIxArr arr = makeArray (getComp arr) (toIx2 (M.size arr)) (\(i :! j) -> M.unsafeIndex arr (i, j))
 
 main :: IO ()
 main = do
   let !sz = (1600, 1200) :: M.DIM2
-      !szR = (Z :. fst sz :. snd sz)
+      !szR = (R.Z R.:. fst sz R.:. snd sz)
   let !szs = (600, 200) :: M.DIM2
   let !ixM = (612, 211)
-      !ixR = (Z :. fst ixM :. snd ixM)
+      !ixR = (R.Z R.:. fst ixM R.:. snd ixM)
       !ix1D = toLinearIndex sz ixM
   let !arrCM = computeAs U $ arrM Seq sz
+      !arrCM' = computeAs U $ toIxArr $ arrM Seq sz
       !arrCMM = toManifest arrCM
       !arrCR = R.computeUnboxedS $ arrR sz
       !vecCU = vecU sz
-      !ls1D = toListS1D arrCM
-      !ls2D = toListS2D arrCM
+      !ls1D = toList1D arrCM
+      !ls2D = toList2D arrCM
   let !arrCMs = computeAs U $ arrM Seq szs
       !arrCMs' = computeAs U (M.transpose arrCMs)
       !arrCRs = R.computeUnboxedS $ arrR szs
@@ -129,14 +138,15 @@ main = do
         ]
     , bgroup
         "toList"
-        [ bench "Array Massiv" $ nf (M.toListS1D . arrM Seq) sz
-        , bench "Array Massiv 2D" $ nf (M.toListS2D . arrM Seq) sz
+        [ bench "Array Massiv" $ nf (M.toList1D . arrM Seq) sz
+        , bench "Array Massiv 2D" $ nf (M.toList2D . arrM Seq) sz
         , bench "Array vector" $ whnf (VU.toList . vecU) sz
         , bench "Array Repa" $ nf (R.toList . arrR) sz
         ]
     , bgroup
         "fromList"
-        [ bench "Array Massiv" $ whnf (M.fromListAsS2D M.U) ls2D
+        [ bench "Array Massiv 1D" $ whnf (M.fromListAs1D M.U Seq) ls1D
+        , bench "Array Massiv 2D" $ whnf (M.fromListAs2D M.U Seq) ls2D
         , bench "Array Repa" $ whnf (R.fromListUnboxed szR) ls1D
         , bench "Array Vector" $ whnf VU.fromList ls1D
         ]
@@ -151,6 +161,25 @@ main = do
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
             , bench "Array Repa" $
               whnf (R.computeUnboxedS . R.map (+ 25) . arrR) sz
+            ]
+        , bgroup
+            "transpose"
+            [ bench "Array Massiv" $
+              whnf (M.computeAs U . M.transpose . arrM Seq) sz
+            , bench "Array Repa" $
+              whnf (R.computeUnboxedS . R.transpose . arrR) sz
+            ]
+        ]
+    , bgroup
+        "Transform"
+        [ bgroup
+            "transpose"
+            [ bench "Array Massiv" $
+              whnf (M.computeAs U . M.transpose) arrCM
+            , bench "Array Massiv" $
+              whnf (M.computeAs U . M.transposeInner) arrCM'
+            , bench "Array Repa" $
+              whnf (R.computeUnboxedS . R.transpose) arrCR
             ]
         ]
     , bgroup
