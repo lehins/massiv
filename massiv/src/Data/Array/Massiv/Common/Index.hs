@@ -54,6 +54,8 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
                 -> ix -- ^ Index
                 -> Int
 
+  toLinearIndexAcc :: Int -> ix -> ix -> Int
+
   -- | Produce N Dim index from size and linear index
   fromLinearIndex :: ix -> Int -> ix
 
@@ -79,56 +81,20 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
   iter :: ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
 
-  iterM :: Monad m => ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> m a) -> m a
+  iterM :: Monad m =>
+           ix -- ^ Start index
+        -> ix -- ^ End index
+        -> Int -- ^ Increment
+        -> (Int -> Int -> Bool) -- ^ Linear termination condition (eg. end of row)
+        -> a -- ^ Initial value for an accumulator
+        -> (ix -> a -> m a) -- ^ Accumulator function
+        -> m a
 
   iterM_ :: Monad m => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
 
 
 
 data ZeroDim = ZeroDim deriving (Eq, Ord, Show)
-
--- errorBelowZero :: a
--- errorBelowZero = error "There is no dimension that is lower than DIM0"
-
--- instance Index Z where
---   rank _ = 0
---   {-# INLINE rank #-}
---   zeroIndex = Z
---   {-# INLINE zeroIndex #-}
---   totalElem _ = 0
---   {-# INLINE totalElem #-}
---   isSafeIndex _   _    = False
---   {-# INLINE isSafeIndex #-}
---   toLinearIndex _ _ = 0
---   {-# INLINE toLinearIndex #-}
---   fromLinearIndex _ _ = Z
---   {-# INLINE fromLinearIndex #-}
---   repairIndex _ _ _ _ = Z
---   {-# INLINE repairIndex #-}
---   consDim _ _ = Z
---   {-# INLINE consDim #-}
---   unconsDim _ = errorBelowZero
---   {-# INLINE unconsDim #-}
---   snocDim _ _ = Z
---   {-# INLINE snocDim #-}
---   unsnocDim _ = errorBelowZero
---   {-# INLINE unsnocDim #-}
---   getIndex _ _ = Nothing
---   {-# INLINE getIndex #-}
---   setIndex _ _ _ = Nothing
---   {-# INLINE setIndex #-}
---   dropIndex _ _ = Nothing
---   {-# INLINE dropIndex #-}
---   liftIndex _ _ = Z
---   {-# INLINE liftIndex #-}
---   liftIndex2 _ _ _ = Z
---   {-# INLINE liftIndex2 #-}
---   iter _ _ _ _ acc f = f Z acc
---   {-# INLINE iter #-}
---   iterM _ _ _ _ acc f = f Z acc
---   {-# INLINE iterM #-}
---   iterM_ _ _ _ _ f = void $ f Z
---   {-# INLINE iterM_ #-}
 
 
 instance Index DIM1 where
@@ -462,8 +428,8 @@ repairIndexRec !sz !ix rBelow rOver =
 
 
 toLinearIndexRec :: (Index (Lower ix), Index ix) =>
-                      ix -> ix -> Int
-toLinearIndexRec !sz !ix = (toLinearIndex szL ixL) * n + i
+                    ix -> ix -> Int
+toLinearIndexRec !sz !ix = toLinearIndex szL ixL * n + i
   where !(szL, n) = unsnocDim sz
         !(ixL, i) = unsnocDim ix
 {-# INLINE toLinearIndexRec #-}

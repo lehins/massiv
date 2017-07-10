@@ -16,6 +16,7 @@
 module Data.Array.Massiv
   ( module Data.Array.Massiv.Common
   , module Data.Array.Massiv.Common.Shape
+  , module Data.Array.Massiv.Common.Ix
   , module Data.Array.Massiv.Delayed
   , module Data.Array.Massiv.Manifest
   , module Data.Array.Massiv.Mutable
@@ -37,6 +38,7 @@ module Data.Array.Massiv
   ) where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Ix
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest

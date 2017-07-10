@@ -98,7 +98,6 @@ class ( Index (Lower ix)
 (<?>) (Just arr) !ix = arr <!?> ix
 {-# INLINE (<?>) #-}
 
-
 (!>) :: Slice r ix e => Array r ix e -> Int -> Array (R r) (Lower ix) e
 (!>) !arr !ix =
   case arr !?> ix of

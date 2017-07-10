@@ -74,6 +74,7 @@ type instance VRepr S = VS.Vector
 type instance VRepr P = VP.Vector
 type instance VRepr B = VB.Vector
 
+infixr 5 !
 
 -- | Infix version of `index`.
 (!) :: Manifest r ix e => Array r ix e -> ix -> e

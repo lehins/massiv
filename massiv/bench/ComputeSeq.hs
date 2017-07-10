@@ -154,8 +154,7 @@ main = do
         "Fuse"
         [ bgroup
             "map"
-            [ bench "Array Massiv" $
-              whnf (M.smap (+ 25) . sarrM) sz
+            [ bench "Array Massiv" $ whnf (M.smap (+ 25) . sarrM) sz
             , bench "Array Massiv" $
               whnf (computeAs U . fmap (+ 25) . arrM Seq) sz
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
@@ -175,11 +174,18 @@ main = do
         [ bgroup
             "transpose"
             [ bench "Array Massiv" $
-              whnf (M.computeAs U . M.transpose) arrCM
+              whnf (M.computeAs U . M.transposeInner) arrCM
             , bench "Array Massiv" $
-              whnf (M.computeAs U . M.transposeInner) arrCM'
-            , bench "Array Repa" $
-              whnf (R.computeUnboxedS . R.transpose) arrCR
+              whnf (M.computeAs U . M.transposeOuter) arrCM'
+            , bench "Array Repa" $ whnf (R.computeUnboxedS . R.transpose) arrCR
+            ]
+        , bgroup
+            "map"
+            [ bench "Array Massiv" $
+              whnf (M.computeAs U . M.map (+15)) arrCM
+            , bench "Array Massiv" $
+              whnf (M.computeAs U . M.map (+15)) arrCM'
+            , bench "Array Repa" $ whnf (R.computeUnboxedS . R.map (+15)) arrCR
             ]
         ]
     , bgroup
