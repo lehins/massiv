@@ -41,6 +41,9 @@ type instance Lower (Ix n) = Ix (n - 1)
 
 type Ix1 = Ix 1
 type Ix2 = Ix 2
+type Ix3 = Ix 3
+type Ix4 = Ix 4
+type Ix5 = Ix 5
 
 instance NFData (Ix n) where
   rnf ix = ix `seq` ()
