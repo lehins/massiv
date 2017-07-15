@@ -25,7 +25,7 @@ import           Data.Array.Massiv.Common.Index
 import           Data.Proxy
 import           GHC.TypeLits
 
-infixr 5 :> --, :.
+infixr 5 :>, :.
 
 data Ix (n :: Nat) where
   Z :: Ix 0
@@ -33,9 +33,6 @@ data Ix (n :: Nat) where
 
 pattern (:.) :: Int -> Int -> Ix 2
 pattern (:.) i j = i :> j :> Z
-
--- pattern (:.) :: Int -> Ix (n - 1) -> Ix n
--- pattern (:.) i ix = (:>) i ix
 
 type instance Lower (Ix n) = Ix (n - 1)
 

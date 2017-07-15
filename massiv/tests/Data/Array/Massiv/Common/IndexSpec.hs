@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Data.Array.Massiv.Common.IndexSpec (Sz(..), SzZ(..), Ix(..), spec) where
+module Data.Array.Massiv.Common.IndexSpec (Sz(..), SzZ(..), SzIx(..), spec) where
 
 import           Control.Monad
 import           Data.Array.Massiv.Common.Index
@@ -20,7 +20,7 @@ instance Functor Sz where
 instance Functor SzZ where
   fmap f (SzZ sz) = SzZ (f sz)
 
-data Ix ix = Ix (Sz ix) ix deriving Show
+data SzIx ix = SzIx (Sz ix) ix deriving Show
 
 instance (Index ix, Arbitrary ix) => Arbitrary (Sz ix) where
   arbitrary = do
@@ -33,11 +33,11 @@ instance (Index ix, Arbitrary ix) => Arbitrary (SzZ ix) where
   arbitrary = SzZ <$> liftIndex abs <$> arbitrary
 
 
-instance (Index ix, Arbitrary ix) => Arbitrary (Ix ix) where
+instance (Index ix, Arbitrary ix) => Arbitrary (SzIx ix) where
   arbitrary = do
     Sz sz <- arbitrary
     -- Make sure index is within bounds:
-    Ix (Sz sz) <$> flip (liftIndex2 mod) sz <$> arbitrary
+    SzIx (Sz sz) <$> flip (liftIndex2 mod) sz <$> arbitrary
 
 
 instance Arbitrary e => Arbitrary (Border e) where
@@ -51,11 +51,11 @@ instance Arbitrary e => Arbitrary (Border e) where
       ]
 
 
-prop_IsSafeIx :: (Index ix) => proxy ix -> Ix ix -> Bool
-prop_IsSafeIx _ (Ix (Sz sz) ix) = isSafeIndex sz ix
+prop_IsSafeIx :: (Index ix) => proxy ix -> SzIx ix -> Bool
+prop_IsSafeIx _ (SzIx (Sz sz) ix) = isSafeIndex sz ix
 
-prop_RepairSafeIx :: Index ix => proxy ix -> Ix ix -> Bool
-prop_RepairSafeIx _ (Ix (Sz sz) ix) =
+prop_RepairSafeIx :: Index ix => proxy ix -> SzIx ix -> Bool
+prop_RepairSafeIx _ (SzIx (Sz sz) ix) =
   ix == repairIndex sz ix (error "Impossible") (error "Impossible")
 
 prop_UnconsCons :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
@@ -64,8 +64,8 @@ prop_UnconsCons _ ix = ix == uncurry consDim (unconsDim ix)
 prop_UnsnocSnoc :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
 prop_UnsnocSnoc _ ix = ix == uncurry snocDim (unsnocDim ix)
 
-prop_ToFromLinearIndex :: Index ix => proxy ix -> Ix ix -> Property
-prop_ToFromLinearIndex _ (Ix (Sz sz) ix) =
+prop_ToFromLinearIndex :: Index ix => proxy ix -> SzIx ix -> Property
+prop_ToFromLinearIndex _ (SzIx (Sz sz) ix) =
   isSafeIndex sz ix ==> ix == fromLinearIndex sz (toLinearIndex sz ix)
 
 prop_FromToLinearIndex :: Index ix => proxy ix -> Sz ix -> Int -> Property

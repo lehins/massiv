@@ -74,7 +74,7 @@ makeGroup groupName !(sz1, i1) !(sz2, i2) !(sz3, i3) =
             "isSafeIndex"
             [ bench "Ix" $ whnf (isSafeIndex sz1) i1
             , bench "Tuple" $ whnf (isSafeIndex sz2) i2
-            , bench "Repa" $ nf (R.inShapeRange R.zeroDim sz3) i3
+            , bench "Repa" $ whnf (R.inShapeRange R.zeroDim sz3) i3
             ]
         , bgroup
             "unconsConsDim"
@@ -114,22 +114,22 @@ makeGroup groupName !(sz1, i1) !(sz2, i2) !(sz3, i3) =
         , bgroup
             "setIndex - 1"
             [ bench "Ix" $ whnf (setIndex i1 1) 8
-            , bench "Tuple" $ whnf (setIndex i2 2) 8
+            , bench "Tuple" $ nf (setIndex i2 2) 8
             ]
         , bgroup
             "setIndex - rank"
             [ bench "Ix" $ whnf (setIndex i1 (M.rank i1)) 8
-            , bench "Tuple" $ whnf (setIndex i2 (M.rank i2)) 8
+            , bench "Tuple" $ nf (setIndex i2 (M.rank i2)) 8
             ]
         , bgroup
             "dropIndex - 1"
             [ bench "Ix" $ whnf (`getIndex` 1) i1
-            , bench "Tuple" $ whnf (`getIndex` 1) i2
+            , bench "Tuple" $ nf (`getIndex` 1) i2
             ]
         , bgroup
             "dropIndex - rank"
             [ bench "Ix" $ whnf (`dropIndex` M.rank i1) i1
-            , bench "Tuple" $ whnf (`dropIndex` M.rank i2) i2
+            , bench "Tuple" $ nf (`dropIndex` M.rank i2) i2
             ]
         ]
     , bgroup

@@ -85,7 +85,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
            ix -- ^ Start index
         -> ix -- ^ End index
         -> Int -- ^ Increment
-        -> (Int -> Int -> Bool) -- ^ Linear termination condition (eg. end of row)
+        -> (Int -> Int -> Bool) -- ^ Continue iteration while predicate is True (eg. until end of row)
         -> a -- ^ Initial value for an accumulator
         -> (ix -> a -> m a) -- ^ Accumulator function
         -> m a

@@ -6,7 +6,7 @@ module Main where
 
 import           Compute
 import           Criterion.Main
-import           Data.Array.Massiv                   as M
+import           Data.Array.Massiv                   as M hiding ((:.), Z)
 import           Data.Functor.Identity
 -- import           Data.Array.Massiv.Compute             as M
 import           Data.Array.Massiv.Stencil           as M

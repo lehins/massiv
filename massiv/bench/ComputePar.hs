@@ -4,7 +4,7 @@ module Main where
 
 import           Compute
 import           Criterion.Main
-import           Data.Array.Massiv                     as M
+import           Data.Array.Massiv                     as M hiding ((:.), Z)
 import           Data.Array.Massiv.Delayed.Interleaved as M
 import           Data.Array.Massiv.Numeric
 import           Data.Array.Repa                       as R

@@ -5,7 +5,7 @@ module Data.Array.Massiv.Common.ShapeSpec (spec) where
 
 import           Data.Array.Massiv
 import           Data.Array.Massiv.CommonSpec (ArrIx (..))
-import           Data.Array.Massiv.Common.IndexSpec (Ix (..), Sz(..))
+import           Data.Array.Massiv.Common.IndexSpec (SzIx (..), Sz(..))
 import           Data.Array.Massiv.DelayedSpec ()
 import           Data.Array.Massiv.ManifestSpec ()
 import           Test.Hspec
@@ -19,8 +19,8 @@ import           Test.QuickCheck
 
 prop_ExtractEqualsExtractFromTo
   :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Shape r ix e)
-  => proxy (r, ix, e) -> Ix ix -> Array r ix e -> Bool
-prop_ExtractEqualsExtractFromTo _ (Ix (Sz eIx) sIx) arr =
+  => proxy (r, ix, e) -> SzIx ix -> Array r ix e -> Bool
+prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
   extractFromTo sIx eIx arr == extract sIx (liftIndex2 (-) eIx sIx) arr
 
 

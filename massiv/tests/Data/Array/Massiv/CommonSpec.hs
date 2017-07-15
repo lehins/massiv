@@ -18,7 +18,7 @@ import           Control.DeepSeq                    (NFData, deepseq)
 import           Control.Exception                  (Exception, SomeException,
                                                      catch)
 import           Data.Array.Massiv
-import           Data.Array.Massiv.Common.IndexSpec (Ix (..), Sz (..), SzZ (..))
+import           Data.Array.Massiv.Common.IndexSpec (SzIx (..), Sz (..), SzZ (..))
 import           Data.Typeable
 import           Test.Hspec
 import           Test.QuickCheck
@@ -54,7 +54,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) =>
          Arbitrary (ArrIx r ix e) where
   arbitrary = do
-    Ix (Sz sz) ix <- arbitrary
+    SzIx (Sz sz) ix <- arbitrary
     func <- arbitrary
     return $ ArrIx (makeArray Seq sz func) ix
 

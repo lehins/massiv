@@ -36,7 +36,7 @@ module Data.Array.Massiv
   , computeF
   , uncomputeF
   ) where
-
+-- import Data.IORef
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Ix
 import           Data.Array.Massiv.Common.Shape

@@ -135,7 +135,7 @@ multArrs arr1 arr2
 negateA
   :: (Source r ix e, Num e)
   => Array r ix e -> Array D ix e
-negateA = liftArray abs
+negateA = liftArray negate
 {-# INLINE negateA #-}
 
 absA
@@ -368,4 +368,27 @@ atan2A
   => Array r ix e -> Array r ix e -> Array D ix e
 atan2A = liftArray2 atan2
 {-# INLINE atan2A #-}
+
+-- SIMD operations:
+--
+-- broadcast :: a -> Vec a
+-- pack :: HashTuple a -> Vec a
+-- unpack :: Vec a -> HashTuple a
+-- insert :: Vec a -> a -> Int -> Vec a
+-- plus :: Vec a -> Vec a -> Vec a
+-- minus :: Vec a -> Vec a -> Vec a
+-- times :: Vec a -> Vec a -> Vec a
+-- divide :: Vec a -> Vec a -> Vec a
+-- quot :: Vec a -> Vec a -> Vec a
+-- rem :: Vec a -> Vec a -> Vec a
+-- negate :: Vec a -> Vec a
+--
+-- index :: Arr a -> Int -> Vec a
+-- indexAs :: Arr a -> Int -> Vec a
+--
+-- read :: MArr a -> Int -> State s -> (# State s, Vec a #)
+-- write :: MArr a -> Int -> Vec a -> State s -> State s
+-- indexAddr :: Addr a -> Int -> Vec a
+-- readAddr :: Addr a -> Int -> State s -> (# State s, Vec a #)
+-- writeAddr :: Addr a -> Int -> Vec a -> State s -> State s
 

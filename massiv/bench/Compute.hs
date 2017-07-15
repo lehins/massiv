@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Compute where
 
-import           Data.Array.Massiv                  as M
+import           Data.Array.Massiv                  as M hiding ((:.), Z)
 import           Data.Array.Massiv.Delayed.Windowed as M
 import           Data.Array.Repa                    as R
 import           Data.Array.Repa.Algorithms.Matrix  as R hiding (mmultP)

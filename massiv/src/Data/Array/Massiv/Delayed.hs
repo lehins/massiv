@@ -1,10 +1,11 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE Rank2Types            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE BangPatterns              #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE Rank2Types                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
 -- |
 -- Module      : Data.Array.Massiv.Delayed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -32,49 +33,6 @@ data D = D
 data instance Array D ix e = DArray { dComp :: Comp
                                     , dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
-
-
--- data instance Array F ix e = FLeft (Array D ix e)
---                            | FRight (Array D ix e)
-
-
--- data F = F
-
--- data instance Array F ix e = FArray { fComp :: Comp
---                                     , fSize :: Maybe ix
---                                     , fStream :: Either (V.Step Int e) (ix -> e) }
-
--- makeArrayF :: Comp -> ix -> (ix -> e) -> Array F ix e
--- makeArrayF comp sz f = FArray comp (Just sz) (Right f)
-
-
--- imapMaybe :: Source r ix e => (ix -> e -> Maybe a) -> Array r ix e -> Array F DIM1 a
--- imapMaybe f arr =
---   FArray
---     (getComp arr)
---     Nothing
---     (Left $ loop
---   where
---     sz = size arr
-
-
-
--- data instance Array F ix e = FArray { fComp :: Comp
---                                     , fSize :: Maybe ix
---                                     , fUnsafeIndex :: ix -> Maybe e }
-
--- makeArrayF :: Comp -> ix -> (ix -> e) -> Array F ix e
--- makeArrayF comp sz f = FArray comp (Just sz) (Just . f)
-
-
--- imapMaybe :: Source r ix e => (ix -> e -> Maybe a) -> Array r ix e -> Array F DIM1 a
--- imapMaybe f arr =
---   FArray
---     (getComp arr)
---     Nothing
---     (\i -> f (fromLinearIndex sz i) (unsafeLinearIndex arr i))
---   where
---     sz = size arr
 
 
 
