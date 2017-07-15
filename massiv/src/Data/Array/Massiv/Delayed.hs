@@ -1,11 +1,10 @@
-{-# LANGUAGE BangPatterns              #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE Rank2Types                #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE Rank2Types            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Delayed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -24,7 +23,6 @@ import           Data.Array.Massiv.Scheduler
 import           Data.Foldable                  (Foldable (..))
 import           GHC.Base                       (build)
 import           Prelude                        hiding (zipWith)
--- import qualified Data.Vector.Fusion.Bundle as V
 
 -- | Delayed representation.
 data D = D
@@ -187,7 +185,6 @@ liftArray2 f !arr1 !arr2
   where
     sz1 = size arr1
     sz2 = size arr2
-    !oneIndex = liftIndex (+ 1) zeroIndex
 {-# INLINE liftArray2 #-}
 
 

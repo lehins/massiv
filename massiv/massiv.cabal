@@ -35,6 +35,7 @@ library
                      , Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Stencil
                      , Data.Array.Massiv.Stencil.Convolution
+                     , Data.Array.Massiv.Delayed.SIMD.Prim
   other-modules:       Data.Array.Massiv.Stencil.Internal
                      , Data.Array.Massiv.Manifest.Internal
                      , Data.Array.Massiv.Ops.Construct
@@ -45,12 +46,13 @@ library
   build-depends:       base            >= 4.7 && < 5
                      , data-default
                      , deepseq
+                     , ghc-prim
                      , primitive
                      , safe-exceptions
                      , stm
                      , vector
   default-language:    Haskell2010
-  ghc-options:         -Wall
+  ghc-options:         -Wall -fllvm
 
 benchmark loops
   type:                exitcode-stdio-1.0
@@ -81,7 +83,7 @@ benchmark compute
   hs-source-dirs:      bench
   main-is:             ComputeSeq.hs
   other-modules:       Compute
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -fllvm
   build-depends:       base
                      , criterion
                      , deepseq
@@ -163,7 +165,7 @@ executable massiv
                      , repa
                      , repa-algorithms
   default-language:    Haskell2010
-  ghc-options:         -O2
+  ghc-options:         -O2 -fllvm
   --ghc-options:         -threaded -O2
   --ghc-options:         -threaded -rtsopts -with-rtsopts=-N7 -O2
   --ghc-options:         -Wall -O2 -threaded -prof -fprof-auto

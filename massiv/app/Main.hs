@@ -6,7 +6,8 @@ module Main where
 --import           Compute
 --import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
-
+import           Data.Array.Massiv.Delayed.SIMD.Prim
+import Data.Int
 
 lightF :: Num b => (Int, Int) -> b
 lightF !(i, j) =
@@ -32,5 +33,9 @@ magnitude arr = szipWith (+) (smap (*2) arr) (smap (*2) arr)
 
 main :: IO ()
 main = do
-  let arrCM = stranspose $ magnitude $ arrMLight (1600, 1200)
-  print arrCM
+  let arrCM = arrMLight (1600, 1200)
+  let arr :: Array P DIM2 Int32
+      arr = computeAs P $ M.map round arrCM
+  arrP <- computeInt32 $ delaySIMD32 arr
+  --print $ toList2D arrP
+  print (arrP == arr)

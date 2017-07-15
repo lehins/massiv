@@ -8,24 +8,25 @@ import           Criterion.Main
 import           Data.Array.Massiv                 as M
 import           Data.Array.Massiv.Common.Ix       as M
 import           Data.Array.Massiv.Numeric
+import           Data.Array.Massiv.Delayed.SIMD.Prim as M
 import           Data.Array.Repa                   as R
 import           Data.Array.Repa.Algorithms.Matrix as R
 import           Data.Foldable
 import qualified Data.Vector.Unboxed               as VU
 import           Prelude                           as P
-
+import Data.Int
 
 sarrM :: (Int, Int) -> M.Array M.U M.DIM2 Double
 sarrM arrSz = smakeArray Seq arrSz lightF
 {-# INLINE sarrM #-}
 
 toIx2 :: (Int, Int) -> Ix2
-toIx2 (i, j) = i :! j
+toIx2 (i, j) = i M.:. j
 
 toIxArr
   :: M.Source r (Int, Int) e
   => M.Array r (Int, Int) e -> M.Array M.D Ix2 e
-toIxArr arr = makeArray (getComp arr) (toIx2 (M.size arr)) (\(i :! j) -> M.unsafeIndex arr (i, j))
+toIxArr arr = makeArray (getComp arr) (toIx2 (M.size arr)) (\(i M.:. j) -> M.unsafeIndex arr (i, j))
 
 main :: IO ()
 main = do
@@ -37,6 +38,11 @@ main = do
       !ix1D = toLinearIndex sz ixM
   let !arrCM = computeAs U $ arrM Seq sz
       !arrCM' = computeAs U $ toIxArr $ arrM Seq sz
+      !arrP =
+        computeAs
+          P
+          (M.map (round . (* 100)) (arrM Seq sz) :: M.Array M.D M.DIM2 Int32)
+      !arrSIMD = delaySIMD32 arrP
       !arrCMM = toManifest arrCM
       !arrCR = R.computeUnboxedS $ arrR sz
       !vecCU = vecU sz
@@ -170,6 +176,27 @@ main = do
             ]
         ]
     , bgroup
+        "SIMD"
+        [ bgroup
+            "plus"
+            [ bench "Array Massiv Normal" $
+              whnf (M.computeAs P . (M.zipWith (+) arrP)) arrP
+            , bench "Array Massiv SIMD" $ nfIO (M.computeInt32 (arrSIMD + arrSIMD))
+            ]
+        , bgroup
+            "times-plus"
+            [ bench "Array Massiv Normal" $
+              whnf (M.computeAs P . (M.zipWith (*) arrP . M.zipWith (+) arrP)) arrP
+            , bench "Array Massiv SIMD" $ nfIO (M.computeInt32 (arrSIMD * (arrSIMD + arrSIMD)))
+            ]
+        , bgroup
+            "abs"
+            [ bench "Array Massiv" $
+              whnf (M.computeAs P . M.map abs) arrP
+            , bench "Array Massiv" $ nfIO (M.computeInt32 (abs arrSIMD))
+            ]
+        ]
+    , bgroup
         "Transform"
         [ bgroup
             "transpose"
@@ -181,11 +208,9 @@ main = do
             ]
         , bgroup
             "map"
-            [ bench "Array Massiv" $
-              whnf (M.computeAs U . M.map (+15)) arrCM
-            , bench "Array Massiv" $
-              whnf (M.computeAs U . M.map (+15)) arrCM'
-            , bench "Array Repa" $ whnf (R.computeUnboxedS . R.map (+15)) arrCR
+            [ bench "Array Massiv" $ whnf (M.computeAs U . M.map (+ 15)) arrCM
+            , bench "Array Massiv" $ whnf (M.computeAs U . M.map (+ 15)) arrCM'
+            , bench "Array Repa" $ whnf (R.computeUnboxedS . R.map (+ 15)) arrCR
             ]
         ]
     , bgroup

@@ -92,7 +92,8 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
   iterM_ :: Monad m => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
 
-
+oneIndex :: Index ix => ix
+oneIndex = liftIndex (+ 1) zeroIndex
 
 data ZeroDim = ZeroDim deriving (Eq, Ord, Show)
 
