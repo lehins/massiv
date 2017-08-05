@@ -2,7 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-import           Compute
+import           CommonMassiv
+import           CommonRepa
 import           Criterion.Main
 import           Data.Array.Massiv                     as M hiding ((:.), Z)
 import           Data.Array.Massiv.Delayed.Interleaved as M

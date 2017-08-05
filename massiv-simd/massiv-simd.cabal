@@ -1,0 +1,58 @@
+name:                massiv-simd
+version:             0.1.0.0
+synopsis:            SIMD operations on Arrays
+description:         Massiv (Масси́в) is a Russian word for an Array.
+homepage:            https://github.com/lehins/massiv
+license:             BSD3
+license-file:        LICENSE
+author:              Alexey Kuleshevich
+maintainer:          lehins@yandex.ru
+copyright:           2017 Alexey Kuleshevich
+category:            Data, Data Structures
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Data.Array.Massiv.SIMD
+                     , Data.Array.Massiv.Delayed.SIMD.Prim
+                     , Data.Array.Massiv.Delayed.SIMD.Prim1
+                     , Data.Array.Massiv.Delayed.SIMD.Prim2
+                     , Data.Array.Massiv.Delayed.SIMD.Prim3
+  build-depends:       base            >= 4.7 && < 5
+                     , bytestring
+                     , deepseq
+                     , directory
+                     , filepath        >= 1.0
+                     , massiv
+                     , vector          >= 0.10
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+  if flag(simd128)
+    ghc-options:        -fllvm
+  else
+    if flag(simd256)
+      ghc-options:        -fllvm -mavx2
+    else
+      if flag(simd256)
+        ghc-options:        -fllvm -mavx512f
+
+
+benchmark compute-simd
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             ComputeSIMD.hs
+  other-modules:       CommonMassiv
+  ghc-options:         -threaded -O2 -fllvm
+  --ghc-options:         -threaded -O2 -Odph -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3
+  build-depends:       base
+                     , criterion
+                     , deepseq
+                     , massiv
+                     , vector
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/lehins/massiv

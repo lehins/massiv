@@ -2,13 +2,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-import           Compute
-
+import           CommonMassiv
+import           CommonRepa
 import           Criterion.Main
 import           Data.Array.Massiv                 as M
 import           Data.Array.Massiv.Common.Ix       as M
 import           Data.Array.Massiv.Numeric
-import           Data.Array.Massiv.Delayed.SIMD.Prim as M
 import           Data.Array.Repa                   as R
 import           Data.Array.Repa.Algorithms.Matrix as R
 import           Data.Foldable
@@ -38,11 +37,11 @@ main = do
       !ix1D = toLinearIndex sz ixM
   let !arrCM = computeAs U $ arrM Seq sz
       !arrCM' = computeAs U $ toIxArr $ arrM Seq sz
-      !arrP =
-        computeAs
-          P
-          (M.map (round . (* 100)) (arrM Seq sz) :: M.Array M.D M.DIM2 Int32)
-      !arrSIMD = delaySIMD32 arrP
+      -- !arrInt32 =
+      --   computeAs
+      --     P
+      --     (M.map (round . (* 100)) (arrM Seq sz) :: M.Array M.D M.DIM2 Int32)
+      !arrDouble = computeAs P $ arrM Seq sz
       !arrCMM = toManifest arrCM
       !arrCR = R.computeUnboxedS $ arrR sz
       !vecCU = vecU sz
@@ -128,17 +127,18 @@ main = do
             "Computed"
             [ bench "Array Massiv Unboxed Left Fold" $ whnf (foldlS (+) 0) arrCM
             --, bench "Array Massiv Unboxed Left Fold'" $ whnf (foldlS' (+) 0) arrCM
-            , bench "Array Massiv Unboxed Right Fold" $
-              whnf (foldrS (+) 0) arrCM
-            --, bench "Array Massiv Unboxed Right Fold'" $ whnf (foldrS' (+) 0) arrCM
-            , bench "Array Massiv Manifest Left Fold" $
-              whnf (foldlS (+) 0) arrCMM
-            --, bench "Array Massiv Manifest Left Fold'" $ whnf (foldlS' (+) 0) arrCMM
-            , bench "Array Massiv Manifest Right Fold" $
-              whnf (foldrS (+) 0) arrCMM
-            --, bench "Array Massiv Manifest Right Fold'" $ whnf (foldrS' (+) 0) arrCMM
+            , bench "Array Massiv Primitive Left Fold" $ whnf (foldlS (+) 0) arrDouble
+            -- , bench "Array Massiv Unboxed Right Fold" $
+            --   whnf (foldrS (+) 0) arrCM
+            -- --, bench "Array Massiv Unboxed Right Fold'" $ whnf (foldrS' (+) 0) arrCM
+            -- , bench "Array Massiv Manifest Left Fold" $
+            --   whnf (foldlS (+) 0) arrCMM
+            -- --, bench "Array Massiv Manifest Left Fold'" $ whnf (foldlS' (+) 0) arrCMM
+            -- , bench "Array Massiv Manifest Right Fold" $
+            --   whnf (foldrS (+) 0) arrCMM
+            -- --, bench "Array Massiv Manifest Right Fold'" $ whnf (foldrS' (+) 0) arrCMM
             , bench "Vector Unboxed Left Strict" $ whnf (VU.foldl' (+) 0) vecCU
-            , bench "Vector Unboxed Right Strict" $ whnf (VU.foldr' (+) 0) vecCU
+            -- , bench "Vector Unboxed Right Strict" $ whnf (VU.foldr' (+) 0) vecCU
             , bench "Array Repa FoldAll" $ whnf (R.foldAllS (+) 0) arrCR
             ]
         ]
@@ -173,27 +173,6 @@ main = do
               whnf (M.computeAs U . M.transpose . arrM Seq) sz
             , bench "Array Repa" $
               whnf (R.computeUnboxedS . R.transpose . arrR) sz
-            ]
-        ]
-    , bgroup
-        "SIMD"
-        [ bgroup
-            "plus"
-            [ bench "Array Massiv Normal" $
-              whnf (M.computeAs P . (M.zipWith (+) arrP)) arrP
-            , bench "Array Massiv SIMD" $ nfIO (M.computeInt32 (arrSIMD + arrSIMD))
-            ]
-        , bgroup
-            "times-plus"
-            [ bench "Array Massiv Normal" $
-              whnf (M.computeAs P . (M.zipWith (*) arrP . M.zipWith (+) arrP)) arrP
-            , bench "Array Massiv SIMD" $ nfIO (M.computeInt32 (arrSIMD * (arrSIMD + arrSIMD)))
-            ]
-        , bgroup
-            "abs"
-            [ bench "Array Massiv" $
-              whnf (M.computeAs P . M.map abs) arrP
-            , bench "Array Massiv" $ nfIO (M.computeInt32 (abs arrSIMD))
             ]
         ]
     , bgroup
