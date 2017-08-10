@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE BangPatterns     #-}
@@ -15,18 +16,33 @@ import           Prelude                           as P
 
 
 class ExtraShape sh where
+  type ShLower sh :: *
   liftShape :: (Int -> Int) -> sh -> sh
+  liftShape2 :: (Int -> Int -> Int) -> sh -> sh -> sh
+  unsnocShape :: sh -> (ShLower sh, Int)
+  snocShape :: ShLower sh -> Int -> sh
+
 
 instance ExtraShape R.Z where
-
-  liftShape _ R.Z = R.Z
+  type ShLower Z = Z
+  liftShape _ _ = R.Z
   {-# INLINE [1] liftShape #-}
+  liftShape2 _ _ _ = R.Z
+  {-# INLINE [1] liftShape2 #-}
+  unsnocShape = undefined
+  snocShape = undefined
 
-instance ExtraShape sh => ExtraShape (sh R.:. Int) where
+instance ExtraShape sh => ExtraShape (sh :. Int) where
+  type ShLower (sh :. Int) = sh
 
   liftShape f (sh R.:. i) = liftShape f sh R.:. f i
   {-# INLINE [1] liftShape #-}
-
+  liftShape2 f (sh1 R.:. i1) (sh2 R.:. i2) = liftShape2 f sh1 sh2 R.:. f i1 i2
+  {-# INLINE [1] liftShape2 #-}
+  unsnocShape (ix R.:. i) = (ix, i)
+  {-# INLINE [1] unsnocShape #-}
+  snocShape ix i = (ix R.:. i)
+  {-# INLINE [1] snocShape #-}
 
 main :: IO ()
 main = do
@@ -38,10 +54,10 @@ main = do
       r3 = (R.Z R.:. 100 R.:. 200 R.:. 300, R.Z R.:. 10 R.:. 20 R.:. 17) :: (R.DIM3, R.DIM3)
       i4 = (100 :> 200 :> 300 M.:. 40, 10 :> 20 :> 17 M.:. 34)
       t4 = ((100, 200, 300, 40), (10, 20, 17, 34)) :: (M.DIM4, M.DIM4)
-      r4 = (R.Z R.:. 100 R.:. 200 R.:. 300 R.:. 40, R.Z R.:. 10 R.:. 20 R.:. 17 R.:. 34) :: (R.DIM4, R.DIM4)
+      r4 = (R.Z R.:. 100 R.:. 200 R.:. 300 R.:. 40, R.Z R.:. 90 R.:. 190 R.:. 290 R.:. 34) :: (R.DIM4, R.DIM4)
   defaultMain [ makeGroup "DIM2" i2 t2 r2
               , makeGroup "DIM3" i3 t3 r3
-              , makeGroup "DIM4" i4 t4 r4]
+              , makeGroup "DIM4" i4 t4 r4 ]
 
 makeGroup
   :: forall ix1 ix2 sh. (Index (Lower ix1), Index ix1, Index (Lower ix2), Index ix2, R.Shape sh, ExtraShape sh) =>
@@ -57,6 +73,12 @@ makeGroup groupName !(sz1, i1) !(sz2, i2) !(sz3, i3) =
             [ bench "Ix" $ whnf (toLinearIndex sz1) i1
             , bench "Tuple" $ whnf (toLinearIndex sz2) i2
             , bench "Repa" $ whnf (toIndex sz3) i3
+            ]
+        , bgroup
+            "fromLinearIndex"
+            [ bench "Ix" $ whnf (fromLinearIndex sz1) 100
+            , bench "Tuple" $ nf (fromLinearIndex sz2) 100
+            , bench "Repa" $ whnf (fromIndex sz3) 100
             ]
         , bgroup
             "toFromLinearIndex"
@@ -88,6 +110,7 @@ makeGroup groupName !(sz1, i1) !(sz2, i2) !(sz3, i3) =
               whnf (((`snocDim` 8) . fst . unsnocDim) :: ix1 -> ix1) i1
             , bench "Tuple" $
               nf (((`snocDim` 8) . fst . unsnocDim) :: ix2 -> ix2) i2
+            , bench "Repa" $ whnf (((`snocShape` 8) . fst . unsnocShape) :: sh -> sh) i3
             ]
         , bgroup
             "liftIndex"
@@ -99,35 +122,36 @@ makeGroup groupName !(sz1, i1) !(sz2, i2) !(sz3, i3) =
             "liftIndex2"
             [ bench "Ix" $ whnf (liftIndex2 (+) sz1) i1
             , bench "Tuple" $ nf (liftIndex2 (+) sz2) i2
-            , bench "Repa" $ whnf (R.addDim sz3) i3
+            , bench "Repa" $ whnf (liftShape2 (+) sz3) i3
+            , bench "Repa Add" $ whnf (addDim sz3) i3
             ]
         , bgroup
-            "getIndex - 1"
+            "getIndex (1)"
             [ bench "Ix" $ whnf (`getIndex` 1) i1
             , bench "Tuple" $ whnf (`getIndex` 1) i2
             ]
         , bgroup
-            "getIndex - rank"
+            "getIndex (rank)"
             [ bench "Ix" $ whnf (`getIndex` M.rank i1) i1
             , bench "Tuple" $ whnf (`getIndex` M.rank i2) i2
             ]
         , bgroup
-            "setIndex - 1"
+            "setIndex (1)"
             [ bench "Ix" $ whnf (setIndex i1 1) 8
             , bench "Tuple" $ nf (setIndex i2 2) 8
             ]
         , bgroup
-            "setIndex - rank"
+            "setIndex (rank)"
             [ bench "Ix" $ whnf (setIndex i1 (M.rank i1)) 8
             , bench "Tuple" $ nf (setIndex i2 (M.rank i2)) 8
             ]
         , bgroup
-            "dropIndex - 1"
+            "dropIndex (1)"
             [ bench "Ix" $ whnf (`getIndex` 1) i1
             , bench "Tuple" $ nf (`getIndex` 1) i2
             ]
         , bgroup
-            "dropIndex - rank"
+            "dropIndex (rank)"
             [ bench "Ix" $ whnf (`dropIndex` M.rank i1) i1
             , bench "Tuple" $ nf (`dropIndex` M.rank i2) i2
             ]
@@ -137,15 +161,16 @@ makeGroup groupName !(sz1, i1) !(sz2, i2) !(sz3, i3) =
         [ bgroup
             "iterM"
             [ bench "Ix" $
-              whnf
-                (\ix ->
-                   iterM ix sz1 1 (<) 0 (\i acc -> Just (totalElem i + acc)))
-                i1
+              nfIO $ iterM i1 sz1 1 (<) 0 (\i acc -> return (totalElem i + acc))
             , bench "Tuple" $
-              whnf
-                (\ix ->
-                   iterM ix sz2 1 (<) 0 (\i acc -> Just (totalElem i + acc)))
-                i2
+              nfIO $ iterM i2 sz2 1 (<) 0 (\i acc -> return (totalElem i + acc))
+            ]
+        , bgroup
+            "iter"
+            [ bench "Ix" $
+              nf (\ix -> iter ix sz1 1 (<) 0 (\i acc -> totalElem i + acc)) i1
+            , bench "Tuple" $
+              nf (\ix -> iter ix sz2 1 (<) 0 (\i acc -> totalElem i + acc)) i2
             ]
         ]
     ]

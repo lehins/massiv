@@ -51,7 +51,7 @@ library
                      , stm
                      , vector
   default-language:    Haskell2010
-  ghc-options:         -Wall -fllvm
+  ghc-options:         -Wall
 
 benchmark loops
   type:                exitcode-stdio-1.0
@@ -83,7 +83,7 @@ benchmark compute-seq
   main-is:             ComputeSeq.hs
   other-modules:       CommonMassiv
                      , CommonRepa
-  ghc-options:         -threaded -O2 -fllvm
+  ghc-options:         -threaded -O2
   build-depends:       base
                      , criterion
                      , deepseq

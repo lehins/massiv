@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs            #-}
 {-# LANGUAGE BangPatterns     #-}
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
@@ -163,6 +164,8 @@ main = do
             [ bench "Array Massiv" $ whnf (M.smap (+ 25) . sarrM) sz
             , bench "Array Massiv" $
               whnf (computeAs U . fmap (+ 25) . arrM Seq) sz
+            , bench "Array Massiv" $
+              whnf (computeAs S . fmap (+ 25) . arrM Seq) sz
             , bench "Vector Unboxed" $ whnf (VU.map (+ 25) . vecU) sz
             , bench "Array Repa" $
               whnf (R.computeUnboxedS . R.map (+ 25) . arrR) sz

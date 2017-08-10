@@ -17,6 +17,17 @@ module Data.Array.Massiv.Common.Index where
 import           Control.DeepSeq (NFData)
 
 
+type Ix1T = Int
+
+type Ix2T = (Int, Int)
+
+type Ix3T = (Int, Int, Int)
+
+type Ix4T = (Int, Int, Int, Int)
+
+type Ix5T = (Int, Int, Int, Int, Int)
+
+
 type DIM1 = Int
 
 type DIM2 = (Int, Int)
@@ -53,8 +64,6 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   toLinearIndex :: ix -- ^ Size
                 -> ix -- ^ Index
                 -> Int
-
-  toLinearIndexAcc :: Int -> ix -> ix -> Int
 
   -- | Produce N Dim index from size and linear index
   fromLinearIndex :: ix -> Int -> ix
@@ -184,12 +193,24 @@ instance Index DIM2 where
   {-# INLINE liftIndex #-}
   liftIndex2 f (i0, j0) (i1, j1) = (f i0 i1, f j0 j1)
   {-# INLINE liftIndex2 #-}
-  iter = iterRec
+  iter !(i, j) !(m, n) !inc cond !accInit f =
+    loop i (`cond` m) (+ inc) accInit $ \ !i' !acc0 ->
+      loop j (`cond` n) (+ inc) acc0 $ \ !j' -> f (i', j')
   {-# INLINE iter #-}
-  iterM = iterMRec
+  iterM !(i, j) !(m, n) !inc cond !accInit f =
+    loopM i (`cond` m) (+ inc) accInit $ \ !i' !acc0 ->
+      loopM j (`cond` n) (+ inc) acc0 $ \ !j' -> f (i', j')
   {-# INLINE iterM #-}
-  iterM_ = iterMRec_
+  iterM_ !(i, j) !(m, n) !inc cond f =
+    loopM_ i (`cond` m) (+ inc) $ \ !i' ->
+      loopM_ j (`cond` n) (+ inc) $ \ !j' -> f (i', j')
   {-# INLINE iterM_ #-}
+  -- iter = iterRec
+  -- {-# INLINE iter #-}
+  -- iterM = iterMRec
+  -- {-# INLINE iterM #-}
+  -- iterM_ = iterMRec_
+  -- {-# INLINE iterM_ #-}
 
 
 instance Index DIM3 where
@@ -237,6 +258,21 @@ instance Index DIM3 where
   {-# INLINE liftIndex #-}
   liftIndex2 f (i0, j0, k0) (i1, j1, k1) = (f i0 i1, f j0 j1, f k0 k1)
   {-# INLINE liftIndex2 #-}
+  -- ## GHC 8.2 is unable to optimize to this from iterRec?!
+  -- iter !sIx !eIx !inc cond !acc f =
+  --   loop k0 (`cond` k1) (+ inc) acc $ \ i acc0 ->
+  --     iter sIxL eIxL inc cond acc0 $ \ ix -> f (consDim i ix)
+  --   where
+  --     !(k0, sIxL) = unconsDim sIx
+  --     !(k1, eIxL) = unconsDim eIx
+  -- {-# INLINE iter #-}
+  -- iterM !sIx !eIx !inc cond !acc f =
+  --   loopM k0 (`cond` k1) (+ inc) acc $ \ i acc0 ->
+  --     iterM sIxL eIxL inc cond acc0 $ \ ix -> f (consDim i ix)
+  --   where
+  --     !(k0, sIxL) = unconsDim sIx
+  --     !(k1, eIxL) = unconsDim eIx
+  -- {-# INLINE iterM #-}
   iter = iterRec
   {-# INLINE iter #-}
   iterM = iterMRec
@@ -290,6 +326,20 @@ instance Index DIM4 where
   {-# INLINE liftIndex #-}
   liftIndex2 f (i0, i1, i2, i3) (j0, j1, j2, j3) = (f i0 j0, f i1 j1, f i2 j2, f i3 j3)
   {-# INLINE liftIndex2 #-}
+  -- iter !sIx !eIx !inc cond !acc f =
+  --   loop k0 (`cond` k1) (+ inc) acc $ \ i acc0 ->
+  --     iter sIxL eIxL inc cond acc0 $ \ ix -> f (consDim i ix)
+  --   where
+  --     !(k0, sIxL) = unconsDim sIx
+  --     !(k1, eIxL) = unconsDim eIx
+  -- {-# INLINE iter #-}
+  -- iterM !sIx !eIx !inc cond !acc f =
+  --   loopM k0 (`cond` k1) (+ inc) acc $ \ i acc0 ->
+  --     iterM sIxL eIxL inc cond acc0 $ \ ix -> f (consDim i ix)
+  --   where
+  --     !(k0, sIxL) = unconsDim sIx
+  --     !(k1, eIxL) = unconsDim eIx
+  -- {-# INLINE iterM #-}
   iter = iterRec
   {-# INLINE iter #-}
   iterM = iterMRec
@@ -347,6 +397,20 @@ instance Index DIM5 where
   liftIndex2 f (i0, i1, i2, i3, i4) (j0, j1, j2, j3, j4) =
     (f i0 j0, f i1 j1, f i2 j2, f i3 j3, f i4 j4)
   {-# INLINE liftIndex2 #-}
+  -- iter !sIx !eIx !inc cond !acc f =
+  --   loop k0 (`cond` k1) (+ inc) acc $ \ i acc0 ->
+  --     iter sIxL eIxL inc cond acc0 $ \ ix -> f (consDim i ix)
+  --   where
+  --     !(k0, sIxL) = unconsDim sIx
+  --     !(k1, eIxL) = unconsDim eIx
+  -- {-# INLINE iter #-}
+  -- iterM !sIx !eIx !inc cond !acc f =
+  --   loopM k0 (`cond` k1) (+ inc) acc $ \ i acc0 ->
+  --     iterM sIxL eIxL inc cond acc0 $ \ ix -> f (consDim i ix)
+  --   where
+  --     !(k0, sIxL) = unconsDim sIx
+  --     !(k1, eIxL) = unconsDim eIx
+  -- {-# INLINE iterM #-}
   iter = iterRec
   {-# INLINE iter #-}
   iterM = iterMRec
