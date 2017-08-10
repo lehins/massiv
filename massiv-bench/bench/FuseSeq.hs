@@ -33,11 +33,36 @@ main = do
              whnf (computeAs U . M.transpose . arrDLightIx2T Seq))
         , env
             (return (tupleToIx2 t2))
-            (bench "Massiv Ix2 U" .
+            (bench "Massiv Ix2 Inner" .
              whnf (computeAs U . M.transposeInner . arrDLightIx2 Seq))
+        , env
+            (return (tupleToIx2 t2))
+            (bench "Massiv Ix2 Outer" .
+             whnf (computeAs U . M.transposeOuter . arrDLightIx2 Seq))
         , env
             (return (tupleToSh2 t2))
             (bench "Repa DIM2 U" .
              whnf (R.computeUnboxedS . R.transpose . arrDLightSh2))
+        ]
+    , bgroup
+        "append"
+        [ env
+            (return t2)
+            (bench "Vector U" .
+             whnf (\sz -> vecLight2 sz VU.++ vecLight2 sz))
+        , env
+            (return (tupleToIx2 t2))
+            (bench "Massiv Ix2 U" .
+             whnf
+               (\sz ->
+                  computeAs U $
+                  M.append' 1 (arrDLightIx2 Seq sz) (arrDLightIx2 Seq sz)))
+        , env
+            (return (tupleToSh2 t2))
+            (bench "Repa Ix2 U" .
+             whnf
+               (\sz ->
+                  R.computeUnboxedS $
+                  R.append (arrDLightSh2 sz) (arrDLightSh2 sz)))
         ]
     ]

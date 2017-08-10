@@ -1,10 +1,17 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Bench.Massiv where
 
-import           Bench.Common                (heavyFunc, lightFunc)
+import           Bench.Common      (heavyFunc, lightFunc)
+import           Control.DeepSeq
 import           Data.Array.Massiv
+
+-- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
+instance Index ix => NFData (Array D ix e) where
+  rnf arr = size arr `seq` ()
 
 
 tupleToIx2 :: (Int, Int) -> Ix2
