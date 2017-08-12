@@ -9,6 +9,7 @@ import           Criterion.Main
 import           Data.Array.Massiv         as M hiding ((:.), Z)
 import           Data.Array.Massiv.Stencil as M
 import           Data.Array.Repa           as R
+import           Data.Default
 
 -- -- | Repa stencil base Kirsch W horizontal convolution
 -- kirschWR
@@ -38,7 +39,7 @@ import           Data.Array.Repa           as R
 --     --arrVU = VC.makeVUArray (m, n) lightF :: VC.VUArray Int
 --     --mArr = VC.applyFilter (VC.sobelFilter VC.Horizontal Edge) arrVU
 --     sVR = R.fromUnboxed (Z :. m :. n) $ M.toVectorUnboxed mArr
-
+ 
 -- validateOperator :: (Int, Int) -> (R.Array R.U R.DIM2 Double, R.Array R.U R.DIM2 Double)
 -- validateOperator (m, n) = (sR, sVR)
 --   where
@@ -62,9 +63,48 @@ sobelOperatorR arr =
     !arrY2 = R.smap (^ (2 :: Int)) $ sobelYR arr
 
 
+
+sobelStencilX :: Num e => Border e -> Stencil Ix2T e e
+sobelStencilX b = mkConvolutionStencil b (3, 3) (1, 1) accum where
+  accum f =
+     f (-1, -1)   1  .
+     f ( 0, -1)   2  .
+     f ( 1, -1)   1  .
+     f (-1,  1) (-1) .
+     f ( 0,  1) (-2) .
+     f ( 1,  1) (-1)
+  {-# INLINE accum #-}
+{-# INLINE sobelStencilX #-}
+
+
+sobelStencilY :: Num e => Border e -> Stencil Ix2T e e
+sobelStencilY b = mkConvolutionStencil b (3, 3) (1, 1) accum where
+  accum f =
+     f (-1, -1)   1  .
+     f (-1,  0)   2  .
+     f (-1,  1)   1  .
+     f ( 1, -1) (-1) .
+     f ( 1,  0) (-2) .
+     f ( 1,  1) (-1)
+  {-# INLINE accum #-}
+{-# INLINE sobelStencilY #-}
+
+-- sobelOperator :: (Default b, Floating b) => Border b -> Stencil Ix2T b b
+-- sobelOperator b = fmap sqrt ((+) <$> sX <*> sY) where
+--   !sX = fmap (^ (2 :: Int)) (sobelStencilX b)
+--   !sY = fmap (^ (2 :: Int)) (sobelStencilY b)
+-- {-# INLINE sobelOperator #-}
+
+sobelOperator :: (Default b, Floating b) => Border b -> Stencil Ix2T b b
+sobelOperator b = sqrt <$> ((+) <$> sX <*> sY) where
+  !sX = (^ (2 :: Int)) <$> sobelStencilX b
+  !sY = (^ (2 :: Int)) <$> sobelStencilY b
+{-# INLINE sobelOperator #-}
+
+
 sobelOperator'
-  :: (Manifest r M.DIM2 Double)
-  => Border Double -> M.Array r M.DIM2 Double -> M.Array M.U M.DIM2 Double
+  :: (Manifest r Ix2T Double)
+  => Border Double -> M.Array r Ix2T Double -> M.Array M.U Ix2T Double
 sobelOperator' b arr = M.computeAs M.U $ M.map sqrt $ M.zipWith (+) arrX2 arrY2
   where
     !arrX2 = M.map (^ (2 :: Int)) $ M.computeAs M.U (mapStencil sX arr)
@@ -72,7 +112,7 @@ sobelOperator' b arr = M.computeAs M.U $ M.map sqrt $ M.zipWith (+) arrX2 arrY2
     !sX = sobelStencilX b
     !sY = sobelStencilY b
 
---sobelOperator'' :: (Default b, Floating b) => Border b -> Stencil M.DIM2 b b
+sobelOperator'' :: (Default b, Floating b) => Border b -> Stencil Ix2T b b
 sobelOperator'' b = sqrt (sX + sY) where
   !sX = (^ (2 :: Int)) <$> sobelStencilX b
   !sY = (^ (2 :: Int)) <$> sobelStencilY b
@@ -84,12 +124,12 @@ sobelOperator'' b = sqrt (sX + sY) where
 
 main :: IO ()
 main = do
-  let !sz = (1502, 602)
+  let !sz = (1600, 1200)
       !arrCR = R.computeUnboxedS (arrR sz)
       -- !kirschW = kirschWStencil
       -- !kirschW' = kirschWStencil'
-      arrUM :: M.Array M.U M.DIM2 Double
-      !arrUM = M.computeAs M.U (arrM Seq sz)
+      arrUM :: M.Array M.U Ix2T Double
+      !arrUM = M.computeAs M.U (makeArrayR D Seq sz lightFD)
       !sobel = sobelStencilX Edge
       !sobelOp = sobelOperator Edge
       !sobelOp' = sobelOperator' Edge

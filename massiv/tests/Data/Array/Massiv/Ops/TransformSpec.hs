@@ -19,7 +19,7 @@ prop_ExtractAppend _ dim (ArrIx arr ix) =
     dim' = (dim `mod` rank ix) + 1
 
 
-prop_transposeOuterInner :: Arr D DIM2 Int -> Property
+prop_transposeOuterInner :: Arr D Ix2 Int -> Property
 prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
 
 
@@ -33,12 +33,12 @@ spec :: Spec
 spec = do
   it "transposeOuterInner" $ property prop_transposeOuterInner
   describe "Delayed" $ do
-    describe "DIM1" $ specN (Nothing :: Maybe (D, DIM1, Int))
-    describe "DIM2" $ specN (Nothing :: Maybe (D, DIM2, Int))
-    describe "DIM3" $ specN (Nothing :: Maybe (D, DIM3, Int))
-    describe "DIM4" $ specN (Nothing :: Maybe (D, DIM4, Int))
+    describe "Ix1" $ specN (Nothing :: Maybe (D, Ix1, Int))
+    describe "Ix2" $ specN (Nothing :: Maybe (D, Ix2, Int))
+    describe "Ix3" $ specN (Nothing :: Maybe (D, Ix3, Int))
+    describe "Ix4" $ specN (Nothing :: Maybe (D, Ix4, Int))
   describe "Unboxed" $ do
-    describe "DIM1" $ specN (Nothing :: Maybe (U, DIM1, Int))
-    describe "DIM2" $ specN (Nothing :: Maybe (U, DIM2, Int))
-    describe "DIM3" $ specN (Nothing :: Maybe (U, DIM3, Int))
-    describe "DIM4" $ specN (Nothing :: Maybe (U, DIM4, Int))
+    describe "Ix1" $ specN (Nothing :: Maybe (U, Ix1, Int))
+    describe "Ix2" $ specN (Nothing :: Maybe (U, Ix2, Int))
+    describe "Ix3" $ specN (Nothing :: Maybe (U, Ix3, Int))
+    describe "Ix4" $ specN (Nothing :: Maybe (U, Ix4, Int))

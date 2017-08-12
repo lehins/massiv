@@ -29,21 +29,21 @@ prop_toFromVector _ _ (Arr arr) =
 toFromVector :: Spec
 toFromVector = do
   describe "Unboxed" $ do
-    it "DIM1" $ property $ prop_toFromVector (Nothing :: Maybe DIM1) U
-    it "DIM2" $ property $ prop_toFromVector (Nothing :: Maybe DIM2) U
-    it "DIM3" $ property $ prop_toFromVector (Nothing :: Maybe DIM3) U
+    it "Ix1" $ property $ prop_toFromVector (Nothing :: Maybe Ix1) U
+    it "Ix2" $ property $ prop_toFromVector (Nothing :: Maybe Ix2) U
+    it "Ix3" $ property $ prop_toFromVector (Nothing :: Maybe Ix3) U
   describe "Storable" $ do
-    it "DIM1" $ property $ prop_toFromVector (Nothing :: Maybe DIM1) S
-    it "DIM2" $ property $ prop_toFromVector (Nothing :: Maybe DIM2) S
-    it "DIM3" $ property $ prop_toFromVector (Nothing :: Maybe DIM3) S
+    it "Ix1" $ property $ prop_toFromVector (Nothing :: Maybe Ix1) S
+    it "Ix2" $ property $ prop_toFromVector (Nothing :: Maybe Ix2) S
+    it "Ix3" $ property $ prop_toFromVector (Nothing :: Maybe Ix3) S
   describe "Primitive" $ do
-    it "DIM1" $ property $ prop_toFromVector (Nothing :: Maybe DIM1) P
-    it "DIM2" $ property $ prop_toFromVector (Nothing :: Maybe DIM2) P
-    it "DIM3" $ property $ prop_toFromVector (Nothing :: Maybe DIM3) P
+    it "Ix1" $ property $ prop_toFromVector (Nothing :: Maybe Ix1) P
+    it "Ix2" $ property $ prop_toFromVector (Nothing :: Maybe Ix2) P
+    it "Ix3" $ property $ prop_toFromVector (Nothing :: Maybe Ix3) P
   describe "Boxed" $ do
-    it "DIM1" $ property $ prop_toFromVector (Nothing :: Maybe DIM1) B
-    it "DIM2" $ property $ prop_toFromVector (Nothing :: Maybe DIM2) B
-    it "DIM3" $ property $ prop_toFromVector (Nothing :: Maybe DIM3) B
+    it "Ix1" $ property $ prop_toFromVector (Nothing :: Maybe Ix1) B
+    it "Ix2" $ property $ prop_toFromVector (Nothing :: Maybe Ix2) B
+    it "Ix3" $ property $ prop_toFromVector (Nothing :: Maybe Ix3) B
 
 
 

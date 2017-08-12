@@ -1,9 +1,12 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE TypeOperators        #-}
 module Data.Array.Massiv.Common.IndexSpec (Sz(..), SzZ(..), SzIx(..), spec) where
 
 import           Control.Monad
 import           Data.Array.Massiv.Common.Index
+import           Data.Array.Massiv.Common.Ix
 import           Data.Functor.Identity
 import           Test.Hspec
 import           Test.QuickCheck
@@ -51,6 +54,32 @@ instance Arbitrary e => Arbitrary (Border e) where
       ]
 
 
+instance Arbitrary Ix2 where
+  arbitrary = (:.) <$> arbitrary <*> arbitrary
+
+instance Arbitrary Ix3 where
+  arbitrary = (:>) <$> arbitrary <*> ((:.) <$> arbitrary <*> arbitrary)
+
+instance Arbitrary Ix4 where
+  arbitrary = (:>) <$> arbitrary <*> arbitrary
+
+instance Arbitrary Ix5 where
+  arbitrary = (:>) <$> arbitrary <*> arbitrary
+
+instance CoArbitrary Ix2 where
+  coarbitrary (i :. j) = coarbitrary i . coarbitrary j
+  coarbitrary _ = error "Impossible happened: CoArbitrary (Ix2).coarbitrary"
+
+instance CoArbitrary Ix3 where
+  coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
+
+instance CoArbitrary Ix4 where
+  coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
+
+instance CoArbitrary Ix5 where
+  coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
+
+
 prop_IsSafeIx :: (Index ix) => proxy ix -> SzIx ix -> Bool
 prop_IsSafeIx _ (SzIx (Sz sz) ix) = isSafeIndex sz ix
 
@@ -76,13 +105,45 @@ prop_CountElements :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_CountElements _ thresh (Sz sz) =
   totalElem sz < thresh ==> totalElem sz == iter zeroIndex sz 1 (<) 0 (\ _ acc -> (acc + 1))
 
-prop_IterMonotonic :: (Ord ix, Index ix) => proxy ix -> Int -> Sz ix -> Property
+prop_IterMonotonic :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonic _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $
   iter (liftIndex succ zeroIndex) sz 1 (<) (True, zeroIndex) $ \ curIx (prevMono, prevIx) ->
     let isMono = prevMono && prevIx < curIx in isMono `seq` (isMono, curIx)
 
-prop_IterMonotonicM :: (Ord ix, Index ix) => proxy ix -> Int -> Sz ix -> Property
+
+prop_IterMonotonic' :: Index ix => proxy ix -> Int -> Sz ix -> Property
+prop_IterMonotonic' _ thresh (Sz sz) =
+  totalElem sz <
+  thresh ==>
+  if isM
+    then isM
+    else error (show a)
+  where
+    (isM, a, _) =
+      iter (liftIndex succ zeroIndex) sz 1 (<) (True, [], zeroIndex) $
+      \ curIx (prevMono, acc, prevIx) ->
+        let nAcc = (prevIx, curIx, prevIx < curIx) : acc
+            isMono = prevMono && prevIx < curIx
+        in isMono `seq` (isMono, nAcc, curIx)
+
+
+prop_IterMonotonicBackwards' :: Index ix => proxy ix -> Int -> Sz ix -> Property
+prop_IterMonotonicBackwards' _ thresh (Sz sz) =
+  totalElem sz <
+  thresh ==>
+  if isM
+    then isM
+    else error (show a)
+  where
+    (isM, a, _) =
+      iter (liftIndex pred sz) zeroIndex (-1) (>=) (True, [], sz) $
+      \ curIx (prevMono, acc, prevIx) ->
+      let isMono = prevMono && prevIx > curIx
+          nAcc = (prevIx, curIx, prevIx > curIx) : acc
+      in isMono `seq` (isMono, nAcc, curIx)
+
+prop_IterMonotonicM :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonicM _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $
   runIdentity $
@@ -91,13 +152,13 @@ prop_IterMonotonicM _ thresh (Sz sz) =
     in return $ isMono `seq` (isMono, curIx)
 
 
-prop_IterMonotonicBackwards :: (Ord ix, Index ix) => proxy ix -> Int -> Sz ix -> Property
+prop_IterMonotonicBackwards :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonicBackwards _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $
   iter (liftIndex pred sz) zeroIndex (-1) (>=) (True, sz) $ \ curIx (prevMono, prevIx) ->
     let isMono = prevMono && prevIx > curIx in isMono `seq` (isMono, curIx)
 
-prop_IterMonotonicBackwardsM :: (Ord ix, Index ix) => proxy ix -> Int -> Sz ix -> Property
+prop_IterMonotonicBackwardsM :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonicBackwardsM _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $ runIdentity $
   iterM (liftIndex pred sz) zeroIndex (-1) (>=) (True, sz) $ \ curIx (prevMono, prevIx) ->
@@ -108,8 +169,8 @@ prop_LiftLift2 _ ix delta = liftIndex2 (+) ix (liftIndex (+delta) zeroIndex) ==
                             liftIndex (+delta) ix
 
 
-instance Show (DIM1 -> Double) where
-  show _ = "Index Func: DIM1 -> Double"
+instance Show (Ix1 -> Double) where
+  show _ = "Index Func: Ix1 -> Double"
 
 
 prop_BorderRepairSafe :: Index ix => proxy ix -> Border ix -> Sz ix -> ix -> Property
@@ -145,8 +206,8 @@ prop_SetGet _ ix n = Just n == (setIndex ix valDim n >>= (`getIndex` valDim))
     valDim = (1 + (n `mod` rank ix))
 
 
-prop_BorderDIM1 :: (Positive Int) -> Border Double -> (DIM1 -> Double) -> Sz DIM1 -> DIM1 -> Bool
-prop_BorderDIM1 (Positive period) border getVal (Sz sz) ix =
+prop_BorderIx1 :: (Positive Int) -> Border Double -> (Ix1 -> Double) -> Sz Ix1 -> Ix1 -> Bool
+prop_BorderIx1 (Positive period) border getVal (Sz sz) ix =
   if isSafeIndex sz ix
     then getVal ix == val
     else case border of
@@ -217,18 +278,37 @@ specDim2AndUp proxy = do
 
 spec :: Spec
 spec = do
-  describe "DIM1" $ do
-    specDimN (Nothing :: Maybe DIM1)
-    it "BorderIndex" $ property $ prop_BorderDIM1
-  describe "DIM2" $ do
-    specDimN (Nothing :: Maybe DIM2)
-    specDim2AndUp (Nothing :: Maybe DIM2)
-  describe "DIM3" $ do
-    specDimN (Nothing :: Maybe DIM3)
-    specDim2AndUp (Nothing :: Maybe DIM3)
-  describe "DIM4" $ do
-    specDimN (Nothing :: Maybe DIM4)
-    specDim2AndUp (Nothing :: Maybe DIM4)
-  describe "DIM5" $ do
-    specDimN (Nothing :: Maybe DIM5)
-    specDim2AndUp (Nothing :: Maybe DIM5)
+  describe "Tuple based indices" $ do
+    describe "Ix1T" $ do
+      specDimN (Nothing :: Maybe Ix1T)
+      it "BorderIndex" $ property $ prop_BorderIx1
+    describe "Ix2T" $ do
+      specDimN (Nothing :: Maybe Ix2T)
+      specDim2AndUp (Nothing :: Maybe Ix2T)
+    describe "Ix3T" $ do
+      specDimN (Nothing :: Maybe Ix3T)
+      specDim2AndUp (Nothing :: Maybe Ix3T)
+    describe "Ix4T" $ do
+      specDimN (Nothing :: Maybe Ix4T)
+      specDim2AndUp (Nothing :: Maybe Ix4T)
+    describe "Ix5T" $ do
+      specDimN (Nothing :: Maybe Ix5T)
+      specDim2AndUp (Nothing :: Maybe Ix5T)
+  describe "Specialized indices" $ do
+    describe "Ix2" $ do
+      -- -- These can be used to quickly debug monotonicity
+      -- it "Monotonic'" $
+      --   property $ prop_IterMonotonic' (Nothing :: Maybe Ix2) (2000000)
+      -- it "MonotonicBackwards'" $
+      --   property $ prop_IterMonotonicBackwards' (Nothing :: Maybe Ix2) (2000000)
+      specDimN (Nothing :: Maybe Ix2)
+      specDim2AndUp (Nothing :: Maybe Ix2)
+    describe "Ix3" $ do
+      specDimN (Nothing :: Maybe Ix3)
+      specDim2AndUp (Nothing :: Maybe Ix3)
+    describe "Ix4" $ do
+      specDimN (Nothing :: Maybe Ix4)
+      specDim2AndUp (Nothing :: Maybe Ix4)
+    describe "Ix5" $ do
+      specDimN (Nothing :: Maybe Ix5)
+      specDim2AndUp (Nothing :: Maybe Ix5)

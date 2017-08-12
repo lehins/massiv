@@ -59,7 +59,7 @@ instance (Index ix, NFData e) => NFData (Array B ix e) where
       ParOn wIds -> deepseqOnP wIds arr ()
 
 
-instance Index ix => Massiv B ix e where
+instance Index ix => Construct B ix e where
   size = bSize
   {-# INLINE size #-}
 

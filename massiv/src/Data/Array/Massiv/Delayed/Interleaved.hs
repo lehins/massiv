@@ -25,7 +25,7 @@ data ID
 
 data instance Array ID ix e = IDArray { idArray :: !(Array D ix e) }
 
-instance Index ix => Massiv ID ix e where
+instance Index ix => Construct ID ix e where
   size (IDArray arr) = size arr
 
   getComp = dComp . idArray

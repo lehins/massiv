@@ -92,18 +92,14 @@ import           Prelude                         as P hiding (length, map,
 --   -- parseFormat _ (c : cs) = FormatParse "" c cs
 --   -- parseFormat _ "" = errorShortFormat
 
-length :: Massiv r ix e => Array r ix e -> Int
+length :: Construct r ix e => Array r ix e -> Int
 length = totalElem . size
 {-# INLINE length #-}
 
-null :: Massiv r ix e => Array r ix e -> Bool
+null :: Construct r ix e => Array r ix e -> Bool
 null !arr = 0 == length arr
 {-# INLINE null #-}
 
-
-makeArrayR :: Massiv r ix e => r -> Comp -> ix -> (ix -> e) -> Array r ix e
-makeArrayR _ = makeArray
-{-# INLINE makeArrayR #-}
 
 computeF :: Target r ix e => Array D ix e -> Array r ix e
 computeF = compute
@@ -133,11 +129,12 @@ szipWith f arr1 arr2 = computeF (zipWith f (uncomputeF arr1) (uncomputeF arr2))
 {-# INLINE [2] szipWith #-}
 
 
-stranspose :: Target r DIM2 e
-           => Array r DIM2 e -> Array r DIM2 e
+stranspose :: Target r Ix2 e
+           => Array r Ix2 e -> Array r Ix2 e
 stranspose = computeF . transpose . uncomputeF
 {-# INLINE [2] stranspose #-}
 
 {-# RULES
 "uncomupte/compute" forall arr . uncomputeF (computeF arr) = arr
  #-}
+

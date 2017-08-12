@@ -103,31 +103,31 @@ infixl 6  .+, .-
 {-# INLINE (.^) #-}
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
-(|*|) :: (Target r1 DIM2 e, Target r2 DIM2 e, Slice r1 DIM2 e, Slice r2 DIM2 e, Num e)
-      => Array r1 DIM2 e -> Array r2 DIM2 e -> Array D DIM2 e
+(|*|) :: (Target r1 Ix2 e, Target r2 Ix2 e, Slice r1 Ix2 e, Slice r2 Ix2 e, Num e)
+      => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e
 (|*|) = multArrs
 {-# INLINE (|*|) #-}
 
 
 multArrs :: forall r1 r2 e.
-            ( Target r1 DIM2 e
-            , Target r2 DIM2 e
-            , Slice r1 DIM2 e
-            , Slice r2 DIM2 e
+            ( Target r1 Ix2 e
+            , Target r2 Ix2 e
+            , Slice r1 Ix2 e
+            , Slice r2 Ix2 e
             , Num e
             )
-         => Array r1 DIM2 e -> Array r2 DIM2 e -> Array D DIM2 e
+         => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e
 multArrs arr1 arr2
   | n1 /= m2 =
     error $
     "(|*|): Inner array dimensions must agree, but received: " ++
     show (size arr1) ++ " and " ++ show (size arr2)
-  | otherwise = DArray (getComp arr1) (m1, n2) $ \(i, j) -> M.sum (arr1' !> i .* arr2' !> j)
+  | otherwise = DArray (getComp arr1) (m1 :. n2) $ \(i :. j) -> M.sum (arr1' !> i .* arr2' !> j)
   where
-    (m1, n1) = size arr1
-    (m2, n2) = size arr2
+    (m1 :. n1) = size arr1
+    (m2 :. n2) = size arr2
     arr1' = setComp Seq arr1
-    arr2' :: Array r2 DIM2 e
+    arr2' :: Array r2 Ix2 e
     arr2' = setComp Seq $ compute $ transpose arr2
 {-# INLINE multArrs #-}
 

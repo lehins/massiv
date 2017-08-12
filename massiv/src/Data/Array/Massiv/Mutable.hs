@@ -31,6 +31,7 @@ module Data.Array.Massiv.Mutable
   , unsafeWrite
   , sequenceP
   , sequenceOnP
+  , unsafeGenerateArrayP
   ) where
 
 import           Control.Monad.Primitive             (PrimMonad (..))
@@ -203,3 +204,19 @@ sequenceP = sequenceOnP []
 -- {-# INLINE sequenceP' #-}
 
 
+-- | Create an array
+unsafeGenerateArrayP :: Mutable r ix e => [Int] -> ix -> (ix -> e) -> Array r ix e
+unsafeGenerateArrayP wIds sz f = unsafePerformIO $ do
+  marr <- unsafeNew sz
+  splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+      submitRequest scheduler $
+        JobRequest $
+        iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix ->
+          unsafeLinearWrite marr k (f ix)
+    submitRequest scheduler $
+      JobRequest $
+      iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix ->
+        unsafeLinearWrite marr k (f ix)
+  unsafeFreeze (ParOn wIds) marr
+{-# INLINE unsafeGenerateArrayP #-}

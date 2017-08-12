@@ -34,7 +34,7 @@ data instance Array WD ix e = WDArray { wdArray :: !(Array D ix e)
                                       , wdWindowSize :: !ix
                                       , wdWindowUnsafeIndex :: ix -> e }
 
-instance Index ix => Massiv WD ix e where
+instance Index ix => Construct WD ix e where
   size = size . wdArray
   {-# INLINE size #-}
 
@@ -89,7 +89,7 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex
 
 
 
-instance Load WD DIM1 e where
+instance Load WD Ix1 e where
   loadS (WDArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
     iterM_ 0 it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
     iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
@@ -119,72 +119,76 @@ instance Load WD DIM1 e where
 
 
 
-instance Load WD DIM2 e where
-  loadS (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
-    let !(ib, jb) = (wm + it, wn + jt)
-        !blockHeight = maybe 1 fst mStencilSz
-    iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+instance Load WD Ix2 e where
+  loadS arr _ unsafeWrite = do
+    let (WDArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) indexW) =
+          arr
+    let (ib :. jb) = (wm + it :. wn + jt)
+        blockHeight = case mStencilSz of
+                        Just (i :. _) -> i
+                        _             -> 1
+    iterM_ (0 :. 0) (it :. n) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+    iterM_ (ib :. 0) (m :. n) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+    iterM_ (it :. 0) (ib :. jt) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+    iterM_ (it :. jb) (ib :. n) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    unrollAndJam blockHeight (it, ib) (jt, jb) $ \ !ix ->
+    unrollAndJam blockHeight (it :. ib) (jt :. jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
   {-# INLINE loadS #-}
-  loadP wIds (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) _ unsafeWrite = do
+  loadP wIds arr _ unsafeWrite = do
+    let (WDArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) indexW) = arr
     scheduler <- makeScheduler wIds
-    let !(ib, jb) = (wm + it, wn + jt)
-        !blockHeight = maybe 1 fst mStencilSz
+    let (ib :. jb) = (wm + it :. wn + jt)
+        blockHeight = case mStencilSz of
+                        Just (i :. _) -> i
+                        _             -> 1
         !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
     let loadBlock !it' !ib' =
-          unrollAndJam blockHeight (it', ib') (jt, jb) $ \ !ix ->
+          unrollAndJam blockHeight (it' :. ib') (jt :. jb) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexW ix)
         {-# INLINE loadBlock #-}
     submitRequest scheduler $
       JobRequest $
-        iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      iterM_ (0 :. 0) (it :. n) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
     submitRequest scheduler $
       JobRequest $
-        iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      iterM_ (ib :. 0) (m :. n) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
     submitRequest scheduler $
       JobRequest $
-        iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      iterM_ (it :. 0) (ib :. jt) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
     submitRequest scheduler $
       JobRequest $
-        iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      iterM_ (it :. jb) (ib :. n) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
       let !it' = wid * chunkHeight + it
-      submitRequest scheduler $
-        JobRequest $
-        loadBlock it' (it' + chunkHeight)
+      submitRequest scheduler $ JobRequest $ loadBlock it' (it' + chunkHeight)
     when (slackHeight > 0) $ do
       let !itSlack = (numWorkers scheduler) * chunkHeight + it
       submitRequest scheduler $
-        JobRequest $
-        loadBlock itSlack (itSlack + slackHeight)
+        JobRequest $ loadBlock itSlack (itSlack + slackHeight)
     waitTillDone scheduler
   {-# INLINE loadP #-}
 
-instance Load WD DIM3 e where
+instance Load WD Ix3 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
-instance Load WD DIM4 e where
+instance Load WD Ix4 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
-instance Load WD DIM5 e where
+instance Load WD Ix5 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
@@ -261,8 +265,107 @@ loadWindowedPRec wIds (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) u
 
 
 unrollAndJam :: Monad m =>
-                Int -> (Int, Int) -> (Int, Int) -> ((Int, Int) -> m a) -> m ()
-unrollAndJam !bH !(it, ib) !(jt, jb) f = do
+                Int -> Ix2 -> Ix2 -> (Ix2 -> m a) -> m ()
+unrollAndJam !bH (it :. ib) (jt :. jb) f = do
+  let !bH' = min (max 1 bH) 7
+  let f2 (i :. j) = f (i :. j) >> f  (i+1 :. j)
+  let f3 (i :. j) = f (i :. j) >> f2 (i+1 :. j)
+  let f4 (i :. j) = f (i :. j) >> f3 (i+1 :. j)
+  let f5 (i :. j) = f (i :. j) >> f4 (i+1 :. j)
+  let f6 (i :. j) = f (i :. j) >> f5 (i+1 :. j)
+  let f7 (i :. j) = f (i :. j) >> f6 (i+1 :. j)
+  let f' = case bH' of
+             1 -> f
+             2 -> f2
+             3 -> f3
+             4 -> f4
+             5 -> f5
+             6 -> f6
+             _ -> f7
+  let !ibS = ib - ((ib - it) `mod` bH')
+  loopM_ it (< ibS) (+ bH') $ \ !i ->
+    loopM_ jt (< jb) (+ 1) $ \ !j ->
+      f' (i :. j)
+  loopM_ ibS (< ib) (+ 1) $ \ !i ->
+    loopM_ jt (< jb) (+ 1) $ \ !j ->
+      f (i :. j)
+{-# INLINE unrollAndJam #-}
+
+
+-- TODO: Implement Hilbert curve
+
+
+
+
+
+
+
+
+
+
+
+instance Load WD Ix2T e where
+  loadS arr _ unsafeWrite = do
+    let (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) =
+          arr
+    let (ib, jb) = (wm + it, wn + jt)
+        blockHeight = case mStencilSz of
+                        Just (i, _) -> i
+                        _             -> 1
+    iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    unrollAndJamT blockHeight (it, ib) (jt, jb) $ \ !ix ->
+      unsafeWrite (toLinearIndex sz ix) (indexW ix)
+  {-# INLINE loadS #-}
+  loadP wIds arr _ unsafeWrite = do
+    let (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) = arr
+    scheduler <- makeScheduler wIds
+    let (ib, jb) = (wm + it, wn + jt)
+        blockHeight = case mStencilSz of
+                        Just (i, _) -> i
+                        _             -> 1
+        !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
+    let loadBlock !it' !ib' =
+          unrollAndJamT blockHeight (it', ib') (jt, jb) $ \ !ix ->
+            unsafeWrite (toLinearIndex sz ix) (indexW ix)
+        {-# INLINE loadBlock #-}
+    submitRequest scheduler $
+      JobRequest $
+      iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    submitRequest scheduler $
+      JobRequest $
+      iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    submitRequest scheduler $
+      JobRequest $
+      iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    submitRequest scheduler $
+      JobRequest $
+      iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
+      let !it' = wid * chunkHeight + it
+      submitRequest scheduler $ JobRequest $ loadBlock it' (it' + chunkHeight)
+    when (slackHeight > 0) $ do
+      let !itSlack = (numWorkers scheduler) * chunkHeight + it
+      submitRequest scheduler $
+        JobRequest $ loadBlock itSlack (itSlack + slackHeight)
+    waitTillDone scheduler
+  {-# INLINE loadP #-}
+
+
+
+unrollAndJamT :: Monad m =>
+                Int -> Ix2T -> Ix2T -> (Ix2T -> m a) -> m ()
+unrollAndJamT !bH (it, ib) (jt, jb) f = do
   let !bH' = min (max 1 bH) 7
   let f2 !(i, j) = f (i, j) >> f  (i+1, j)
   let f3 !(i, j) = f (i, j) >> f2 (i+1, j)
@@ -285,7 +388,4 @@ unrollAndJam !bH !(it, ib) !(jt, jb) f = do
   loopM_ ibS (< ib) (+ 1) $ \ !i ->
     loopM_ jt (< jb) (+ 1) $ \ !j ->
       f (i, j)
-{-# INLINE unrollAndJam #-}
-
-
--- TODO: Implement Hilbert curve
+{-# INLINE unrollAndJamT #-}

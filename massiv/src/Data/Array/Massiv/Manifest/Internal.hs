@@ -48,7 +48,7 @@ data instance Array M ix e = MArray { mComp :: Comp
                                     , mUnsafeLinearIndex :: Int -> e }
 
 
-instance Index ix => Massiv M ix e where
+instance Index ix => Construct M ix e where
   size = mSize
   {-# INLINE size #-}
 

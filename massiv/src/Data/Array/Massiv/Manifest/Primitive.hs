@@ -15,13 +15,6 @@ module Data.Array.Massiv.Manifest.Primitive
   ( P (..)
   , Array(..)
   , VP.Prim
-  -- , generateM
-  -- , fromVectorPrimitive
-  -- , toVectorPrimitive
-  -- , computePrimitiveS
-  -- , computePrimitiveP
-  -- , mapM
-  -- , imapM
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
@@ -33,7 +26,6 @@ import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Primitive               as VP
 import qualified Data.Vector.Primitive.Mutable       as MVP
 import           Prelude                             hiding (mapM)
---import           System.IO.Unsafe                    (unsafePerformIO)
 
 data P = P
 
@@ -51,7 +43,7 @@ instance (VP.Prim e, Eq e, Index ix) => Eq (Array P ix e) where
   {-# INLINE (==) #-}
 
 
-instance (VP.Prim e, Index ix) => Massiv P ix e where
+instance (VP.Prim e, Index ix) => Construct P ix e where
   size = pSize
   {-# INLINE size #-}
 
@@ -61,7 +53,8 @@ instance (VP.Prim e, Index ix) => Massiv P ix e where
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c !sz f = PArray c sz $ VP.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray Seq !sz f = PArray Seq sz $ VP.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
 instance (VP.Prim e, Index ix) => Source P ix e where

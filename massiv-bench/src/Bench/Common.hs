@@ -4,13 +4,12 @@
 module Bench.Common where
 
 
-lightFunc :: Num b => Int -> Int -> b
+lightFunc :: Int -> Int -> Double
 lightFunc !i !j =
-  fromIntegral
-    (round (sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Float)) :: Int)
+  sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Double)
 {-# INLINE lightFunc #-}
 
-heavyFunc :: Floating a => Int -> Int -> a
+heavyFunc :: Int -> Int -> Double
 heavyFunc !i !j =
   sin (sqrt (sqrt ((fromIntegral i) ** 2 + (fromIntegral j) ** 2)))
 {-# INLINE heavyFunc #-}

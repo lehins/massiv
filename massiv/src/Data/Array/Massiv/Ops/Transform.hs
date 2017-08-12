@@ -25,15 +25,16 @@ module Data.Array.Massiv.Ops.Transform
   , traverse2
   ) where
 
-import           Control.Monad                  (guard)
+import           Control.Monad                   (guard)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
-import           Data.Maybe                     (fromMaybe)
-import           Prelude                        hiding (splitAt, traverse)
+import           Data.Array.Massiv.Ops.Construct
+import           Data.Maybe                      (fromMaybe)
+import           Prelude                         hiding (splitAt, traverse)
 
 
-transpose :: Source r DIM2 e => Array r DIM2 e -> Array D DIM2 e
+transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
 transpose = transposeInner
 {-# INLINE transpose #-}
 

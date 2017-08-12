@@ -19,7 +19,7 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 
 
-prop_CatchDivideByZero :: ArrIxP D DIM2 Int -> Property
+prop_CatchDivideByZero :: ArrIxP D Ix2 Int -> Property
 prop_CatchDivideByZero (ArrIxP arr ix) =
   assertException
     (== DivideByZero)
@@ -32,7 +32,7 @@ prop_CatchDivideByZero (ArrIxP arr ix) =
        arr)
 
 
-prop_CatchNested :: ArrIxP D DIM1 (ArrIxP D DIM1 Int) -> Property
+prop_CatchNested :: ArrIxP D Ix1 (ArrIxP D Ix1 Int) -> Property
 prop_CatchNested (ArrIxP arr ix) =
   assertException
     (== DivideByZero)

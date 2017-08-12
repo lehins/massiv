@@ -15,13 +15,6 @@ module Data.Array.Massiv.Manifest.Storable
   ( S (..)
   , Array(..)
   , VS.Storable
-  -- , generateM
-  -- , fromVectorStorable
-  -- , toVectorStorable
-  -- , computeStorableS
-  -- , computeStorableP
-  -- , mapM
-  -- , imapM
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
@@ -32,7 +25,6 @@ import           Data.Array.Massiv.Mutable
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           Prelude                             hiding (mapM)
--- import           System.IO.Unsafe                    (unsafePerformIO)
 
 data S = S
 
@@ -46,7 +38,7 @@ instance (Index ix, NFData e) => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
 
 
-instance (VS.Storable e, Index ix) => Massiv S ix e where
+instance (VS.Storable e, Index ix) => Construct S ix e where
   size = sSize
   {-# INLINE size #-}
 
@@ -56,7 +48,8 @@ instance (VS.Storable e, Index ix) => Massiv S ix e where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c !sz f = SArray c sz $ VS.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray Seq !sz f = SArray Seq sz $ VS.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
 

@@ -16,14 +16,14 @@
 --
 module Data.Array.Massiv.Common
   ( Array
-  , makeArray
-  , Massiv(..)
+  , Construct(..)
   , Source(..)
   , Load(..)
   -- * Computation
   , Comp(.., Par)
   , pattern Par
   , PrettyShow(..)
+  , module Data.Array.Massiv.Common.Ix
   , module Data.Array.Massiv.Common.Index
   , evaluateAt
   , errorIx
@@ -32,6 +32,7 @@ module Data.Array.Massiv.Common
 
 import           Control.DeepSeq                (NFData (..), deepseq)
 import           Control.Monad.ST               (ST)
+import           Data.Array.Massiv.Common.Ix
 import           Data.Array.Massiv.Common.Index
 import           Data.Proxy
 import           Data.Typeable                  (Typeable, showsTypeRep,
@@ -65,20 +66,6 @@ pattern Par :: Comp
 pattern Par = ParOn []
 
 
-
--- data CompAs r = SeqAs r
---               | ParAs r
---               | ParAsOn r [Int]
-
--- toComp :: CompAs r -> Comp
--- toComp (SeqAs _) = Seq
--- toComp (ParAs _) = Par
--- toComp (ParAsOn _ wIds) = ParOn wIds
-
-
--- mArr :: Massiv r ix e => CompAs r -> ix -> (ix -> e) -> Array r ix e
--- mArr compR = makeArray (toComp compR)
-
 instance NFData Comp where
   rnf comp =
     case comp of
@@ -89,7 +76,7 @@ instance NFData Comp where
 
 
 -- | Index and size polymorphic arrays.
-class (Typeable r, Index ix) => Massiv r ix e where
+class (Typeable r, Index ix) => Construct r ix e where
 
   size :: Array r ix e -> ix
 
@@ -100,20 +87,16 @@ class (Typeable r, Index ix) => Massiv r ix e where
   unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
 
 
-makeArray :: Massiv r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
-makeArray !c = unsafeMakeArray c . liftIndex (max 0)
-{-# INLINE makeArray #-}
 
 
-
-instance (Typeable e, Massiv r ix e) => Show (Array r ix e) where
+instance (Typeable e, Construct r ix e) => Show (Array r ix e) where
   show arr =
     "<Array " ++
     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
     (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
 
 
-class Massiv r ix e => Source r ix e where
+class Construct r ix e => Source r ix e where
 
   unsafeIndex :: Array r ix e -> ix -> e
   unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
@@ -125,7 +108,7 @@ class Massiv r ix e => Source r ix e where
 
 
 
-class Massiv r ix e => Load r ix e where
+class Construct r ix e => Load r ix e where
   -- | Load an array into memory sequentially
   loadS
     :: Array r ix e -- ^ Array that is being loaded

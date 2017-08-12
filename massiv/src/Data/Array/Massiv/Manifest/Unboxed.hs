@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Unboxed
@@ -28,6 +29,9 @@ import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           Prelude                             hiding (mapM)
 
+-- import           Control.Monad.ST                    (runST)
+-- import           Data.Array.Massiv.Scheduler
+-- import           System.IO.Unsafe                    (unsafePerformIO)
 
 data U = U
 
@@ -41,7 +45,7 @@ instance (Index ix, NFData e) => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
 
 
-instance (VU.Unbox e, Index ix) => Massiv U ix e where
+instance (VU.Unbox e, Index ix) => Construct U ix e where
   size = uSize
   {-# INLINE size #-}
 
@@ -51,7 +55,8 @@ instance (VU.Unbox e, Index ix) => Massiv U ix e where
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c !sz f = UArray c sz $ VU.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray Seq !sz f = UArray Seq sz $ VU.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
 

@@ -28,9 +28,9 @@ main = do
     , bgroup
         "transpose"
         [ env
-            (return (tupleToIx2T t2))
+            (return (tupleToIx2 t2))
             (bench "Massiv Ix2 U" .
-             whnf (computeAs U . M.transpose . arrDLightIx2T Seq))
+             whnf (computeAs U . M.transpose . arrDLightIx2 Seq))
         , env
             (return (tupleToIx2 t2))
             (bench "Massiv Ix2 Inner" .

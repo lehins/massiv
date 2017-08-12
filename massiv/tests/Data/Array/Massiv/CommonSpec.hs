@@ -34,7 +34,7 @@ data ArrIxP r ix e = ArrIxP (Array r ix e) ix deriving Show
 
 
 -- | Arbitrary array
-instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) =>
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (Array r ix e) where
   arbitrary = do
     SzZ sz <- arbitrary
@@ -43,7 +43,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) 
 
 
 -- | Arbitrary non-empty array
-instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) =>
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (Arr r ix e) where
   arbitrary = do
     Sz sz <- arbitrary
@@ -51,14 +51,14 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) 
     return $ Arr $ makeArray Seq sz func
 
 -- | Arbitrary non-empty array with a valid index
-instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) =>
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrIx r ix e) where
   arbitrary = do
     SzIx (Sz sz) ix <- arbitrary
     func <- arbitrary
     return $ ArrIx (makeArray Seq sz func) ix
 
-instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) =>
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrP r ix e) where
   arbitrary = do
     Arr arr <- arbitrary
@@ -66,7 +66,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) 
 
 
 -- | Arbitrary non-empty array with a valid index
-instance (CoArbitrary ix, Arbitrary ix, Typeable e, Massiv r ix e, Arbitrary e) =>
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrIxP r ix e) where
   arbitrary = do
     ArrIx arrIx ix <- arbitrary

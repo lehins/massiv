@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE BangPatterns     #-}
 -- |
 -- Module      : Data.Array.Massiv.Stencil.Convolution
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -12,10 +12,8 @@ module Data.Array.Massiv.Stencil.Convolution where
 
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest
-import           Data.Array.Massiv.Ops.Construct
 import           Data.Array.Massiv.Ops.Fold         (ifoldlS)
 import           Data.Array.Massiv.Stencil.Internal
-import           Data.Default                       (Default)
 import           GHC.Exts                           (inline)
 
 
@@ -56,77 +54,10 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
 {-# INLINE mkConvolutionStencilFromKernel #-}
 
 
-sobelKernelStencilX
-  :: (Eq e, Num e, Unbox e) => Border e -> Stencil DIM2 e e
-sobelKernelStencilX b =
-  mkConvolutionStencilFromKernel b $ fromListAs2D U Seq [ [ 1, 0, -1 ]
-                                                        , [ 2, 0, -2 ]
-                                                        , [ 1, 0, -1 ] ]
-{-# INLINE sobelKernelStencilX #-}
-
-
-sobelStencilX :: Num e => Border e -> Stencil DIM2 e e
-sobelStencilX b = mkConvolutionStencil b (3, 3) (1, 1) accum where
-  accum f =
-     f (-1, -1)   1  .
-     f ( 0, -1)   2  .
-     f ( 1, -1)   1  .
-     f (-1,  1) (-1) .
-     f ( 0,  1) (-2) .
-     f ( 1,  1) (-1)
-  {-# INLINE accum #-}
-{-# INLINE sobelStencilX #-}
-
-
-sobelStencilY :: Num e => Border e -> Stencil DIM2 e e
-sobelStencilY b = mkConvolutionStencil b (3, 3) (1, 1) accum where
-  accum f =
-     f (-1, -1)   1  .
-     f (-1,  0)   2  .
-     f (-1,  1)   1  .
-     f ( 1, -1) (-1) .
-     f ( 1,  0) (-2) .
-     f ( 1,  1) (-1)
-  {-# INLINE accum #-}
-{-# INLINE sobelStencilY #-}
-
-
-sobelOperator :: (Default b, Floating b) => Border b -> Stencil DIM2 b b
-sobelOperator b = fmap sqrt (pure (+) <*> sX <*> sY) where
-  !sX = fmap (^ (2 :: Int)) (sobelStencilX b)
-  !sY = fmap (^ (2 :: Int)) (sobelStencilY b)
-{-# INLINE sobelOperator #-}
-
-
-sobelOperatorI :: (Default a, Integral a, Floating b) => Border a -> Stencil DIM2 a b
-sobelOperatorI b = fmap (sqrt . fromIntegral) (sX + sY) where
-  !sX = (^ (2 :: Int)) <$> sobelStencilX b
-  !sY = (^ (2 :: Int)) <$> sobelStencilY b
-{-# INLINE sobelOperatorI #-}
-
-kirschWStencil
-  :: Num e
-  => Border e -> Stencil DIM2 e e
-kirschWStencil b = mkConvolutionStencil b (3, 3) (1, 1) accum
-  where
-    accum f =
-      f (-1, -1)   5  .
-      f (-1,  0) (-3) .
-      f (-1,  1) (-3) .
-      f ( 0, -1)   5  .
-      f ( 0,  1) (-3) .
-      f ( 1, -1)   5  .
-      f ( 1,  0) (-3) .
-      f ( 1,  1) (-3)
-    {-# INLINE accum #-}
-{-# INLINE kirschWStencil #-}
-
-
-
 
 
 -- -- | KirschW stencil (already rotated 180 degrees for correlation
--- kirschWStencil :: (Num e, Eq e, VU.Unbox e) => Stencil DIM2 e
+-- kirschWStencil :: (Num e, Eq e, VU.Unbox e) => Stencil Ix2 e
 -- kirschWStencil =
 --   makeStencil2D 0 $ fromListsUnboxed  [ [ -3, -3, 5 ]
 --                                       , [ -3,  0, 5 ]
@@ -135,7 +66,7 @@ kirschWStencil b = mkConvolutionStencil b (3, 3) (1, 1) accum
 
 
 -- -- | KirschW stencil (already rotated 180 degrees for correlation
--- kirschWStencil' :: (Num e, Eq e, VU.Unbox e) => Stencil DIM2 e
+-- kirschWStencil' :: (Num e, Eq e, VU.Unbox e) => Stencil Ix2 e
 -- kirschWStencil' =
 --   makeStencil 0 $ fromListsUnboxed  [ [ -3, -3, 5 ]
 --                                     , [ -3,  0, 5 ]
@@ -144,7 +75,7 @@ kirschWStencil b = mkConvolutionStencil b (3, 3) (1, 1) accum
 
 
 -- -- | Sobel stencil (already rotated 180 degrees for correlation
--- sobelStencil :: (Num e, Eq e, VU.Unbox e) => Orientation -> Stencil DIM2 e
+-- sobelStencil :: (Num e, Eq e, VU.Unbox e) => Orientation -> Stencil Ix2 e
 -- sobelStencil Vertical =
 --   makeStencil2D 0 $ fromListsUnboxed [ [  1,  2,  1 ]
 --                                      , [  0,  0,  0 ]
@@ -157,7 +88,7 @@ kirschWStencil b = mkConvolutionStencil b (3, 3) (1, 1) accum
 
 
 -- -- | Sobel stencil (already rotated 180 degrees for correlation
--- sobelStencil' :: (Num e, Eq e, VU.Unbox e) => Orientation -> Stencil DIM2 e
+-- sobelStencil' :: (Num e, Eq e, VU.Unbox e) => Orientation -> Stencil Ix2 e
 -- sobelStencil' Vertical =
 --   makeStencil 0 $ fromListsUnboxed [ [  1,  2,  1 ]
 --                                    , [  0,  0,  0 ]

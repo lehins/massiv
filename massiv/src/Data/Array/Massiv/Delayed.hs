@@ -40,7 +40,7 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE delay #-}
 
 
-instance Index ix => Massiv D ix e where
+instance Index ix => Construct D ix e where
   size = dSize
   {-# INLINE size #-}
 
@@ -110,11 +110,11 @@ instance Functor (Array D ix) where
   {-# INLINE fmap #-}
 
 
-instance Index ix => Applicative (Array D ix) where
-  pure a = DArray Seq (liftIndex (+ 1) zeroIndex) (const a)
-  (<*>) (DArray c sz1 uIndex1) (DArray _ sz2 uIndex2) =
-    DArray c (liftIndex2 (*) sz1 sz2) $ \ !ix ->
-      (uIndex1 (liftIndex2 mod ix sz1)) (uIndex2 (liftIndex2 mod ix sz2))
+-- instance Index ix => Applicative (Array D ix) where
+--   pure a = DArray Seq (liftIndex (+ 1) zeroIndex) (const a)
+--   (<*>) (DArray c sz1 uIndex1) (DArray _ sz2 uIndex2) =
+--     DArray c (liftIndex2 (*) sz1 sz2) $ \ !ix ->
+--       (uIndex1 (liftIndex2 mod ix sz1)) (uIndex2 (liftIndex2 mod ix sz2))
 
 
 -- | Row-major folding over a delayed array.

@@ -20,10 +20,10 @@ prop_SumSEqSumP _ arr = sum arr == sum (setComp Par arr)
 prop_ProdSEqProdP :: Index ix => proxy ix -> Array D ix Int -> Bool
 prop_ProdSEqProdP _ arr = product arr == product (setComp Par arr)
 
-prop_NestedFoldP :: Array D DIM1 (Array D DIM1 Int) -> Bool
+prop_NestedFoldP :: Array D Ix1 (Array D Ix1 Int) -> Bool
 prop_NestedFoldP arr = sum (setComp Par (map sum $ setComp Par arr)) == sum (map sum arr)
 
-prop_FoldrOnP :: NonEmpty Int -> ArrP D DIM1 Int -> Property
+prop_FoldrOnP :: NonEmpty Int -> ArrP D Ix1 Int -> Property
 prop_FoldrOnP wIds (ArrP arr) = length arr > length wIds ==> monadicIO $ do
   res <- run $ ifoldrOnP (toList wIds) (:) [] (\ _ -> (+)) 0 arr
   if length arr `mod` length wIds == 0
@@ -31,7 +31,7 @@ prop_FoldrOnP wIds (ArrP arr) = length arr > length wIds ==> monadicIO $ do
     else assert (length res == length wIds + 1)
   assert (P.sum res == sum arr)
 
-prop_FoldlOnP :: NonEmpty Int -> ArrP D DIM1 Int -> Property
+prop_FoldlOnP :: NonEmpty Int -> ArrP D Ix1 Int -> Property
 prop_FoldlOnP wIds (ArrP arr) = length arr > length wIds ==> monadicIO $ do
   res <- run $ ifoldlOnP (toList wIds) (flip (:)) [] (\ a _ x -> a + x) 0 arr
   if length arr `mod` length wIds == 0
@@ -48,8 +48,8 @@ specFold proxy dimStr = do
 
 spec :: Spec
 spec = do
-  specFold (Nothing :: Maybe DIM1) "DIM1"
-  specFold (Nothing :: Maybe DIM2) "DIM2"
+  specFold (Nothing :: Maybe Ix1) "Ix1"
+  specFold (Nothing :: Maybe Ix2) "Ix2"
   it "Nested Parallel Fold" $ property prop_NestedFoldP
   it "FoldrOnP" $ property $ prop_FoldrOnP
   it "FoldlOnP" $ property $ prop_FoldlOnP
