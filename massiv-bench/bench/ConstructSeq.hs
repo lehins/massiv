@@ -26,6 +26,12 @@ main = do
         , env
             (return (tupleToIx2 t2))
             (bench "Massiv Ix2 S" . whnf (\sz -> makeArrayR S Seq sz lightFuncIx2))
+        , env
+            (return (tupleToIx2 t2))
+            (bench "Massiv Ix2 B" . nf (\sz -> makeArrayR B Seq sz lightFuncIx2))
+        , env
+            (return (tupleToIx2 t2))
+            (bench "Massiv Ix2 B" . nf (\sz -> makeArrayR B Par sz lightFuncIx2))
         , env (return t2) (bench "Vector U" . whnf vecLight2)
         , env
             (return (tupleToSh2 t2))

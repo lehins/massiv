@@ -204,7 +204,7 @@ sequenceP = sequenceOnP []
 -- {-# INLINE sequenceP' #-}
 
 
--- | Create an array
+-- | Create an array in parallel using mutable interface
 unsafeGenerateArrayP :: Mutable r ix e => [Int] -> ix -> (ix -> e) -> Array r ix e
 unsafeGenerateArrayP wIds sz f = unsafePerformIO $ do
   marr <- unsafeNew sz
@@ -220,3 +220,4 @@ unsafeGenerateArrayP wIds sz f = unsafePerformIO $ do
         unsafeLinearWrite marr k (f ix)
   unsafeFreeze (ParOn wIds) marr
 {-# INLINE unsafeGenerateArrayP #-}
+

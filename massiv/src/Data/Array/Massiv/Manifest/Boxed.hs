@@ -69,7 +69,8 @@ instance Index ix => Construct B ix e where
   setComp c arr = arr { bComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c sz = BArray c sz . makeBoxedVector sz
+  unsafeMakeArray Seq sz f = BArray Seq sz $ makeBoxedVector sz f
+  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
 instance Index ix => Source B ix e where
@@ -173,50 +174,6 @@ instance Index ix => Foldable (Array B ix) where
   toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 
-
-
--- computeBoxedS :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
--- computeBoxedS = loadTargetS
--- {-# INLINE computeBoxedS #-}
-
-
--- computeBoxedP :: (Load r ix e, Target B ix e) => Array r ix e -> Array B ix e
--- computeBoxedP = unsafePerformIO . loadTargetOnP []
--- {-# INLINE computeBoxedP #-}
-
-
--- fromVectorBoxed :: Index ix => ix -> V.Vector e -> Array B ix e
--- fromVectorBoxed sz v = BArray { bSize = sz, bData = v }
--- {-# INLINE fromVectorBoxed #-}
-
-
--- toVectorBoxed :: Array B ix e -> V.Vector e
--- toVectorBoxed = bData
--- {-# INLINE toVectorBoxed #-}
-
-
--- generateM :: (Index ix, Monad m) =>
---              ix -> (ix -> m a) -> m (Array B ix a)
--- generateM sz f =
---   BArray sz <$> V.generateM (totalElem sz) (f . fromLinearIndex sz)
--- {-# INLINE generateM #-}
-
-
--- mapM :: (Source r ix a, Monad m) =>
---   (a -> m b) -> Array r ix a -> m (Array B ix b)
--- mapM f = imapM (const f)
--- {-# INLINE mapM #-}
-
--- imapM :: (Source r ix a, Monad m) =>
---   (ix -> a -> m b) -> Array r ix a -> m (Array B ix b)
--- imapM f arr = do
---   let !sz = size arr
---   v <- V.generateM (totalElem sz) $ \ !i ->
---          let !ix = fromLinearIndex sz i
---              !e = unsafeIndex arr ix
---          in f ix e
---   return $ BArray sz v
--- {-# INLINE imapM #-}
 
 
 -- | Parallel version of `deepseq`: fully evaluate all elements of a boxed array in
