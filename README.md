@@ -155,7 +155,7 @@ unless we want to free up the extra memory, of course. So, there are a few
 slicing, resizing and extraction operators that can do it all in constant time,
 modulo the index manipulation:
 
-```
+```haskell
 λ> let arr = computeAs U $ makeArrayR D Seq (10 :> 20 :. 30) $ \ (i :> j :. k) -> (i, j, k)
 λ> :t arr !> 3 <! 2
 arr !> 3 <! 2 :: Array M Ix1 (Int, Int, Int)
@@ -169,7 +169,7 @@ finaly we pull out the first element in that column. Pretty neat, hah?
 As you might suspect those slicing and indexing operators are partial, and those
 are frowned upon in Haskell, so we can do this in a much safer way:
 
-```
+```haskell
 λ> :t arr !?> 3
 arr !?> 3 :: Maybe (Array M Ix2 (Int, Int, Int))
 λ> :t arr !?> 3 <? 2
@@ -237,8 +237,8 @@ average3x3Filter b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
 ```
 
 Here is what it would look like in GHCi. We create a delayed array with some
-funky function, make sure it is computed prior to mapping an average stencil
-over it:
+funky periodic function, make sure it is computed prior to mapping an average
+stencil over it:
 
 ```haskell
 λ> let arr = arrLightIx2 Par (600 :. 800)
