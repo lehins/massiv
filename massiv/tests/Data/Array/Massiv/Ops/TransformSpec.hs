@@ -2,9 +2,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.Ops.TransformSpec (spec) where
 
-import           Data.Array.Massiv            as M
-import           Data.Array.Massiv.CommonSpec (Arr (..), ArrIx (..))
-import           Data.Typeable                (Typeable)
+import           Data.Array.Massiv                  as M
+import           Data.Array.Massiv.Common.IndexSpec (DimIx (..))
+import           Data.Array.Massiv.CommonSpec       (Arr (..), ArrIx (..))
+import           Data.Typeable                      (Typeable)
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -12,11 +13,9 @@ import           Test.QuickCheck
 
 prop_ExtractAppend
   :: (Eq e, Shape r ix e, Arbitrary (ArrIx r ix e))
-  => proxy (r, ix, e) -> Int -> ArrIx r ix e -> Bool
-prop_ExtractAppend _ dim (ArrIx arr ix) =
-  maybe False ((delay arr ==) . uncurry (append' dim')) $ M.splitAt dim' ix arr
-  where
-    dim' = (dim `mod` rank ix) + 1
+  => proxy (r, ix, e) -> DimIx ix -> ArrIx r ix e -> Bool
+prop_ExtractAppend _ (DimIx dim) (ArrIx arr ix) =
+  maybe False ((delay arr ==) . uncurry (append' dim)) $ M.splitAt dim ix arr
 
 
 prop_transposeOuterInner :: Arr D Ix2 Int -> Property

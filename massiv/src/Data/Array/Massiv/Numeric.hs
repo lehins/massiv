@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -66,11 +65,11 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 -- import           Data.Array.Massiv.Manifest
-
 import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Ops.Fold      as M
 import           Data.Array.Massiv.Ops.Map       as M
 import           Data.Array.Massiv.Ops.Transform as M
+import           Data.Monoid                     ((<>))
 import           Prelude                         as P
 
 
@@ -122,7 +121,9 @@ multArrs arr1 arr2
     error $
     "(|*|): Inner array dimensions must agree, but received: " ++
     show (size arr1) ++ " and " ++ show (size arr2)
-  | otherwise = DArray (getComp arr1) (m1 :. n2) $ \(i :. j) -> M.sum (arr1' !> i .* arr2' !> j)
+  | otherwise =
+    DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
+      M.sum (arr1' !> i .* arr2' !> j)
   where
     (m1 :. n1) = size arr1
     (m2 :. n2) = size arr2

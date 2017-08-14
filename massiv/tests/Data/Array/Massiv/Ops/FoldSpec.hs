@@ -5,7 +5,6 @@ module Data.Array.Massiv.Ops.FoldSpec (spec) where
 
 import           Data.Array.Massiv
 import           Data.Array.Massiv.CommonSpec (ArrP(..))
-import           Data.List.NonEmpty           (NonEmpty, toList)
 import           Prelude                      hiding (map, product, sum)
 import qualified Prelude                      as P (sum)
 import           Test.Hspec
@@ -23,21 +22,27 @@ prop_ProdSEqProdP _ arr = product arr == product (setComp Par arr)
 prop_NestedFoldP :: Array D Ix1 (Array D Ix1 Int) -> Bool
 prop_NestedFoldP arr = sum (setComp Par (map sum $ setComp Par arr)) == sum (map sum arr)
 
-prop_FoldrOnP :: NonEmpty Int -> ArrP D Ix1 Int -> Property
-prop_FoldrOnP wIds (ArrP arr) = length arr > length wIds ==> monadicIO $ do
-  res <- run $ ifoldrOnP (toList wIds) (:) [] (\ _ -> (+)) 0 arr
-  if length arr `mod` length wIds == 0
-    then assert (length res == length wIds)
-    else assert (length res == length wIds + 1)
-  assert (P.sum res == sum arr)
+prop_FoldrOnP :: Int -> [Int] -> ArrP D Ix1 Int -> Property
+prop_FoldrOnP wId wIds (ArrP arr) =
+  length arr > length wIds ==> monadicIO $ do
+    res <- run $ ifoldrOnP wIdsNE (:) [] (\_ -> (+)) 0 arr
+    if length arr `mod` length wIdsNE == 0
+      then assert (length res == length wIdsNE)
+      else assert (length res == length wIdsNE + 1)
+    assert (P.sum res == sum arr)
+  where
+    wIdsNE = wId : wIds
 
-prop_FoldlOnP :: NonEmpty Int -> ArrP D Ix1 Int -> Property
-prop_FoldlOnP wIds (ArrP arr) = length arr > length wIds ==> monadicIO $ do
-  res <- run $ ifoldlOnP (toList wIds) (flip (:)) [] (\ a _ x -> a + x) 0 arr
-  if length arr `mod` length wIds == 0
-    then assert (length res == length wIds)
-    else assert (length res == length wIds + 1)
-  assert (P.sum res == sum arr)
+prop_FoldlOnP :: Int -> [Int] -> ArrP D Ix1 Int -> Property
+prop_FoldlOnP wId wIds (ArrP arr) =
+  length arr > length wIds ==> monadicIO $ do
+    res <- run $ ifoldlOnP wIdsNE (flip (:)) [] (\a _ x -> a + x) 0 arr
+    if length arr `mod` length wIdsNE == 0
+      then assert (length res == length wIdsNE)
+      else assert (length res == length wIdsNE + 1)
+    assert (P.sum res == sum arr)
+  where
+    wIdsNE = wId : wIds
 
 
 specFold :: (Arbitrary ix, CoArbitrary ix, Index ix) => proxy ix -> String -> Spec

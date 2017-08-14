@@ -51,6 +51,8 @@ import           Prelude                         as P hiding (length, map,
                                                        mapM_, null, unzip,
                                                        unzip3, zip, zip3,
                                                        zipWith, zipWith3)
+
+
 -- import Text.Printf
 -- import qualified Data.Foldable as F
 -- import qualified Data.List as L

@@ -29,7 +29,7 @@ module Data.Array.Massiv.IO.Base
   ) where
 
 import           Control.Exception    (throw, Exception)
-import           Data.Array.Massiv    (Array, DIM2)
+import           Data.Array.Massiv    (Array, Ix2)
 import qualified Data.ByteString      as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import           Data.Default         (Default (..))
@@ -37,7 +37,7 @@ import           Data.Maybe           (fromMaybe)
 import           Data.Typeable
 import           Graphics.ColorSpace  (ColorSpace, Pixel)
 
-type Image r cs e = Array r DIM2 (Pixel cs e)
+type Image r cs e = Array r Ix2 (Pixel cs e)
 
 -- | Conversion error, which is thrown when there is a mismatch between the
 -- expected array type and the one supported by the file format. It is also

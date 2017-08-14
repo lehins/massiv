@@ -13,7 +13,9 @@
 --
 module Data.Array.Massiv.Ops.Construct
   ( -- * Construction
-    makeArray
+    makeVector
+  , makeVectorR
+  , makeArray
   , makeArrayR
   -- * Enumeration
   , range
@@ -53,12 +55,28 @@ import           GHC.Base                       (build)
 import           System.IO.Unsafe               (unsafePerformIO)
 
 
+-- | Just like `makeArray`, but create a flat Array
+makeVector :: Construct r Int e => Comp -> Ix1 -> (Ix1 -> e) -> Array r Ix1 e
+makeVector = makeArray
+{-# INLINE makeVector #-}
 
-makeArray :: Construct r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
+
+-- | Just like `makeArrayR`, but create a flat Array with a specified representation
+makeVectorR :: Construct r Int e => r -> Comp -> Int -> (Int -> e) -> Array r Int e
+makeVectorR = makeArrayR
+{-# INLINE makeVectorR #-}
+
+
+-- | Create an Array.
+makeArray :: Construct r ix e =>
+             Comp -- ^ Computation strategy. Useful constructora are `Seq` and `Par`
+          -> ix -- ^ Size of the result Array
+          -> (ix -> e) -- ^ Function to generate elements for a particular index
+          -> Array r ix e
 makeArray !c = unsafeMakeArray c . liftIndex (max 0)
 {-# INLINE makeArray #-}
 
-
+-- | Just like `makeArray` but with ability to specify the result representation
 makeArrayR :: Construct r ix e => r -> Comp -> ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
 {-# INLINE makeArrayR #-}
@@ -254,7 +272,7 @@ fromListPIx3 wIds xs =
     let mFirstRow = listToMaybe xs
     let sz@(l :> m :. n) =
           (length xs :> maybe 0 length mFirstRow :.
-           maybe 0 length (mFirstRow >>= listToMaybe))
+           maybe 0 length (mFirstRow >>= listToMaybe)) :: Ix3
     scheduler <- makeScheduler wIds
     mArr <- unsafeNew (l :> m :. n)
     loadListUsingIx3

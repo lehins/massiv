@@ -23,7 +23,7 @@ class (Source r ix e, Source (R r) ix e) => Shape r ix e where
 
   unsafeReshape :: Index ix' => ix' -> Array r ix e -> Array r ix' e
 
-  unsafeExtract :: ix -> ix -> Array r ix e -> Array (R r) ix e
+  unsafeExtract :: r' ~ R r => ix -> ix -> Array r ix e -> Array r' ix e
 
 
 extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
@@ -72,7 +72,7 @@ class ( Index (Lower ix)
   (<!?) :: Array r ix e -> Int -> Maybe (Array (R r) (Lower ix) e)
 
 
-(<!?>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Maybe (Array (R r) (Lower ix) e)
+(<!?>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Maybe (Array (R r) (Lower ix) e)
 (<!?>) !arr !(dim, i) = do
   m <- getIndex (size arr) dim
   guard $ isSafeIndex m i
@@ -93,7 +93,7 @@ class ( Index (Lower ix)
 (<?) (Just arr) !ix = arr <!? ix
 {-# INLINE (<?) #-}
 
-(<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Int, Int) -> Maybe (Array (R r) (Lower ix) e)
+(<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Dim, Int) -> Maybe (Array (R r) (Lower ix) e)
 (<?>) Nothing      _ = Nothing
 (<?>) (Just arr) !ix = arr <!?> ix
 {-# INLINE (<?>) #-}
@@ -112,7 +112,7 @@ class ( Index (Lower ix)
     Nothing  -> errorIx "(<!)" (size arr) ix
 {-# INLINE (<!) #-}
 
-(<!>) :: Slice r ix e => Array r ix e -> (Int, Int) -> Array (R r) (Lower ix) e
+(<!>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Array (R r) (Lower ix) e
 (<!>) !arr !(dim, i) =
   case arr <!?> (dim, i) of
     Just res -> res

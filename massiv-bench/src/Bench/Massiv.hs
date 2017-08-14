@@ -162,3 +162,43 @@ sobelOperatorT b = sqrt <$> ((+) <$> sX <*> sY) where
   !sX = (^ (2 :: Int)) <$> sobelTX b
   !sY = (^ (2 :: Int)) <$> sobelTY b
 {-# INLINE sobelOperatorT #-}
+
+
+sum3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
+sum3x3Filter b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
+  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
+  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
+  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
+{-# INLINE sum3x3Filter #-}
+
+
+average3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
+average3x3Filter b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
+  (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
+     get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
+     get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
+{-# INLINE average3x3Filter #-}
+
+
+average3x3FilterConvMap :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
+average3x3FilterConvMap b = fmap (/9) $ mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
+  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
+  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
+  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
+{-# INLINE average3x3FilterConvMap #-}
+
+average3x3FilterConvMap' :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
+average3x3FilterConvMap' b = sMap (/9) $ mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
+  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
+  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
+  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
+{-# INLINE average3x3FilterConvMap' #-}
+
+
+average3x3FilterConv :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
+average3x3FilterConv b = let _9th = 1/9 in
+  mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
+  get (-1 :. -1) _9th . get (-1 :. 0) _9th . get (-1 :. 1) _9th .
+  get ( 0 :. -1) _9th . get ( 0 :. 0) _9th . get ( 0 :. 1) _9th .
+  get ( 1 :. -1) _9th . get ( 1 :. 0) _9th . get ( 1 :. 1) _9th
+{-# INLINE average3x3FilterConv #-}

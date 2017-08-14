@@ -1,9 +1,10 @@
-{-# LANGUAGE BangPatterns            #-}
-{-# LANGUAGE CPP                     #-}
-{-# LANGUAGE FlexibleContexts        #-}
-{-# LANGUAGE FlexibleInstances       #-}
-{-# LANGUAGE MultiParamTypeClasses   #-}
-{-# LANGUAGE TypeFamilies            #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE TypeFamilies               #-}
 -- |
 -- Module      : Data.Array.Massiv.Common.Index
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -16,6 +17,7 @@ module Data.Array.Massiv.Common.Index where
 
 import           Control.DeepSeq (NFData)
 
+newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
 
 type Ix1T = Int
 
@@ -35,9 +37,54 @@ type instance Lower Ix3T = Ix2T
 type instance Lower Ix4T = Ix3T
 type instance Lower Ix5T = Ix4T
 
+
+-- | Approach to be used near the borders during various transformations.
+-- Whenever a function needs information not only about an element of interest, but
+-- also about it's neighbours, it will go out of bounds around the image edges,
+-- hence is this set of approaches that can be used in such situtation.
+data Border e =
+  Fill e    -- ^ Fill in a constant element.
+              --
+              -- @
+              --            outside |  Image  | outside
+              -- ('Fill' 0) : 0 0 0 0 | 1 2 3 4 | 0 0 0 0
+              -- @
+              --
+  | Wrap      -- ^ Wrap around from the opposite border of the array.
+              --
+              -- @
+              --            outside |  Image  | outside
+              -- 'Wrap' :     1 2 3 4 | 1 2 3 4 | 1 2 3 4
+              -- @
+              --
+  | Edge      -- ^ Replicate the element at the edge.
+              --
+              -- @
+              --            outside |  Image  | outside
+              -- 'Edge' :     1 1 1 1 | 1 2 3 4 | 4 4 4 4
+              -- @
+              --
+  | Reflect   -- ^ Mirror like reflection.
+              --
+              -- @
+              --            outside |  Image  | outside
+              -- 'Reflect' :  4 3 2 1 | 1 2 3 4 | 4 3 2 1
+              -- @
+              --
+  | Continue  -- ^ Also mirror like reflection, but without repeating the edge element.
+              --
+              -- @
+              --            outside |  Image  | outside
+              -- 'Continue' : 1 4 3 2 | 1 2 3 4 | 3 2 1 4
+              -- @
+              --
+  deriving (Eq, Show)
+
+
+
 class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
-  rank :: ix -> Int
+  rank :: ix -> Dim
 
   zeroIndex :: ix
 
@@ -53,8 +100,6 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   toLinearIndex :: ix -- ^ Size
                 -> ix -- ^ Index
                 -> Int
-
-  toLinearIndexAcc :: Int -> ix -> ix -> Int
 
   -- | Produce N Dim index from size and linear index
   fromLinearIndex :: ix -> Int -> ix
@@ -75,11 +120,11 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
   unsnocDim :: Index (Lower ix) => ix -> (Lower ix, Int)
 
-  getIndex :: ix -> Int -> Maybe Int
+  getIndex :: ix -> Dim -> Maybe Int
 
-  setIndex :: ix -> Int -> Int -> Maybe ix
+  setIndex :: ix -> Dim -> Int -> Maybe ix
 
-  dropIndex :: ix -> Int -> Maybe (Lower ix)
+  dropIndex :: ix -> Dim -> Maybe (Lower ix)
 
   iter :: ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
 
@@ -111,8 +156,6 @@ instance Index Ix1T where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex _ = id
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc !acc n i = acc * n + i
-  {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex _ = id
   {-# INLINE [1] fromLinearIndex #-}
   fromLinearIndexAcc n k = k `quotRem` n
@@ -162,8 +205,6 @@ instance Index Ix2T where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex !(_, n) !(i, j) = n * i + j
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc !acc !(m, n) !(i, j) = n * (acc * m + i) + j
-  {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex (_, n) !k = k `quotRem` n
   {-# INLINE [1] fromLinearIndex #-}
   fromLinearIndexAcc (m, n) !k =
@@ -179,16 +220,16 @@ instance Index Ix2T where
   {-# INLINE [1] snocDim #-}
   unsnocDim = id
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i, _) 1 = Just i
-  getIndex (_, j) 2 = Just j
+  getIndex (i, _) 2 = Just i
+  getIndex (_, j) 1 = Just j
   getIndex _      _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_, j) 1 i = Just (i, j)
-  setIndex (i, _) 2 j = Just (i, j)
+  setIndex (_, j) 2 i = Just (i, j)
+  setIndex (i, _) 1 j = Just (i, j)
   setIndex _      _ _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropIndex (_, j) 1 = Just j
-  dropIndex (i, _) 2 = Just i
+  dropIndex (_, j) 2 = Just j
+  dropIndex (i, _) 1 = Just i
   dropIndex _      _ = Nothing
   {-# INLINE [1] dropIndex #-}
   repairIndex = repairIndexRec
@@ -209,12 +250,6 @@ instance Index Ix2T where
     loopM_ i (`cond` m) (+ inc) $ \ !i' ->
       loopM_ j (`cond` n) (+ inc) $ \ !j' -> f (i', j')
   {-# INLINE iterM_ #-}
-  -- iter = iterRec
-  -- {-# INLINE iter #-}
-  -- iterM = iterMRec
-  -- {-# INLINE iterM #-}
-  -- iterM_ = iterMRec_
-  -- {-# INLINE iterM_ #-}
 
 
 instance Index Ix3T where
@@ -229,13 +264,14 @@ instance Index Ix3T where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex !(_, n, o) !(i, j, k) = (n * i + j) * o + k
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc = toLinearIndexAccRec
-  {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex !(_, n, o) !l = (i, j, k)
     where !(h, k) = quotRem l o
           !(i, j) = quotRem h n
   {-# INLINE [1] fromLinearIndex #-}
-  fromLinearIndexAcc = fromLinearIndexAccRec
+  fromLinearIndexAcc !ix' !k = (q, consDim r ixL)
+    where !(m, ix) = unconsDim ix'
+          !(kL, ixL) = fromLinearIndexAcc ix k
+          !(q, r) = quotRem kL m
   {-# INLINE [1] fromLinearIndexAcc #-}
   consDim i (j, k) = (i, j, k)
   {-# INLINE [1] consDim #-}
@@ -245,20 +281,20 @@ instance Index Ix3T where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i, j, k) = ((i, j), k)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i, _, _) 1 = Just i
+  getIndex (i, _, _) 3 = Just i
   getIndex (_, j, _) 2 = Just j
-  getIndex (_, _, k) 3 = Just k
+  getIndex (_, _, k) 1 = Just k
   getIndex _         _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_, j, k) 1 i = Just (i, j, k)
+  setIndex (_, j, k) 3 i = Just (i, j, k)
   setIndex (i, _, k) 2 j = Just (i, j, k)
-  setIndex (i, j, _) 3 k = Just (i, j, k)
-  setIndex _      _ _ = Nothing
+  setIndex (i, j, _) 1 k = Just (i, j, k)
+  setIndex _      _ _    = Nothing
   {-# INLINE [1] setIndex #-}
-  dropIndex (_, j, k) 1 = Just (j, k)
+  dropIndex (_, j, k) 3 = Just (j, k)
   dropIndex (i, _, k) 2 = Just (i, k)
-  dropIndex (i, j, _) 3 = Just (i, j)
-  dropIndex _      _ = Nothing
+  dropIndex (i, j, _) 1 = Just (i, j)
+  dropIndex _      _    = Nothing
   {-# INLINE [1] dropIndex #-}
   repairIndex = repairIndexRec
   {-# INLINE [1] repairIndex #-}
@@ -304,15 +340,17 @@ instance Index Ix4T where
     where !(szL, n) = unsnocDim sz
           !(ixL, i) = unsnocDim ix
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc = toLinearIndexAccRec
-  {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex !sz !k = snocDim (fromLinearIndex szL kL) j
     where !(kL, j) = quotRem k n
           !(szL, n) = unsnocDim sz
   {-# INLINE [1] fromLinearIndex #-}
   -- fromLinearIndex = fromLinearIndexRec
   -- {-# INLINE [1] fromLinearIndex #-}
-  fromLinearIndexAcc = fromLinearIndexAccRec
+  --fromLinearIndexAcc = fromLinearIndexAccRec
+  fromLinearIndexAcc !ix' !k = (q, consDim r ixL)
+    where !(m, ix) = unconsDim ix'
+          !(kL, ixL) = fromLinearIndexAcc ix k
+          !(q, r) = quotRem kL m
   {-# INLINE [1] fromLinearIndexAcc #-}
   consDim i1 (i2, i3, i4) = (i1, i2, i3, i4)
   {-# INLINE [1] consDim #-}
@@ -322,23 +360,23 @@ instance Index Ix4T where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i1, i2, i3, i4) = ((i1, i2, i3), i4)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i1,  _,  _,  _) 1 = Just i1
-  getIndex ( _, i2,  _,  _) 2 = Just i2
-  getIndex ( _,  _, i3,  _) 3 = Just i3
-  getIndex ( _,  _,  _, i4) 4 = Just i4
+  getIndex (i1,  _,  _,  _) 4 = Just i1
+  getIndex ( _, i2,  _,  _) 3 = Just i2
+  getIndex ( _,  _, i3,  _) 2 = Just i3
+  getIndex ( _,  _,  _, i4) 1 = Just i4
   getIndex _                _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex ( _, i2, i3, i4) 1 i1 = Just (i1, i2, i3, i4)
-  setIndex (i1,  _, i3, i4) 2 i2 = Just (i1, i2, i3, i4)
-  setIndex (i1, i2,  _, i4) 3 i3 = Just (i1, i2, i3, i4)
-  setIndex (i1, i2, i3,  _) 4 i4 = Just (i1, i2, i3, i4)
+  setIndex ( _, i2, i3, i4) 4 i1 = Just (i1, i2, i3, i4)
+  setIndex (i1,  _, i3, i4) 3 i2 = Just (i1, i2, i3, i4)
+  setIndex (i1, i2,  _, i4) 2 i3 = Just (i1, i2, i3, i4)
+  setIndex (i1, i2, i3,  _) 1 i4 = Just (i1, i2, i3, i4)
   setIndex _                _  _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropIndex ( _, i2, i3, i4) 1 = Just (i2, i3, i4)
-  dropIndex (i1,  _, i3, i4) 2 = Just (i1, i3, i4)
-  dropIndex (i1, i2,  _, i4) 3 = Just (i1, i2, i4)
-  dropIndex (i1, i2, i3,  _) 4 = Just (i1, i2, i3)
-  dropIndex _      _ = Nothing
+  dropIndex ( _, i2, i3, i4) 4 = Just (i2, i3, i4)
+  dropIndex (i1,  _, i3, i4) 3 = Just (i1, i3, i4)
+  dropIndex (i1, i2,  _, i4) 2 = Just (i1, i2, i4)
+  dropIndex (i1, i2, i3,  _) 1 = Just (i1, i2, i3)
+  dropIndex _      _           = Nothing
   {-# INLINE [1] dropIndex #-}
   repairIndex = repairIndexRec
   {-# INLINE [1] repairIndex #-}
@@ -381,8 +419,6 @@ instance Index Ix5T where
     where !(szL, n) = unsnocDim sz
           !(ixL, i) = unsnocDim ix
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc = toLinearIndexAccRec
-  {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex !sz !k = snocDim (fromLinearIndex szL kL) j
     where !(kL, j) = quotRem k n
           !(szL, n) = unsnocDim sz
@@ -396,25 +432,25 @@ instance Index Ix5T where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i1, i2, i3, i4, i5) = ((i1, i2, i3, i4), i5)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i1,  _,  _,  _,  _) 1 = Just i1
-  getIndex ( _, i2,  _,  _,  _) 2 = Just i2
+  getIndex (i1,  _,  _,  _,  _) 5 = Just i1
+  getIndex ( _, i2,  _,  _,  _) 4 = Just i2
   getIndex ( _,  _, i3,  _,  _) 3 = Just i3
-  getIndex ( _,  _,  _, i4,  _) 4 = Just i4
-  getIndex ( _,  _,  _,  _, i5) 5 = Just i5
-  getIndex _                _ = Nothing
+  getIndex ( _,  _,  _, i4,  _) 2 = Just i4
+  getIndex ( _,  _,  _,  _, i5) 1 = Just i5
+  getIndex _                _     = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex ( _, i2, i3, i4, i5) 1 i1 = Just (i1, i2, i3, i4, i5)
-  setIndex (i1,  _, i3, i4, i5) 2 i2 = Just (i1, i2, i3, i4, i5)
+  setIndex ( _, i2, i3, i4, i5) 5 i1 = Just (i1, i2, i3, i4, i5)
+  setIndex (i1,  _, i3, i4, i5) 4 i2 = Just (i1, i2, i3, i4, i5)
   setIndex (i1, i2,  _, i4, i5) 3 i3 = Just (i1, i2, i3, i4, i5)
-  setIndex (i1, i2, i3,  _, i5) 4 i4 = Just (i1, i2, i3, i4, i5)
-  setIndex (i1, i2, i3, i4,  _) 5 i5 = Just (i1, i2, i3, i4, i5)
+  setIndex (i1, i2, i3,  _, i5) 2 i4 = Just (i1, i2, i3, i4, i5)
+  setIndex (i1, i2, i3, i4,  _) 1 i5 = Just (i1, i2, i3, i4, i5)
   setIndex _                    _  _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropIndex ( _, i2, i3, i4, i5) 1 = Just (i2, i3, i4, i5)
-  dropIndex (i1,  _, i3, i4, i5) 2 = Just (i1, i3, i4, i5)
+  dropIndex ( _, i2, i3, i4, i5) 5 = Just (i2, i3, i4, i5)
+  dropIndex (i1,  _, i3, i4, i5) 4 = Just (i1, i3, i4, i5)
   dropIndex (i1, i2,  _, i4, i5) 3 = Just (i1, i2, i4, i5)
-  dropIndex (i1, i2, i3,  _, i5) 4 = Just (i1, i2, i3, i5)
-  dropIndex (i1, i2, i3, i4,  _) 5 = Just (i1, i2, i3, i4)
+  dropIndex (i1, i2, i3,  _, i5) 2 = Just (i1, i2, i3, i5)
+  dropIndex (i1, i2, i3, i4,  _) 1 = Just (i1, i2, i3, i4)
   dropIndex _                    _ = Nothing
   {-# INLINE [1] dropIndex #-}
   repairIndex = repairIndexRec
@@ -466,10 +502,6 @@ lastDim :: (Index ix, Index (Lower ix)) => ix -> Int
 lastDim = snd . unsnocDim
 {-# INLINE [1] lastDim #-}
 
--- | Approach to be used with respect to the border of an array
--- when index goes out of bounds.
-data Border e = Fill e | Wrap | Edge | Reflect | Continue deriving (Eq, Show)
-
 
 
 handleBorderIndex :: Index ix => Border e -> ix -> (ix -> e) -> ix -> e
@@ -502,23 +534,6 @@ repairIndexRec !sz !ix rBelow rOver =
 {-# INLINE [1] repairIndexRec #-}
 
 
--- liftIndexRec :: (Index (Lower ix), Index ix) =>
---                 (Int -> Int) -> ix -> ix
--- liftIndexRec f !ix = snocDim (liftIndex f ixL) (liftIndex f ix0)
---   where
---     !(ixL, ix0) = unsnocDim ix
--- {-# INLINE liftIndexRec #-}
-
-
--- liftIndex2Rec :: (Index (Lower ix), Index ix) =>
---                 (Int -> Int -> Int) -> ix -> ix -> ix
--- liftIndex2Rec f !ix !ixD = snocDim (liftIndex2 f ixL ixDL) (liftIndex2 f ix0 ixD0)
---   where
---     !(ixL, ix0) = unsnocDim ix
---     !(ixDL, ixD0) = unsnocDim ixD
--- {-# INLINE liftIndex2Rec #-}
-
-
 toLinearIndexRec :: (Index (Lower ix), Index ix) =>
                     ix -> ix -> Int
 toLinearIndexRec !sz !ix = toLinearIndex szL ixL * n + i
@@ -526,35 +541,6 @@ toLinearIndexRec !sz !ix = toLinearIndex szL ixL * n + i
         !(ixL, i) = unsnocDim ix
 {-# INLINE [1] toLinearIndexRec #-}
 
-
--- toLinearIndexRec :: (Index (Lower ix), Index ix) =>
---                     ix -> ix -> Int
--- toLinearIndexRec !sz !ix = toLinearIndexAcc i szL ixL
---   where !(szL, _) = unsnocDim sz
---         !(ixL, i) = unsnocDim ix
--- {-# INLINE [1] toLinearIndexRec #-}
-
-
-toLinearIndexAccRec :: (Index (Lower ix), Index ix) => Int -> ix -> ix -> Int
-toLinearIndexAccRec !acc sz ix = toLinearIndexAcc (acc * n + i) szL ixL
-  where !(n, szL) = unconsDim sz
-        !(i, ixL) = unconsDim ix
-{-# INLINE [1] toLinearIndexAccRec #-}
-
-fromLinearIndexRec :: (Index (Lower ix), Index ix) =>
-                      ix -> Int -> ix
-fromLinearIndexRec !sz !k = snocDim (fromLinearIndex szL kL) j
-  where !(kL, j) = quotRem k n
-        !(szL, n) = unsnocDim sz
-{-# INLINE [1] fromLinearIndexRec #-}
-
--- fromLinearIndexRec :: (Index (Lower ix), Index ix) =>
---                       ix -> Int -> ix
--- fromLinearIndexRec ix' k = consDim q ixL
---   where
---     !(_, ix) = unconsDim ix'
---     !(q, ixL) = fromLinearIndexAcc ix k
--- {-# INLINE [1] fromLinearIndexRec #-}
 
 
 fromLinearIndexAccRec :: (Index (Lower ix), Index ix) => ix -> Int -> (Int, ix)
@@ -605,7 +591,7 @@ iterLinearM_ :: (Index ix, Monad m) =>
              -> Int -- ^ Start
              -> Int -- ^ End
              -> Int -- ^ Increment
-             -> (Int -> Int -> Bool) -- ^ Terminating condition
+             -> (Int -> Int -> Bool) -- ^ Continuation condition
              -> (Int -> ix -> m ()) -- ^ Monadic action that takes index in both forms
              -> m ()
 iterLinearM_ !sz !k0 !k1 !inc cond f =
@@ -614,12 +600,12 @@ iterLinearM_ !sz !k0 !k1 !inc cond f =
 
 -- | Iterate over N-dimensional space from start to end with accumulator
 iterLinearM :: (Index ix, Monad m)
-            => ix
-            -> Int
-            -> Int
-            -> Int
-            -> (Int -> Int -> Bool)
-            -> a
+            => ix -- ^ Size
+            -> Int -- ^ Linear start
+            -> Int -- ^ Linear end
+            -> Int -- ^ Increment
+            -> (Int -> Int -> Bool) -- ^ Continuation condition (continue if True)
+            -> a -- ^ Accumulator
             -> (Int -> ix -> a -> m a)
             -> m a
 iterLinearM !sz !k0 !k1 !inc cond !acc f =

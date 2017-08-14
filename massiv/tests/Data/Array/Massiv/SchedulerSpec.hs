@@ -12,7 +12,6 @@ import           Data.Array.Massiv.CommonSpec  (ArrIxP (..), assertException,
 import           Data.Array.Massiv.DelayedSpec ()
 import           Data.Array.Massiv.Scheduler
 import           Data.List                     (sortBy)
-import           Data.List.NonEmpty            (NonEmpty, toList)
 import           Prelude                       as P
 import           Test.Hspec
 import           Test.QuickCheck
@@ -93,15 +92,15 @@ prop_SchedulerAllJobsProcessed wIds (Ordered ids) =
 
 
 -- | Make sure there is no deadlock if all workers get killed
-prop_AllWorkersDied :: [Int] -> NonEmpty Int -> Property
-prop_AllWorkersDied wIds idsNE =
+prop_AllWorkersDied :: [Int] -> Int -> [Int] -> Property
+prop_AllWorkersDied wIds hId ids =
   assertExceptionIO
     (maybe False (== ThreadKilled) . fromWorkerException)
     (do scheduler <- makeScheduler wIds
         P.mapM_
           (\_ ->
              submitRequest scheduler (JobRequest $ myThreadId >>= killThread))
-          (toList idsNE)
+          (hId:ids)
         waitTillDone scheduler)
 
 spec :: Spec

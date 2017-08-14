@@ -6,13 +6,13 @@
 {-# LANGUAGE TypeOperators         #-}
 module Bench.Repa where
 
-import           Bench.Common    (heavyFunc, lightFunc)
+import           Bench.Common                 (heavyFunc, lightFunc)
 import           Control.DeepSeq
-import           Data.Array.Repa as R
+import           Data.Array.Repa              as R
 --import           Data.Array.Repa.Repr.Partitioned   as R
 --import           Data.Array.Repa.Repr.Undefined
-import           Data.Array.Repa.Stencil            as R
-import           Data.Array.Repa.Stencil.Dim2       as R
+import           Data.Array.Repa.Stencil      as R
+import           Data.Array.Repa.Stencil.Dim2 as R
 --import           Data.Array.Repa.Unsafe             as R
 
 
@@ -120,3 +120,17 @@ sobelOperatorRUnfused arr =
   R.computeUnboxedS $ R.map sqrt $ R.zipWith (+) arrX2 arrY2 where
     !arrX2 = R.map (^ (2 :: Int)) $ computeUnboxedS (mapSobelRX arr)
     !arrY2 = R.map (^ (2 :: Int)) $ computeUnboxedS (mapSobelRY arr)
+
+
+
+-- | Repa stencil base Sobel vertical convolution
+sumStencil
+  :: Fractional e => Stencil DIM2 e
+sumStencil = makeStencil2 3 3 (const (Just 1))
+{-# INLINE sumStencil #-}
+
+-- | Repa stencil base Sobel vertical convolution
+averageStencil
+  :: Fractional e => Stencil DIM2 e
+averageStencil = makeStencil2 3 3 (const (Just (1/9)))
+{-# INLINE averageStencil #-}

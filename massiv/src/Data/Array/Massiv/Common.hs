@@ -20,7 +20,8 @@ module Data.Array.Massiv.Common
   , Source(..)
   , Load(..)
   -- * Computation
-  , Comp(.., Par)
+  , Comp(..)
+  --, Par) -- unsupprted export in GHC 7.10
   , pattern Par
   , PrettyShow(..)
   , module Data.Array.Massiv.Common.Ix
@@ -132,7 +133,7 @@ errorImpossible :: String -> a
 errorImpossible fName =
   error $ fName ++ ": Impossible happened. Please report this error."
 
-errorIx :: (Index ix, Index ix') => String -> ix -> ix' -> a
+errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
 errorIx fName sz ix =
   error $
   fName ++

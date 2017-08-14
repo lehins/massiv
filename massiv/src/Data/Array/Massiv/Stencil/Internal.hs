@@ -49,14 +49,14 @@ data StencilM ix e a = StencilM
 
 
 -- | __Warning__: Highly experimental and untested, use at your own risk.
-mkStaticStencilM
+makeStencilM
   :: forall ix e a . (Index ix, Default e, Default a)
   => Border e
   -> ix
   -> ix
   -> (forall m . PrimMonad m => ((ix -> e) -> (ix -> m a) -> m a))
   -> StencilM ix e a
-mkStaticStencilM b !sSz !sCenter relStencil =
+makeStencilM b !sSz !sCenter relStencil =
   StencilM b sSz sCenter deps stencil
   where
     stencil
@@ -68,11 +68,11 @@ mkStaticStencilM b !sSz !sCenter relStencil =
         (\ !ixD -> getVal (liftIndex2 (-) ix ixD))
         (\ !ixD -> getCurValM (liftIndex2 (-) ix ixD))
     {-# INLINE stencil #-}
-    sRank = rank sSz
+    Dim sRank = rank sSz
     defArrA :: Array D ix a
     defArrA = DArray Seq sSz (const def)
     defArr = DArray Seq sSz (const def)
-    deps = toManifest $ fromVector' (rank sSz) $ VU.create makeDeps
+    deps = toManifest $ fromVector' sRank $ VU.create makeDeps
     -- TODO: switch to mutable Array, once it is implemented.
     makeDeps :: ST s (MVU.MVector s Int)
     makeDeps = do
@@ -84,7 +84,7 @@ mkStaticStencilM b !sSz !sCenter relStencil =
             loopM_ 0 (< sRank) (+ 1) $ \i -> do
               let !r =
                     maybe (errorImpossible "mkStaticStencilM") signum $
-                    getIndex ix i
+                    getIndex ix (Dim i)
               when (r /= 0) $ do
                 curVal <- MVU.read mv i
                 if curVal == 0
@@ -97,7 +97,7 @@ mkStaticStencilM b !sSz !sCenter relStencil =
       void $ stencil (safeStencilIndex defArr) checkRead sCenter
       void $ relStencil (unsafeIndex defArr) checkWrite
       return mv
-{-# INLINE mkStaticStencilM #-}
+{-# INLINE makeStencilM #-}
 
 
 
@@ -107,7 +107,7 @@ mkStaticStencilM b !sSz !sCenter relStencil =
 instance Functor (Stencil ix e) where
   fmap f stencil@(Stencil { stencilFunc = g }) =
     stencil { stencilFunc = (\ s -> f . g s) }
-  {-# INLINE fmap #-}
+  --{-# INLINE fmap #-}
 
 
 -- TODO: Figure out interchange law (u <*> pure y = pure ($ y) <*> u) and issue

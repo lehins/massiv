@@ -35,7 +35,7 @@ benchmark construct-seq
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             ConstructSeq.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7
+  ghc-options:         -threaded -O2
   build-depends:       base
                      , criterion
                      , deepseq
@@ -65,7 +65,7 @@ benchmark fold-seq
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             FoldSeq.hs
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7
   build-depends:       base
                      , criterion
                      , deepseq
@@ -80,7 +80,8 @@ benchmark convolve-seq
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             ConvolveSeq.hs
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N7 -Odph -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3
+                       -- -threaded -O2 -rtsopts -with-rtsopts=-N7
   build-depends:       base
                      , criterion
                      , deepseq

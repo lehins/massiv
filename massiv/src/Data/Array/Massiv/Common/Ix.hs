@@ -1,13 +1,19 @@
-{-# LANGUAGE BangPatterns         #-}
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE GADTs                #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE BangPatterns           #-}
+{-# LANGUAGE CPP                    #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE UndecidableInstances   #-}
 
+#if __GLASGOW_HASKELL__ >= 800
+
+  {-# LANGUAGE TypeFamilyDependencies #-}
+
+#endif
 -- |
 -- Module      : Data.Array.Massiv.Common.Ix
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -35,23 +41,36 @@ type Ix3 = IxN 3
 type Ix4 = IxN 4
 type Ix5 = IxN 5
 
-data IxN (n :: Nat) where
-  (:>) :: Rank (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> (Ix (n - 1)) -> IxN n
 
-type family Ix (n :: Nat) where
+#if __GLASGOW_HASKELL__ >= 800
+
+data IxN (n :: Nat) where
+  (:>) :: {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
+
+type family Ix (n :: Nat) = r | r -> n where
+  Ix 0 = ZeroDim
   Ix 1 = Int
   Ix 2 = Ix2
   Ix n = IxN n
 
+#else
 
-type family Rank ix :: Nat
+data IxN (n :: Nat) where
+  (:>) :: Rank (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
 
+type family Ix (n :: Nat) where
+  Ix 0 = ZeroDim
+  Ix 1 = Int
+  Ix 2 = Ix2
+  Ix n = IxN n
 
-type instance Rank Ix1 = 1
-type instance Rank Ix2 = 2
-type instance Rank (IxN n) = n
+type family Rank ix where
+  Rank ZeroDim = 0
+  Rank Ix1 = 1
+  Rank Ix2 = 2
+  Rank (IxN n) = n
 
-
+#endif
 
 
 type instance Lower Ix2 = Ix1
@@ -85,17 +104,31 @@ instance Ord Ix2 where
 instance Ord (Ix (n-1)) => Ord (IxN n) where
   compare (i1 :> ix1) (i2 :> ix2) = compare i1 i2 <> compare ix1 ix2
 
-toIx2 :: (Int, Int) -> Ix 2
+
+toIx2 :: Ix2T -> Ix2
 toIx2 (i, j) = i :. j
+{-# INLINE [1] toIx2 #-}
 
-toIxF2 :: (Ix2T -> Int) -> Ix2 -> Int
+fromIx2 :: Ix2 -> Ix2T
+fromIx2 (i :. j) = (i, j)
+{-# INLINE [1] fromIx2 #-}
+
+-- | Convert a function on 2D indices
+toIxF2 :: (Ix2T -> a) -> Ix2 -> a
 toIxF2 g (i :. j) = g (i, j)
+{-# INLINE [1] toIxF2 #-}
 
-toIx3 :: (Int, Int, Int) -> Ix 3
+toIx3 :: Ix3T -> Ix3
 toIx3 (i, j, k) = i :> j :. k
+{-# INLINE [1] toIx3 #-}
 
-toIxF3 :: (Ix3T -> Int) -> Ix3 -> Int
+fromIx3 :: Ix3 -> Ix3T
+fromIx3 (i :> j :. k) = (i, j, k)
+{-# INLINE [1] fromIx3 #-}
+
+toIxF3 :: (Ix3T -> a) -> Ix3 -> a
 toIxF3 g (i :> j :. k) = g (i, j, k)
+{-# INLINE [1] toIxF3 #-}
 
 
 instance Index Ix2 where
@@ -109,8 +142,6 @@ instance Index Ix2 where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex (_ :. n) (i :. j) = n * i + j
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc !acc (m :. n)  (i :. j)  = n * (acc * m + i) + j
-  {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex (_ :. n) k = case k `quotRem` n of
                                  (i, j) -> i :. j
   {-# INLINE [1] fromLinearIndex #-}
@@ -127,16 +158,16 @@ instance Index Ix2 where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i :. j) = (i, j)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i :. _) 1 = Just i
-  getIndex (_ :. j) 2 = Just j
+  getIndex (i :. _) 2 = Just i
+  getIndex (_ :. j) 1 = Just j
   getIndex _        _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_ :. j) 1 i = Just (i :. j)
-  setIndex (i :. _) 2 j = Just (i :. j)
+  setIndex (_ :. j) 2 i = Just (i :. j)
+  setIndex (i :. _) 1 j = Just (i :. j)
   setIndex _        _ _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropIndex (_ :. j) 1 = Just j
-  dropIndex (i :. _) 2 = Just i
+  dropIndex (_ :. j) 2 = Just j
+  dropIndex (i :. _) 1 = Just i
   dropIndex _      _   = Nothing
   {-# INLINE [1] dropIndex #-}
   repairIndex (m :. n) (i :. j) rBelow rOver =
@@ -158,8 +189,6 @@ instance Index Ix2 where
     loopM_ i (`cond` m) (+ inc) $ \ !i' ->
       loopM_ j (`cond` n) (+ inc) $ \ !j' -> f (i' :. j')
   {-# INLINE iterM_ #-}
-  -- iterM_ = iterMRec_
-  -- {-# INLINE iterM_ #-}
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
@@ -174,11 +203,9 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex (_ :> n :. o) (i :> j :. k) = (n * i + j) * o + k
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc !acc (n :> sz) (i :> ix) = toLinearIndexAcc (acc * n + i) sz ix
-  {-# INLINE [1] toLinearIndexAcc #-}
-  fromLinearIndex (_ :> ix) k = let !(q, ixL) = fromLinearIndexAcc ix k in q :> ixL
+  fromLinearIndex (_ :> ix) k = let !(q, ixL) = fromLinearIndexAccRec ix k in q :> ixL
   {-# INLINE [1] fromLinearIndex #-}
-  fromLinearIndexAcc = fromLinearIxAcc
+  fromLinearIndexAcc = fromLinearIndexAccRec
   {-# INLINE [1] fromLinearIndexAcc #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
@@ -188,19 +215,19 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i :> j :. k) = (i :. j, k)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i :> _ :. _) 1 = Just i
+  getIndex (i :> _ :. _) 3 = Just i
   getIndex (_ :> j :. _) 2 = Just j
-  getIndex (_ :> _ :. k) 3 = Just k
+  getIndex (_ :> _ :. k) 1 = Just k
   getIndex _             _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_ :> j :. k) 1 i = Just (i :> j :. k)
+  setIndex (_ :> j :. k) 3 i = Just (i :> j :. k)
   setIndex (i :> _ :. k) 2 j = Just (i :> j :. k)
-  setIndex (i :> j :. _) 3 k = Just (i :> j :. k)
+  setIndex (i :> j :. _) 1 k = Just (i :> j :. k)
   setIndex _             _ _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropIndex (_ :> j :. k) 1 = Just (j :. k)
+  dropIndex (_ :> j :. k) 3 = Just (j :. k)
   dropIndex (i :> _ :. k) 2 = Just (i :. k)
-  dropIndex (i :> j :. _) 3 = Just (i :. j)
+  dropIndex (i :> j :. _) 1 = Just (i :. j)
   dropIndex _             _ = Nothing
   {-# INLINE [1] dropIndex #-}
   repairIndex (m :> n :. l) (i :> j :. k) rBelow rOver =
@@ -224,29 +251,16 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE iterM #-}
   iterM_ = iterMRec_
   {-# INLINE iterM_ #-}
-  -- iter (k0 :> sIxL) (k1 :> eIxL) !inc cond !accInit f =
-  --   loop k0 (`cond` k1) (+ inc) accInit $ \ !i !accI ->
-  --     iter sIxL eIxL inc cond accI $ \ !ix -> f (i :> ix)
-  -- {-# INLINE iter #-}
-  -- iterM (k0 :> sIxL) (k1 :> eIxL) !inc cond !accInit f =
-  --   loopM k0 (`cond` k1) (+ inc) accInit $ \ !i !accI ->
-  --     iterM sIxL eIxL inc cond accI $ \ !ix -> f (i :> ix)
-  -- {-# INLINE iterM #-}
-  -- iterM_ (k0 :> sIxL) (k1 :> eIxL) !inc cond f =
-  --   loopM_ k0 (`cond` k1) (+ inc) $ \ !i ->
-  --     iterM_ sIxL eIxL inc cond $ \ !ix -> f (i :> ix)
-  -- {-# INLINE iterM_ #-}
-
 
 
 instance (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
-          -- Rank (Ix (n - 1)) ~ (n - 1),
           Index (Ix ((n - 1) - 1)),
+#if __GLASGOW_HASKELL__ < 800
           Rank (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
+#endif
           IxN (n - 1) ~ Ix (n - 1)
-          -- IxLower (n - 1) ~ Ix ((n - 1) - 1)
           ) => Index (IxN n) where
   rank _ = fromInteger $ natVal (Proxy :: Proxy n)
   {-# INLINE [1] rank #-}
@@ -256,17 +270,11 @@ instance (4 <= n,
   {-# INLINE [1] totalElem #-}
   isSafeIndex (n :> sz) (i :> ix) = 0 <= i && i < n && isSafeIndex sz ix
   {-# INLINE [1] isSafeIndex #-}
-  -- toLinearIndex (n :> sz) (i :> ix) = toLinearIndex sz ix * n + i
-  -- {-# INLINE [1] toLinearIndex #-}
-  -- toLinearIndexAcc !acc (n :> sz) (i :> ix) = let !acc' = acc * n + i in toLinearIndexAcc acc' sz ix
-  -- {-# INLINE [1] toLinearIndexAcc #-}
-  toLinearIndex (_ :> n :> sz) (i :> j :> ix) = toLinearIndexAcc (i * n + j) sz ix
+  toLinearIndex (n :> sz) (i :> ix) = toLinearIndex sz ix * n + i
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc !acc (n :> sz) (i :> ix) = toLinearIndexAcc (acc * n + i) sz ix
-  {-# INLINE [1] toLinearIndexAcc #-}
-  fromLinearIndex (_ :> ix) k = let !(q, ixL) = fromLinearIndexAcc ix k in q :> ixL
+  fromLinearIndex (_ :> ix) k = let !(q, ixL) = fromLinearIndexAccRec ix k in q :> ixL
   {-# INLINE [1] fromLinearIndex #-}
-  fromLinearIndexAcc = fromLinearIxAcc
+  fromLinearIndexAcc = fromLinearIndexAccRec
   {-# INLINE [1] fromLinearIndexAcc #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
@@ -277,14 +285,14 @@ instance (4 <= n,
   unsnocDim (i :> ix) = case unsnocDim ix of
                           (jx, j) -> (i :> jx, j)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (j :> jx) k | k == 1 = Just j
-                       | otherwise = getIndex jx (k - 1)
+  getIndex ix@(j :> jx) k | k == rank ix = Just j
+                          | otherwise = getIndex jx k
   {-# INLINE [1] getIndex #-}
-  setIndex (i :> ix) k j | k == 1 = Just (j :> ix)
-                         | otherwise = (i :>) <$> setIndex ix (k - 1) j
+  setIndex ix@(j :> jx) k o | k == rank ix = Just (o :> jx)
+                            | otherwise = (j :>) <$> setIndex jx k o
   {-# INLINE [1] setIndex #-}
-  dropIndex (j :> jx) k | k == 1 = Just jx
-                        | otherwise = (j :>) <$> dropIndex jx (k - 1)
+  dropIndex ix@(j :> jx) k | k == rank ix = Just jx
+                           | otherwise = (j :>) <$> dropIndex jx k
   {-# INLINE [1] dropIndex #-}
   repairIndex (s :> sz) (i :> ix) rBelow rOver =
     repairIndex s i rBelow rOver :> repairIndex sz ix rBelow rOver
@@ -309,116 +317,38 @@ instance (4 <= n,
 
 
 
-fromLinearIxAcc :: (Index (Lower ix), Index ix) => ix -> Int -> (Int, ix)
-fromLinearIxAcc ix' !k = (q, consDim r ixL)
-  where !(m, ix) = unconsDim ix'
-        !(kL, ixL) = fromLinearIndexAcc ix k
-        !(q, r) = quotRem kL m
-{-# INLINE [1] fromLinearIxAcc #-}
 
 
 
+-- A low level optimizations, that marginally (by 1%) imroves performance.
+--{-# LANGUAGE UnboxedTuples    #-}
+--{-# LANGUAGE MagicHash        #-}
+-- import GHC.Prim
+-- import GHC.Int
 
--- snocIx :: Ix (n - 1) -> Int -> Ix n
--- snocIx (i :. j) k  = i :> j :. k
--- snocIx (i :> ix) k = i :> snocIx ix k
--- {-# INLINE [1] snocIx #-}
-
--- unsnocIx :: Ix n -> (Ix (n - 1), Int)
--- unsnocIx (i :> j :. k) = (i :. j, k)
--- unsnocIx (i :> ix)     = case unsnocIx ix of
---                            (jx, j) -> (i :> jx, j)
--- unsnocIx _             = errorPattern "unsnocIx"
--- {-# INLINE [1] unsnocIx #-}
-
-
--- toLinearIx :: Ix n -> Ix n -> Int
--- toLinearIx (_ :. n) (i :. j)             = n * i + j
--- toLinearIx (_ :> n :. o)  (i :> j :. k)  = (n * i + j) * o + k
--- toLinearIx (_ :> n :> sz) (i :> j :> ix) = toLinearIxAcc (i * n + j) sz ix
--- toLinearIx _               _             = errorPattern "toLinearIx"
--- {-# INLINE [1] toLinearIx #-}
-
--- toLinearIxAcc :: Int -> Ix n -> Ix n -> Int
--- toLinearIxAcc !acc (m :. n)  (i :. j)  = n * (acc * m + i) + j
--- toLinearIxAcc !acc (n :> sz) (i :> ix) = toLinearIxAcc (acc * n + i) sz ix
--- toLinearIxAcc _ _ _                    = errorPattern "toLinearIxAcc"
--- {-# INLINE [1] toLinearIxAcc #-}
-
-
--- fromLinearIx :: IxN n -> Int -> IxN n
--- -- fromLinearIx (_ :. n)  k = case k `quotRem` n of
--- --                              (i, j) -> i :. j
--- fromLinearIx (_ :> ix) k = let !(q, ixL) = fromLinearIxAcc ix k in q :> ixL
+-- fromLinearIx :: Ix n -> Int -> Ix n
+-- fromLinearIx (_ :. I# n#) (I# k#) =
+--   case k# `quotRemInt#` n# of
+--     (# i#, j# #) -> I# i# :. I# j#
+-- fromLinearIx (_ :> ix) (I# k#) =
+--   case fromLinearIxAcc# ix k# of
+--     (# q#, ix' #) -> I# q# :> ix'
 -- {-# INLINE [1] fromLinearIx #-}
 
 
--- fromLinearIx2Acc :: Ix2 -> Int -> (Int, Ix2)
--- fromLinearIx2Acc (m :. n) !k =
---   case k `quotRem` n of
---     (q, r) ->
---       let (q', r') = q `quotRem` m
---       in (q', r' :. r)
-
--- fromLinearIxAcc :: IxN n -> Int -> (Int, IxN n)
--- fromLinearIxAcc (m :> ix) !k = (q, r :> ixL)
---   where !(kL, ixL) = fromLinearIndexAcc ix k
---         !(q, r) = quotRem kL m
+-- fromLinearIxAcc :: Ix n -> Int -> (Int, Ix n)
+-- fromLinearIxAcc ix (I# k#) = case fromLinearIxAcc# ix k# of
+--                                (# q#, ix' #) -> (I# q#, ix')
 -- {-# INLINE [1] fromLinearIxAcc #-}
 
+-- fromLinearIxAcc# :: Ix n -> Int# -> (# Int#, Ix n #)
+-- fromLinearIxAcc# (_ :. I# n#) k# =
+--   case k# `quotRemInt#` n# of
+--     (# q#, r# #) -> (# q#, I# q# :. I# r# #)
+-- fromLinearIxAcc# (I# m# :> ix) k# =
+--   case fromLinearIxAcc# ix k# of
+--     (# kL#, ixL #) ->
+--       case kL# `quotRemInt#` m# of
+--         (# q#, r# #) -> (# q#, I# r# :> ixL #)
+-- {-# INLINE [1] fromLinearIxAcc# #-}
 
--- repairIx :: IxN n -> IxN n -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> Ix n
--- repairIx (s :> sz) (i :> ix) rBelow rOver =
---     repairIndex s i rBelow rOver :> repairIndex sz ix rBelow rOver
--- {-# INLINE [1] repairIx #-}
-
-
--- errorPattern :: String -> e
--- errorPattern fName = error $ fName ++ ": Impossible happened."
--- {-# NOINLINE errorPattern #-}
-
-
-
--- -- A low level optimizations, that marginally (by 1%) imroves performance.
--- --{-# LANGUAGE UnboxedTuples    #-}
--- --{-# LANGUAGE MagicHash        #-}
--- -- import GHC.Prim
--- -- import GHC.Int
-
--- -- fromLinearIx :: Ix n -> Int -> Ix n
--- -- fromLinearIx (_ :. I# n#) (I# k#) =
--- --   case k# `quotRemInt#` n# of
--- --     (# i#, j# #) -> I# i# :. I# j#
--- -- fromLinearIx (_ :> ix) (I# k#) =
--- --   case fromLinearIxAcc# ix k# of
--- --     (# q#, ix' #) -> I# q# :> ix'
--- -- {-# INLINE [1] fromLinearIx #-}
-
-
--- -- fromLinearIxAcc :: Ix n -> Int -> (Int, Ix n)
--- -- fromLinearIxAcc ix (I# k#) = case fromLinearIxAcc# ix k# of
--- --                                (# q#, ix' #) -> (I# q#, ix')
--- -- {-# INLINE [1] fromLinearIxAcc #-}
-
--- -- fromLinearIxAcc# :: Ix n -> Int# -> (# Int#, Ix n #)
--- -- fromLinearIxAcc# (_ :. I# n#) k# =
--- --   case k# `quotRemInt#` n# of
--- --     (# q#, r# #) -> (# q#, I# q# :. I# r# #)
--- -- fromLinearIxAcc# (I# m# :> ix) k# =
--- --   case fromLinearIxAcc# ix k# of
--- --     (# kL#, ixL #) ->
--- --       case kL# `quotRemInt#` m# of
--- --         (# q#, r# #) -> (# q#, I# r# :> ixL #)
--- -- {-# INLINE [1] fromLinearIxAcc# #-}
-
-
--- -- foldlIx :: (b -> Int -> b) -> b -> Ix n -> b
--- -- foldlIx f !acc (i :. j)  = f (f acc i) j
--- -- foldlIx f !acc (i :> ix) = foldlIx f (f acc i) ix
--- -- {-# INLINE foldlIx #-}
-
-
--- -- foldrIx :: (Int -> b -> b) -> b -> Ix n -> b
--- -- foldrIx f !acc (i :. j)  = f i (f j acc)
--- -- foldrIx f !acc (i :> ix) = f i (foldrIx f acc ix)
--- -- {-# INLINE foldrIx #-}

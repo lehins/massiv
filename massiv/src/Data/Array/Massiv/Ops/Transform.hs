@@ -77,7 +77,7 @@ backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
 
 
 append :: (Source r1 ix e, Source r2 ix e) =>
-          Int -> Array r1 ix e -> Array r2 ix e -> Maybe (Array D ix e)
+          Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array D ix e)
 append n !arr1 !arr2 = do
   let sz1 = size arr1
       sz2 = size arr2
@@ -99,7 +99,7 @@ append n !arr1 !arr2 = do
 {-# INLINE append #-}
 
 append' :: (Source r1 ix e, Source r2 ix e) =>
-           Int -> Array r1 ix e -> Array r2 ix e -> Array D ix e
+           Dim -> Array r1 ix e -> Array r2 ix e -> Array D ix e
 append' n arr1 arr2 =
   case append n arr1 arr2 of
     Just arr -> arr
@@ -111,7 +111,7 @@ append' n arr1 arr2 =
 {-# INLINE append' #-}
 
 -- | /O(1)/ - Split an array at an index in a particular dimension.
-splitAt :: Shape r ix e => Int -> ix -> Array r ix e -> Maybe (Array (R r) ix e, Array (R r) ix e)
+splitAt :: Shape r ix e => Dim -> ix -> Array r ix e -> Maybe (Array (R r) ix e, Array (R r) ix e)
 splitAt dim ix arr = do
   let sz = size arr
   i <- getIndex ix dim

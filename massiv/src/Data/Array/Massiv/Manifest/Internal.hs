@@ -19,7 +19,7 @@ module Data.Array.Massiv.Manifest.Internal
   ( M
   , Manifest(..)
   , Array(..)
-  , (!!>)
+  -- , (!!>)
   , makeBoxedVector
   , toManifest
   ) where
@@ -141,13 +141,13 @@ instance (Index ix, Index (Lower ix)) =>
   {-# INLINE (<!?) #-}
 
 
-(!!>)
-  :: forall r ix e.
-     (Manifest r ix e, Index (Lower ix))
-  => Array r ix e -> Int -> Array M (Lower ix) e
-(!!>) !arr !i = (MArray (getComp arr) szL (\ k -> unsafeLinearIndexM arr (k + kStart)))
-  where
-    !sz = size arr
-    !szL = snd $ unconsDim sz
-    !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
-{-# INLINE (!!>) #-}
+-- (!!>)
+--   :: forall r ix e.
+--      (Manifest r ix e, Index (Lower ix))
+--   => Array r ix e -> Int -> Array M (Lower ix) e
+-- (!!>) !arr !i = MArray (getComp arr) szL (\ k -> unsafeLinearIndexM arr (k + kStart))
+--   where
+--     !sz = size arr
+--     !szL = snd $ unconsDim sz
+--     !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
+-- {-# INLINE (!!>) #-}

@@ -70,9 +70,9 @@ prop_excFromToListSIx3 ls3 =
 
 prop_toFromListPIx2 :: Sz Ix2 -> Fun Ix2T Int -> Property
 prop_toFromListPIx2 (Sz sz) f =
-  compute arr === fromListIx2As U Par (toListIx2 arr)
+  arr === fromListIx2As U Par (toListIx2 arr)
   where
-    arr = makeArrayIx2 Par sz (toIxF2 (apply f))
+    arr = makeArray Par sz (toIxF2 (apply f))
 
 prop_excFromToListPIx2 :: [[Int]] -> Property
 prop_excFromToListPIx2 ls2 =
@@ -85,9 +85,9 @@ prop_excFromToListPIx2 ls2 =
 
 prop_toFromListPIx3 :: Sz Ix3 -> Fun Ix3T Int -> Property
 prop_toFromListPIx3 (Sz sz) f =
-  compute arr === fromListIx3As U Par (toListIx3 arr)
+  arr === fromListIx3As U Par (toListIx3 arr)
   where
-    arr = makeArrayIx3 Par sz (toIxF3 (apply f))
+    arr = makeArray Par sz (toIxF3 (apply f))
 
 prop_excFromToListPIx3 :: [[[Int]]] -> Property
 prop_excFromToListPIx3 ls3 =

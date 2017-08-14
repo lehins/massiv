@@ -56,15 +56,15 @@ instance FileFormat (Sequence (Auto PBM)) where
 instance ColorSpace cs e => Readable PBM (Image S cs e) where
   decode f _ = decodePPM f fromNetpbmImage
 
-instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+instance (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Auto PBM) (Image r cs e) where
   decode f _ = decodePPM f fromNetpbmImageAuto
 
-instance ColorSpace cs e => Readable (Sequence PBM) (Array B DIM1 (Image S cs e)) where
+instance ColorSpace cs e => Readable (Sequence PBM) (Array B Ix1 (Image S cs e)) where
   decode f _ = decodePPMs f fromNetpbmImage
 
-instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
-         Readable (Sequence (Auto PBM)) (Array B DIM1 (Image r cs e)) where
+instance (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Sequence (Auto PBM)) (Array B Ix1 (Image r cs e)) where
   decode f _ = decodePPMs f fromNetpbmImageAuto
 
 
@@ -88,17 +88,17 @@ instance ColorSpace cs e => Readable PGM (Image S cs e) where
   decode f _ = decodePPM f fromNetpbmImage
 
 
-instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+instance (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Auto PGM) (Image r cs e) where
   decode f _ = decodePPM f fromNetpbmImageAuto
 
 
-instance ColorSpace cs e => Readable (Sequence PGM) (Array B DIM1 (Image S cs e)) where
+instance ColorSpace cs e => Readable (Sequence PGM) (Array B Ix1 (Image S cs e)) where
   decode f _ = decodePPMs f fromNetpbmImage
 
 
-instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
-         Readable (Sequence (Auto PGM)) (Array B DIM1 (Image r cs e)) where
+instance (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Sequence (Auto PGM)) (Array B Ix1 (Image r cs e)) where
   decode f _ = decodePPMs f fromNetpbmImageAuto
 
 
@@ -120,32 +120,32 @@ instance FileFormat (Sequence (Auto PPM)) where
 instance ColorSpace cs e => Readable PPM (Image S cs e) where
   decode f _ = decodePPM f fromNetpbmImage
 
-instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+instance (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Auto PPM) (Image r cs e) where
   decode f _ = decodePPM f fromNetpbmImageAuto
 
-instance ColorSpace cs e => Readable (Sequence PPM) (Array B DIM1 (Image S cs e)) where
+instance ColorSpace cs e => Readable (Sequence PPM) (Array B Ix1 (Image S cs e)) where
   decode f _ = decodePPMs f fromNetpbmImage
 
-instance (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
-         Readable (Sequence (Auto PPM)) (Array B DIM1 (Image r cs e)) where
+instance (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
+         Readable (Sequence (Auto PPM)) (Array B Ix1 (Image r cs e)) where
   decode f _ = decodePPMs f fromNetpbmImageAuto
 
 
 
-decodePPMs :: (FileFormat f, Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+decodePPMs :: (FileFormat f, Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
               f
            -> (Netpbm.PPM -> Maybe (Image r cs e))
            -> B.ByteString
-           -> Array B DIM1 (Image r cs e)
+           -> Array B Ix1 (Image r cs e)
 decodePPMs f converter bs =
-  either (throw . DecodeError) (fromList1D Seq) $
+  either (throw . DecodeError) (fromListIx1 Seq) $
   (P.map (fromEitherDecode f showNetpbmCS converter . Right) . fst) <$>
   parsePPM bs
 {-# INLINE decodePPMs #-}
 
 
-decodePPM :: (FileFormat f, Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+decodePPM :: (FileFormat f, Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
              f
           -> (Netpbm.PPM -> Maybe (Image r cs e))
           -> B.ByteString
@@ -162,7 +162,7 @@ decodePPM f decoder bs = fromEitherDecode f showNetpbmCS decoder $ do
 fromNetpbmImageUnsafe
   :: (Storable a, Storable (Pixel cs e))
   => (Int, Int) -> V.Vector a -> Maybe (Image S cs e)
-fromNetpbmImageUnsafe sz = fromVector sz . V.unsafeCast
+fromNetpbmImageUnsafe (m, n) = fromVector (m :. n) . V.unsafeCast
 
 
 
@@ -195,7 +195,7 @@ fromNetpbmImage Netpbm.PPM {..} = do
 
 
 fromNetpbmImageAuto
-  :: forall cs e r . (Target r DIM2 (Pixel cs e), ColorSpace cs e, V.Storable (Pixel cs e)) =>
+  :: forall cs e r . (Target r Ix2 (Pixel cs e), ColorSpace cs e, V.Storable (Pixel cs e)) =>
      Netpbm.PPM -> Maybe (Image r cs e)
 fromNetpbmImageAuto Netpbm.PPM {..} = do
   let sz = (ppmHeight ppmHeader, ppmWidth ppmHeader)

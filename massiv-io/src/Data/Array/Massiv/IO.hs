@@ -114,7 +114,7 @@ writeArray format opts path arr = BL.writeFile path (encode format opts arr)
 -- >>> frog `seq` ()
 -- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S YCbCr Double>"
 --
-readImage :: (Source S DIM2 (Pixel cs e), ColorSpace cs e) =>
+readImage :: (Source S Ix2 (Pixel cs e), ColorSpace cs e) =>
               FilePath -- ^ File path for an image
            -> IO (Image S cs e)
 readImage path = decodeImage imageReadFormats path <$> B.readFile path
@@ -124,7 +124,7 @@ readImage path = decodeImage imageReadFormats path <$> B.readFile path
 -- | Same as `readImage`, but will perform any possible color space and
 -- precision conversions in order to match the result image type. Very useful
 -- whenever image format isn't known at compile time.
-readImageAuto :: (Target r DIM2 (Pixel cs e), ColorSpace cs e) =>
+readImageAuto :: (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
                   FilePath -- ^ File path for an image
                -> IO (Image r cs e)
 readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
@@ -144,14 +144,14 @@ readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
 -- Might throw `ConvertError`, `EncodeError` and other standard errors related
 -- to file IO.
 --
-writeImage :: (Source r DIM2 (Pixel cs e), ColorSpace cs e) =>
+writeImage :: (Source r Ix2 (Pixel cs e), ColorSpace cs e) =>
                FilePath -> Image r cs e -> IO ()
 writeImage path = BL.writeFile path . encodeImage imageWriteFormats path
 
 
 
 writeImageAuto
-  :: ( Source r DIM2 (Pixel cs e)
+  :: ( Source r Ix2 (Pixel cs e)
      , ColorSpace cs e
      , ToYA cs e
      , ToRGBA cs e

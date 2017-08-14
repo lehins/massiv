@@ -52,7 +52,7 @@ instance Writable (Encode (Image r cs e)) (Image r cs e) where
 
 
 encodeImage
-  :: (Source r DIM2 (Pixel cs e), ColorSpace cs e)
+  :: (Source r Ix2 (Pixel cs e), ColorSpace cs e)
   => [Encode (Image r cs e)]
   -> FilePath
   -> Image r cs e
@@ -64,7 +64,7 @@ encodeImage formats path img = do
     (f:_) -> encode f () img
 
 
-imageWriteFormats :: (Source r DIM2 (Pixel cs e), ColorSpace cs e) => [Encode (Image r cs e)]
+imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorSpace cs e) => [Encode (Image r cs e)]
 imageWriteFormats =
   [ EncodeAs BMP
   , EncodeAs GIF
@@ -76,7 +76,7 @@ imageWriteFormats =
   ]
 
 imageWriteAutoFormats
-  :: ( Source r DIM2 (Pixel cs e)
+  :: ( Source r Ix2 (Pixel cs e)
      , ColorSpace cs e
      , ToYA cs e
      , ToRGBA cs e
@@ -110,7 +110,7 @@ instance Readable (Decode (Image r cs e)) (Image r cs e) where
 
 
 decodeImage
-  :: (Source r DIM2 (Pixel cs e), ColorSpace cs e)
+  :: (Source r Ix2 (Pixel cs e), ColorSpace cs e)
   => [Decode (Image r cs e)]
   -> FilePath
   -> B.ByteString
@@ -123,7 +123,7 @@ decodeImage formats path bs = do
 
 
 imageReadFormats
-  :: (Source S DIM2 (Pixel cs e), ColorSpace cs e)
+  :: (Source S Ix2 (Pixel cs e), ColorSpace cs e)
   => [Decode (Image S cs e)]
 imageReadFormats =
   [ DecodeAs BMP
@@ -139,7 +139,7 @@ imageReadFormats =
   ]
 
 imageReadAutoFormats
-  :: (Target r DIM2 (Pixel cs e), ColorSpace cs e)
+  :: (Target r Ix2 (Pixel cs e), ColorSpace cs e)
   => [Decode (Image r cs e)]
 imageReadAutoFormats =
   [ DecodeAs (Auto BMP)

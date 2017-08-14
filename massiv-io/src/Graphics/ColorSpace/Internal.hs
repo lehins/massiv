@@ -20,6 +20,7 @@ module Graphics.ColorSpace.Internal
 
 import           Control.DeepSeq              (NFData (rnf), deepseq)
 import           Control.Monad                (liftM)
+import           Data.Default
 import           Data.Foldable
 import           Data.Maybe                   (fromMaybe)
 import           Data.Typeable
@@ -110,7 +111,10 @@ class (ColorSpace (Opaque cs) e, ColorSpace cs e) => AlphaSpace cs e where
   --
   dropAlpha :: Pixel cs e -> Pixel (Opaque cs) e
 
+instance ColorSpace cs e => Default (Pixel cs e) where
 
+  def = promote 0
+  {-# INLINE def #-}
 
 
 instance ColorSpace cs e => Num (Pixel cs e) where

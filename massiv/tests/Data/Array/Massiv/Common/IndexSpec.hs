@@ -1,8 +1,9 @@
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE GADTs                #-}
-{-# LANGUAGE TypeOperators        #-}
-module Data.Array.Massiv.Common.IndexSpec (Sz(..), SzZ(..), SzIx(..), spec) where
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
+module Data.Array.Massiv.Common.IndexSpec (Sz(..), SzZ(..), SzIx(..), DimIx(..), spec) where
 
 import           Control.Monad
 import           Data.Array.Massiv.Common.Index
@@ -16,6 +17,9 @@ newtype Sz ix = Sz ix deriving Show
 
 -- | Size that can have zero elements
 newtype SzZ ix = SzZ ix deriving Show
+
+-- | Dimension that is always within bounds of an index
+newtype DimIx ix = DimIx Dim deriving Show
 
 instance Functor Sz where
   fmap f (Sz sz) = Sz (f sz)
@@ -54,6 +58,11 @@ instance Arbitrary e => Arbitrary (Border e) where
       ]
 
 
+instance Index ix => Arbitrary (DimIx ix) where
+  arbitrary = do
+    n <- arbitrary
+    return $ DimIx (1 + (Dim n `mod` (rank (undefined :: ix))))
+
 instance Arbitrary Ix2 where
   arbitrary = (:.) <$> arbitrary <*> arbitrary
 
@@ -68,7 +77,6 @@ instance Arbitrary Ix5 where
 
 instance CoArbitrary Ix2 where
   coarbitrary (i :. j) = coarbitrary i . coarbitrary j
-  coarbitrary _ = error "Impossible happened: CoArbitrary (Ix2).coarbitrary"
 
 instance CoArbitrary Ix3 where
   coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
@@ -183,15 +191,15 @@ prop_BorderRepairSafe _ border (Sz sz) ix =
 prop_UnconsGetDrop :: (Arbitrary ix, Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
 prop_UnconsGetDrop _ ix =
   Just (unconsDim ix) == do
-    i <- getIndex ix 1
-    ixL <- dropIndex ix 1
+    i <- getIndex ix (rank ix)
+    ixL <- dropIndex ix (rank ix)
     return (i, ixL)
 
 prop_UnsnocGetDrop :: (Arbitrary ix, Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
 prop_UnsnocGetDrop _ ix =
   Just (unsnocDim ix) == do
-    i <- getIndex ix (rank ix)
-    ixL <- dropIndex ix (rank ix)
+    i <- getIndex ix 1
+    ixL <- dropIndex ix 1
     return (ixL, i)
 
 prop_SetAll :: (Arbitrary ix, Index ix) => proxy ix -> ix -> Int -> Bool
@@ -200,10 +208,8 @@ prop_SetAll _ ix i =
   Just (liftIndex (+ i) zeroIndex)
 
 
-prop_SetGet :: (Arbitrary ix, Index ix) => proxy ix -> ix -> Int -> Bool
-prop_SetGet _ ix n = Just n == (setIndex ix valDim n >>= (`getIndex` valDim))
-  where
-    valDim = (1 + (n `mod` rank ix))
+prop_SetGet :: (Arbitrary ix, Index ix) => proxy ix -> ix -> DimIx ix -> Int -> Bool
+prop_SetGet _ ix (DimIx dim) n = Just n == (setIndex ix dim n >>= (`getIndex` dim))
 
 
 prop_BorderIx1 :: (Positive Int) -> Border Double -> (Ix1 -> Double) -> Sz Ix1 -> Ix1 -> Bool
@@ -296,11 +302,11 @@ spec = do
       specDim2AndUp (Nothing :: Maybe Ix5T)
   describe "Specialized indices" $ do
     describe "Ix2" $ do
-      -- -- These can be used to quickly debug monotonicity
-      -- it "Monotonic'" $
-      --   property $ prop_IterMonotonic' (Nothing :: Maybe Ix2) (2000000)
-      -- it "MonotonicBackwards'" $
-      --   property $ prop_IterMonotonicBackwards' (Nothing :: Maybe Ix2) (2000000)
+      -- These can be used to quickly debug monotonicity
+      it "Monotonic'" $
+        property $ prop_IterMonotonic' (Nothing :: Maybe Ix2) (20000)
+      it "MonotonicBackwards'" $
+        property $ prop_IterMonotonicBackwards' (Nothing :: Maybe Ix2) (20000)
       specDimN (Nothing :: Maybe Ix2)
       specDim2AndUp (Nothing :: Maybe Ix2)
     describe "Ix3" $ do
