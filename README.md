@@ -311,11 +311,11 @@ main = do
 
 `files/light.png`:
 
-[!Light](files/light.png)
+![Light](files/light.png)
 
 `files/light_avg.png`:
 
-[!Light](files/light_avg.png)
+![Light](files/light_avg.png)
 
 
 The full example is in the root of the repository and if you have stack
