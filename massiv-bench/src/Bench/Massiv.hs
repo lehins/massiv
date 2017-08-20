@@ -6,11 +6,16 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Bench.Massiv where
 
-import           Bench.Common              (heavyFunc, lightFunc)
+import           Bench.Common               (heavyFunc, lightFunc)
 import           Control.DeepSeq
-import           Data.Array.Massiv         as M
+import           Data.Array.Massiv          as M
+import           Data.Array.Massiv.Common   as A
+import           Data.Array.Massiv.Delayed  as A
+import           Data.Array.Massiv.Manifest as A
+import           Data.Array.Massiv.Mutable  as A
+import           Data.Array.Massiv.Ops      as A
 import           Data.Array.Massiv.Stencil
-import           Data.Default              (Default)
+import           Data.Default               (Default)
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
 instance Index ix => NFData (Array D ix e) where
@@ -41,6 +46,14 @@ arrDLightIx2 comp arrSz = makeArray comp arrSz (\ (i :. j) -> lightFunc i j)
 arrDHeavyIx2 :: Comp -> Ix2 -> Array D Ix2 Double
 arrDHeavyIx2 comp arrSz = makeArray comp arrSz (\ (i :. j) -> heavyFunc i j)
 {-# INLINE arrDHeavyIx2 #-}
+
+massDLightIx2 :: Comp -> Ix2 -> Massiv Ix2 Double
+massDLightIx2 comp massSz = makeMassiv comp massSz (\ (i :. j) -> lightFunc i j)
+{-# INLINE massDLightIx2 #-}
+
+-- massDHeavyIx2 :: Comp -> Ix2 -> Massiv Ix2 Double
+-- massDHeavyIx2 comp massSz = makeMassiv comp massSz (\ (i :. j) -> heavyFunc i j)
+-- {-# INLINE [~1] massDHeavyIx2 #-}
 
 
 arrDLightIx2T :: Comp -> Ix2T -> Array D Ix2T Double
@@ -105,9 +118,9 @@ sobelOperatorAlt b = sqrt (sX + sY) where
 sobelOperatorUnfused
   :: (Unbox b, Eq b, Floating b)
   => Border b -> Array U Ix2 b -> Array U Ix2 b
-sobelOperatorUnfused b arr = computeAs U $ M.map sqrt (M.zipWith (+) sX sY) where
-  !sX = M.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelX b) arr)
-  !sY = M.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelY b) arr)
+sobelOperatorUnfused b arr = computeAs U $ A.map sqrt (A.zipWith (+) sX sY) where
+  !sX = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelX b) arr)
+  !sY = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelY b) arr)
 {-# INLINE sobelOperatorUnfused #-}
 
 

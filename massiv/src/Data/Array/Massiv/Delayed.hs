@@ -25,7 +25,7 @@ import           GHC.Base                       (build)
 import           Prelude                        hiding (zipWith)
 
 -- | Delayed representation.
-data D = D
+data D = D deriving Show
 
 
 data instance Array D ix e = DArray { dComp :: Comp

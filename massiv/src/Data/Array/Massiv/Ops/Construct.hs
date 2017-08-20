@@ -13,8 +13,7 @@
 --
 module Data.Array.Massiv.Ops.Construct
   ( -- * Construction
-    makeVector
-  , makeVectorR
+    makeVectorR
   , makeArray
   , makeArrayR
   -- * Enumeration
@@ -55,11 +54,6 @@ import           GHC.Base                       (build)
 import           System.IO.Unsafe               (unsafePerformIO)
 
 
--- | Just like `makeArray`, but create a flat Array
-makeVector :: Construct r Int e => Comp -> Ix1 -> (Ix1 -> e) -> Array r Ix1 e
-makeVector = makeArray
-{-# INLINE makeVector #-}
-
 
 -- | Just like `makeArrayR`, but create a flat Array with a specified representation
 makeVectorR :: Construct r Int e => r -> Comp -> Int -> (Int -> e) -> Array r Int e
@@ -69,7 +63,7 @@ makeVectorR = makeArrayR
 
 -- | Create an Array.
 makeArray :: Construct r ix e =>
-             Comp -- ^ Computation strategy. Useful constructora are `Seq` and `Par`
+             Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
           -> ix -- ^ Size of the result Array
           -> (ix -> e) -- ^ Function to generate elements for a particular index
           -> Array r ix e
@@ -85,56 +79,58 @@ makeArrayR _ = makeArray
 -- | Create a vector with a range of @Int@s incremented by 1.
 -- @range k0 k1 == rangeStep k0 k1 1@
 --
--- >>> toList $ range 1 6
+-- >>> toListIx1 $ range Seq 1 6
 -- [1,2,3,4,5]
--- >>> toList $ range (-2) 3
+-- >>> toListIx1 $ range Seq (-2) 3
 -- [-2,-1,0,1,2]
-range :: Int -> Int -> Array D Ix1 Int
-range !from !to = makeArray Seq (max 0 (to - from)) (+ from)
+range :: Comp -> Int -> Int -> Array D Ix1 Int
+range comp !from !to = makeArray comp (max 0 (to - from)) (+ from)
 {-# INLINE range #-}
 
 
 
-rangeStep :: Int -- ^ Start
+rangeStep :: Comp -- ^ Computation strategy
+          -> Int -- ^ Start
           -> Int -- ^ Step (Can't be zero)
           -> Int -- ^ End
           -> Array D Ix1 Int
-rangeStep !from !step !to
+rangeStep comp !from !step !to
   | step == 0 = error "rangeStep: Step can't be zero"
   | otherwise =
     let (sz, r) = (to - from) `divMod` step
-    in makeArray Seq (sz + signum r) (\i -> from + i * step)
+    in makeArray comp (sz + signum r) (\i -> from + i * step)
 {-# INLINE rangeStep #-}
 
 
 -- |
 --
--- >>> toList $ enumFromN 5 3
+-- >>> toListIx1 $ enumFromN Seq 5 3
 -- [5,6,7]
 --
 enumFromN :: Num e =>
-             e -- ^ Start value
+             Comp
+          -> e -- ^ Start value
           -> Int -- ^ Length of resulting array
           -> Array D Ix1 e
-enumFromN !from !sz = makeArray Seq sz $ \ i -> fromIntegral i + from
+enumFromN comp !from !sz = makeArray comp sz $ \ i -> fromIntegral i + from
 {-# INLINE enumFromN #-}
 
 -- |
 --
--- >>> toList $ enumFromStepN 1 0.1 5
+-- >>> toListIx1 $ enumFromStepN Seq 1 0.1 5
 -- [1.0,1.1,1.2,1.3,1.4]
 --
 enumFromStepN :: Num e =>
-                 e -- ^ Start value
+                 Comp
+              -> e -- ^ Start value
               -> e -- ^ Step value
-              -> Int -- ^ Length of resulting array
+              -> Int -- ^ Length of resulting vector
               -> Array D Ix1 e
-enumFromStepN !from !step !sz = makeArray Seq sz $ \ i -> from + fromIntegral i * step
+enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}
 
 
 fromListIx1 :: Mutable r Ix1 e => Comp -> [e] -> Array r Ix1 e
-fromListIx1 Seq  = fromListSIx1
 fromListIx1 comp = setComp comp . fromListSIx1
 {-# INLINE fromListIx1 #-}
 
@@ -174,14 +170,14 @@ loadListIx1 start end uWrite xs = do
     case xs' of
       (y:ys) -> uWrite i y >> return ys
       []     -> error $ "Row is too short"
-  unless (null leftOver) $ error "Row is too long"
+  unless (P.null leftOver) $ error "Row is too long"
 {-# INLINE loadListIx1 #-}
 
 
 fromListSIx1 :: Mutable r Ix1 e => [e] -> Array r Ix1 e
 fromListSIx1 xs =
   runST $ do
-    let !k = length xs
+    let !k = P.length xs
     mArr <- unsafeNew k
     loadListIx1 0 k (unsafeLinearWrite mArr) xs
     unsafeFreeze Seq mArr
@@ -206,7 +202,7 @@ loadListUsingIx2 start end step uWrite using xs = do
 fromListSIx2 :: Mutable r Ix2 e => [[e]] -> Array r Ix2 e
 fromListSIx2 xs =
   runST $ do
-    let sz@(m :. n) = (length xs :. maybe 0 length (listToMaybe xs))
+    let sz@(m :. n) = (P.length xs :. maybe 0 P.length (listToMaybe xs))
     mArr <- unsafeNew sz
     loadListUsingIx2 0 (m * n) n (unsafeLinearWrite mArr) id xs
     unsafeFreeze Seq mArr
@@ -226,7 +222,7 @@ loadListUsingIx3 start end step lowerStep uWrite using xs = do
           return ys
   unless
     (P.null leftOver ||
-     (P.all (length (head leftOver) ==) (P.map length leftOver) &&
+     (P.all (P.length (head leftOver) ==) (P.map P.length leftOver) &&
       P.null (concat (concat leftOver)))) $
     error "Page is too long."
 {-# INLINE loadListUsingIx3 #-}
@@ -237,8 +233,8 @@ fromListSIx3 xs =
   runST $ do
     let mFirstRow = listToMaybe xs
     let sz@(_ :> m :. n) =
-          (length xs :> maybe 0 length mFirstRow :.
-           maybe 0 length (mFirstRow >>= listToMaybe))
+          (P.length xs :> maybe 0 P.length mFirstRow :.
+           maybe 0 P.length (mFirstRow >>= listToMaybe))
     mArr <- unsafeNew sz
     loadListUsingIx3 0 (totalElem sz) (m * n) n (unsafeLinearWrite mArr) id xs
     unsafeFreeze Seq mArr
@@ -250,7 +246,7 @@ fromListSIx3 xs =
 fromListPIx2 :: Mutable r Ix2 e => [Int] -> [[e]] -> Array r Ix2 e
 fromListPIx2 wIds xs =
   unsafePerformIO $ do
-    let sz@(m :. n) = (length xs :. maybe 0 length (listToMaybe xs))
+    let sz@(m :. n) = (P.length xs :. maybe 0 P.length (listToMaybe xs))
     scheduler <- makeScheduler wIds
     mArr <- unsafeNew sz
     loadListUsingIx2
@@ -271,8 +267,9 @@ fromListPIx3 wIds xs =
   unsafePerformIO $ do
     let mFirstRow = listToMaybe xs
     let sz@(l :> m :. n) =
-          (length xs :> maybe 0 length mFirstRow :.
-           maybe 0 length (mFirstRow >>= listToMaybe)) :: Ix3
+          (P.length xs :>
+           maybe 0 P.length mFirstRow :.
+           maybe 0 P.length (mFirstRow >>= listToMaybe)) :: Ix3
     scheduler <- makeScheduler wIds
     mArr <- unsafeNew (l :> m :. n)
     loadListUsingIx3

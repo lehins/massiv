@@ -44,7 +44,7 @@ import           GHC.Base                            (build)
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
-data B = B
+data B = B deriving Show
 
 data instance Array B ix e = BArray { bComp :: Comp
                                     , bSize :: !ix

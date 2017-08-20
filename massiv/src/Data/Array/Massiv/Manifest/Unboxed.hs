@@ -33,7 +33,7 @@ import           Prelude                             hiding (mapM)
 -- import           Data.Array.Massiv.Scheduler
 -- import           System.IO.Unsafe                    (unsafePerformIO)
 
-data U = U
+data U = U deriving Show
 
 data instance Array U ix e = UArray { uComp :: Comp
                                     , uSize :: !ix
