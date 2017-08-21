@@ -28,7 +28,7 @@ import           Prelude                        hiding (zipWith)
 data D = D deriving Show
 
 
-data instance Array D ix e = DArray { dComp :: Comp
+data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
 

@@ -29,7 +29,7 @@ import           Prelude                             hiding (mapM)
 
 data P = P deriving Show
 
-data instance Array P ix e = PArray { pComp :: Comp
+data instance Array P ix e = PArray { pComp :: !Comp
                                     , pSize :: !ix
                                     , pData :: !(VP.Vector e)
                                     }

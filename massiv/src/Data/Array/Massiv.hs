@@ -55,8 +55,15 @@ module Data.Array.Massiv
   , izipWith3
   , toListIx1
   , toListIx2
-  , (!>)
+  -- * Folding
+  , foldlS
+  , foldrS
+  , foldlP
+  , sum
+  -- * Indexing
   , (!)
+  -- * Slicing
+  , (!>)
   -- * Adding custom types
   , Layout(..)
   , A.Prim
@@ -75,8 +82,10 @@ import qualified Data.Array.Massiv.Manifest     as A
 --import           Data.Array.Massiv.Mutable
 import qualified Data.Array.Massiv.Ops          as A
 import           Prelude                        as P hiding (length, map, mapM_,
-                                                      null, unzip, unzip3, zip,
-                                                      zip3, zipWith, zipWith3)
+                                                      null, sum, unzip, unzip3,
+                                                      zip, zip3, zipWith,
+                                                      zipWith3)
+import           System.IO.Unsafe            (unsafePerformIO)
 
 -- | Generate `Massiv` of a specified size using a function to creates it's
 -- elements. All further computation on generated Massiv will be done according
@@ -291,140 +300,26 @@ toListIx2 (Massiv arr) = A.toListIx2 arr
 {-# INLINE [~1] (!) #-}
 
 
----
-
--- type family Elt r e :: Constraint where
---   Elt P e = Prim e
---   Elt U e = Unbox e
---   Elt S e = Storable e
---   Elt B e = NFData e
-
--- class (Elt (Repr e) e, Source (Repr e) ix e, Target (Repr e) ix e) => Layout ix e where
---   type Repr e :: *
---   type Repr e = B
-
--- instance Index ix => Layout ix Int where
---   type Repr Int = P
-
--- instance Index ix => Layout ix Double where
---   type Repr Double = P
-
--- instance Index ix => Layout ix Bool where
---   type Repr Bool = U
-
--- instance Index ix => Layout ix Float where
---   type Repr Float = P
-
--- instance (Unbox a, Unbox b, Index ix) => Layout ix (a, b) where
---   type Repr (a, b) = U
+foldlS :: Layout ix e => (a -> e -> a) -> a -> Massiv ix e -> a
+foldlS f a = A.foldlS f a . delayM
+{-# INLINE [~1] foldlS #-}
 
 
--- data Massiv ix e = Massiv !(Array (Repr e) ix e)
-
-
--- makeMassiv :: Layout ix e => Comp -> ix -> (ix -> e) -> Massiv ix e
--- makeMassiv c sz f = computeM (makeArrayR D c sz f)
--- {-# INLINE [~1] makeMassiv #-}
-
--- computeM :: (Load r ix e, Layout ix e) => Array r ix e -> Massiv ix e
--- computeM = Massiv . compute
--- {-# INLINE [1] computeM #-}
-
--- delayM :: Layout ix e => Massiv ix e -> Array D ix e
--- delayM (Massiv arr) = delay arr
--- {-# INLINE [1] delayM #-}
+foldrS :: Layout ix e => (e -> a -> a) -> a -> Massiv ix e -> a
+foldrS f a = A.foldrS f a . delayM
+{-# INLINE [~1] foldrS #-}
 
 
 
+foldlP :: Layout ix e => (b -> a -> b) -> b -> (a -> e -> a) -> a -> Massiv ix e -> IO b
+foldlP g b f a = A.foldlP g b f a . delayM
+{-# INLINE [~1] foldlP #-}
 
 
-
-----------------------------------------
--- computeF :: Target r ix e => Array D ix e -> Array r ix e
--- computeF = compute
--- {-# INLINE [1] computeF #-}
-
--- uncomputeF :: Source r ix e => Array r ix e -> Array D ix e
--- uncomputeF = delay
--- {-# INLINE [1] uncomputeF #-}
-
-
--- smakeArrayR :: Target r ix e => r -> Comp -> ix -> (ix -> e) -> Array r ix e
--- smakeArrayR _ c sz f = computeF (makeArrayR D c sz f)
--- {-# INLINE [~1] smakeArrayR #-}
-
-
--- smap :: (Target r ix e', Target r ix e) => (e' -> e) -> Array r ix e' -> Array r ix e
--- smap f = computeF . map f . uncomputeF
--- {-# INLINE [~1] smap #-}
-
-
--- szipWith :: (Target r1 ix e1, Target r2 ix e2, Target r ix e) =>
---             (e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r ix e
--- szipWith f arr1 arr2 = computeF (zipWith f (uncomputeF arr1) (uncomputeF arr2))
--- {-# INLINE [~1] szipWith #-}
-
-
--- stranspose :: Target r Ix2 e
---            => Array r Ix2 e -> Array r Ix2 e
--- stranspose = computeF . transpose . uncomputeF
--- {-# INLINE [~1] stranspose #-}
-
--- {-# RULES
--- "uncomupte/compute" forall arr . uncomputeF (computeF arr) = arr
---  #-}
-
-
-
-
--------------------
-
-
--- type family Repr r where
---   Repr (Prim e) = P
---   Repr (Unbox e) = U
---   Repr (Storable e) = S
---   Repr (NFData e) = B
---   -- Elt U e = Unbox e
---   -- Elt S e = Storable e
---   -- Elt B e = NFData e
-
-
--- type family Elt r e :: Constraint where
---   Elt P e = Prim e
---   Elt U e = Unbox e
---   Elt S e = Storable e
---   Elt B e = NFData e
-
--- class ( Elt (Repr (Impl e)) e
---       , Source (Repr (Impl e)) ix e
---       , Target (Repr (Impl e)) ix e
---       ) =>
---       Layout ix e
-
--- instance ( Elt (Repr (Impl e)) e
---          , Source (Repr (Impl e)) ix e
---          , Target (Repr (Impl e)) ix e
---          ) =>
---          Layout ix e
-
-
--- class (Impl e, Elt (Repr (Impl e)) e) => Dec e where
---   type Impl e :: Constraint
---   type Impl e = NFData e
-
--- instance Dec Int where
---   type Impl Int = Prim Int
-
--- instance Dec Double where
---   type Impl Double = Prim Double
-
--- instance Dec Bool where
---   type Impl Bool = Unbox Bool
-
--- instance (Unbox a, Unbox b) => Dec (a, b) where
---   type Impl (a, b) = Unbox (a, b)
-
-
-
--- data Massiv ix e = forall r . (Impl e ~ r) => Massiv (Array (Repr r) ix e)
+sum :: (Num e, Layout ix e) => Massiv ix e -> e
+sum (Massiv arr) =
+  case getComp arr of
+    Seq        -> A.foldlS (+) 0 arr
+    ParOn wIds -> unsafePerformIO $ A.foldlOnP wIds (+) 0 (+) 0 arr
+-- sum = A.sum . delayM
+{-# INLINE [~1] sum #-}

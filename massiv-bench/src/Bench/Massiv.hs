@@ -4,17 +4,40 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Bench.Massiv where
+module Bench.Massiv (
+  module A
+  , tupleToIx2
+  , tupleToIx2T
+  , lightFuncIx2
+  , lightFuncIx2T
+  , arrDLightIx2
+  , arrDHeavyIx2
+  , arrDLightIx2T
+  , arrDHeavyIx2T
+  , sobelKernelStencilX
+  , sobelX
+  , sobelY
+  , sobelOperator
+  , sobelOperatorAlt
+  , sobelOperatorUnfused
+  , sobelTX
+  , sobelTY
+  , sobelOperatorT
+  , sum3x3Filter
+  , average3x3Filter
+  , average3x3FilterConvMap
+  , average3x3FilterConvMap'
+  , average3x3FilterConv
+  ) where
 
 import           Bench.Common               (heavyFunc, lightFunc)
 import           Control.DeepSeq
-import           Data.Array.Massiv          as M
 import           Data.Array.Massiv.Common   as A
 import           Data.Array.Massiv.Delayed  as A
 import           Data.Array.Massiv.Manifest as A
 import           Data.Array.Massiv.Mutable  as A
 import           Data.Array.Massiv.Ops      as A
-import           Data.Array.Massiv.Stencil
+import           Data.Array.Massiv.Stencil  as A
 import           Data.Default               (Default)
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
@@ -46,15 +69,6 @@ arrDLightIx2 comp arrSz = makeArray comp arrSz (\ (i :. j) -> lightFunc i j)
 arrDHeavyIx2 :: Comp -> Ix2 -> Array D Ix2 Double
 arrDHeavyIx2 comp arrSz = makeArray comp arrSz (\ (i :. j) -> heavyFunc i j)
 {-# INLINE arrDHeavyIx2 #-}
-
-massDLightIx2 :: Comp -> Ix2 -> Massiv Ix2 Double
-massDLightIx2 comp massSz = makeMassiv comp massSz (\ (i :. j) -> lightFunc i j)
-{-# INLINE massDLightIx2 #-}
-
--- massDHeavyIx2 :: Comp -> Ix2 -> Massiv Ix2 Double
--- massDHeavyIx2 comp massSz = makeMassiv comp massSz (\ (i :. j) -> heavyFunc i j)
--- {-# INLINE [~1] massDHeavyIx2 #-}
-
 
 arrDLightIx2T :: Comp -> Ix2T -> Array D Ix2T Double
 arrDLightIx2T comp arrSz = makeArray comp arrSz (\ (i, j) -> lightFunc i j)

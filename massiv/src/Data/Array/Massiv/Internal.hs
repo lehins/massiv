@@ -49,6 +49,11 @@ class Target (Repr e) ix e => Layout ix e where
 -- class to decide on representation.
 data Massiv ix e = Massiv !(Array (Repr e) ix e)
 
+instance NFData (Array (Repr e) ix e) => NFData (Massiv ix e) where
+  rnf (Massiv arr) = rnf arr
+  {-# INLINE [1] rnf #-}
+
+
 type family a /\ b :: * where
   P /\ P = U
   P /\ U = U
