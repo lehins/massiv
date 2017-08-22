@@ -1,33 +1,33 @@
 # massiv
 
 `massiv` is a Haskell library for array manipulation. The goal of this library
-is to be fast and easy to use. Performance is one of it's main goals, thus it is
-capable to effortlessly run almost all operations in parallel as well as
+is to be fast and easy to use. Performance is one of its main goals, thus it is
+able to effortlessly run almost all operations in parallel as well as
 sequentially.
 
-Name for this library comes from a Russian word Massiv (Масси́в), which means an
+The name for this library comes from the Russian word Massiv (Масси́в), which means an
 Array.
 
 __Disclaimer__: Current status of this library is under development, so anything
-in it's API is subject to change. That being said it is already pretty
+in its API is subject to change. That being said it is already pretty
 functional with some decent testing in place, so it is at a great stage to be
-experimented with, at your own risk, of course.
+experimented with—at your own risk, of course.
 
 ## Introduction
 
 Everything in the library revolves around an `Array r ix e` - a data type family
-for anything that can be thought of as an array. The type variables, form the
-end are:
+for anything that can be thought of as an array. The type variables, from the
+end, are:
 
 * `e` - element of an array.
 * `ix` - an index that will map to an actual element. Index must be an instance of
-  `Index` class with default one being an `Ix n` type family and an optional
+  the `Index` class with default one being an `Ix n` type family and an optional
   being tuples of `Int`s.
 * `r` - underlying representation. Main representations are:
 
     * `D` - delayed array, which is simply a function from an index to an
       element: `(ix -> e)`. Therefore indexing of this type of array is not
-      possible, although elements can be computed with `evaluateAt` function.
+      possible, although elements can be computed with the `evaluateAt` function.
     * `P` - Array with elements that are an instance of `Prim` type class,
       i.e. common Haskell primitive types: `Int`, `Word`, `Char`, etc. Backed by
       the usual `ByteArray`.
@@ -36,7 +36,7 @@ end are:
       with.
     * `S` - Storable arrays. Backed by pinned `ByteArray`s and elements are
       instances of `Storable` class.
-    * `B` - Boxed arrays that don't have restriction on it's elements, since
+    * `B` - Boxed arrays that don't have restrictions on its elements, since
       they are represented as pointers to elements, thus making them the slowest
       type of array.
     * `M` - Manifest arrays, which is a general type of array that is backed by
@@ -44,7 +44,7 @@ end are:
       type of arrays can be converted to `M` in constant time with `toManifest`
       function. It is mostly useful during constant time slicing of manifest
       arrays, as this becomes the result representation. More on that
-      in [slicing](#slicing) section.
+      in the [slicing](#slicing) section.
 
 ## Construct
 
@@ -59,7 +59,7 @@ vec :: Array D Int Int
 ```
 
 Here we created a delayed vector, which is in reality just an `id` function from
-it's index to an element. So let's go ahead and square it's elements
+its index to an element. So let's go ahead and square its elements
 
 ```haskell
 λ> evaluateAt vec 4
@@ -72,8 +72,8 @@ it's index to an element. So let's go ahead and square it's elements
 It's not that exciting, since every time we call `evaluateAt` it will recompute
 the element, __every time__, therefore this function should be avoided at all
 costs. Instead we can use all of the functions that take `Source` like arrays
-and then fused that computation together by calling `compute`, or a handy
-`computeAs` function and only afterwards apply an `index` function or it's
+and then fuse that computation together by calling `compute`, or a handy
+`computeAs` function and only afterwards apply an `index` function or its
 synonym: `(!)`. Any delayed array can also be reduced using one of the folding
 functions, thus completely avoiding any memory allocation, or converted to a
 list, if that's what you need:
@@ -91,8 +91,8 @@ vec2U :: Array U Int Int
 ```
 
 Other means of constructing arrays are through conversion from lists, vectors
-from `vector` library and few other helper functions as `range`, `enumFromN`,
-etc. Worth noting, that in the next example, nested list will be loaded in
+from the `vector` library and few other helper functions as `range`, `enumFromN`,
+etc. It's worth noting that, in the next example, nested lists will be loaded in
 parallel as well as further computation of the `sum` will be distributed amongst
 available cores (that is if it would be compiled instead of executed in ghci):
 
@@ -105,7 +105,7 @@ available cores (that is if it would be compiled instead of executed in ghci):
 
 The main `Ix n` closed type family can be somewhat confusing, but there is no
 need to fully understand how it is implemented in order to start using it. GHC
-might ask you for the `DataKinds` language extension if `IxN n` be used in a
+might ask you for the `DataKinds` language extension if `IxN n` is used in a
 type signature.
 
 There are three distinguishable constructors for the index:
