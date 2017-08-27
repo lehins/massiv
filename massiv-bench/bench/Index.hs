@@ -1,19 +1,19 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
 module Main where
 
 
 
 import           Criterion.Main
-import           Data.Array.Massiv.Common                 as M
-import           Data.Array.Repa                   as R
--- import           Data.Array.Massiv.Common.Ix       as M
-import           Prelude                           as P
+import           Data.Array.Massiv.Common         as M
+import           Data.Array.Repa                  as R
+import           Data.Array.Repa.Specialised.Dim2 as R
+import           Prelude                          as P
 
 
 class Shape sh => ExtraShape sh where
@@ -65,94 +65,101 @@ main = do
       ixs4 = (i4, t4, r4)
   defaultMain
     [ bgroup
-        "toLinearIndex"
-        [ toLinearIndexGroup "DIM2" ixs2
-        , toLinearIndexGroup "DIM3" ixs3
-        , toLinearIndexGroup "DIM4" ixs4
+        "Regular"
+        [ bgroup
+            "toLinearIndex"
+            [ toLinearIndexGroup "DIM2" ixs2
+            , toLinearIndexGroup "DIM3" ixs3
+            , toLinearIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "fromLinearIndex"
+            [ fromLinearIndexGroup "DIM2" ixs2
+            , fromLinearIndexGroup "DIM3" ixs3
+            , fromLinearIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "toFromLinearIndex"
+            [ toFromLinearIndexGroup "DIM2" ixs2
+            , toFromLinearIndexGroup "DIM3" ixs3
+            , toFromLinearIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "totalElem"
+            [ totalElemGroup "DIM2" ixs2
+            , totalElemGroup "DIM3" ixs3
+            , totalElemGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "isSafeIndex"
+            [ isSafeIndexGroup "DIM2" ixs2
+            , isSafeIndexGroup "DIM3" ixs3
+            , isSafeIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "handleBorderIndex"
+            [ handleBorderIndexGroup "DIM2" ixs2
+            , bench "DIM2/Repa" $ whnf (R.clampToBorder2 (fst r2)) (snd r2)
+            , handleBorderIndexGroup "DIM3" ixs3
+            , handleBorderIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "unconsConsDim"
+            [ unconsConsDimGroup "DIM2" ixs2
+            , unconsConsDimGroup "DIM3" ixs3
+            , unconsConsDimGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "unsnocSnocDim"
+            [ unsnocSnocDimGroup "DIM2" ixs2
+            , unsnocSnocDimGroup "DIM3" ixs3
+            , unsnocSnocDimGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "liftIndex"
+            [ liftIndexGroup "DIM2" ixs2
+            , liftIndexGroup "DIM3" ixs3
+            , liftIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "liftIndex2"
+            [ liftIndex2Group "DIM2" ixs2
+            , liftIndex2Group "DIM3" ixs3
+            , liftIndex2Group "DIM4" ixs4
+            ]
+        , bgroup
+            "getIndex"
+            [ getIndexGroup "DIM2" ixs2
+            , getIndexGroup "DIM3" ixs3
+            , getIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "setIndex"
+            [ setIndexGroup "DIM2" ixs2
+            , setIndexGroup "DIM3" ixs3
+            , setIndexGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "dropDim"
+            [ dropDimGroup "DIM2" ixs2
+            , dropDimGroup "DIM3" ixs3
+            , dropDimGroup "DIM4" ixs4
+            ]
         ]
     , bgroup
-        "fromLinearIndex"
-        [ fromLinearIndexGroup "DIM2" ixs2
-        , fromLinearIndexGroup "DIM3" ixs3
-        , fromLinearIndexGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "toFromLinearIndex"
-        [ toFromLinearIndexGroup "DIM2" ixs2
-        , toFromLinearIndexGroup "DIM3" ixs3
-        , toFromLinearIndexGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "totalElem"
-        [ totalElemGroup "DIM2" ixs2
-        , totalElemGroup "DIM3" ixs3
-        , totalElemGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "isSafeIndex"
-        [ isSafeIndexGroup "DIM2" ixs2
-        , isSafeIndexGroup "DIM3" ixs3
-        , isSafeIndexGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "handleBorderIndex"
-        [ handleBorderIndexGroup "DIM2" ixs2
-        , handleBorderIndexGroup "DIM3" ixs3
-        , handleBorderIndexGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "unconsConsDim"
-        [ unconsConsDimGroup "DIM2" ixs2
-        , unconsConsDimGroup "DIM3" ixs3
-        , unconsConsDimGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "unsnocSnocDim"
-        [ unsnocSnocDimGroup "DIM2" ixs2
-        , unsnocSnocDimGroup "DIM3" ixs3
-        , unsnocSnocDimGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "liftIndex"
-        [ liftIndexGroup "DIM2" ixs2
-        , liftIndexGroup "DIM3" ixs3
-        , liftIndexGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "liftIndex2"
-        [ liftIndex2Group "DIM2" ixs2
-        , liftIndex2Group "DIM3" ixs3
-        , liftIndex2Group "DIM4" ixs4
-        ]
-    , bgroup
-        "getIndex"
-        [ getIndexGroup "DIM2" ixs2
-        , getIndexGroup "DIM3" ixs3
-        , getIndexGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "setIndex"
-        [ setIndexGroup "DIM2" ixs2
-        , setIndexGroup "DIM3" ixs3
-        , setIndexGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "dropDim"
-        [ dropDimGroup "DIM2" ixs2
-        , dropDimGroup "DIM3" ixs3
-        , dropDimGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "iter"
-        [ iterGroup "DIM2" ixs2
-        , iterGroup "DIM3" ixs3
-        , iterGroup "DIM4" ixs4
-        ]
-    , bgroup
-        "iterM"
-        [ iterMGroup "DIM2" ixs2
-        , iterMGroup "DIM3" ixs3
-        , iterMGroup "DIM4" ixs4
+        "Expensive"
+        [ bgroup
+            "iter"
+            [ iterGroup "DIM2" ixs2
+            , iterGroup "DIM3" ixs3
+            , iterGroup "DIM4" ixs4
+            ]
+        , bgroup
+            "iterM"
+            [ iterMGroup "DIM2" ixs2
+            , iterMGroup "DIM3" ixs3
+            , iterMGroup "DIM4" ixs4
+            ]
         ]
     ]
 
@@ -222,7 +229,6 @@ handleBorderIndexGroup groupName !((sz1, i1), (sz2, i2), _) =
     groupName
     [ bench "Ix" $ whnf (handleBorderIndex Edge sz1 id) i1
     , bench "Tuple" $ nf (handleBorderIndex Edge sz2 id) i2
-    --, bench "Repa" $ whnf (R.clampToBorder2 sz3) i3
     ]
 
 

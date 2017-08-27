@@ -15,7 +15,8 @@
 --
 module Data.Array.Massiv.Common.Index where
 
-import           Control.DeepSeq (NFData)
+import           Control.DeepSeq       (NFData)
+import           Data.Functor.Identity (runIdentity)
 
 newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
 
@@ -132,7 +133,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
                 -> Int
 
   default toLinearIndex :: Index (Lower ix) =>
-                              ix -> ix -> Int
+                           ix -> ix -> Int
   toLinearIndex !sz !ix = toLinearIndex szL ixL * n + i
     where !(szL, n) = unsnocDim sz
           !(ixL, i) = unsnocDim ix
@@ -171,14 +172,15 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   {-# INLINE [1] repairIndex #-}
 
   iter :: ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
-  default iter :: Index (Lower ix)
-    => ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
-  iter !sIx !eIx !inc cond !acc f =
-    loop k0 (`cond` k1) (+ inc) acc $ \ !i !acc0 ->
-      iter sIxL eIxL inc cond acc0 $ \ !ix -> f (consDim i ix)
-    where
-      !(k0, sIxL) = unconsDim sIx
-      !(k1, eIxL) = unconsDim eIx
+  iter sIx eIx inc cond acc f = runIdentity $ iterM sIx eIx inc cond acc (\ix -> return . f ix)
+  -- default iter :: Index (Lower ix)
+  --   => ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
+  -- iter !sIx !eIx !inc cond !acc f =
+  --   loop k0 (`cond` k1) (+ inc) acc $ \ !i !acc0 ->
+  --     iter sIxL eIxL inc cond acc0 $ \ !ix -> f (consDim i ix)
+  --   where
+  --     !(k0, sIxL) = unconsDim sIx
+  --     !(k1, eIxL) = unconsDim eIx
   {-# INLINE iter #-}
 
   iterM :: Monad m =>

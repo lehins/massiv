@@ -14,7 +14,7 @@ module Data.Array.Massiv
     -- * Intro
     --
     -- Massiv (Масси́в) is a Russian word for an array, so everywhere you see
-    -- this word you can safely assume that it is what its intended meaning. It
+    -- this word you can safely assume that it is the intended meaning. It
     -- is pronounced like English word "massive", except with an accent on
     -- _i_. There is also a data type family `Array` in this library, which is a
     -- more general way to deal with multi-dimnesional arrays. The benefit of

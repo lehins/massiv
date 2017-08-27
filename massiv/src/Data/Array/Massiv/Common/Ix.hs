@@ -147,16 +147,9 @@ instance Index Ix2 where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex (_ :. n) (i :. j) = n * i + j
   {-# INLINE [1] toLinearIndex #-}
-  -- toLinearIndexAcc !acc (m :. n) (i :. j)  = n * (acc * m + i) + j
-  -- {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex (_ :. n) k = case k `quotRem` n of
                                  (i, j) -> i :. j
   {-# INLINE [1] fromLinearIndex #-}
-  -- fromLinearIndexAcc (m :. n) !k =
-  --   case k `quotRem` n of
-  --     (q, r) -> case q `quotRem` m of
-  --                 (q', r') -> (q', r' :. r)
-  -- {-# INLINE [1] fromLinearIndexAcc #-}
   consDim = (:.)
   {-# INLINE [1] consDim #-}
   unconsDim (i :. ix) = (i, ix)
@@ -177,9 +170,6 @@ instance Index Ix2 where
   dropDim (i :. _) 1 = Just i
   dropDim _      _   = Nothing
   {-# INLINE [1] dropDim #-}
-  -- repairIndex (m :. n) (i :. j) rBelow rOver =
-  --   repairIndex m i rBelow rOver :. repairIndex n j rBelow rOver
-  -- {-# INLINE [1] repairIndex #-}
   liftIndex f (i :. j) = f i :. f j
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :. j0) (i1 :. j1) = f i0 i1 :. f j0 j1
@@ -210,12 +200,8 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex (_ :> n :. o) (i :> j :. k) = (n * i + j) * o + k
   {-# INLINE [1] toLinearIndex #-}
-  -- toLinearIndexAcc !acc (n :> sz) (i :> ix) = toLinearIndexAcc (acc * n + i) sz ix
-  -- {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex (_ :> ix) k = let !(q, ixL) = fromLinearIndexAcc ix k in q :> ixL
   {-# INLINE [1] fromLinearIndex #-}
-  -- fromLinearIndexAcc = fromLinearIndexAccRec
-  -- {-# INLINE [1] fromLinearIndexAcc #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
   unconsDim (i :> ix) = (i, ix)
@@ -239,11 +225,6 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   dropDim (i :> j :. _) 1 = Just (i :. j)
   dropDim _             _ = Nothing
   {-# INLINE [1] dropDim #-}
-  -- repairIndex (m :> n :. l) (i :> j :. k) rBelow rOver =
-  --   repairIndex m i rBelow rOver :>
-  --   repairIndex n j rBelow rOver :.
-  --   repairIndex l k rBelow rOver
-  -- {-# INLINE [1] repairIndex #-}
   liftIndex f (i :> j :. k) = f i :> f j :. f k
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :> j0 :. k0) (i1 :> j1 :. k1) = f i0 i1 :> f j0 j1 :. f k0 k1
@@ -258,9 +239,6 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   --     loopM j (`cond` n) (+ inc) acc0 $ \ !j' !acc1 ->
   --       loopM k (`cond` o) (+ inc) acc1 $ \ !k' -> f (i' :> j' :. k')
   -- {-# INLINE iterM #-}
-  -- iterM_ = iterMRec_
-  -- {-# INLINE iterM_ #-}
-
 
 instance (4 <= n,
           KnownNat n,
@@ -277,16 +255,6 @@ instance (4 <= n,
   {-# INLINE [1] zeroIndex #-}
   totalElem (i :> ix) = i * totalElem ix
   {-# INLINE [1] totalElem #-}
-  -- isSafeIndex (n :> sz) (i :> ix) = 0 <= i && i < n && isSafeIndex sz ix
-  -- {-# INLINE [1] isSafeIndex #-}
-  -- toLinearIndex (_ :> n :> sz) (i :> j :> ix) = toLinearIndexAcc (i * n + j) sz ix
-  -- {-# INLINE [1] toLinearIndex #-}
-  -- toLinearIndexAcc !acc (n :> sz) (i :> ix) = toLinearIndexAcc (acc * n + i) sz ix
-  -- {-# INLINE [1] toLinearIndexAcc #-}
-  -- fromLinearIndex (_ :> ix) k = let !(q, ixL) = fromLinearIndexAcc ix k in q :> ixL
-  -- {-# INLINE [1] fromLinearIndex #-}
-  -- fromLinearIndexAcc = fromLinearIndexAccRec
-  -- {-# INLINE [1] fromLinearIndexAcc #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
   unconsDim (i :> ix) = (i, ix)
@@ -305,9 +273,6 @@ instance (4 <= n,
   dropDim ix@(j :> jx) k | k == rank ix = Just jx
                            | otherwise = (j :>) <$> dropDim jx k
   {-# INLINE [1] dropDim #-}
-  -- repairIndex (s :> sz) (i :> ix) rBelow rOver =
-  --   repairIndex s i rBelow rOver :> repairIndex sz ix rBelow rOver
-  -- {-# INLINE [1] repairIndex #-}
   liftIndex f (i :> ix) = f i :> liftIndex f ix
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i1 :> ix1) (i2 :> ix2) = f i1 i2 :> liftIndex2 f ix1 ix2
@@ -317,14 +282,9 @@ instance (4 <= n,
   --     iter sIxL eIxL inc cond accI $ \ !ix -> f (i :> ix)
   -- {-# INLINE iter #-}
   -- iterM (k0 :> sIxL) (k1 :> eIxL) !inc cond !accInit f =
-  --   loopM k0 (`cond` k1) (+ inc) accInit $ \ i accI ->
-  --     iterM sIxL eIxL inc cond accI $ \ ix -> f (i :> ix)
+  --   loopM k0 (`cond` k1) (+ inc) accInit $ \ !i !accI ->
+  --     iterM sIxL eIxL inc cond accI $ \ !ix -> f (i :> ix)
   -- {-# INLINE iterM #-}
-  -- iterM_ (k0 :> sIxL) (k1 :> eIxL) !inc cond f =
-  --   loopM_ k0 (`cond` k1) (+ inc) $ \ !i ->
-  --     iterM_ sIxL eIxL inc cond $ \ !ix -> f (i :> ix)
-  -- {-# INLINE iterM_ #-}
-
 
 
 
