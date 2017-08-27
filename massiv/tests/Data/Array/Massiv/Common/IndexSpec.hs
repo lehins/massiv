@@ -192,14 +192,14 @@ prop_UnconsGetDrop :: (Arbitrary ix, Index (Lower ix), Index ix) => proxy ix -> 
 prop_UnconsGetDrop _ ix =
   Just (unconsDim ix) == do
     i <- getIndex ix (rank ix)
-    ixL <- dropIndex ix (rank ix)
+    ixL <- dropDim ix (rank ix)
     return (i, ixL)
 
 prop_UnsnocGetDrop :: (Arbitrary ix, Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
 prop_UnsnocGetDrop _ ix =
   Just (unsnocDim ix) == do
     i <- getIndex ix 1
-    ixL <- dropIndex ix 1
+    ixL <- dropDim ix 1
     return (ixL, i)
 
 prop_SetAll :: (Arbitrary ix, Index ix) => proxy ix -> ix -> Int -> Bool

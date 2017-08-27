@@ -2,19 +2,19 @@
 {-# LANGUAGE GADTs            #-}
 module Main where
 
-import           Bench.Vector
+import           Bench.Massiv        as A
+import           Bench.Massiv.Auto   as M hiding (tupleToIx2)
 import           Bench.Repa
-import           Bench.Massiv as A
-import           Bench.Massiv.Auto as M hiding (tupleToIx2)
+import           Bench.Vector
 import           Criterion.Main
 --import           Data.Array.Massiv          as M
 -- import           Data.Array.Massiv.Common   as A
 -- import           Data.Array.Massiv.Manifest as A
 -- import           Data.Array.Massiv.Mutable  as A
 -- import           Data.Array.Massiv.Ops      as A
-import           Data.Array.Repa            as R
-import           Data.Vector.Unboxed        as VU
-import           Prelude                    as P
+import           Data.Array.Repa     as R
+import           Data.Vector.Unboxed as VU
+import           Prelude             as P
 
 main :: IO ()
 main = do

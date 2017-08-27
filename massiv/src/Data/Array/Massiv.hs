@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Array.Massiv
@@ -10,7 +11,6 @@
 -- Portability : non-portable
 --
 module Data.Array.Massiv
-  (
     -- * Intro
     --
     -- Massiv (Масси́в) is a Russian word for an array, so everywhere you see
@@ -21,7 +21,7 @@ module Data.Array.Massiv
     -- using the wrapper `Massiv` data type instead, is that it will
     -- automatically handle fusion and deal with underlying representation for
     -- you, while with `Array` you have to keep track of it manually.
-    Massiv
+  ( Massiv
   , Comp(..)
   -- * Construction
   , makeMassiv
@@ -85,7 +85,7 @@ import           Prelude                        as P hiding (length, map, mapM_,
                                                       null, sum, unzip, unzip3,
                                                       zip, zip3, zipWith,
                                                       zipWith3)
-import           System.IO.Unsafe            (unsafePerformIO)
+import           System.IO.Unsafe               (unsafePerformIO)
 
 -- | Generate `Massiv` of a specified size using a function to creates it's
 -- elements. All further computation on generated Massiv will be done according
@@ -290,13 +290,13 @@ toListIx2 (Massiv arr) = A.toListIx2 arr
 
 (!>) :: (Layout (Lower ix) e, Layout ix e) =>
          Massiv ix e -> Int -> Massiv (Lower ix) e
-(!>) m i = computeM ((delayM m) A.!> i)
+(!>) m i = computeM (delayM m A.!> i)
 {-# INLINE [~1] (!>) #-}
 
 
 
 (!) :: (Layout ix e) => Massiv ix e -> ix -> e
-(!) (Massiv arr) ix = A.index arr ix
+(!) (Massiv arr) = A.index arr
 {-# INLINE [~1] (!) #-}
 
 

@@ -3,10 +3,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.Ops.FoldSpec (spec) where
 
-import           Data.Array.Massiv
-import           Data.Array.Massiv.CommonSpec (ArrP(..))
+import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.CommonSpec (ArrP (..))
+import           Data.Array.Massiv.Delayed
+import           Data.Array.Massiv.Ops
 import           Prelude                      hiding (map, product, sum)
-import qualified Prelude                      as P (sum)
+import qualified Prelude                      as P (sum, length)
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
@@ -24,22 +26,22 @@ prop_NestedFoldP arr = sum (setComp Par (map sum $ setComp Par arr)) == sum (map
 
 prop_FoldrOnP :: Int -> [Int] -> ArrP D Ix1 Int -> Property
 prop_FoldrOnP wId wIds (ArrP arr) =
-  length arr > length wIds ==> monadicIO $ do
+  P.length arr > P.length wIds ==> monadicIO $ do
     res <- run $ ifoldrOnP wIdsNE (:) [] (\_ -> (+)) 0 arr
-    if length arr `mod` length wIdsNE == 0
-      then assert (length res == length wIdsNE)
-      else assert (length res == length wIdsNE + 1)
+    if P.length arr `mod` P.length wIdsNE == 0
+      then assert (P.length res == P.length wIdsNE)
+      else assert (P.length res == P.length wIdsNE + 1)
     assert (P.sum res == sum arr)
   where
     wIdsNE = wId : wIds
 
 prop_FoldlOnP :: Int -> [Int] -> ArrP D Ix1 Int -> Property
 prop_FoldlOnP wId wIds (ArrP arr) =
-  length arr > length wIds ==> monadicIO $ do
+  P.length arr > P.length wIds ==> monadicIO $ do
     res <- run $ ifoldlOnP wIdsNE (flip (:)) [] (\a _ x -> a + x) 0 arr
-    if length arr `mod` length wIdsNE == 0
-      then assert (length res == length wIdsNE)
-      else assert (length res == length wIdsNE + 1)
+    if P.length arr `mod` P.length wIdsNE == 0
+      then assert (P.length res == P.length wIdsNE)
+      else assert (P.length res == P.length wIdsNE + 1)
     assert (P.sum res == sum arr)
   where
     wIdsNE = wId : wIds

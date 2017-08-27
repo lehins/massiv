@@ -2,9 +2,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.Ops.TransformSpec (spec) where
 
-import           Data.Array.Massiv                  as M
+import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.IndexSpec (DimIx (..))
+import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.CommonSpec       (Arr (..), ArrIx (..))
+import           Data.Array.Massiv.Delayed
+import           Data.Array.Massiv.Manifest
+import           Data.Array.Massiv.Ops              as M
 import           Data.Typeable                      (Typeable)
 import           Test.Hspec
 import           Test.QuickCheck

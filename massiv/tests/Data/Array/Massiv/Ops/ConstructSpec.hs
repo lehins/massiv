@@ -1,12 +1,15 @@
-{-# LANGUAGE GADTs  #-}
+{-# LANGUAGE GADTs #-}
 module Data.Array.Massiv.Ops.ConstructSpec (spec) where
 
 
-import           Data.Array.Massiv                  as M
+import           Data.Array.Massiv.Common           as M
 import           Data.Array.Massiv.Common.IndexSpec (Sz (..))
 import           Data.Array.Massiv.CommonSpec       (Arr (..),
                                                      assertSomeException)
 import           Data.Array.Massiv.DelayedSpec      ()
+import           Data.Array.Massiv.Manifest
+import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Ops
 import           Prelude                            as P
 import           Prelude                            hiding (map)
 import           Test.Hspec
@@ -15,19 +18,19 @@ import           Test.QuickCheck.Function
 
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
-prop_rangeEqRangeStep1 from to = range from to === rangeStep from 1 to
+prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep Par from 1 to
 
 prop_rangeEqEnumFromN :: Int -> Int -> Property
-prop_rangeEqEnumFromN from to = range from to === enumFromN from (to - from)
+prop_rangeEqEnumFromN from to = range Seq from to === enumFromN Par from (to - from)
 
 prop_rangeStepEqEnumFromStepN :: Int -> NonZero Int -> Int -> Property
 prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
-  rangeStep from step (from + step * sz) === enumFromStepN from step sz
+  rangeStep Seq from step (from + step * sz) === enumFromStepN Par from step sz
 
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertSomeException (computeAs U (rangeStep from 0 to))
+  assertSomeException (computeAs U (rangeStep Seq from 0 to))
 
 
 prop_toFromListIx1 :: Ix1 -> Fun Ix1 Int -> Bool
@@ -46,7 +49,7 @@ prop_excFromToListSIx2 ls2 =
      then label "Expected Success" $ resultLs === ls2
      else label "Expected Failure" $ assertSomeException resultLs
   where
-    lsL = P.map length ls2
+    lsL = P.map P.length ls2
     resultLs = toListIx2 (fromListIx2As U Seq ls2)
 
 
@@ -64,15 +67,15 @@ prop_excFromToListSIx3 ls3 =
          assertSomeException resultLs
   where
     resultLs = toListIx3 (fromListIx3As U Seq ls3)
-    lsL = P.map length ls3
-    lsLL = P.map (P.map length) ls3
+    lsL = P.map P.length ls3
+    lsLL = P.map (P.map P.length) ls3
 
 
 prop_toFromListPIx2 :: Sz Ix2 -> Fun Ix2T Int -> Property
 prop_toFromListPIx2 (Sz sz) f =
   arr === fromListIx2As U Par (toListIx2 arr)
   where
-    arr = makeArray Par sz (toIxF2 (apply f))
+    arr = makeArray Par sz (apply f . fromIx2)
 
 prop_excFromToListPIx2 :: [[Int]] -> Property
 prop_excFromToListPIx2 ls2 =
@@ -81,13 +84,13 @@ prop_excFromToListPIx2 ls2 =
     else assertSomeException res
   where
     res = toListIx2 (fromListIx2As U Par ls2)
-    lsL = P.map length ls2
+    lsL = P.map P.length ls2
 
 prop_toFromListPIx3 :: Sz Ix3 -> Fun Ix3T Int -> Property
 prop_toFromListPIx3 (Sz sz) f =
   arr === fromListIx3As U Par (toListIx3 arr)
   where
-    arr = makeArray Par sz (toIxF3 (apply f))
+    arr = makeArray Par sz (apply f . fromIx3)
 
 prop_excFromToListPIx3 :: [[[Int]]] -> Property
 prop_excFromToListPIx3 ls3 =
@@ -99,8 +102,8 @@ prop_excFromToListPIx3 ls3 =
          assertSomeException resultLs
   where
     resultLs = toListIx3 (fromListIx3As U Par ls3)
-    lsL = P.map length ls3
-    lsLL = P.map (P.map length) ls3
+    lsL = P.map P.length ls3
+    lsLL = P.map (P.map P.length) ls3
 
 
 specIx1 :: Spec

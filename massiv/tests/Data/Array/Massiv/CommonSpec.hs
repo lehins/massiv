@@ -17,8 +17,10 @@ module Data.Array.Massiv.CommonSpec
 import           Control.DeepSeq                    (NFData, deepseq)
 import           Control.Exception                  (Exception, SomeException,
                                                      catch)
-import           Data.Array.Massiv
-import           Data.Array.Massiv.Common.IndexSpec (SzIx (..), Sz (..), SzZ (..))
+import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.IndexSpec (Sz (..), SzIx (..),
+                                                     SzZ (..))
+import           Data.Array.Massiv.Ops
 import           Data.Typeable
 import           Test.Hspec
 import           Test.QuickCheck
