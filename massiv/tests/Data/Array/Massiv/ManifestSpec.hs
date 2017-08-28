@@ -9,9 +9,9 @@ import           Data.Array.Massiv.CommonSpec (Arr (..))
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Mutable
 import           Data.Typeable
+import           Data.Vector.Generic          as VG
 import           Test.Hspec
 import           Test.QuickCheck
-import Data.Vector.Generic as VG
 
 prop_toFromVector
   :: ( Arbitrary (Arr r ix Int)

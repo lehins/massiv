@@ -27,10 +27,13 @@ module Data.Array.Massiv.Common
   , module Data.Array.Massiv.Common.Ix
   , module Data.Array.Massiv.Common.Index
   , evaluateAt
+  , null
+  , length
   , errorIx
   , errorImpossible
   ) where
 
+import           Prelude                         as P hiding (length, null)
 import           Control.DeepSeq                (NFData (..), deepseq)
 import           Control.Monad.ST               (ST)
 import           Data.Array.Massiv.Common.Ix
@@ -128,16 +131,26 @@ class Construct r ix e => Load r ix e where
     -> IO ()
 
 
+length :: Construct r ix e => Array r ix e -> Int
+length = totalElem . size
+{-# INLINE length #-}
+
+null :: Construct r ix e => Array r ix e -> Bool
+null !arr = 0 == length arr
+{-# INLINE null #-}
+
 
 errorImpossible :: String -> a
 errorImpossible fName =
   error $ fName ++ ": Impossible happened. Please report this error."
+--{-# NOINLINE errorImpossible #-}
 
 errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
 errorIx fName sz ix =
   error $
   fName ++
   ": Index out of bounds: " ++ show ix ++ " for Array of size: " ++ show sz
+--{-# NOINLINE errorIx #-}
 
 
 -- | This is just like safe `Data.Array.Massiv.Manifest.index` function, but it

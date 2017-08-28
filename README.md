@@ -402,11 +402,11 @@ mean                 38.40 ms   (38.03 ms .. 39.44 ms)
 std dev              1.225 ms   (303.9 μs .. 2.218 ms)
 
 benchmarking Sum (1600x1200)/Parallel/Massiv Ix2 U
-time                 559.3 ps   (555.9 ps .. 565.3 ps)
-                     1.000 R²   (0.999 R² .. 1.000 R²)
-mean                 560.1 ps   (558.1 ps .. 563.5 ps)
-std dev              9.664 ps   (5.124 ps .. 16.50 ps)
-variance introduced by outliers: 28% (moderately inflated)
+time                 751.3 μs   (744.1 μs .. 758.7 μs)
+                     0.998 R²   (0.997 R² .. 0.999 R²)
+mean                 750.7 μs   (741.7 μs .. 762.3 μs)
+std dev              32.13 μs   (19.02 μs .. 50.21 μs)
+variance introduced by outliers: 34% (moderately inflated)
 
 benchmarking Sum (1600x1200)/Parallel/Repa DIM2 U
 time                 9.581 ms   (9.415 ms .. 9.803 ms)

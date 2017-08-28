@@ -27,9 +27,9 @@ import qualified Data.Vector.Primitive               as VP
 import qualified Data.Vector.Primitive.Mutable       as MVP
 import           Prelude                             hiding (mapM)
 
-data P = P
+data P = P deriving Show
 
-data instance Array P ix e = PArray { pComp :: Comp
+data instance Array P ix e = PArray { pComp :: !Comp
                                     , pSize :: !ix
                                     , pData :: !(VP.Vector e)
                                     }

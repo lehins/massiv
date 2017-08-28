@@ -6,10 +6,14 @@ module Data.Array.Massiv.SchedulerSpec (spec) where
 import           Control.Concurrent
 import           Control.Exception.Base        (ArithException (DivideByZero),
                                                 AsyncException (ThreadKilled))
-import           Data.Array.Massiv             as M
+import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.CommonSpec  (ArrIxP (..), assertException,
                                                 assertExceptionIO)
+import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.DelayedSpec ()
+import           Data.Array.Massiv.Manifest
+import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Ops         as M
 import           Data.Array.Massiv.Scheduler
 import           Data.List                     (sortBy)
 import           Prelude                       as P

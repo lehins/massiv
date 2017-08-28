@@ -15,7 +15,6 @@ module Data.Array.Massiv.Stencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
   , mapStencil
-  , sMap
 --  , mapStencilM
   ) where
 
@@ -31,14 +30,14 @@ import           Data.Default                       (Default (def))
 import           GHC.Exts                           (inline)
 
 
-mapStencil :: (Source r ix e, Eq e, Num e, Manifest r ix e) =>
+mapStencil :: (Source r ix e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array WD ix a
 mapStencil (Stencil b sSz sCenter stencilF) !arr =
   WDArray
     (DArray (getComp arr) sz (stencilF (borderIndex b arr)))
     (Just sSz)
     sCenter
-    (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))
+    (liftIndex2 (-) sz (liftIndex2 (-) sSz oneIndex))
     (stencilF (unsafeIndex arr))
   where
     !sz = size arr
@@ -53,18 +52,35 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
 --     (stencilM (borderIndex b arr))
 --     (Just sSz)
 --     sCenter
---     (liftIndex2 (-) sz (liftIndex2 (+) sSz sCenter))
+--     (liftIndex2 (-) sz (liftIndex2 (-) sSz oneIndex))
 --     (stencilM (unsafeIndex arr))
 --     deps
 --   where
 --     !sz = size arr
 -- {-# INLINE mapStencilM #-}
 
-sMap f stencil@(Stencil { stencilFunc = g }) =
-    stencil { stencilFunc = (\ s -> f . g s) }
-{-# INLINE sMap #-}
-
-
+-- | Construct a stencil from a function, which describes how to calculate the
+-- value at a point while having access to neighboring elements with a function
+-- that accepts idices relative to the center of stencil. Trying to index
+-- outside the stencil box will result in a runtime error upon stencil
+-- creation.
+--
+-- ==== __Example__
+--
+-- Below is an example of creating a `Stencil`, which, when is mapped over a
+-- 2-dimensional array, will compute an average of all elements in a 3x3 square
+-- for each element in that array. /Note:/ Make sure to add @INLINE@ pragma,
+-- otherwise performance will be terrible.
+--
+-- @@@
+-- average3x3Stencil :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
+-- average3x3Stencil b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
+--   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
+--      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
+--      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
+-- {-# INLINE average3x3Stencil #-}
+-- @@@
+--
 makeStencil
   :: (Index ix, Default e)
   => Border e -- ^ Border resolution technique
@@ -103,7 +119,7 @@ mkConvolutionStencil b !sSz !sCenter relStencil =
 
 -- | Make a stencil out of a Kernel Array
 mkConvolutionStencilFromKernel
-  :: (Manifest r ix e, Eq e, Num e)
+  :: (Manifest r ix e, Num e)
   => Border e
   -> Array r ix e
   -> Stencil ix e e

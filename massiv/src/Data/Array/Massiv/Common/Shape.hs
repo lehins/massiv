@@ -78,7 +78,7 @@ class ( Index (Lower ix)
   guard $ isSafeIndex m i
   start <- setIndex zeroIndex dim i
   cutSz <- setIndex (size arr) dim 1
-  newSz <- dropIndex cutSz dim
+  newSz <- dropDim cutSz dim
   return $ unsafeReshape newSz (unsafeExtract start cutSz arr)
 {-# INLINE (<!?>) #-}
 

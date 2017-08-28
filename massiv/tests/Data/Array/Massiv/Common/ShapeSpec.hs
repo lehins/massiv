@@ -4,10 +4,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Array.Massiv.Common.ShapeSpec (spec) where
 
-import           Data.Array.Massiv
+import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.IndexSpec (Sz (..), SzIx (..))
+import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.CommonSpec       (ArrIx (..))
+import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.DelayedSpec      ()
+import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.ManifestSpec     ()
 import           Test.Hspec
 import           Test.QuickCheck

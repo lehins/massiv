@@ -179,7 +179,7 @@ mapP_ f = imapP_ (const f)
 {-# INLINE mapP_ #-}
 
 
--- | Map an IO action, that is index aware, over an array in parallel, while
+-- | Map an index aware IO action, over an array in parallel, while
 -- discarding the result.
 imapP_ :: Source r ix a => (ix -> a -> IO b) -> Array r ix a -> IO ()
 imapP_ f arr = do

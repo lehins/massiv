@@ -9,7 +9,7 @@ module Main where
 
 
 import           Criterion.Main
-import           Data.Array.Massiv                 as M
+import           Data.Array.Massiv.Common                 as M
 import           Data.Array.Repa                   as R
 -- import           Data.Array.Massiv.Common.Ix       as M
 import           Prelude                           as P

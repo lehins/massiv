@@ -3,10 +3,9 @@
 module Main where
 
 
-import           CommonMassiv
+--import           CommonMassiv
 --import qualified VectorConvolve as VC
 import           Data.Array.Massiv                  as M
-import Data.Int
 
 -- lightF :: Num b => (Int, Int) -> b
 -- lightF !(i, j) =
@@ -14,9 +13,9 @@ import Data.Int
 --     (round (sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Float)) :: Int)
 -- {-# INLINE lightF #-}
 
--- arrMLight :: (Int, Int) -> M.Array U DIM2 Double
--- arrMLight arrSz = smakeArray Seq arrSz $ \(i, j) -> fromIntegral (i + j)
--- {-# INLINE arrMLight #-}
+arrMLight :: Ix2 -> Massiv Ix2 Double
+arrMLight arrSz = makeMassiv Seq arrSz $ \(i :. j) -> fromIntegral (i + j)
+{-# INLINE arrMLight #-}
 
 
 -- magnitude :: Array U DIM2 Double -> Array U DIM2 Double
@@ -31,4 +30,7 @@ import Data.Int
 -- {-# INLINE magnitude #-}
 
 main :: IO ()
-main = return ()
+main = do
+  let a = arrMLight (10 :. 20)
+      b = arrMLight (30 :. 20)
+  print $ M.zipWith (+) a (M.map (*2) b) !> 4 ! 2

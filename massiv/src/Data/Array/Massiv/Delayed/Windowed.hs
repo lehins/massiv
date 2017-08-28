@@ -1,3 +1,6 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -21,7 +24,7 @@ import           Control.Monad.ST.Unsafe
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Scheduler
-
+import GHC.TypeLits
 
 data WD
 
@@ -176,62 +179,79 @@ instance Load WD Ix2 e where
     waitTillDone scheduler
   {-# INLINE loadP #-}
 
+-- instance Load WD Ix3 e where
+--   loadS = loadWindowedSRec
+--   {-# INLINE loadS #-}
+--   loadP = loadWindowedPRec
+--   {-# INLINE loadP #-}
+
+-- instance Load WD Ix4 e where
+--   loadS = loadWindowedSRec
+--   {-# INLINE loadS #-}
+--   loadP = loadWindowedPRec
+--   {-# INLINE loadP #-}
+
+-- instance Load WD Ix5 e where
+--   loadS = loadWindowedSRec
+--   {-# INLINE loadS #-}
+--   loadP = loadWindowedPRec
+--   {-# INLINE loadP #-}
+
 instance Load WD Ix3 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
-instance Load WD Ix4 e where
+
+instance ( 4 <= n
+         , KnownNat n
+         , Index (Ix ((n - 1) - 1))
+         , Load WD (IxN (n - 1)) e
+         , IxN (n - 1) ~ Ix (n - 1)
+         ) =>
+         Load WD (IxN n) e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
-instance Load WD Ix5 e where
-  loadS = loadWindowedSRec
-  {-# INLINE loadS #-}
-  loadP = loadWindowedPRec
-  {-# INLINE loadP #-}
 
-loadWindowedSRec
-  :: (Index ix, Load WD (Lower ix) e) =>
-     Array WD ix e -> (Int -> ST s e) -> (Int -> e -> ST s ()) -> ST s ()
-loadWindowedSRec (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
-  let !szL = snd $ unconsDim sz
+loadWindowedSRec :: (Index ix, Load WD (Lower ix) e) =>
+  Array WD ix e -> (Int -> ST s e) -> (Int -> e -> ST s ()) -> ST s ()
+loadWindowedSRec (WDArray (DArray _ sz indexB) mStencilSz tix wSz indexW) _unsafeRead unsafeWrite = do
+  let !szL = tailDim sz
+      !bix = liftIndex2 (+) tix wSz
       !(t, tixL) = unconsDim tix
-      !(w, wSzL) = unconsDim wSz
       !pageElements = totalElem szL
-      -- Are there at least as many pages as there are available workers (2 for borders)
-      unsafeWriteLower i k val = unsafeWrite (k + pageElements * (t + i)) val
+      unsafeWriteLower i k val = unsafeWrite (k + pageElements * i) val
       {-# INLINE unsafeWriteLower #-}
   iterM_ zeroIndex tix 1 (<) $ \ !ix ->
     unsafeWrite (toLinearIndex sz ix) (indexB ix)
-  iterM_ (liftIndex2 (+) tix wSz) sz 1 (<) $ \ !ix ->
+  iterM_ bix sz 1 (<) $ \ !ix ->
     unsafeWrite (toLinearIndex sz ix) (indexB ix)
-  loopM_ t (< (w + t)) (+ 1) $ \ !i ->
+  loopM_ t (< headDim bix) (+ 1) $ \ !i ->
     let !lowerArr =
           (WDArray
-             (DArray c szL (\ !ix -> indexB (consDim i ix)))
-             ((snd . unconsDim) <$> mStencilSz) -- can safely drop the dim, only
-                                                -- last 2 matter anyways
+             (DArray Seq szL (indexB . consDim i))
+             (tailDim <$> mStencilSz) -- can safely drop the dim, only
+                                      -- last 2 matter anyways
              tixL
-             wSzL
-             (\ !ix -> indexW (consDim i ix)))
-    in loadS lowerArr unsafeRead (unsafeWriteLower i)
+             (tailDim wSz)
+             (indexW . consDim i))
+    in loadS lowerArr _unsafeRead (unsafeWriteLower i)
 {-# INLINE loadWindowedSRec #-}
 
 
-loadWindowedPRec
-  :: (Index ix, Load WD (Lower ix) e) =>
-     [Int] -> Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
+loadWindowedPRec :: (Index ix, Load WD (Lower ix) e) =>
+  [Int] -> Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
 loadWindowedPRec wIds (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
   scheduler <- makeScheduler wIds
   let !szL = snd $ unconsDim sz
+      !bix = liftIndex2 (+) tix wSz
       !(t, tixL) = unconsDim tix
-      !(w, wSzL) = unconsDim wSz
       !pageElements = totalElem szL
-      unsafeWriteLower i k val = unsafeWrite (k + pageElements * (t + i)) val
+      unsafeWriteLower i k = unsafeWrite (k + pageElements * i)
       {-# INLINE unsafeWriteLower #-}
       unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
       {-# INLINE unsafeWriteLowerST #-}
@@ -241,17 +261,17 @@ loadWindowedPRec wIds (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) u
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
   submitRequest scheduler $
     JobRequest $
-    iterM_ (liftIndex2 (+) tix wSz) sz 1 (<) $ \ !ix ->
+    iterM_ bix sz 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-  loopM_ t (< (w + t)) (+ 1) $ \ !i ->
+  loopM_ t (< headDim bix) (+ 1) $ \ !i ->
     let !lowerArr =
           (WDArray
-             (DArray c szL (\ !ix -> indexB (consDim i ix)))
-             ((snd . unconsDim) <$> mStencilSz) -- can safely drop the dim, only
-                                                -- last 2 matter anyways
+             (DArray Seq szL (indexB . consDim i))
+             (tailDim <$> mStencilSz) -- can safely drop the dim, only
+                                      -- last 2 matter anyways
              tixL
-             wSzL
-             (\ !ix -> indexW (consDim i ix)))
+             (tailDim wSz)
+             (indexW . consDim i))
     in submitRequest scheduler $
        JobRequest $
        stToIO $

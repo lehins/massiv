@@ -4,14 +4,13 @@
 module Main where
 
 import           Bench
+import           Bench.Massiv                 as A
+import           Bench.Massiv.Auto            as M hiding (tupleToIx2)
 import           Criterion.Main
-import           Data.Functor.Identity
-import           Data.Array.Massiv            as M
-import           Data.Array.Massiv.Stencil    as M
 import           Data.Array.Repa              as R
 import           Data.Array.Repa.Stencil      as R
 import           Data.Array.Repa.Stencil.Dim2 as R
-import           Data.Default                 (Default)
+import           Data.Functor.Identity
 import           Prelude                      as P
 
 
@@ -21,50 +20,44 @@ import           Prelude                      as P
 main :: IO ()
 main = do
   let t2 = (1600, 1200) :: (Int, Int)
-      !arrIx2T = computeAs U (arrDLightIx2T Seq t2) :: M.Array M.U Ix2T Double
-      !sobelOpT = sobelOperatorT Edge
   defaultMain
     [ bgroup
         "Stencil"
         [ bgroup
-            "Average"
+            "Average Seq"
             [ env
-                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-                (bench "Massiv Parallel" .
-                 whnf (computeAs U . mapStencil (average3x3Filter Edge)))
-            -- , env
-            --     (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-            --     (bench "Convolve Avg" .
-            --      whnf (computeAs U . mapStencil (average3x3FilterConv Edge)))
-            -- , env
-            --     (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-            --     (bench "Convolve Sum/avg" .
-            --      whnf (computeAs U . fmap (/9) . mapStencil (sum3x3Filter Edge)))
-            -- , env
-            --     (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-            --     (bench "Convolve Avg fmap" .
-            --      whnf (computeAs U . mapStencil (average3x3FilterConvMap' Edge)))
-            -- , env
-            --     (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-            --     (bench "Convolve Avg sMap" .
-            --      whnf (computeAs U . mapStencil (average3x3FilterConvMap Edge)))
-            -- , env
-            --     (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
-            --     (bench "Repa DIM2 U" .
-            --      whnf (computeUnboxedS . mapStencil2 BoundClamp averageStencil))
+                (return (massDLightIx2 Seq (tupleToIx2 t2)))
+                (bench "Massiv Ix2" .
+                 whnf (M.mapStencil (average3x3Filter Edge)))
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2" .
+                 whnf (computeAs U . A.mapStencil (average3x3Filter Edge)))
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Convolve Array Ix2" .
+                 whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
-                (bench "Repa Parallel" .
+                (bench "Repa DIM2 U" .
+                 whnf (computeUnboxedS . mapStencil2 BoundClamp averageStencil))
+            ]
+        , bgroup
+            "Average Par"
+            [ env
+                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+                (bench "Array Ix2" .
+                 whnf (computeAs U . A.mapStencil (average3x3Filter Edge)))
+            , env
+                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+                (bench "Convolve Array Ix2" .
+                 whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
+            , env
+                (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
+                (bench "Repa DIM2 U" .
                  whnf
                    (runIdentity .
                     computeUnboxedP . mapStencil2 BoundClamp averageStencil))
-            -- , env
-            --     (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
-            --     (bench "Repa DIM2 U" .
-            --      whnf
-            --        (runIdentity .
-            --         computeUnboxedP .
-            --         R.smap (/ 9) . mapStencil2 BoundClamp sumStencil))
             ]
         ]
     , bgroup
@@ -72,13 +65,13 @@ main = do
         [ bgroup
             "Horizontal"
             [ env
-                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (return (massDLightIx2 Seq (tupleToIx2 t2)))
                 (bench "Massiv Ix2 U" .
-                 whnf (computeAs U . mapStencil (sobelX Edge)))
+                 whnf (M.mapStencil (sobelX Edge)))
             , env
-                (return (computeAs U (arrDLightIx2T Seq t2)))
-                (bench "Massiv Ix2T U" .
-                 whnf (computeAs U . mapStencil (sobelTX Edge)))
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U" .
+                 whnf (computeAs U . A.mapStencil (sobelX Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . mapSobelRX))
@@ -87,37 +80,38 @@ main = do
             "Vertical"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Massiv Ix2 U" .
-                 whnf (computeAs U . mapStencil (sobelY Edge)))
-            , env
-                (return (computeAs U (arrDLightIx2T Seq t2)))
-                (bench "Massiv Ix2T U" .
-                 whnf (computeAs U . mapStencil (sobelTY Edge)))
+                (bench "Array Ix2 U" .
+                 whnf (computeAs U . A.mapStencil (sobelY Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . mapSobelRY))
             ]
         , bgroup
-            "Operator Fused"
-            [ bench "Massiv Ix2T U (no env)" $
-              whnf (computeAs U . mapStencil sobelOpT) arrIx2T
-            , env
+            "Operator Fused Seq"
+            [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Massiv Ix2 U" .
-                 whnf (computeAs U . mapStencil (sobelOperator Edge)))
-            , env
-                (return (computeAs U (arrDLightIx2T Seq t2)))
-                (bench "Massiv Ix2T U" .
-                 whnf (computeAs U . mapStencil (sobelOperatorT Edge)))
+                (bench "Array Ix2 U" .
+                 whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
-                (bench "Repa DIM2 U" . whnf sobelOperatorR)
+                (bench "Repa DIM2 U" . whnf (computeUnboxedS . sobelOperatorR))
+            ]
+        , bgroup
+            "Operator Fused Par"
+            [ env
+                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+                (bench "Array Ix2 U" .
+                 whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
+            , env
+                (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
+                (bench "Repa DIM2 U" .
+                 whnf (runIdentity . computeUnboxedP . sobelOperatorR))
             ]
         , bgroup
             "Operator Unfused"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Massiv Ix2 U" . whnf (sobelOperatorUnfused Edge))
+                (bench "Array Ix2 U" . whnf (sobelOperatorUnfused Edge))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf sobelOperatorRUnfused)

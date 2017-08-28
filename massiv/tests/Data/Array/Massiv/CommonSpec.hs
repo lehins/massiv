@@ -17,14 +17,19 @@ module Data.Array.Massiv.CommonSpec
 import           Control.DeepSeq                    (NFData, deepseq)
 import           Control.Exception                  (Exception, SomeException,
                                                      catch)
-import           Data.Array.Massiv
-import           Data.Array.Massiv.Common.IndexSpec (SzIx (..), Sz (..), SzZ (..))
+import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.IndexSpec (Sz (..), SzIx (..),
+                                                     SzZ (..))
+import           Data.Array.Massiv.Ops
 import           Data.Typeable
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 
 data Arr r ix e = Arr (Array r ix e) deriving Show
+
+-- TODO: Make Arr generate Par and Seq arbitrary, ArrS, being only sequential
+--data ArrS r ix e = ArrS (Array r ix e) deriving Show
 
 data ArrP r ix e = ArrP (Array r ix e) deriving Show
 

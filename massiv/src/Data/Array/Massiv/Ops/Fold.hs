@@ -356,10 +356,9 @@ fold :: (Source r ix e) =>
           -- function.
      -> Array r ix e -- ^ Source array
      -> e
-fold f !initAcc arr =
+fold f initAcc = \ arr -> -- unsafePerformIO $ foldlP f initAcc f initAcc arr
   case getComp arr of
     Seq        -> foldlS f initAcc arr
-    Par        -> unsafePerformIO $ foldlP f initAcc f initAcc arr
     ParOn wIds -> unsafePerformIO $ foldlOnP wIds f initAcc f initAcc arr
 {-# INLINE fold #-}
 
@@ -378,3 +377,23 @@ product = fold (*) 1
 {-# INLINE product #-}
 
 
+-- -- | Just like `ifoldrP`, but allows you to specify which cores to run
+-- -- computation on.
+-- foldOnP :: Source r ix a =>
+--            [Int] -> (a -> a -> a) -> a -> Array r ix a -> IO a
+-- foldOnP wIds f !initAcc !arr = do
+--   let !sz = size arr
+--   results <-
+--     splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+--       when (slackStart < totalLength) $
+--         submitRequest scheduler $
+--         JobRequest $
+--         iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i _ !acc ->
+--           return $ f (unsafeLinearIndex arr i) acc
+--       loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
+--         submitRequest scheduler $
+--           JobRequest $
+--           iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i _ !acc ->
+--             return $! f (unsafeLinearIndex arr i) acc
+--   return $ F.foldl' f initAcc $ map jobResult results
+-- {-# INLINE foldOnP #-}

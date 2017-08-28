@@ -1,10 +1,13 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs            #-}
 module Main where
 
-import           Bench
+import           Bench.Massiv          as A
+import           Bench.Massiv.Auto     as M hiding (tupleToIx2)
+import           Bench.Repa
+import           Bench.Vector
 import           Criterion.Main
-import           Data.Array.Massiv     as M
 import           Data.Array.Repa       as R
 import           Data.Functor.Identity
 import           Data.Vector.Unboxed   as VU
@@ -20,7 +23,10 @@ main = do
             "foldLeft"
             [ env
                 (return (tupleToIx2 t2))
-                (bench "Massiv Ix2 U" . whnf (foldlS (+) 0 . arrDLightIx2 Seq))
+                (bench "Array Ix2 U" . whnf (A.foldlS (+) 0 . arrDLightIx2 Seq))
+            , env
+                (return (tupleToIx2 t2))
+                (bench "Massiv Ix2" . whnf (M.foldlS (+) 0 . massDLightIx2 Seq))
             , env
                 (return t2)
                 (bench "Vector U" . whnf (VU.foldl' (+) 0 . vecLight2))
@@ -32,7 +38,10 @@ main = do
             "foldRight"
             [ env
                 (return (tupleToIx2 t2))
-                (bench "Massiv Ix2 U" . whnf (foldrS (+) 0 . arrDLightIx2 Seq))
+                (bench "Array Ix2 U" . whnf (A.foldrS (+) 0 . arrDLightIx2 Seq))
+            , env
+                (return (tupleToIx2 t2))
+                (bench "Massiv Ix2" . whnf (M.foldrS (+) 0 . massDLightIx2 Seq))
             , env
                 (return t2)
                 (bench "Vector U" . whnf (VU.foldr' (+) 0 . vecLight2))
@@ -47,7 +56,10 @@ main = do
             "foldLeft"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Massiv Ix2 U" . whnf (foldlS (+) 0))
+                (bench "Array Ix2 U" . whnf (A.foldlS (+) 0))
+            , env
+                (return (massDLightIx2 Seq (tupleToIx2 t2)))
+                (bench "Massiv Ix2" . whnf (M.foldlS (+) 0))
             , env
                 (return (vecLight2 t2))
                 (bench "Vector U" . whnf (VU.foldl' (+) 0))
@@ -59,7 +71,10 @@ main = do
             "foldRight"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Massiv Ix2 U" . whnf (foldrS (+) 0))
+                (bench "Array Ix2 U" . whnf (A.foldrS (+) 0))
+            , env
+                (return (massDLightIx2 Seq (tupleToIx2 t2)))
+                (bench "Massiv Ix2" . whnf (M.foldrS (+) 0))
             , env
                 (return (vecLight2 t2))
                 (bench "Vector U" . whnf (VU.foldr' (+) 0))
@@ -69,27 +84,37 @@ main = do
             ]
         ]
     , bgroup
-        "Sum (1600x1200)"
+        "Sum"
         [ bgroup
             "Sequential"
             [ env
-                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Massiv Ix2 U" . whnf (foldlS (+) 0))
+                (return (computeAs P (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 Sum" . whnf A.sum)
             , env
-                (return (vecLight2 t2))
-                (bench "Vector U" . whnf (VU.foldl' (+) 0))
+                (return (massDLightIx2 Seq (tupleToIx2 t2)))
+                (bench "Massiv Ix2 Sum" . whnf M.sum)
+            , env (return (vecLight2 t2)) (bench "Vector U" . whnf VU.sum)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
-                (bench "Repa DIM2 U" . whnf (R.foldAllS (+) 0))
+                (bench "Repa DIM2 U" . whnf R.sumAllS)
             ]
         , bgroup
             "Parallel"
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-                (bench "Massiv Ix2 U" . whnf (foldlP (+) 0 (+) 0))
+                (bench "Array Ix2 sum" . whnf (A.sum . A.toManifest))
+            , env
+                (return (massDLightIx2 Par (tupleToIx2 t2)))
+                (bench "Massiv Ix2 (sum)" . whnf M.sum)
+            , env
+                (return (massDLightIx2 Par (tupleToIx2 t2)))
+                (bench "Massiv Ix2 foldlP" . nfIO . (M.foldlP (+) 0 (+) 0))
+            , env
+                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+                (bench "Array Ix2 foldlP" . nfIO . (A.foldlP (+) 0 (+) 0))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
-                (bench "Repa DIM2 U" . whnf (runIdentity . R.foldAllP (+) 0))
+                (bench "Repa DIM2 U" . whnf (runIdentity . R.sumAllP))
             ]
         ]
     ]

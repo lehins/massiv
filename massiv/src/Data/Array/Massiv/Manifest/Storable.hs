@@ -26,7 +26,7 @@ import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           Prelude                             hiding (mapM)
 
-data S = S
+data S = S deriving Show
 
 data instance Array S ix e = SArray { sComp :: Comp
                                     , sSize :: !ix
