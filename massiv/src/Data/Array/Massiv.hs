@@ -64,6 +64,11 @@ module Data.Array.Massiv
   , (!)
   -- * Slicing
   , (!>)
+  -- * Stencil
+  , A.Stencil
+  , A.makeStencil
+  , A.mkConvolutionStencil
+  , mapStencil
   -- * Adding custom types
   , Layout(..)
   , A.Prim
@@ -72,13 +77,18 @@ module Data.Array.Massiv
   , NFData
   , module Data.Array.Massiv.Common.Ix
   ) where
+
 import           Control.DeepSeq                (NFData)
 import           Data.Array.Massiv.Common       as A
 import           Data.Array.Massiv.Common.Ix
 import qualified Data.Array.Massiv.Common.Shape as A
 import           Data.Array.Massiv.Delayed
+import           Data.Array.Massiv.Delayed.Windowed
 import           Data.Array.Massiv.Internal
 import qualified Data.Array.Massiv.Manifest     as A
+import qualified Data.Array.Massiv.Mutable      as A
+import qualified Data.Array.Massiv.Stencil      as A
+import           Data.Functor.Identity          (runIdentity)
 --import           Data.Array.Massiv.Mutable
 import qualified Data.Array.Massiv.Ops          as A
 import           Prelude                        as P hiding (length, map, mapM_,
@@ -301,7 +311,7 @@ toListIx2 (Massiv arr) = A.toListIx2 arr
 
 
 foldlS :: Layout ix e => (a -> e -> a) -> a -> Massiv ix e -> a
-foldlS f a = A.foldlS f a . delayM
+foldlS f acc = A.foldlS f acc . delayM
 {-# INLINE [~1] foldlS #-}
 
 
@@ -317,9 +327,19 @@ foldlP g b f a = A.foldlP g b f a . delayM
 
 
 sum :: (Num e, Layout ix e) => Massiv ix e -> e
-sum (Massiv arr) =
-  case getComp arr of
-    Seq        -> A.foldlS (+) 0 arr
-    ParOn wIds -> unsafePerformIO $ A.foldlOnP wIds (+) 0 (+) 0 arr
--- sum = A.sum . delayM
+-- sum (Massiv arr) =
+--   case getComp arr of
+--     Seq        -> A.foldlS (+) 0 arr
+--     ParOn wIds -> unsafePerformIO $ A.foldlOnP wIds (+) 0 (+) 0 arr
+sum = A.sum . delayM
 {-# INLINE [~1] sum #-}
+
+
+-- Stencil
+
+
+
+mapStencil :: (Layout ix e, Layout ix a, Load WD ix a) =>
+  A.Stencil ix e a -> Massiv ix e -> Massiv ix a
+mapStencil stencil (Massiv arr) = computeM (A.mapStencil stencil arr)
+{-# INLINE mapStencil #-}

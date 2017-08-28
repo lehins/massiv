@@ -18,15 +18,8 @@ module Bench.Massiv (
   , sobelX
   , sobelY
   , sobelOperator
-  , sobelOperatorAlt
   , sobelOperatorUnfused
-  , sobelTX
-  , sobelTY
-  , sobelOperatorT
-  , sum3x3Filter
   , average3x3Filter
-  , average3x3FilterConvMap
-  , average3x3FilterConvMap'
   , average3x3FilterConv
   ) where
 
@@ -42,6 +35,10 @@ import           Data.Default               (Default)
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
 instance Index ix => NFData (Array D ix e) where
+  rnf arr = size arr `seq` ()
+
+-- | Bogus DeepSeq for Manifest array so it can be fed to the `env`.
+instance Index ix => NFData (Array M ix e) where
   rnf arr = size arr `seq` ()
 
 
@@ -116,87 +113,40 @@ sobelY b = mkConvolutionStencil b (3 :. 3) (1 :. 1) accum where
 
 
 sobelOperator :: (Default b, Floating b) => Border b -> Stencil Ix2 b b
-sobelOperator b = sqrt <$> ((+) <$> sX <*> sY) where
-  !sX = (^ (2 :: Int)) <$> (sobelX b)
-  !sY = (^ (2 :: Int)) <$> (sobelY b)
+sobelOperator b = sqrt (sX + sY)
+  where
+    !sX = fmap (^ (2 :: Int)) (sobelX b)
+    !sY = fmap (^ (2 :: Int)) (sobelY b)
 {-# INLINE sobelOperator #-}
-
-
-sobelOperatorAlt :: (Default b, Floating b) => Border b -> Stencil Ix2 b b
-sobelOperatorAlt b = sqrt (sX + sY) where
-  !sX = fmap (^ (2 :: Int)) (sobelX b)
-  !sY = fmap (^ (2 :: Int)) (sobelY b)
-{-# INLINE sobelOperatorAlt #-}
 
 
 sobelOperatorUnfused
   :: (Unbox b, Eq b, Floating b)
   => Border b -> Array U Ix2 b -> Array U Ix2 b
-sobelOperatorUnfused b arr = computeAs U $ A.map sqrt (A.zipWith (+) sX sY) where
-  !sX = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelX b) arr)
-  !sY = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelY b) arr)
+sobelOperatorUnfused b arr = computeAs U $ A.map sqrt (A.zipWith (+) sX sY)
+  where
+    !sX = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelX b) arr)
+    !sY = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelY b) arr)
 {-# INLINE sobelOperatorUnfused #-}
 
 
-kirschWStencil
-  :: Num e
-  => Border e -> Stencil Ix2 e e
-kirschWStencil b = mkConvolutionStencil b (3 :. 3) (1 :. 1) accum
-  where
-    accum f =
-      f (-1 :. -1)   5  .
-      f (-1 :.  0) (-3) .
-      f (-1 :.  1) (-3) .
-      f ( 0 :. -1)   5  .
-      f ( 0 :.  1) (-3) .
-      f ( 1 :. -1)   5  .
-      f ( 1 :.  0) (-3) .
-      f ( 1 :.  1) (-3)
-    {-# INLINE accum #-}
-{-# INLINE kirschWStencil #-}
+-- kirschWStencil
+--   :: Num e
+--   => Border e -> Stencil Ix2 e e
+-- kirschWStencil b = mkConvolutionStencil b (3 :. 3) (1 :. 1) accum
+--   where
+--     accum f =
+--       f (-1 :. -1)   5  .
+--       f (-1 :.  0) (-3) .
+--       f (-1 :.  1) (-3) .
+--       f ( 0 :. -1)   5  .
+--       f ( 0 :.  1) (-3) .
+--       f ( 1 :. -1)   5  .
+--       f ( 1 :.  0) (-3) .
+--       f ( 1 :.  1) (-3)
+--     {-# INLINE accum #-}
+-- {-# INLINE kirschWStencil #-}
 
-
-
-sobelTX :: Num e => Border e -> Stencil Ix2T e e
-sobelTX b = mkConvolutionStencil b (3, 3) (1, 1) accum where
-  accum f =
-     f (-1, -1)   1  .
-     f ( 0, -1)   2  .
-     f ( 1, -1)   1  .
-     f (-1,  1) (-1) .
-     f ( 0,  1) (-2) .
-     f ( 1,  1) (-1)
-  {-# INLINE accum #-}
-{-# INLINE sobelTX #-}
-
-
-sobelTY :: Num e => Border e -> Stencil Ix2T e e
-sobelTY b = mkConvolutionStencil b (3, 3) (1, 1) accum where
-  accum f =
-     f (-1, -1)   1  .
-     f (-1,  0)   2  .
-     f (-1,  1)   1  .
-     f ( 1, -1) (-1) .
-     f ( 1,  0) (-2) .
-     f ( 1,  1) (-1)
-  {-# INLINE accum #-}
-{-# INLINE sobelTY #-}
-
-
-
-sobelOperatorT :: (Default b, Floating b) => Border b -> Stencil Ix2T b b
-sobelOperatorT b = sqrt <$> ((+) <$> sX <*> sY) where
-  !sX = (^ (2 :: Int)) <$> sobelTX b
-  !sY = (^ (2 :: Int)) <$> sobelTY b
-{-# INLINE sobelOperatorT #-}
-
-
-sum3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
-sum3x3Filter b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
-  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
-  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
-  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
-{-# INLINE sum3x3Filter #-}
 
 
 average3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
@@ -205,21 +155,6 @@ average3x3Filter b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
 {-# INLINE average3x3Filter #-}
-
-
-average3x3FilterConvMap :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
-average3x3FilterConvMap b = fmap (/9) $ mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
-  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
-  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
-  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
-{-# INLINE average3x3FilterConvMap #-}
-
-average3x3FilterConvMap' :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
-average3x3FilterConvMap' b = sMap (/9) $ mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
-  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
-  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
-  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
-{-# INLINE average3x3FilterConvMap' #-}
 
 
 average3x3FilterConv :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a

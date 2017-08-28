@@ -105,24 +105,28 @@ makeStencilM b !sSz !sCenter relStencil =
 
 
 instance Functor (Stencil ix e) where
-  fmap f stencil@(Stencil { stencilFunc = g }) =
-    stencil { stencilFunc = (\ s -> f . g s) }
-  --{-# INLINE fmap #-}
+  fmap f stencil@(Stencil {stencilFunc = g}) = stencil {stencilFunc = stF}
+    where
+      stF s = f . g s
+      {-# INLINE stF #-}
+  {-# INLINE fmap #-}
 
 
 -- TODO: Figure out interchange law (u <*> pure y = pure ($ y) <*> u) and issue
 -- with discarding size and center. Best idea so far is to increase stencil size to
--- the maximum one and shift the center of the other stencil so the yboth match
+-- the maximum one and shift the center of the other stencil so that they both match
 -- up. This approach would also remove requirement to validate the result
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance (Default e, Index ix) => Applicative (Stencil ix e) where
-  pure a = Stencil Edge (liftIndex (+ 1) zeroIndex) zeroIndex (const (const a))
+  pure a = Stencil Edge oneIndex zeroIndex (const (const a))
   {-# INLINE pure #-}
   (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
-    validateStencil def (Stencil sB newSz maxCenter (\gV ix -> (f1 gV ix) (f2 gV ix)))
+    validateStencil def (Stencil sB newSz maxCenter stF)
     where
-      newSz =
+      stF gV !ix = (f1 gV ix) (f2 gV ix)
+      {-# INLINE stF #-}
+      !newSz =
         liftIndex2
           (+)
           maxCenter
@@ -134,36 +138,63 @@ instance (Index ix, Default e, Num a) => Num (Stencil ix e a) where
   (+) = liftA2 (+)
   {-# INLINE (+) #-}
   (-) = liftA2 (-)
+  {-# INLINE (-) #-}
   (*) = liftA2 (*)
+  {-# INLINE (*) #-}
   negate = fmap negate
+  {-# INLINE negate #-}
   abs = fmap abs
+  {-# INLINE abs #-}
   signum = fmap signum
+  {-# INLINE signum #-}
   fromInteger = pure . fromInteger
+  {-# INLINE fromInteger #-}
 
 instance (Index ix, Default e, Fractional a) => Fractional (Stencil ix e a) where
   (/) = liftA2 (/)
+  {-# INLINE (/) #-}
   recip = fmap recip
+  {-# INLINE recip #-}
   fromRational = pure . fromRational
+  {-# INLINE fromRational #-}
 
 instance (Index ix, Default e, Floating a) => Floating (Stencil ix e a) where
   pi = pure pi
+  {-# INLINE pi #-}
   exp = fmap exp
+  {-# INLINE exp #-}
   log = fmap log
+  {-# INLINE log #-}
   sqrt = fmap sqrt
+  {-# INLINE sqrt #-}
   (**) = liftA2 (**)
+  {-# INLINE (**) #-}
   logBase = liftA2 logBase
+  {-# INLINE logBase #-}
   sin = fmap sin
+  {-# INLINE sin #-}
   cos = fmap cos
+  {-# INLINE cos #-}
   tan = fmap tan
+  {-# INLINE tan #-}
   asin = fmap asin
+  {-# INLINE asin #-}
   acos = fmap acos
+  {-# INLINE acos #-}
   atan = fmap atan
+  {-# INLINE atan #-}
   sinh = fmap sinh
+  {-# INLINE sinh #-}
   cosh = fmap cosh
+  {-# INLINE cosh #-}
   tanh = fmap tanh
+  {-# INLINE tanh #-}
   asinh = fmap asinh
+  {-# INLINE asinh #-}
   acosh = fmap acosh
+  {-# INLINE acosh #-}
   atanh = fmap atanh
+  {-# INLINE atanh #-}
 
 
 safeStencilIndex :: Index a => Array D a t -> a -> t

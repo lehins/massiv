@@ -67,9 +67,13 @@ computeM = Massiv . compute
 
 
 -- | Unwrap `Massiv` as a Delayed array.
-delayM :: Layout ix e => Massiv ix e -> Array D ix e
-delayM (Massiv arr) = delay arr
+delayM :: Layout ix e => Massiv ix e -> Array M ix e
+delayM (Massiv arr) = toManifest arr
 {-# INLINE [1] delayM #-}
+-- TODO: CPP for ghc 8.0
+-- delayM :: Layout ix e => Massiv ix e -> Array D ix e
+-- delayM (Massiv arr) = delay arr
+-- {-# INLINE [1] delayM #-}
 
 {-# RULES
 "delayM/computeM" forall arr . delayM (computeM arr) = arr

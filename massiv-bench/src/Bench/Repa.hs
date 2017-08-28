@@ -107,11 +107,11 @@ sobelRY = makeStencil2 3 3
 
 
 
-sobelOperatorR :: Array U DIM2 Double -> Array U DIM2 Double
-sobelOperatorR arr =
-  R.computeUnboxedS $ R.smap sqrt $ R.szipWith (+) arrX2 arrY2 where
+sobelOperatorR :: (Floating b, Source r b) => Array r DIM2 b -> Array PC5 DIM2 b
+sobelOperatorR arr = R.smap sqrt $ R.szipWith (+) arrX2 arrY2 where
     !arrX2 = R.smap (^ (2 :: Int)) (mapSobelRX arr)
     !arrY2 = R.smap (^ (2 :: Int)) (mapSobelRY arr)
+{-# INLINE sobelOperatorR #-}
 
 
 
@@ -120,17 +120,10 @@ sobelOperatorRUnfused arr =
   R.computeUnboxedS $ R.map sqrt $ R.zipWith (+) arrX2 arrY2 where
     !arrX2 = R.map (^ (2 :: Int)) $ computeUnboxedS (mapSobelRX arr)
     !arrY2 = R.map (^ (2 :: Int)) $ computeUnboxedS (mapSobelRY arr)
+{-# INLINE sobelOperatorRUnfused #-}
 
 
-
--- | Repa stencil base Sobel vertical convolution
-sumStencil
-  :: Fractional e => Stencil DIM2 e
-sumStencil = makeStencil2 3 3 (const (Just 1))
-{-# INLINE sumStencil #-}
-
--- | Repa stencil base Sobel vertical convolution
-averageStencil
-  :: Fractional e => Stencil DIM2 e
+-- | Repa 3x3 avg stencil
+averageStencil :: Fractional e => Stencil DIM2 e
 averageStencil = makeStencil2 3 3 (const (Just (1/9)))
 {-# INLINE averageStencil #-}

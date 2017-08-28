@@ -24,10 +24,12 @@ module Data.Array.Massiv.Manifest.Internal
   , toManifest
   ) where
 
+import           Control.Monad                  (void)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Ops.Fold     as M
+import           Data.Array.Massiv.Scheduler
 import           Data.Foldable                  (Foldable (..))
 import qualified Data.Vector                    as V
 import           GHC.Base                       (build)
@@ -141,13 +143,20 @@ instance (Index ix, Index (Lower ix)) =>
   {-# INLINE (<!?) #-}
 
 
--- (!!>)
---   :: forall r ix e.
---      (Manifest r ix e, Index (Lower ix))
---   => Array r ix e -> Int -> Array M (Lower ix) e
--- (!!>) !arr !i = MArray (getComp arr) szL (\ k -> unsafeLinearIndexM arr (k + kStart))
---   where
---     !sz = size arr
---     !szL = snd $ unconsDim sz
---     !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
--- {-# INLINE (!!>) #-}
+instance Index ix => Load M ix e where
+  loadS (MArray _ sz f) _ unsafeWrite =
+    iterM_ 0 (totalElem sz) 1 (<) $ \ !i ->
+      unsafeWrite i (f i)
+  {-# INLINE loadS #-}
+  loadP wIds (MArray _ sz f) _ unsafeWrite = do
+    void $ splitWork wIds (totalElem sz) $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        submitRequest scheduler $
+        JobRequest $
+        iterM_ start (start + chunkLength) 1 (<) $ \ !i ->
+          unsafeWrite i (f i)
+      submitRequest scheduler $
+        JobRequest $
+        iterM_ slackStart totalLength 1 (<) $ \ !i ->
+          unsafeWrite i (f i)
+  {-# INLINE loadP #-}

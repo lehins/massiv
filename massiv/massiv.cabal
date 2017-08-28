@@ -182,7 +182,8 @@ Test-Suite massiv-tests
   Type:               exitcode-stdio-1.0
   HS-Source-Dirs:     tests
   Main-Is:            Spec.hs
-  Other-Modules:      Data.Array.Massiv.Common.IndexSpec
+  Other-Modules:      Data.Array.MassivSpec
+                    , Data.Array.Massiv.Common.IndexSpec
                     , Data.Array.Massiv.Common.ShapeSpec
                     , Data.Array.Massiv.CommonSpec
                     , Data.Array.Massiv.DelayedSpec
@@ -191,7 +192,7 @@ Test-Suite massiv-tests
                     , Data.Array.Massiv.Ops.FoldSpec
                     , Data.Array.Massiv.Ops.TransformSpec
                     , Data.Array.Massiv.SchedulerSpec
-                    , Data.Array.MassivSpec
+                    , Data.Array.Massiv.StencilSpec
   Build-Depends:      base            >= 4.5 && < 5
                     , deepseq
                     , safe-exceptions

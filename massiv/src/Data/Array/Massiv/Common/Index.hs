@@ -569,6 +569,11 @@ headDim :: (Index ix, Index (Lower ix)) => ix -> Int
 headDim = fst . unconsDim
 {-# INLINE [1] headDim #-}
 
+tailDim :: (Index ix, Index (Lower ix)) => ix -> Lower ix
+tailDim = snd . unconsDim
+{-# INLINE [1] tailDim #-}
+
+
 lastDim :: (Index ix, Index (Lower ix)) => ix -> Int
 lastDim = snd . unsnocDim
 {-# INLINE [1] lastDim #-}
@@ -604,15 +609,6 @@ handleBorderIndex border !sz getVal !ix =
 --           !(i, ixL) = unconsDim ix
 -- {-# INLINE [1] repairIndexRec #-}
 
-
-
-repairIndexRec' :: (Index (Lower ix), Index ix) =>
-                  ix -> ix -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> ix
-repairIndexRec' !sz !ix rBelow rOver =
-    snocDim (repairIndex szL ixL rBelow rOver) (repairIndex sz0 ix0 rBelow rOver)
-    where !(szL, sz0) = unsnocDim sz
-          !(ixL, ix0) = unsnocDim ix
-{-# INLINE [1] repairIndexRec' #-}
 
 
 -- toLinearIndexRec :: (Index (Lower ix), Index ix) =>

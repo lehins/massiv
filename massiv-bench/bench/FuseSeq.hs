@@ -27,6 +27,10 @@ main = do
             (bench "Array Ix2 U" .
              whnf (computeAs U . A.map (+ 25) . arrDLightIx2 Seq))
         , env
+            (return (tupleToIx2T t2))
+            (bench "Array Ix2T U" .
+             whnf (computeAs U . A.map (+ 25) . arrDLightIx2T Seq))
+        , env
             (return (tupleToIx2 t2))
             (bench "Massiv Ix2" . whnf (M.map (+ 25) . massDLightIx2 Seq))
         , env (return t2) (bench "Vector U" . whnf (VU.map (+ 25) . vecLight2))

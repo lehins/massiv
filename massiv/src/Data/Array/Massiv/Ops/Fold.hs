@@ -356,7 +356,7 @@ fold :: (Source r ix e) =>
           -- function.
      -> Array r ix e -- ^ Source array
      -> e
-fold f initAcc arr =
+fold f initAcc = \ arr -> -- unsafePerformIO $ foldlP f initAcc f initAcc arr
   case getComp arr of
     Seq        -> foldlS f initAcc arr
     ParOn wIds -> unsafePerformIO $ foldlOnP wIds f initAcc f initAcc arr

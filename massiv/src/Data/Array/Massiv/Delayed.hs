@@ -21,6 +21,7 @@ import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Ops.Fold     as M
 import           Data.Array.Massiv.Scheduler
 import           Data.Foldable                  (Foldable (..))
+import           Data.Monoid                    ((<>))
 import           GHC.Base                       (build)
 import           Prelude                        hiding (zipWith)
 
@@ -110,11 +111,13 @@ instance Functor (Array D ix) where
   {-# INLINE fmap #-}
 
 
--- instance Index ix => Applicative (Array D ix) where
---   pure a = DArray Seq (liftIndex (+ 1) zeroIndex) (const a)
---   (<*>) (DArray c sz1 uIndex1) (DArray _ sz2 uIndex2) =
---     DArray c (liftIndex2 (*) sz1 sz2) $ \ !ix ->
---       (uIndex1 (liftIndex2 mod ix sz1)) (uIndex2 (liftIndex2 mod ix sz2))
+instance Index ix => Applicative (Array D ix) where
+  pure a = DArray Seq (liftIndex (+ 1) zeroIndex) (const a)
+  {-# INLINE pure #-}
+  (<*>) (DArray c1 sz1 uIndex1) (DArray c2 sz2 uIndex2) =
+    DArray (c1 <> c2) (liftIndex2 min sz1 sz2) $ \ !ix ->
+      (uIndex1 ix) (uIndex2 ix)
+  {-# INLINE (<*>) #-}
 
 
 -- | Row-major folding over a delayed array.

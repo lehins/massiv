@@ -28,6 +28,9 @@ import           Test.QuickCheck.Monadic
 
 data Arr r ix e = Arr (Array r ix e) deriving Show
 
+-- TODO: Make Arr generate Par and Seq arbitrary, ArrS, being only sequential
+--data ArrS r ix e = ArrS (Array r ix e) deriving Show
+
 data ArrP r ix e = ArrP (Array r ix e) deriving Show
 
 data ArrIx r ix e = ArrIx (Array r ix e) ix deriving Show
