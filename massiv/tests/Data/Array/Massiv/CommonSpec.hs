@@ -28,14 +28,19 @@ import           Test.QuickCheck.Monadic
 
 data Arr r ix e = Arr (Array r ix e) deriving Show
 
--- TODO: Make Arr generate Par and Seq arbitrary, ArrS, being only sequential
---data ArrS r ix e = ArrS (Array r ix e) deriving Show
+data ArrS r ix e = ArrS (Array r ix e) deriving Show
 
 data ArrP r ix e = ArrP (Array r ix e) deriving Show
 
 data ArrIx r ix e = ArrIx (Array r ix e) ix deriving Show
 
+data ArrIxS r ix e = ArrIxS (Array r ix e) ix deriving Show
+
 data ArrIxP r ix e = ArrIxP (Array r ix e) ix deriving Show
+
+
+instance Arbitrary Comp where
+  arbitrary = oneof [pure Seq, fmap ParOn arbitrary]
 
 
 -- | Arbitrary array
@@ -44,7 +49,8 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
   arbitrary = do
     SzZ sz <- arbitrary
     func <- arbitrary
-    return $ makeArray Seq sz func
+    comp <- arbitrary
+    return $ makeArray comp sz func
 
 
 -- | Arbitrary non-empty array
@@ -55,19 +61,36 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     func <- arbitrary
     return $ Arr $ makeArray Seq sz func
 
--- | Arbitrary non-empty array with a valid index
+-- | Arbitrary non-empty array
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
-         Arbitrary (ArrIx r ix e) where
+         Arbitrary (ArrS r ix e) where
   arbitrary = do
-    SzIx (Sz sz) ix <- arbitrary
+    Sz sz <- arbitrary
     func <- arbitrary
-    return $ ArrIx (makeArray Seq sz func) ix
+    return $ ArrS $ makeArray Seq sz func
 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrP r ix e) where
   arbitrary = do
     Arr arr <- arbitrary
     return $ ArrP (setComp Par arr)
+
+-- | Arbitrary non-empty array with a valid index
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
+         Arbitrary (ArrIx r ix e) where
+  arbitrary = do
+    SzIx (Sz sz) ix <- arbitrary
+    func <- arbitrary
+    comp <- arbitrary
+    return $ ArrIx (makeArray comp sz func) ix
+
+-- | Arbitrary non-empty array with a valid index
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
+         Arbitrary (ArrIxS r ix e) where
+  arbitrary = do
+    SzIx (Sz sz) ix <- arbitrary
+    func <- arbitrary
+    return $ ArrIxS (makeArray Seq sz func) ix
 
 
 -- | Arbitrary non-empty array with a valid index

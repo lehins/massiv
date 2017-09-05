@@ -5,6 +5,7 @@
 module Data.Array.Massiv.StencilSpec (spec) where
 
 import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.IndexSpec (SzIx (..), Sz(..))
 import           Data.Array.Massiv.CommonSpec       (Arr (..))
 import           Data.Array.Massiv.Delayed.Windowed (WD)
 import           Data.Array.Massiv.Manifest
@@ -29,6 +30,16 @@ import           Test.QuickCheck.Function
 singletonStencil :: Index ix => (Int -> Int) -> Border Int -> Stencil ix Int Int
 singletonStencil f b = makeStencil b oneIndex zeroIndex $ \ get -> f (get zeroIndex)
 {-# INLINE singletonStencil #-}
+
+
+-- dangerStencil :: Stencil Int Int Int
+-- dangerStencil =
+--   makeStencil Edge 3 1 $ \get -> get (get zeroIndex)
+
+-- Tests out of bounds stencil indexing
+-- dangerousStencil :: Index ix => (Int -> Int) -> Border Int -> SzIx ix -> Stencil ix Int Int
+-- dangerousStencil f b (SzIx (Sz sz) ix) =
+--   makeStencil b sz ix $ \get -> f (get (liftIndex2 (+) sz zeroIndex))
 
 
 

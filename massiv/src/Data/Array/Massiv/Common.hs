@@ -23,7 +23,6 @@ module Data.Array.Massiv.Common
   , Comp(..)
   --, Par) -- unsupprted export in GHC 7.10
   , pattern Par
-  , PrettyShow(..)
   , module Data.Array.Massiv.Common.Ix
   , module Data.Array.Massiv.Common.Index
   , evaluateAt
@@ -41,7 +40,6 @@ import           Data.Array.Massiv.Common.Index
 import           Data.Proxy
 import           Data.Typeable                  (Typeable, showsTypeRep,
                                                  typeRep)
-import           Text.Printf
 
 data family Array r ix e :: *
 
@@ -143,14 +141,14 @@ null !arr = 0 == length arr
 errorImpossible :: String -> a
 errorImpossible fName =
   error $ fName ++ ": Impossible happened. Please report this error."
---{-# NOINLINE errorImpossible #-}
+{-# NOINLINE errorImpossible #-}
 
 errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
 errorIx fName sz ix =
   error $
   fName ++
   ": Index out of bounds: " ++ show ix ++ " for Array of size: " ++ show sz
---{-# NOINLINE errorIx #-}
+{-# NOINLINE errorIx #-}
 
 
 -- | This is just like safe `Data.Array.Massiv.Manifest.index` function, but it
@@ -167,6 +165,6 @@ evaluateAt !arr !ix =
 {-# INLINE evaluateAt #-}
 
 
-class PrettyShow ix where
+-- class Show e => ShowPretty r ix e where
 
-  prettyShow :: PrintfArg e => String -> Array r ix e -> String
+--   prettyShow :: Array r ix e -> String

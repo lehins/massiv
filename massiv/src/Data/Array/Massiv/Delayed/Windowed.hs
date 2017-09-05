@@ -1,13 +1,13 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Rank2Types            #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Array.Massiv.Delayed.Windowed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -24,7 +24,6 @@ import           Control.Monad.ST.Unsafe
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Scheduler
-import GHC.TypeLits
 
 data WD
 
@@ -92,7 +91,7 @@ makeArrayWindowed !arr !wIx !wSz wUnsafeIndex
 
 
 
-instance Load WD Ix1 e where
+instance {-# OVERLAPPING #-} Load WD Ix1 e where
   loadS (WDArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
     iterM_ 0 it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
     iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
@@ -122,7 +121,7 @@ instance Load WD Ix1 e where
 
 
 
-instance Load WD Ix2 e where
+instance {-# OVERLAPPING #-} Load WD Ix2 e where
   loadS arr _ unsafeWrite = do
     let (WDArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) indexW) =
           arr
@@ -145,9 +144,9 @@ instance Load WD Ix2 e where
     let (WDArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) indexW) = arr
     scheduler <- makeScheduler wIds
     let (ib :. jb) = (wm + it :. wn + jt)
-        blockHeight = case mStencilSz of
-                        Just (i :. _) -> i
-                        _             -> 1
+        !blockHeight = case mStencilSz of
+                         Just (i :. _) -> i
+                         _             -> 1
         !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
     let loadBlock !it' !ib' =
           unrollAndJam blockHeight (it' :. ib') (jt :. jb) $ \ !ix ->
@@ -197,20 +196,28 @@ instance Load WD Ix2 e where
 --   loadP = loadWindowedPRec
 --   {-# INLINE loadP #-}
 
-instance Load WD Ix3 e where
+instance {-# OVERLAPPING #-} Load WD Ix3 e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
   {-# INLINE loadP #-}
 
 
-instance ( 4 <= n
-         , KnownNat n
-         , Index (Ix ((n - 1) - 1))
-         , Load WD (IxN (n - 1)) e
-         , IxN (n - 1) ~ Ix (n - 1)
-         ) =>
-         Load WD (IxN n) e where
+-- instance ( 4 <= n
+--          , KnownNat n
+--          , Index (Ix ((n - 1) - 1))
+--          , Load WD (IxN (n - 1)) e
+--          , IxN (n - 1) ~ Ix (n - 1)
+--          ) =>
+--          Load WD (IxN n) e where
+--   loadS = loadWindowedSRec
+--   {-# INLINE loadS #-}
+--   loadP = loadWindowedPRec
+--   {-# INLINE loadP #-}
+
+
+
+instance {-# OVERLAPPABLE #-} (Index ix, Load WD (Lower ix) e) => Load WD ix e where
   loadS = loadWindowedSRec
   {-# INLINE loadS #-}
   loadP = loadWindowedPRec
@@ -219,8 +226,9 @@ instance ( 4 <= n
 
 loadWindowedSRec :: (Index ix, Load WD (Lower ix) e) =>
   Array WD ix e -> (Int -> ST s e) -> (Int -> e -> ST s ()) -> ST s ()
-loadWindowedSRec (WDArray (DArray _ sz indexB) mStencilSz tix wSz indexW) _unsafeRead unsafeWrite = do
-  let !szL = tailDim sz
+loadWindowedSRec (WDArray darr mStencilSz tix wSz indexW) _unsafeRead unsafeWrite = do
+  let DArray _ sz indexB = darr
+      !szL = tailDim sz
       !bix = liftIndex2 (+) tix wSz
       !(t, tixL) = unconsDim tix
       !pageElements = totalElem szL
@@ -245,16 +253,17 @@ loadWindowedSRec (WDArray (DArray _ sz indexB) mStencilSz tix wSz indexW) _unsaf
 
 loadWindowedPRec :: (Index ix, Load WD (Lower ix) e) =>
   [Int] -> Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
-loadWindowedPRec wIds (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) unsafeRead unsafeWrite = do
+loadWindowedPRec wIds (WDArray darr mStencilSz tix wSz indexW) _unsafeRead unsafeWrite = do
   scheduler <- makeScheduler wIds
-  let !szL = snd $ unconsDim sz
+  let DArray _ sz indexB = darr
+      !szL = tailDim sz
       !bix = liftIndex2 (+) tix wSz
       !(t, tixL) = unconsDim tix
       !pageElements = totalElem szL
-      unsafeWriteLower i k = unsafeWrite (k + pageElements * i)
+      unsafeWriteLower i k = unsafeIOToST . unsafeWrite (k + pageElements * i)
       {-# INLINE unsafeWriteLower #-}
-      unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
-      {-# INLINE unsafeWriteLowerST #-}
+      -- unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
+      -- {-# INLINE unsafeWriteLowerST #-}
   submitRequest scheduler $
     JobRequest $
     iterM_ zeroIndex tix 1 (<) $ \ !ix ->
@@ -277,8 +286,8 @@ loadWindowedPRec wIds (WDArray (DArray c sz indexB) mStencilSz tix wSz indexW) u
        stToIO $
        loadS
          lowerArr
-         (\_ix -> unsafeIOToST $ unsafeRead _ix)
-         (unsafeWriteLowerST i)
+         (unsafeIOToST . _unsafeRead)
+         (unsafeWriteLower i)
   waitTillDone scheduler
 {-# INLINE loadWindowedPRec #-}
 
@@ -324,14 +333,14 @@ unrollAndJam !bH (it :. ib) (jt :. jb) f = do
 
 
 
-instance Load WD Ix2T e where
+instance {-# OVERLAPPING #-} Load WD Ix2T e where
   loadS arr _ unsafeWrite = do
     let (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) =
           arr
     let (ib, jb) = (wm + it, wn + jt)
         blockHeight = case mStencilSz of
                         Just (i, _) -> i
-                        _             -> 1
+                        _           -> 1
     iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
     iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
@@ -349,7 +358,7 @@ instance Load WD Ix2T e where
     let (ib, jb) = (wm + it, wn + jt)
         blockHeight = case mStencilSz of
                         Just (i, _) -> i
-                        _             -> 1
+                        _           -> 1
         !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
     let loadBlock !it' !ib' =
           unrollAndJamT blockHeight (it', ib') (jt, jb) $ \ !ix ->

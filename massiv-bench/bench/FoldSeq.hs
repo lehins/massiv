@@ -106,12 +106,12 @@ main = do
             , env
                 (return (massDLightIx2 Par (tupleToIx2 t2)))
                 (bench "Massiv Ix2 (sum)" . whnf M.sum)
-            , env
-                (return (massDLightIx2 Par (tupleToIx2 t2)))
-                (bench "Massiv Ix2 foldlP" . nfIO . (M.foldlP (+) 0 (+) 0))
-            , env
-                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-                (bench "Array Ix2 foldlP" . nfIO . (A.foldlP (+) 0 (+) 0))
+            -- , env
+            --     (return (massDLightIx2 Par (tupleToIx2 t2)))
+            --     (bench "Massiv Ix2 foldlP" . nfIO . (M.foldlP (+) 0 (+) 0))
+            -- , env
+            --     (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+            --     (bench "Array Ix2 foldlP" . nfIO . (A.foldlP (+) 0 (+) 0))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (runIdentity . R.sumAllP))
