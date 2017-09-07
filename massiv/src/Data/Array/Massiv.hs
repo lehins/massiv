@@ -1,3 +1,8 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP                    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MonoLocalBinds        #-}
@@ -26,6 +31,7 @@ module Data.Array.Massiv
   -- * Construction
   , makeMassiv
   , makeVector
+  , unwrapMassiv
   -- ** Range
   , range
   , rangeStep
@@ -96,8 +102,13 @@ import           Prelude                        as P hiding (length, map, mapM_,
                                                       zip, zip3, zipWith,
                                                       zipWith3)
 import           System.IO.Unsafe               (unsafePerformIO)
+import qualified Data.Vector.Generic            as V
+import qualified Data.Vector.Generic.Mutable    as VM
+import qualified Data.Vector.Unboxed            as VU
+import           GHC.TypeLits
+import           Control.Monad                  (liftM)
 
--- | Generate `Massiv` of a specified size using a function to creates it's
+-- | Generate `Massiv` of a specified size using a function that creates its
 -- elements. All further computation on generated Massiv will be done according
 -- the `Comp` strategy supplied.
 makeMassiv :: Layout ix e =>

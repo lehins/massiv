@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -35,6 +36,7 @@ import           Foreign.C.Types
 import           Foreign.Ptr                (FunPtr, IntPtr, Ptr, WordPtr)
 import           Foreign.StablePtr          (StablePtr)
 import           GHC.Fingerprint            (Fingerprint)
+import           GHC.TypeLits
 
 
 class Target (Repr e) ix e => Layout ix e where
@@ -158,6 +160,13 @@ instance (Target (Repr a /\ Repr b /\ Repr c /\ Repr d) ix (a, b, c, d)) =>
 instance (Target (Repr a /\ Repr b /\ Repr c /\ Repr d /\ Repr e) ix (a, b, c, d, e)) =>
          Layout ix (a, b, c, d, e) where
   type Repr (a, b, c, d, e) = Repr a /\ Repr b /\ Repr c /\ Repr d /\ Repr e
+
+
+instance Index ix => Layout ix Ix2 where
+  type Repr Ix2 = U
+
+instance (3 <= n, Unbox (Ix (n - 1)), Index ix) => Layout ix (IxN n) where
+  type Repr (IxN n) = U
 
 
 

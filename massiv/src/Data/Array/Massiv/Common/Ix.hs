@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE PatternSynonyms        #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeFamilies           #-}
@@ -26,9 +27,13 @@
 module Data.Array.Massiv.Common.Ix where
 
 import           Control.DeepSeq
+import           Control.Monad                  (liftM)
 import           Data.Array.Massiv.Common.Index
 import           Data.Monoid                    ((<>))
 import           Data.Proxy
+import qualified Data.Vector.Generic            as V
+import qualified Data.Vector.Generic.Mutable    as VM
+import qualified Data.Vector.Unboxed            as VU
 import           GHC.TypeLits
 
 
@@ -121,19 +126,35 @@ instance Ord (Ix (n - 1)) => Ord (IxN n) where
 
 toIx2 :: Ix2T -> Ix2
 toIx2 (i, j) = i :. j
-{-# INLINE [1] toIx2 #-}
+{-# INLINE toIx2 #-}
 
 fromIx2 :: Ix2 -> Ix2T
 fromIx2 (i :. j) = (i, j)
-{-# INLINE [1] fromIx2 #-}
+{-# INLINE fromIx2 #-}
 
 toIx3 :: Ix3T -> Ix3
 toIx3 (i, j, k) = i :> j :. k
-{-# INLINE [1] toIx3 #-}
+{-# INLINE toIx3 #-}
 
 fromIx3 :: Ix3 -> Ix3T
 fromIx3 (i :> j :. k) = (i, j, k)
-{-# INLINE [1] fromIx3 #-}
+{-# INLINE fromIx3 #-}
+
+toIx4 :: Ix4T -> Ix4
+toIx4 (i, j, k, l) = i :> j :> k :. l
+{-# INLINE toIx4 #-}
+
+fromIx4 :: Ix4 -> Ix4T
+fromIx4 (i :> j :> k :. l) = (i, j, k, l)
+{-# INLINE fromIx4 #-}
+
+toIx5 :: Ix5T -> Ix5
+toIx5 (i, j, k, l, m) = i :> j :> k :> l :. m
+{-# INLINE toIx5 #-}
+
+fromIx5 :: Ix5 -> Ix5T
+fromIx5 (i :> j :> k :> l :. m) = (i, j, k, l, m)
+{-# INLINE fromIx5 #-}
 
 
 instance Index Ix2 where
@@ -174,18 +195,6 @@ instance Index Ix2 where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :. j0) (i1 :. j1) = f i0 i1 :. f j0 j1
   {-# INLINE [1] liftIndex2 #-}
-  -- iter (i :. j) (m :. n) !inc cond !accInit f =
-  --   loop i (`cond` m) (+ inc) accInit $ \ !i' !acc0 ->
-  --     loop j (`cond` n) (+ inc) acc0 $ \ !j' -> f (i' :. j')
-  -- {-# INLINE iter #-}
-  -- iterM (i :. j) (m :. n) !inc cond !accInit f =
-  --   loopM i (`cond` m) (+ inc) accInit $ \ !i' !acc0 ->
-  --     loopM j (`cond` n) (+ inc) acc0 $ \ !j' -> f (i' :. j')
-  -- {-# INLINE iterM #-}
-  -- iterM_ (i :. j) (m :. n) !inc cond f =
-  --   loopM_ i (`cond` m) (+ inc) $ \ !i' ->
-  --     loopM_ j (`cond` n) (+ inc) $ \ !j' -> f (i' :. j')
-  -- {-# INLINE iterM_ #-}
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
@@ -229,16 +238,6 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :> j0 :. k0) (i1 :> j1 :. k1) = f i0 i1 :> f j0 j1 :. f k0 k1
   {-# INLINE [1] liftIndex2 #-}
-  -- iter (i :> j :. k) (m :> n :. o) !inc cond !accInit f =
-  --   loop i (`cond` m) (+ inc) accInit $ \ !i' !acc0 ->
-  --     loop j (`cond` n) (+ inc) acc0 $ \ !j' !acc1 ->
-  --       loop k (`cond` o) (+ inc) acc1 $ \ !k' -> f (i' :> j' :. k')
-  -- {-# INLINE iter #-}
-  -- iterM (i :> j :. k) (m :> n :. o) !inc cond !accInit f =
-  --   loopM i (`cond` m) (+ inc) accInit $ \ !i' !acc0 ->
-  --     loopM j (`cond` n) (+ inc) acc0 $ \ !j' !acc1 ->
-  --       loopM k (`cond` o) (+ inc) acc1 $ \ !k' -> f (i' :> j' :. k')
-  -- {-# INLINE iterM #-}
 
 instance (4 <= n,
           KnownNat n,
@@ -277,49 +276,154 @@ instance (4 <= n,
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i1 :> ix1) (i2 :> ix2) = f i1 i2 :> liftIndex2 f ix1 ix2
   {-# INLINE [1] liftIndex2 #-}
-  -- iter (k0 :> sIxL) (k1 :> eIxL) !inc cond !accInit f =
-  --   loop k0 (`cond` k1) (+ inc) accInit $ \ !i !accI ->
-  --     iter sIxL eIxL inc cond accI $ \ !ix -> f (i :> ix)
-  -- {-# INLINE iter #-}
-  -- iterM (k0 :> sIxL) (k1 :> eIxL) !inc cond !accInit f =
-  --   loopM k0 (`cond` k1) (+ inc) accInit $ \ !i !accI ->
-  --     iterM sIxL eIxL inc cond accI $ \ !ix -> f (i :> ix)
-  -- {-# INLINE iterM #-}
 
 
 
+---- Unbox Ix
+
+-- | Unboxing of a `Ix2`.
+instance VU.Unbox Ix2
+
+newtype instance VU.MVector s Ix2 = MV_Ix2 (VU.MVector s Ix2T)
+
+instance VM.MVector VU.MVector Ix2 where
+  basicLength (MV_Ix2 mvec) = VM.basicLength mvec
+  {-# INLINE basicLength #-}
+  basicUnsafeSlice idx len (MV_Ix2 mvec) = MV_Ix2 (VM.basicUnsafeSlice idx len mvec)
+  {-# INLINE basicUnsafeSlice #-}
+  basicOverlaps (MV_Ix2 mvec) (MV_Ix2 mvec') = VM.basicOverlaps mvec mvec'
+  {-# INLINE basicOverlaps #-}
+  basicUnsafeNew len = MV_Ix2 `liftM` VM.basicUnsafeNew len
+  {-# INLINE basicUnsafeNew #-}
+  basicUnsafeReplicate len val = MV_Ix2 `liftM` VM.basicUnsafeReplicate len (fromIx2 val)
+  {-# INLINE basicUnsafeReplicate #-}
+  basicUnsafeRead (MV_Ix2 mvec) idx = toIx2 `liftM` VM.basicUnsafeRead mvec idx
+  {-# INLINE basicUnsafeRead #-}
+  basicUnsafeWrite (MV_Ix2 mvec) idx val = VM.basicUnsafeWrite mvec idx (fromIx2 val)
+  {-# INLINE basicUnsafeWrite #-}
+  basicClear (MV_Ix2 mvec) = VM.basicClear mvec
+  {-# INLINE basicClear #-}
+  basicSet (MV_Ix2 mvec) val = VM.basicSet mvec (fromIx2 val)
+  {-# INLINE basicSet #-}
+  basicUnsafeCopy (MV_Ix2 mvec) (MV_Ix2 mvec') = VM.basicUnsafeCopy mvec mvec'
+  {-# INLINE basicUnsafeCopy #-}
+  basicUnsafeMove (MV_Ix2 mvec) (MV_Ix2 mvec') = VM.basicUnsafeMove mvec mvec'
+  {-# INLINE basicUnsafeMove #-}
+  basicUnsafeGrow (MV_Ix2 mvec) len = MV_Ix2 `liftM` VM.basicUnsafeGrow mvec len
+  {-# INLINE basicUnsafeGrow #-}
+#if MIN_VERSION_vector(0,11,0)
+  basicInitialize (MV_Ix2 mvec) = VM.basicInitialize mvec
+  {-# INLINE basicInitialize #-}
+#endif
+
+
+newtype instance VU.Vector Ix2 = V_Ix2 (VU.Vector Ix2T)
+
+instance V.Vector VU.Vector Ix2 where
+  basicUnsafeFreeze (MV_Ix2 mvec) = V_Ix2 `liftM` V.basicUnsafeFreeze mvec
+  {-# INLINE basicUnsafeFreeze #-}
+  basicUnsafeThaw (V_Ix2 vec) = MV_Ix2 `liftM` V.basicUnsafeThaw vec
+  {-# INLINE basicUnsafeThaw #-}
+  basicLength (V_Ix2 vec) = V.basicLength vec
+  {-# INLINE basicLength #-}
+  basicUnsafeSlice idx len (V_Ix2 vec) = V_Ix2 (V.basicUnsafeSlice idx len vec)
+  {-# INLINE basicUnsafeSlice #-}
+  basicUnsafeIndexM (V_Ix2 vec) idx = toIx2 `liftM` V.basicUnsafeIndexM vec idx
+  {-# INLINE basicUnsafeIndexM #-}
+  basicUnsafeCopy (MV_Ix2 mvec) (V_Ix2 vec) = V.basicUnsafeCopy mvec vec
+  {-# INLINE basicUnsafeCopy #-}
+  elemseq _ = seq
+  {-# INLINE elemseq #-}
 
 
 
--- A low level optimizations, that marginally (by 1%) imroves performance.
---{-# LANGUAGE UnboxedTuples    #-}
---{-# LANGUAGE MagicHash        #-}
--- import GHC.Prim
--- import GHC.Int
-
--- fromLinearIx :: Ix n -> Int -> Ix n
--- fromLinearIx (_ :. I# n#) (I# k#) =
---   case k# `quotRemInt#` n# of
---     (# i#, j# #) -> I# i# :. I# j#
--- fromLinearIx (_ :> ix) (I# k#) =
---   case fromLinearIxAcc# ix k# of
---     (# q#, ix' #) -> I# q# :> ix'
--- {-# INLINE [1] fromLinearIx #-}
+---- Unbox Ix
 
 
--- fromLinearIxAcc :: Ix n -> Int -> (Int, Ix n)
--- fromLinearIxAcc ix (I# k#) = case fromLinearIxAcc# ix k# of
---                                (# q#, ix' #) -> (I# q#, ix')
--- {-# INLINE [1] fromLinearIxAcc #-}
 
--- fromLinearIxAcc# :: Ix n -> Int# -> (# Int#, Ix n #)
--- fromLinearIxAcc# (_ :. I# n#) k# =
---   case k# `quotRemInt#` n# of
---     (# q#, r# #) -> (# q#, I# q# :. I# r# #)
--- fromLinearIxAcc# (I# m# :> ix) k# =
---   case fromLinearIxAcc# ix k# of
---     (# kL#, ixL #) ->
---       case kL# `quotRemInt#` m# of
---         (# q#, r# #) -> (# q#, I# r# :> ixL #)
--- {-# INLINE [1] fromLinearIxAcc# #-}
+-- | Unboxing of a `IxN`.
+instance (3 <= n, VU.Unbox (Ix (n-1))) => VU.Unbox (IxN n)
+
+newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (Ix (n-1)))
+
+instance (3 <= n, VU.Unbox (Ix (n-1))) => VM.MVector VU.MVector (IxN n) where
+  basicLength (MV_IxN (_, mvec)) = VM.basicLength mvec
+  {-# INLINE basicLength #-}
+  basicUnsafeSlice idx len (MV_IxN (mvec1, mvec)) =
+    MV_IxN (VM.basicUnsafeSlice idx len mvec1, VM.basicUnsafeSlice idx len mvec)
+  {-# INLINE basicUnsafeSlice #-}
+  basicOverlaps (MV_IxN (mvec1, mvec)) (MV_IxN (mvec1', mvec')) =
+    VM.basicOverlaps mvec1 mvec1' && VM.basicOverlaps mvec mvec'
+  {-# INLINE basicOverlaps #-}
+  basicUnsafeNew len = do
+    iv <- VM.basicUnsafeNew len
+    ivs <- VM.basicUnsafeNew len
+    return $ MV_IxN (iv, ivs)
+  {-# INLINE basicUnsafeNew #-}
+  basicUnsafeReplicate len (i :> ix) = do
+    iv <- VM.basicUnsafeReplicate len i
+    ivs <- VM.basicUnsafeReplicate len ix
+    return $ MV_IxN (iv, ivs)
+  {-# INLINE basicUnsafeReplicate #-}
+  basicUnsafeRead (MV_IxN (mvec1, mvec)) idx = do
+    i <- VM.basicUnsafeRead mvec1 idx
+    ix <- VM.basicUnsafeRead mvec idx
+    return (i :> ix)
+  {-# INLINE basicUnsafeRead #-}
+  basicUnsafeWrite (MV_IxN (mvec1, mvec)) idx (i :> ix) = do
+    VM.basicUnsafeWrite mvec1 idx i
+    VM.basicUnsafeWrite mvec idx ix
+  {-# INLINE basicUnsafeWrite #-}
+  basicClear (MV_IxN (mvec1, mvec)) =
+    VM.basicClear mvec1 >> VM.basicClear mvec
+  {-# INLINE basicClear #-}
+  basicSet (MV_IxN (mvec1, mvec)) (i :> ix) =
+    VM.basicSet mvec1 i >> VM.basicSet mvec ix
+  {-# INLINE basicSet #-}
+  basicUnsafeCopy (MV_IxN (mvec1, mvec)) (MV_IxN (mvec1', mvec')) =
+    VM.basicUnsafeCopy mvec1 mvec1' >> VM.basicUnsafeCopy mvec mvec'
+  {-# INLINE basicUnsafeCopy #-}
+  basicUnsafeMove (MV_IxN (mvec1, mvec)) (MV_IxN (mvec1', mvec')) =
+    VM.basicUnsafeMove mvec1 mvec1' >> VM.basicUnsafeMove mvec mvec'
+  {-# INLINE basicUnsafeMove #-}
+  basicUnsafeGrow (MV_IxN (mvec1, mvec)) len = do
+    iv <- VM.basicUnsafeGrow mvec1 len
+    ivs <- VM.basicUnsafeGrow mvec len
+    return $ MV_IxN (iv, ivs)
+  {-# INLINE basicUnsafeGrow #-}
+#if MIN_VERSION_vector(0,11,0)
+  basicInitialize (MV_IxN (mvec1, mvec)) =
+    VM.basicInitialize mvec1 >> VM.basicInitialize mvec
+  {-# INLINE basicInitialize #-}
+#endif
+
+
+newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n-1)))
+
+instance (3 <= n, VU.Unbox (Ix (n-1))) => V.Vector VU.Vector (IxN n) where
+  basicUnsafeFreeze (MV_IxN (mvec1, mvec)) = do
+    iv <- V.basicUnsafeFreeze mvec1
+    ivs <- V.basicUnsafeFreeze mvec
+    return $ V_IxN (iv, ivs)
+  {-# INLINE basicUnsafeFreeze #-}
+  basicUnsafeThaw (V_IxN (vec1, vec)) = do
+    imv <- V.basicUnsafeThaw vec1
+    imvs <- V.basicUnsafeThaw vec
+    return $ MV_IxN (imv, imvs)
+  {-# INLINE basicUnsafeThaw #-}
+  basicLength (V_IxN (_, vec)) = V.basicLength vec
+  {-# INLINE basicLength #-}
+  basicUnsafeSlice idx len (V_IxN (vec1, vec)) = do
+    V_IxN (V.basicUnsafeSlice idx len vec1, V.basicUnsafeSlice idx len vec)
+  {-# INLINE basicUnsafeSlice #-}
+  basicUnsafeIndexM (V_IxN (vec1, vec)) idx = do
+    i <- V.basicUnsafeIndexM vec1 idx
+    ix <- V.basicUnsafeIndexM vec idx
+    return (i :> ix)
+  {-# INLINE basicUnsafeIndexM #-}
+  basicUnsafeCopy (MV_IxN (mvec1, mvec)) (V_IxN (vec1, vec)) =
+    V.basicUnsafeCopy mvec1 vec1 >> V.basicUnsafeCopy mvec vec
+  {-# INLINE basicUnsafeCopy #-}
+  elemseq _ = seq
+  {-# INLINE elemseq #-}
 
