@@ -11,6 +11,7 @@
 --
 module Data.Array.Massiv.Stencil
   ( Stencil
+  , Elt
   , makeStencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
@@ -24,21 +25,22 @@ import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Delayed.Windowed
 --import           Data.Array.Massiv.Delayed.WindowedM
 import           Data.Array.Massiv.Manifest
-import           Data.Array.Massiv.Ops.Fold         (ifoldlS)
 import           Data.Array.Massiv.Stencil.Internal
+import           Data.Array.Massiv.Stencil.Convolution
 import           Data.Default                       (Default (def))
 import           GHC.Exts                           (inline)
+
 
 
 mapStencil :: (Source r ix e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array WD ix a
 mapStencil (Stencil b sSz sCenter stencilF) !arr =
   WDArray
-    (DArray (getComp arr) sz (stencilF (borderIndex b arr)))
+    (DArray (getComp arr) sz (unElt . stencilF (Elt . borderIndex b arr)))
     (Just sSz)
     sCenter
     (liftIndex2 (-) sz (liftIndex2 (-) sSz oneIndex))
-    (stencilF (unsafeIndex arr))
+    (unElt . stencilF (Elt . unsafeIndex arr))
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
@@ -86,7 +88,7 @@ makeStencil
   => Border e -- ^ Border resolution technique
   -> ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
-  -> ((ix -> e) -> a) -- ^ Stencil function that receives another function as
+  -> ((ix -> Elt e) -> Elt a) -- ^ Stencil function that receives another function as
                       -- it's argument that can index elements of the source
                       -- array with respect to the center of the stencil.
   -> Stencil ix e a
@@ -97,39 +99,3 @@ makeStencil b !sSz !sCenter relStencil =
       (inline relStencil $ \ !ixD -> getVal (liftIndex2 (-) ix ixD))
     {-# INLINE stencil #-}
 {-# INLINE makeStencil #-}
-
-
-mkConvolutionStencil
-  :: (Index ix, Num e)
-  => Border e
-  -> ix
-  -> ix
-  -> ((ix -> e -> e -> e) -> e -> e)
-  -> Stencil ix e e
-mkConvolutionStencil b !sSz !sCenter relStencil =
-  validateStencil 0 $ Stencil b sSz sCenter stencil
-  where
-    stencil getVal !ix =
-      (inline relStencil $ \ !ixD !kVal !acc ->
-          getVal (liftIndex2 (-) ix ixD) * kVal + acc)
-      0
-    {-# INLINE stencil #-}
-{-# INLINE mkConvolutionStencil #-}
-
-
--- | Make a stencil out of a Kernel Array
-mkConvolutionStencilFromKernel
-  :: (Manifest r ix e, Num e)
-  => Border e
-  -> Array r ix e
-  -> Stencil ix e e
-mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
-  where
-    !sz = size kArr
-    !sCenter = (liftIndex (`div` 2) sz)
-    stencil getVal !ix = ifoldlS accum 0 kArr where
-      accum !acc !kIx !kVal =
-        getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx)) * kVal + acc
-      {-# INLINE accum #-}
-    {-# INLINE stencil #-}
-{-# INLINE mkConvolutionStencilFromKernel #-}

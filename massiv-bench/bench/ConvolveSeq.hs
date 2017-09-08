@@ -5,7 +5,6 @@ module Main where
 
 import           Bench
 import           Bench.Massiv                 as A
-import           Bench.Massiv.Auto            as M hiding (tupleToIx2)
 import           Criterion.Main
 import           Data.Array.Repa              as R
 import           Data.Array.Repa.Stencil      as R
@@ -26,14 +25,6 @@ main = do
         [ bgroup
             "Average Seq"
             [ env
-                (return (massDLightIx2 Seq (tupleToIx2 t2)))
-                (bench "Massiv Ix2" .
-                 whnf (M.mapStencil (average3x3Filter Edge)))
-            , env
-                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3Filter Edge)))
-            , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Convolve Array Ix2" .
                  whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
@@ -45,10 +36,6 @@ main = do
         , bgroup
             "Average Par"
             [ env
-                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-                (bench "Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3Filter Edge)))
-            , env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Convolve Array Ix2" .
                  whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
@@ -65,10 +52,6 @@ main = do
         [ bgroup
             "Horizontal"
             [ env
-                (return (massDLightIx2 Seq (tupleToIx2 t2)))
-                (bench "Massiv Ix2 U" .
-                 whnf (M.mapStencil (sobelX Edge)))
-            , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" .
                  whnf (computeAs U . A.mapStencil (sobelX Edge)))

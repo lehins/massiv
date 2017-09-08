@@ -148,7 +148,6 @@ sobelOperatorUnfused b arr = computeAs U $ A.map sqrt (A.zipWith (+) sX sY)
 -- {-# INLINE kirschWStencil #-}
 
 
-
 average3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
 average3x3Filter b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +

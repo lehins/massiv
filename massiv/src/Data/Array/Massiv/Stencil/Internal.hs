@@ -17,24 +17,103 @@
 module Data.Array.Massiv.Stencil.Internal where
 
 import           Control.Applicative
-import           Control.Monad                      (unless, void, when)
-import           Control.Monad.Primitive            (PrimMonad)
+import           Control.DeepSeq
+import           Control.Monad               (unless, void, when)
+import           Control.Monad.Primitive     (PrimMonad)
 import           Control.Monad.ST
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
-import           Data.Default                       (Default (def))
-import           GHC.Exts                           (inline)
+import           Data.Default                (Default (def))
+import           GHC.Exts                    (inline)
 
-import qualified Data.Vector.Unboxed                as VU
-import qualified Data.Vector.Unboxed.Mutable        as MVU
+import qualified Data.Vector.Unboxed         as VU
+import qualified Data.Vector.Unboxed.Mutable as MVU
+
 
 data Stencil ix e a = Stencil
   { stencilBorder :: Border e
   , stencilSize   :: !ix
   , stencilCenter :: !ix
-  , stencilFunc   :: (ix -> e) -> ix -> a
+  , stencilFunc   :: (ix -> Elt e) -> ix -> Elt a
   }
+
+instance (NFData e, Index ix) => NFData (Stencil ix e a) where
+  rnf (Stencil b sz ix f) = rnf b `seq` rnf sz `seq` rnf ix `seq` f `seq` ()
+
+
+newtype Elt e = Elt { unElt :: e }
+
+instance Functor Elt where
+  fmap f (Elt e) = Elt (f e)
+  {-# INLINE fmap #-}
+
+instance Applicative Elt where
+  pure = Elt
+  {-# INLINE pure #-}
+  (<*>) (Elt f) (Elt e) = Elt (f e)
+  {-# INLINE (<*>) #-}
+
+instance Num e => Num (Elt e) where
+  (+) = liftA2 (+)
+  {-# INLINE (+) #-}
+  (*) = liftA2 (*)
+  {-# INLINE (*) #-}
+  negate = fmap negate
+  {-# INLINE negate #-}
+  abs = fmap abs
+  {-# INLINE abs #-}
+  signum = fmap signum
+  {-# INLINE signum #-}
+  fromInteger = Elt . fromInteger
+  {-# INLINE fromInteger #-}
+
+instance Fractional e => Fractional (Elt e) where
+  (/) = liftA2 (/)
+  {-# INLINE (/) #-}
+  recip = fmap recip
+  {-# INLINE recip #-}
+  fromRational = pure . fromRational
+  {-# INLINE fromRational #-}
+
+instance Floating e => Floating (Elt e) where
+  pi = pure pi
+  {-# INLINE pi #-}
+  exp = fmap exp
+  {-# INLINE exp #-}
+  log = fmap log
+  {-# INLINE log #-}
+  sqrt = fmap sqrt
+  {-# INLINE sqrt #-}
+  (**) = liftA2 (**)
+  {-# INLINE (**) #-}
+  logBase = liftA2 logBase
+  {-# INLINE logBase #-}
+  sin = fmap sin
+  {-# INLINE sin #-}
+  cos = fmap cos
+  {-# INLINE cos #-}
+  tan = fmap tan
+  {-# INLINE tan #-}
+  asin = fmap asin
+  {-# INLINE asin #-}
+  acos = fmap acos
+  {-# INLINE acos #-}
+  atan = fmap atan
+  {-# INLINE atan #-}
+  sinh = fmap sinh
+  {-# INLINE sinh #-}
+  cosh = fmap cosh
+  {-# INLINE cosh #-}
+  tanh = fmap tanh
+  {-# INLINE tanh #-}
+  asinh = fmap asinh
+  {-# INLINE asinh #-}
+  acosh = fmap acosh
+  {-# INLINE acosh #-}
+  atanh = fmap atanh
+  {-# INLINE atanh #-}
+
 
 data Dependency ix = Dependency { depDimension :: Int
                                 , depDirection :: Int }
@@ -101,13 +180,10 @@ makeStencilM b !sSz !sCenter relStencil =
 
 
 
-
-
-
 instance Functor (Stencil ix e) where
   fmap f stencil@(Stencil {stencilFunc = g}) = stencil {stencilFunc = stF}
     where
-      stF s = f . g s
+      stF s = Elt . f . unElt . g s
       {-# INLINE stF #-}
   {-# INLINE fmap #-}
 
@@ -119,12 +195,12 @@ instance Functor (Stencil ix e) where
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance (Default e, Index ix) => Applicative (Stencil ix e) where
-  pure a = Stencil Edge oneIndex zeroIndex (const (const a))
+  pure a = Stencil Edge oneIndex zeroIndex (const (const (Elt a)))
   {-# INLINE pure #-}
   (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
     validateStencil def (Stencil sB newSz maxCenter stF)
     where
-      stF gV !ix = (f1 gV ix) (f2 gV ix)
+      stF gV !ix = Elt ((unElt (f1 gV ix)) (unElt (f2 gV ix)))
       {-# INLINE stF #-}
       !newSz =
         liftIndex2
@@ -211,7 +287,6 @@ validateStencil
   => e -> Stencil ix e a -> Stencil ix e a
 validateStencil d s@(Stencil _ sSz sCenter stencil) =
   let valArr = DArray Seq sSz (const d)
-  in stencil (safeStencilIndex valArr) sCenter `seq` s
+  in stencil (Elt . safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
-
 

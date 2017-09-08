@@ -15,7 +15,7 @@
 --
 module Data.Array.Massiv.Common.Index where
 
-import           Control.DeepSeq       (NFData)
+import           Control.DeepSeq       (NFData(..))
 import           Data.Functor.Identity (runIdentity)
 
 newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
@@ -83,7 +83,13 @@ data Border e =
               --
   deriving (Eq, Show)
 
-
+instance NFData e => NFData (Border e) where
+  rnf b = case b of
+            Fill e   -> rnf e
+            Wrap     -> ()
+            Edge     -> ()
+            Reflect  -> ()
+            Continue -> ()
 
 class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
