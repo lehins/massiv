@@ -14,7 +14,6 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Ops.Fold         (ifoldlS)
 import           Data.Array.Massiv.Stencil.Internal
-import           Data.Functor.Identity
 import           GHC.Exts                           (inline)
 
 
@@ -30,10 +29,9 @@ mkConvolutionStencil b !sSz !sCenter relStencil =
   validateStencil 0 $ Stencil b sSz sCenter stencil
   where
     stencil getVal !ix =
-      Identity
-        ((inline relStencil $ \ !ixD !kVal !acc ->
-            runIdentity (getVal (liftIndex2 (-) ix ixD)) * kVal + acc)
-           0)
+        (inline relStencil $ \ !ixD !kVal !acc ->
+           getVal (liftIndex2 (-) ix ixD) * kVal + acc)
+           0
     {-# INLINE stencil #-}
 {-# INLINE mkConvolutionStencil #-}
 
@@ -47,10 +45,10 @@ mkConvolutionStencilFromKernel
 mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
   where
     !sz = size kArr
-    !sCenter = (liftIndex (`div` 2) sz)
-    stencil getVal !ix = Identity (ifoldlS accum 0 kArr) where
+    !sCenter = liftIndex (`div` 2) sz
+    stencil getVal !ix = ifoldlS accum 0 kArr where
       accum !acc !kIx !kVal =
-        runIdentity (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
+        getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx)) * kVal + acc
       {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE mkConvolutionStencilFromKernel #-}

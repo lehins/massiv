@@ -25,7 +25,6 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
 import           Data.Default                (Default (def))
-import           Data.Functor.Identity
 import           GHC.Exts                    (inline)
 
 import qualified Data.Vector.Unboxed         as VU
@@ -36,7 +35,7 @@ data Stencil ix e a = Stencil
   { stencilBorder :: Border e
   , stencilSize   :: !ix
   , stencilCenter :: !ix
-  , stencilFunc   :: (ix -> Identity e) -> ix -> Identity a
+  , stencilFunc   :: (ix -> e) -> ix -> a
   }
 
 instance (NFData e, Index ix) => NFData (Stencil ix e a) where
@@ -110,7 +109,7 @@ makeStencilM b !sSz !sCenter relStencil =
 instance Functor (Stencil ix e) where
   fmap f stencil@(Stencil {stencilFunc = g}) = stencil {stencilFunc = stF}
     where
-      stF s = Identity . f . runIdentity . g s
+      stF s = f . g s
       {-# INLINE stF #-}
   {-# INLINE fmap #-}
 
@@ -122,12 +121,12 @@ instance Functor (Stencil ix e) where
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance (Default e, Index ix) => Applicative (Stencil ix e) where
-  pure a = Stencil Edge oneIndex zeroIndex (const (const (Identity a)))
+  pure a = Stencil Edge oneIndex zeroIndex (const (const a))
   {-# INLINE pure #-}
   (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
     validateStencil def (Stencil sB newSz maxCenter stF)
     where
-      stF gV !ix = Identity ((runIdentity (f1 gV ix)) (runIdentity (f2 gV ix)))
+      stF gV !ix = f1 gV ix (f2 gV ix)
       {-# INLINE stF #-}
       !newSz =
         liftIndex2
@@ -214,6 +213,6 @@ validateStencil
   => e -> Stencil ix e a -> Stencil ix e a
 validateStencil d s@(Stencil _ sSz sCenter stencil) =
   let valArr = DArray Seq sSz (const d)
-  in stencil (Identity . safeStencilIndex valArr) sCenter `seq` s
+  in stencil (safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
 
