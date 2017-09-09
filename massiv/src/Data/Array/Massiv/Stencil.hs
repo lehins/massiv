@@ -11,7 +11,7 @@
 --
 module Data.Array.Massiv.Stencil
   ( Stencil
-  , Elt
+  , Identity
   , makeStencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
@@ -28,6 +28,7 @@ import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Stencil.Internal
 import           Data.Array.Massiv.Stencil.Convolution
 import           Data.Default                       (Default (def))
+import           Data.Functor.Identity
 import           GHC.Exts                           (inline)
 
 
@@ -36,11 +37,11 @@ mapStencil :: (Source r ix e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array WD ix a
 mapStencil (Stencil b sSz sCenter stencilF) !arr =
   WDArray
-    (DArray (getComp arr) sz (unElt . stencilF (Elt . borderIndex b arr)))
+    (DArray (getComp arr) sz (runIdentity . stencilF (Identity . borderIndex b arr)))
     (Just sSz)
     sCenter
     (liftIndex2 (-) sz (liftIndex2 (-) sSz oneIndex))
-    (unElt . stencilF (Elt . unsafeIndex arr))
+    (runIdentity . stencilF (Identity . unsafeIndex arr))
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
@@ -88,7 +89,7 @@ makeStencil
   => Border e -- ^ Border resolution technique
   -> ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
-  -> ((ix -> Elt e) -> Elt a) -- ^ Stencil function that receives another function as
+  -> ((ix -> Identity e) -> Identity a) -- ^ Stencil function that receives another function as
                       -- it's argument that can index elements of the source
                       -- array with respect to the center of the stencil.
   -> Stencil ix e a
