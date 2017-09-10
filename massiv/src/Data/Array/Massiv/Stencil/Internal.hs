@@ -39,10 +39,13 @@ data Stencil ix e a = Stencil
   }
 
 instance (NFData e, Index ix) => NFData (Stencil ix e a) where
-  rnf (Stencil b sz ix f) = rnf b `seq` rnf sz `seq` rnf ix `seq` f `seq` ()
+  rnf (Stencil b sz ix f) = b `deepseq` sz `deepseq` ix `deepseq` f `seq` ()
 
 
-newtype Elt e = Elt { unElt :: e }
+newtype Elt e = Elt { unElt :: e } deriving Show
+
+instance NFData e => NFData (Elt e) where
+  rnf (Elt e) = rnf e
 
 instance Functor Elt where
   fmap f (Elt e) = Elt (f e)
