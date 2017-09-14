@@ -31,6 +31,7 @@ module Data.Array.Massiv.Mutable
   , unsafeWrite
   , sequenceP
   , sequenceOnP
+  , unsafeGenerateArray
   , unsafeGenerateArrayP
   ) where
 
@@ -204,9 +205,21 @@ sequenceP = sequenceOnP []
 -- {-# INLINE sequenceP' #-}
 
 
+
+
+-- | Create an array sequentially using mutable interface
+unsafeGenerateArray :: Mutable r ix e => ix -> (ix -> e) -> Array r ix e
+unsafeGenerateArray !sz f = runST $ do
+  marr <- unsafeNew sz
+  iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !k !ix ->
+    unsafeLinearWrite marr k (f ix)
+  unsafeFreeze Seq marr
+{-# INLINE unsafeGenerateArray #-}
+
+
 -- | Create an array in parallel using mutable interface
 unsafeGenerateArrayP :: Mutable r ix e => [Int] -> ix -> (ix -> e) -> Array r ix e
-unsafeGenerateArrayP wIds sz f = unsafePerformIO $ do
+unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
   marr <- unsafeNew sz
   splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->

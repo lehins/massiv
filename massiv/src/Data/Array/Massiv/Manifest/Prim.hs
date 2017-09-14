@@ -1,0 +1,131 @@
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
+-- |
+-- Module      : Data.Array.Massiv.Manifest.Primitive
+-- Copyright   : (c) Alexey Kuleshevich 2017
+-- License     : BSD3
+-- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
+-- Stability   : experimental
+-- Portability : non-portable
+--
+module Data.Array.Massiv.Manifest.Prim
+  ( P(..)
+  , Array(..)
+  , Prim
+  ) where
+
+import           Control.DeepSeq                     (NFData (..), deepseq)
+import           Data.Array.Massiv.Common
+import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Delayed           (eq)
+import           Data.Array.Massiv.Manifest.Internal
+import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Ops.Construct
+import           Data.Primitive                      (sizeOf)
+import           Data.Primitive.ByteArray
+import           Data.Primitive.Types                (Prim)
+import           GHC.Exts                            (IsList (..))
+import           Prelude                             hiding (mapM)
+
+data P = P deriving Show
+
+data instance Array P ix e = PArray { pComp :: !Comp
+                                    , pSize :: !ix
+                                    , pData :: {-# UNPACK #-} !ByteArray
+                                    }
+
+instance (Index ix, NFData e) => NFData (Array P ix e) where
+  rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()
+  {-# INLINE rnf #-}
+
+instance (Prim e, Eq e, Index ix) => Eq (Array P ix e) where
+  (==) = eq (==)
+  {-# INLINE (==) #-}
+
+
+instance (Prim e, Index ix) => Construct P ix e where
+  size = pSize
+  {-# INLINE size #-}
+
+  getComp = pComp
+  {-# INLINE getComp #-}
+
+  setComp c arr = arr { pComp = c }
+  {-# INLINE setComp #-}
+
+  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
+  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
+  {-# INLINE unsafeMakeArray #-}
+
+instance (Prim e, Index ix) => Source P ix e where
+  unsafeLinearIndex (PArray _ _ a) = indexByteArray a
+  {-# INLINE unsafeLinearIndex #-}
+
+
+instance (Prim e, Index ix) => Shape P ix e where
+  type R P = M
+
+  unsafeReshape !sz !arr = arr { pSize = sz }
+  {-# INLINE unsafeReshape #-}
+
+  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
+  {-# INLINE unsafeExtract #-}
+
+
+instance (Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
+
+  (!?>) !arr = (toManifest arr !?>)
+  {-# INLINE (!?>) #-}
+
+  (<!?) !arr = (toManifest arr <!?)
+  {-# INLINE (<!?) #-}
+
+instance (Index ix, Prim e) => Manifest P ix e where
+
+  unsafeLinearIndexM (PArray _ _ a) = indexByteArray a
+  {-# INLINE unsafeLinearIndexM #-}
+
+
+instance (Index ix, Prim e) => Mutable P ix e where
+  data MArray s P ix e = MPArray !ix !(MutableByteArray s)
+
+  msize (MPArray sz _) = sz
+  {-# INLINE msize #-}
+
+  unsafeThaw (PArray _ sz a) = MPArray sz <$> unsafeThawByteArray a
+  {-# INLINE unsafeThaw #-}
+
+  unsafeFreeze comp (MPArray sz a) = PArray comp sz <$> unsafeFreezeByteArray a
+  {-# INLINE unsafeFreeze #-}
+
+  unsafeNew sz = MPArray sz <$> newByteArray (totalElem sz * sizeOf (undefined :: e))
+  {-# INLINE unsafeNew #-}
+
+  unsafeLinearRead (MPArray _ a) = readByteArray a
+  {-# INLINE unsafeLinearRead #-}
+
+  unsafeLinearWrite (MPArray _ v) = writeByteArray v
+  {-# INLINE unsafeLinearWrite #-}
+
+instance (Prim e, Index ix) => Target P ix e
+
+
+instance Prim e => IsList (Array P Ix1 e) where
+  type Item (Array P Ix1 e) = e
+  fromList = fromListIx1 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx1
+  {-# INLINE toList #-}
+
+
+instance Prim e => IsList (Array P Ix2 e) where
+  type Item (Array P Ix2 e) = [e]
+  fromList = fromListIx2 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx2
+  {-# INLINE toList #-}
+

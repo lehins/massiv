@@ -24,9 +24,10 @@ import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Ops.Construct
 import qualified Data.Vector.Unboxed                 as VU
-
 import qualified Data.Vector.Unboxed.Mutable         as MVU
+import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
 
 -- import           Control.Monad.ST                    (runST)
@@ -55,7 +56,7 @@ instance (VU.Unbox e, Index ix) => Construct U ix e where
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq !sz f = UArray Seq sz $ VU.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
   unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
@@ -118,33 +119,17 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
 instance (Index ix, VU.Unbox e) => Target U ix e
 
 
--- fromUnboxedArray :: VU.Unbox e => Array U ix e -> Array M ix e
--- fromUnboxedArray (UArray sz v) = MArray sz (VU.unsafeIndex v)
--- {-# INLINE fromUnboxedArray #-}
+instance VU.Unbox e => IsList (Array U Ix1 e) where
+  type Item (Array U Ix1 e) = e
+  fromList = fromListIx1 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx1
+  {-# INLINE toList #-}
 
 
--- generateM :: (Index ix, VU.Unbox a, Monad m) =>
---   ix -> (ix -> m a) -> m (Array U ix a)
--- generateM sz f =
---   UArray sz <$> VU.generateM (totalElem sz) (f . fromLinearIndex sz)
--- {-# INLINE generateM #-}
-
-
--- mapM :: (VU.Unbox b, Source r ix a, Monad m) =>
---   (a -> m b) -> Array r ix a -> m (Array U ix b)
--- mapM f arr = do
---   let !sz = size arr
---   v <- VU.generateM (totalElem sz) (f . unsafeLinearIndex arr)
---   return $ UArray sz v
--- {-# INLINE mapM #-}
-
--- imapM :: (VU.Unbox b, Source r ix a, Monad m) =>
---   (ix -> a -> m b) -> Array r ix a -> m (Array U ix b)
--- imapM f arr = do
---   let !sz = size arr
---   v <- VU.generateM (totalElem sz) $ \ !i ->
---          let !ix = fromLinearIndex sz i
---          in f ix (unsafeIndex arr ix)
---   return $ UArray sz v
--- {-# INLINE imapM #-}
-
+instance VU.Unbox e => IsList (Array U Ix2 e) where
+  type Item (Array U Ix2 e) = [e]
+  fromList = fromListIx2 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx2
+  {-# INLINE toList #-}

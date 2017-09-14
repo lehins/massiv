@@ -1,7 +1,8 @@
-resolver: lts-8.16
+resolver: nightly-2017-07-31
 packages:
 - '.'
 - '../massiv/'
-extra-deps: []
-flags: {}
-extra-package-dbs: []
+extra-deps:
+- repa-3.4.1.2
+- repa-algorithms-3.4.1.1
+allow-newer: true
