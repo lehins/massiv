@@ -11,6 +11,7 @@ module Bench.Massiv (
   , lightFuncIx2
   , lightFuncIx2T
   , arrDLightIx2
+  , arrRLightIx2
   , arrDHeavyIx2
   , arrDLightIx2T
   , arrDHeavyIx2T
@@ -62,6 +63,11 @@ lightFuncIx2T (i, j) = lightFunc i j
 arrDLightIx2 :: Comp -> Ix2 -> Array D Ix2 Double
 arrDLightIx2 comp arrSz = makeArray comp arrSz (\ (i :. j) -> lightFunc i j)
 {-# INLINE arrDLightIx2 #-}
+
+arrRLightIx2 :: Construct r Ix2 Double => r -> Comp -> Ix2 -> Array r Ix2 Double
+arrRLightIx2 _ comp arrSz = makeArray comp arrSz (\ (i :. j) -> lightFunc i j)
+{-# INLINE arrRLightIx2 #-}
+
 
 arrDHeavyIx2 :: Comp -> Ix2 -> Array D Ix2 Double
 arrDHeavyIx2 comp arrSz = makeArray comp arrSz (\ (i :. j) -> heavyFunc i j)

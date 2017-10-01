@@ -1,11 +1,4 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE CPP                    #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Array.Massiv
@@ -20,9 +13,9 @@ module Data.Array.Massiv
     --
     -- Massiv (Масси́в) is a Russian word for an array, so everywhere you see
     -- this word you can safely assume that it is the intended meaning. It
-    -- is pronounced like English word "massive", except with an accent on
+    -- is pronounced like English word _massive_, except with an accent on
     -- _i_. There is also a data type family `Array` in this library, which is a
-    -- more general way to deal with multi-dimnesional arrays. The benefit of
+    -- more general way to deal with multi-dimensional arrays. The benefit of
     -- using the wrapper `Massiv` data type instead, is that it will
     -- automatically handle fusion and deal with underlying representation for
     -- you, while with `Array` you have to keep track of it manually.
@@ -84,29 +77,22 @@ module Data.Array.Massiv
   , module Data.Array.Massiv.Common.Ix
   ) where
 
-import           Control.DeepSeq                (NFData)
-import           Data.Array.Massiv.Common       as A
+import           Control.DeepSeq                    (NFData)
+import           Data.Array.Massiv.Common           as A
 import           Data.Array.Massiv.Common.Ix
-import qualified Data.Array.Massiv.Common.Shape as A
+import qualified Data.Array.Massiv.Common.Shape     as A
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Delayed.Windowed
 import           Data.Array.Massiv.Internal
-import qualified Data.Array.Massiv.Manifest     as A
-import qualified Data.Array.Massiv.Mutable      as A
-import qualified Data.Array.Massiv.Stencil      as A
-import           Data.Functor.Identity          (runIdentity)
---import           Data.Array.Massiv.Mutable
-import qualified Data.Array.Massiv.Ops          as A
-import           Prelude                        as P hiding (length, map, mapM_,
-                                                      null, sum, unzip, unzip3,
-                                                      zip, zip3, zipWith,
-                                                      zipWith3)
-import           System.IO.Unsafe               (unsafePerformIO)
-import qualified Data.Vector.Generic            as V
-import qualified Data.Vector.Generic.Mutable    as VM
-import qualified Data.Vector.Unboxed            as VU
-import           GHC.TypeLits
-import           Control.Monad                  (liftM)
+import qualified Data.Array.Massiv.Manifest         as A
+-- import qualified Data.Array.Massiv.Mutable          as A
+import qualified Data.Array.Massiv.Stencil          as A
+import qualified Data.Array.Massiv.Ops              as A
+import           Prelude                            as P hiding (length, map,
+                                                          mapM_, null, sum,
+                                                          unzip, unzip3, zip,
+                                                          zip3, zipWith,
+                                                          zipWith3)
 
 -- | Generate `Massiv` of a specified size using a function that creates its
 -- elements. All further computation on generated Massiv will be done according
@@ -276,14 +262,6 @@ imapM_ f = A.imapM_ f . delayM
 iforM_ :: (Monad m, Layout ix e) => Massiv ix e -> (ix -> e -> m a) -> m ()
 iforM_ = flip imapM_
 {-# INLINE [~1] iforM_ #-}
-
-
-
-
-
-
-
-
 
 
 

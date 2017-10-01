@@ -14,36 +14,24 @@
 module Data.Array.Massiv.Manifest.BoxedStrict
   ( B (..)
   , Array(..)
-  -- * Creation
-  -- , generateM
-  -- -- * Mapping
-  -- , mapM
-  -- , imapM
-  -- -- * Conversion
-  -- , fromVectorBoxed
-  -- , toVectorBoxed
-  -- -- * Evaluation
-  -- , computeBoxedS
-  -- , computeBoxedP
-  -- , deepseq
-  -- , deepseqP
   ) where
 
-import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Control.Monad                       (void)
-import           Control.Monad.ST                    (runST)
+import           Control.DeepSeq                     (NFData (..))
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Delayed (eq)
+import           Data.Array.Massiv.Manifest.BoxedNF  (deepseqArray,
+                                                      deepseqArrayP)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Ops.Fold
-import           Data.Array.Massiv.Scheduler
 import           Data.Foldable                       (Foldable (..))
 import qualified Data.Primitive.Array                as A
 import           GHC.Base                            (build)
 import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
 
+-- | Array representation for Boxed elements. This structure is element and
+-- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
 data B = B deriving Show
 
 data instance Array B ix e = BArray { bComp :: !Comp
@@ -52,13 +40,14 @@ data instance Array B ix e = BArray { bComp :: !Comp
                                     }
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
-  rnf arr =
-    case getComp arr of
-      Seq        -> arr `deepseqArray` ()
-      Par        -> arr `deepseqArrayP` ()
-      ParOn wIds -> deepseqArrayOnP wIds arr ()
+  rnf (BArray comp sz arr) = -- comp `deepseq` sz `deepseq` a `seq` ()
+    case comp of
+      Seq        -> deepseqArray sz arr ()
+      ParOn wIds -> deepseqArrayP wIds sz arr ()
 
-
+instance (Index ix, Eq e) => Eq (Array B ix e) where
+  (==) = eq (==)
+  {-# INLINE (==) #-}
 
 instance Index ix => Construct B ix e where
   size = bSize
@@ -130,34 +119,6 @@ instance Index ix => Mutable B ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
--- | Loading a Boxed array in parallel only make sense if it's elements are
--- fully evaluated into NF.
-instance (Index ix, NFData e) => Target B ix e where
-
-  unsafeTargetWrite !mv !i e = e `deepseq` unsafeLinearWrite mv i e
-  {-# INLINE unsafeTargetWrite #-}
-
-
--- instance Index ix => Load B ix e where
---   loadS (BArray _ sz v) _ uWrite =
---     iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !i _ ->
---       uWrite i (V.unsafeIndex v i)
---   {-# INLINE loadS #-}
---   loadP wIds (BArray _ sz v) _ uWrite = do
---     void $
---       splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---           submitRequest scheduler $
---           JobRequest $
---           iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !i _ ->
---             uWrite i $ V.unsafeIndex v i
---         submitRequest scheduler $
---           JobRequest $
---           iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i _ ->
---             uWrite i $ V.unsafeIndex v i
---   {-# INLINE loadP #-}
-
-
 -- | Row-major folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
   foldl = lazyFoldlS
@@ -178,34 +139,4 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
-
-
-deepseqArray :: (Index ix, NFData a) => Array B ix a -> b -> b
-deepseqArray (BArray _ sz a) b =
-  iter 0 (totalElem sz) 1 (<) b $ \ !i acc -> A.indexArray a i `deepseq` acc
-{-# INLINE deepseqArray #-}
-
-
--- | Parallel version of `deepseq`: fully evaluate all elements of a boxed array in
--- parallel, while returning back the second argument.
-deepseqArrayP :: (Index ix, NFData a) => Array B ix a -> b -> b
-deepseqArrayP = deepseqArrayOnP []
-{-# INLINE deepseqArrayP #-}
-
-
-deepseqArrayOnP :: (Index ix, NFData a) => [Int] -> Array B ix a -> b -> b
-deepseqArrayOnP wIds (BArray _ sz v) b =
-  unsafePerformIO $ do
-    splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        submitRequest scheduler $
-        JobRequest $
-        loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
-          A.indexArray v k `deepseq` return ()
-      submitRequest scheduler $
-        JobRequest $
-        loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
-          A.indexArray v k `deepseq` return ()
-    return b
-{-# INLINE deepseqArrayOnP #-}
 

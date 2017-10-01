@@ -102,15 +102,15 @@ infixl 6  .+, .-
 {-# INLINE (.^) #-}
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
-(|*|) :: (Target r1 Ix2 e, Target r2 Ix2 e, Slice r1 Ix2 e, Slice r2 Ix2 e, Num e)
+(|*|) :: (Mutable r1 Ix2 e, Mutable r2 Ix2 e, Slice r1 Ix2 e, Slice r2 Ix2 e, Num e)
       => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e
 (|*|) = multArrs
 {-# INLINE (|*|) #-}
 
 
 multArrs :: forall r1 r2 e.
-            ( Target r1 Ix2 e
-            , Target r2 Ix2 e
+            ( Mutable r1 Ix2 e
+            , Mutable r2 Ix2 e
             , Slice r1 Ix2 e
             , Slice r2 Ix2 e
             , Num e

@@ -25,6 +25,7 @@ import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
 import           Data.Default                (Default (def))
+import           Data.Maybe                  (fromJust)
 import           GHC.Exts                    (inline)
 
 import qualified Data.Vector.Unboxed         as VU
@@ -154,7 +155,7 @@ makeStencilM b !sSz !sCenter relStencil =
     defArrA :: Array D ix a
     defArrA = DArray Seq sSz (const def)
     defArr = DArray Seq sSz (const def)
-    deps = toManifest $ fromVector' sRank $ VU.create makeDeps
+    deps = toManifest $ fromJust $ castFromVector sRank $ VU.create makeDeps
     -- TODO: switch to mutable Array, once it is implemented.
     makeDeps :: ST s (MVU.MVector s Int)
     makeDeps = do

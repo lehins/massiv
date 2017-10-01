@@ -26,6 +26,9 @@ main = do
                 (bench "Array Ix2 U" . whnf (A.foldlS (+) 0 . arrDLightIx2 Seq))
             , env
                 (return (tupleToIx2 t2))
+                (bench "Array Ix2 B" . whnf (A.foldlS (+) 0 . arrRLightIx2 B Seq))
+            , env
+                (return (tupleToIx2 t2))
                 (bench "Massiv Ix2" . whnf (M.foldlS (+) 0 . massDLightIx2 Seq))
             , env
                 (return t2)
@@ -57,6 +60,9 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" . whnf (A.foldlS (+) 0))
+            , env
+                (return (computeAs B (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 B" . whnf (A.foldlS (+) 0))
             , env
                 (return (massDLightIx2 Seq (tupleToIx2 t2)))
                 (bench "Massiv Ix2" . whnf (M.foldlS (+) 0))

@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Array.Massiv.Manifest.Primitive
@@ -12,38 +13,44 @@
 -- Portability : non-portable
 --
 module Data.Array.Massiv.Manifest.Primitive
-  ( P (..)
+  ( P(..)
   , Array(..)
-  , VP.Prim
+  , Prim
+  , vectorToByteArray
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
+import           Control.Monad.ST                    (runST)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
 import           Data.Array.Massiv.Delayed           (eq)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
+import           Data.Array.Massiv.Ops.Construct
+import           Data.Primitive                      (sizeOf)
+import           Data.Primitive.ByteArray
+import           Data.Primitive.Types                (Prim)
 import qualified Data.Vector.Primitive               as VP
-import qualified Data.Vector.Primitive.Mutable       as MVP
+import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
 
 data P = P deriving Show
 
 data instance Array P ix e = PArray { pComp :: !Comp
                                     , pSize :: !ix
-                                    , pData :: !(VP.Vector e)
+                                    , pData :: {-# UNPACK #-} !ByteArray
                                     }
 
 instance (Index ix, NFData e) => NFData (Array P ix e) where
-  rnf (PArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
+  rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()
   {-# INLINE rnf #-}
 
-instance (VP.Prim e, Eq e, Index ix) => Eq (Array P ix e) where
+instance (Prim e, Eq e, Index ix) => Eq (Array P ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
 
 
-instance (VP.Prim e, Index ix) => Construct P ix e where
+instance (Prim e, Index ix) => Construct P ix e where
   size = pSize
   {-# INLINE size #-}
 
@@ -53,16 +60,16 @@ instance (VP.Prim e, Index ix) => Construct P ix e where
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq !sz f = PArray Seq sz $ VP.generate (totalElem sz) (f . fromLinearIndex sz)
+  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
   unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
-instance (VP.Prim e, Index ix) => Source P ix e where
-  unsafeLinearIndex (PArray _ _ v) = VP.unsafeIndex v
+instance (Prim e, Index ix) => Source P ix e where
+  unsafeLinearIndex (PArray _ _ a) = indexByteArray a
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (VP.Prim e, Index ix) => Shape P ix e where
+instance (Prim e, Index ix) => Shape P ix e where
   type R P = M
 
   unsafeReshape !sz !arr = arr { pSize = sz }
@@ -72,7 +79,7 @@ instance (VP.Prim e, Index ix) => Shape P ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (VP.Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
+instance (Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
 
   (!?>) !arr = (toManifest arr !?>)
   {-# INLINE (!?>) #-}
@@ -80,31 +87,57 @@ instance (VP.Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
   (<!?) !arr = (toManifest arr <!?)
   {-# INLINE (<!?) #-}
 
-instance (Index ix, VP.Prim e) => Manifest P ix e where
+instance (Index ix, Prim e) => Manifest P ix e where
 
-  unsafeLinearIndexM (PArray _ _ v) = VP.unsafeIndex v
+  unsafeLinearIndexM (PArray _ _ a) = indexByteArray a
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (Index ix, VP.Prim e) => Mutable P ix e where
-  data MArray s P ix e = MPArray !ix !(VP.MVector s e)
+instance (Index ix, Prim e) => Mutable P ix e where
+  data MArray s P ix e = MPArray !ix !(MutableByteArray s)
 
   msize (MPArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (PArray _ sz v) = MPArray sz <$> VP.unsafeThaw v
+  unsafeThaw (PArray _ sz a) = MPArray sz <$> unsafeThawByteArray a
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze comp (MPArray sz v) = PArray comp sz <$> VP.unsafeFreeze v
+  unsafeFreeze comp (MPArray sz a) = PArray comp sz <$> unsafeFreezeByteArray a
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew sz = MPArray sz <$> MVP.unsafeNew (totalElem sz)
+  unsafeNew sz = MPArray sz <$> newByteArray (totalElem sz * sizeOf (undefined :: e))
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MPArray _ v) i = MVP.unsafeRead v i
+  unsafeLinearRead (MPArray _ a) = readByteArray a
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MPArray _ v) i = MVP.unsafeWrite v i
+  unsafeLinearWrite (MPArray _ v) = writeByteArray v
   {-# INLINE unsafeLinearWrite #-}
 
-instance (VP.Prim e, Index ix) => Target P ix e
+
+instance Prim e => IsList (Array P Ix1 e) where
+  type Item (Array P Ix1 e) = e
+  fromList = fromListIx1 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx1
+  {-# INLINE toList #-}
+
+
+instance Prim e => IsList (Array P Ix2 e) where
+  type Item (Array P Ix2 e) = [e]
+  fromList = fromListIx2 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx2
+  {-# INLINE toList #-}
+
+
+vectorToByteArray :: forall e . VP.Prim e => VP.Vector e -> ByteArray
+vectorToByteArray (VP.Vector start len arr) =
+  if start == 0
+    then arr
+    else runST $ do
+           marr <- newByteArray len
+           let elSize = sizeOf (undefined :: e)
+           copyByteArray marr 0 arr (start * elSize) (len * elSize)
+           unsafeFreezeByteArray marr
+{-# INLINE vectorToByteArray #-}

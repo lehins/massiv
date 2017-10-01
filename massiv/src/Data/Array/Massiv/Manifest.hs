@@ -19,6 +19,7 @@ module Data.Array.Massiv.Manifest
   , M
   -- * Boxed
   , B(..)
+  , N(..)
   -- * Primitive
   , P(..)
   , Prim
@@ -30,9 +31,9 @@ module Data.Array.Massiv.Manifest
   , Unbox
   -- * Vector Conversion
   , toVector
-  , toVector'
+  , castToVector
   , fromVector
-  , fromVector'
+  , castFromVector
   , ARepr
   , VRepr
   -- * Indexing
@@ -47,13 +48,13 @@ module Data.Array.Massiv.Manifest
 
 import           Control.Monad                        (guard, join, msum)
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Manifest.Boxed
+import           Data.Array.Massiv.Manifest.BoxedStrict
+import           Data.Array.Massiv.Manifest.BoxedNF
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Manifest.Primitive
 import           Data.Array.Massiv.Manifest.Storable
 import           Data.Array.Massiv.Manifest.Unboxed
 import           Data.Array.Massiv.Mutable
-import           Data.Maybe                           (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                          as VB
 import qualified Data.Vector.Generic                  as VG
@@ -73,8 +74,9 @@ type instance VRepr U = VU.Vector
 type instance VRepr S = VS.Vector
 type instance VRepr P = VP.Vector
 type instance VRepr B = VB.Vector
+type instance VRepr N = VB.Vector
 
-infixr 5 !
+infixr 5 !, !?, ?
 
 -- | Infix version of `index`.
 (!) :: Manifest r ix e => Array r ix e -> ix -> e
@@ -114,13 +116,13 @@ index arr ix = borderIndex (Fill (errorIx "index" (size arr) ix)) arr ix
 {-# INLINE index #-}
 
 -- | /O(1)/ conversion from vector to an array with a corresponding
--- representation. Will return `Nothing` if there is a size mismatch or some
--- uncommon vector type is supplied.
-fromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Target r ix e, ARepr v ~ r)
+-- representation. Will return `Nothing` if there is a size mismatch, vector has
+-- been sliced before or if some non-standard vector type is supplied.
+castFromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Mutable r ix e, ARepr v ~ r)
            => ix -- ^ Size of the result Array
            -> v e -- ^ Source Vector
            -> Maybe (Array r ix e)
-fromVector sz vector = do
+castFromVector sz vector = do
   guard (totalElem sz == VG.length vector)
   msum
     [ do Refl <- eqT :: Maybe (v :~: VU.Vector)
@@ -130,38 +132,43 @@ fromVector sz vector = do
          sVector <- join $ gcast1 (Just vector)
          return $ SArray {sComp = Seq, sSize = sz, sData = sVector}
     , do Refl <- eqT :: Maybe (v :~: VP.Vector)
-         pVector <- join $ gcast1 (Just vector)
-         return $ PArray {pComp = Seq, pSize = sz, pData = pVector}
+         VP.Vector 0 _ arr <- join $ gcast1 (Just vector)
+         return $ PArray {pComp = Seq, pSize = sz, pData = arr}
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
          bVector <- join $ gcast1 (Just vector)
-         return $ BArray {bComp = Seq, bSize = sz, bData = bVector}
+         arr <- castVectorToArray bVector
+         return $ BArray {bComp = Seq, bSize = sz, bData = arr}
     ]
+{-# INLINE castFromVector #-}
+
+-- TODO: fromVector could utilize vector copying, in case if one was previously
+-- slice. Currently it will simply do an element-wise copy.
+-- | Just like `fromVector`, but will throw an appropriate error message
+-- fromVector :: (VG.Vector v e, Typeable v, Mutable r ix e, ARepr v ~ r)
+--             => ix -> v e -> Array r ix e
+fromVector ::
+     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Mutable r ix a)
+  => ix -- ^ Resulting size of the array
+  -> v a -- ^ Source Vector
+  -> Array r ix a
+fromVector sz v =
+  case castFromVector sz v of
+    Just arr -> convert arr
+    Nothing ->
+      if (totalElem sz /= VG.length v)
+        then error $
+             "Data.Array.Massiv.Manifest.fromVector: Supplied size: " ++
+             show sz ++ " doesn't match vector length: " ++ show (VG.length v)
+        else unsafeMakeArray Seq sz ((v VG.!) . toLinearIndex sz)
 {-# INLINE fromVector #-}
 
 
--- | Just like `fromVector`, but will throw an appropriate error message
-fromVector' :: (VG.Vector v e, Typeable v, Target r ix e, ARepr v ~ r)
-            => ix -> v e -> Array r ix e
-fromVector' sz vector =
-  case fromVector sz vector of
-    Just arr -> arr
-    Nothing ->
-      error $
-      "fromVector': " ++
-      if (totalElem sz == VG.length vector)
-        then "Supplied size: " ++
-             show sz ++
-             " doesn't match vector length: " ++ show (VG.length vector)
-        else "Unsupported Vector type"
-{-# INLINE fromVector' #-}
-
-
--- | /O(1)/ conversion from `Target` array to a corresponding vector. Will
--- return `Nothing` only if source array representation was not one of `B`,
+-- | /O(1)/ conversion from `Mutable` array to a corresponding vector. Will
+-- return `Nothing` only if source array representation was not one of `B`, `N`,
 -- `P`, `S` or `U`
-toVector :: forall v r ix e . (VG.Vector v e, Target r ix e, VRepr r ~ v)
+castToVector :: forall v r ix e . (VG.Vector v e, Mutable r ix e, VRepr r ~ v)
          => Array r ix e -> Maybe (v e)
-toVector arr =
+castToVector arr =
   msum
     [ do Refl <- eqT :: Maybe (r :~: U)
          uArr <- gcastArr arr
@@ -171,17 +178,27 @@ toVector arr =
          return $ sData sArr
     , do Refl <- eqT :: Maybe (r :~: P)
          pArr <- gcastArr arr
-         return $ pData pArr
+         return $ VP.Vector 0 (totalElem (size arr)) $ pData pArr
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
-         return $ bData bArr
+         return $ vectorFromArray (size arr) $ bData bArr
+    , do Refl <- eqT :: Maybe (r :~: N)
+         bArr <- gcastArr arr
+         return $ vectorFromArray (size arr) $ nData bArr
     ]
+{-# INLINE castToVector #-}
+
+toVector ::
+     forall r ix e v.
+     ( Manifest r ix e
+     , Mutable (ARepr v) ix e
+     , VG.Vector v e
+     , VRepr (ARepr v) ~ v
+     )
+  => Array r ix e
+  -> v e
+toVector arr =
+  case castToVector (convert arr :: Array (ARepr v) ix e) of
+    Just v -> v
+    Nothing -> VG.generate (totalElem (size arr)) (unsafeLinearIndex arr)
 {-# INLINE toVector #-}
-
-
--- | Just like `toVector`, but will throw an appropriate error message
-toVector' :: (VG.Vector v e, Target r ix e, VRepr r ~ v)
-          => Array r ix e -> v e
-toVector' =
-  fromMaybe (error "toVector': Unsupported Array representation type") . toVector
-{-# INLINE toVector' #-}

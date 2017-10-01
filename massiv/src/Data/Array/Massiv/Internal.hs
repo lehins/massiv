@@ -1,5 +1,5 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE CPP                   #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -23,7 +23,7 @@ module Data.Array.Massiv.Internal
   ) where
 import           Control.DeepSeq
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.Delayed
+-- import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Mutable
 import           Data.Complex               (Complex)
@@ -39,7 +39,7 @@ import           GHC.Fingerprint            (Fingerprint)
 import           GHC.TypeLits
 
 
-class Target (Repr e) ix e => Layout ix e where
+class Mutable (Repr e) ix e => Layout ix e where
   type Repr e :: *
   type Repr e = B
 
@@ -56,11 +56,11 @@ instance NFData (Array (Repr e) ix e) => NFData (Massiv ix e) where
   {-# INLINE [1] rnf #-}
 
 
-type family a /\ b :: * where
-  P /\ P = U
-  P /\ U = U
-  U /\ P = U
-  a /\ b = B
+type family a /> b :: * where
+  P /> P = U
+  P /> U = U
+  U /> P = U
+  a /> b = B
 
 -- | Load an `Array` into memory as a `Massiv`
 computeM :: (Load r ix e, Layout ix e) => Array r ix e -> Massiv ix e
@@ -143,23 +143,23 @@ instance Index ix => Layout ix Bool where
 instance Index ix => Layout ix () where
   type Repr () = U
 
-instance (RealFloat a, Target (Repr a /\ U) ix (Complex a)) => Layout ix (Complex a) where
-  type Repr (Complex a) = Repr a /\ U
+instance (RealFloat a, Mutable (Repr a /> U) ix (Complex a)) => Layout ix (Complex a) where
+  type Repr (Complex a) = Repr a /> U
 
-instance (Target (Repr a /\ Repr b) ix (a, b)) => Layout ix (a, b) where
-  type Repr (a, b) = Repr a /\ Repr b
+instance (Mutable (Repr a /> Repr b) ix (a, b)) => Layout ix (a, b) where
+  type Repr (a, b) = Repr a /> Repr b
 
-instance (Target (Repr a /\ Repr b /\ Repr c) ix (a, b, c)) =>
+instance (Mutable (Repr a /> Repr b /> Repr c) ix (a, b, c)) =>
          Layout ix (a, b, c) where
-  type Repr (a, b, c) = Repr a /\ Repr b /\ Repr c
+  type Repr (a, b, c) = Repr a /> Repr b /> Repr c
 
-instance (Target (Repr a /\ Repr b /\ Repr c /\ Repr d) ix (a, b, c, d)) =>
+instance (Mutable (Repr a /> Repr b /> Repr c /> Repr d) ix (a, b, c, d)) =>
          Layout ix (a, b, c, d) where
-  type Repr (a, b, c, d) = Repr a /\ Repr b /\ Repr c /\ Repr d
+  type Repr (a, b, c, d) = Repr a /> Repr b /> Repr c /> Repr d
 
-instance (Target (Repr a /\ Repr b /\ Repr c /\ Repr d /\ Repr e) ix (a, b, c, d, e)) =>
+instance (Mutable (Repr a /> Repr b /> Repr c /> Repr d /> Repr e) ix (a, b, c, d, e)) =>
          Layout ix (a, b, c, d, e) where
-  type Repr (a, b, c, d, e) = Repr a /\ Repr b /\ Repr c /\ Repr d /\ Repr e
+  type Repr (a, b, c, d, e) = Repr a /> Repr b /> Repr c /> Repr d /> Repr e
 
 
 instance Index ix => Layout ix Ix2 where

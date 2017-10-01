@@ -11,85 +11,82 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.Manifest.BoxedStrict
-  ( B (..)
+module Data.Array.Massiv.Manifest.BoxedNF
+  ( N (..)
   , Array(..)
-  -- * Creation
-  -- , generateM
-  -- -- * Mapping
-  -- , mapM
-  -- , imapM
-  -- -- * Conversion
-  -- , fromVectorBoxed
-  -- , toVectorBoxed
-  -- -- * Evaluation
-  -- , computeBoxedS
-  -- , computeBoxedP
-  -- , deepseq
-  -- , deepseqP
+  , deepseqArray
+  , deepseqArrayP
+  , vectorFromArray
+  , vectorToArray
+  , castVectorToArray
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Control.Monad                       (void)
 import           Control.Monad.ST                    (runST)
 import           Data.Array.Massiv.Common
 import           Data.Array.Massiv.Common.Shape
+import           Data.Array.Massiv.Delayed           (eq)
 import           Data.Array.Massiv.Manifest.Internal
 import           Data.Array.Massiv.Mutable
-import           Data.Array.Massiv.Ops.Fold
 import           Data.Array.Massiv.Scheduler
-import           Data.Foldable                       (Foldable (..))
 import qualified Data.Primitive.Array                as A
-import           GHC.Base                            (build)
+import qualified Data.Vector                         as VB
+import qualified Data.Vector.Mutable                 as VB
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
-data B = B deriving Show
+-- | Array representation for Boxed elements. This structure is element and
+-- spine strict, and elements are always in Normal Form (NF), therefore `NFData`
+-- instance is required.
+data N = N deriving Show
 
-data instance Array B ix e = BArray { bComp :: Comp
-                                    , bSize :: !ix
-                                    , bData :: {-# UNPACK #-} !(A.Array e)
+data instance Array N ix e = NArray { nComp :: Comp
+                                    , nSize :: !ix
+                                    , nData :: {-# UNPACK #-} !(A.Array e)
                                     }
 
-instance (Index ix, NFData e) => NFData (Array B ix e) where
-  rnf (BArray comp sz a) = comp `deepseq` sz `deepseq` a `seq` ()
-    -- case getComp arr of
-    --   Seq        -> arr `deepseqArray` ()
-    --   Par        -> arr `deepseqArrayP` ()
-    --   ParOn wIds -> deepseqArrayOnP wIds arr ()
+instance (Index ix, NFData e) => NFData (Array N ix e) where
+  rnf (NArray comp sz arr) = -- comp `deepseq` sz `deepseq` a `seq` ()
+    case comp of
+      Seq        -> deepseqArray sz arr ()
+      ParOn wIds -> deepseqArrayP wIds sz arr ()
 
 
+instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
+  (==) = eq (==)
+  {-# INLINE (==) #-}
 
-instance (Index ix, NFData e) => Construct B ix e where
-  size = bSize
+
+instance (Index ix, NFData e) => Construct N ix e where
+  size = nSize
   {-# INLINE size #-}
 
-  getComp = bComp
+  getComp = nComp
   {-# INLINE getComp #-}
 
-  setComp c arr = arr { bComp = c }
+  setComp c arr = arr { nComp = c }
   {-# INLINE setComp #-}
 
   unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
   unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
-instance (Index ix, NFData e) => Source B ix e where
-  unsafeLinearIndex (BArray _ _ a) = A.indexArray a
+instance (Index ix, NFData e) => Source N ix e where
+  unsafeLinearIndex (NArray _ _ a) = A.indexArray a
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (Index ix, NFData e) => Shape B ix e where
-  type R B = M
+instance (Index ix, NFData e) => Shape N ix e where
+  type R N = M
 
-  unsafeReshape !sz !arr = arr { bSize = sz }
+  unsafeReshape !sz !arr = arr { nSize = sz }
   {-# INLINE unsafeReshape #-}
 
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
 
-instance (Index ix, NFData e, Index (Lower ix)) => Slice B ix e where
+instance (Index ix, NFData e, Index (Lower ix)) => Slice N ix e where
 
   (!?>) !arr = (toManifest arr !?>)
   {-# INLINE (!?>) #-}
@@ -98,114 +95,86 @@ instance (Index ix, NFData e, Index (Lower ix)) => Slice B ix e where
   {-# INLINE (<!?) #-}
 
 
-instance (Index ix, NFData e) => Manifest B ix e where
+instance (Index ix, NFData e) => Manifest N ix e where
 
-  unsafeLinearIndexM (BArray _ _ a) = A.indexArray a
+  unsafeLinearIndexM (NArray _ _ a) = A.indexArray a
   {-# INLINE unsafeLinearIndexM #-}
 
 
 uninitialized :: a
-uninitialized = error "Data.Array.Massiv.Manifest.BoxedStrict: uninitialized element"
+uninitialized = error "Data.Array.Massiv.Manifest.BoxedNF: uninitialized element"
 
 
-instance (Index ix, NFData e) => Mutable B ix e where
-  data MArray s B ix e = MBArray !ix {-# UNPACK #-} !(A.MutableArray s e)
+instance (Index ix, NFData e) => Mutable N ix e where
+  data MArray s N ix e = MNArray !ix {-# UNPACK #-} !(A.MutableArray s e)
 
-  msize (MBArray sz _) = sz
+  msize (MNArray sz _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (BArray _ sz a) = MBArray sz <$> A.unsafeThawArray a
+  unsafeThaw (NArray _ sz a) = MNArray sz <$> A.unsafeThawArray a
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze comp (MBArray sz ma) = BArray comp sz <$> A.unsafeFreezeArray ma
+  unsafeFreeze comp (MNArray sz ma) = NArray comp sz <$> A.unsafeFreezeArray ma
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew sz = MBArray sz <$> A.newArray (totalElem sz) uninitialized
+  unsafeNew sz = MNArray sz <$> A.newArray (totalElem sz) uninitialized
   {-# INLINE unsafeNew #-}
 
-  unsafeLinearRead (MBArray _ ma) i = A.readArray ma i
+  unsafeLinearRead (MNArray _ ma) i = A.readArray ma i
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBArray _ ma) i e = e `deepseq` A.writeArray ma i e
+  unsafeLinearWrite (MNArray _ ma) i e = e `deepseq` A.writeArray ma i e
   {-# INLINE unsafeLinearWrite #-}
 
 
--- | Loading a Boxed array in parallel only make sense if it's elements are
--- fully evaluated into NF.
-instance (Index ix, NFData e) => Target B ix e where
-
-  unsafeTargetWrite = unsafeLinearWrite
-  {-# INLINE unsafeTargetWrite #-}
+deepseqArray :: (Index ix, NFData a) => ix -> A.Array a -> b -> b
+deepseqArray sz arr b =
+  iter 0 (totalElem sz) 1 (<) b $ \ !i acc -> A.indexArray arr i `deepseq` acc
+{-# INLINE deepseqArray #-}
 
 
--- instance Index ix => Load B ix e where
---   loadS (BArray _ sz v) _ uWrite =
---     iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !i _ ->
---       uWrite i (V.unsafeIndex v i)
---   {-# INLINE loadS #-}
---   loadP wIds (BArray _ sz v) _ uWrite = do
---     void $
---       splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---           submitRequest scheduler $
---           JobRequest $
---           iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !i _ ->
---             uWrite i $ V.unsafeIndex v i
---         submitRequest scheduler $
---           JobRequest $
---           iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i _ ->
---             uWrite i $ V.unsafeIndex v i
---   {-# INLINE loadP #-}
+deepseqArrayP :: (Index ix, NFData a) => [Int] -> ix -> A.Array a -> b -> b
+deepseqArrayP wIds sz arr b =
+  unsafePerformIO $ do
+    splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        submitRequest scheduler $
+        JobRequest $
+        loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
+          A.indexArray arr k `deepseq` return ()
+      submitRequest scheduler $
+        JobRequest $
+        loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
+          A.indexArray arr k `deepseq` return ()
+    return b
+{-# INLINE deepseqArrayP #-}
 
 
--- -- | Row-major folding over a Boxed array.
--- instance Index ix => Foldable (Array B ix) where
---   foldl = lazyFoldlS
---   {-# INLINE foldl #-}
---   foldl' = foldlS
---   {-# INLINE foldl' #-}
---   foldr = foldrFB
---   {-# INLINE foldr #-}
---   foldr' = foldrS
---   {-# INLINE foldr' #-}
---   null (BArray _ sz _) = totalElem sz == 0
---   {-# INLINE null #-}
---   sum = foldl' (+) 0
---   {-# INLINE sum #-}
---   product = foldl' (*) 1
---   {-# INLINE product #-}
---   length = totalElem . size
---   {-# INLINE length #-}
---   toList arr = build (\ c n -> foldrFB c n arr)
---   {-# INLINE toList #-}
+vectorFromArray :: Index ix => ix -> A.Array a -> VB.Vector a
+vectorFromArray sz arr = runST $ do
+  marr <- A.unsafeThawArray arr
+  VB.unsafeFreeze $ VB.MVector 0 (totalElem sz) marr
+{-# INLINE vectorFromArray #-}
 
 
--- deepseqArray :: (Index ix, NFData a) => Array B ix a -> b -> b
--- deepseqArray (BArray _ sz a) b =
---   iter 0 (totalElem sz) 1 (<) b $ \ !i acc -> A.indexArray a i `deepseq` acc
--- {-# INLINE deepseqArray #-}
+vectorToArray :: VB.Vector a -> A.Array a
+vectorToArray v =
+  runST $ do
+    VB.MVector start len marr <- VB.unsafeThaw v
+    marr' <-
+      if start == 0
+        then return marr
+        else A.cloneMutableArray marr start len
+    A.unsafeFreezeArray marr'
+{-# INLINE vectorToArray #-}
 
 
--- -- | Parallel version of `deepseq`: fully evaluate all elements of a boxed array in
--- -- parallel, while returning back the second argument.
--- deepseqArrayP :: (Index ix, NFData a) => Array B ix a -> b -> b
--- deepseqArrayP = deepseqArrayOnP []
--- {-# INLINE deepseqArrayP #-}
-
-
--- deepseqArrayOnP :: (Index ix, NFData a) => [Int] -> Array B ix a -> b -> b
--- deepseqArrayOnP wIds (BArray _ sz v) b =
---   unsafePerformIO $ do
---     splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---         submitRequest scheduler $
---         JobRequest $
---         loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
---           A.indexArray v k `deepseq` return ()
---       submitRequest scheduler $
---         JobRequest $
---         loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
---           A.indexArray v k `deepseq` return ()
---     return b
--- {-# INLINE deepseqArrayOnP #-}
-
+-- | Cast a Boxed Vector into an Array, but only if it wasn't previously sliced.
+castVectorToArray :: VB.Vector a -> Maybe (A.Array a)
+castVectorToArray v =
+  runST $ do
+    VB.MVector start _ marr <- VB.unsafeThaw v
+    if start == 0
+      then Just <$> A.unsafeFreezeArray marr
+      else return Nothing
+{-# INLINE castVectorToArray #-}

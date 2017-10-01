@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -15,7 +14,6 @@
 --
 module Data.Array.Massiv.Mutable
   ( Mutable(..)
-  , Target(..)
   , compute
   , computeAs
   , computeSource
@@ -25,8 +23,8 @@ module Data.Array.Massiv.Mutable
   , convert
   , convertAs
   , gcastArr
-  , loadTargetS
-  , loadTargetOnP
+  , loadMutableS
+  , loadMutableOnP
   , unsafeRead
   , unsafeWrite
   , sequenceP
@@ -69,51 +67,39 @@ class Manifest r ix e => Mutable r ix e where
                        MArray (PrimState m) r ix e -> Int -> e -> m ()
 
 
-class Mutable r ix e => Target r ix e where
 
-  unsafeTargetRead :: PrimMonad m =>
-                      MArray (PrimState m) r ix e -> Int -> m e
-  unsafeTargetRead = unsafeLinearRead
-  {-# INLINE unsafeTargetRead #-}
-
-  unsafeTargetWrite :: PrimMonad m =>
-                       MArray (PrimState m) r ix e -> Int -> e -> m ()
-  unsafeTargetWrite = unsafeLinearWrite
-  {-# INLINE unsafeTargetWrite #-}
-
-
-loadTargetS :: (Load r' ix e, Target r ix e) =>
+loadMutableS :: (Load r' ix e, Mutable r ix e) =>
                Array r' ix e -> Array r ix e
-loadTargetS !arr =
+loadMutableS !arr =
   runST $ do
     mArr <- unsafeNew (size arr)
-    loadS arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
+    loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
     unsafeFreeze Seq mArr
-{-# INLINE loadTargetS #-}
+{-# INLINE loadMutableS #-}
 
-loadTargetOnP :: (Load r' ix e, Target r ix e) =>
+loadMutableOnP :: (Load r' ix e, Mutable r ix e) =>
                  [Int] -> Array r' ix e -> IO (Array r ix e)
-loadTargetOnP wIds !arr = do
+loadMutableOnP wIds !arr = do
   mArr <- unsafeNew (size arr)
-  loadP wIds arr (unsafeTargetRead mArr) (unsafeTargetWrite mArr)
+  loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
   unsafeFreeze (ParOn wIds) mArr
-{-# INLINE loadTargetOnP #-}
+{-# INLINE loadMutableOnP #-}
 
 
-compute :: (Load r' ix e, Target r ix e) => Array r' ix e -> Array r ix e
+compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
 compute !arr =
   case getComp arr of
-    Seq        -> loadTargetS arr
-    ParOn wIds -> unsafePerformIO $ loadTargetOnP wIds arr
+    Seq        -> loadMutableS arr
+    ParOn wIds -> unsafePerformIO $ loadMutableOnP wIds arr
 {-# INLINE compute #-}
 
 
-computeAs :: (Load r' ix e, Target r ix e) => r -> Array r' ix e -> Array r ix e
+computeAs :: (Load r' ix e, Mutable r ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
 {-# INLINE computeAs #-}
 
 
-computeSource :: forall r' r ix e . (Source r' ix e, Target r ix e)
+computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr =
   fromMaybe (compute $ delay arr) $ fmap (\Refl -> arr) (eqT :: Maybe (r' :~: r))
@@ -121,18 +107,18 @@ computeSource arr =
 
 
 
-computeOn :: (Load r' ix e, Target r ix e) =>
+computeOn :: (Load r' ix e, Mutable r ix e) =>
              Comp -> Array r' ix e -> Array r ix e
 computeOn comp = compute . setComp comp
 {-# INLINE computeOn #-}
 
-computeAsOn :: (Load r' ix e, Target r ix e) =>
+computeAsOn :: (Load r' ix e, Mutable r ix e) =>
                r' -> Comp -> Array r' ix e -> Array r ix e
 computeAsOn _ = computeOn
 {-# INLINE computeAsOn #-}
 
 
-copy :: Target r ix e => Array r ix e -> Array r ix e
+copy :: Mutable r ix e => Array r ix e -> Array r ix e
 copy = compute . delay
 {-# INLINE copy #-}
 
@@ -142,14 +128,17 @@ gcastArr :: forall r' r ix e. (Typeable r, Typeable r')
        => Array r' ix e -> Maybe (Array r ix e)
 gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 
-convert :: (Target r' ix e, Target r ix e)
+
+-- | /O(n)/ - conversion between manifest types, unless source and result arrays
+-- are of the same representation, in which case it is an /O(1)/ operation.
+convert :: (Manifest r' ix e, Mutable r ix e)
         => Array r' ix e -> Array r ix e
 convert arr =
-  fromMaybe (compute $ delay arr) (gcastArr arr)
+  fromMaybe (compute $ toManifest arr) (gcastArr arr)
 {-# INLINE convert #-}
 
 
-convertAs :: (Target r' ix e, Target r ix e, Typeable ix, Typeable e)
+convertAs :: (Mutable r' ix e, Mutable r ix e, Typeable ix, Typeable e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
 {-# INLINE convertAs #-}

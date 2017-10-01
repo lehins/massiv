@@ -116,9 +116,6 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance (Index ix, VU.Unbox e) => Target U ix e
-
-
 instance VU.Unbox e => IsList (Array U Ix1 e) where
   type Item (Array U Ix1 e) = e
   fromList = fromListIx1 Seq

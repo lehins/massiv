@@ -69,6 +69,7 @@ benchmark fold-seq
   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7
   build-depends:       base
                      , criterion
+                     , massiv
                      , massiv-bench
                      , vector
                      , repa

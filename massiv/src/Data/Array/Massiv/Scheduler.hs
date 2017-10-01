@@ -145,7 +145,7 @@ submitRequest Scheduler {..} JobRequest {..} = do
 
 -- | Block current thread and wait for all `JobRequest`s to get processed. Use a
 -- supplied function to collect all of the results produced by submitted
--- jobs. If any job throws an exception, the whole scheduler is retired, all
+-- jobs. If a job throws an exception, the whole scheduler is retired, all
 -- jobs are immediately cancelled and the exception is re-thrown in the main
 -- thread. Same thing happens if a worker dies because of an asynchronous
 -- exception, but with a `WorkerException` being thrown in a main
@@ -153,7 +153,7 @@ submitRequest Scheduler {..} JobRequest {..} = do
 -- collected, after that it can not be used again, thus doing so will result in
 -- a `SchedulerRetired` exception.
 collectResults :: Scheduler a -> (JobResult a -> b -> b) -> b -> IO b
-collectResults scheduler@(Scheduler {..}) f initAcc = do
+collectResults scheduler@(Scheduler {..}) f !initAcc = do
   jobsSubmitted <-
     atomically $ do
       isRetired <- readTVar retiredVar
@@ -193,7 +193,7 @@ collectResults scheduler@(Scheduler {..}) f initAcc = do
         Right (res, stop) ->
           if stop
             then return $! f res acc
-            else collect $ f res acc
+            else collect $! f res acc
         Left exc -> do
           mapM_ killThread (workerThreadIds workers)
           -- kill all workers. Recreate the workers only if killed ones were the
