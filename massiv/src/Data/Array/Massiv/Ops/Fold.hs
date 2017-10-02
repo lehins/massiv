@@ -241,7 +241,7 @@ ifoldlOnP :: Source r ix e =>
 ifoldlOnP wIds g !tAcc f !initAcc !arr = do
   let !sz = size arr
   results <-
-    splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start -> do
           submitRequest scheduler $
             JobRequest $
@@ -321,7 +321,7 @@ ifoldrOnP :: Source r ix e =>
 ifoldrOnP wIds g !tAcc f !initAcc !arr = do
   let !sz = size arr
   results <-
-    splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       when (slackStart < totalLength) $
         submitRequest scheduler $
         JobRequest $

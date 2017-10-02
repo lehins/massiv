@@ -23,7 +23,7 @@ module Data.Array.Massiv.Internal
   ) where
 import           Control.DeepSeq
 import           Data.Array.Massiv.Common
--- import           Data.Array.Massiv.Delayed
+import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Mutable
 import           Data.Complex               (Complex)
@@ -69,13 +69,15 @@ computeM = Massiv . compute
 
 
 -- | Unwrap `Massiv` as a Delayed array.
+
+#if __GLASGOW_HASKELL__ >= 820
 delayM :: Layout ix e => Massiv ix e -> Array M ix e
 delayM (Massiv arr) = toManifest arr
+#else
+delayM :: Layout ix e => Massiv ix e -> Array D ix e
+delayM (Massiv arr) = delay arr
+#endif
 {-# INLINE [1] delayM #-}
--- TODO: CPP for ghc 8.0
--- delayM :: Layout ix e => Massiv ix e -> Array D ix e
--- delayM (Massiv arr) = delay arr
--- {-# INLINE [1] delayM #-}
 
 {-# RULES
 "delayM/computeM" forall arr . delayM (computeM arr) = arr

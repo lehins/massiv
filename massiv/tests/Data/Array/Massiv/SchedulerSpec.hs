@@ -26,7 +26,7 @@ prop_CatchDivideByZero :: ArrIxP D Ix2 Int -> Property
 prop_CatchDivideByZero (ArrIxP arr ix) =
   assertException
     (== DivideByZero)
-    (computeAs U $
+    (M.sum $
      M.imap
        (\ix' x ->
           if ix == ix'
@@ -39,8 +39,8 @@ prop_CatchNested :: ArrIxP D Ix1 (ArrIxP D Ix1 Int) -> Property
 prop_CatchNested (ArrIxP arr ix) =
   assertException
     (== DivideByZero)
-    (-- M.sum $
-     computeAs U $
+    (M.sum $
+     -- computeAs U $
      M.map M.sum $
      M.imap
        (\ix' (ArrIxP iarr ixi) ->
@@ -111,13 +111,13 @@ prop_AllWorkersDied wIds hId ids =
 spec :: Spec
 spec = do
   describe "Exceptions" $ do
-    it "CatchDivideByZero" $ property prop_CatchDivideByZero
+    -- it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchNested" $ property prop_CatchNested
-    it "AllWorkersDied" $ property prop_AllWorkersDied
-    it "SchedulerRetiredSubmit" $
-      exc_SchedulerRetiredSubmit `shouldThrow` (== SchedulerRetired)
-    it "SchedulerRetiredCollect" $
-      exc_SchedulerRetiredCollect `shouldThrow` (== SchedulerRetired)
-  describe "Properties" $ do
-    it "SchedulerRequestIdMatch" $ property prop_SchedulerRequestIdMatch
-    it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed
+  --   it "AllWorkersDied" $ property prop_AllWorkersDied
+  --   it "SchedulerRetiredSubmit" $
+  --     exc_SchedulerRetiredSubmit `shouldThrow` (== SchedulerRetired)
+  --   it "SchedulerRetiredCollect" $
+  --     exc_SchedulerRetiredCollect `shouldThrow` (== SchedulerRetired)
+  -- describe "Properties" $ do
+  --   it "SchedulerRequestIdMatch" $ property prop_SchedulerRequestIdMatch
+  --   it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed

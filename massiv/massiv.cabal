@@ -44,7 +44,8 @@ library
                      , Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Ops.Transform
                      , Data.Array.Massiv.Stencil.Internal
-  build-depends:       base            >= 4.7 && < 5
+  build-depends:       async
+                     , base            >= 4.7 && < 5
                      , data-default
                      , deepseq
                      , ghc-prim

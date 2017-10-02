@@ -25,11 +25,14 @@ module Data.Array.Massiv.Scheduler
   , waitTillDone
   , splitWork
   , splitWork_
+  , withScheduler
+  , withScheduler_
+  , divideWork
   ) where
 
 import           Control.Applicative
-import           Control.Concurrent             (ThreadId, forkOnWithUnmask,
-                                                 getNumCapabilities, killThread)
+import           Control.Concurrent             (ThreadId, forkOnWithUnmask, forkOn,
+                                                 getNumCapabilities, killThread, myThreadId)
 import           Control.Concurrent.STM.TMVar
 import           Control.Concurrent.STM.TQueue  (TQueue, isEmptyTQueue,
                                                  newTQueue, newTQueueIO,
@@ -37,15 +40,15 @@ import           Control.Concurrent.STM.TQueue  (TQueue, isEmptyTQueue,
                                                  writeTQueue)
 import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVar,
                                                  newTVarIO, readTVar, writeTVar)
-import           Control.Exception.Base         (mask_)
+import           Control.Exception.Base         (mask_, mask, uninterruptibleMask, uninterruptibleMask_)
 import           Control.Exception.Safe         (Exception (..), SomeException,
-                                                 catchAsync, isAsyncException,
-                                                 throwIO)
-import           Control.Monad                  (unless, void, when)
+                                                 bracket, catchAsync, isAsyncException,
+                                                 throwIO, onException, withException)
+import           Control.Monad                  (unless, void, when, foldM)
 import           Control.Monad.STM              (STM, atomically, throwSTM)
 import           Data.Array.Massiv.Common.Index
 import           System.IO.Unsafe               (unsafePerformIO)
-
+import Control.Concurrent.Async
 
 
 data Job = Job (Int -> IO ())
@@ -87,7 +90,7 @@ data JobRequest a = JobRequest { jobRequestAction :: IO a }
 
 
 data Workers = Workers { workerIds        :: [Int]
-                       , workerThreadIds  :: [ThreadId]
+                       , workerThreadIds  :: [Async ()]
                        , workersJobQueue  :: TQueue Job
                        , workersException :: TMVar SomeException }
 
@@ -113,6 +116,147 @@ makeScheduler wIds = do
     jobsFinishedVar <- newTVar 0
     retiredVar <- newTVar False
     return $ Scheduler {..}
+
+
+
+-- | Create a `Scheduler` that can be used to submit `JobRequest`s and collect
+-- work done by the workers using `collectResults`.
+withScheduler :: [Int] -> (JobResult a -> b -> b) -> b -> (Scheduler a -> IO c) -> IO b
+withScheduler wIds collector acc submitAction = do
+  let getIsGlobalScheduler = return False
+        -- if null wIds
+        --   then atomically $ do
+        --          hasGlobalScheduler <- readTVar hasGlobalSchedulerVar
+        --          unless hasGlobalScheduler $
+        --            writeTVar hasGlobalSchedulerVar True
+        --          return $ not hasGlobalScheduler
+        --   else return False
+  let getWorkers isGlobalScheduler
+        | isGlobalScheduler = atomically $ readTVar globalWorkersVar
+        | otherwise = hireWorkers wIds
+  bracket
+    (do isGlobalScheduler <- getIsGlobalScheduler
+        workers <- getWorkers isGlobalScheduler
+        return (isGlobalScheduler, workers)
+    )
+    (\(_, workers) -> return ()) --mapM_ cancel (workerThreadIds workers))
+    (\(isGlobalScheduler, workers) -> do
+       let numWorkers = length $ workerIds workers
+       scheduler <-
+         atomically $ do
+           resultsChan <- newTQueue
+           jobsSubmittedVar <- newTVar 0
+           jobsFinishedVar <- newTVar 0
+           retiredVar <- newTVar False
+           return $ Scheduler {..}
+       _ <- submitAction scheduler
+       collectJobResults scheduler collector acc)
+  -- mask_ $ do
+  --   isGlobalScheduler <- getIsGlobalScheduler
+  --   workers <- getWorkers isGlobalScheduler
+  --   res <-
+  --     onException
+  --       (do let numWorkers = length $ workerIds workers
+  --           scheduler <-
+  --                atomically $ do
+  --                  resultsChan <- newTQueue
+  --                  jobsSubmittedVar <- newTVar 0
+  --                  jobsFinishedVar <- newTVar 0
+  --                  retiredVar <- newTVar False
+  --                  return $ Scheduler {..}
+  --           _ <- submitAction scheduler
+  --           collectJobResults scheduler collector acc)
+  --       (do mapM_ cancel (workerThreadIds workers))
+  --          -- kill all workers. Recreate the workers only if killed ones were the
+  --          -- global ones.
+  --           -- when isGlobalScheduler $ do
+  --           --   globalWorkers <- hireWorkers []
+  --           --   atomically $ do
+  --           --     writeTVar globalWorkersVar globalWorkers
+  --           --     writeTVar hasGlobalSchedulerVar False)
+  --   -- atomically $
+  --   --   if isGlobalScheduler
+  --   --     then writeTVar hasGlobalSchedulerVar False
+  --   --     else mapM_
+  --   --            (\_ -> writeTQueue (workersJobQueue workers) Retire)
+  --   --            (workerThreadIds workers)
+  --   return res
+  -- isGlobalScheduler <- getIsGlobalScheduler
+  -- workers <- getWorkers isGlobalScheduler
+  -- let numWorkers = length $ workerIds workers
+  -- scheduler <-
+  --    atomically $ do
+  --                  resultsChan <- newTQueue
+  --                  jobsSubmittedVar <- newTVar 0
+  --                  jobsFinishedVar <- newTVar 0
+  --                  retiredVar <- newTVar False
+  --                  return $ Scheduler {..}
+  -- _ <- submitAction scheduler
+  -- collectJobResults scheduler collector acc
+  -- atomically $
+  --     if isGlobalScheduler
+  --       then writeTVar hasGlobalSchedulerVar False
+  --       else mapM_
+  --              (\_ -> writeTQueue (workersJobQueue workers) Retire)
+  --              (workerThreadIds workers)
+  -- return res
+
+withScheduler_ :: [Int] -> (Scheduler a -> IO ()) -> IO ()
+withScheduler_ wIds = withScheduler wIds (const id) ()
+
+
+divideWork :: Index ix
+          => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
+divideWork wIds sz submitWork
+  | totalElem sz == 0 = return []
+  | otherwise = do
+    withScheduler wIds (:) [] $ \ scheduler -> do
+      let !totalLength = totalElem sz
+          !chunkLength = totalLength `quot` numWorkers scheduler
+          !slackStart = chunkLength * numWorkers scheduler
+      submitWork scheduler chunkLength totalLength slackStart
+
+
+-- | Block current thread and wait for all `JobRequest`s to get processed. Use a
+-- supplied function to collect all of the results produced by submitted
+-- jobs. If a job throws an exception, the whole scheduler is retired, all
+-- jobs are immediately cancelled and the exception is re-thrown in the main
+-- thread. Same thing happens if a worker dies because of an asynchronous
+-- exception, but with a `WorkerException` being thrown in a main
+-- thread. `Scheduler` is also retired as soon as all of the results are
+-- collected, after that it can not be used again, thus doing so will result in
+-- a `SchedulerRetired` exception.
+collectJobResults :: Scheduler a -> (JobResult a -> b -> b) -> b -> IO b
+collectJobResults (Scheduler {..}) f !initAcc = do
+  jobsSubmitted <- atomically $ readTVar jobsSubmittedVar
+  if jobsSubmitted == 0
+    then return initAcc
+    else collect initAcc
+  where
+    collect !acc = do
+      (res, stop) <-
+        atomically $ do
+          eRes <-
+            (Right <$> readTQueue resultsChan) <|>
+            (Left <$> readTMVar (workersException workers))
+          case eRes of
+            Right res -> do
+              resEmpty <- isEmptyTQueue resultsChan
+              if resEmpty
+                then do
+                  jobsSubmitted <- readTVar jobsSubmittedVar
+                  jobsFinished <- readTVar jobsFinishedVar
+                  return (res, jobsSubmitted == jobsFinished)
+                else return (res, False)
+            Left exc -> throwSTM exc
+            -- $
+                -- if isAsyncException exc
+                --   then toException $ WorkerDied exc
+                --   else exc
+      if stop
+        then return $! f res acc
+        else collect $! f res acc
+
 
 
 -- | Clear out outstanding jobs in the queue
@@ -195,7 +339,7 @@ collectResults scheduler@(Scheduler {..}) f !initAcc = do
             then return $! f res acc
             else collect $! f res acc
         Left exc -> do
-          mapM_ killThread (workerThreadIds workers)
+          mapM_ cancel (workerThreadIds workers)
           -- kill all workers. Recreate the workers only if killed ones were the
           -- global ones.
           when isGlobalScheduler $ do
@@ -205,9 +349,10 @@ collectResults scheduler@(Scheduler {..}) f !initAcc = do
               writeTVar globalWorkersVar globalWorkers
           -- We don't want to re-throw async exceptions in the main thread, so
           -- we have to wrap them in a `WorkerDied` exception.
-          throwIO $ if isAsyncException exc
-                    then toException $ WorkerDied exc
-                    else exc
+          throwIO $
+            if isAsyncException exc
+              then toException $ WorkerDied exc
+              else exc
 
 
 -- | Block current thread and wait for the `Scheduler` to process all submitted
@@ -219,15 +364,16 @@ waitTillDone scheduler = collectResults scheduler (const id) ()
 
 splitWork :: Index ix
           => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO [JobResult a]
-splitWork wIds sz submitWork
-  | totalElem sz == 0 = return []
-  | otherwise = do
-    scheduler <- makeScheduler wIds
-    let !totalLength = totalElem sz
-        !chunkLength = totalLength `quot` numWorkers scheduler
-        !slackStart = chunkLength * numWorkers scheduler
-    void $ submitWork scheduler chunkLength totalLength slackStart
-    collectResults scheduler (:) []
+splitWork = divideWork
+-- splitWork wIds sz submitWork
+--   | totalElem sz == 0 = return []
+--   | otherwise = do
+--     scheduler <- makeScheduler wIds
+--     let !totalLength = totalElem sz
+--         !chunkLength = totalLength `quot` numWorkers scheduler
+--         !slackStart = chunkLength * numWorkers scheduler
+--     void $ submitWork scheduler chunkLength totalLength slackStart
+--     collectResults scheduler (:) []
 
 
 splitWork_ :: Index ix
@@ -268,11 +414,36 @@ runWorker jQueue wid = do
     Retire -> return ()
 
 
-startWorkers :: TMVar SomeException -> TQueue Job -> [Int] -> IO [ThreadId]
-startWorkers wExcMVar jQueue =
-  mapM
-    (\ !wId ->
-       mask_ $
-       forkOnWithUnmask wId $ \unmask ->
-         catchAsync (unmask (runWorker jQueue wId)) $ \exc ->
-           void $ atomically $ tryPutTMVar wExcMVar exc)
+startWorkers :: TMVar SomeException -> TQueue Job -> [Int] -> IO [Async ()]
+startWorkers _wExcMVar jQueue (wId1:wIds) = do
+  a <- asyncOn wId1 $ runWorker jQueue wId1
+  link a
+  foldM (\acc@(prevA:_) wId -> do
+            curA <- asyncOn wId $ runWorker jQueue wId
+            link2 prevA curA
+            return (curA:acc)
+        ) [a] wIds
+
+  -- mapM
+  --   (\ !wId -> do
+       -- mask_ $
+       -- asyncOnWithUnmask wId $ \unmask -> do
+       --   withException
+       --     (unmask $ runWorker jQueue wId)
+       --     (\exc -> atomically (tryPutTMVar wExcMVar exc)))
+
+       -- uninterruptibleMask_ $
+       -- asyncOnWithUnmask wId $ \unmask ->
+       --   withException
+       --     (unmask $ runWorker jQueue wId)
+       --     (atomically . tryPutTMVar wExcMVar))
+         -- asyncOn wId $
+         -- withException
+         --   (runWorker jQueue wId)
+         --   (atomically . tryPutTMVar wExcMVar))
+
+       -- uninterruptibleMask_ $
+       -- asyncOnWithUnmask wId $ \unmask ->
+       --   catchAsync (unmask (runWorker jQueue wId)) $ \exc -> do
+       --     _ <- atomically (tryPutTMVar wExcMVar exc)
+       --     throwIO exc)
