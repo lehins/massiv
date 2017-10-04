@@ -34,35 +34,36 @@ module Data.Array.Massiv.Scheduler
   , divideWork_
   ) where
 
-import           Control.Applicative
+import Control.DeepSeq
 import           Control.Concurrent             (ThreadId, forkOn,
                                                  forkOnWithUnmask,
                                                  getNumCapabilities, killThread,
                                                  myThreadId, threadDelay)
-import           Control.Concurrent.Async
-import           Control.Concurrent.STM.TMVar
-import           Control.Concurrent.STM.TQueue  (TQueue, isEmptyTQueue,
-                                                 newTQueue, newTQueueIO,
-                                                 readTQueue, tryReadTQueue,
-                                                 writeTQueue)
-import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVar,
-                                                 newTVarIO, readTVar, writeTVar)
-import           Control.Exception.Safe         (Exception (..), SomeException,
-                                                 bracket, catchAsync, uninterruptibleMask_,
-                                                 isAsyncException, onException,
-                                                 throwIO, withException)
-import           Control.Monad                  (foldM, unless, void, when)
-import qualified Control.Monad.Catch            as C
-import           Control.Monad.STM              (STM, atomically, orElse,
-                                                 throwSTM)
-import           Data.Array.Massiv.Common.Index
+-- import           Control.Concurrent.Async
 import           Control.Concurrent.MVar
+-- import           Control.Concurrent.STM.TMVar
+-- import           Control.Concurrent.STM.TQueue  (TQueue, isEmptyTQueue,
+--                                                  newTQueue, newTQueueIO,
+--                                                  readTQueue, tryReadTQueue,
+--                                                  writeTQueue)
+-- import           Control.Concurrent.STM.TVar    (TVar, modifyTVar', newTVar,
+--                                                  newTVarIO, readTVar, writeTVar)
+import           Control.Exception              (BlockedIndefinitelyOnMVar (..))
+import           Control.Exception              (Exception (..), SomeException,
+                                                 bracket, catch, onException,
+                                                 throwIO, mask_, uninterruptibleMask_)
+import           Control.Monad                  (foldM, forM, unless, void,
+                                                 when)
+-- import qualified Control.Monad.Catch            as C
+import           Control.Monad.Primitive
+-- import           Control.Monad.STM              (STM, atomically, orElse,
+--                                                  throwSTM)
+import           Data.Array.Massiv.Common.Index
+import           Data.IORef
+import           Data.Primitive.Array
 import           Foreign.StablePtr
-import           System.IO.Unsafe               (unsafePerformIO)
-import Data.Primitive.Array
-import Data.IORef
-import Control.Monad.Primitive
-import Say
+import           Say
+-- import           System.IO.Unsafe               (unsafePerformIO)
 
 
 data Job = Job (IO ())
@@ -87,17 +88,18 @@ fromWorkerException (WorkerDied exc) = fromException $ toException exc
 
 
 data Scheduler a = Scheduler
-  { jobDoneMVar       :: MVar (Maybe SomeException)
-  , jobsCountIORef    :: IORef Int
-  , jobQueueMVar      :: MVar [Job]
-  , resultsMVar       :: MVar (MutableArray RealWorld a)
-  , workers           :: Workers
-  , numWorkers        :: !Int
+  { jobsCountIORef :: IORef Int
+  , jobQueueMVar   :: MVar [Job]
+  , resultsMVar    :: MVar (MutableArray RealWorld a)
+  , workers        :: Workers
+  , numWorkers     :: !Int
   -- , isGlobalScheduler :: Bool
   }
 
 
 data Workers = Workers { workerThreadIds :: [ThreadId]
+                       , workerStablePtr :: MVar [StablePtr ThreadId]
+                       , workerJobDone   :: MVar (Maybe (ThreadId, SomeException))
                        , workerJobQueue  :: MVar [Job] }
 
 
@@ -110,20 +112,28 @@ scheduleWork Scheduler {..} jobAction = do
     d "scheduleWork.modifyQueue"
     jix <- atomicModifyIORef' jobsCountIORef $ \jc -> (jc + 1, jc)
     let job =
-          Job $
-          withException
-            (do d "scheduleWork.beforeJob"
+          Job $ do
+                d "scheduleWork.beforeJob"
                 jobResult <- jobAction
                 d "scheduleWork.afterJob"
                 withMVar resultsMVar $ \resArray -> do
                   writeArray resArray jix jobResult
                   d "scheduleWork.wroteResult"
-                  putMVar jobDoneMVar Nothing
-                  d "scheduleWork.jobDone Nothing")
-            (\exc ->
-               d ("scheduleWork.jobDone Just " ++ show exc) >>
-               (putMVar jobDoneMVar $ Just exc))
-            -- (putMVar jobDoneMVar . Just)
+                  putMVar (workerJobDone workers) Nothing
+                  d "scheduleWork.jobDone"
+          -- withException
+          --   (do d "scheduleWork.beforeJob"
+          --       jobResult <- jobAction
+          --       d "scheduleWork.afterJob"
+          --       withMVar resultsMVar $ \resArray -> do
+          --         writeArray resArray jix jobResult
+          --         d "scheduleWork.wroteResult"
+          --         putMVar jobDoneMVar Nothing
+          --         d "scheduleWork.jobDone Nothing")
+          --   (\exc ->
+          --      d ("scheduleWork.jobDone Just " ++ show exc) >>
+          --      (putMVar jobDoneMVar $ Just exc))
+          --   -- (putMVar jobDoneMVar . Just)
     return (job : jobs)
 
 uninitialized :: a
@@ -132,7 +142,6 @@ uninitialized = error "Data.Array.Massiv.Scheduler: uncomputed job result"
 
 withScheduler :: [Int] -> (Scheduler a -> IO b) -> IO (Int, Array a)
 withScheduler wIds submitJobs = do
-  jobDoneMVar <- newEmptyMVar
   jobsCountIORef <- newIORef 0
   jobQueueMVar <- newMVar []
   resultsMVar <- newEmptyMVar
@@ -145,10 +154,23 @@ withScheduler wIds submitJobs = do
   marr <- newArray jobCount uninitialized
   putMVar resultsMVar marr
   d "withScheduler.waiting"
-  jobQueue <- takeMVar jobQueueMVar
-  putMVar (workerJobQueue workers) $ reverse jobQueue
-  waitTillDone scheduler
-  putMVar (workerJobQueue workers) $ replicate (numWorkers scheduler) Retire
+  jobQueue <-
+    retryCount "withScedule (take).jobQueueMVar" 10 $ takeMVar jobQueueMVar
+  retryCount "withScedule (put).workerJobQueue" 10 $
+    putMVar (workerJobQueue workers) $ reverse jobQueue
+  waitTillDone scheduler `catch`
+    (\exc -> do
+       d $ "withScheduler.gotException: " ++ show (exc :: SomeException)
+       mapM_ killThread (workerThreadIds workers)
+       d $ "withScheduler.killedWorkers"
+       -- ptrs <- takeMVar (workerStablePtr workers)
+       -- mapM_ freeStablePtr ptrs
+       -- d $ "withScheduler.freedPtrs"
+       throwIO exc)
+  _ <-
+    tryPutMVar (workerJobQueue workers) $
+    replicate (numWorkers scheduler) Retire
+    -- if global, clear workerJobDone
   arr <- unsafeFreezeArray marr
   return (jobCount, arr)
 
@@ -183,20 +205,35 @@ waitTillDone (Scheduler {..}) = readIORef jobsCountIORef >>= waitTill 0
     waitTill jobsDone jobsCount
       | jobsDone == jobsCount = return ()
       | otherwise = do
-        mExc <- takeMVar jobDoneMVar
-        case mExc of
-          Just exc -> throwIO exc -- TODO: cleanup workers
-          Nothing -> waitTill (jobsDone + 1) jobsCount
+          mExc <- retryCount "waitTillDone.jobDoneMVar" 10 (takeMVar (workerJobDone workers))
+          case mExc of
+            Just (tid, exc) -> do
+              d $ "waitTillDone.gotException (from " ++ show tid ++ "): " ++ show exc
+              throwIO exc
+            Nothing -> waitTill (jobsDone + 1) jobsCount
+        -- mExc <- takeMVar jobDoneMVar
+        -- case mExc of
+        --   Just exc -> throwIO exc -- TODO: cleanup workers
+        --   Nothing -> waitTill (jobsDone + 1) jobsCount
 
+retryCount :: [Char] -> Int -> IO a -> IO a
+retryCount loc cnt0 action =
+        loop' cnt0
+      where
+        loop' 0 = action
+        loop' cnt = action `catch`
+            \BlockedIndefinitelyOnMVar -> do
+              d $ "retryCount." ++ loc
+              loop' (cnt - 1)
 
 runWorker :: MVar [Job] -> IO ()
 runWorker jobsMVar = do
-  jobs <- takeMVar jobsMVar
+  jobs <- retryCount "runWorker.jobsMVar" 10 (takeMVar jobsMVar)
   case jobs of
     (Job job:rest) -> do
-      d "runWorker.Job" >> putMVar jobsMVar rest >> job >> runWorker jobsMVar
+      d "runWorker.Job" >> retryCount "runWorker.jobsMVar (Job)" 10 (putMVar jobsMVar rest) >> job >> runWorker jobsMVar
     (Retire:rest) ->
-      d "runWorker.Retire" >> putMVar jobsMVar rest >> return ()
+      d "runWorker.Retire" >> retryCount "runWorker.jobsMVar (Retire)" 10 (putMVar jobsMVar rest) >> return ()
     [] -> d "runWorker.Empty" >> runWorker jobsMVar
 
 d :: [Char] -> IO ()
@@ -210,11 +247,29 @@ hireWorkers wIds = do
     if null wIds
       then do
         wNum <- getNumCapabilities
-        return [0 .. wNum-1]
+        return [0 .. wNum - 1]
       else return wIds
   workerJobQueue <- newEmptyMVar
-  workerThreadIds <- mapM (`forkOn` runWorker workerJobQueue) workerIds
-  return Workers {..}
+  workerJobDone <- newEmptyMVar
+  workerStablePtr <- newMVar []
+  -- workerThreadIds <- mapM (`forkOn` runWorker workerJobQueue) workerIds
+  workerThreadIds <-
+    forM workerIds $ \wId ->
+      mask_ $
+      forkOnWithUnmask wId $ \unmask -> do
+        -- tid <- myThreadId
+        -- ptr <- newStablePtr tid
+        -- modifyMVar_ workerStablePtr $ \ ptrs -> return $ ptr:ptrs
+        catch
+          (unmask (runWorker workerJobQueue))
+          (\exc -> do
+             d $ "hireWorkers.gotException: " ++ show exc
+             tid <- myThreadId
+             retryCount ("hireWorkers.workerJobDone: " ++ show exc) 10
+               (putMVar workerJobDone (Just (tid, exc)))
+             d $ "hireWorkers.storedException: " ++ show exc)
+             --throwIO exc)
+  workerThreadIds `deepseq` return Workers {..}
 
 -- startWorkers :: MVar SomeException -> MVar [Job] -> [Int] -> IO Workers
 -- startWorkers workerException workerJobQueue workerIds = do

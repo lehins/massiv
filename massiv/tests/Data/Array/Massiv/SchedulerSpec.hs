@@ -39,8 +39,7 @@ prop_CatchNested :: ArrIxP D Ix1 (ArrIxP D Ix1 Int) -> Property
 prop_CatchNested (ArrIxP arr ix) =
   assertException
     (== DivideByZero)
-    (M.sum $
-     -- computeAs U $
+    (computeAs U $
      M.map M.sum $
      M.imap
        (\ix' (ArrIxP iarr ixi) ->
