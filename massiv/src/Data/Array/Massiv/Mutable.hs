@@ -160,10 +160,9 @@ sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
 sequenceOnP wIds !arr = do
   resArrM <- unsafeNew (size arr)
-  scheduler <- makeScheduler wIds
-  iforM_ arr $ \ !ix action ->
-    submitRequest scheduler $ JobRequest (action >>= unsafeWrite resArrM ix)
-  waitTillDone scheduler
+  withScheduler wIds $ \scheduler ->
+    iforM_ arr $ \ !ix action ->
+      scheduleWork scheduler $ action >>= unsafeWrite resArrM ix
   unsafeFreeze (getComp arr) resArrM
 {-# INLINE sequenceOnP #-}
 
@@ -210,14 +209,12 @@ unsafeGenerateArray !sz f = runST $ do
 unsafeGenerateArrayP :: Mutable r ix e => [Int] -> ix -> (ix -> e) -> Array r ix e
 unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
   marr <- unsafeNew sz
-  splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+  divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      submitRequest scheduler $
-        JobRequest $
+      scheduleWork scheduler $
         iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix ->
           unsafeLinearWrite marr k (f ix)
-    submitRequest scheduler $
-      JobRequest $
+    scheduleWork scheduler $
       iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix ->
         unsafeLinearWrite marr k (f ix)
   unsafeFreeze (ParOn wIds) marr

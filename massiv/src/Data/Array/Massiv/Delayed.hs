@@ -148,14 +148,12 @@ instance Index ix => Load D ix e where
       unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
   loadP wIds (DArray _ sz f) _ unsafeWrite = do
-    void $ splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        submitRequest scheduler $
-        JobRequest $
+        scheduleWork scheduler $
         iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> do
           unsafeWrite k $ f ix
-      submitRequest scheduler $
-        JobRequest $
+      scheduleWork scheduler $
         iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> do
           unsafeWrite k (f ix)
   {-# INLINE loadP #-}

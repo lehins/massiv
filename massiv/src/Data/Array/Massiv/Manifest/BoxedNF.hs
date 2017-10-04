@@ -136,14 +136,12 @@ deepseqArray sz arr b =
 deepseqArrayP :: (Index ix, NFData a) => [Int] -> ix -> A.Array a -> b -> b
 deepseqArrayP wIds sz arr b =
   unsafePerformIO $ do
-    splitWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+    divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        submitRequest scheduler $
-        JobRequest $
+        scheduleWork scheduler $
         loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
           A.indexArray arr k `deepseq` return ()
-      submitRequest scheduler $
-        JobRequest $
+      scheduleWork scheduler $
         loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
           A.indexArray arr k `deepseq` return ()
     return b

@@ -243,18 +243,16 @@ ifoldlOnP wIds g !tAcc f !initAcc !arr = do
   results <-
     divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start -> do
-          submitRequest scheduler $
-            JobRequest $
+          scheduleWork scheduler $
             iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
               let res = f acc ix (unsafeLinearIndex arr i)
               in res `seq` return res
       when (slackStart < totalLength) $
-        submitRequest scheduler $
-        JobRequest $
+        scheduleWork scheduler $
         iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
           let res = f acc ix (unsafeLinearIndex arr i)
           in res `seq` return res
-  return $ F.foldl' g tAcc $ map jobResult $ sortOn jobResultId results
+  return $ F.foldl' g tAcc results
 {-# INLINE ifoldlOnP #-}
 
 -----------
@@ -323,18 +321,15 @@ ifoldrOnP wIds g !tAcc f !initAcc !arr = do
   results <-
     divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       when (slackStart < totalLength) $
-        submitRequest scheduler $
-        JobRequest $
+        scheduleWork scheduler $
         iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
           return $ f ix (unsafeLinearIndex arr i) acc
       loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
-        submitRequest scheduler $
-          JobRequest $
+        scheduleWork scheduler $
           iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
             let res = f ix (unsafeLinearIndex arr i) acc
             in res `seq` return res
-  return $
-    F.foldr' g tAcc $ reverse $ map jobResult $ sortOn jobResultId results
+  return $ F.foldr' g tAcc results
 {-# INLINE ifoldrOnP #-}
 
 
@@ -386,12 +381,12 @@ product = fold (*) 1
 --   results <-
 --     splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
 --       when (slackStart < totalLength) $
---         submitRequest scheduler $
+--         scheduleWork scheduler $
 --         JobRequest $
 --         iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i _ !acc ->
 --           return $ f (unsafeLinearIndex arr i) acc
 --       loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
---         submitRequest scheduler $
+--         scheduleWork scheduler $
 --           JobRequest $
 --           iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i _ !acc ->
 --             return $! f (unsafeLinearIndex arr i) acc

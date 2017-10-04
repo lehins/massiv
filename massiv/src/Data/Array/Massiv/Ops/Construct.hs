@@ -247,16 +247,15 @@ fromListPIx2 :: Mutable r Ix2 e => [Int] -> [[e]] -> Array r Ix2 e
 fromListPIx2 wIds xs =
   unsafePerformIO $ do
     let sz@(m :. n) = (P.length xs :. maybe 0 P.length (listToMaybe xs))
-    scheduler <- makeScheduler wIds
     mArr <- unsafeNew sz
-    loadListUsingIx2
-      0
-      (m * n)
-      n
-      (unsafeLinearWrite mArr)
-      (submitRequest scheduler . JobRequest)
-      xs
-    waitTillDone scheduler
+    withScheduler_ wIds $ \ scheduler -> do
+      loadListUsingIx2
+        0
+        (m * n)
+        n
+        (unsafeLinearWrite mArr)
+        (scheduleWork scheduler)
+        xs
     unsafeFreeze Par mArr
 {-# INLINE fromListPIx2 #-}
 
@@ -270,17 +269,16 @@ fromListPIx3 wIds xs =
           (P.length xs :>
            maybe 0 P.length mFirstRow :.
            maybe 0 P.length (mFirstRow >>= listToMaybe)) :: Ix3
-    scheduler <- makeScheduler wIds
     mArr <- unsafeNew (l :> m :. n)
-    loadListUsingIx3
-      0
-      (totalElem sz)
-      (m * n)
-      n
-      (unsafeLinearWrite mArr)
-      (submitRequest scheduler . JobRequest)
-      xs
-    waitTillDone scheduler
+    withScheduler_ wIds $ \ scheduler -> do
+      loadListUsingIx3
+        0
+        (totalElem sz)
+        (m * n)
+        n
+        (unsafeLinearWrite mArr)
+        (scheduleWork scheduler)
+        xs
     unsafeFreeze Par mArr
 {-# INLINE fromListPIx3 #-}
 

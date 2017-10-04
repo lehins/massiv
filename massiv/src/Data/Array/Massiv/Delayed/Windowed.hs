@@ -98,23 +98,18 @@ instance {-# OVERLAPPING #-} Load WD Ix1 e where
     iterM_ wk sz 1 (<) $ \ !i -> unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
   loadP wIds (WDArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
-    void $
-      splitWork wIds wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-        submitRequest scheduler $
-          JobRequest $
+      divideWork_ wIds wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+        scheduleWork scheduler $
           iterM_ 0 it 1 (<) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexB ix)
-        submitRequest scheduler $
-          JobRequest $
+        scheduleWork scheduler $
           iterM_ wk sz 1 (<) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexB ix)
         loopM_ it (< (slackStart + it)) (+ chunkLength) $ \ !start ->
-          submitRequest scheduler $
-          JobRequest $
+          scheduleWork scheduler $
           iterM_ start (start + chunkLength) 1 (<) $ \ !k ->
             unsafeWrite k $ indexW k
-        submitRequest scheduler $
-          JobRequest $
+        scheduleWork scheduler $
           iterM_ (slackStart + it) (totalLength + it) 1 (<) $ \ !k ->
             unsafeWrite k (indexW k)
   {-# INLINE loadP #-}
@@ -142,40 +137,35 @@ instance {-# OVERLAPPING #-} Load WD Ix2 e where
   {-# INLINE loadS #-}
   loadP wIds arr _ unsafeWrite = do
     let (WDArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) indexW) = arr
-    scheduler <- makeScheduler wIds
-    let (ib :. jb) = (wm + it :. wn + jt)
-        !blockHeight = case mStencilSz of
-                         Just (i :. _) -> i
-                         _             -> 1
-        !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
-    let loadBlock !it' !ib' =
-          unrollAndJam blockHeight (it' :. ib') (jt :. jb) $ \ !ix ->
-            unsafeWrite (toLinearIndex sz ix) (indexW ix)
-        {-# INLINE loadBlock #-}
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (0 :. 0) (it :. n) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (ib :. 0) (m :. n) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (it :. 0) (ib :. jt) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (it :. jb) (ib :. n) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
-      let !it' = wid * chunkHeight + it
-      submitRequest scheduler $ JobRequest $ loadBlock it' (it' + chunkHeight)
-    when (slackHeight > 0) $ do
-      let !itSlack = (numWorkers scheduler) * chunkHeight + it
-      submitRequest scheduler $
-        JobRequest $ loadBlock itSlack (itSlack + slackHeight)
-    waitTillDone scheduler
+    withScheduler_ wIds $ \scheduler -> do
+      let (ib :. jb) = (wm + it :. wn + jt)
+          !blockHeight = case mStencilSz of
+                           Just (i :. _) -> i
+                           _             -> 1
+          !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
+      let loadBlock !it' !ib' =
+            unrollAndJam blockHeight (it' :. ib') (jt :. jb) $ \ !ix ->
+              unsafeWrite (toLinearIndex sz ix) (indexW ix)
+          {-# INLINE loadBlock #-}
+      scheduleWork scheduler $
+        iterM_ (0 :. 0) (it :. n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      scheduleWork scheduler $
+        iterM_ (ib :. 0) (m :. n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      scheduleWork scheduler $
+        iterM_ (it :. 0) (ib :. jt) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      scheduleWork scheduler $
+        iterM_ (it :. jb) (ib :. n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
+        let !it' = wid * chunkHeight + it
+        scheduleWork scheduler $ loadBlock it' (it' + chunkHeight)
+      when (slackHeight > 0) $ do
+        let !itSlack = (numWorkers scheduler) * chunkHeight + it
+        scheduleWork scheduler $
+          loadBlock itSlack (itSlack + slackHeight)
   {-# INLINE loadP #-}
 
 -- instance Load WD Ix3 e where
@@ -254,41 +244,37 @@ loadWindowedSRec (WDArray darr mStencilSz tix wSz indexW) _unsafeRead unsafeWrit
 loadWindowedPRec :: (Index ix, Load WD (Lower ix) e) =>
   [Int] -> Array WD ix e -> (Int -> IO e) -> (Int -> e -> IO ()) -> IO ()
 loadWindowedPRec wIds (WDArray darr mStencilSz tix wSz indexW) _unsafeRead unsafeWrite = do
-  scheduler <- makeScheduler wIds
-  let DArray _ sz indexB = darr
-      !szL = tailDim sz
-      !bix = liftIndex2 (+) tix wSz
-      !(t, tixL) = unconsDim tix
-      !pageElements = totalElem szL
-      unsafeWriteLower i k = unsafeIOToST . unsafeWrite (k + pageElements * i)
-      {-# INLINE unsafeWriteLower #-}
-      -- unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
-      -- {-# INLINE unsafeWriteLowerST #-}
-  submitRequest scheduler $
-    JobRequest $
-    iterM_ zeroIndex tix 1 (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
-  submitRequest scheduler $
-    JobRequest $
-    iterM_ bix sz 1 (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
-  loopM_ t (< headDim bix) (+ 1) $ \ !i ->
-    let !lowerArr =
-          (WDArray
-             (DArray Seq szL (indexB . consDim i))
-             (tailDim <$> mStencilSz) -- can safely drop the dim, only
-                                      -- last 2 matter anyways
-             tixL
-             (tailDim wSz)
-             (indexW . consDim i))
-    in submitRequest scheduler $
-       JobRequest $
-       stToIO $
-       loadS
-         lowerArr
-         (unsafeIOToST . _unsafeRead)
-         (unsafeWriteLower i)
-  waitTillDone scheduler
+  withScheduler_ wIds $ \ scheduler -> do
+    let DArray _ sz indexB = darr
+        !szL = tailDim sz
+        !bix = liftIndex2 (+) tix wSz
+        !(t, tixL) = unconsDim tix
+        !pageElements = totalElem szL
+        unsafeWriteLower i k = unsafeIOToST . unsafeWrite (k + pageElements * i)
+        {-# INLINE unsafeWriteLower #-}
+        -- unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
+        -- {-# INLINE unsafeWriteLowerST #-}
+    scheduleWork scheduler $
+      iterM_ zeroIndex tix 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    scheduleWork scheduler $
+      iterM_ bix sz 1 (<) $ \ !ix ->
+        unsafeWrite (toLinearIndex sz ix) (indexB ix)
+    loopM_ t (< headDim bix) (+ 1) $ \ !i ->
+      let !lowerArr =
+            (WDArray
+               (DArray Seq szL (indexB . consDim i))
+               (tailDim <$> mStencilSz) -- can safely drop the dim, only
+                                        -- last 2 matter anyways
+               tixL
+               (tailDim wSz)
+               (indexW . consDim i))
+      in scheduleWork scheduler $
+         stToIO $
+         loadS
+           lowerArr
+           (unsafeIOToST . _unsafeRead)
+           (unsafeWriteLower i)
 {-# INLINE loadWindowedPRec #-}
 
 
@@ -354,40 +340,34 @@ instance {-# OVERLAPPING #-} Load WD Ix2T e where
   {-# INLINE loadS #-}
   loadP wIds arr _ unsafeWrite = do
     let (WDArray (DArray _ sz@(m, n) indexB) mStencilSz (it, jt) (wm, wn) indexW) = arr
-    scheduler <- makeScheduler wIds
-    let (ib, jb) = (wm + it, wn + jt)
-        blockHeight = case mStencilSz of
-                        Just (i, _) -> i
-                        _           -> 1
-        !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
-    let loadBlock !it' !ib' =
-          unrollAndJamT blockHeight (it', ib') (jt, jb) $ \ !ix ->
-            unsafeWrite (toLinearIndex sz ix) (indexW ix)
-        {-# INLINE loadBlock #-}
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    submitRequest scheduler $
-      JobRequest $
-      iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
-        unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
-      let !it' = wid * chunkHeight + it
-      submitRequest scheduler $ JobRequest $ loadBlock it' (it' + chunkHeight)
-    when (slackHeight > 0) $ do
-      let !itSlack = (numWorkers scheduler) * chunkHeight + it
-      submitRequest scheduler $
-        JobRequest $ loadBlock itSlack (itSlack + slackHeight)
-    waitTillDone scheduler
+    withScheduler_ wIds $ \ scheduler -> do
+      let (ib, jb) = (wm + it, wn + jt)
+          blockHeight = case mStencilSz of
+                          Just (i, _) -> i
+                          _           -> 1
+          !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
+      let loadBlock !it' !ib' =
+            unrollAndJamT blockHeight (it', ib') (jt, jb) $ \ !ix ->
+              unsafeWrite (toLinearIndex sz ix) (indexW ix)
+          {-# INLINE loadBlock #-}
+      scheduleWork scheduler $
+        iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      scheduleWork scheduler $
+        iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      scheduleWork scheduler $
+        iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      scheduleWork scheduler $
+        iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+          unsafeWrite (toLinearIndex sz ix) (indexB ix)
+      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
+        let !it' = wid * chunkHeight + it
+        scheduleWork scheduler $ loadBlock it' (it' + chunkHeight)
+      when (slackHeight > 0) $ do
+        let !itSlack = (numWorkers scheduler) * chunkHeight + it
+        scheduleWork scheduler $ loadBlock itSlack (itSlack + slackHeight)
   {-# INLINE loadP #-}
 
 

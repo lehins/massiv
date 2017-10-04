@@ -48,9 +48,11 @@ library
                      , base            >= 4.7 && < 5
                      , data-default
                      , deepseq
+                     , exceptions
                      , ghc-prim
                      , primitive
                      , safe-exceptions
+                     , say
                      , stm
                      , vector
   default-language:    Haskell2010
