@@ -44,16 +44,12 @@ library
                      , Data.Array.Massiv.Ops.Map
                      , Data.Array.Massiv.Ops.Transform
                      , Data.Array.Massiv.Stencil.Internal
-  build-depends:       async
-                     , base            >= 4.7 && < 5
+  build-depends:       base            >= 4.7 && < 5
                      , data-default
                      , deepseq
-                     , exceptions
                      , ghc-prim
                      , primitive
-                     , safe-exceptions
                      , say
-                     , stm
                      , vector
   default-language:    Haskell2010
   ghc-options:         -Wall

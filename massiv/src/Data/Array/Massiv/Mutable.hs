@@ -160,7 +160,7 @@ sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
 sequenceOnP wIds !arr = do
   resArrM <- unsafeNew (size arr)
-  withScheduler wIds $ \scheduler ->
+  withScheduler_ wIds $ \scheduler ->
     iforM_ arr $ \ !ix action ->
       scheduleWork scheduler $ action >>= unsafeWrite resArrM ix
   unsafeFreeze (getComp arr) resArrM
