@@ -7,7 +7,7 @@ import           Control.Concurrent
 import           Control.Exception.Base        (ArithException (DivideByZero),
                                                 AsyncException (ThreadKilled))
 import           Data.Array.Massiv.Common
-import           Data.Array.Massiv.CommonSpec  (ArrIxP (..), assertException,
+import           Data.Array.Massiv.CommonSpec  (ArrIx (..), ArrIxP(..), assertException,
                                                 assertExceptionIO)
 import           Data.Array.Massiv.Delayed
 import           Data.Array.Massiv.DelayedSpec ()
@@ -15,15 +15,15 @@ import           Data.Array.Massiv.Manifest
 import           Data.Array.Massiv.Mutable
 import           Data.Array.Massiv.Ops         as M
 import           Data.Array.Massiv.Scheduler
-import           Data.List                     (sortBy)
 import           Prelude                       as P
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 
 
-prop_CatchDivideByZero :: ArrIxP D Ix2 Int -> Property
-prop_CatchDivideByZero (ArrIxP arr ix) =
+-- | Ensure proper exception handling.
+prop_CatchDivideByZero :: ArrIx D Ix2 Int -> [Int] -> Property
+prop_CatchDivideByZero (ArrIx arr ix) caps =
   assertException
     (== DivideByZero)
     (M.sum $
@@ -32,11 +32,11 @@ prop_CatchDivideByZero (ArrIxP arr ix) =
           if ix == ix'
             then x `div` 0
             else x)
-       arr)
+       (setComp (ParOn caps) arr))
 
-
-prop_CatchNested :: ArrIxP D Ix1 (ArrIxP D Ix1 Int) -> Property
-prop_CatchNested (ArrIxP arr ix) =
+-- | Ensure proper exception handling in nested parallel computation
+prop_CatchNested :: ArrIx D Ix1 (ArrIxP D Ix1 Int) -> [Int] -> Property
+prop_CatchNested (ArrIx arr ix) caps =
   assertException
     (== DivideByZero)
     (computeAs U $
@@ -51,56 +51,35 @@ prop_CatchNested (ArrIxP arr ix) =
                         else e)
                    iarr
             else iarr)
-       arr)
+       (setComp (ParOn caps) arr))
+
+-- | Make sure there is no deadlock if all workers get killed
+prop_AllWorkersDied :: [Int] -> (Int, [Int]) -> Property
+prop_AllWorkersDied wIds (hId, ids) =
+  assertExceptionIO
+    (== ThreadKilled)
+    (withScheduler_ [] $ \scheduler1 ->
+       scheduleWork
+         scheduler1
+         (withScheduler_ wIds $ \scheduler ->
+            P.mapM_
+              (\_ -> scheduleWork scheduler (myThreadId >>= killThread))
+              (hId : ids)))
 
 
--- -- | Check weather `jobRequestId` matches `jobResultId` for all jobs
--- prop_SchedulerRequestIdMatch :: [Int] -> Positive Int -> Property
--- prop_SchedulerRequestIdMatch wIds (Positive numJobs) =
---   monadicIO $
---   (run $ do
---      scheduler <- makeScheduler wIds
---      P.mapM_ (\jId -> scheduleWork scheduler (JobRequest (return jId))) [0..numJobs]
---      collectResults
---        scheduler
---        (\jRes acc -> acc && jobResult jRes == jobResultId jRes)
---        True) >>=
---   assert
+-- | Check weather all jobs have been completed and returned order is correct
+prop_SchedulerAllJobsProcessed :: [Int] -> OrderedList Int -> Property
+prop_SchedulerAllJobsProcessed wIds (Ordered jobs) =
+  monadicIO $ do
+    res <- (run $ withScheduler' wIds $ \scheduler ->
+               P.mapM_ (scheduleWork scheduler . return) jobs)
+    return (res === jobs)
 
--- -- | Check weather all jobs have been completed
--- prop_SchedulerAllJobsProcessed :: [Int] -> OrderedList Int -> Property
--- prop_SchedulerAllJobsProcessed wIds (Ordered ids) =
---   monadicIO $ do
---     res <-
---       run $ withScheduler wIds $ \ scheduler -> do
---         P.mapM_
---           (scheduleWork scheduler . return)
---           ids
---         collectResults scheduler (\jRes acc -> jobResult jRes : acc) []
---     assert (sortBy compare ids == sortBy compare res)
-
-
--- -- | Make sure there is no deadlock if all workers get killed
--- prop_AllWorkersDied :: [Int] -> Int -> [Int] -> Property
--- prop_AllWorkersDied wIds hId ids =
---   assertExceptionIO
---     (maybe False (== ThreadKilled) . fromWorkerException)
---     (withScheduler wIds $ \ scheduler -> do
---         P.mapM_
---           (\_ ->
---              scheduleWork scheduler (myThreadId >>= killThread))
---           (hId:ids))
 
 spec :: Spec
 spec = do
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchNested" $ property prop_CatchNested
-  --   it "AllWorkersDied" $ property prop_AllWorkersDied
-  --   it "SchedulerRetiredSubmit" $
-  --     exc_SchedulerRetiredSubmit `shouldThrow` (== SchedulerRetired)
-  --   it "SchedulerRetiredCollect" $
-  --     exc_SchedulerRetiredCollect `shouldThrow` (== SchedulerRetired)
-  -- describe "Properties" $ do
-  --   it "SchedulerRequestIdMatch" $ property prop_SchedulerRequestIdMatch
-  --   it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed
+    it "AllWorkersDied" $ property prop_AllWorkersDied
+    it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed
