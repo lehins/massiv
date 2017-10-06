@@ -92,6 +92,10 @@ main = do
             (bench "Array Ix2 Outer" .
              whnf (computeAs U . A.transposeOuter . arrDLightIx2 Seq))
         , env
+            (return (tupleToIx2 t2))
+            (bench "Massiv Ix2" .
+             whnf (M.transpose . massDLightIx2 Seq))
+        , env
             (return (tupleToSh2 t2))
             (bench "Repa DIM2 U" .
              whnf (R.computeUnboxedS . R.transpose . arrDLightSh2))

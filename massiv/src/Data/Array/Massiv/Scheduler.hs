@@ -27,9 +27,9 @@ import           Control.Concurrent             (ThreadId, forkOnWithUnmask,
 import           Control.Concurrent.MVar
 import           Control.DeepSeq
 import           Control.Exception              (BlockedIndefinitelyOnMVar (..),
-                                                 SomeException,
-                                                 catch, mask, mask_, throwIO,
-                                                 try, uninterruptibleMask_)
+                                                 SomeException, catch, mask,
+                                                 mask_, throwIO, try,
+                                                 uninterruptibleMask_)
 import           Control.Monad                  (forM, when)
 import           Control.Monad.Primitive        (RealWorld)
 import           Data.Array.Massiv.Common.Index (Index (totalElem), loop)

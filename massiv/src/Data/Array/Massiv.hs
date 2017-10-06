@@ -59,6 +59,7 @@ module Data.Array.Massiv
   , foldrS
   , foldlP
   , sum
+  , transpose
   -- * Indexing
   , (!)
   -- * Slicing
@@ -86,13 +87,14 @@ import           Data.Array.Massiv.Delayed.Windowed
 import           Data.Array.Massiv.Internal
 import qualified Data.Array.Massiv.Manifest         as A
 -- import qualified Data.Array.Massiv.Mutable          as A
-import qualified Data.Array.Massiv.Stencil          as A
 import qualified Data.Array.Massiv.Ops              as A
+import qualified Data.Array.Massiv.Stencil          as A
 import           Prelude                            as P hiding (length, map,
                                                           mapM_, null, sum,
                                                           unzip, unzip3, zip,
                                                           zip3, zipWith,
                                                           zipWith3)
+import           System.IO.Unsafe                   (unsafePerformIO)
 
 -- | Generate `Massiv` of a specified size using a function that creates its
 -- elements. All further computation on generated Massiv will be done according
@@ -316,13 +318,15 @@ foldlP g b f a = A.foldlP g b f a . delayM
 
 
 sum :: (Num e, Layout ix e) => Massiv ix e -> e
--- sum (Massiv arr) =
---   case getComp arr of
---     Seq        -> A.foldlS (+) 0 arr
---     ParOn wIds -> unsafePerformIO $ A.foldlOnP wIds (+) 0 (+) 0 arr
-sum = A.sum . delayM
-{-# INLINE [~1] sum #-}
+sum = A.sum . unwrapMassiv
+{-# INLINE sum #-}
 
+
+
+-- | Map a function over Massiv
+transpose :: Layout Ix2 e => Massiv Ix2 e -> Massiv Ix2 e
+transpose = computeM . A.transpose . delayM
+{-# INLINE [~1] transpose #-}
 
 -- Stencil
 
@@ -330,5 +334,5 @@ sum = A.sum . delayM
 
 mapStencil :: (Layout ix e, Layout ix a, Load WD ix a) =>
   A.Stencil ix e a -> Massiv ix e -> Massiv ix a
-mapStencil stencil (Massiv arr) = computeM (A.mapStencil stencil arr)
+mapStencil stencil = computeM . A.mapStencil stencil . unwrapMassiv
 {-# INLINE mapStencil #-}

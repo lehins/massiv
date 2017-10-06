@@ -108,13 +108,13 @@ main = do
             "Parallel"
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-                (bench "Array Ix2 sum" . whnf (A.sum . A.toManifest))
+                (bench "Array Ix2 sum" . whnf A.sum)
             , env
                 (return (massDLightIx2 Par (tupleToIx2 t2)))
                 (bench "Massiv Ix2 (sum)" . whnf M.sum)
-            -- , env
-            --     (return (massDLightIx2 Par (tupleToIx2 t2)))
-            --     (bench "Massiv Ix2 foldlP" . nfIO . (M.foldlP (+) 0 (+) 0))
+            , env
+                (return (massDLightIx2 Par (tupleToIx2 t2)))
+                (bench "Massiv Ix2 foldlP" . nfIO . (M.foldlP (+) 0 (+) 0))
             -- , env
             --     (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
             --     (bench "Array Ix2 foldlP" . nfIO . (A.foldlP (+) 0 (+) 0))
