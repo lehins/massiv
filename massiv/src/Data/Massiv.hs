@@ -104,20 +104,20 @@ makeVector = makeMassiv
 {-# INLINE [~1] makeVector #-}
 
 
-range :: Comp -> Int -> Int -> Massiv Ix1 Int
-range comp from = computeM . A.range comp from
+range :: Int -> Int -> Massiv Ix1 Int
+range from = computeM . A.range Par from
 {-# INLINE [~1] range #-}
 
-rangeStep :: Comp -> Int -> Int -> Int -> Massiv Ix1 Int
-rangeStep comp from step = computeM . A.rangeStep comp from step
+rangeStep :: Int -> Int -> Int -> Massiv Ix1 Int
+rangeStep from step = computeM . A.rangeStep Par from step
 {-# INLINE [~1] rangeStep #-}
 
-enumFromN :: (Num e, Layout Ix1 e) => Comp -> e -> Ix1 -> Massiv Ix1 e
-enumFromN comp from = computeM . A.enumFromN comp from
+enumFromN :: (Num e, Layout Ix1 e) => e -> Ix1 -> Massiv Ix1 e
+enumFromN from = computeM . A.enumFromN Par from
 {-# INLINE [~1] enumFromN #-}
 
-enumFromStepN :: (Num e, Layout Ix1 e) => Comp -> e -> e -> Ix1 -> Massiv Ix1 e
-enumFromStepN comp from step = computeM . A.enumFromStepN comp from step
+enumFromStepN :: (Num e, Layout Ix1 e) => e -> e -> Ix1 -> Massiv Ix1 e
+enumFromStepN from step = computeM . A.enumFromStepN Par from step
 {-# INLINE [~1] enumFromStepN #-}
 
 
