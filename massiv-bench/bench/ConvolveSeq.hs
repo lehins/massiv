@@ -4,7 +4,7 @@
 module Main where
 
 import           Bench
-import           Bench.Massiv                 as A
+import           Bench.Massiv.Array           as A
 import           Criterion.Main
 import           Data.Array.Repa              as R
 import           Data.Array.Repa.Stencil      as R

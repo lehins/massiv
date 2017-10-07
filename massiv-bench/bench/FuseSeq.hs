@@ -2,8 +2,8 @@
 {-# LANGUAGE GADTs            #-}
 module Main where
 
-import           Bench.Massiv        as A
-import           Bench.Massiv.Auto   as M hiding (tupleToIx2)
+import           Bench.Massiv        as M hiding (tupleToIx2)
+import           Bench.Massiv.Array  as A
 import           Bench.Repa
 import           Bench.Vector
 import           Criterion.Main

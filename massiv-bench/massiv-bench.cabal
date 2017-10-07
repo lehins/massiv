@@ -18,13 +18,13 @@ library
   exposed-modules:     Bench
                      , Bench.Common
                      , Bench.Massiv
-                     , Bench.Massiv.Auto
+                     , Bench.Massiv.Array
                      , Bench.Repa
                      , Bench.Vector
   build-depends:       base            >= 4.7 && < 5
                      , deepseq
                      , data-default
-                     , massiv          == 0.1.0.0
+                     , massiv
                      , repa
                      , repa-algorithms
                      , vector

@@ -10,13 +10,13 @@ module Main where
 
 
 import           Criterion.Main
-import           Data.Array.Massiv.Common         as M
 import           Data.Array.Repa                  as R
 import           Data.Array.Repa.Specialised.Dim2 as R
+import           Data.Massiv.Core                 as M
 import           Prelude                          as P
 
 
-class Shape sh => ExtraShape sh where
+class R.Shape sh => ExtraShape sh where
   type ShLower sh :: *
   liftShape :: (Int -> Int) -> sh -> sh
   liftShape2 :: (Int -> Int -> Int) -> sh -> sh -> sh

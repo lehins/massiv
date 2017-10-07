@@ -9,7 +9,7 @@ import           Bench
 -- import           Bench.Vector
 import           Criterion.Main
 import           Data.Array.Repa                        as R
-import           Data.Functor.Identity
+-- import           Data.Functor.Identity
 import           Prelude                                as P
 
 main :: IO ()

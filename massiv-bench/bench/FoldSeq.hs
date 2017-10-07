@@ -1,10 +1,9 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs            #-}
 module Main where
 
-import           Bench.Massiv          as A
-import           Bench.Massiv.Auto     as M hiding (tupleToIx2)
+import           Bench.Massiv          as M hiding (tupleToIx2)
+import           Bench.Massiv.Array    as A
 import           Bench.Repa
 import           Bench.Vector
 import           Criterion.Main
@@ -94,7 +93,7 @@ main = do
         [ bgroup
             "Sequential"
             [ env
-                (return (computeAs P (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 Sum" . whnf A.sum)
             , env
                 (return (massDLightIx2 Seq (tupleToIx2 t2)))
@@ -108,16 +107,10 @@ main = do
             "Parallel"
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-                (bench "Array Ix2 sum" . whnf A.sum)
+                (bench "Array U Ix2" . whnf A.sum)
             , env
                 (return (massDLightIx2 Par (tupleToIx2 t2)))
-                (bench "Massiv Ix2 (sum)" . whnf M.sum)
-            , env
-                (return (massDLightIx2 Par (tupleToIx2 t2)))
-                (bench "Massiv Ix2 foldlP" . nfIO . (M.foldlP (+) 0 (+) 0))
-            -- , env
-            --     (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-            --     (bench "Array Ix2 foldlP" . nfIO . (A.foldlP (+) 0 (+) 0))
+                (bench "Massiv Ix2" . whnf M.sum)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (runIdentity . R.sumAllP))
