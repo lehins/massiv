@@ -28,37 +28,38 @@ import           Data.Functor.Identity      (Identity)
 import           Data.Int
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core
 import           Data.Primitive.Types       (Addr)
 import           Data.Word
 import           Foreign.C.Types
 import           Foreign.Ptr                (FunPtr, IntPtr, Ptr, WordPtr)
 import           Foreign.StablePtr          (StablePtr)
+import           GHC.Exts
 import           GHC.Fingerprint            (Fingerprint)
 import           GHC.TypeLits
-
 
 class Mutable (Repr e) ix e => Layout ix e where
   type Repr e :: *
   type Repr e = B
 
 
--- | Array like data structure that can be indexed in constant time, manipulated
--- in all common ways that this data structure type permits with ability do
--- processing in parallel. Prefered memory layout will be automatically selected
--- depending on the type of the elements. Custom data types should use `Layout`
--- class to decide on representation.
+-- | An immutable Array that can be indexed in constant time. Prefered memory
+-- layout will be automatically selected depending on the type of the
+-- elements. Custom data types should use `Layout` class to decide on
+-- representation.
 data Massiv ix e = Massiv !(Array (Repr e) ix e)
 
 instance NFData (Array (Repr e) ix e) => NFData (Massiv ix e) where
   rnf (Massiv arr) = rnf arr
   {-# INLINE [1] rnf #-}
 
-
+-- | Type operator to aid in resulting array representation of tuple elements
 type family a /> b :: * where
   P /> P = U
   P /> U = U
   U /> P = U
+  N /> N = N
   a /> b = B
 
 -- | Load an `Array` into memory as a `Massiv`
@@ -67,7 +68,7 @@ computeM = Massiv . compute
 {-# INLINE [1] computeM #-}
 
 
--- | Unwrap `Massiv` as a Delayed array.
+-- | Unwrap `Massiv` as a Manifest array.
 
 -- #if __GLASGOW_HASKELL__ >= 820
 delayM :: Layout ix e => Massiv ix e -> Array M ix e
@@ -86,6 +87,10 @@ delayM (Massiv arr) = toManifest arr
 unwrapMassiv :: Massiv ix e -> Array (Repr e) ix e
 unwrapMassiv (Massiv arr) = arr
 {-# INLINE [~1] unwrapMassiv #-}
+
+
+instance (Layout ix' e', Index ix) => Layout ix (Massiv ix' e') where
+  type Repr (Massiv ix' e') = B
 
 -----------------------
 -- Primitive data types
@@ -298,3 +303,25 @@ instance (NFData a, Index ix) => Layout ix [a]
 instance Index ix => Layout ix Rational
 
 instance Index ix => Layout ix (a -> b)
+
+
+instance Layout Ix1 e => IsList (Massiv Ix1 e) where
+  type Item (Massiv Ix1 e) = e
+  fromList = Massiv . fromListIx1 Par
+  fromListN n = Massiv . fromListSIx1 Par n
+  toList (Massiv arr) = toListIx1 arr
+
+
+instance (Slice (Repr e) Ix2 e, Layout Ix2 e) => IsList (Massiv Ix2 e) where
+  type Item (Massiv Ix2 e) = [e]
+  fromList = Massiv . fromListIx2 Par
+  fromListN n = Massiv . fromListPIx2 [] n
+  toList (Massiv arr) = toListIx2 arr
+
+
+instance (Slice (R (Repr e)) Ix2 e, Slice (Repr e) Ix3 e, Layout Ix3 e) => IsList (Massiv Ix3 e) where
+  type Item (Massiv Ix3 e) = [[e]]
+  fromList = Massiv . fromListIx3 Par
+  fromListN n = Massiv . fromListPIx3 [] n
+  toList (Massiv arr) = toListIx3 arr
+

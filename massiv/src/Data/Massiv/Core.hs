@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -26,6 +27,7 @@ module Data.Massiv.Core
   -- * Computation
 #if __GLASGOW_HASKELL__ >= 800
   , Comp(Seq, Par, ParOn)
+  , pattern Par
 #else
   , Comp(..)
   , pattern Par

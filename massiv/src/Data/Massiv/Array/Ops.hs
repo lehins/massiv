@@ -7,7 +7,31 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops
-  ( module Data.Massiv.Array.Ops.Construct
+  (  -- * Construction
+    makeVectorR
+  , makeArray
+  , makeArrayR
+  -- * Enumeration
+  , range
+  , rangeStep
+  , enumFromN
+  , enumFromStepN
+  -- * Conversion
+  -- ** From List
+  , fromListIx1
+  , fromListIx1As
+  , fromListIx2
+  , fromListIx2As
+  , fromListIx3
+  , fromListIx3As
+  -- ** To List
+  --
+  -- Conversion to List is done sequentially regardless of the internal
+  -- computation type, because constructing nested lists in parallel turns out
+  -- to be slower then doing so sequentially.
+  , toListIx1
+  , toListIx2
+  , toListIx3
   , module Data.Massiv.Array.Ops.Map
   , module Data.Massiv.Array.Ops.Slice
   , module Data.Massiv.Array.Ops.Fold

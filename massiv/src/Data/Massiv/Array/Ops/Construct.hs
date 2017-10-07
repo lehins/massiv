@@ -12,31 +12,28 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Construct
-  ( -- * Construction
-    makeVectorR
+  ( makeVectorR
   , makeArray
   , makeArrayR
-  -- * Enumeration
   , range
   , rangeStep
   , enumFromN
   , enumFromStepN
-  -- * Conversion
-  -- ** From List
   , fromListIx1
   , fromListIx1As
   , fromListIx2
   , fromListIx2As
   , fromListIx3
   , fromListIx3As
-  -- ** To List
-  --
-  -- Conversion to List is done sequentially regardless of the internal
-  -- computation type, because constructing nested lists in parallel turns out
-  -- to be slower then doing so sequentially.
   , toListIx1
   , toListIx2
   , toListIx3
+  -- Lower level
+  , fromListSIx1
+  , fromListSIx2
+  , fromListPIx2
+  , fromListSIx3
+  , fromListPIx3
   ) where
 
 import           Control.Monad                      (unless)
@@ -130,8 +127,17 @@ enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromInteg
 {-# INLINE enumFromStepN #-}
 
 
+fromListSIx1 :: Mutable r Ix1 e => Comp -> Int -> [e] -> Array r Ix1 e
+fromListSIx1 comp k xs =
+  runST $ do
+    mArr <- unsafeNew k
+    loadListIx1 0 k (unsafeLinearWrite mArr) xs
+    unsafeFreeze comp mArr
+{-# INLINE fromListSIx1 #-}
+
+
 fromListIx1 :: Mutable r Ix1 e => Comp -> [e] -> Array r Ix1 e
-fromListIx1 comp = setComp comp . fromListSIx1
+fromListIx1 comp xs = fromListSIx1 comp (P.length xs) xs
 {-# INLINE fromListIx1 #-}
 
 
@@ -142,8 +148,8 @@ fromListIx1As _ = fromListIx1
 
 
 fromListIx2 :: Mutable r Ix2 e => Comp -> [[e]] -> Array r Ix2 e
-fromListIx2 Seq          = fromListSIx2
-fromListIx2 (ParOn wIds) = fromListPIx2 wIds
+fromListIx2 Seq          xs = fromListSIx2 (P.length xs) xs
+fromListIx2 (ParOn wIds) xs = fromListPIx2 wIds (P.length xs) xs
 {-# INLINE fromListIx2 #-}
 
 
@@ -154,8 +160,8 @@ fromListIx2As _ = fromListIx2
 
 
 fromListIx3 :: Mutable r Ix3 e => Comp -> [[[e]]] -> Array r Ix3 e
-fromListIx3 Seq          = fromListSIx3
-fromListIx3 (ParOn wIds) = fromListPIx3 wIds
+fromListIx3 Seq          xs = fromListSIx3 (P.length xs) xs
+fromListIx3 (ParOn wIds) xs = fromListPIx3 wIds (P.length xs) xs
 {-# INLINE fromListIx3 #-}
 
 
@@ -173,17 +179,6 @@ loadListIx1 start end uWrite xs = do
   unless (P.null leftOver) $ error "Row is too long"
 {-# INLINE loadListIx1 #-}
 
-
-fromListSIx1 :: Mutable r Ix1 e => [e] -> Array r Ix1 e
-fromListSIx1 xs =
-  runST $ do
-    let !k = P.length xs
-    mArr <- unsafeNew k
-    loadListIx1 0 k (unsafeLinearWrite mArr) xs
-    unsafeFreeze Seq mArr
-{-# INLINE fromListSIx1 #-}
-
-
 loadListUsingIx2
   :: Monad m
   => Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[e]] -> m ()
@@ -199,10 +194,10 @@ loadListUsingIx2 start end step uWrite using xs = do
 {-# INLINE loadListUsingIx2 #-}
 
 
-fromListSIx2 :: Mutable r Ix2 e => [[e]] -> Array r Ix2 e
-fromListSIx2 xs =
+fromListSIx2 :: Mutable r Ix2 e => Int -> [[e]] -> Array r Ix2 e
+fromListSIx2 k xs =
   runST $ do
-    let sz@(m :. n) = (P.length xs :. maybe 0 P.length (listToMaybe xs))
+    let sz@(m :. n) = (k :. maybe 0 P.length (listToMaybe xs))
     mArr <- unsafeNew sz
     loadListUsingIx2 0 (m * n) n (unsafeLinearWrite mArr) id xs
     unsafeFreeze Seq mArr
@@ -228,12 +223,12 @@ loadListUsingIx3 start end step lowerStep uWrite using xs = do
 {-# INLINE loadListUsingIx3 #-}
 
 
-fromListSIx3 :: Mutable r Ix3 e => [[[e]]] -> Array r Ix3 e
-fromListSIx3 xs =
+fromListSIx3 :: Mutable r Ix3 e => Int -> [[[e]]] -> Array r Ix3 e
+fromListSIx3 k xs =
   runST $ do
     let mFirstRow = listToMaybe xs
     let sz@(_ :> m :. n) =
-          (P.length xs :> maybe 0 P.length mFirstRow :.
+          (k :> maybe 0 P.length mFirstRow :.
            maybe 0 P.length (mFirstRow >>= listToMaybe))
     mArr <- unsafeNew sz
     loadListUsingIx3 0 (totalElem sz) (m * n) n (unsafeLinearWrite mArr) id xs
@@ -243,10 +238,10 @@ fromListSIx3 xs =
 
 -- | Convert a list of lists into a 2 dimensional array in parallel, while
 -- splitting loading of all rows among all cores/capabilites.
-fromListPIx2 :: Mutable r Ix2 e => [Int] -> [[e]] -> Array r Ix2 e
-fromListPIx2 wIds xs =
+fromListPIx2 :: Mutable r Ix2 e => [Int] -> Int -> [[e]] -> Array r Ix2 e
+fromListPIx2 wIds k xs =
   unsafePerformIO $ do
-    let sz@(m :. n) = (P.length xs :. maybe 0 P.length (listToMaybe xs))
+    let sz@(m :. n) = (k :. maybe 0 P.length (listToMaybe xs))
     mArr <- unsafeNew sz
     withScheduler_ wIds $ \ scheduler -> do
       loadListUsingIx2
@@ -261,16 +256,15 @@ fromListPIx2 wIds xs =
 
 
 
-fromListPIx3 :: Mutable r Ix3 e => [Int] -> [[[e]]] -> Array r Ix3 e
-fromListPIx3 wIds xs =
+fromListPIx3 :: Mutable r Ix3 e => [Int] -> Int -> [[[e]]] -> Array r Ix3 e
+fromListPIx3 wIds k xs =
   unsafePerformIO $ do
     let mFirstRow = listToMaybe xs
     let sz@(l :> m :. n) =
-          (P.length xs :>
-           maybe 0 P.length mFirstRow :.
+          (k :> maybe 0 P.length mFirstRow :.
            maybe 0 P.length (mFirstRow >>= listToMaybe)) :: Ix3
     mArr <- unsafeNew (l :> m :. n)
-    withScheduler_ wIds $ \ scheduler -> do
+    withScheduler_ wIds $ \scheduler -> do
       loadListUsingIx3
         0
         (totalElem sz)

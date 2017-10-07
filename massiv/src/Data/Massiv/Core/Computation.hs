@@ -10,7 +10,6 @@
 --
 module Data.Massiv.Core.Computation
   ( Comp(..)
-  --, Par) -- unsupprted export in GHC 7.10
   , pattern Par
   ) where
 
@@ -18,8 +17,8 @@ import           Control.DeepSeq                (NFData (..), deepseq)
 
 -- | Computation type to use.
 data Comp = Seq -- ^ Sequential computation
-          | ParOn [Int] -- ^ Parallel computation with a list of capabilities to
-                        -- run computation on. Use `Par` to run on all cores.
+          | ParOn [Int] -- ^ Use `Par` to run on all cores. Parallel computation
+                        -- with a list of capabilities to run computation on.
           deriving (Show, Eq)
 
 -- | Parallel computation using all available cores.

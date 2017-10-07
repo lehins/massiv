@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms       #-}
 -- |
 -- Module      : Data.Massiv
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -8,23 +10,19 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
+-- Massiv (Масси́в) is a Russian word for an array. It is pronounced like English
+-- word /massive/, except with an accent on the /i/. There is also a data family
+-- `Array` in this library, which gives you a lot more control on ways to
+-- compute multi-dimensional arrays, at the expense of a higher learning
+-- curve. The major benefits of using the `Massiv` data type instead `Array`, is
+-- that it will automatically handle fusion, deal with underlying representation
+-- for you and it is will also do computation by default in parlallel.
+--
 module Data.Massiv
-  ( -- * Intro
-    --
-    -- Massiv (Масси́в) is a Russian word for an array, so everywhere you see
-    -- this word you can safely assume that it is the intended meaning. It
-    -- is pronounced like English word _massive_, except with an accent on
-    -- _i_. There is also a data type family `Array` in this library, which is a
-    -- more general way to deal with multi-dimensional arrays. The benefit of
-    -- using the wrapper `Massiv` data type instead, is that it will
-    -- automatically handle fusion and deal with underlying representation for
-    -- you, while with `Array` you have to keep track of it manually.
-    Massiv
-  , Comp(..)
+  ( Massiv
   -- * Construction
   , makeMassiv
   , makeVector
-  , unwrapMassiv
   -- ** Range
   , range
   , rangeStep
@@ -52,8 +50,6 @@ module Data.Massiv
   , zipWith3
   , izipWith
   , izipWith3
-  , toListIx1
-  , toListIx2
   -- * Folding
   , foldlS
   , foldrS
@@ -64,49 +60,46 @@ module Data.Massiv
   , (!)
   -- * Slicing
   , (!>)
+  -- * Conversion
+  , unwrapMassiv
+  , toListIx1
+  , toListIx2
   -- * Stencil
-  , A.Stencil
   , A.makeStencil
   , A.mkConvolutionStencil
   , mapStencil
   -- * Adding custom types
-  , Layout(..)
-  , A.Prim
-  , A.Unbox
-  , A.Storable
-  , NFData
   , module Data.Massiv.Core
+  , module Data.Massiv.Types
   ) where
 
-import           Control.DeepSeq                    (NFData)
-import           Data.Massiv.Core
 import           Data.Massiv.Array.Delayed
+import qualified Data.Massiv.Array.Manifest as A
+import           Data.Massiv.Core
+import           Data.Massiv.Types hiding (Massiv)
 import           Data.Massiv.Internal
-import qualified Data.Massiv.Array.Manifest         as A
 -- import qualified Data.Massiv.Array.Mutable          as A
-import qualified Data.Massiv.Array.Ops              as A
-import qualified Data.Massiv.Array.Stencil          as A
-import           Prelude                            as P hiding (length, map,
-                                                          mapM_, null, sum,
-                                                          unzip, unzip3, zip,
-                                                          zip3, zipWith,
-                                                          zipWith3)
+import qualified Data.Massiv.Array.Ops      as A
+import qualified Data.Massiv.Array.Stencil  as A
+import           Prelude                    as P hiding (length, map, mapM_,
+                                                  null, sum, unzip, unzip3, zip,
+                                                  zip3, zipWith, zipWith3)
+
 
 -- | Generate `Massiv` of a specified size using a function that creates its
 -- elements. All further computation on generated Massiv will be done according
 -- the `Comp` strategy supplied.
 makeMassiv :: Layout ix e =>
-              Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
-           -> ix -- ^ Size of the result `Massiv`
+              ix -- ^ Size of the result `Massiv`
            -> (ix -> e) -- ^ Function to generate elements for a every index in
                         -- the result `Massiv`
            -> Massiv ix e
-makeMassiv c sz f = computeM (A.makeArrayR D c sz f)
+makeMassiv sz f = computeM (A.makeArrayR D Par sz f)
 {-# INLINE [~1] makeMassiv #-}
 
 
 -- | Same as `makeMassiv`, but type restricted to a flat `Int` index vector.
-makeVector :: Layout Ix1 e => Comp -> Ix1 -> (Ix1 -> e) -> Massiv Ix1 e
+makeVector :: Layout Ix1 e => Ix1 -> (Ix1 -> e) -> Massiv Ix1 e
 makeVector = makeMassiv
 {-# INLINE [~1] makeVector #-}
 
@@ -269,8 +262,8 @@ toListIx1 (Massiv arr) = A.toListIx1 arr
 
 
 
--- | Convert an array with at least 2 dimensions into a list of lists. Inner
--- dimensions will get flattened into a list.
+-- | Convert Massiv with at least 2 dimensions into a list of lists. If higher
+-- than 2D Massiv is suppliied, inner dimensions will get flattened into a list.
 --
 -- ==== __Examples__
 --
@@ -324,9 +317,8 @@ transpose :: Layout Ix2 e => Massiv Ix2 e -> Massiv Ix2 e
 transpose = computeM . A.transpose . delayM
 {-# INLINE [~1] transpose #-}
 
+
 -- Stencil
-
-
 
 mapStencil :: (Layout ix e, Layout ix a, Load DW ix a) =>
               A.Stencil ix e a -> Massiv ix e -> Massiv ix a
