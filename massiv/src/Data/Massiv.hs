@@ -23,14 +23,54 @@ module Data.Massiv
   -- * Construction
   , makeMassiv
   , makeVector
-  -- ** Range
-  , range
-  , rangeStep
-  , enumFromN
-  , enumFromStepN
   -- * Accessors
   -- ** Size information
-  --, size
+  , size
+  , length
+  , null
+  -- ** Indexing
+  , (!)
+  , (!?)
+  , (?)
+  -- ** Slicing
+  --
+  -- All slicing is done in constant time, ignoring computation of the index
+  -- offset to read elements from the memory during lookups. Left slicing
+  -- essentially follows memory representation, i.e. row-major, therefore it is
+  -- the most efficient type of slicing.
+  --
+  -- Every slicing operation lowers the dimension of an array exactly by one:
+  --
+  -- prop> rank arr == 1 + rank (arr !> i)
+  --
+  -- So, in order to take smaller slices, for example taking a row from a
+  -- 3-dimensional array, slicing operations can be chained:
+  --
+  -- >>> let mass = makeMassiv (5 :> 4 :. 3) (\(i :> j :. k) -> (i, j, k))
+  -- >>> toListIx1 <$> mass !?> 1 ?> 2
+  -- Just [(1,2,0),(1,2,1),(1,2,2)]
+  --
+  -- This approach can even be used as an alternative to indexing:
+  --
+  -- >>> mass <!? 2 <? 3 ? 4
+  -- Just (4,3,2)
+  -- >>> mass !> 4 !> 3 ! 2
+  -- (4,3,2)
+  -- >>> mass ! 4 :> 3 :. 2
+  -- (4,3,2)
+  --
+  -- *** From the left
+  , (!>)
+  , (!?>)
+  , (?>)
+  -- *** From the right
+  , (<!)
+  , (<!?)
+  , (<?)
+  -- *** From the middle
+  , (<!>)
+  , (<!?>)
+  , (<?>)
   -- * Mapping
   , map
   , imap
@@ -55,11 +95,13 @@ module Data.Massiv
   , foldrS
   , foldlP
   , sum
+  , product
   , transpose
-  -- * Indexing
-  , (!)
-  -- * Slicing
-  , (!>)
+  -- * Range
+  , range
+  , rangeStep
+  , enumFromN
+  , enumFromStepN
   -- * Conversion
   , unwrapMassiv
   , toListIx1
@@ -69,22 +111,22 @@ module Data.Massiv
   , A.mkConvolutionStencil
   , mapStencil
   -- * Adding custom types
-  , module Data.Massiv.Core
+  , module C
   , module Data.Massiv.Types
   ) where
 
 import           Data.Massiv.Array.Delayed
 import qualified Data.Massiv.Array.Manifest as A
-import           Data.Massiv.Core
-import           Data.Massiv.Types hiding (Massiv)
+import qualified Data.Massiv.Core as C
+import           Data.Massiv.Types hiding (Massiv, size, Slice(..))
 import           Data.Massiv.Internal
 -- import qualified Data.Massiv.Array.Mutable          as A
 import qualified Data.Massiv.Array.Ops      as A
 import qualified Data.Massiv.Array.Stencil  as A
 import           Prelude                    as P hiding (length, map, mapM_,
-                                                  null, sum, unzip, unzip3, zip,
+                                                  null, sum, product, unzip, unzip3, zip,
                                                   zip3, zipWith, zipWith3)
-
+import GHC.Exts
 
 -- | Generate `Massiv` of a specified size using a function that creates its
 -- elements. All further computation on generated Massiv will be done according
@@ -102,6 +144,120 @@ makeMassiv sz f = computeM (A.makeArrayR D Par sz f)
 makeVector :: Layout Ix1 e => Ix1 -> (Ix1 -> e) -> Massiv Ix1 e
 makeVector = makeMassiv
 {-# INLINE [~1] makeVector #-}
+
+
+-- | /O(1)/ - Get the size of the Massiv
+size :: Layout ix e => Massiv ix e -> ix
+size (Massiv arr) = C.size arr
+{-# INLINE size #-}
+
+-- | /O(1)/ - Get the length of the Massiv, i.e. total number of elements.
+length :: Layout ix e => Massiv ix e -> Int
+length = totalElem . size
+{-# INLINE length #-}
+
+-- | /O(1)/ - Test wether Massiv is empty.
+null :: Layout ix e => Massiv ix e -> Bool
+null = (0 ==) . length
+{-# INLINE null #-}
+
+infixl 4 !, !?, ?, !>, !?>, ?>, <!, <!?, <?, <!>, <!?>, <?>
+
+-- | /O(1)/ - Index the Massiv. Throws an error when index is out of bounds.
+(!) :: Layout ix e => Massiv ix e -> ix -> e
+(!) (Massiv arr) = (arr A.!)
+{-# INLINE (!) #-}
+
+-- | /O(1)/ - Index the Massiv. Returns `Nothing` when index is out of bounds.
+(!?) :: Layout ix e => Massiv ix e -> ix -> Maybe e
+(!?) (Massiv arr) = (arr A.!?)
+{-# INLINE (!?) #-}
+
+-- | /O(1)/ - Index a Massiv. Useful with chaining of slicing
+-- operations. Returns `Nothing` when index is out of bounds.
+(?) :: Layout ix e => Maybe (Massiv ix e) -> ix -> Maybe e
+(?) Nothing  _ = Nothing
+(?) (Just m) i = m !? i
+{-# INLINE (?) #-}
+
+
+-- | /O(1)/ - Slices the Massiv from the left. For 2-dimensional array this will
+-- be equivalent to taking a row. Throws an error when index is out of bounds.
+(!>) :: (Layout (Lower ix) e, Layout ix e) =>
+        Massiv ix e -> Int -> Massiv (Lower ix) e
+(!>) m i = computeM (delayM m A.!> i)
+{-# INLINE [~1] (!>) #-}
+
+
+-- | /O(1)/ - Slices the Massiv from the left. Same as `(!>)`, except returns
+-- `Nothing` when slice is impossible.
+(!?>) :: (Layout (Lower ix) e, Layout ix e) =>
+        Massiv ix e -> Int -> Maybe (Massiv (Lower ix) e)
+(!?>) m i = fmap computeM (delayM m A.!?> i)
+{-# INLINE [~1] (!?>) #-}
+
+
+-- | /O(1)/ - Continue to slice a Massiv from the left.
+(?>) :: (Layout (Lower ix) e, Layout ix e) =>
+        Maybe (Massiv ix e) -> Int -> Maybe (Massiv (Lower ix) e)
+(?>) Nothing  _ = Nothing
+(?>) (Just m) i = m !?> i
+{-# INLINE [~1] (?>) #-}
+
+
+
+-- | /O(1)/ - Slices the Massiv from the left. For 2-dimensional array this will
+-- be equivalent to taking a column. Throws an error when index is out of
+-- bounds.
+(<!) :: (Layout (Lower ix) e, Layout ix e) =>
+        Massiv ix e -> Int -> Massiv (Lower ix) e
+(<!) m i = computeM (delayM m A.<! i)
+{-# INLINE [~1] (<!) #-}
+
+
+-- | /O(1)/ - Slices the Massiv from the right. Same as `(<!)`, except returns
+-- `Nothing` when slice is impossible.
+(<!?) :: (Layout (Lower ix) e, Layout ix e) =>
+        Massiv ix e -> Int -> Maybe (Massiv (Lower ix) e)
+(<!?) m i = fmap computeM (delayM m A.<!? i)
+{-# INLINE [~1] (<!?) #-}
+
+
+-- | /O(1)/ - Continue to slice a Massiv from the right.
+(<?) :: (Layout (Lower ix) e, Layout ix e) =>
+        Maybe (Massiv ix e) -> Int -> Maybe (Massiv (Lower ix) e)
+(<?) Nothing  _ = Nothing
+(<?) (Just m) i = m <!? i
+{-# INLINE [~1] (<?) #-}
+
+
+
+-- | /O(1)/ - Slices the Massiv in any available dimension. Throws an error when
+-- index is out of bounds or dimensions is invalid.
+--
+-- prop> arr !> i == arr <!> (rank (size arr), i)
+-- prop> arr <! i == arr <!> (1,i)
+--
+(<!>) :: (Layout (Lower ix) e, Layout ix e) =>
+        Massiv ix e -> (Dim, Int) -> Massiv (Lower ix) e
+(<!>) m i = computeM (delayM m A.<!> i)
+{-# INLINE [~1] (<!>) #-}
+
+
+-- | /O(1)/ - Slices the Massiv in the middle. Same as `(<!>)`, except returns
+-- `Nothing` when slice is impossible.
+(<!?>) :: (Layout (Lower ix) e, Layout ix e) =>
+         Massiv ix e -> (Dim, Int) -> Maybe (Massiv (Lower ix) e)
+(<!?>) m i = fmap computeM (delayM m A.<!?> i)
+{-# INLINE [~1] (<!?>) #-}
+
+
+-- | /O(1)/ - Continue to slice a Massiv in the middle.
+(<?>) :: (Layout (Lower ix) e, Layout ix e) =>
+         Maybe (Massiv ix e) -> (Dim, Int) -> Maybe (Massiv (Lower ix) e)
+(<?>) Nothing  _ = Nothing
+(<?>) (Just m) i = m <!?> i
+{-# INLINE [~1] (<?>) #-}
 
 
 range :: Int -> Int -> Massiv Ix1 Int
@@ -272,22 +428,9 @@ toListIx1 (Massiv arr) = A.toListIx1 arr
 -- >>> toListIx2 $ makeArrayIx3 Seq (2, 1, 3) id
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
-toListIx2 :: (Slice (Repr e) ix e, Layout ix e) => Massiv ix e -> [[e]]
+toListIx2 :: (C.Slice (Repr e) ix e, Layout ix e) => Massiv ix e -> [[e]]
 toListIx2 (Massiv arr) = A.toListIx2 arr
 {-# INLINE [~1] toListIx2 #-}
-
-
-
-(!>) :: (Layout (Lower ix) e, Layout ix e) =>
-         Massiv ix e -> Int -> Massiv (Lower ix) e
-(!>) m i = computeM (delayM m A.!> i)
-{-# INLINE [~1] (!>) #-}
-
-
-
-(!) :: (Layout ix e) => Massiv ix e -> ix -> e
-(!) (Massiv arr) = A.index arr
-{-# INLINE [~1] (!) #-}
 
 
 foldlS :: Layout ix e => (a -> e -> a) -> a -> Massiv ix e -> a
@@ -309,6 +452,11 @@ foldlP g b f a = A.foldlP g b f a . delayM
 sum :: (Num e, Layout ix e) => Massiv ix e -> e
 sum = A.sum . unwrapMassiv
 {-# INLINE sum #-}
+
+
+product :: (Num e, Layout ix e) => Massiv ix e -> e
+product = A.product . unwrapMassiv
+{-# INLINE product #-}
 
 
 

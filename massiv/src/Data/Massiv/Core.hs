@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances  #-}
 {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -39,12 +40,13 @@ module Data.Massiv.Core
 
 import           Control.Monad.Primitive      (PrimMonad (..))
 import           Control.Monad.ST             (ST)
+import           Data.List                    as L
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Iterator
 import           Data.Proxy
 import           Data.Typeable                (Typeable, showsTypeRep, typeRep)
-
+import           GHC.Exts                     (IsList (..))
 
 data family Array r ix e :: *
 
@@ -91,7 +93,7 @@ class Construct r ix e => Load r ix e where
     -> IO ()
 
 
-class (Source r ix e, Source (R r) ix e) => Shape r ix e where
+class Source r ix e => Shape r ix e where
   type R r :: *
   type R r = r
 
@@ -99,6 +101,8 @@ class (Source r ix e, Source (R r) ix e) => Shape r ix e where
 
   unsafeExtract :: r' ~ R r => ix -> ix -> Array r ix e -> Array r' ix e
 
+
+infixl 4 !?>, <!?
 
 class ( Index (Lower ix)
       , Shape r ix e
@@ -141,12 +145,12 @@ class Manifest r ix e => Mutable r ix e where
 
 
 
--- TODO: Implement proper Show
-instance (Typeable e, Construct r ix e) => Show (Array r ix e) where
-  show arr =
-    "<Array " ++
-    showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-    (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
+-- -- TODO: Implement proper Show
+-- instance (Typeable e, Construct r ix e) => Show (Array r ix e) where
+--   show arr =
+--     "<Array " ++
+--     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+--     (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
 
 
 
@@ -162,3 +166,24 @@ evaluateAt !arr !ix =
     (unsafeIndex arr)
     ix
 {-# INLINE evaluateAt #-}
+
+
+instance (IsList (Array r Ix1 e), Item (Array r Ix1 e) ~ e, Show e) =>
+         Show (Array r Ix1 e) where
+  show = show . toList
+
+
+instance (IsList (Array r Ix2 e), Item (Array r Ix2 e) ~ [e], Show e) =>
+         Show (Array r Ix2 e) where
+  show arr =
+    L.concat
+      (["[ "] ++ (L.intersperse "\n ," $ map show (toList arr)) ++ [" ]"])
+
+
+-- instance (IsList (Array r Ix3 e), Item (Array r Ix3 e) ~ [[e]], Show e) =>
+--          Show (Array r Ix3 e) where
+--   show arr = L.concatMap showPage ls
+--     where
+--       ls = toList arr
+--       showRow r = L.concat (L.intersperse "\n ," $ map show r)
+--       showPage pg = L.intersperse "\n" "[ " ++ (L.concatMap showRow pg) ++ " ]"

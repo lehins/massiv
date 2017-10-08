@@ -209,7 +209,7 @@ eq f arr1 arr2 =
   M.fold
     (&&)
     True
-    (DArray (getComp arr1) (size arr1) $ \ix ->
+    (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE eq #-}
 

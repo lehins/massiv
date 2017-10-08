@@ -125,3 +125,11 @@ instance VU.Unbox e => IsList (Array U Ix2 e) where
   {-# INLINE fromList #-}
   toList = toListIx2
   {-# INLINE toList #-}
+
+
+instance VU.Unbox e => IsList (Array U Ix3 e) where
+  type Item (Array U Ix3 e) = [[e]]
+  fromList = fromListIx3 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx3
+  {-# INLINE toList #-}

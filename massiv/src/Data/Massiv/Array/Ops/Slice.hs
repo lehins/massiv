@@ -29,6 +29,9 @@ import           Control.Monad    (guard)
 import           Data.Massiv.Core
 
 
+infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>
+
+
 (<!?>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Maybe (Array (R r) (Lower ix) e)
 (<!?>) !arr !(dim, i) = do
   m <- getIndex (size arr) dim

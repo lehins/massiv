@@ -97,10 +97,10 @@ type instance Lower (IxN n) = Ix (n - 1)
 
 
 instance Show Ix2 where
-  show (i :. j)  = show i ++ " x " ++ show j
+  show (i :. j)  = show i ++ " :. " ++ show j
 
 instance Show (Ix (n - 1)) => Show (IxN n) where
-  show (i :> ix) = show i ++ " x " ++ show ix
+  show (i :> ix) = show i ++ " :> " ++ show ix
 
 
 instance NFData Ix2 where

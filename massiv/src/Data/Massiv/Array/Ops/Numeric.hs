@@ -122,7 +122,7 @@ multArrs arr1 arr2
     show (size arr1) ++ " and " ++ show (size arr2)
   | otherwise =
     DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
-      A.sum (arr1' !> i .* arr2' !> j)
+      A.sum ((arr1' !> i) .* (arr2' !> j))
   where
     (m1 :. n1) = size arr1
     (m2 :. n2) = size arr2

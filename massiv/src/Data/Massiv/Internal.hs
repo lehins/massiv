@@ -22,21 +22,23 @@ module Data.Massiv.Internal
   , unwrapMassiv
   ) where
 import           Control.DeepSeq
-import           Data.Complex               (Complex)
-import           Data.Functor.Const         (Const)
-import           Data.Functor.Identity      (Identity)
+import           Data.Complex                       (Complex)
+import           Data.Functor.Const                 (Const)
+import           Data.Functor.Identity              (Identity)
 import           Data.Int
+import           Data.Massiv.Array.Delayed.Internal as A
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core
-import           Data.Primitive.Types       (Addr)
+import           Data.Primitive.Types               (Addr)
 import           Data.Word
 import           Foreign.C.Types
-import           Foreign.Ptr                (FunPtr, IntPtr, Ptr, WordPtr)
-import           Foreign.StablePtr          (StablePtr)
+import           Foreign.Ptr                        (FunPtr, IntPtr, Ptr,
+                                                     WordPtr)
+import           Foreign.StablePtr                  (StablePtr)
 import           GHC.Exts
-import           GHC.Fingerprint            (Fingerprint)
+import           GHC.Fingerprint                    (Fingerprint)
 import           GHC.TypeLits
 
 class Mutable (Repr e) ix e => Layout ix e where
@@ -50,9 +52,6 @@ class Mutable (Repr e) ix e => Layout ix e where
 -- representation.
 data Massiv ix e = Massiv !(Array (Repr e) ix e)
 
-instance NFData (Array (Repr e) ix e) => NFData (Massiv ix e) where
-  rnf (Massiv arr) = rnf arr
-  {-# INLINE [1] rnf #-}
 
 -- | Type operator to aid in resulting array representation of tuple elements
 type family a /> b :: * where
@@ -89,8 +88,20 @@ unwrapMassiv (Massiv arr) = arr
 {-# INLINE [~1] unwrapMassiv #-}
 
 
-instance (Layout ix' e', Index ix) => Layout ix (Massiv ix' e') where
-  type Repr (Massiv ix' e') = B
+singletonM :: Layout ix e => e -> Massiv ix e
+singletonM = computeM . A.singleton
+{-# INLINE [~1] singletonM #-}
+
+liftMassiv :: (Layout ix b, Layout ix e) =>
+              (b -> e) -> Massiv ix b -> Massiv ix e
+liftMassiv f = computeM . A.liftArray f . delayM
+{-# INLINE [~1] liftMassiv #-}
+
+liftMassiv2 :: (Layout ix a, Layout ix b, Layout ix e) =>
+               (a -> b -> e) -> Massiv ix a -> Massiv ix b -> Massiv ix e
+liftMassiv2 f m1 m2 = computeM $ A.liftArray2 f (delayM m1) (delayM m2)
+{-# INLINE [~1] liftMassiv2 #-}
+
 
 -----------------------
 -- Primitive data types
@@ -292,6 +303,8 @@ instance Index ix => Layout ix CBool where
 -- Boxed data types
 -------------------
 
+instance (Layout ix' e', Index ix) => Layout ix (Massiv ix' e') where
+
 instance (NFData e, Index ix) => Layout ix (Maybe e)
 
 instance (NFData e, NFData a, Index ix) => Layout ix (Either e a)
@@ -303,6 +316,73 @@ instance (NFData a, Index ix) => Layout ix [a]
 instance Index ix => Layout ix Rational
 
 instance Index ix => Layout ix (a -> b)
+
+
+-------------------
+-- Massiv instances
+-------------------
+
+
+instance Show (Array (Repr e) ix e) => Show (Massiv ix e) where
+  show (Massiv arr) = show arr
+
+
+instance (Layout ix e, Eq e) => Eq (Massiv ix e) where
+  (==) (Massiv arr1) (Massiv arr2) = A.eq (==) arr1 arr2
+  {-# INLINE (==) #-}
+
+instance NFData (Array (Repr e) ix e) => NFData (Massiv ix e) where
+  rnf (Massiv arr) = rnf arr
+  {-# INLINE [1] rnf #-}
+
+instance (Layout ix e, Num e) => Num (Massiv ix e) where
+  (+)         = liftMassiv2 (+)
+  {-# INLINE [~1] (+) #-}
+  (-)         = liftMassiv2 (-)
+  {-# INLINE [~1] (-) #-}
+  (*)         = liftMassiv2 (*)
+  {-# INLINE [~1] (*) #-}
+  abs         = liftMassiv abs
+  {-# INLINE [~1] abs #-}
+  signum      = liftMassiv signum
+  {-# INLINE [~1] signum #-}
+  fromInteger = singletonM . fromInteger
+  {-# INLINE [~1] fromInteger #-}
+
+instance (Layout ix e, Fractional e) => Fractional (Massiv ix e) where
+  (/)          = liftMassiv2 (/)
+  {-# INLINE [~1] (/) #-}
+  fromRational = singletonM . fromRational
+  {-# INLINE [~1] fromRational #-}
+
+
+instance (Layout ix e, Floating e) => Floating (Massiv ix e) where
+  pi    = singletonM pi
+  {-# INLINE [~1] pi #-}
+  exp   = liftMassiv exp
+  {-# INLINE [~1] exp #-}
+  log   = liftMassiv log
+  {-# INLINE [~1] log #-}
+  sin   = liftMassiv sin
+  {-# INLINE [~1] sin #-}
+  cos   = liftMassiv cos
+  {-# INLINE [~1] cos #-}
+  asin  = liftMassiv asin
+  {-# INLINE [~1] asin #-}
+  atan  = liftMassiv atan
+  {-# INLINE [~1] atan #-}
+  acos  = liftMassiv acos
+  {-# INLINE [~1] acos #-}
+  sinh  = liftMassiv sinh
+  {-# INLINE [~1] sinh #-}
+  cosh  = liftMassiv cosh
+  {-# INLINE [~1] cosh #-}
+  asinh = liftMassiv asinh
+  {-# INLINE [~1] asinh #-}
+  atanh = liftMassiv atanh
+  {-# INLINE [~1] atanh #-}
+  acosh = liftMassiv acosh
+  {-# INLINE [~1] acosh #-}
 
 
 instance Layout Ix1 e => IsList (Massiv Ix1 e) where
@@ -319,9 +399,9 @@ instance (Slice (Repr e) Ix2 e, Layout Ix2 e) => IsList (Massiv Ix2 e) where
   toList (Massiv arr) = toListIx2 arr
 
 
-instance (Slice (R (Repr e)) Ix2 e, Slice (Repr e) Ix3 e, Layout Ix3 e) => IsList (Massiv Ix3 e) where
+instance (Slice (R (Repr e)) Ix2 e, Slice (Repr e) Ix3 e, Layout Ix3 e) =>
+         IsList (Massiv Ix3 e) where
   type Item (Massiv Ix3 e) = [[e]]
   fromList = Massiv . fromListIx3 Par
   fromListN n = Massiv . fromListPIx3 [] n
   toList (Massiv arr) = toListIx3 arr
-
