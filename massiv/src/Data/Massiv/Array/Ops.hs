@@ -31,7 +31,9 @@ module Data.Massiv.Array.Ops
   -- to be slower then doing so sequentially.
   , toListIx1
   , toListIx2
+  , toListIx2'
   , toListIx3
+  , toListIx4
   , module Data.Massiv.Array.Ops.Map
   , module Data.Massiv.Array.Ops.Slice
   , module Data.Massiv.Array.Ops.Fold

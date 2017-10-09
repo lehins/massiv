@@ -392,15 +392,14 @@ instance Layout Ix1 e => IsList (Massiv Ix1 e) where
   toList (Massiv arr) = toListIx1 arr
 
 
-instance (Slice (Repr e) Ix2 e, Layout Ix2 e) => IsList (Massiv Ix2 e) where
+instance Layout Ix2 e => IsList (Massiv Ix2 e) where
   type Item (Massiv Ix2 e) = [e]
   fromList = Massiv . fromListIx2 Par
   fromListN n = Massiv . fromListPIx2 [] n
   toList (Massiv arr) = toListIx2 arr
 
 
-instance (Slice (R (Repr e)) Ix2 e, Slice (Repr e) Ix3 e, Layout Ix3 e) =>
-         IsList (Massiv Ix3 e) where
+instance Layout Ix3 e => IsList (Massiv Ix3 e) where
   type Item (Massiv Ix3 e) = [[e]]
   fromList = Massiv . fromListIx3 Par
   fromListN n = Massiv . fromListPIx3 [] n

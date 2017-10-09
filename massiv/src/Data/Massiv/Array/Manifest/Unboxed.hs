@@ -133,3 +133,4 @@ instance VU.Unbox e => IsList (Array U Ix3 e) where
   {-# INLINE fromList #-}
   toList = toListIx3
   {-# INLINE toList #-}
+

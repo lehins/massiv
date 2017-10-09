@@ -1,10 +1,10 @@
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -28,7 +28,7 @@ module Data.Massiv.Core
   -- * Computation
 #if __GLASGOW_HASKELL__ >= 800
   , Comp(Seq, Par, ParOn)
-  , pattern Par
+  , pattern Par -- already exported above and only needed for Haddock
 #else
   , Comp(..)
   , pattern Par
@@ -145,15 +145,6 @@ class Manifest r ix e => Mutable r ix e where
 
 
 
--- -- TODO: Implement proper Show
--- instance (Typeable e, Construct r ix e) => Show (Array r ix e) where
---   show arr =
---     "<Array " ++
---     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
---     (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
-
-
-
 -- | This is just like safe `Data.Massiv.Array.Manifest.index` function, but it
 -- allows getting values from delayed arrays as well as manifest. As the name
 -- suggests, indexing into a delayed array at the same index multiple times will
@@ -168,22 +159,40 @@ evaluateAt !arr !ix =
 {-# INLINE evaluateAt #-}
 
 
-instance (IsList (Array r Ix1 e), Item (Array r Ix1 e) ~ e, Show e) =>
-         Show (Array r Ix1 e) where
-  show = show . toList
 
 
-instance (IsList (Array r Ix2 e), Item (Array r Ix2 e) ~ [e], Show e) =>
-         Show (Array r Ix2 e) where
+-- TODO: Implement proper Show
+instance {-# OVERLAPPABLE #-} (Typeable e, Construct r ix e) => Show (Array r ix e) where
   show arr =
-    L.concat
-      (["[ "] ++ (L.intersperse "\n ," $ map show (toList arr)) ++ [" ]"])
+    "<Array " ++
+    showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+    (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
 
 
--- instance (IsList (Array r Ix3 e), Item (Array r Ix3 e) ~ [[e]], Show e) =>
+-- instance {-# OVERLAPPING #-} (IsList (Array r Ix1 e), Item (Array r Ix1 e) ~ e, Show e) =>
+--          Show (Array r Ix1 e) where
+--   show = show . toList
+
+
+-- instance {-# OVERLAPPING #-} (IsList (Array r Ix2 e), Item (Array r Ix2 e) ~ [e], Show e) =>
+--          Show (Array r Ix2 e) where
+--   show = showN (const show) "\n" . toList
+
+
+-- instance {-# OVERLAPPING #-} (IsList (Array r Ix3 e), Item (Array r Ix3 e) ~ [[e]], Show e) =>
 --          Show (Array r Ix3 e) where
---   show arr = L.concatMap showPage ls
---     where
---       ls = toList arr
---       showRow r = L.concat (L.intersperse "\n ," $ map show r)
---       showPage pg = L.intersperse "\n" "[ " ++ (L.concatMap showRow pg) ++ " ]"
+--   show = showN (showN (const show)) "\n" . toList
+
+
+-- instance (IsList (Array r Ix4 e), Item (Array r Ix4 e) ~ [[[e]]], Show e) =>
+--          Show (Array r Ix4 e) where
+--   show = showN (showN (showN (const show))) "\n" . toList
+
+
+-- showN :: Show a => (String -> a -> String) -> String -> [a] -> String
+-- showN fShow lnPrefix ls =
+--   L.concat
+--     (["[ "] ++
+--      (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
+
+

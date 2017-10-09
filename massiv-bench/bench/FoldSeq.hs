@@ -27,9 +27,6 @@ main = do
                 (return (tupleToIx2 t2))
                 (bench "Array Ix2 B" . whnf (A.foldlS (+) 0 . arrRLightIx2 B Seq))
             , env
-                (return (tupleToIx2 t2))
-                (bench "Massiv Ix2" . whnf (M.foldlS (+) 0 . massDLightIx2 Seq))
-            , env
                 (return t2)
                 (bench "Vector U" . whnf (VU.foldl' (+) 0 . vecLight2))
             , env
@@ -41,9 +38,6 @@ main = do
             [ env
                 (return (tupleToIx2 t2))
                 (bench "Array Ix2 U" . whnf (A.foldrS (+) 0 . arrDLightIx2 Seq))
-            , env
-                (return (tupleToIx2 t2))
-                (bench "Massiv Ix2" . whnf (M.foldrS (+) 0 . massDLightIx2 Seq))
             , env
                 (return t2)
                 (bench "Vector U" . whnf (VU.foldr' (+) 0 . vecLight2))
@@ -63,9 +57,6 @@ main = do
                 (return (computeAs B (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 B" . whnf (A.foldlS (+) 0))
             , env
-                (return (massDLightIx2 Seq (tupleToIx2 t2)))
-                (bench "Massiv Ix2" . whnf (M.foldlS (+) 0))
-            , env
                 (return (vecLight2 t2))
                 (bench "Vector U" . whnf (VU.foldl' (+) 0))
             , env
@@ -78,9 +69,6 @@ main = do
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" . whnf (A.foldrS (+) 0))
             , env
-                (return (massDLightIx2 Seq (tupleToIx2 t2)))
-                (bench "Massiv Ix2" . whnf (M.foldrS (+) 0))
-            , env
                 (return (vecLight2 t2))
                 (bench "Vector U" . whnf (VU.foldr' (+) 0))
             , env
@@ -89,15 +77,31 @@ main = do
             ]
         ]
     , bgroup
+        "toList"
+        [ bgroup
+            "Sequential"
+            [ env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U (A.toListIx2)" . nf A.toListIx2)
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U (A.toListIx2')" . nf A.toListIx2')
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U (A.toListIx1)" . nf A.toListIx1)
+            , env (return (vecLight2 t2)) (bench "Vector U" . nf VU.toList)
+            , env
+                (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
+                (bench "Repa DIM2 U" . nf R.toList)
+            ]
+        ]
+    , bgroup
         "Sum"
         [ bgroup
             "Sequential"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 Sum" . whnf A.sum)
-            , env
-                (return (massDLightIx2 Seq (tupleToIx2 t2)))
-                (bench "Massiv Ix2 Sum" . whnf M.sum)
+                (bench "Array Ix2 U" . whnf A.sum)
             , env (return (vecLight2 t2)) (bench "Vector U" . whnf VU.sum)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
@@ -109,7 +113,7 @@ main = do
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Array U Ix2" . whnf A.sum)
             , env
-                (return (massDLightIx2 Par (tupleToIx2 t2)))
+                (return (massDLightIx2 (tupleToIx2 t2)))
                 (bench "Massiv Ix2" . whnf M.sum)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))

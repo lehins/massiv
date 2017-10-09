@@ -27,7 +27,9 @@ module Data.Massiv.Array.Ops.Construct
   , fromListIx3As
   , toListIx1
   , toListIx2
+  , toListIx2'
   , toListIx3
+  , toListIx4
   -- Lower level
   , fromListSIx1
   , fromListSIx2
@@ -38,10 +40,9 @@ module Data.Massiv.Array.Ops.Construct
 
 import           Control.Monad                      (unless)
 import           Control.Monad.ST                   (runST)
-import           Data.Massiv.Array.Delayed.Internal (D (..))
-import           Data.Massiv.Array.Mutable          (Mutable (unsafeFreeze, unsafeNew),
-                                                     Mutable (unsafeLinearWrite))
-import           Data.Massiv.Array.Ops.Fold         (foldrFB)
+import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Array.Ops.Slice        ((!>))
 import           Data.Massiv.Core.Scheduler
 import           Data.Massiv.Core
@@ -297,16 +298,73 @@ toListIx1 !arr = build (\ c n -> foldrFB c n arr)
 -- >>> toListIx2 $ makeArrayIx3 Seq (2, 1, 3) id
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
-toListIx2 :: Slice r ix e => Array r ix e -> [[e]]
-toListIx2 !arr = build $ \ c n -> foldrFB c n $ fmap toListIx1 $ makeArrayR D Seq k (arr !>)
-  where !k = fst $ unconsDim $ size arr
+toListIx2 :: (Source r ix e, Index (Lower ix)) => Array r ix e -> [[e]]
+toListIx2 = toListIx1 . foldrInner (:) []
 {-# INLINE toListIx2 #-}
 
+-- | Right fold with an index aware function of inner most dimension.
+foldrInner :: (Source r ix e, Index (Lower ix)) =>
+              (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+foldrInner f !acc !arr =
+  unsafeMakeArray (getComp arr) szL $ \ !ix ->
+    foldrS f acc $ makeArrayR D Seq m (unsafeIndex arr . snocDim ix)
+  where
+    !(szL, m) = unsnocDim (size arr)
+{-# INLINE foldrInner #-}
 
-toListIx3 :: (Slice (R r) (Lower ix) e, Slice r ix e) => Array r ix e -> [[[e]]]
-toListIx3 !arr = build $ \ c n -> foldrFB c n $ fmap toListIx2 $ makeArrayR D Seq k (arr !>)
+toListIx2' :: Slice r ix e => Array r ix e -> [[e]]
+toListIx2' !arr = build $ \ c n -> foldrFB c n $ fmap toListIx1 $ makeArrayR D Seq k (arr !>)
   where !k = fst $ unconsDim $ size arr
+{-# INLINE toListIx2' #-}
+
+
+toListIx3 :: (Index (Lower (Lower ix)), Index (Lower ix), Source r ix e) => Array r ix e -> [[[e]]]
+toListIx3 = toListIx1 . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toListIx3 #-}
+
+toListIx4 ::
+     ( Index (Lower (Lower (Lower ix)))
+     , Index (Lower (Lower ix))
+     , Index (Lower ix)
+     , Source r ix e
+     )
+  => Array r ix e
+  -> [[[[e]]]]
+toListIx4 = toListIx1 . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
+{-# INLINE toListIx4 #-}
+
+
+-- toListIx3 :: (Slice (R r) (Lower ix) e, Slice r ix e) => Array r ix e -> [[[e]]]
+-- toListIx3 !arr = build $ \ c n -> foldrFB c n $ fmap toListIx2 $ makeArrayR D Seq k (arr !>)
+--   where !k = fst $ unconsDim $ size arr
+-- {-# INLINE toListIx3 #-}
+
+
+
+
+-- | Left fold with an index aware function of inner most dimension.
+ifoldlInner :: (Source r ix e, Index (Lower ix)) =>
+  (a -> ix -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldlInner f !acc !arr =
+  unsafeMakeArray Par szL $ \ix ->
+    let g a j e = f a (snocDim ix j) e
+    in ifoldlS g acc $ DArray Seq m (\i -> unsafeIndex arr (snocDim ix i))
+  where
+    !(szL, m) = unsnocDim (size arr)
+{-# INLINE ifoldlInner #-}
+
+
+-- | Right fold with an index aware function of inner most dimension.
+ifoldrInner :: (Source r ix e, Index (Lower ix)) =>
+  (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldrInner f !acc !arr =
+  unsafeMakeArray (getComp arr) szL $ \ix ->
+    let g j e a = f (snocDim ix j) e a
+    in ifoldrS g acc $ DArray Seq m (\i -> unsafeIndex arr (snocDim ix i))
+  where
+    !(szL, m) = unsnocDim (size arr)
+{-# INLINE ifoldrInner #-}
+
 
 
 -- toListPIx2

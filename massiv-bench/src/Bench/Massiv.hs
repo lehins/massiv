@@ -16,8 +16,8 @@ tupleToIx2 (i, j) = i :. j
 {-# INLINE tupleToIx2 #-}
 
 
-massDLightIx2 :: Comp -> Ix2 -> Massiv Ix2 Double
-massDLightIx2 !comp !massSz = makeMassiv comp massSz (\ (i :. j) -> lightFunc i j)
+massDLightIx2 :: Ix2 -> Massiv Ix2 Double
+massDLightIx2 !massSz = makeMassiv massSz (\ (i :. j) -> lightFunc i j)
 {-# INLINE massDLightIx2 #-}
 
 

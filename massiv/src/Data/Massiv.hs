@@ -26,6 +26,7 @@ module Data.Massiv
   -- * Accessors
   -- ** Size information
   , size
+  , reshape
   , length
   , null
   -- ** Indexing
@@ -59,11 +60,11 @@ module Data.Massiv
   -- >>> mass ! 4 :> 3 :. 2
   -- (4,3,2)
   --
-  -- *** From the left
+  -- *** From the outside
   , (!>)
   , (!?>)
   , (?>)
-  -- *** From the right
+  -- *** From the inside
   , (<!)
   , (<!?)
   , (<?)
@@ -160,6 +161,11 @@ length = totalElem . size
 null :: Layout ix e => Massiv ix e -> Bool
 null = (0 ==) . length
 {-# INLINE null #-}
+
+reshape :: (Layout ix' e, Layout ix e) => ix' -> Massiv ix e -> Maybe (Massiv ix' e)
+reshape sz mass = computeM <$> A.reshape sz (delayM mass)
+{-# INLINE reshape #-}
+
 
 infixl 4 !, !?, ?, !>, !?>, ?>, <!, <!?, <?, <!>, <!?>, <?>
 

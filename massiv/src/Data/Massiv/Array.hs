@@ -20,6 +20,7 @@ module Data.Massiv.Array
   ) where
 
 import           Data.Massiv.Array.Delayed
+import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops
@@ -34,6 +35,3 @@ length = totalElem . size
 null :: Construct r ix e => Array r ix e -> Bool
 null !arr = 0 == length arr
 {-# INLINE null #-}
-
-
-
