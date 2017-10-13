@@ -96,8 +96,8 @@ test_script:
 
 after_test:
 # populate stack cache
- - IF NOT DEFINED APPVEYOR_PULL_REQUEST_NUMBER IF EXIST %STACK_ROOT% xcopy /q /s /e /r /k /i /v /h /y %STACK_ROOT% %CACHED_STACK_ROOT%
- - IF NOT DEFINED APPVEYOR_PULL_REQUEST_NUMBER IF EXIST %STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %STACK_WORK% %CACHED_STACK_WORK%
+- IF NOT DEFINED APPVEYOR_PULL_REQUEST_NUMBER IF EXIST %STACK_ROOT% xcopy /q /s /e /r /k /i /v /h /y %STACK_ROOT% %CACHED_STACK_ROOT%
+- IF NOT DEFINED APPVEYOR_PULL_REQUEST_NUMBER IF EXIST %STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %STACK_WORK% %CACHED_STACK_WORK%
 # Debug paths
 - Echo WORK_DIR = %WORK_DIR%
 - dir %WORK_DIR%
