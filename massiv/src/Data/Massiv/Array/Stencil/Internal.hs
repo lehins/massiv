@@ -22,7 +22,7 @@ import           Control.DeepSeq
 import           Data.Massiv.Core
 import           Data.Massiv.Array.Delayed.Internal
 -- import           Data.Massiv.Array.Manifest
-import           Data.Default                (Default (def))
+import           Data.Default.Class                (Default (def))
 -- import           Data.Maybe                  (fromJust)
 -- import           GHC.Exts                    (inline)
 

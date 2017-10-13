@@ -20,7 +20,7 @@ module Data.Massiv.Array.Stencil
 
 import           Data.Massiv.Array.Delayed.Windowed
 import           Data.Massiv.Core
-import           Data.Default                          (Default (def))
+import           Data.Default.Class                    (Default (def))
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Stencil.Convolution
 import           Data.Massiv.Array.Stencil.Internal
