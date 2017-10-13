@@ -98,6 +98,7 @@ module Data.Massiv
   , sum
   , product
   , transpose
+  , transposeInner
   -- * Range
   , range
   , rangeStep
@@ -470,6 +471,12 @@ product = A.product . unwrapMassiv
 transpose :: Layout Ix2 e => Massiv Ix2 e -> Massiv Ix2 e
 transpose = computeM . A.transpose . delayM
 {-# INLINE [~1] transpose #-}
+
+
+-- | Map a function over Massiv
+transposeInner :: (Index (Lower ix), Layout ix e) => Massiv ix e -> Massiv ix e
+transposeInner = computeM . A.transposeInner . delayM
+{-# INLINE [~1] transposeInner #-}
 
 
 -- Stencil
