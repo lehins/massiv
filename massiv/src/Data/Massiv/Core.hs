@@ -40,13 +40,13 @@ module Data.Massiv.Core
 
 import           Control.Monad.Primitive      (PrimMonad (..))
 import           Control.Monad.ST             (ST)
-import           Data.List                    as L
+--import           Data.List                    as L
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Iterator
 import           Data.Proxy
 import           Data.Typeable                (Typeable, showsTypeRep, typeRep)
-import           GHC.Exts                     (IsList (..))
+--import           GHC.Exts                     (IsList (..))
 
 data family Array r ix e :: *
 

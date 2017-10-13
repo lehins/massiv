@@ -371,28 +371,28 @@ toListIx4 = toListIx1 . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) [
 
 
 
--- | Left fold with an index aware function of inner most dimension.
-ifoldlInner :: (Source r ix e, Index (Lower ix)) =>
-  (a -> ix -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-ifoldlInner f !acc !arr =
-  unsafeMakeArray Par szL $ \ix ->
-    let g a j e = f a (snocDim ix j) e
-    in ifoldlS g acc $ DArray Seq m (\i -> unsafeIndex arr (snocDim ix i))
-  where
-    !(szL, m) = unsnocDim (size arr)
-{-# INLINE ifoldlInner #-}
+-- -- | Left fold with an index aware function of inner most dimension.
+-- ifoldlInner :: (Source r ix e, Index (Lower ix)) =>
+--   (a -> ix -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+-- ifoldlInner f !acc !arr =
+--   unsafeMakeArray Par szL $ \ix ->
+--     let g a j e = f a (snocDim ix j) e
+--     in ifoldlS g acc $ DArray Seq m (\i -> unsafeIndex arr (snocDim ix i))
+--   where
+--     !(szL, m) = unsnocDim (size arr)
+-- {-# INLINE ifoldlInner #-}
 
 
--- | Right fold with an index aware function of inner most dimension.
-ifoldrInner :: (Source r ix e, Index (Lower ix)) =>
-  (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-ifoldrInner f !acc !arr =
-  unsafeMakeArray (getComp arr) szL $ \ix ->
-    let g j e a = f (snocDim ix j) e a
-    in ifoldrS g acc $ DArray Seq m (\i -> unsafeIndex arr (snocDim ix i))
-  where
-    !(szL, m) = unsnocDim (size arr)
-{-# INLINE ifoldrInner #-}
+-- -- | Right fold with an index aware function of inner most dimension.
+-- ifoldrInner :: (Source r ix e, Index (Lower ix)) =>
+--   (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+-- ifoldrInner f !acc !arr =
+--   unsafeMakeArray (getComp arr) szL $ \ix ->
+--     let g j e a = f (snocDim ix j) e a
+--     in ifoldrS g acc $ DArray Seq m (\i -> unsafeIndex arr (snocDim ix i))
+--   where
+--     !(szL, m) = unsnocDim (size arr)
+-- {-# INLINE ifoldrInner #-}
 
 
 

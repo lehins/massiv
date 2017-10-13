@@ -127,7 +127,7 @@ import qualified Data.Massiv.Array.Stencil  as A
 import           Prelude                    as P hiding (length, map, mapM_,
                                                   null, sum, product, unzip, unzip3, zip,
                                                   zip3, zipWith, zipWith3)
-import GHC.Exts
+--import GHC.Exts
 
 -- | Generate `Massiv` of a specified size using a function that creates its
 -- elements. All further computation on generated Massiv will be done according
