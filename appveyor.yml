@@ -44,14 +44,21 @@ before_test:
 - cd "%WORK_DIR%"
 # Setup cache dirs
 - Echo %APPVEYOR_BUILD_VERSION% > build-id
-- Echo BRANCH_CACHE_DIR = %BRANCH_CACHE_DIR%
 - IF EXIST %CACHE_DIR% dir %CACHE_DIR%
 - IF EXIST %CACHED_STACK_ROOT% xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_ROOT% %STACK_ROOT%
 - IF EXIST %CACHED_STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_WORK% %STACK_WORK%
-# Install OpenSSL 1.0.2 (see https://github.com/appveyor/ci/issues/1665)
-- ps: (New-Object Net.WebClient).DownloadFile('https://slproweb.com/download/Win64OpenSSL-1_0_2L.exe', "$($env:USERPROFILE)\Win64OpenSSL.exe")
-- ps: cmd /c start /wait "$($env:USERPROFILE)\Win64OpenSSL.exe" /silent /verysilent /sp- /suppressmsgboxes /DIR=C:\OpenSSL-Win64-v102
-- ps: Install-Product node 6
+# Debug paths
+- Echo WORK_DIR = %WORK_DIR%
+- dir %WORK_DIR%
+- Echo CACHE_DIR = %CACHE_DIR%
+- dir %CACHE_DIR%
+- Echo BRANCH_CACHE_DIR = %BRANCH_CACHE_DIR%
+- dir %BRANCH_CACHE_DIR%
+- Echo CACHED_STACK_ROOT = %CACHED_STACK_ROOT%
+- dir %CACHED_STACK_ROOT%
+- Echo CACHED_STACK_WORK = %CACHED_STACK_WORK%
+- dir %CACHED_STACK_WORK%
+
 
 # Install stack
 - ps: Start-FileDownload http://www.stackage.org/stack/windows-x86_64 -FileName stack.zip
@@ -61,23 +68,12 @@ test_script:
   - cd "%WORK_DIR%"
   # Install happy separately: https://github.com/commercialhaskell/stack/issues/3151#issuecomment-310642487. Also install cpphs because it's a build-tool and Stack can't figure out by itself that it should be installed
   - stack --verbosity warn setup --no-reinstall > nul
-  # - stack --verbosity warn install happy cpphs
-  #     -j 2
-  #     --no-terminal
-  #     --local-bin-path %SYSTEMROOT%\system32
-  #     --work-dir %STACK_WORK%
-  #     --extra-include-dirs="C:\OpenSSL-Win64-v102\include"
-  #     --extra-lib-dirs="C:\OpenSSL-Win64-v102"
-  #     --extra-lib-dirs="%WORK_DIR%"
   - stack build
       -j 2
       --no-terminal
       --local-bin-path %WORK_DIR%
-      --test
       --no-haddock-deps
       --work-dir %STACK_WORK%
-      --extra-include-dirs="C:\OpenSSL-Win64-v102\include"
-      --extra-lib-dirs="C:\OpenSSL-Win64-v102"
       --extra-lib-dirs="%WORK_DIR%"
   # - stack test massiv:tests
   #     -j 2
