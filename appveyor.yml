@@ -43,24 +43,24 @@ before_test:
 - xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv\massiv "%WORK_DIR%"
 - cd "%WORK_DIR%"
 # Setup cache dirs
-- mkdir -Force %CACHE_DIR%
-- mkdir -Force %BRANCH_CACHE_DIR%
-- mkdir -Force %CACHED_STACK_ROOT%
-- mkdir -Force %CACHED_STACK_WORK%
+- "mkdir -Force %CACHE_DIR%"
+- "mkdir -Force %BRANCH_CACHE_DIR%"
+- "mkdir -Force %CACHED_STACK_ROOT%"
+- "mkdir -Force %CACHED_STACK_WORK%"
 - Echo %APPVEYOR_BUILD_VERSION% > build-id
 - IF EXIST %CACHED_STACK_ROOT% xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_ROOT% %STACK_ROOT%
 - IF EXIST %CACHED_STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_WORK% %STACK_WORK%
 # Debug paths
 - Echo WORK_DIR = %WORK_DIR%
-- %WORK_DIR% dir %WORK_DIR%
+- dir %WORK_DIR%
 - Echo CACHE_DIR = %CACHE_DIR%
-- %CACHE_DIR% dir %CACHE_DIR%
+- dir %CACHE_DIR%
 - Echo BRANCH_CACHE_DIR = %BRANCH_CACHE_DIR%
-- %BRANCH_CACHE_DIR% dir %BRANCH_CACHE_DIR%
+- dir %BRANCH_CACHE_DIR%
 - Echo CACHED_STACK_ROOT = %CACHED_STACK_ROOT%
-- %CACHED_STACK_ROOT% dir %CACHED_STACK_ROOT%
+- dir %CACHED_STACK_ROOT%
 - Echo CACHED_STACK_WORK = %CACHED_STACK_WORK%
-- %CACHED_STACK_WORK% dir %CACHED_STACK_WORK%
+- dir %CACHED_STACK_WORK%
 
 
 # Install stack
