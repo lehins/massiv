@@ -195,16 +195,20 @@ loadListUsingIx2 start end step uWrite using xs = do
 {-# INLINE loadListUsingIx2 #-}
 
 
-fromListSIx2 :: Mutable r Ix2 e => Int -> [[e]] -> Array r Ix2 e
-fromListSIx2 k xs =
-  runST $ do
-    let sz@(m :. n) = (k :. maybe 0 P.length (listToMaybe xs))
-    mArr <- unsafeNew sz
-    loadListUsingIx2 0 (m * n) n (unsafeLinearWrite mArr) id xs
-    unsafeFreeze Seq mArr
-{-# INLINE fromListSIx2 #-}
-
-
+-- loadListUsingN :: Monad m =>
+--                   Int -> Int -> ix -> (Int -> e -> m ()) -> (m () -> m ()) -> [[[e]]] -> m ()
+-- loadListUsingN start end sz uWrite using xs = do
+--   let step = totalElem sz
+--       szL = tailDim sz
+--   leftOver <-
+--     loopM start (< end) (+ step) xs $ \ !i zs ->
+--       case zs of
+--         [] -> error "Too short"
+--         (y:ys) -> do
+--           loadListUsingN i (i + step) szL uWrite using y
+--           return ys
+--   unless (P.null leftOver) $ error "Too long"
+-- {-# INLINE loadListUsingN #-}
 
 loadListUsingIx3 :: Monad m =>
   Int -> Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[[e]]] -> m ()
@@ -222,6 +226,16 @@ loadListUsingIx3 start end step lowerStep uWrite using xs = do
       P.null (concat (concat leftOver)))) $
     error "Page is too long."
 {-# INLINE loadListUsingIx3 #-}
+
+
+fromListSIx2 :: Mutable r Ix2 e => Int -> [[e]] -> Array r Ix2 e
+fromListSIx2 k xs =
+  runST $ do
+    let sz@(m :. n) = (k :. maybe 0 P.length (listToMaybe xs))
+    mArr <- unsafeNew sz
+    loadListUsingIx2 0 (m * n) n (unsafeLinearWrite mArr) id xs
+    unsafeFreeze Seq mArr
+{-# INLINE fromListSIx2 #-}
 
 
 fromListSIx3 :: Mutable r Ix3 e => Int -> [[[e]]] -> Array r Ix3 e
@@ -256,6 +270,21 @@ fromListPIx2 wIds k xs =
 {-# INLINE fromListPIx2 #-}
 
 
+-- fromRaggedP :: (Rank ix ~ n, Mutable r ix e) => [Int] -> Int -> rag n (E e) -> Array r ix e
+-- fromRaggedP wss k xs =
+--   unsafePerformIO $ do
+--     let sz = raggedSize xs :: ix
+--     mArr <- unsafeNew sz
+--     withScheduler_ wIds $ \scheduler -> do
+--       loadRaggedUsingIx3
+--         0
+--         (totalElem sz)
+--         (m * n)
+--         n
+--         (unsafeLinearWrite mArr)
+--         (scheduleWork scheduler)
+--         xs
+--     unsafeFreeze Par mArr
 
 fromListPIx3 :: Mutable r Ix3 e => [Int] -> Int -> [[[e]]] -> Array r Ix3 e
 fromListPIx3 wIds k xs =

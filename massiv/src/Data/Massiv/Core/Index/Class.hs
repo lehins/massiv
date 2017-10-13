@@ -133,6 +133,11 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
     runIdentity $ iterM sIx eIx inc cond acc (\ix -> return . f ix)
   {-# INLINE iter #-}
 
+  -- iterM_ :: Monad m => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
+  -- iterM_ sIx eIx inc cond f =
+  --   iterM sIx eIx inc cond () (\ix _ -> f ix >> return ())
+  -- {-# INLINE iterM_ #-}
+
   iterM :: Monad m =>
            ix -- ^ Start index
         -> ix -- ^ End index

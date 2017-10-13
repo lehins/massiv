@@ -129,6 +129,13 @@ instance Prim e => IsList (Array P Ix2 e) where
   toList = toListIx2
   {-# INLINE toList #-}
 
+instance Prim e => IsList (Array P Ix3 e) where
+  type Item (Array P Ix3 e) = [[e]]
+  fromList = fromListIx3 Seq
+  {-# INLINE fromList #-}
+  toList = toListIx3
+  {-# INLINE toList #-}
+
 
 vectorToByteArray :: forall e . VP.Prim e => VP.Vector e -> ByteArray
 vectorToByteArray (VP.Vector start len arr) =
@@ -140,3 +147,5 @@ vectorToByteArray (VP.Vector start len arr) =
            copyByteArray marr 0 arr (start * elSize) (len * elSize)
            unsafeFreezeByteArray marr
 {-# INLINE vectorToByteArray #-}
+
+
