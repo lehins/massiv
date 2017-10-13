@@ -89,6 +89,12 @@ test_script:
   #     --extra-lib-dirs="C:\OpenSSL-Win64-v102"
   #     --extra-lib-dirs="%WORK_DIR%"
 
+
+after_test:
+# populate stack cache
+ - IF NOT DEFINED APPVEYOR_PULL_REQUEST_NUMBER IF EXIST %STACK_ROOT% xcopy /q /s /e /r /k /i /v /h /y %STACK_ROOT% %CACHED_STACK_ROOT%
+ - IF NOT DEFINED APPVEYOR_PULL_REQUEST_NUMBER IF EXIST %STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %STACK_WORK% %CACHED_STACK_WORK%
+
 notifications:
   - provider: Email
     to:
