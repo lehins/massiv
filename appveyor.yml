@@ -49,15 +49,15 @@ before_test:
 - IF EXIST %CACHED_STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_WORK% %STACK_WORK%
 # Debug paths
 - Echo WORK_DIR = %WORK_DIR%
-- dir %WORK_DIR%
+- dir %WORK_DIR% -ErrorAction SilentlyContinue
 - Echo CACHE_DIR = %CACHE_DIR%
-- dir %CACHE_DIR%
+- dir %CACHE_DIR% -ErrorAction SilentlyContinue
 - Echo BRANCH_CACHE_DIR = %BRANCH_CACHE_DIR%
-- dir %BRANCH_CACHE_DIR%
+- dir %BRANCH_CACHE_DIR% -ErrorAction SilentlyContinue
 - Echo CACHED_STACK_ROOT = %CACHED_STACK_ROOT%
-- dir %CACHED_STACK_ROOT%
+- dir %CACHED_STACK_ROOT% -ErrorAction SilentlyContinue
 - Echo CACHED_STACK_WORK = %CACHED_STACK_WORK%
-- dir %CACHED_STACK_WORK%
+- dir %CACHED_STACK_WORK% -ErrorAction SilentlyContinue
 
 
 # Install stack
