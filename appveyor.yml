@@ -43,13 +43,13 @@ before_test:
 - xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv\massiv "%WORK_DIR%"
 - cd "%WORK_DIR%"
 # Setup cache dirs
-- "mkdir %CACHE_DIR% -Force"
-- "mkdir %BRANCH_CACHE_DIR% -Force"
-- "mkdir %CACHED_STACK_ROOT% -Force"
-- "mkdir %CACHED_STACK_WORK% -Force"
+- IF NOT EXIST %CACHE_DIR% mkdir %CACHE_DIR%
+- IF NOT EXIST %BRANCH_CACHE_DIR% mkdir %BRANCH_CACHE_DIR%
+- IF NOT EXIST %CACHED_STACK_ROOT% mkdir %CACHED_STACK_ROOT%
+- IF NOT EXIST %CACHED_STACK_WORK% mkdir %CACHED_STACK_WORK%
 - Echo %APPVEYOR_BUILD_VERSION% > build-id
-- IF EXIST %CACHED_STACK_ROOT% xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_ROOT% %STACK_ROOT%
-- IF EXIST %CACHED_STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_WORK% %STACK_WORK%
+- xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_ROOT% %STACK_ROOT%
+- xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_WORK% %STACK_WORK%
 # Debug paths
 - Echo WORK_DIR = %WORK_DIR%
 - dir %WORK_DIR%
