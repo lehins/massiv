@@ -467,7 +467,7 @@ product = A.product . unwrapMassiv
 
 
 
--- | Map a function over Massiv
+-- | Transpose Massiv
 transpose :: Layout Ix2 e => Massiv Ix2 e -> Massiv Ix2 e
 transpose = computeM . A.transpose . delayM
 {-# INLINE [~1] transpose #-}
