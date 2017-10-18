@@ -67,7 +67,7 @@ data IxN (n :: Nat) where
   (:>) :: {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
 
 type family Ix (n :: Nat) = r | r -> n where
-  Ix 0 = ZeroDim
+  Ix 0 = Ix0
   Ix 1 = Int
   Ix 2 = Ix2
   Ix n = IxN n
@@ -75,19 +75,20 @@ type family Ix (n :: Nat) = r | r -> n where
 #else
 
 data IxN (n :: Nat) where
-  (:>) :: Rank (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
+  (:>) :: RankIx (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
 
 type family Ix (n :: Nat) where
-  Ix 0 = ZeroDim
+  Ix 0 = Ix0
   Ix 1 = Int
   Ix 2 = Ix2
   Ix n = IxN n
 
-type family Rank ix where
-  Rank ZeroDim = 0
-  Rank Ix1 = 1
-  Rank Ix2 = 2
-  Rank (IxN n) = n
+type family RankIx ix where
+  RankIx Ix0 = 0
+  RankIx Ix1 = 1
+  RankIx Ix2 = 2
+  RankIx (IxN n) = n
+
 
 #endif
 
@@ -157,7 +158,8 @@ fromIx5 (i :> j :> k :> l :. m) = (i, j, k, l, m)
 {-# INLINE fromIx5 #-}
 
 
-instance Index Ix2 where
+instance {-# OVERLAPPING #-} Index Ix2 where
+  type Rank Ix2 = 2
   rank _ = 2
   {-# INLINE [1] rank #-}
   zeroIndex = 0 :. 0
@@ -198,6 +200,7 @@ instance Index Ix2 where
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
+  type Rank Ix3 = 3
   rank _ = 3
   {-# INLINE [1] rank #-}
   zeroIndex = 0 :> 0 :. 0
@@ -239,15 +242,15 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   liftIndex2 f (i0 :> j0 :. k0) (i1 :> j1 :. k1) = f i0 i1 :> f j0 j1 :. f k0 k1
   {-# INLINE [1] liftIndex2 #-}
 
-instance (4 <= n,
+instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
-          Index (Ix ((n - 1) - 1)),
 #if __GLASGOW_HASKELL__ < 800
           Rank (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
 #endif
           IxN (n - 1) ~ Ix (n - 1)
           ) => Index (IxN n) where
+  type Rank (IxN n) = n
   rank _ = fromInteger $ natVal (Proxy :: Proxy n)
   {-# INLINE [1] rank #-}
   zeroIndex = 0 :> (zeroIndex :: Ix (n - 1))

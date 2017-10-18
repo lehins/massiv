@@ -11,10 +11,13 @@ import           Criterion.Main
 import           Data.Array.Repa                        as R
 -- import           Data.Functor.Identity
 import           Prelude                                as P
+import qualified Data.Vector.Unboxed as VU
+
 
 main :: IO ()
 main = do
   let t2 = (1600, 1200) :: (Int, Int)
+      ls = toListIx2 (arrDLightIx2 Seq (tupleToIx2 t2))
   defaultMain
     [ bgroup
         "makeArray"
@@ -43,5 +46,23 @@ main = do
         -- , env
         --     (return (tupleToSh2 t2))
         --     (bench "Repa DIM2 U Par" . whnf (runIdentity . R.computeUnboxedP . arrDLightSh2))
+        ]
+    , bgroup
+        "fromList"
+        [ bgroup
+            "Sequential"
+            [ env
+                (return ls)
+                (bench "Array Ix2 U (A.fromListIx2)" . nf (fromListIx2As U Seq))
+            , env
+                (return (concat ls))
+                (bench "Repa DIM2 U (fromListUnboxed)" . whnf (R.fromListUnboxed (tupleToSh2 t2)))
+            , env
+                (return (concat ls))
+                (bench "Vector U (fromList)" . whnf (VU.fromList))
+            -- , env
+            --     (return ls)
+            --     (bench "Repa DIM2 U" . nf R.toList)
+            ]
         ]
     ]

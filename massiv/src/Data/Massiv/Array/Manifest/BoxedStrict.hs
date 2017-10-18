@@ -1,8 +1,12 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -25,9 +29,13 @@ import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Core
+import           Data.Massiv.Ragged
 import qualified Data.Primitive.Array                as A
 import           GHC.Base                            (build)
+import           GHC.Exts                            (IsList (..))
+import           GHC.TypeLits
 import           Prelude                             hiding (mapM)
+
 
 -- | Array representation for Boxed elements. This structure is element and
 -- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
@@ -139,3 +147,46 @@ instance Index ix => Foldable (Array B ix) where
   toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 
+
+-- instance (ix ~ Ix (Rank ix)) => IsList (Array B ix e) where
+--   type Item (Array B ix e) = NestedItem [] (Rank ix) e
+--   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] (Rank ix) e)
+--   {-# INLINE fromList #-}
+
+instance IsList (Array B Ix1 e) where
+  type Item (Array B Ix1 e) = e
+  fromList xs = fromRaggedS (fromList xs :: Ragged [] 1 e)
+  {-# INLINE fromList #-}
+  -- toList = toListIx1
+  -- {-# INLINE toList #-}
+
+
+instance IsList (Array B Ix2 e) where
+  type Item (Array B Ix2 e) = [e]
+  fromList xs = fromRaggedS (fromList (map fromList xs) :: Ragged [] 2 e)
+  {-# INLINE fromList #-}
+
+-- instance {-# OVERLAPPING #-} IsList (Array B Ix3 e) where
+--   type Item (Array B Ix3 e) = NestedItem [] 3 e
+--   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] 3 e)
+--   {-# INLINE fromList #-}
+
+-- instance () => IsList (Array B (IxN n) e) where
+--   type Item (Array B (IxN n) e) = NestedItem [] n e
+--   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] n e)
+--   {-# INLINE fromList #-}
+
+-- instance (Ix n ~ IxN n, NestedItem [] n e ~ [NestedItem [] (n - 1) e], Deep [] n e ~ [Deep [] (n - 1) e], Rag [] n e ~ Ragged [] (n - 1) e, 4 <= n, Ix (n - 1) ~ IxN (n - 1), KnownNat n, Index (Ix ((n - 1) - 1))) => IsList (Array B (IxN n) e) where
+--   type Item (Array B (IxN n) e) = NestedItem [] n e
+--   fromList xs = fromRaggedS' (nestedToRagged xs :: Ragged [] n e)
+--   {-# INLINE fromList #-}
+
+-- instance {-# OVERLAPPABLE #-} (IxN n ~ Ix n, IxN (n - 1) ~ Ix (n - 1), Index (Ix ((n - 1) - 1)), Nested [] n e, 4 <= n, KnownNat n) => IsList (Array B (IxN n) e) where
+--   type Item (Array B (IxN n) e) = NestedItem [] n e
+--   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] n e)
+--   {-# INLINE fromList #-}
+
+-- instance IsList (Array B (IxN n) e) where
+--   type Item (Array B (IxN n) e) = NestedItem [] n e
+--   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] n e)
+--   {-# INLINE fromList #-}

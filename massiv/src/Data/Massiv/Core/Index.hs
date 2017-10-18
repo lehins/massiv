@@ -24,6 +24,7 @@ module Data.Massiv.Core.Index
   , headDim
   , tailDim
   , lastDim
+  , initDim
   , iterLinearM
   , iterLinearM_
   ) where
@@ -120,18 +121,21 @@ isNonEmpty !sz = isSafeIndex sz zeroIndex
 {-# INLINE [1] isNonEmpty #-}
 
 
-headDim :: (Index ix, Index (Lower ix)) => ix -> Int
+headDim :: Index ix => ix -> Int
 headDim = fst . unconsDim
 {-# INLINE [1] headDim #-}
 
-tailDim :: (Index ix, Index (Lower ix)) => ix -> Lower ix
+tailDim :: Index ix => ix -> Lower ix
 tailDim = snd . unconsDim
 {-# INLINE [1] tailDim #-}
 
-
-lastDim :: (Index ix, Index (Lower ix)) => ix -> Int
+lastDim :: Index ix => ix -> Int
 lastDim = snd . unsnocDim
 {-# INLINE [1] lastDim #-}
+
+initDim :: Index ix => ix -> Lower ix
+initDim = fst . unsnocDim
+{-# INLINE [1] initDim #-}
 
 
 -- | Iterate over N-dimensional space from start to end with accumulator

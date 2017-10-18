@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE FlexibleContexts           #-}
@@ -18,10 +19,11 @@ module Data.Massiv.Core.Index.Class where
 import           Control.DeepSeq           (NFData (..))
 import           Data.Functor.Identity     (runIdentity)
 import           Data.Massiv.Core.Iterator
+import           GHC.TypeLits
 
 newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
 
-data ZeroDim = ZeroDim deriving (Eq, Ord, Show)
+data Ix0 = Ix0 deriving (Eq, Ord, Show)
 
 type Ix1T = Int
 
@@ -35,7 +37,7 @@ type Ix5T = (Int, Int, Int, Int, Int)
 
 type family Lower ix :: *
 
-type instance Lower Ix1T = ZeroDim
+type instance Lower Ix1T = Ix0
 type instance Lower Ix2T = Ix1T
 type instance Lower Ix3T = Ix2T
 type instance Lower Ix4T = Ix3T
@@ -43,6 +45,7 @@ type instance Lower Ix5T = Ix4T
 
 
 class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
+  type Rank ix :: Nat
 
   rank :: ix -> Dim
 
@@ -51,13 +54,13 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   -- | Total number of elements in an array of this size.
   totalElem :: ix -> Int
 
-  consDim :: Index (Lower ix) => Int -> Lower ix -> ix
+  consDim :: Int -> Lower ix -> ix
 
-  unconsDim :: Index (Lower ix) => ix -> (Int, Lower ix)
+  unconsDim :: ix -> (Int, Lower ix)
 
-  snocDim :: Index (Lower ix) => Lower ix -> Int -> ix
+  snocDim :: Lower ix -> Int -> ix
 
-  unsnocDim :: Index (Lower ix) => ix -> (Lower ix, Int)
+  unsnocDim :: ix -> (Lower ix, Int)
 
   dropDim :: ix -> Dim -> Maybe (Lower ix)
 
@@ -171,6 +174,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
 
 instance Index Ix1T where
+  type Rank Ix1T = 1
   rank _ = 1
   {-# INLINE [1] rank #-}
   zeroIndex = 0
@@ -194,11 +198,11 @@ instance Index Ix1T where
   {-# INLINE [1] repairIndex #-}
   consDim i _ = i
   {-# INLINE [1] consDim #-}
-  unconsDim i = (i, ZeroDim)
+  unconsDim i = (i, Ix0)
   {-# INLINE [1] unconsDim #-}
   snocDim _ i = i
   {-# INLINE [1] snocDim #-}
-  unsnocDim i = (ZeroDim, i)
+  unsnocDim i = (Ix0, i)
   {-# INLINE [1] unsnocDim #-}
   getIndex i 1 = Just i
   getIndex _ _ = Nothing
@@ -206,7 +210,7 @@ instance Index Ix1T where
   setIndex _ 1 i = Just i
   setIndex _ _ _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropDim _ 1 = Just ZeroDim
+  dropDim _ 1 = Just Ix0
   dropDim _ _ = Nothing
   {-# INLINE [1] dropDim #-}
   liftIndex f = f
@@ -222,6 +226,7 @@ instance Index Ix1T where
 
 
 instance Index Ix2T where
+  type Rank Ix2T = 2
   rank _ = 2
   {-# INLINE [1] rank #-}
   zeroIndex = (0, 0)
@@ -257,6 +262,7 @@ instance Index Ix2T where
 
 
 instance Index Ix3T where
+  type Rank Ix3T = 3
   rank _ = 3
   {-# INLINE [1] rank #-}
   zeroIndex = (0, 0, 0)
@@ -291,6 +297,7 @@ instance Index Ix3T where
 
 
 instance Index Ix4T where
+  type Rank Ix4T = 4
   rank _ = 4
   {-# INLINE [1] rank #-}
   zeroIndex = (0, 0, 0, 0)
@@ -328,6 +335,7 @@ instance Index Ix4T where
 
 
 instance Index Ix5T where
+  type Rank Ix5T = 5
   rank _ = 5
   {-# INLINE [1] rank #-}
   zeroIndex = (0, 0, 0, 0, 0)

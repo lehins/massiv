@@ -132,7 +132,7 @@ fromListSIx1 :: Mutable r Ix1 e => Comp -> Int -> [e] -> Array r Ix1 e
 fromListSIx1 comp k xs =
   runST $ do
     mArr <- unsafeNew k
-    loadListIx1 0 k (unsafeLinearWrite mArr) xs
+    loadListIx1 id (unsafeLinearWrite mArr) 0 k (Ix1 0) xs
     unsafeFreeze comp mArr
 {-# INLINE fromListSIx1 #-}
 
@@ -170,9 +170,8 @@ fromListIx3As :: Mutable r Ix3 e => r -> Comp -> [[[e]]] -> Array r Ix3 e
 fromListIx3As _ = fromListIx3
 {-# INLINE fromListIx3As #-}
 
-
-loadListIx1 :: Monad m => Int -> Int -> (Int -> t -> m a) -> [t] -> m ()
-loadListIx1 start end uWrite xs = do
+loadListIx1 :: Monad m => (m () -> m ()) -> (Int -> t -> m a) -> Int -> Int -> b -> [t] -> m ()
+loadListIx1 using uWrite start end _ xs = using $ do
   leftOver <- loopM start (< end) (+ 1) xs $ \ i xs' ->
     case xs' of
       (y:ys) -> uWrite i y >> return ys
@@ -180,53 +179,46 @@ loadListIx1 start end uWrite xs = do
   unless (P.null leftOver) $ error "Row is too long"
 {-# INLINE loadListIx1 #-}
 
-loadListUsingIx2
-  :: Monad m
-  => Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[e]] -> m ()
-loadListUsingIx2 start end step uWrite using xs = do
-  leftOver <-
-    loopM start (< end) (+ step) xs $ \ !i ys ->
-      case ys of
-        (x:xs') -> do
-          using (loadListIx1 i (i + step) uWrite x)
-          return xs'
-        [] -> error "Column is too short."
-  unless (P.null leftOver || P.all P.null leftOver) $ error "Column is too long."
+loadListUsingIx2 :: (Index ix, Monad m) =>
+  Int -> Int -> ix -> (Int -> e -> m ()) -> (m () -> m ()) -> [[e]] -> m ()
+loadListUsingIx2 start end sz uWrite using xs = do
+  loadListUsingN (loadListIx1 using uWrite) start end sz xs
 {-# INLINE loadListUsingIx2 #-}
 
+loadListUsingIx3 :: (Index ix, Index (Lower ix), Monad m) =>
+  Int -> Int -> ix -> (Int -> e -> m ()) -> (m () -> m ()) -> [[[e]]] -> m ()
+loadListUsingIx3 start end sz uWrite using xs = do
+  loadListUsingN (loadListUsingN (loadListIx1 using uWrite)) start end sz xs
+{-# INLINE loadListUsingIx3 #-}
 
--- loadListUsingN :: Monad m =>
---                   Int -> Int -> ix -> (Int -> e -> m ()) -> (m () -> m ()) -> [[[e]]] -> m ()
--- loadListUsingN start end sz uWrite using xs = do
---   let step = totalElem sz
---       szL = tailDim sz
---   leftOver <-
---     loopM start (< end) (+ step) xs $ \ !i zs ->
---       case zs of
---         [] -> error "Too short"
---         (y:ys) -> do
---           loadListUsingN i (i + step) szL uWrite using y
---           return ys
---   unless (P.null leftOver) $ error "Too long"
--- {-# INLINE loadListUsingN #-}
-
-loadListUsingIx3 :: Monad m =>
-  Int -> Int -> Int -> Int -> (Int -> e -> m ()) -> (m () -> m ()) -> [[[e]]] -> m ()
-loadListUsingIx3 start end step lowerStep uWrite using xs = do
+loadListUsingN :: (Index ix, Monad m) =>
+                  (Int -> Int -> Lower ix -> e -> m ()) -> Int -> Int -> ix -> [e] -> m ()
+loadListUsingN loadLower start end sz xs = do
+  let step = totalElem sz
+      szL = snd (unconsDim sz)
   leftOver <-
     loopM start (< end) (+ step) xs $ \ !i zs ->
       case zs of
-        [] -> error "Page is too short"
+        [] -> error "Too short"
         (y:ys) -> do
-          loadListUsingIx2 i (i + step) lowerStep uWrite using y
+          loadLower i (i + step) szL y
           return ys
-  unless
-    (P.null leftOver ||
-     (P.all (P.length (head leftOver) ==) (P.map P.length leftOver) &&
-      P.null (concat (concat leftOver)))) $
-    error "Page is too long."
-{-# INLINE loadListUsingIx3 #-}
+  unless (null leftOver) $ error "Too long"
+{-# INLINE loadListUsingN #-}
 
+-- fromListSIx :: Mutable r Ix3 e => Int -> [[[e]]] -> Array r Ix3 e
+-- fromListSIx k xs =
+--   runST $ do
+--     let mFirstRow = listToMaybe xs
+--     let sz@(_ :> szL@(_ :. _)) =
+--           (k :> maybe 0 P.length mFirstRow :.
+--            maybe 0 P.length (mFirstRow >>= listToMaybe))
+--     mArr <- unsafeNew sz
+--     loadListUsingN (
+--       loadListUsingN (
+--           loadListIx1 id (unsafeLinearWrite mArr))) 0 (totalElem sz) szL xs
+--     unsafeFreeze Seq mArr
+-- {-# INLINE fromListSIx3 #-}
 
 fromListSIx2 :: Mutable r Ix2 e => Int -> [[e]] -> Array r Ix2 e
 fromListSIx2 k xs =
@@ -242,11 +234,11 @@ fromListSIx3 :: Mutable r Ix3 e => Int -> [[[e]]] -> Array r Ix3 e
 fromListSIx3 k xs =
   runST $ do
     let mFirstRow = listToMaybe xs
-    let sz@(_ :> m :. n) =
+    let sz@(_ :> szL@(_ :. _)) =
           (k :> maybe 0 P.length mFirstRow :.
            maybe 0 P.length (mFirstRow >>= listToMaybe))
     mArr <- unsafeNew sz
-    loadListUsingIx3 0 (totalElem sz) (m * n) n (unsafeLinearWrite mArr) id xs
+    loadListUsingIx3 0 (totalElem sz) szL (unsafeLinearWrite mArr) id xs
     unsafeFreeze Seq mArr
 {-# INLINE fromListSIx3 #-}
 
@@ -298,8 +290,7 @@ fromListPIx3 wIds k xs =
       loadListUsingIx3
         0
         (totalElem sz)
-        (m * n)
-        n
+        (tailDim sz)
         (unsafeLinearWrite mArr)
         (scheduleWork scheduler)
         xs
