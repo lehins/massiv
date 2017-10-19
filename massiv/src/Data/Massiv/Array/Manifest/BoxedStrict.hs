@@ -153,6 +153,6 @@ instance (IsList (Array L ix e), Load L ix e, Construct L ix e) => IsList (Array
   type Item (Array B ix e) = Item (Array L ix e)
   fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList arr@(BArray {..}) = toList (unsafeMakeArray bComp bSize (unsafeIndex arr) :: Array L ix e)
+  toList = toListArray
   {-# INLINE toList #-}
 

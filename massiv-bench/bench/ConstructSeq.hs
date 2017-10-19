@@ -2,11 +2,12 @@
 {-# LANGUAGE GADTs            #-}
 module Main where
 
-import           Bench
--- import           Bench.Massiv                           as A
+--import           Bench
+import           Bench.Massiv.Array                           as A
 -- import           Bench.Massiv.Auto                      as M hiding (tupleToIx2)
--- import           Bench.Repa
--- import           Bench.Vector
+import           Bench.Repa
+import           Bench.Vector
+import GHC.Exts
 import           Criterion.Main
 import           Data.Array.Repa                        as R
 -- import           Data.Functor.Identity
@@ -54,6 +55,9 @@ main = do
             [ env
                 (return ls)
                 (bench "Array Ix2 U (A.fromListIx2)" . nf (fromListIx2As U Seq))
+            , env
+                (return ls)
+                (bench "Array Ix2 U (fromList)" . nf (fromList :: [[Double]] -> A.Array A.U Ix2 Double))
             , env
                 (return (concat ls))
                 (bench "Repa DIM2 U (fromListUnboxed)" . whnf (R.fromListUnboxed (tupleToSh2 t2)))

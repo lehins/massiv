@@ -24,6 +24,7 @@ prop_castToFromVector
      , Typeable (VRepr r)
      , ARepr (VRepr r) ~ r
      , Eq (Array r ix Int)
+     , Show (Array r ix Int)
      )
   => proxy ix -> r -> Arr r ix Int -> Property
 prop_castToFromVector _ _ (Arr arr) =
@@ -38,6 +39,7 @@ prop_toFromVector ::
      , VRepr (ARepr v) ~ v
      , Eq (Array r ix Int)
      , VG.Vector v Int
+     , Show (Array r ix Int)
      , Typeable v
      )
   => Proxy v

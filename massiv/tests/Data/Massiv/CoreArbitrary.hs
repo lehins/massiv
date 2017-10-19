@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module Data.Massiv.CoreArbitrary
   ( Arr(..)
   , ArrIx(..)
@@ -22,24 +24,30 @@ import           Control.DeepSeq            (NFData, deepseq)
 import           Control.Exception          (Exception, SomeException, catch)
 import           Data.Massiv.Array.Ops
 import           Data.Massiv.Core
-import           Data.Massiv.Ragged
 import           Data.Massiv.Core.IndexSpec hiding (spec)
+import           Data.Massiv.Ragged ()
 import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 
-data Arr r ix e = Arr (Array r ix e) deriving Show
+data Arr r ix e = Arr (Array r ix e)
 
-data ArrS r ix e = ArrS (Array r ix e) deriving Show
+data ArrS r ix e = ArrS (Array r ix e)
 
-data ArrP r ix e = ArrP (Array r ix e) deriving Show
+data ArrP r ix e = ArrP (Array r ix e)
 
-data ArrIx r ix e = ArrIx (Array r ix e) ix deriving Show
+data ArrIx r ix e = ArrIx (Array r ix e) ix
 
-data ArrIxS r ix e = ArrIxS (Array r ix e) ix deriving Show
+data ArrIxS r ix e = ArrIxS (Array r ix e) ix
 
-data ArrIxP r ix e = ArrIxP (Array r ix e) ix deriving Show
+data ArrIxP r ix e = ArrIxP (Array r ix e) ix
 
+deriving instance (Show (Array r ix e)) => Show (Arr r ix e)
+deriving instance (Show (Array r ix e)) => Show (ArrS r ix e)
+deriving instance (Show (Array r ix e)) => Show (ArrP r ix e)
+deriving instance (Show (Array r ix e), Show ix) => Show (ArrIx r ix e)
+deriving instance (Show (Array r ix e), Show ix) => Show (ArrIxS r ix e)
+deriving instance (Show (Array r ix e), Show ix) => Show (ArrIxP r ix e)
 
 instance Arbitrary Comp where
   arbitrary = oneof [pure Seq, fmap ParOn arbitrary]

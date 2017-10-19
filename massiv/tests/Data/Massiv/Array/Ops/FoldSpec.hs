@@ -46,7 +46,11 @@ prop_FoldlOnP wId wIds (ArrP arr) =
     wIdsNE = wId : wIds
 
 
-specFold :: (Arbitrary ix, CoArbitrary ix, Index ix) => proxy ix -> String -> Spec
+specFold ::
+     (Arbitrary ix, CoArbitrary ix, Index ix, Show (Array D ix Int))
+  => proxy ix
+  -> String
+  -> Spec
 specFold proxy dimStr = do
   describe dimStr $ do
     it "sumS Eq sumP" $ property $ prop_SumSEqSumP proxy

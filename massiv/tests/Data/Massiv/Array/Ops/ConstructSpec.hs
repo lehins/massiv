@@ -1,7 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 
-
+import Data.Proxy
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops
@@ -11,6 +12,7 @@ import           Prelude                       hiding (map)
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
+import           GHC.Exts                            (IsList (..))
 
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
@@ -35,8 +37,15 @@ prop_toFromListIx1 sz f =
   in arr == fromListIx1As U Seq (toListIx1 arr)
 
 
+prop_toFromList ::
+     (Show (Array U ix Int), IsList (Array U ix Int), Index ix)
+  => Proxy ix
+  -> Arr U ix Int
+  -> Property
+prop_toFromList _ (Arr arr) = arr === fromList (toList arr)
+
 prop_toFromListSIx2 :: Arr U Ix2 Int -> Property
-prop_toFromListSIx2 (Arr arr) = arr === fromListIx2As U Seq (toListIx2 arr)
+prop_toFromListSIx2 (Arr arr) = arr === fromList (toList arr)
 
 
 prop_excFromToListSIx2 :: [[Int]] -> Property
@@ -112,13 +121,14 @@ specIx1 = do
 
 specIx2 :: Spec
 specIx2 = do
-  it "toFromListSIx2" $ property prop_toFromListSIx2
+  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix2))
   it "excFromToListSIx2" $ property prop_excFromToListSIx2
   it "toFromListPIx2" $ property prop_toFromListPIx2
   it "excFromToListPIx2" $ property prop_excFromToListPIx2
 
 specIx3 :: Spec
 specIx3 = do
+  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix3))
   it "toFromListSIx3" $ property prop_toFromListSIx3
   it "excFromToListSIx3" $ property prop_excFromToListSIx3
   it "toFromListPIx3" $ property prop_toFromListPIx3

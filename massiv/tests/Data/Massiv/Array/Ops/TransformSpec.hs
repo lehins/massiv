@@ -23,8 +23,16 @@ prop_transposeOuterInner :: Arr D Ix2 Int -> Property
 prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
 
 
-specN :: (Eq e, Shape r ix e, Source (R r) ix e, Typeable e, Arbitrary (ArrIx r ix e))
-  => proxy (r, ix, e) -> Spec
+specN ::
+     ( Eq e
+     , Shape r ix e
+     , Source (R r) ix e
+     , Typeable e
+     , Show (Array r ix e)
+     , Arbitrary (ArrIx r ix e)
+     )
+  => proxy (r, ix, e)
+  -> Spec
 specN r = do
   it "ExtractAppend" $ property $ prop_ExtractAppend r
 

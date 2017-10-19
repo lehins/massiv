@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -28,6 +29,7 @@ import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
+import Data.Massiv.Ragged
 
 data U = U deriving Show
 
@@ -111,26 +113,35 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance VU.Unbox e => IsList (Array U Ix1 e) where
-  type Item (Array U Ix1 e) = e
-  fromList = fromListIx1 Seq
+-- instance VU.Unbox e => IsList (Array U Ix1 e) where
+--   type Item (Array U Ix1 e) = e
+--   fromList = fromListIx1 Seq
+--   {-# INLINE fromList #-}
+--   toList = toListIx1
+--   {-# INLINE toList #-}
+
+
+-- instance VU.Unbox e => IsList (Array U Ix2 e) where
+--   type Item (Array U Ix2 e) = [e]
+--   fromList = fromListIx2 Seq
+--   {-# INLINE fromList #-}
+--   toList = toListIx2
+--   {-# INLINE toList #-}
+
+
+-- instance VU.Unbox e => IsList (Array U Ix3 e) where
+--   type Item (Array U Ix3 e) = [[e]]
+--   fromList = fromListIx3 Seq
+--   {-# INLINE fromList #-}
+--   toList = toListIx3
+--   {-# INLINE toList #-}
+
+
+
+instance (VU.Unbox e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
+         IsList (Array U ix e) where
+  type Item (Array U ix e) = Item (Array L ix e)
+  fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList = toListIx1
+  toList = toListArray
   {-# INLINE toList #-}
-
-
-instance VU.Unbox e => IsList (Array U Ix2 e) where
-  type Item (Array U Ix2 e) = [e]
-  fromList = fromListIx2 Seq
-  {-# INLINE fromList #-}
-  toList = toListIx2
-  {-# INLINE toList #-}
-
-
-instance VU.Unbox e => IsList (Array U Ix3 e) where
-  type Item (Array U Ix3 e) = [[e]]
-  fromList = fromListIx3 Seq
-  {-# INLINE fromList #-}
-  toList = toListIx3
-  {-# INLINE toList #-}
-
