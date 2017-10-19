@@ -95,3 +95,6 @@ makeStencil b !sSz !sCenter relStencil =
       (inline relStencil $ \ !ixD -> getVal (liftIndex2 (-) ix ixD))
     {-# INLINE stencil #-}
 {-# INLINE makeStencil #-}
+
+
+

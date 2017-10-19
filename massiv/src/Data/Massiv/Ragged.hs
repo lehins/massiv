@@ -43,6 +43,7 @@ type instance Elt LN (IxN n) e = Array LN (Ix (n-1)) e
 
 newtype instance Array LN ix e = List [Elt LN ix e]
 
+
 -- type family Nested r ix e :: *
 -- type instance Nested LN Ix1 e = e
 -- type instance Nested LN Ix2 e = [e]
@@ -217,7 +218,7 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   empty = LArray Seq zeroIndex empty
   {-# INLINE empty #-}
   nestedSz = nestedSz . lData
-  {-# INLINE netsedSz #-}
+  {-# INLINE nestedSz #-}
   nestedLength = nestedLength . lData
   {-# INLINE nestedLength #-}
   cons x arr = newArr
@@ -230,7 +231,7 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
       Just (x, xs) -> Just (x, LArray lComp (nestedSz xs) xs)
   {-# INLINE uncons #-}
   unsafeGenerateM = unsafeGenerateLArrayM
-  {-# INLINE cons #-}
+  {-# INLINE unsafeGenerateM #-}
   loadNested using uWrite start end szL arr =
     loadNested using uWrite start end szL (lData arr)
   raggedFormat f sep arr = raggedFormat f sep (lData arr)
@@ -356,12 +357,12 @@ instance {-# OVERLAPPING #-} Ragged LN Ix1 e where
   {-# INLINE unsafeGenerateM #-}
   loadNested using uWrite start end _ xs =
     using $ do
-      _leftOver <-
+      leftOver <-
         loopM start (< end) (+ 1) xs $ \i xs' ->
           case uncons xs' of
             Nothing -> error $ "Row is too short"
             Just (y, ys) -> uWrite i y >> return ys
-      --unless (isNull leftOver) $ error "Row is too long"
+      unless (isNull leftOver) $ error "Row is too long"
       return ()
   {-# INLINE loadNested #-}
   raggedFormat f _ (List xs) = L.concat $ "[ " : (L.intersperse "," $ map f xs) ++ [" ]"]
@@ -493,9 +494,11 @@ instance IsList (Array LN Ix2 e) where
 instance IsList (Array LN (IxN n) e) where
   type Item (Array LN (IxN n) e) = Elt LN (IxN n) e
   fromList = coerce
-  --fromList = List . map fromList
+  --fromList xs = List $ map fromList xs
   toList = coerce
   --toList (List xs) = map toList xs
+
+newtype Foo = Foo { unFoo :: Int }
 
 
 loadNestedRec :: (Index ix1, Monad m, Ragged r ix e) =>
@@ -504,14 +507,14 @@ loadNestedRec :: (Index ix1, Monad m, Ragged r ix e) =>
 loadNestedRec loadLower start end sz xs = do
   let step = totalElem sz
       szL = snd (unconsDim sz)
-  _leftOver <-
+  leftOver <-
     loopM start (< end) (+ step) xs $ \ i zs ->
       case uncons zs of
         Nothing -> error "Too short"
         Just (y, ys) -> do
           _ <- loadLower i (i + step) szL y
           return ys
-  --unless (isNull leftOver) $ error "Too long"
+  unless (isNull leftOver) $ error "Too long"
   return ()
 {-# INLINE loadNestedRec #-}
 
@@ -544,3 +547,5 @@ toListArray arr =
 --       | i == k = n
 --       | otherwise = let !v = f i in v `c` go (i + 1)
 -- {-# INLINE [0] foldrFB #-}
+
+

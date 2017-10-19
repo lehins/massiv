@@ -23,7 +23,7 @@ data Comp = Seq -- ^ Sequential computation
 
 -- | Parallel computation using all available cores.
 pattern Par :: Comp
-pattern Par = ParOn ([] :: [Int])
+pattern Par = ParOn []
 
 instance NFData Comp where
   rnf comp =
