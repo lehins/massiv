@@ -1,9 +1,11 @@
-{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
@@ -17,180 +19,412 @@
 --
 module Data.Massiv.Ragged where
 
-import           Control.Monad       (unless)
+import           Control.Monad              (unless)
+import           Control.Monad.ST           (runST)
+import           Data.Coerce
+import           Data.Functor.Identity
+import qualified Data.List                  as L
 import           Data.Massiv.Core
-import qualified Data.Vector         as VB
-import qualified Data.Vector.Unboxed as VU
+import           Data.Massiv.Core.Scheduler
+import qualified Data.Vector                as VB
+import qualified Data.Vector.Unboxed        as VU
+import           GHC.Base                   (build)
 import           GHC.Exts
 import           GHC.TypeLits
-import           Control.Monad.ST                   (runST)
+import           System.IO.Unsafe           (unsafePerformIO)
 
 
-type family BaseRag (v :: * -> *) :: * -> *
+data LN = LN
 
-type instance BaseRag [] = Ragged [] 1
-type instance BaseRag VB.Vector = Ragged VU.Vector 1
+type family Elt r ix e :: *
+type instance Elt LN Ix1 e = e
+type instance Elt LN Ix2 e = Array LN Ix1 e
+type instance Elt LN (IxN n) e = Array LN (Ix (n-1)) e
 
-type family Rag (v :: * -> *) (n :: Nat) e where
-  Rag v 1 e = e
-  Rag v 2 e = Ragged (BaseDeep v) 1 e
-  Rag v n e = Ragged v (n - 1) e
+newtype instance Array LN ix e = List [Elt LN ix e]
 
-newtype Ragged (v :: * -> *) (n :: Nat) e = Ragged { unRagged :: v (Rag v n e) }
-
-instance IsList (Ragged [] n e) where
-  type Item (Ragged [] n e) = Rag [] n e
-  fromList = Ragged
-  toList = unRagged
-
-type family BaseDeep (v :: * -> *) :: * -> *
-type instance BaseDeep [] = []
-type instance BaseDeep VB.Vector = VU.Vector
+type family Nested r ix e :: *
+type instance Nested LN Ix1 e = e
+type instance Nested LN Ix2 e = [e]
+type instance Nested LN (IxN n) e = Nested LN (Ix (n-1)) e
 
 
-type family Deep (v :: * -> *) (n :: Nat) e where
-  Deep v 0 e = e
-  Deep v 1 e = BaseDeep v e
-  Deep v n e = v (Deep v (n - 1) e)
+
+data L = L
+
+data instance Array L ix e = LArray { lComp :: Comp
+                                    , lSize :: ix
+                                    , lData :: !(Array LN ix e) }
+type instance Elt L Ix1 e = e
+type instance Elt L Ix2 e = Array L Ix1 e
+type instance Elt L (IxN n) e = Array L (Ix (n-1)) e
+
+-- instance (Index ix, Ragged LN ix e) => Construct L ix e where
+--   size = lSize
+--   {-# INLINE size #-}
+--   getComp = lComp
+--   {-# INLINE getComp #-}
+--   setComp c arr = arr { lComp = c }
+--   {-# INLINE setComp #-}
+--   unsafeMakeArray comp sz f = LArray comp sz $ runIdentity $ unsafeGenerateM sz (return . f)
+--   unsafeMakeArray comp@(ParOn wss) sz f =
+--     LArray comp sz $ unsafePerformIO $ unsafeGenerateP' wss sz (return . f)
+--   {-# INLINE unsafeMakeArray #-}
 
 
-type family NestedItem (v :: * -> *) (n :: Nat) e where
-  NestedItem v 1 e = e
-  NestedItem v 2 e = BaseDeep v e
-  NestedItem v n e = v (NestedItem v (n - 1) e)
+instance Construct L Ix1 e where
+  size = lSize
+  {-# INLINE size #-}
+  getComp = lComp
+  {-# INLINE getComp #-}
+  setComp c arr = arr { lComp = c }
+  {-# INLINE setComp #-}
+  unsafeMakeArray comp sz f = LArray comp sz $ runIdentity $ unsafeGenerateM sz (return . f)
+  {-# INLINE unsafeMakeArray #-}
 
 
-class Nested v n e where
+instance Construct L Ix2 e where
+  size = lSize
+  {-# INLINE size #-}
+  getComp = lComp
+  {-# INLINE getComp #-}
+  setComp c arr = arr { lComp = c }
+  {-# INLINE setComp #-}
+  unsafeMakeArray comp sz f = LArray comp sz $ unsafeGenerateN comp sz f
+  {-# INLINE unsafeMakeArray #-}
 
-  isNull :: Ragged v n e -> Bool
-  default isNull :: (Foldable v) => Ragged v n e -> Bool
-  isNull (Ragged xs) = null xs
+instance Construct L (IxN 3) e where
+  size = lSize
+  {-# INLINE size #-}
+  getComp = lComp
+  {-# INLINE getComp #-}
+  setComp c arr = arr { lComp = c }
+  {-# INLINE setComp #-}
+  unsafeMakeArray comp sz f = LArray comp sz $ unsafeGenerateN comp sz f
+  {-# INLINE unsafeMakeArray #-}
 
-  uncons :: Ragged v n e -> Maybe (Rag v n e, Ragged v n e)
 
-  nestedSz :: Ragged v n e -> Ix n
-  default nestedSz :: (Foldable v, n ~ 1) => Ragged v n e -> Int
-  nestedSz = nestedLength
+instance ( Ragged LN (Ix (n - 1)) e
+         , Index (Ix (n - 1))
+         , 4 <= n
+         , IxN (n - 1) ~ Ix (n - 1)
+         , KnownNat n
+         ) =>
+         Construct L (IxN n) e where
+  size = lSize
+  {-# INLINE size #-}
+  getComp = lComp
+  {-# INLINE getComp #-}
+  setComp c arr = arr {lComp = c}
+  {-# INLINE setComp #-}
+  unsafeMakeArray comp sz f = LArray comp sz $ unsafeGenerateN comp sz f
+  {-# INLINE unsafeMakeArray #-}
 
-  nestedLength :: Ragged v n e -> Int
-  default nestedLength :: Foldable v => Ragged v n e -> Int
-  nestedLength (Ragged xs) = length xs
 
-  nestedToRagged :: v (NestedItem v n e) -> Ragged v n e
+instance (Ragged L ix e, Construct L ix e, Index ix) => Load L ix e where
+  loadS arr _ unsafeWrite =
+    loadNested id unsafeWrite 0 (totalElem sz) (tailDim sz) arr
+    where sz = nestedSz arr
+  {-# INLINE loadS #-}
+  loadP wIds arr _ unsafeWrite =
+    withScheduler_ wIds $ \scheduler ->
+      loadNested (scheduleWork scheduler) unsafeWrite 0 (totalElem sz) (tailDim sz) arr
+    where sz = nestedSz arr
+  {-# INLINE loadP #-}
 
-  deepToRagged :: Deep v n e -> Ragged v n e
-  -- default deepToRagged :: (n ~ 1) => Deep v n e -> Ragged v n e
-  -- deepToRagged = Ragged
+
+unsafeGenerateN ::
+  ( Index ix
+  , Ragged r ix e
+  , Ragged r (Lower ix) e
+  , Elt r ix e ~ Array r (Lower ix) e )
+  => Comp
+  -> ix
+  -> (ix -> e)
+  -> Array r ix e
+unsafeGenerateN Seq sz f = runIdentity $ unsafeGenerateM sz (return . f)
+unsafeGenerateN (ParOn wss) sz f = unsafePerformIO $ do
+  let (m, szL) = unconsDim sz
+  xs <- withScheduler' wss $ \scheduler -> do
+    loopM_ 0 (< m) (+ 1) $ \i -> scheduleWork scheduler $ do
+      unsafeGenerateM szL $ \ix -> return $ f (consDim i ix)
+  return $ foldr cons empty xs
+
+
+class Ragged r ix e where
+
+  empty :: Array r ix e
+
+  isNull :: Array r ix e -> Bool
+
+  cons :: Elt r ix e -> Array r ix e -> Array r ix e
+
+  uncons :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
+
+  unsafeGenerateM :: Monad m => ix -> (ix -> m e) -> m (Array r ix e)
+
+  nestedSz :: Array r ix e -> ix
+
+  nestedLength :: Array r ix e -> Int
+
+  -- TODO: test property:
+  -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls
+  raggedFormat :: (e -> String) -> String -> Array r ix e -> String
 
   loadNested ::
     (Monad m) =>
-    (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Lower (Ix n) -> Ragged v n e -> m ()
-  default loadNested :: (n ~ 1, Monad m) =>
-            (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> ix -> Ragged v n e -> m ()
-  loadNested using uWrite start end _ xs = using $ do
-    _leftOver <- loopM start (< end) (+ 1) xs $ \ i xs' ->
-      case uncons xs' of
-        Nothing      -> error $ "Row is too short"
-        Just (y, ys) -> uWrite i y >> return ys
-    --unless (P.null leftOver) $ error "Row is too long"
-    return ()
-  {-# INLINE loadNested #-}
-
--- (.>) :: Nested v n e => Ragged v n e -> Int -> Rag v n e
--- (.>) v i = unsafeIx
-
-instance {-# OVERLAPPING #-} Nested [] 1 e where
-  uncons (Ragged [])     = Nothing
-  uncons (Ragged (x:xs)) = Just (x, Ragged xs)
-
-  deepToRagged = Ragged
-
-  nestedToRagged = Ragged
+    (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Lower ix -> Array r ix e -> m ()
 
 
-instance {-# OVERLAPPING #-} Nested [] 2 e where
-  uncons (Ragged []) = Nothing
-  uncons (Ragged (x:xs)) = Just (x, Ragged xs)
 
-  deepToRagged xs = Ragged $ map deepToRagged xs
+instance ( Ragged L ix e
+         , Construct L ix e
+         , Source r ix e
+         , Show e
+         ) =>
+         Show (Array r ix e) where
+  show arr =
+    raggedFormat
+      show
+      "\n"
+      (unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr) :: Array L ix e)
 
-  nestedToRagged xs = Ragged $ map nestedToRagged xs
 
+showN :: (String -> a -> String) -> String -> [a] -> String
+showN fShow lnPrefix ls =
+  L.concat
+    (["[ "] ++
+     (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
+
+
+instance Ragged L Ix1 e where
+  isNull = isNull . lData
+  empty = LArray Seq zeroIndex empty
+  nestedSz = nestedSz . lData
+  nestedLength = nestedLength . lData
+  cons x arr = newArr
+    where
+      newArr = arr {lData = cons x (lData arr), lSize = nestedSz newArr}
+  uncons LArray {..} =
+    case uncons lData of
+      Nothing      -> Nothing
+      Just (x, xs) -> Just (x, LArray lComp (nestedSz xs) xs)
+  unsafeGenerateM = unsafeGenerateLArrayM
+  loadNested using uWrite start end szL arr =
+    loadNested using uWrite start end szL (lData arr)
+  raggedFormat f sep arr = raggedFormat f sep (lData arr)
+
+-- TODO: try out alternative, would result in a more general Show instance for Array
+-- instance Ragged LN ix e => Ragged L ix e where
+--   isNull = isNull . lData
+--   empty = LArray Seq zeroIndex empty
+--   nestedSz = nestedSz . lData
+--   nestedLength = nestedLength . lData
+--   cons = consLArray
+--   uncons = unconsLArray
+--   unsafeGenerateM = unsafeGenerateLArrayM
+--   loadNested using uWrite start end szL arr =
+--     loadNested using uWrite start end szL (lData arr)
+--   raggedFormat f sep arr = raggedFormat f sep (lData arr)
+
+
+instance Ragged L Ix2 e where
+  isNull = isNull . lData
+  empty = LArray Seq zeroIndex empty
+  nestedSz = nestedSz . lData
+  nestedLength = nestedLength . lData
+  cons = consLArray
+  uncons = unconsLArray
+  unsafeGenerateM = unsafeGenerateLArrayM
+  loadNested using uWrite start end szL arr =
+    loadNested using uWrite start end szL (lData arr)
+  raggedFormat f sep arr = raggedFormat f sep (lData arr)
+
+instance Ragged L Ix3 e where
+  isNull = isNull . lData
+  empty = LArray Seq zeroIndex empty
+  nestedSz = nestedSz . lData
+  nestedLength = nestedLength . lData
+  cons = consLArray
+  uncons = unconsLArray
+  unsafeGenerateM = unsafeGenerateLArrayM
+  loadNested using uWrite start end szL arr =
+    loadNested using uWrite start end szL (lData arr)
+  raggedFormat f sep arr = raggedFormat f sep (lData arr)
+
+
+instance ( Index (Ix (n - 1))
+         , Ragged LN (Ix (n - 1)) e
+         , 4 <= n
+         , KnownNat n
+         , IxN (n - 1) ~ Ix (n - 1)
+         ) =>
+         Ragged L (IxN n) e where
+  isNull = isNull . lData
+  empty = LArray Seq zeroIndex empty
+  nestedSz = nestedSz . lData
+  nestedLength = nestedLength . lData
+  cons = consLArray
+  uncons = unconsLArray
+  unsafeGenerateM = unsafeGenerateLArrayM
+  loadNested using uWrite start end szL arr =
+    loadNested using uWrite start end szL (lData arr)
+  raggedFormat f sep arr = raggedFormat f sep (lData arr)
+
+
+unsafeGenerateLArrayM :: (Monad m, Ragged LN ix e) =>
+                        ix -> (ix -> m e) -> m (Array L ix e)
+unsafeGenerateLArrayM k f = do
+    genData <- unsafeGenerateM k f
+    return $ LArray Seq (nestedSz genData) genData
+
+consLArray
+  :: (Elt LN ix e ~ Array LN ix1 e1, Ragged LN ix e) =>
+     Array L ix1 e1 -> Array L ix e -> Array L ix e
+consLArray x arr = arr {lData = newData, lSize = nestedSz newData}
+  where
+    newData = cons (lData x) (lData arr)
+
+unconsLArray
+  :: (Elt LN ix1 e1 ~ Array LN ix e, Ragged LN ix1 e1,
+      Ragged LN ix e) =>
+     Array L ix1 e1 -> Maybe (Array L ix e, Array L ix1 e1)
+unconsLArray arr@LArray {..} =
+  case uncons lData of
+    Nothing -> Nothing
+    Just (x, newData) ->
+      Just
+        ( LArray lComp (nestedSz x) x
+        , arr {lData = newData, lSize = nestedSz newData})
+
+instance Ragged LN Ix1 e where
+  isNull (List xs) = null xs
+  empty = List []
+  nestedSz = nestedLength
+  nestedLength (List xs) = length xs
+  cons x (List xs) = List (x : xs)
+  uncons (List []) = Nothing
+  uncons (List (x:xs)) = Just (x, List xs)
+  unsafeGenerateM k f =
+    loopM (k - 1) (>= 0) (subtract 1) empty $ \i acc -> do
+      e <- f i
+      return $ cons e acc
+  loadNested using uWrite start end _ xs =
+    using $ do
+      leftOver <-
+        loopM start (< end) (+ 1) xs $ \i xs' ->
+          case uncons xs' of
+            Nothing -> error $ "Row is too short"
+            Just (y, ys) -> uWrite i y >> return ys
+      unless (isNull leftOver) $ error "Row is too long"
+  raggedFormat f _ (List xs) = L.concat $ "[ " : (L.intersperse "," $ map f xs) ++ [" ]"]
+
+instance Ragged LN Ix2 e where
+  isNull (List xs) = null xs
+  empty = List []
   nestedSz xs =
     nestedLength xs :.
     case uncons xs of
       Nothing -> zeroIndex
       Just (x, _) -> nestedSz x
-
+  nestedLength (List xs) = length xs
+  cons x (List xs) = List (x : xs)
+  uncons (List []) = Nothing
+  uncons (List (x:xs)) = Just (x, List xs)
+  unsafeGenerateM (m :. n) f = do
+    loopM (m - 1) (>= 0) (subtract 1) empty $ \i acc -> do
+      e <- unsafeGenerateM n (\j -> f (i :. j))
+      return $ cons e acc
   loadNested using uWrite = loadNestedRec (loadNested using uWrite)
   {-# INLINE loadNested #-}
+  raggedFormat f sep (List xs) = showN (raggedFormat f) sep xs
 
 
--- instance {-# OVERLAPPING #-} Nested [] 3 e where
---   uncons (Ragged []) = Nothing
---   uncons (Ragged (x:xs)) = Just (x, Ragged xs)
-
---   deepToRagged xs = Ragged $ map deepToRagged xs
-
---   nestedToRagged xs = Ragged $ map nestedToRagged xs
-
---   nestedSz xs =
---     nestedLength xs :>
---     case uncons xs of
---       Nothing -> zeroIndex
---       Just (x, _) -> nestedSz x
-
---   loadNested using uWrite = loadNestedRec (loadNested using uWrite)
---   {-# INLINE loadNested #-}
-
-
-instance ( Lower (Ix n) ~ Ix (n - 1)
-         , Index (Lower (Ix n))
-         , Index (Ix n)
-         , Nested [] (n - 1) e
-         , Ragged [] (n - 1) e ~ Rag [] n e
-         , Deep [] n e ~ [Deep [] (n - 1) e]
-         , NestedItem [] n e ~ [NestedItem [] (n - 1) e]
-         , Ix n ~ IxN n
-         , 4 <= n
-         ) =>
-         Nested [] n e where
-  uncons (Ragged []) = Nothing
-  uncons (Ragged (x:xs)) = Just (x, Ragged xs)
-
-  deepToRagged xs = Ragged $ map deepToRagged xs
-
-  nestedToRagged xs = Ragged $ map nestedToRagged xs
-
+instance (Index (Ix (n - 1)), Ragged LN (Ix (n - 1)) e) =>
+         Ragged LN (IxN n) e where
+  isNull (List xs) = null xs
+  empty = List []
   nestedSz xs =
     nestedLength xs :>
     case uncons xs of
       Nothing -> zeroIndex
       Just (x, _) -> nestedSz x
-
+  nestedLength (List xs) = length xs
+  cons x (List xs) = List (x : xs)
+  uncons (List []) = Nothing
+  uncons (List (x:xs)) = Just (x, List xs)
   loadNested using uWrite = loadNestedRec (loadNested using uWrite)
   {-# INLINE loadNested #-}
+  unsafeGenerateM (k :> szL) f = do
+    loopM (k - 1) (>= 0) (subtract 1) empty $ \i acc -> do
+      e <- unsafeGenerateM szL (\ixL -> f (i :> ixL))
+      return $ cons e acc
+  raggedFormat f sep (List xs) = showN (raggedFormat f) sep xs
 
 
-loadNestedRec :: (Ragged v (n-1) e ~ Rag v n e, Index (Lower (Ix n)), Monad m, Nested v n e) =>
-                  (Int -> Int -> Lower (Lower (Ix n)) -> Ragged v (n - 1) e -> m ())
-               -> Int -> Int -> Lower (Ix n) -> Ragged v n e -> m ()
+
+instance IsList (Array L Ix1 e) where
+  type Item (Array L Ix1 e) = Item (Array LN Ix1 e)
+  fromList xs = LArray Seq (nestedSz ls) ls
+    where ls = fromList xs :: Array LN Ix1 e
+  toList = toList . lData
+
+instance IsList (Array L Ix2 e) where
+  type Item (Array L Ix2 e) = Item (Array LN Ix2 e)
+  fromList xs = LArray Seq (nestedSz ls) ls
+    where ls = fromList xs :: Array LN Ix2 e
+  toList = toList . lData
+
+instance ( Elt LN (Ix (n - 1)) e ~ Item (Array LN (Ix (n - 1)) e)
+         , IsList (Array LN (Ix (n - 1)) e)
+         , Ragged LN (Ix (n - 1)) e
+         , Index (Ix (n - 1))
+         ) =>
+         IsList (Array L (IxN n) e) where
+  type Item (Array L (IxN n) e) = Item (Array LN (IxN n) e)
+  fromList xs = LArray Seq (nestedSz ls) ls
+    where ls = fromList xs :: Array LN (IxN n) e
+  toList = toList . lData
+
+
+instance IsList (Array LN Ix1 e) where
+  type Item (Array LN Ix1 e) = e
+  fromList = coerce
+  toList = coerce
+
+
+instance IsList (Array LN Ix2 e) where
+  type Item (Array LN Ix2 e) = [e]
+  fromList = coerce
+  toList = coerce
+
+
+instance IsList (Array LN (IxN n) e) where
+  type Item (Array LN (IxN n) e) = Elt LN (IxN n) e
+  fromList = coerce
+  --fromList = List . map fromList
+  toList = coerce
+  --toList (List xs) = map toList xs
+
+
+loadNestedRec :: (Index ix1, Monad m, Ragged r ix e) =>
+                 (Int -> Int -> Lower ix1 -> Elt r ix e -> m a)
+              -> Int -> Int -> ix1 -> Array r ix e -> m ()
 loadNestedRec loadLower start end sz xs = do
   let step = totalElem sz
       szL = snd (unconsDim sz)
   leftOver <-
-    loopM start (< end) (+ step) xs $ \ !i zs ->
+    loopM start (< end) (+ step) xs $ \ i zs ->
       case uncons zs of
         Nothing -> error "Too short"
         Just (y, ys) -> do
-          loadLower i (i + step) szL y
+          _ <- loadLower i (i + step) szL y
           return ys
   unless (isNull leftOver) $ error "Too long"
 {-# INLINE loadNestedRec #-}
 
 
-
-fromRaggedS :: (Nested v n e, Mutable r (Ix n) e) => Ragged v n e -> Array r (Ix n) e
+fromRaggedS :: (Ragged r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
 fromRaggedS xs =
   runST $ do
     let sz = nestedSz xs
@@ -199,242 +433,21 @@ fromRaggedS xs =
     unsafeFreeze Seq mArr
 {-# INLINE fromRaggedS #-}
 
-
-fromRaggedS' :: (Nested v n e, IxN n ~ Ix n, Mutable r (IxN n) e) => Ragged v n e -> Array r (IxN n) e
-fromRaggedS' xs =
-  runST $ do
-    let sz = nestedSz xs
-    mArr <- unsafeNew sz
-    loadNested id (unsafeLinearWrite mArr) 0 (totalElem sz) (tailDim sz) xs
-    unsafeFreeze Seq mArr
-
-
-
-
-
--- loadListUsingN :: (Index ix, Monad m) =>
---                   (Int -> Int -> Lower ix -> e -> m ()) -> Int -> Int -> ix -> [e] -> m ()
--- loadListUsingN loadLower start end sz xs = do
---   let step = totalElem sz
---       szL = snd (unconsDim sz)
---   leftOver <-
---     loopM start (< end) (+ step) xs $ \ !i zs ->
---       case zs of
---         [] -> error "Too short"
---         (y:ys) -> do
---           loadLower i (i + step) szL y
---           return ys
---   unless (null leftOver) $ error "Too long"
--- {-# INLINE loadListUsingN #-}
-
-
-
-
--- instance (Rag [] n e ~ Ragged [] (n - 1) e, 3 <= n) => Iliffe (Ragged [] n) e where
---   nil = Ragged []
-
---   cons x (Ragged xs) = Ragged (x:xs)
-
---   uncons (Ragged [])     = Nothing
---   uncons (Ragged (x:xs)) = Just (x, Ragged xs)
-
---   unsafeIx (Ragged ls) = (ls !!)
-
---   loadListUsingN = loadListUsingNRec
-
-
--- instance Eq (Rag v n e) => Eq (Ragged v n e) where
---   (==) = size && zipWith (==)
-
--- instance IsList (Ragged [] n e) where
---   type Item (Ragged [] n e) = Rag [] n e
---   fromList = Ragged
---   toList = unRagged
-
--- instance VU.Unbox e => IsList (Ragged VU.Vector 1 e) where
---   type Item (Ragged VU.Vector 1 e) = e
---   fromList = Ragged . fromList
---   toList = toList . unRagged
-
-
--- instance IsList (Ragged VB.Vector n e) where
---   type Item (Ragged VB.Vector n e) = Rag VB.Vector n e
---   fromList = Ragged . fromList
---   toList = toList . unRagged
-
-
--- class Iliffe v e where
---   unsafeIx :: v e -> Int -> Lower (v e)
-
---   nil :: v e
-
---   cons :: Lower (v e) -> v e -> v e
-
---   uncons :: v e -> Maybe (Lower (v e), v e)
-
---   loadListUsingN :: (Index ix, Monad m) =>
---                     Int -> Int -> ix -> t -> (m () -> m ()) -> v e -> m ()
-
---   --makeRagged :: Rag v n Int -> (Rag v n Int -> e) -> Ragged v n e
-
--- (!>) :: Iliffe v e => v e -> Int -> Lower (v e)
--- (!>) = unsafeIx
-
-
--- instance Iliffe (Ragged [] 1) e where
---   nil = Ragged []
-
---   cons x (Ragged xs) = Ragged (x:xs)
-
---   uncons (Ragged [])     = Nothing
---   uncons (Ragged (x:xs)) = Just (x, Ragged xs)
-
---   unsafeIx (Ragged ls) = (ls !!)
-
-
-
--- instance (Rag [] n e ~ Ragged [] (n - 1) e, 3 <= n) => Iliffe (Ragged [] n) e where
---   nil = Ragged []
-
---   cons x (Ragged xs) = Ragged (x:xs)
-
---   uncons (Ragged [])     = Nothing
---   uncons (Ragged (x:xs)) = Just (x, Ragged xs)
-
---   unsafeIx (Ragged ls) = (ls !!)
-
---   loadListUsingN = loadListUsingNRec
-
-
--- type instance Lower (Ragged [] n e) = Rag [] n e
-
--- loadListUsingNRec
---   :: (3 <= (n - 1), 3 <= n, Index ix, Index (Lower ix), Monad m,
---       Ragged [] (n - 1) e ~ Lower (Ragged [] n e), Rag [] (n - 1) e ~ Ragged [] ((n - 1) - 1) e) =>
---      Int -> Int -> ix -> t -> (m () -> m ()) -> Ragged [] n e -> m ()
--- loadListUsingNRec start end sz uWrite using xs = do
---   let step = totalElem sz
---       szL = tailDim sz
---   _leftOver <-
---     loopM start (< end) (+ step) xs $ \ !i zs ->
---       case uncons zs of
---         Nothing -> error "Too short"
---         Just (y, ys) -> do
---           loadListUsingN i (i + step) szL uWrite using y
---           return ys
---     -- unless (nil == leftOver) $ error "Too long"
---   return ()
-
-
--- type instance Lower [e] = e
-
--- instance Iliffe [] where
---   nil = []
-
---   uncons []     = Nothing
---   uncons (x:xs) = Just (x, xs)
-
---   loadListUsingN start end sz uWrite using xs = do
---     let step = totalElem sz
---         szL = tailDim sz
---     _leftOver <-
---       loopM start (< end) (+ step) xs $ \ !i zs ->
---         case uncons zs of
---           Nothing -> error "Too short"
---           Just (y, ys) -> do
---             loadListUsingN i (i + step) szL uWrite using y
---             return ys
---     -- unless (nil == leftOver) $ error "Too long"
---     return ()
---   {-# INLINE loadListUsingN #-}
-
-
-
--- instance VU.Unbox (Rag VU.Vector 1 e) => Iliffe VU.Vector 1 e where
---   type SuperClass VU.Vector 1 e = VU.Unbox e
---   nil = Ragged VU.empty
-
---   cons x (Ragged v) = Ragged (VU.cons x v)
-
---   uncons (Ragged v) | VU.null v = Nothing
---                     | otherwise = Just (VU.head v, Ragged (VU.tail v))
-
---   unsafeIx (Ragged v) i = (v VU.! i)
-
---   mapR f (Ragged v) = Ragged (VU.map f v)
-
---   mapE = mapR
-
--- instance (2 <= n) => Iliffe VB.Vector n e where
---   --type SuperClass VB.Vector n e = Rag VB.Vector n e ~ Ragged VB.Vector (n-1) e
-
---   nil = Ragged VB.empty
-
---   cons x (Ragged xs) = Ragged (VB.cons x xs)
-
---   uncons (Ragged v) | VB.null v = Nothing
---                     | otherwise = Just (VB.head v, Ragged (VB.tail v))
-
---   unsafeIx (Ragged v) i = (v VB.! i)
-
---   mapR f (Ragged v) = Ragged (VB.map f v)
-
---   loadListUsingN start end sz uWrite using xs = do
---     let step = totalElem sz
---         szL = tailDim sz
---     _leftOver <-
---       loopM start (< end) (+ step) xs $ \ !i zs ->
---         case uncons zs of
---           Nothing -> error "Too short"
---           Just (y, ys) -> do
---             loadListUsingN i (i + step) szL uWrite using y
---             return ys
---     -- unless (nil == leftOver) $ error "Too long"
---     return ()
---   {-# INLINE loadListUsingN #-}
-
-
-
--- class RagVec v (n :: Nat) e where
---   type Rag v n e :: *
---   ix :: v e -> Int -> Rag v n e
-
---   len :: v e -> Int
-
---   uncons :: v e -> Maybe (Rag v n e, v e)
-
--- instance Ragged List 1 e where
---   ix (List ls) = (ls !!)
-
---   len (List ls) = length ls
-
--- instance (Rag List n (List n' e) ~ List n' e) => Ragged List n (List n' e) where
---   ix (List ls) = (ls !!)
-
---   len (List ls) = length ls
-
-
-
-
--- newtype List (n :: Nat) e = List [e]
-
--- type family Rag (arr :: Nat -> * -> *) (n :: Nat) e where
---   Rag arr 1 e = e
---   Rag arr n e = Rag arr (n - 1) e
-
--- class Ragged arr (n :: Nat) e where
---   ix :: arr n e -> Int -> Rag arr n e
-
---   len :: arr n e -> Int
-
---   uncons :: arr n e -> Maybe (e, arr n e)
-
--- instance Ragged List 1 e where
---   ix (List ls) = (ls !!)
-
---   len (List ls) = length ls
-
--- instance (Rag List n (List n' e) ~ List n' e) => Ragged List n (List n' e) where
---   ix (List ls) = (ls !!)
-
---   len (List ls) = length ls
+toListArray ::
+     forall r ix e. (IsList (Array L ix e), Construct L ix e, Source r ix e)
+  => Array r ix e
+  -> [Item (Array L ix e)]
+toListArray arr =
+  toList
+    (unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr) :: Array L ix e)
+
+
+-- -- | Version of foldr that supports foldr/build list fusion implemented by GHC.
+-- foldrFB :: (e -> b -> b) -> b -> Int -> (Int -> e) -> b
+-- --foldrFB c n k f = loop (k - 1) (>= 0) (subtract 1) n $ \i acc -> f i `c` acc
+-- foldrFB c n k f = go 0
+--   where
+--     go !i
+--       | i == k = n
+--       | otherwise = let !v = f i in v `c` go (i + 1)
+-- {-# INLINE [0] foldrFB #-}

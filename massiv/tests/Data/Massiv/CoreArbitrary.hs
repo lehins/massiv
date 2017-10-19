@@ -22,6 +22,7 @@ import           Control.DeepSeq            (NFData, deepseq)
 import           Control.Exception          (Exception, SomeException, catch)
 import           Data.Massiv.Array.Ops
 import           Data.Massiv.Core
+import           Data.Massiv.Ragged
 import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
 import           Test.QuickCheck

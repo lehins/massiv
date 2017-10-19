@@ -17,6 +17,7 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Manifest
   , module Data.Massiv.Array.Mutable
   , module Data.Massiv.Array.Ops
+  , module Data.Massiv.Ragged
   ) where
 
 import           Data.Massiv.Array.Delayed
@@ -26,7 +27,7 @@ import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops
 import           Data.Massiv.Core
 import           Prelude                    as P hiding (length, null)
-
+import Data.Massiv.Ragged
 
 length :: Construct r ix e => Array r ix e -> Int
 length = totalElem . size

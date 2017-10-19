@@ -162,11 +162,16 @@ evaluateAt !arr !ix =
 
 
 -- TODO: Implement proper Show
-instance {-# OVERLAPPABLE #-} (Typeable e, Construct r ix e) => Show (Array r ix e) where
-  show arr =
-    "<Array " ++
-    showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-    (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
+-- instance {-# OVERLAPPABLE #-} (Typeable e, Construct r ix e) => Show (Array r ix e) where
+--   show arr =
+--     "<Array " ++
+--     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+--     (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
+
+
+-- instance (IsList (Array r ix e), Item (Array r Ix2 e) ~ [e], Show e) =>
+--          Show (Array r Ix2 e) where
+--   show = showN (const show) "\n" . toList
 
 
 -- instance {-# OVERLAPPING #-} (IsList (Array r Ix1 e), Item (Array r Ix1 e) ~ e, Show e) =>
@@ -189,7 +194,7 @@ instance {-# OVERLAPPABLE #-} (Typeable e, Construct r ix e) => Show (Array r ix
 --   show = showN (showN (showN (const show))) "\n" . toList
 
 
--- showN :: Show a => (String -> a -> String) -> String -> [a] -> String
+-- showN :: (String -> a -> String) -> String -> [a] -> String
 -- showN fShow lnPrefix ls =
 --   L.concat
 --     (["[ "] ++

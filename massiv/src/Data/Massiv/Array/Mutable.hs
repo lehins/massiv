@@ -17,8 +17,6 @@ module Data.Massiv.Array.Mutable
   , compute
   , computeAs
   , computeSource
-  , computeOn
-  , computeAsOn
   , copy
   , convert
   , convertAs
@@ -86,15 +84,6 @@ computeSource arr =
 
 
 
-computeOn :: (Load r' ix e, Mutable r ix e) =>
-             Comp -> Array r' ix e -> Array r ix e
-computeOn comp = compute . setComp comp
-{-# INLINE computeOn #-}
-
-computeAsOn :: (Load r' ix e, Mutable r ix e) =>
-               r' -> Comp -> Array r' ix e -> Array r ix e
-computeAsOn _ = computeOn
-{-# INLINE computeAsOn #-}
 
 
 copy :: Mutable r ix e => Array r ix e -> Array r ix e

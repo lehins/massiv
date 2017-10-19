@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DataKinds             #-}
@@ -21,7 +22,7 @@ module Data.Massiv.Array.Manifest.BoxedStrict
   ) where
 
 import           Control.DeepSeq                     (NFData (..))
-import           Data.Foldable                       (Foldable (..))
+import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.BoxedNF  (deepseqArray,
                                                       deepseqArrayP)
@@ -138,9 +139,9 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE foldr' #-}
   null (BArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = foldl' (+) 0
+  sum = F.foldl' (+) 0
   {-# INLINE sum #-}
-  product = foldl' (*) 1
+  product = F.foldl' (*) 1
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
@@ -148,45 +149,10 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE toList #-}
 
 
--- instance (ix ~ Ix (Rank ix)) => IsList (Array B ix e) where
---   type Item (Array B ix e) = NestedItem [] (Rank ix) e
---   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] (Rank ix) e)
---   {-# INLINE fromList #-}
-
-instance IsList (Array B Ix1 e) where
-  type Item (Array B Ix1 e) = e
-  fromList xs = fromRaggedS (fromList xs :: Ragged [] 1 e)
+instance (IsList (Array L ix e), Load L ix e, Construct L ix e) => IsList (Array B ix e) where
+  type Item (Array B ix e) = Item (Array L ix e)
+  fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  -- toList = toListIx1
-  -- {-# INLINE toList #-}
+  toList arr@(BArray {..}) = toList (unsafeMakeArray bComp bSize (unsafeIndex arr) :: Array L ix e)
+  {-# INLINE toList #-}
 
-
-instance IsList (Array B Ix2 e) where
-  type Item (Array B Ix2 e) = [e]
-  fromList xs = fromRaggedS (fromList (map fromList xs) :: Ragged [] 2 e)
-  {-# INLINE fromList #-}
-
--- instance {-# OVERLAPPING #-} IsList (Array B Ix3 e) where
---   type Item (Array B Ix3 e) = NestedItem [] 3 e
---   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] 3 e)
---   {-# INLINE fromList #-}
-
--- instance () => IsList (Array B (IxN n) e) where
---   type Item (Array B (IxN n) e) = NestedItem [] n e
---   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] n e)
---   {-# INLINE fromList #-}
-
--- instance (Ix n ~ IxN n, NestedItem [] n e ~ [NestedItem [] (n - 1) e], Deep [] n e ~ [Deep [] (n - 1) e], Rag [] n e ~ Ragged [] (n - 1) e, 4 <= n, Ix (n - 1) ~ IxN (n - 1), KnownNat n, Index (Ix ((n - 1) - 1))) => IsList (Array B (IxN n) e) where
---   type Item (Array B (IxN n) e) = NestedItem [] n e
---   fromList xs = fromRaggedS' (nestedToRagged xs :: Ragged [] n e)
---   {-# INLINE fromList #-}
-
--- instance {-# OVERLAPPABLE #-} (IxN n ~ Ix n, IxN (n - 1) ~ Ix (n - 1), Index (Ix ((n - 1) - 1)), Nested [] n e, 4 <= n, KnownNat n) => IsList (Array B (IxN n) e) where
---   type Item (Array B (IxN n) e) = NestedItem [] n e
---   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] n e)
---   {-# INLINE fromList #-}
-
--- instance IsList (Array B (IxN n) e) where
---   type Item (Array B (IxN n) e) = NestedItem [] n e
---   fromList xs = fromRaggedS (nestedToRagged xs :: Ragged [] n e)
---   {-# INLINE fromList #-}

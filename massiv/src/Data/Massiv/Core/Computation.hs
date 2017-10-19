@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE PatternSynonyms     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Core.Computation
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -13,7 +13,7 @@ module Data.Massiv.Core.Computation
   , pattern Par
   ) where
 
-import           Control.DeepSeq                (NFData (..), deepseq)
+import           Control.DeepSeq (NFData (..), deepseq)
 
 -- | Computation type to use.
 data Comp = Seq -- ^ Sequential computation
@@ -23,7 +23,7 @@ data Comp = Seq -- ^ Sequential computation
 
 -- | Parallel computation using all available cores.
 pattern Par :: Comp
-pattern Par = ParOn []
+pattern Par = ParOn ([] :: [Int])
 
 instance NFData Comp where
   rnf comp =

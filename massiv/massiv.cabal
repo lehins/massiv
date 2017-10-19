@@ -25,6 +25,7 @@ library
                      , Data.Massiv.Array.Stencil
                      , Data.Massiv.Array.Stencil.Convolution
                      , Data.Massiv.Core
+                     , Data.Massiv.Ragged
                      , Data.Massiv.Core.Scheduler
                      , Data.Massiv.Core.Index
                      , Data.Massiv.Types

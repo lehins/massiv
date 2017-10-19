@@ -170,11 +170,11 @@ instance {-# OVERLAPPING #-} Load DW Ix2 e where
   {-# INLINE loadP #-}
 
 
-instance {-# OVERLAPPING #-} Load DW Ix3 e where
-  loadS = loadWindowedSRec
-  {-# INLINE loadS #-}
-  loadP = loadWindowedPRec
-  {-# INLINE loadP #-}
+-- instance {-# OVERLAPPING #-} Load DW Ix3 e where
+--   loadS = loadWindowedSRec
+--   {-# INLINE loadS #-}
+--   loadP = loadWindowedPRec
+--   {-# INLINE loadP #-}
 
 
 instance {-# OVERLAPPABLE #-} (Index ix, Load DW (Lower ix) e) => Load DW ix e where
