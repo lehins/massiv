@@ -68,7 +68,7 @@ data IxN (n :: Nat) where
 
 type family Ix (n :: Nat) = r | r -> n where
   Ix 0 = Ix0
-  Ix 1 = Int
+  Ix 1 = Ix1
   Ix 2 = Ix2
   Ix n = IxN n
 
@@ -79,7 +79,7 @@ data IxN (n :: Nat) where
 
 type family Ix (n :: Nat) where
   Ix 0 = Ix0
-  Ix 1 = Int
+  Ix 1 = Ix1
   Ix 2 = Ix2
   Ix n = IxN n
 

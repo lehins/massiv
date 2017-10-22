@@ -16,14 +16,24 @@ module Data.Massiv.Core.Computation
 import           Control.DeepSeq (NFData (..), deepseq)
 
 -- | Computation type to use.
-data Comp = Seq -- ^ Sequential computation
-          | ParOn [Int] -- ^ Use `Par` to run on all cores. Parallel computation
-                        -- with a list of capabilities to run computation on.
-          deriving (Show, Eq)
+data Comp
+  = Seq -- ^ Sequential computation
+  | ParOn [Int]
+  -- ^ Use `Par` instead to use your CPU to the fullest. Also don't forget to compile
+  -- the program with @-threaded@ flag.
+  --
+  -- Parallel computation with a list of capabilities to run computation
+  -- on. Specifying an empty list (@ParOn []@) or using `Par` will result in
+  -- utilization of all available capabilities, which are set at runtime by
+  -- @+RTS -Nx@ or at compile time by GHC flag @-with-rtsopts=-Nx@,
+  -- where @x@ is the number of capabilities. Ommiting @x@ in above flags
+  -- defaults to number available cores.
+  deriving (Show, Eq)
 
 -- | Parallel computation using all available cores.
 pattern Par :: Comp
-pattern Par = ParOn []
+pattern Par <- ParOn [] where
+        Par =  ParOn []
 
 instance NFData Comp where
   rnf comp =

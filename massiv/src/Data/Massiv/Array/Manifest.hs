@@ -29,7 +29,11 @@ module Data.Massiv.Array.Manifest
   -- * Unboxed
   , U(..)
   , Unbox
-  -- * Vector Conversion
+  -- * Conversion
+  -- ** List
+  , toList
+  , fromList
+  -- ** Vector
   , toVector
   , castToVector
   , fromVector
@@ -61,7 +65,7 @@ import qualified Data.Vector.Generic                  as VG
 import qualified Data.Vector.Primitive                as VP
 import qualified Data.Vector.Storable                 as VS
 import qualified Data.Vector.Unboxed                  as VU
-
+import Data.Massiv.Ragged
 
 type family ARepr (v :: * -> *) :: *
 type family VRepr r :: * -> *
@@ -225,3 +229,23 @@ toVector arr =
     Just v -> v
     Nothing -> VG.generate (totalElem (size arr)) (unsafeLinearIndex arr)
 {-# INLINE toVector #-}
+
+
+fromList ::
+     (Ragged LN ix e, Construct L ix e, Mutable r ix e)
+  => Comp
+  -> ix
+  -> [ListItem ix e]
+  -> Array r ix e
+fromList comp sz xs = compute (LArray comp sz (fromListIx xs))
+{-# INLINE fromList #-}
+
+
+toList ::
+     (Ragged LN ix e, Construct L ix e, Source r ix e)
+  => Array r ix e
+  -> [ListItem ix e]
+toList arr = toListIx ln
+  where (LArray _ _ ln) =
+          unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr)
+{-# INLINE toList #-}
