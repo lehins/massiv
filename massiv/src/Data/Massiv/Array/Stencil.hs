@@ -11,7 +11,7 @@
 --
 module Data.Massiv.Array.Stencil
   ( Stencil
-  , Elt
+  , Value
   , makeStencil
   , mkConvolutionStencil
   , mkConvolutionStencilFromKernel
@@ -32,11 +32,11 @@ mapStencil :: (Source r ix e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array DW ix a
 mapStencil (Stencil b sSz sCenter stencilF) !arr =
   DWArray
-    (DArray (getComp arr) sz (unElt . stencilF (Elt . borderIndex b arr)))
+    (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
     (Just sSz)
     sCenter
     (liftIndex2 (-) sz (liftIndex2 (-) sSz oneIndex))
-    (unElt . stencilF (Elt . unsafeIndex arr))
+    (unValue . stencilF (Value . unsafeIndex arr))
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
@@ -84,9 +84,13 @@ makeStencil
   => Border e -- ^ Border resolution technique
   -> ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
-  -> ((ix -> Elt e) -> Elt a) -- ^ Stencil function that receives another function as
-                      -- it's argument that can index elements of the source
-                      -- array with respect to the center of the stencil.
+  -> ((ix -> Value e) -> Value a)
+  -- ^ Stencil function that receives a "get" function as it's argument that can
+  -- retrieve values of cells in the source array with respect to the center of
+  -- the stencil. Stencil function must return a value that will be assigned to
+  -- the cell in the result array. Offset supplied to the "get" function
+  -- cannot go outside the boundaries of the stencil, otherwise an error will be
+  -- raised during stencil creation.
   -> Stencil ix e a
 makeStencil b !sSz !sCenter relStencil =
   validateStencil def $ Stencil b sSz sCenter stencil

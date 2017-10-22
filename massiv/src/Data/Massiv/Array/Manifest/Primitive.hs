@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -26,6 +27,7 @@ import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core
+import           Data.Massiv.Ragged
 import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types                (Prim)
@@ -114,26 +116,12 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance Prim e => IsList (Array P Ix1 e) where
-  type Item (Array P Ix1 e) = e
-  fromList = fromListIx1 Seq
+instance (VP.Prim e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
+         IsList (Array P ix e) where
+  type Item (Array P ix e) = Item (Array L ix e)
+  fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList = toListIx1
-  {-# INLINE toList #-}
-
-
-instance Prim e => IsList (Array P Ix2 e) where
-  type Item (Array P Ix2 e) = [e]
-  fromList = fromListIx2 Seq
-  {-# INLINE fromList #-}
-  toList = toListIx2
-  {-# INLINE toList #-}
-
-instance Prim e => IsList (Array P Ix3 e) where
-  type Item (Array P Ix3 e) = [[e]]
-  fromList = fromListIx3 Seq
-  {-# INLINE fromList #-}
-  toList = toListIx3
+  toList = toListArray
   {-# INLINE toList #-}
 
 

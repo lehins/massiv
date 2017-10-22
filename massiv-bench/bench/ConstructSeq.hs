@@ -63,7 +63,7 @@ main = do
           , bench
               "Massiv.Array.Manifest.fromList :: [Double] -> A.Array U Ix1 Double" $
             whnf
-              (A.fromList Seq (totalElem t2) :: [Double] -> A.Array A.U Ix1 Double)
+              (A.fromList Seq :: [Double] -> A.Array A.U Ix1 Double)
               xs
           , bench "GHC.Exts.fromList :: [Double] -> A.Array U Ix1 Double" $
             whnf (GHC.fromList :: [Double] -> A.Array A.U Ix1 Double) xs
@@ -79,12 +79,12 @@ main = do
           , bench
               "Massiv.Array.Manifest.fromList Seq:: [[Double]] -> A.Array U Ix2 Double" $
             whnf
-              (A.fromList Seq (tupleToIx2 t2) :: [[Double]] -> A.Array A.U Ix2 Double)
+              (A.fromList Seq :: [[Double]] -> A.Array A.U Ix2 Double)
               xs
           , bench
               "Massiv.Array.Manifest.fromList :: [[Double]] -> A.Array U Ix2 Double" $
             whnf
-              (A.fromList Par (tupleToIx2 t2) :: [[Double]] -> A.Array A.U Ix2 Double)
+              (A.fromList Par :: [[Double]] -> A.Array A.U Ix2 Double)
               xs
           ]
     ]

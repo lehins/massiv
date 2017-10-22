@@ -2,7 +2,9 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -22,8 +24,10 @@ import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core
+import           Data.Massiv.Ragged
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
+import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
 
 data S = S deriving Show
@@ -106,3 +110,11 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   unsafeLinearWrite (MSArray _ v) i = MVS.unsafeWrite v i
   {-# INLINE unsafeLinearWrite #-}
 
+
+instance (VS.Storable e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
+         IsList (Array S ix e) where
+  type Item (Array S ix e) = Item (Array L ix e)
+  fromList xs = compute (fromList xs :: Array L ix e)
+  {-# INLINE fromList #-}
+  toList = toListArray
+  {-# INLINE toList #-}

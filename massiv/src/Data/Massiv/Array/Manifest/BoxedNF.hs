@@ -2,7 +2,9 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -28,9 +30,11 @@ import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Ragged
 import qualified Data.Primitive.Array                as A
 import qualified Data.Vector                         as VB
 import qualified Data.Vector.Mutable                 as VB
+import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
@@ -175,3 +179,13 @@ castVectorToArray v =
       then Just <$> A.unsafeFreezeArray marr
       else return Nothing
 {-# INLINE castVectorToArray #-}
+
+
+
+instance (NFData e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
+         IsList (Array N ix e) where
+  type Item (Array N ix e) = Item (Array L ix e)
+  fromList xs = compute (fromList xs :: Array L ix e)
+  {-# INLINE fromList #-}
+  toList = toListArray
+  {-# INLINE toList #-}

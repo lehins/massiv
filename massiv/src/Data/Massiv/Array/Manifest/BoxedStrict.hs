@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -8,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -34,7 +33,6 @@ import           Data.Massiv.Ragged
 import qualified Data.Primitive.Array                as A
 import           GHC.Base                            (build)
 import           GHC.Exts                            (IsList (..))
-import           GHC.TypeLits
 import           Prelude                             hiding (mapM)
 
 

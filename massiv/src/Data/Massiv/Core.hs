@@ -18,6 +18,8 @@
 --
 module Data.Massiv.Core
   ( Array
+  , Elt
+  , EltRepr
   , Construct(..)
   , Source(..)
   , Load(..)
@@ -44,12 +46,17 @@ import           Control.Monad.ST             (ST)
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Iterator
-import           Data.Proxy
 import           Data.Typeable                (Typeable, showsTypeRep, typeRep)
 --import           GHC.Exts                     (IsList (..))
 
 data family Array r ix e :: *
 
+
+type family EltRepr r ix :: *
+
+type family Elt r ix e :: * where
+  Elt r Ix1 e = e
+  Elt r ix  e = Array (EltRepr r ix) (Lower ix) e
 
 -- | Index polymorphic arrays.
 class (Typeable r, Index ix) => Construct r ix e where

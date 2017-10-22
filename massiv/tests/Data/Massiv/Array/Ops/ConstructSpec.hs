@@ -1,18 +1,20 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs            #-}
 module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 
-import Data.Proxy
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops
+import           Data.Massiv.Ragged
 import           Data.Massiv.CoreArbitrary
-import           Prelude                       as P
-import           Prelude                       hiding (map)
+import           Data.Proxy
+import qualified GHC.Exts                   as GHC (IsList (..))
+import           Prelude                    as P
+import           Prelude                    hiding (map)
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
-import           GHC.Exts                            (IsList (..))
 
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
@@ -37,15 +39,19 @@ prop_toFromListIx1 sz f =
   in arr == fromListIx1As U Seq (toListIx1 arr)
 
 
-prop_toFromList ::
-     (Show (Array U ix Int), IsList (Array U ix Int), Index ix)
+prop_toFromListIsList ::
+     (Show (Array U ix Int), GHC.IsList (Array U ix Int), Index ix)
   => Proxy ix
   -> Arr U ix Int
   -> Property
-prop_toFromList _ (Arr arr) = arr === fromList (toList arr)
+prop_toFromListIsList _ (Arr arr) = arr === GHC.fromList (GHC.toList arr)
 
-prop_toFromListSIx2 :: Arr U Ix2 Int -> Property
-prop_toFromListSIx2 (Arr arr) = arr === fromList (toList arr)
+prop_toFromList ::
+  forall ix . (Show (Array U ix Int), Ragged LN ix Int, Construct L ix Int, Index ix)
+  => Proxy ix
+  -> Arr U ix Int
+  -> Property
+prop_toFromList _ (Arr arr) = arr === fromList (getComp arr) (toList arr :: [ListItem ix Int])
 
 
 prop_excFromToListSIx2 :: [[Int]] -> Property
@@ -113,6 +119,8 @@ prop_excFromToListPIx3 ls3 =
 
 specIx1 :: Spec
 specIx1 = do
+  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix1))
+  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix1))
   it "rangeEqRangeStep1" $ property prop_rangeEqRangeStep1
   it "rangeEqEnumFromN" $ property prop_rangeEqEnumFromN
   it "rangeStepEqEnumFromStepN" $ property prop_rangeStepEqEnumFromStepN
@@ -122,13 +130,15 @@ specIx1 = do
 specIx2 :: Spec
 specIx2 = do
   it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix2))
+  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix2))
   it "excFromToListSIx2" $ property prop_excFromToListSIx2
   it "toFromListPIx2" $ property prop_toFromListPIx2
   it "excFromToListPIx2" $ property prop_excFromToListPIx2
 
 specIx3 :: Spec
 specIx3 = do
-  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix3))
+  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix2))
+  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
   it "toFromListSIx3" $ property prop_toFromListSIx3
   it "excFromToListSIx3" $ property prop_excFromToListSIx3
   it "toFromListPIx3" $ property prop_toFromListPIx3

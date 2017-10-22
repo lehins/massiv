@@ -81,16 +81,6 @@ test_script:
       --no-haddock-deps
       --work-dir %STACK_WORK%
       --extra-lib-dirs="%WORK_DIR%"
-  # - stack test massiv:tests
-  #     -j 2
-  #     --no-terminal
-  #     --local-bin-path %WORK_DIR%
-  #     --test
-  #     --no-haddock-deps
-  #     --work-dir %STACK_WORK%
-  #     --extra-include-dirs="C:\OpenSSL-Win64-v102\include"
-  #     --extra-lib-dirs="C:\OpenSSL-Win64-v102"
-  #     --extra-lib-dirs="%WORK_DIR%"
 
 
 after_test:

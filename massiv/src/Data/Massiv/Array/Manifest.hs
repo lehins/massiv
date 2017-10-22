@@ -231,13 +231,12 @@ toVector arr =
 {-# INLINE toVector #-}
 
 
-fromList ::
-     (Ragged LN ix e, Construct L ix e, Mutable r ix e)
-  => Comp
-  -> ix
-  -> [ListItem ix e]
-  -> Array r ix e
-fromList comp sz xs = compute (LArray comp sz (fromListIx xs))
+fromList :: (Ragged LN ix e, Construct L ix e, Mutable r ix e)
+         => Comp
+         -> [ListItem ix e]
+         -> Array r ix e
+fromList comp xs = compute (LArray comp (nestedSz ls) ls)
+  where ls = fromListIx xs
 {-# INLINE fromList #-}
 
 
@@ -245,7 +244,7 @@ toList ::
      (Ragged LN ix e, Construct L ix e, Source r ix e)
   => Array r ix e
   -> [ListItem ix e]
-toList arr = toListIx ln
-  where (LArray _ _ ln) =
+toList arr = toListIx ls
+  where (LArray _ _ ls) =
           unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE toList #-}

@@ -34,7 +34,7 @@ mkConvolutionStencil
   => Border e
   -> ix
   -> ix
-  -> ((ix -> Elt e -> Elt e -> Elt e) -> Elt e -> Elt e)
+  -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
 mkConvolutionStencil b !sSz !sCenter relStencil =
   validateStencil 0 $ Stencil b sSz sCenter stencil
@@ -59,9 +59,9 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = (liftIndex (`div` 2) sz)
-    stencil getVal !ix = Elt (ifoldlS accum 0 kArr) where
+    stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
-        unElt (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
+        unValue (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
       {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE mkConvolutionStencilFromKernel #-}

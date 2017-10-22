@@ -28,7 +28,7 @@ import           Bench.Common              (heavyFunc, lightFunc)
 import           Control.DeepSeq
 import           Data.Default              (Default)
 import           Data.Massiv.Array         as A
-import           Data.Massiv.Array.Stencil as A hiding (Elt)
+import           Data.Massiv.Array.Stencil as A
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
 instance Index ix => NFData (Array D ix e) where
