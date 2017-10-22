@@ -25,7 +25,6 @@ import           Control.Monad.ST                    (runST)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core
 import           Data.Massiv.Ragged
 import           Data.Primitive                      (sizeOf)

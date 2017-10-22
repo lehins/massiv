@@ -46,7 +46,7 @@ import           Control.Monad.ST             (ST)
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Iterator
-import           Data.Typeable                (Typeable, showsTypeRep, typeRep)
+import           Data.Typeable                (Typeable)
 --import           GHC.Exts                     (IsList (..))
 
 data family Array r ix e :: *

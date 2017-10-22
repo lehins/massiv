@@ -1,13 +1,14 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.Ops.FoldSpec (spec) where
 
-import           Data.Massiv.CoreArbitrary
 import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Ops
-import           Prelude                      hiding (map, product, sum)
-import qualified Prelude                      as P (sum, length)
+import           Data.Massiv.CoreArbitrary
+import           Prelude                   hiding (map, product, sum)
+import qualified Prelude                   as P (length, sum)
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic

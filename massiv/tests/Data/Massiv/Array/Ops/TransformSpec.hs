@@ -1,12 +1,13 @@
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.Ops.TransformSpec (spec) where
 
-import           Data.Massiv.CoreArbitrary
 import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Ops              as M
-import           Data.Typeable                      (Typeable)
+import           Data.Massiv.Array.Ops      as M
+import           Data.Massiv.CoreArbitrary
+import           Data.Typeable              (Typeable)
 import           Test.Hspec
 import           Test.QuickCheck
 

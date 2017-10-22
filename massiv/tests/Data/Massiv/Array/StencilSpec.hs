@@ -1,17 +1,18 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeApplications      #-}
 module Data.Massiv.Array.StencilSpec (spec) where
 
-import           Control.DeepSeq                     (deepseq)
-import           Data.Massiv.CoreArbitrary
-import           Data.Massiv.Array.Delayed (DW)
+import           Control.DeepSeq            (deepseq)
+import           Data.Massiv.Array.Delayed  (DW)
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops              as A
+import           Data.Massiv.Array.Ops      as A
 import           Data.Massiv.Array.Stencil
-import           Data.Maybe                         (fromJust)
+import           Data.Massiv.CoreArbitrary
+import           Data.Maybe                 (fromJust)
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Function

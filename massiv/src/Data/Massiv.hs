@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms       #-}
+{-# LANGUAGE MonoLocalBinds        #-}
 -- |
 -- Module      : Data.Massiv
 -- Copyright   : (c) Alexey Kuleshevich 2017
