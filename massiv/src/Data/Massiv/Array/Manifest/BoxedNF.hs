@@ -30,7 +30,7 @@ import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Scheduler
-import           Data.Massiv.Ragged
+import           Data.Massiv.Core.List
 import qualified Data.Primitive.Array                as A
 import qualified Data.Vector                         as VB
 import qualified Data.Vector.Mutable                 as VB
@@ -42,6 +42,8 @@ import           System.IO.Unsafe                    (unsafePerformIO)
 -- spine strict, and elements are always in Normal Form (NF), therefore `NFData`
 -- instance is required.
 data N = N deriving Show
+
+type instance EltRepr N ix = M
 
 data instance Array N ix e = NArray { nComp :: Comp
                                     , nSize :: !ix
@@ -80,7 +82,6 @@ instance (Index ix, NFData e) => Source N ix e where
 
 
 instance (Index ix, NFData e) => Shape N ix e where
-  type R N = M
 
   unsafeReshape !sz !arr = arr { nSize = sz }
   {-# INLINE unsafeReshape #-}
@@ -89,13 +90,25 @@ instance (Index ix, NFData e) => Shape N ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (Index ix, NFData e, Index (Lower ix)) => Slice N ix e where
+instance ( NFData e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt N ix e ~ Array M (Lower ix) e
+         ) =>
+         OuterSlice N ix e where
+  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+  {-# INLINE unsafeOuterSlice #-}
 
-  (!?>) !arr = (toManifest arr !?>)
-  {-# INLINE (!?>) #-}
-
-  (<!?) !arr = (toManifest arr <!?)
-  {-# INLINE (<!?) #-}
+instance ( NFData e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt N ix e ~ Array M (Lower ix) e
+         ) =>
+         InnerSlice N ix e where
+  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+  {-# INLINE unsafeInnerSlice #-}
 
 
 instance (Index ix, NFData e) => Manifest N ix e where

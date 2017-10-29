@@ -30,10 +30,11 @@ type family Elt r ix e :: * where
   Elt r Ix1 e = e
   Elt r ix  e = Array (EltRepr r ix) (Lower ix) e
 
+type family NestedStruct r ix e :: *
+
 type family NestedItem r ix e :: * where
   NestedItem r Ix1 e = e
-  NestedItem r ix  e = Nested r ix (NestedItem r (Lower ix) e)
-
+  NestedItem r ix  e = NestedStruct r ix (NestedItem r (Lower ix) e)
 
 -- | Index polymorphic arrays.
 class (Typeable r, Index ix) => Construct r ix e where
@@ -85,9 +86,13 @@ class Construct r ix e => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
 
 
+class Nested r ix e where
+  fromNested :: NestedStruct r ix e -> Array r ix e
+
+  toNested :: Array r ix e -> NestedStruct r ix e
+
 
 class Ragged r ix e where
-  type family Nested r ix e :: *
 
   empty :: Comp -> Array r ix e
 
@@ -106,10 +111,6 @@ class Ragged r ix e where
   loadRagged ::
     (Monad m) =>
     (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Lower ix -> Array r ix e -> m ()
-
-  fromNested :: Comp -> Nested r ix (NestedItem r ix e) -> Array r ix e
-
-  toNested :: Array r ix e -> Nested r ix (NestedItem r ix e)
 
   -- TODO: test property:
   -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls

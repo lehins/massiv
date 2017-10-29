@@ -25,7 +25,7 @@
 -- LN:
 --   * isNull
 
-module Data.Massiv.Ragged where
+module Data.Massiv.Ragged () where
 
 import           Control.Monad              (unless)
 import           Data.Coerce

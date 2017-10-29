@@ -28,6 +28,9 @@ module Data.Massiv.Core
   , InnerSlice(..)
   , Manifest(..)
   , Mutable(..)
+  , Ragged(..)
+  , Nested(..)
+  , L
   -- * Computation
 #if __GLASGOW_HASKELL__ >= 800
   , Comp(Seq, Par, ParOn)
@@ -46,6 +49,7 @@ import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Iterator
 import           Data.Massiv.Core.Array
+import           Data.Massiv.Core.List
 
 
 class Source r ix e => Shape r ix e where
@@ -101,6 +105,14 @@ evaluateAt !arr !ix =
 {-# INLINE evaluateAt #-}
 
 
+instance ( Ragged L ix e
+         , Construct L ix e
+         , Source r ix e
+         , Show e
+         ) =>
+         Show (Array r ix e) where
+  show arr =
+    show (unsafeMakeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e)
 
 
 -- TODO: Implement proper Show
