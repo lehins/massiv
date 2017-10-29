@@ -54,8 +54,8 @@ instance {-# OVERLAPPING #-} Nested LN Ix1 e where
   {-# INLINE fromNested #-}
   toNested = coerce
   {-# INLINE toNested #-}
-  -- flatten = id
-  -- {-# INLINE flatten #-}
+  flatten = id
+  {-# INLINE flatten #-}
 
 instance ( Nested LN (Lower ix) e
          , Elt LN ix e ~ Array LN (Lower ix) e
@@ -67,8 +67,8 @@ instance ( Nested LN (Lower ix) e
   {-# INLINE fromNested #-}
   toNested = coerce
   {-# INLINE toNested #-}
-  -- flatten (List xs) = List (concatMap (unList . flatten) xs)
-  -- {-# INLINE flatten #-}
+  flatten (List xs) = List (concatMap (unList . flatten) xs)
+  {-# INLINE flatten #-}
 
 
 instance Nested LN ix e => IsList (Array LN ix e) where
@@ -96,9 +96,9 @@ instance (Nested LN ix e, Ragged L ix e) => Nested L ix e where
   {-# INLINE fromNested #-}
   toNested = lData
   {-# INLINE toNested #-}
-  -- flatten LArray {..} = LArray { lComp = lComp, lSize = length xs, lData = d }
-  --   where d@(List xs) = flatten lData
-  -- {-# INLINE flatten #-}
+  flatten LArray {..} = LArray { lComp = lComp, lSize = length xs, lData = d }
+    where d@(List xs) = flatten lData
+  {-# INLINE flatten #-}
 
 
 instance (Nested LN ix e, Ragged L ix e) => IsList (Array L ix e) where
@@ -151,8 +151,8 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
 instance ( Index ix
          , Index (Lower ix)
          , Ragged L (Lower ix) e
-         --, Nested L ix e
          , Elt L ix e ~ Array L (Lower ix) e
+         , Nested L ix e
          , Coercible (Elt LN ix e) [Elt LN (Lower ix) e]
          ) =>
          Ragged L ix e where
@@ -187,7 +187,19 @@ instance ( Index ix
       e <- unsafeGenerateM comp szL (\ixL -> f (consDim i ixL))
       return (cons e acc)
   {-# INLINE unsafeGenerateM #-}
-  loadRagged using uWrite = loadRaggedRec (loadRagged using uWrite)
+  --loadRagged using uWrite = loadRaggedRec 
+  loadRagged using uWrite start end sz xs = do
+    let step = totalElem sz
+        szL = tailDim sz
+    leftOver <-
+      loopM start (< end) (+ step) xs $ \ i zs ->
+        case uncons zs of
+          Nothing -> error "Too short"
+          Just (y, ys) -> do
+            _ <- loadRagged using uWrite i (i + step) szL y
+            return ys
+    unless (isNull (flatten leftOver)) $ error "Too long"
+    --unless (isNull leftOver) $ error "Too long"
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp ix xs) =
     showN (\s y -> raggedFormat f s $ LArray comp (tailDim ix) y) sep (coerce xs)
@@ -210,22 +222,22 @@ showN fShow lnPrefix ls =
      (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
 
 
-loadRaggedRec :: (Index ix1, Monad m, Ragged r Ix1 e, Ragged r ix e) =>
-                 (Int -> Int -> Lower ix1 -> Elt r ix e -> m a)
-              -> Int -> Int -> ix1 -> Array r ix e -> m ()
-loadRaggedRec loadLower start end sz xs = do
-  let step = totalElem sz
-      szL = tailDim sz
-  leftOver <-
-    loopM start (< end) (+ step) xs $ \ i zs ->
-      case uncons zs of
-        Nothing -> error "Too short"
-        Just (y, ys) -> do
-          _ <- loadLower i (i + step) szL y
-          return ys
-  --unless (isNull (flatten leftOver)) $ error "Too long"
-  unless (isNull leftOver) $ error "Too long"
-{-# INLINE loadRaggedRec #-}
+-- loadRaggedRec :: (Index ix1, Monad m, Ragged r Ix1 e, Ragged r ix e) =>
+--                  (Int -> Int -> Lower ix1 -> Elt r ix e -> m a)
+--               -> Int -> Int -> ix1 -> Array r ix e -> m ()
+-- loadRaggedRec loadLower start end sz xs = do
+--   let step = totalElem sz
+--       szL = tailDim sz
+--   leftOver <-
+--     loopM start (< end) (+ step) xs $ \ i zs ->
+--       case uncons zs of
+--         Nothing -> error "Too short"
+--         Just (y, ys) -> do
+--           _ <- loadLower i (i + step) szL y
+--           return ys
+--   --unless (isNull (flatten leftOver)) $ error "Too long"
+--   unless (isNull leftOver) $ error "Too long"
+-- {-# INLINE loadRaggedRec #-}
 
 
 -- instance {-# OVERLAPPING #-} Ragged LN Ix1 e where

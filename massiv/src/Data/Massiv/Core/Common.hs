@@ -95,7 +95,7 @@ class Nested r ix e where
 
   toNested :: Array r ix e -> NestedStruct r ix e
 
-  --flatten :: Array r ix e -> Array r Ix1 e
+  flatten :: Array r ix e -> Array r Ix1 e
 
 
 class Ragged r ix e where
