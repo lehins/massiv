@@ -36,7 +36,7 @@ data M
 data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !ix
                                     , mUnsafeLinearIndex :: Int -> e }
-
+type instance EltRepr M ix = M
 
 instance Index ix => Construct M ix e where
   size = mSize
@@ -108,27 +108,19 @@ instance Index ix => Shape M ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (Index ix, Index (Lower ix)) =>
-         Slice M ix e where
-  (!?>) !arr !i
-    | isSafeIndex m i =
-      Just (MArray (getComp arr) szL (unsafeLinearIndex arr . (+ kStart)))
-    | otherwise = Nothing
+instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => OuterSlice M ix e where
+  unsafeOuterSlice !arr !(_, szL) !i =
+    MArray (getComp arr) szL (unsafeLinearIndex arr . (+ kStart))
     where
-      !sz = size arr
-      !(m, szL) = unconsDim sz
-      !kStart = toLinearIndex sz (consDim i (zeroIndex :: Lower ix))
-  {-# INLINE (!?>) #-}
-  (<!?) !arr !i
-    | isSafeIndex m i =
-      Just
-        (MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * m + kStart)))
-    | otherwise = Nothing
+      !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
+  {-# INLINE unsafeOuterSlice #-}
+
+instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
+  unsafeInnerSlice !arr !(szL, m) !i =
+    MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * m + kStart))
     where
-      !sz = size arr
-      !(szL, m) = unsnocDim sz
-      !kStart = toLinearIndex sz (snocDim (zeroIndex :: Lower ix) i)
-  {-# INLINE (<!?) #-}
+      !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
+  {-# INLINE unsafeInnerSlice #-}
 
 
 instance Index ix => Load M ix e where

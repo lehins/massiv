@@ -37,7 +37,7 @@ data D = D deriving Show
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
-
+type instance EltRepr D ix = D
 
 instance Index ix => Construct D ix e where
   size = dSize
@@ -69,21 +69,17 @@ instance Index ix => Shape D ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (Index ix, Index (Lower ix)) => Slice D ix e where
+instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e where
 
-  (!?>) !arr !i
-    | isSafeIndex m i = Just (DArray (getComp arr) szL (\ !ix -> unsafeIndex arr (consDim i ix)))
-    | otherwise = Nothing
-    where
-      !(m, szL) = unconsDim (size arr)
-  {-# INLINE (!?>) #-}
+  unsafeOuterSlice !arr !(_, szL) !i =
+    DArray (getComp arr) szL (\ !ix -> unsafeIndex arr (consDim i ix))
+  {-# INLINE unsafeOuterSlice #-}
 
-  (<!?) !arr !i
-    | isSafeIndex m i = Just (DArray (getComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i)))
-    | otherwise = Nothing
-    where
-      !(szL, m) = unsnocDim (size arr)
-  {-# INLINE (<!?) #-}
+instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e where
+
+  unsafeInnerSlice !arr !(szL, _) !i =
+    DArray (getComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i))
+  {-# INLINE unsafeInnerSlice #-}
 
 
 instance (Eq e, Index ix) => Eq (Array D ix e) where

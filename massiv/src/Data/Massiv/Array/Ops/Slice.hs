@@ -29,7 +29,25 @@ import           Control.Monad    (guard)
 import           Data.Massiv.Core
 
 
-infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>
+infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?
+
+
+(!?>) :: OuterSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
+(!?>) !arr !i
+  | isSafeIndex m i = Just $ unsafeOuterSlice arr sz i
+  | otherwise = Nothing
+  where
+    !sz@(m, _) = unconsDim (size arr)
+{-# INLINE (!?>) #-}
+
+(<!?) :: InnerSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
+(<!?) !arr !i
+  | isSafeIndex m i = Just $ unsafeInnerSlice arr sz i
+  | otherwise = Nothing
+  where
+    !sz@(_, m) = unsnocDim (size arr)
+{-# INLINE (<!?) #-}
+
 
 
 (<!?>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Maybe (Array (R r) (Lower ix) e)
