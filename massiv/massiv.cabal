@@ -25,7 +25,6 @@ library
                      , Data.Massiv.Array.Stencil
                      , Data.Massiv.Array.Stencil.Convolution
                      , Data.Massiv.Core
-                     , Data.Massiv.Ragged
                      , Data.Massiv.Core.Scheduler
                      , Data.Massiv.Core.Index
                      , Data.Massiv.Types
@@ -46,10 +45,12 @@ library
                      , Data.Massiv.Array.Ops.Transform
                      , Data.Massiv.Array.Ops.Numeric
                      , Data.Massiv.Array.Stencil.Internal
+                     , Data.Massiv.Core.Common
                      , Data.Massiv.Core.Computation
                      , Data.Massiv.Core.Index.Class
                      , Data.Massiv.Core.Index.Ix
                      , Data.Massiv.Core.Iterator
+                     , Data.Massiv.Core.List
                      , Data.Massiv.Internal
   build-depends:       base            >= 4.7 && < 5
                      , data-default-class

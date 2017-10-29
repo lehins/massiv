@@ -332,7 +332,7 @@ foldrInner f !acc !arr =
     !(szL, m) = unsnocDim (size arr)
 {-# INLINE foldrInner #-}
 
-toListIx2' :: Slice r ix e => Array r ix e -> [[e]]
+toListIx2' :: (Elt r ix e ~ Array (EltRepr r ix) (Lower ix) e, Source (EltRepr r ix) (Lower ix) e, OuterSlice r ix e) => Array r ix e -> [[e]]
 toListIx2' !arr = build $ \ c n -> foldrFB c n $ fmap toListIx1 $ makeArrayR D Seq k (arr !>)
   where !k = fst $ unconsDim $ size arr
 {-# INLINE toListIx2' #-}

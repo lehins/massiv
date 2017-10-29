@@ -14,7 +14,7 @@ import           Test.QuickCheck
 
 
 prop_ExtractAppend
-  :: (Eq e, Shape r ix e, Source (R r) ix e, Arbitrary (ArrIx r ix e))
+  :: (Eq e, Shape r ix e, Source (EltRepr r ix) ix e, Arbitrary (ArrIx r ix e))
   => proxy (r, ix, e) -> DimIx ix -> ArrIx r ix e -> Bool
 prop_ExtractAppend _ (DimIx dim) (ArrIx arr ix) =
   maybe False ((delay arr ==) . uncurry (append' dim)) $ M.splitAt dim ix arr
@@ -27,7 +27,7 @@ prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
 specN ::
      ( Eq e
      , Shape r ix e
-     , Source (R r) ix e
+     , Source (EltRepr r ix) ix e
      , Typeable e
      , Show (Array r ix e)
      , Arbitrary (ArrIx r ix e)

@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Slice
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -50,47 +51,47 @@ infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?
 
 
 
-(<!?>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Maybe (Array (R r) (Lower ix) e)
+(<!?>) :: (Slice r ix e)
+       => Array r ix e -> (Dim, Int) -> Maybe (Elt r ix e)
 (<!?>) !arr !(dim, i) = do
   m <- getIndex (size arr) dim
   guard $ isSafeIndex m i
   start <- setIndex zeroIndex dim i
   cutSz <- setIndex (size arr) dim 1
-  newSz <- dropDim cutSz dim
-  return $ unsafeReshape newSz (unsafeExtract start cutSz arr)
+  unsafeSlice arr start cutSz dim
 {-# INLINE (<!?>) #-}
 
 
-(?>) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array (R r) (Lower ix) e)
+(?>) :: OuterSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
 (?>) Nothing      _ = Nothing
 (?>) (Just arr) !ix = arr !?> ix
 {-# INLINE (?>) #-}
 
-(<?) :: Slice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Array (R r) (Lower ix) e)
+(<?) :: InnerSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
 (<?) Nothing      _ = Nothing
 (<?) (Just arr) !ix = arr <!? ix
 {-# INLINE (<?) #-}
 
-(<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Dim, Int) -> Maybe (Array (R r) (Lower ix) e)
+(<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Dim, Int) -> Maybe (Elt r ix e)
 (<?>) Nothing      _ = Nothing
 (<?>) (Just arr) !ix = arr <!?> ix
 {-# INLINE (<?>) #-}
 
-(!>) :: Slice r ix e => Array r ix e -> Int -> Array (R r) (Lower ix) e
+(!>) :: OuterSlice r ix e => Array r ix e -> Int -> Elt r ix e
 (!>) !arr !ix =
   case arr !?> ix of
     Just res -> res
     Nothing  -> errorIx "(!>)" (size arr) ix
 {-# INLINE (!>) #-}
 
-(<!) :: Slice r ix e => Array r ix e -> Int -> Array (R r) (Lower ix) e
+(<!) :: InnerSlice r ix e => Array r ix e -> Int -> Elt r ix e
 (<!) !arr !ix =
   case arr <!? ix of
     Just res -> res
     Nothing  -> errorIx "(<!)" (size arr) ix
 {-# INLINE (<!) #-}
 
-(<!>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Array (R r) (Lower ix) e
+(<!>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Elt r ix e
 (<!>) !arr !(dim, i) =
   case arr <!?> (dim, i) of
     Just res -> res

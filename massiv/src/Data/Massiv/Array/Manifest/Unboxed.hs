@@ -23,15 +23,16 @@ import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core
-import           Data.Massiv.Ragged
+import           Data.Massiv.Core.List
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
 
 data U = U deriving Show
+
+type instance EltRepr U ix = M
 
 data instance Array U ix e = UArray { uComp :: !Comp
                                     , uSize :: !ix
@@ -69,8 +70,6 @@ instance (VU.Unbox e, Index ix) => Source U ix e where
 
 
 instance (VU.Unbox e, Index ix) => Shape U ix e where
-  type R U = M
-
   unsafeReshape !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeReshape #-}
 
@@ -78,13 +77,49 @@ instance (VU.Unbox e, Index ix) => Shape U ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (VU.Unbox e, Index ix, Index (Lower ix)) => Slice U ix e where
+instance {-# OVERLAPPING #-} VU.Unbox e => Slice U Ix1 e where
+  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
 
-  (!?>) !arr = (toManifest arr !?>)
-  {-# INLINE (!?>) #-}
 
-  (<!?) !arr = (toManifest arr <!?)
-  {-# INLINE (<!?) #-}
+instance ( VU.Unbox e
+         , Index ix
+         , Index (Lower ix)
+         , Elt U ix e ~ Elt M ix e
+         , Elt M ix e ~ Array M (Lower ix) e
+         ) =>
+         Slice U ix e where
+  unsafeSlice arr = unsafeSlice (toManifest arr)
+  {-# INLINE unsafeSlice #-}
+
+
+instance {-# OVERLAPPING #-} VU.Unbox e => OuterSlice U Ix1 e where
+  unsafeOuterSlice arr _ = unsafeLinearIndex arr
+  {-# INLINE unsafeOuterSlice #-}
+
+instance ( VU.Unbox e
+         , Index ix
+         , Index (Lower ix)
+         , Elt U ix e ~ Elt M ix e
+         , Elt M ix e ~ Array M (Lower ix) e
+         ) =>
+         OuterSlice U ix e where
+  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+  {-# INLINE unsafeOuterSlice #-}
+
+instance {-# OVERLAPPING #-} VU.Unbox e => InnerSlice U Ix1 e where
+  unsafeInnerSlice arr _ = unsafeLinearIndex arr
+  {-# INLINE unsafeInnerSlice #-}
+
+instance ( VU.Unbox e
+         , Index ix
+         , Index (Lower ix)
+         , Elt U ix e ~ Elt M ix e
+         , Elt M ix e ~ Array M (Lower ix) e
+         ) =>
+         InnerSlice U ix e where
+  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+  {-# INLINE unsafeInnerSlice #-}
 
 instance (VU.Unbox e, Index ix) => Manifest U ix e where
 
@@ -118,5 +153,5 @@ instance (VU.Unbox e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
   type Item (Array U ix e) = Item (Array L ix e)
   fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList = toListArray
+  toList = toList . toListArray
   {-# INLINE toList #-}

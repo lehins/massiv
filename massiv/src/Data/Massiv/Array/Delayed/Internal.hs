@@ -68,6 +68,16 @@ instance Index ix => Shape D ix e where
       unsafeIndex arr (liftIndex2 (+) ix sIx)
   {-# INLINE unsafeExtract #-}
 
+instance ( Index ix
+         , Index (Lower ix)
+         , Elt D ix e ~ Array D (Lower ix) e
+         ) =>
+         Slice D ix e where
+  unsafeSlice arr start cutSz dim = do
+    newSz <- dropDim cutSz dim
+    return $ unsafeReshape newSz (unsafeExtract start cutSz arr)
+  {-# INLINE unsafeSlice #-}
+
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e where
 

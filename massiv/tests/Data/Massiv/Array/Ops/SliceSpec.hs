@@ -18,7 +18,7 @@ import           Test.QuickCheck
 -- extract
 
 prop_ExtractEqualsExtractFromTo
-  :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Shape r ix e)
+  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Shape r ix e)
   => proxy (r, ix, e) -> SzIx ix -> Array r ix e -> Bool
 prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
   extractFromTo sIx eIx arr == extract sIx (liftIndex2 (-) eIx sIx) arr
@@ -27,7 +27,7 @@ prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
 
 
 specShapeN
-  :: (Eq (Array (R r) ix e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Shape r ix e)
+  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Shape r ix e)
   => proxy (r, ix, e) -> Spec
 specShapeN proxy = do
   describe "extract" $ do
@@ -39,12 +39,12 @@ specShapeN proxy = do
 -----------
 
 
-prop_SliceRight :: (Eq (Array (R r) (Lower ix) e), Arbitrary (Array r ix e), Slice r ix e)
+prop_SliceRight :: (Arbitrary (Array r ix e), Slice r ix e, Eq (Elt r ix e))
   => proxy (r, ix, e) -> Int -> Array r ix e -> Bool
 prop_SliceRight _ i arr = (arr !?> i) == (arr <!?> (rank (size arr), i))
 
 
-prop_SliceLeft :: (Eq (Array (R r) (Lower ix) e), Arbitrary (Array r ix e), Slice r ix e)
+prop_SliceLeft :: (Arbitrary (Array r ix e), Slice r ix e, Eq (Elt r ix e))
   => proxy (r, ix, e) -> Int -> Array r ix e -> Bool
 prop_SliceLeft _ i arr = (arr <!? i) == (arr <!?> (1, i))
 
@@ -175,11 +175,11 @@ prop_SliceIndexDim4M (ArrIx arr ix@(i1 :> i2 :> i3 :. i4)) =
 
 
 
-specSliceN :: ( Eq (Array (R r) (Lower ix) e)
-              , Arbitrary (Array r ix e)
+specSliceN :: ( Arbitrary (Array r ix e)
               , Show (Array r ix e)
               , Arbitrary ix
               , Slice r ix e
+              , Eq (Elt r ix e)
               )
            => proxy (r, ix, e) -> Spec
 specSliceN proxy = do

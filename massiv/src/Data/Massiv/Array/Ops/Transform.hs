@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Transform
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -25,16 +26,16 @@ module Data.Massiv.Array.Ops.Transform
   , traverse2
   ) where
 
-import           Control.Monad                   (guard)
-import           Data.Massiv.Core
+import           Control.Monad                      (guard)
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Construct
-import           Data.Maybe                      (fromMaybe)
-import           Prelude                         hiding (splitAt, traverse)
+import           Data.Massiv.Core
+import           Data.Maybe                         (fromMaybe)
+import           Prelude                            hiding (splitAt, traverse)
 
 
 
-extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
+extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
   | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
     Just $ unsafeExtract sIx newSz arr
@@ -45,7 +46,7 @@ extract !sIx !newSz !arr
     eIx = liftIndex2 (+) sIx newSz
 {-# INLINE extract #-}
 
-extractFromTo :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (R r) ix e)
+extractFromTo :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
 extractFromTo sIx eIx = extract sIx newSz
   where
     newSz = liftIndex2 (-) eIx sIx
@@ -148,7 +149,8 @@ append' n arr1 arr2 =
 {-# INLINE append' #-}
 
 -- | /O(1)/ - Split an array at an index in a particular dimension.
-splitAt :: Shape r ix e => Dim -> ix -> Array r ix e -> Maybe (Array (R r) ix e, Array (R r) ix e)
+splitAt :: (Shape r ix e, r' ~ EltRepr r ix) =>
+  Dim -> ix -> Array r ix e -> Maybe (Array r' ix e, Array r' ix e)
 splitAt dim ix arr = do
   let sz = size arr
   i <- getIndex ix dim

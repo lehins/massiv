@@ -108,12 +108,35 @@ instance Index ix => Shape M ix e where
   {-# INLINE unsafeExtract #-}
 
 
+
+instance {-# OVERLAPPING #-} Slice M Ix1 e where
+  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
+
+instance ( Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         ) =>
+         Slice M ix e where
+  unsafeSlice arr start cutSz dim = do
+    newSz <- dropDim cutSz dim
+    return $ unsafeReshape newSz (unsafeExtract start cutSz arr)
+  {-# INLINE unsafeSlice #-}
+
+instance {-# OVERLAPPING #-} OuterSlice M Ix1 e where
+  unsafeOuterSlice !arr _ = unsafeIndex arr
+  {-# INLINE unsafeOuterSlice #-}
+
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => OuterSlice M ix e where
   unsafeOuterSlice !arr !(_, szL) !i =
     MArray (getComp arr) szL (unsafeLinearIndex arr . (+ kStart))
     where
       !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
   {-# INLINE unsafeOuterSlice #-}
+
+instance {-# OVERLAPPING #-} InnerSlice M Ix1 e where
+  unsafeInnerSlice !arr _ = unsafeIndex arr
+  {-# INLINE unsafeInnerSlice #-}
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
   unsafeInnerSlice !arr !(szL, m) !i =

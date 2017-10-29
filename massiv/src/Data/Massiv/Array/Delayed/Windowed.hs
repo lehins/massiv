@@ -19,8 +19,6 @@ module Data.Massiv.Array.Delayed.Windowed
   ) where
 
 import           Control.Monad                      (when)
-import           Control.Monad.ST
-import           Control.Monad.ST.Unsafe
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Scheduler
@@ -184,8 +182,8 @@ instance {-# OVERLAPPABLE #-} (Index ix, Load DW (Lower ix) e) => Load DW ix e w
   {-# INLINE loadP #-}
 
 
-loadWindowedSRec :: (Index ix, Load DW (Lower ix) e) =>
-  Array DW ix e -> (Int -> ST s e) -> (Int -> e -> ST s ()) -> ST s ()
+loadWindowedSRec :: (Index ix, Load DW (Lower ix) e, Monad m) =>
+  Array DW ix e -> (Int -> m e) -> (Int -> e -> m ()) -> m ()
 loadWindowedSRec (DWArray darr mStencilSz tix wSz indexW) _unsafeRead unsafeWrite = do
   let DArray _ sz indexB = darr
       !szL = tailDim sz
@@ -220,10 +218,8 @@ loadWindowedPRec wIds (DWArray darr mStencilSz tix wSz indexW) _unsafeRead unsaf
         !bix = liftIndex2 (+) tix wSz
         !(t, tixL) = unconsDim tix
         !pageElements = totalElem szL
-        unsafeWriteLower i k = unsafeIOToST . unsafeWrite (k + pageElements * i)
+        unsafeWriteLower i k = unsafeWrite (k + pageElements * i)
         {-# INLINE unsafeWriteLower #-}
-        -- unsafeWriteLowerST i k = unsafeIOToST . unsafeWriteLower i k
-        -- {-# INLINE unsafeWriteLowerST #-}
     scheduleWork scheduler $
       iterM_ zeroIndex tix 1 (<) $ \ !ix ->
         unsafeWrite (toLinearIndex sz ix) (indexB ix)
@@ -240,10 +236,9 @@ loadWindowedPRec wIds (DWArray darr mStencilSz tix wSz indexW) _unsafeRead unsaf
                (tailDim wSz)
                (indexW . consDim i))
       in scheduleWork scheduler $
-         stToIO $
          loadS
            lowerArr
-           (unsafeIOToST . _unsafeRead)
+           (_unsafeRead)
            (unsafeWriteLower i)
 {-# INLINE loadWindowedPRec #-}
 

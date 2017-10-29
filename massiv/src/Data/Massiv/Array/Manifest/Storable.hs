@@ -24,13 +24,15 @@ import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core
-import           Data.Massiv.Ragged
+import           Data.Massiv.Core.List
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
 
 data S = S deriving Show
+
+type instance EltRepr S ix = M
 
 data instance Array S ix e = SArray { sComp :: !Comp
                                     , sSize :: !ix
@@ -65,8 +67,6 @@ instance (VS.Storable e, Index ix) => Source S ix e where
 
 
 instance (VS.Storable e, Index ix) => Shape S ix e where
-  type R S = M
-
   unsafeReshape !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeReshape #-}
 
@@ -74,13 +74,26 @@ instance (VS.Storable e, Index ix) => Shape S ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (VS.Storable e, Index ix, Index (Lower ix)) => Slice S ix e where
 
-  (!?>) !arr = (toManifest arr !?>)
-  {-# INLINE (!?>) #-}
+instance ( VS.Storable e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt S ix e ~ Array M (Lower ix) e
+         ) =>
+         OuterSlice S ix e where
+  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+  {-# INLINE unsafeOuterSlice #-}
 
-  (<!?) !arr = (toManifest arr <!?)
-  {-# INLINE (<!?) #-}
+instance ( VS.Storable e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt S ix e ~ Array M (Lower ix) e
+         ) =>
+         InnerSlice S ix e where
+  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+  {-# INLINE unsafeInnerSlice #-}
 
 
 instance (Index ix, VS.Storable e) => Manifest S ix e where
@@ -116,5 +129,5 @@ instance (VS.Storable e, IsList (Array L ix e), Load L ix e, Construct L ix e) =
   type Item (Array S ix e) = Item (Array L ix e)
   fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList = toListArray
+  toList = toList . toListArray
   {-# INLINE toList #-}

@@ -200,5 +200,5 @@ instance (NFData e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
   type Item (Array N ix e) = Item (Array L ix e)
   fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList = toListArray
+  toList = toList . toListArray
   {-# INLINE toList #-}

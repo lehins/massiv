@@ -26,7 +26,7 @@ import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core
-import           Data.Massiv.Ragged
+import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types                (Prim)
@@ -35,6 +35,8 @@ import           GHC.Exts                            (IsList (..))
 import           Prelude                             hiding (mapM)
 
 data P = P deriving Show
+
+type instance EltRepr P ix = M
 
 data instance Array P ix e = PArray { pComp :: !Comp
                                     , pSize :: !ix
@@ -70,8 +72,6 @@ instance (Prim e, Index ix) => Source P ix e where
 
 
 instance (Prim e, Index ix) => Shape P ix e where
-  type R P = M
-
   unsafeReshape !sz !arr = arr { pSize = sz }
   {-# INLINE unsafeReshape #-}
 
@@ -79,13 +79,49 @@ instance (Prim e, Index ix) => Shape P ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (Prim e, Index ix, Index (Lower ix)) => Slice P ix e where
+instance {-# OVERLAPPING #-} Prim e => Slice P Ix1 e where
+  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
 
-  (!?>) !arr = (toManifest arr !?>)
-  {-# INLINE (!?>) #-}
 
-  (<!?) !arr = (toManifest arr <!?)
-  {-# INLINE (<!?) #-}
+instance ( Prim e
+         , Index ix
+         , Index (Lower ix)
+         , Elt P ix e ~ Elt M ix e
+         , Elt M ix e ~ Array M (Lower ix) e
+         ) =>
+         Slice P ix e where
+  unsafeSlice arr = unsafeSlice (toManifest arr)
+  {-# INLINE unsafeSlice #-}
+
+instance {-# OVERLAPPING #-} Prim e => OuterSlice P Ix1 e where
+  unsafeOuterSlice arr _ = unsafeLinearIndex arr
+  {-# INLINE unsafeOuterSlice #-}
+
+instance ( Prim e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt P ix e ~ Array M (Lower ix) e
+         ) =>
+         OuterSlice P ix e where
+  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+  {-# INLINE unsafeOuterSlice #-}
+
+
+instance {-# OVERLAPPING #-} Prim e => InnerSlice P Ix1 e where
+  unsafeInnerSlice arr _ = unsafeLinearIndex arr
+  {-# INLINE unsafeInnerSlice #-}
+
+instance ( Prim e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt P ix e ~ Array M (Lower ix) e
+         ) =>
+         InnerSlice P ix e where
+  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+  {-# INLINE unsafeInnerSlice #-}
 
 instance (Index ix, Prim e) => Manifest P ix e where
 
@@ -120,7 +156,7 @@ instance (VP.Prim e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
   type Item (Array P ix e) = Item (Array L ix e)
   fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList = toListArray
+  toList = toList . toListArray
   {-# INLINE toList #-}
 
 

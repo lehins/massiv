@@ -28,8 +28,8 @@ import           Data.Massiv.Array.Manifest.BoxedNF  (deepseqArray,
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold
+import           Data.Massiv.Core.List
 import           Data.Massiv.Core
-import           Data.Massiv.Ragged
 import qualified Data.Primitive.Array                as A
 import           GHC.Base                            (build)
 import           GHC.Exts                            (IsList (..))
@@ -39,6 +39,8 @@ import           Prelude                             hiding (mapM)
 -- | Array representation for Boxed elements. This structure is element and
 -- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
 data B = B deriving Show
+
+type instance EltRepr B ix = M
 
 data instance Array B ix e = BArray { bComp :: !Comp
                                     , bSize :: !ix
@@ -75,8 +77,6 @@ instance Index ix => Source B ix e where
 
 
 instance Index ix => Shape B ix e where
-  type R B = M
-
   unsafeReshape !sz !arr = arr { bSize = sz }
   {-# INLINE unsafeReshape #-}
 
@@ -84,13 +84,25 @@ instance Index ix => Shape B ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance (Index ix, Index (Lower ix)) => Slice B ix e where
+instance ( NFData e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt B ix e ~ Array M (Lower ix) e
+         ) =>
+         OuterSlice B ix e where
+  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+  {-# INLINE unsafeOuterSlice #-}
 
-  (!?>) !arr = (toManifest arr !?>)
-  {-# INLINE (!?>) #-}
-
-  (<!?) !arr = (toManifest arr <!?)
-  {-# INLINE (<!?) #-}
+instance ( NFData e
+         , Index ix
+         , Index (Lower ix)
+         , Elt M ix e ~ Array M (Lower ix) e
+         , Elt B ix e ~ Array M (Lower ix) e
+         ) =>
+         InnerSlice B ix e where
+  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+  {-# INLINE unsafeInnerSlice #-}
 
 
 instance Index ix => Manifest B ix e where
@@ -147,10 +159,10 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE toList #-}
 
 
-instance (IsList (Array L ix e), Load L ix e, Construct L ix e) => IsList (Array B ix e) where
+instance (IsList (Array L ix e), Load L ix e, Construct L ix e) =>
+         IsList (Array B ix e) where
   type Item (Array B ix e) = Item (Array L ix e)
   fromList xs = compute (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
-  toList = toListArray
+  toList = toList . toListArray
   {-# INLINE toList #-}
-

@@ -14,14 +14,20 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Core.List where
+module Data.Massiv.Core.List
+  ( LN
+  , L(..)
+  , Array(..)
+  , toListArray
+  , ListItem
+  ) where
 
 import           Control.Monad                (unless)
 import           Data.Coerce
 import           Data.Foldable                (foldr')
 import           Data.Functor.Identity
 import qualified Data.List                    as L
-import           Data.Massiv.Core.Array
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Iterator
@@ -30,9 +36,9 @@ import           GHC.Exts
 import           System.IO.Unsafe             (unsafePerformIO)
 
 
-data LN = LN
-type instance EltRepr LN ix = LN
+data LN
 
+type instance EltRepr LN ix = LN
 
 type family ListItem ix e :: * where
   ListItem Ix1 e = e
@@ -52,7 +58,7 @@ instance {-# OVERLAPPING #-} Nested LN Ix1 e where
 instance ( Nested LN (Lower ix) e
          , Elt LN ix e ~ Array LN (Lower ix) e
          , ListItem ix e ~ [ListItem (Lower ix) e]
-         , Coercible (Elt LN (Lower ix) e) (ListItem (Lower ix) e)
+         , Coercible (Elt LN ix e) (ListItem ix e)
          ) =>
          Nested LN ix e where
   fromNested = coerce
@@ -72,9 +78,20 @@ instance Nested LN ix e => IsList (Array LN ix e) where
 data L = L
 type instance EltRepr L ix = L
 
+type instance NestedStruct L ix e = Array LN ix e
+
 data instance Array L ix e = LArray { lComp :: Comp
                                     , lSize :: ix
                                     , lData :: !(Array LN ix e) }
+
+
+instance Ragged L ix e => Nested L ix e where
+  fromNested xs =
+    let newArr = LArray Seq (edgeSize newArr) xs
+    in newArr
+  {-# INLINE fromNested #-}
+  toNested = lData
+  {-# INLINE toNested #-}
 
 
 
@@ -86,6 +103,7 @@ instance (Nested LN ix e, Ragged L ix e) => IsList (Array L ix e) where
   {-# INLINE fromList #-}
   toList = toNested . lData
   {-# INLINE toList #-}
+
 
 
 instance {-# OVERLAPPING #-} Ragged L Ix1 e where
@@ -166,6 +184,86 @@ instance ( Index ix
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp ix xs) =
     showN (\s y -> raggedFormat f s $ LArray comp (tailDim ix) y) sep (coerce xs)
+---------
+
+-- instance {-# OVERLAPPING #-} Ragged L Ix1 e where
+--   isNull = null . unList . lData
+--   {-# INLINE isNull #-}
+--   empty comp = LArray comp 0 (List [])
+--   {-# INLINE empty #-}
+--   edgeSize = outerLength
+--   {-# INLINE edgeSize #-}
+--   outerLength = length . unList . lData
+--   {-# INLINE outerLength #-}
+--   cons x arr = newArr
+--     where
+--       newArr = arr { lData = List (x : (unList (lData arr))), lSize = edgeSize newArr }
+--   {-# INLINE cons #-}
+--   uncons LArray {..} =
+--     case L.uncons $ unList lData of
+--       Nothing      -> Nothing
+--       Just (x, xs) -> let newArr = LArray lComp (edgeSize newArr) (List xs) in Just (x, newArr)
+--   {-# INLINE uncons #-}
+--   unsafeGenerateM comp k f = do
+--     xs <- loopM (k - 1) (>= 0) (subtract 1) [] $ \i acc -> do
+--       e <- f i
+--       return (e:acc)
+--     return $ LArray comp k $ List xs
+--   {-# INLINE unsafeGenerateM #-}
+--   loadRagged using uWrite start end _ xs =
+--     using $ do
+--       leftOver <-
+--         loopM start (< end) (+ 1) xs $ \i xs' ->
+--           case uncons xs' of
+--             Nothing      -> error $ "Row is too short"
+--             Just (y, ys) -> uWrite i y >> return ys
+--       unless (isNull leftOver) $ error "Row is too long"
+--   {-# INLINE loadRagged #-}
+--   raggedFormat f _ arr = L.concat $ "[ " : (L.intersperse "," $ map f (unList (lData arr))) ++ [" ]"]
+
+
+-- instance ( Index ix
+--          , Index (Lower ix)
+--          , Ragged L (Lower ix) e
+--          , Elt L ix e ~ Array L (Lower ix) e
+--          , Elt LN ix e ~ Array LN (Lower ix) e
+--          ) =>
+--          Ragged L ix e where
+--   isNull = null . unList . lData
+--   {-# INLINE isNull #-}
+--   empty comp = LArray comp zeroIndex (List [])
+--   {-# INLINE empty #-}
+--   edgeSize arr =
+--     consDim (length (unList (lData arr))) $
+--     case uncons arr of
+--       Nothing     -> zeroIndex
+--       Just (x, _) -> edgeSize x
+--   {-# INLINE edgeSize #-}
+--   outerLength = length . unList . lData
+--   {-# INLINE outerLength #-}
+--   cons (LArray _ _ x) arr = newArr
+--     where
+--       newArr =
+--         arr {lData = List (x : unList (lData arr)), lSize = edgeSize newArr}
+--   {-# INLINE cons #-}
+--   uncons LArray {..} =
+--     case L.uncons (unList lData) of
+--       Nothing -> Nothing
+--       Just (x, xs) ->
+--         let newArr = LArray lComp (edgeSize newArr) (List xs)
+--             newX = LArray lComp (edgeSize newX) x
+--         in Just (newX, newArr)
+--   {-# INLINE uncons #-}
+--   unsafeGenerateM comp sz f = do
+--     let (k, szL) = unconsDim sz
+--     loopM (k - 1) (>= 0) (subtract 1) (empty comp) $ \i acc -> do
+--       e <- unsafeGenerateM comp szL (\ixL -> f (consDim i ixL))
+--       return (cons e acc)
+--   {-# INLINE unsafeGenerateM #-}
+--   loadRagged using uWrite = loadRaggedRec (loadRagged using uWrite)
+--   {-# INLINE loadRagged #-}
+--   raggedFormat f sep (LArray comp ix xs) =
+--     showN (\s y -> raggedFormat f s $ LArray comp (tailDim ix) y) sep (unList xs)
 
 
 
@@ -238,20 +336,6 @@ loadRaggedRec loadLower start end sz xs = do
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 instance {-# OVERLAPPING #-} Construct L Ix1 e where
   size = lSize
   {-# INLINE size #-}
@@ -281,7 +365,7 @@ instance ( Index ix
   unsafeMakeArray comp sz f = unsafeGenerateN comp sz f
   {-# INLINE unsafeMakeArray #-}
 
-instance (Construct L ix e, Ragged L ix e) => Load L ix e where
+instance (Construct L ix e, Ragged L ix e, Index ix) => Load L ix e where
   loadS arr _ unsafeWrite = let sz = edgeSize arr in
     loadRagged id unsafeWrite 0 (totalElem sz) (tailDim sz) arr
   {-# INLINE loadS #-}
@@ -502,13 +586,21 @@ unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
 --   return ()
 -- {-# INLINE loadNestedRec #-}
 
-toListArray ::
-     forall r ix e. (IsList (Array L ix e), Construct L ix e, Source r ix e)
-  => Array r ix e
-  -> [Item (Array L ix e)]
+-- toListArray ::
+--      forall r ix e. (IsList (Array L ix e), Construct L ix e, Source r ix e)
+--   => Array r ix e
+--   -> [Item (Array L ix e)]
+-- toListArray arr =
+--   toList
+--     (unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr) :: Array L ix e)
+-- {-# INLINE toListArray #-}
+
+
+toListArray :: (Construct L ix e, Source r ix e)
+            => Array r ix e
+            -> Array L ix e
 toListArray arr =
-  toList
-    (unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr) :: Array L ix e)
+  unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE toListArray #-}
 
 

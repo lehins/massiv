@@ -12,19 +12,20 @@
 module Data.Massiv.Array
   ( null
   , length
-  , module Data.Massiv.Core
-  , module Data.Massiv.Array.Delayed
-  , module Data.Massiv.Array.Manifest
-  , module Data.Massiv.Array.Mutable
-  , module Data.Massiv.Array.Ops
+  , module A
+  -- , module Data.Massiv.Core
+  -- , module Data.Massiv.Array.Delayed
+  -- , module Data.Massiv.Array.Manifest
+  -- , module Data.Massiv.Array.Mutable
+  -- , module Data.Massiv.Array.Ops
   ) where
 
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops
-import           Data.Massiv.Core
+import           Data.Massiv.Array.Delayed as A
+import           Data.Massiv.Array.Delayed.Internal as A
+import           Data.Massiv.Array.Manifest as A
+import           Data.Massiv.Array.Mutable as A
+import           Data.Massiv.Array.Ops as A
+import           Data.Massiv.Core as A
 import           Prelude                    as P hiding (length, null)
 
 length :: Construct r ix e => Array r ix e -> Int

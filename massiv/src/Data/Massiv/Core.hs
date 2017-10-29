@@ -1,13 +1,14 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Core
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -17,20 +18,23 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core
-  ( Array
+  ( Array(List,unList)
   , Elt
   , EltRepr
   , Construct(..)
   , Source(..)
   , Load(..)
   , Shape(..)
+  , Slice(..)
   , OuterSlice(..)
   , InnerSlice(..)
   , Manifest(..)
   , Mutable(..)
   , Ragged(..)
   , Nested(..)
-  , L
+  , L(..)
+  , LN
+  , ListItem
   -- * Computation
 #if __GLASGOW_HASKELL__ >= 800
   , Comp(Seq, Par, ParOn)
@@ -45,20 +49,13 @@ module Data.Massiv.Core
   ) where
 
 import           Control.Monad.Primitive      (PrimMonad (..))
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Iterator
-import           Data.Massiv.Core.Array
 import           Data.Massiv.Core.List
-
-
-class Source r ix e => Shape r ix e where
-
-  unsafeReshape :: Index ix' => ix' -> Array r ix e -> Array r ix' e
-
-  unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
-
-
+import           Data.Proxy
+import           Data.Typeable
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
@@ -112,7 +109,9 @@ instance ( Ragged L ix e
          ) =>
          Show (Array r ix e) where
   show arr =
-    show (unsafeMakeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e)
+    "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " (" ++
+    (show (size arr)) ++ ")\n" ++
+    show (unsafeMakeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"
 
 
 -- TODO: Implement proper Show

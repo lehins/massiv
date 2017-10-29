@@ -25,7 +25,6 @@ import           Control.Exception          (Exception, SomeException, catch)
 import           Data.Massiv.Array.Ops
 import           Data.Massiv.Core
 import           Data.Massiv.Core.IndexSpec hiding (spec)
-import           Data.Massiv.Ragged ()
 import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic

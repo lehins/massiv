@@ -52,6 +52,7 @@ module Data.Massiv.Array.Manifest
 
 import           Control.Monad                        (guard, join, msum)
 import           Data.Massiv.Core
+import           Data.Massiv.Core.List
 import           Data.Massiv.Array.Manifest.BoxedStrict
 import           Data.Massiv.Array.Manifest.BoxedNF
 import           Data.Massiv.Array.Manifest.Internal
@@ -65,7 +66,6 @@ import qualified Data.Vector.Generic                  as VG
 import qualified Data.Vector.Primitive                as VP
 import qualified Data.Vector.Storable                 as VS
 import qualified Data.Vector.Unboxed                  as VU
-import Data.Massiv.Ragged
 
 type family ARepr (v :: * -> *) :: *
 type family VRepr r :: * -> *
@@ -231,20 +231,19 @@ toVector arr =
 {-# INLINE toVector #-}
 
 
-fromList :: (Ragged LN ix e, Construct L ix e, Mutable r ix e)
+fromList :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Construct L ix e, Mutable r ix e)
          => Comp
          -> [ListItem ix e]
          -> Array r ix e
-fromList comp xs = compute (LArray comp (nestedSz ls) ls)
-  where ls = fromListIx xs
+fromList comp = compute . setComp comp . throughNested
 {-# INLINE fromList #-}
 
+throughNested :: forall ix e . (Nested LN ix e, Nested L ix e) => [ListItem ix e] -> Array L ix e
+throughNested xs = (fromNested (fromNested xs :: Array LN ix e))
+{-# INLINE throughNested #-}
 
-toList ::
-     (Ragged LN ix e, Construct L ix e, Source r ix e)
-  => Array r ix e
-  -> [ListItem ix e]
-toList arr = toListIx ls
-  where (LArray _ _ ls) =
-          unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr)
+toList :: (Nested LN ix e, Nested L ix e, Construct L ix e, Source r ix e)
+       => Array r ix e
+       -> [ListItem ix e]
+toList = toNested . toNested . toListArray
 {-# INLINE toList #-}

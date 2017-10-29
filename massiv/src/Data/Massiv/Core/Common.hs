@@ -1,16 +1,17 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE BangPatterns            #-}
+{-# LANGUAGE FlexibleContexts        #-}
+{-# LANGUAGE MultiParamTypeClasses   #-}
+{-# LANGUAGE TypeFamilies            #-}
+{-# LANGUAGE UndecidableInstances    #-}
 -- |
--- Module      : Data.Massiv.Core.Array
+-- Module      : Data.Massiv.Core.Common
 -- Copyright   : (c) Alexey Kuleshevich 2017
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Core.Array where
+module Data.Massiv.Core.Common where
 
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
@@ -31,10 +32,6 @@ type family Elt r ix e :: * where
   Elt r ix  e = Array (EltRepr r ix) (Lower ix) e
 
 type family NestedStruct r ix e :: *
-
-type family NestedItem r ix e :: * where
-  NestedItem r Ix1 e = e
-  NestedItem r ix  e = NestedStruct r ix (NestedItem r (Lower ix) e)
 
 -- | Index polymorphic arrays.
 class (Typeable r, Index ix) => Construct r ix e where
@@ -78,6 +75,8 @@ class Construct r ix e => Load r ix e where
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
 
+class (InnerSlice r ix e, OuterSlice r ix e) => Slice r ix e where
+  unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
 
 class Construct r ix e => OuterSlice r ix e where
   unsafeOuterSlice :: Array r ix e -> (Int, Lower ix) -> Int -> Elt r ix e
@@ -85,6 +84,10 @@ class Construct r ix e => OuterSlice r ix e where
 class Construct r ix e => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
 
+
+class Source r ix e => Shape r ix e where
+  unsafeReshape :: Index ix' => ix' -> Array r ix e -> Array r ix' e
+  unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 class Nested r ix e where
   fromNested :: NestedStruct r ix e -> Array r ix e

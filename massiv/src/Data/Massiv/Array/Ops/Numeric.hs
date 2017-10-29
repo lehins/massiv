@@ -101,8 +101,18 @@ infixl 6  .+, .-
 {-# INLINE (.^) #-}
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
-(|*|) :: (Mutable r1 Ix2 e, Mutable r2 Ix2 e, Slice r1 Ix2 e, Slice r2 Ix2 e, Num e)
-      => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e
+(|*|) ::
+     ( Mutable r1 Ix2 e
+     , Mutable r2 Ix2 e
+     , OuterSlice r1 Ix2 e
+     , OuterSlice r2 Ix2 e
+     , Source (EltRepr r1 Ix2) Ix1 e
+     , Source (EltRepr r2 Ix2) Ix1 e
+     , Num e
+     )
+  => Array r1 Ix2 e
+  -> Array r2 Ix2 e
+  -> Array D Ix2 e
 (|*|) = multArrs
 {-# INLINE (|*|) #-}
 
@@ -110,8 +120,10 @@ infixl 6  .+, .-
 multArrs :: forall r1 r2 e.
             ( Mutable r1 Ix2 e
             , Mutable r2 Ix2 e
-            , Slice r1 Ix2 e
-            , Slice r2 Ix2 e
+            , OuterSlice r1 Ix2 e
+            , OuterSlice r2 Ix2 e
+            , Source (EltRepr r1 Ix2) Ix1 e
+            , Source (EltRepr r2 Ix2) Ix1 e
             , Num e
             )
          => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e

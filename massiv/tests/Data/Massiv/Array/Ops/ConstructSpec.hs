@@ -6,7 +6,6 @@ module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops
-import           Data.Massiv.Ragged
 import           Data.Massiv.CoreArbitrary
 import           Data.Proxy
 import qualified GHC.Exts                   as GHC (IsList (..))
@@ -46,8 +45,9 @@ prop_toFromListIsList ::
   -> Property
 prop_toFromListIsList _ (Arr arr) = arr === GHC.fromList (GHC.toList arr)
 
+
 prop_toFromList ::
-  forall ix . (Show (Array U ix Int), Ragged LN ix Int, Construct L ix Int, Index ix)
+  forall ix . (Show (Array U ix Int), Nested LN ix Int, Nested L ix Int, Ragged L ix Int, Construct L ix Int, Index ix)
   => Proxy ix
   -> Arr U ix Int
   -> Property
