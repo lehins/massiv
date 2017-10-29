@@ -230,7 +230,6 @@ toVector arr =
     Nothing -> VG.generate (totalElem (size arr)) (unsafeLinearIndex arr)
 {-# INLINE toVector #-}
 
-
 fromList :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Construct L ix e, Mutable r ix e)
          => Comp
          -> [ListItem ix e]

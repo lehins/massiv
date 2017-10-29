@@ -110,47 +110,5 @@ instance ( Ragged L ix e
          Show (Array r ix e) where
   show arr =
     "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " (" ++
-    (show (size arr)) ++ ")\n" ++
+    (show (size arr)) ++ ") " ++ show (getComp arr) ++ "\n" ++
     show (unsafeMakeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"
-
-
--- TODO: Implement proper Show
--- instance {-# OVERLAPPABLE #-} (Typeable e, Construct r ix e) => Show (Array r ix e) where
---   show arr =
---     "<Array " ++
---     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
---     (show (size arr)) ++ " (" ++ showsTypeRep (typeRep (Proxy :: Proxy e)) ")>"
-
-
--- instance (IsList (Array r ix e), Item (Array r Ix2 e) ~ [e], Show e) =>
---          Show (Array r Ix2 e) where
---   show = showN (const show) "\n" . toList
-
-
--- instance {-# OVERLAPPING #-} (IsList (Array r Ix1 e), Item (Array r Ix1 e) ~ e, Show e) =>
---          Show (Array r Ix1 e) where
---   show = show . toList
-
-
--- instance {-# OVERLAPPING #-} (IsList (Array r Ix2 e), Item (Array r Ix2 e) ~ [e], Show e) =>
---          Show (Array r Ix2 e) where
---   show = showN (const show) "\n" . toList
-
-
--- instance {-# OVERLAPPING #-} (IsList (Array r Ix3 e), Item (Array r Ix3 e) ~ [[e]], Show e) =>
---          Show (Array r Ix3 e) where
---   show = showN (showN (const show)) "\n" . toList
-
-
--- instance (IsList (Array r Ix4 e), Item (Array r Ix4 e) ~ [[[e]]], Show e) =>
---          Show (Array r Ix4 e) where
---   show = showN (showN (showN (const show))) "\n" . toList
-
-
--- showN :: (String -> a -> String) -> String -> [a] -> String
--- showN fShow lnPrefix ls =
---   L.concat
---     (["[ "] ++
---      (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
-
-

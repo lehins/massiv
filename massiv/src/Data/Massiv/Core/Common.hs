@@ -87,12 +87,15 @@ class Construct r ix e => InnerSlice r ix e where
 
 class Source r ix e => Shape r ix e where
   unsafeReshape :: Index ix' => ix' -> Array r ix e -> Array r ix' e
+
   unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 class Nested r ix e where
   fromNested :: NestedStruct r ix e -> Array r ix e
 
   toNested :: Array r ix e -> NestedStruct r ix e
+
+  --flatten :: Array r ix e -> Array r Ix1 e
 
 
 class Ragged r ix e where

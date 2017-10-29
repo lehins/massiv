@@ -15,8 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.Massiv
-                     , Data.Massiv.Array
+  exposed-modules:     Data.Massiv.Array
                      , Data.Massiv.Array.Delayed
                      , Data.Massiv.Array.Manifest
                      , Data.Massiv.Array.Mutable
@@ -27,7 +26,6 @@ library
                      , Data.Massiv.Core
                      , Data.Massiv.Core.Scheduler
                      , Data.Massiv.Core.Index
-                     , Data.Massiv.Types
 
   other-modules:       Data.Massiv.Array.Delayed.Internal
                      , Data.Massiv.Array.Delayed.Interleaved
@@ -51,7 +49,6 @@ library
                      , Data.Massiv.Core.Index.Ix
                      , Data.Massiv.Core.Iterator
                      , Data.Massiv.Core.List
-                     , Data.Massiv.Internal
   build-depends:       base            >= 4.7 && < 5
                      , data-default-class
                      , deepseq
