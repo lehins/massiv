@@ -54,8 +54,6 @@ instance {-# OVERLAPPING #-} Nested LN Ix1 e where
   {-# INLINE fromNested #-}
   toNested = coerce
   {-# INLINE toNested #-}
-  -- flatten = id
-  -- {-# INLINE flatten #-}
 
 instance ( Elt LN ix e ~ Array LN (Lower ix) e
          , ListItem ix e ~ [ListItem (Lower ix) e]
