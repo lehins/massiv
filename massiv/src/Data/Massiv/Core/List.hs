@@ -54,11 +54,10 @@ instance {-# OVERLAPPING #-} Nested LN Ix1 e where
   {-# INLINE fromNested #-}
   toNested = coerce
   {-# INLINE toNested #-}
-  flatten = id
-  {-# INLINE flatten #-}
+  -- flatten = id
+  -- {-# INLINE flatten #-}
 
-instance ( Nested LN (Lower ix) e
-         , Elt LN ix e ~ Array LN (Lower ix) e
+instance ( Elt LN ix e ~ Array LN (Lower ix) e
          , ListItem ix e ~ [ListItem (Lower ix) e]
          , Coercible (Elt LN ix e) (ListItem ix e)
          ) =>
@@ -67,8 +66,8 @@ instance ( Nested LN (Lower ix) e
   {-# INLINE fromNested #-}
   toNested = coerce
   {-# INLINE toNested #-}
-  flatten (List xs) = List (concatMap (unList . flatten) xs)
-  {-# INLINE flatten #-}
+  -- flatten (List xs) = List (concatMap (unList . flatten) xs)
+  -- {-# INLINE flatten #-}
 
 
 instance Nested LN ix e => IsList (Array LN ix e) where
@@ -89,16 +88,16 @@ data instance Array L ix e = LArray { lComp :: Comp
                                     , lData :: !(Array LN ix e) }
 
 
-instance (Nested LN ix e, Ragged L ix e) => Nested L ix e where
+instance (Ragged L ix e) => Nested L ix e where
   fromNested xs =
     let newArr = LArray Seq (edgeSize newArr) xs
     in newArr
   {-# INLINE fromNested #-}
   toNested = lData
   {-# INLINE toNested #-}
-  flatten LArray {..} = LArray { lComp = lComp, lSize = length xs, lData = d }
-    where d@(List xs) = flatten lData
-  {-# INLINE flatten #-}
+  -- flatten LArray {..} = LArray { lComp = lComp, lSize = length xs, lData = d }
+  --   where d@(List xs) = flatten lData
+  -- {-# INLINE flatten #-}
 
 
 instance (Nested LN ix e, Ragged L ix e) => IsList (Array L ix e) where
@@ -198,8 +197,8 @@ instance ( Index ix
           Just (y, ys) -> do
             _ <- loadRagged using uWrite i (i + step) szL y
             return ys
-    unless (isNull (flatten leftOver)) $ error "Too long"
-    --unless (isNull leftOver) $ error "Too long"
+    -- unless (isNull (flatten leftOver)) $ error "Too long"
+    unless (isNull leftOver) $ error "Too long"
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp ix xs) =
     showN (\s y -> raggedFormat f s $ LArray comp (tailDim ix) y) sep (coerce xs)

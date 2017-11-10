@@ -17,18 +17,18 @@ import qualified Data.Vector.Unboxed          as VU
 import           Test.Hspec
 import           Test.QuickCheck
 
--- prop_castToFromVector
---   :: ( Arbitrary (Arr r ix Int)
---      , VG.Vector (VRepr r) Int
---      , Mutable r ix Int
---      , Typeable (VRepr r)
---      , ARepr (VRepr r) ~ r
---      , Eq (Array r ix Int)
---      , Show (Array r ix Int)
---      )
---   => proxy ix -> r -> Arr r ix Int -> Property
--- prop_castToFromVector _ _ (Arr arr) =
---   Just arr === (castToVector arr >>= castFromVector (getComp arr) (size arr))
+prop_castToFromVector
+  :: ( Arbitrary (Arr r ix Int)
+     , VG.Vector (VRepr r) Int
+     , Mutable r ix Int
+     , Typeable (VRepr r)
+     , ARepr (VRepr r) ~ r
+     , Eq (Array r ix Int)
+     , Show (Array r ix Int)
+     )
+  => proxy ix -> r -> Arr r ix Int -> Property
+prop_castToFromVector _ _ (Arr arr) =
+  Just arr === (castToVector arr >>= castFromVector (getComp arr) (size arr))
 
 
 prop_toFromVector ::
@@ -71,23 +71,23 @@ toFromVectorSpec  = do
   it_prop "BoxedStrict" B
 
 
--- -- Puts GHC into infinite loop at compile time :o. Even GHCi goes into the
--- -- infinity. All because of changes to Data.Array.Core.List introduced in the
--- -- same commit?!?!?
---
--- castToFromVectorSpec :: Spec
--- castToFromVectorSpec  = do
---   let it_prop name r = describe name $ do
---         it "Ix1" $ property $ prop_castToFromVector (Proxy :: Proxy Ix1) r
---         it "Ix2" $ property $ prop_castToFromVector (Proxy :: Proxy Ix2) r
---         it "Ix3" $ property $ prop_castToFromVector (Proxy :: Proxy Ix3) r
---   it_prop "Unboxed" U
---   -- it_prop "Primitive" P
---   -- it_prop "Storable" S
---   -- it_prop "BoxedStrict" B
+-- Puts GHC into infinite loop at compile time :o. Even GHCi goes into the
+-- infinity. All because of changes to Data.Array.Core.List introduced in the
+-- same commit?!?!?
+
+castToFromVectorSpec :: Spec
+castToFromVectorSpec  = do
+  let it_prop name r = describe name $ do
+        it "Ix1" $ property $ prop_castToFromVector (Proxy :: Proxy Ix1) r
+        it "Ix2" $ property $ prop_castToFromVector (Proxy :: Proxy Ix2) r
+        it "Ix3" $ property $ prop_castToFromVector (Proxy :: Proxy Ix3) r
+  it_prop "Unboxed" U
+  -- it_prop "Primitive" P
+  -- it_prop "Storable" S
+  -- it_prop "BoxedStrict" B
 
 
 spec :: Spec
 spec = do
   describe "toFromVector" toFromVectorSpec
-  --describe "castToFromVector" castToFromVectorSpec
+  describe "castToFromVector" castToFromVectorSpec
