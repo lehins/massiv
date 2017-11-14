@@ -10,8 +10,8 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array
-  ( null
-  , length
+  ( isEmpty
+  , elemsCount
   , module A
   -- , module Data.Massiv.Core
   -- , module Data.Massiv.Array.Delayed
@@ -28,10 +28,13 @@ import           Data.Massiv.Array.Ops as A
 import           Data.Massiv.Core as A
 import           Prelude                    as P hiding (length, null)
 
-length :: Construct r ix e => Array r ix e -> Int
-length = totalElem . size
-{-# INLINE length #-}
 
-null :: Construct r ix e => Array r ix e -> Bool
-null !arr = 0 == length arr
-{-# INLINE null #-}
+-- | /O(1)/ - Get number of elements in the array
+elemsCount :: Construct r ix e => Array r ix e -> Int
+elemsCount = totalElem . size
+{-# INLINE elemsCount #-}
+
+-- | /O(1)/ - Check if array has no elements.
+isEmpty :: Construct r ix e => Array r ix e -> Bool
+isEmpty !arr = 0 == elemsCount arr
+{-# INLINE isEmpty #-}

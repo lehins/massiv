@@ -89,7 +89,7 @@ specIx3 :: Spec
 specIx3 = do
   it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix3))
   it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
-  it "excFromToListIx3" $ property prop_excFromToListIx3
+  --it "excFromToListIx3" $ property prop_excFromToListIx3
 
 
 spec :: Spec
