@@ -38,7 +38,13 @@ end, are:
       instances of `Storable` class.
     * `B` - Boxed arrays that don't have restrictions on its elements, since
       they are represented as pointers to elements, thus making them the slowest
-      type of array.
+      type of array, but the most general. Arrays of this representation are
+      element strict, in other words its elements are kept in Weak-Head Normal
+      Form (WHNF).
+    * `N` - Also boxed array, but unlike previous representation its elements
+      are in Normal Form, in a fully evaluated state and no thunks or memory
+      leaks are possible. It does require `NFData` instance for the elements
+      though.
     * `M` - Manifest arrays, which is a general type of array that is backed by
       some memory representation, therefore any of the above `P`, `U`, `S`, `B`
       type of arrays can be converted to `M` in constant time with `toManifest`
