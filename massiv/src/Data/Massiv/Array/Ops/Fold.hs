@@ -12,15 +12,11 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Fold
-  ( -- * Monadic folds
-    foldlM
-  , foldrM
-  , foldlM_
-  , foldrM_
-  , ifoldlM
-  , ifoldrM
-  , ifoldlM_
-  , ifoldrM_
+  (
+  -- * Unstructured folds
+    fold
+  , sum
+  , product
   -- * Sequential folds
   , foldlS
   , lazyFoldlS
@@ -38,10 +34,15 @@ module Data.Massiv.Array.Ops.Fold
   , foldrOnP
   , ifoldlOnP
   , ifoldrOnP
-  -- * Unstructured folds
-  , fold
-  , sum
-  , product
+  -- * Monadic folds
+  , foldlM
+  , foldrM
+  , foldlM_
+  , foldrM_
+  , ifoldlM
+  , ifoldrM
+  , ifoldlM_
+  , ifoldrM_
   ) where
 
 import           Control.Monad               (void, when)

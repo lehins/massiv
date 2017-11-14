@@ -31,13 +31,13 @@ module Data.Massiv.Array.Manifest
   , Unbox
   -- * Conversion
   -- ** List
-  , toList
   , fromList
+  , toList
   -- ** Vector
-  , toVector
-  , castToVector
   , fromVector
   , castFromVector
+  , toVector
+  , castToVector
   , ARepr
   , VRepr
   -- * Indexing
@@ -230,9 +230,39 @@ toVector arr =
     Nothing -> VG.generate (totalElem (size arr)) (unsafeLinearIndex arr)
 {-# INLINE toVector #-}
 
+
+-- | Convert a nested list into an array. Nested list must be of a rectangular
+-- shape, otherwise a runtime error will occur. Also, nestedness must match the
+-- dimensionality of resulting array, which must be specified through an
+-- explicit type signature.
+--
+-- ==== __Examples__
+--
+-- >>> fromList Seq [[1,2],[3,4]] :: Array U Ix2 Int
+-- (Array U Seq (2 :. 2)
+-- [ [ 1,2 ]
+-- , [ 3,4 ]
+-- ])
+--
+-- >>> fromList Par [[[1,2,3]],[[4,5,6]]] :: Array U Ix3 Int
+-- (Array U Par (2 :> 1 :. 3)
+-- [ [ [ 1,2,3 ]
+--   ]
+-- , [ [ 4,5,6 ]
+--   ]
+-- ])
+--
+-- Elements of a boxed array could be lists themselves if necessary:
+--
+-- >>> fromList Seq [[[1,2,3]],[[4,5]]] :: Array B Ix2 [Int]
+-- (Array B Seq (2 :. 1)
+-- [ [ [1,2,3] ]
+-- , [ [4,5] ]
+-- ])
+--
 fromList :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Construct L ix e, Mutable r ix e)
-         => Comp
-         -> [ListItem ix e]
+         => Comp -- ^ Computation startegy to use
+         -> [ListItem ix e] -- ^ Nested list
          -> Array r ix e
 fromList comp = compute . setComp comp . throughNested
 {-# INLINE fromList #-}
@@ -241,6 +271,21 @@ throughNested :: forall ix e . (Nested LN ix e, Nested L ix e) => [ListItem ix e
 throughNested xs = (fromNested (fromNested xs :: Array LN ix e))
 {-# INLINE throughNested #-}
 
+
+-- | Convert an array into a nested list.
+--
+-- ====__Examples__
+--
+-- >>> makeArrayR U Seq (2 :> 1 :. 3) fromIx3
+-- (Array U Seq (2 :> 1 :. 3)
+-- [ [ [ (0,0,0),(0,0,1),(0,0,2) ]
+--   ]
+-- , [ [ (1,0,0),(1,0,1),(1,0,2) ]
+--   ]
+-- ])
+-- >>> toList $ makeArrayR U Seq (2 :> 1 :. 3) fromIx3
+-- [[[(0,0,0),(0,0,1),(0,0,2)]],[[(1,0,0),(1,0,1),(1,0,2)]]]
+--
 toList :: (Nested LN ix e, Nested L ix e, Construct L ix e, Source r ix e)
        => Array r ix e
        -> [ListItem ix e]

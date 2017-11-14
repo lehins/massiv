@@ -161,18 +161,18 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE abs #-}
   signum      = liftArray signum
   {-# INLINE signum #-}
-  fromInteger = singleton . fromInteger
+  fromInteger = singleton Seq . fromInteger
   {-# INLINE fromInteger #-}
 
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
   (/)          = liftArray2 (/)
   {-# INLINE (/) #-}
-  fromRational = singleton . fromRational
+  fromRational = singleton Seq . fromRational
   {-# INLINE fromRational #-}
 
 
 instance (Index ix, Floating e) => Floating (Array D ix e) where
-  pi    = singleton pi
+  pi    = singleton Seq pi
   {-# INLINE pi #-}
   exp   = liftArray exp
   {-# INLINE exp #-}
@@ -219,11 +219,6 @@ eq f arr1 arr2 =
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE eq #-}
 
-
-
-singleton :: Index ix => e -> Array D ix e
-singleton !e = DArray Seq (liftIndex (+ 1) zeroIndex) (const e)
-{-# INLINE singleton #-}
 
 liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
 liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)

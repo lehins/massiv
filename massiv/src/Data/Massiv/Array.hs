@@ -10,31 +10,67 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array
-  ( isEmpty
+  ( -- * Construct
+    makeArray
+  , makeArrayR
+  , singleton
+  -- * Size
+  , size
   , elemsCount
-  , module A
-  -- , module Data.Massiv.Core
-  -- , module Data.Massiv.Array.Delayed
-  -- , module Data.Massiv.Array.Manifest
-  -- , module Data.Massiv.Array.Mutable
-  -- , module Data.Massiv.Array.Ops
+  , isEmpty
+  -- * Indexing
+  , (!)
+  , (!?)
+  , (?)
+  , index
+  , maybeIndex
+  , defaultIndex
+  , borderIndex
+  -- * Slicing
+  -- ** From the outside
+  , (!>)
+  , (!?>)
+  , (?>)
+  -- ** From the inside
+  , (<!)
+  , (<!?)
+  , (<?)
+  -- ** From within
+  , (<!>)
+  , (<!?>)
+  , (<?>)
+  -- * Mapping
+  , module Data.Massiv.Array.Ops.Map
+  -- * Folding
+  , module Data.Massiv.Array.Ops.Fold
+  -- * Conversion
+  -- ** List
+  , fromList
+  , toList
+  -- ** Vector
+  , fromVector
+  , toVector
+
   ) where
 
-import           Data.Massiv.Array.Delayed as A
+--import           Data.Massiv.Array.Delayed as A
 import           Data.Massiv.Array.Delayed.Internal as A
-import           Data.Massiv.Array.Manifest as A
-import           Data.Massiv.Array.Mutable as A
-import           Data.Massiv.Array.Ops as A
-import           Data.Massiv.Core as A
-import           Prelude                    as P hiding (length, null)
+import           Data.Massiv.Array.Manifest         as A
+--import Data.Massiv.Array.Mutable as A
+import           Data.Massiv.Array.Ops              as A
+import           Data.Massiv.Array.Ops.Fold
+import           Data.Massiv.Array.Ops.Map
+import           Data.Massiv.Core                   as A
 
 
--- | /O(1)/ - Get number of elements in the array
+-- | /O(1)/ - Get the number of elements in the array
 elemsCount :: Construct r ix e => Array r ix e -> Int
 elemsCount = totalElem . size
 {-# INLINE elemsCount #-}
 
--- | /O(1)/ - Check if array has no elements.
+-- | /O(1)/ - Check if array is empty and has no elements.
 isEmpty :: Construct r ix e => Array r ix e -> Bool
 isEmpty !arr = 0 == elemsCount arr
 {-# INLINE isEmpty #-}
+
+

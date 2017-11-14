@@ -12,8 +12,8 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Construct
-  ( makeVectorR
-  , makeArray
+  ( makeArray
+  , singleton
   , makeArrayR
   , range
   , rangeStep
@@ -50,13 +50,6 @@ import           Data.Maybe                         (listToMaybe)
 import           GHC.Base                           (build)
 import           Prelude                            as P
 import           System.IO.Unsafe                   (unsafePerformIO)
-
-
-
--- | Just like `makeArrayR`, but create a flat Array with a specified representation
-makeVectorR :: Construct r Int e => r -> Comp -> Int -> (Int -> e) -> Array r Int e
-makeVectorR = makeArrayR
-{-# INLINE makeVectorR #-}
 
 
 -- | Create an Array.

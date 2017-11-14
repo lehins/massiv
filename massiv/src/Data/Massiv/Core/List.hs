@@ -182,12 +182,12 @@ instance ( Index ix
       e <- unsafeGenerateM comp szL (\ixL -> f (consDim i ixL))
       return (cons e acc)
   {-# INLINE unsafeGenerateM #-}
-  flatten arr = LArray {lComp = lComp arr, lSize = length xs, lData = List xs}
+  flatten arr = LArray {lComp = lComp arr, lSize = length xs, lData = coerce xs}
     where
       xs =
         concatMap
           (unList . lData . flatten . LArray (lComp arr) (tailDim (lSize arr)))
-          (unList $ lData arr)
+          (unList (lData arr))
   {-# INLINE flatten #-}
   loadRagged using uWrite start end sz xs = do
     let step = totalElem sz
@@ -195,12 +195,11 @@ instance ( Index ix
     leftOver <-
       loopM start (< end) (+ step) xs $ \i zs ->
         case uncons zs of
-          Nothing -> error "Too short"
+          Nothing -> error "Not enough elements in a row"
           Just (y, ys) -> do
             _ <- loadRagged using uWrite i (i + step) szL y
             return ys
-    unless (isNull (flatten leftOver)) $ error "Too long"
-    --unless (isNull leftOver) $ error "Too long"
+    unless (isNull (flatten leftOver)) $ error "Too many elements in a row"
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp ix xs) =
     showN

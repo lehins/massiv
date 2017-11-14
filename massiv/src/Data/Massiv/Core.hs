@@ -18,7 +18,7 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core
-  ( Array(List,unList)
+  ( Array(List, unList)
   , Elt
   , EltRepr
   , Construct(..)
@@ -43,6 +43,7 @@ module Data.Massiv.Core
   , Comp(..)
   , pattern Par
 #endif
+  , singleton
   , evaluateAt
   , module Data.Massiv.Core.Index
   , module Data.Massiv.Core.Iterator
@@ -87,6 +88,14 @@ class Manifest r ix e => Mutable r ix e where
                        MArray (PrimState m) r ix e -> Int -> e -> m ()
 
 
+-- | Create an Array with a single element.
+singleton :: Construct r ix e =>
+             Comp -- ^ Computation strategy
+          -> e -- ^ The element
+          -> Array r ix e
+singleton !c = unsafeMakeArray c oneIndex . const
+{-# INLINE singleton #-}
+
 
 -- | This is just like safe `Data.Massiv.Array.Manifest.index` function, but it
 -- allows getting values from delayed arrays as well as manifest. As the name
@@ -109,6 +118,10 @@ instance ( Ragged L ix e
          ) =>
          Show (Array r ix e) where
   show arr =
-    "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " (" ++
-    (show (size arr)) ++ ") " ++ show (getComp arr) ++ "\n" ++
+    "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+    showComp (getComp arr) ++ " (" ++
+    (show (size arr)) ++ ")\n" ++
     show (unsafeMakeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"
+    where showComp Seq = "Seq"
+          showComp Par = "Par"
+          showComp c   = "(" ++ show c ++ ")"

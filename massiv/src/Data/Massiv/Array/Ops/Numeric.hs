@@ -165,7 +165,7 @@ signumA = liftArray signum
 fromIntegerA
   :: (Index ix, Num e)
   => Integer -> Array D ix e
-fromIntegerA = singleton . fromInteger
+fromIntegerA = singleton Seq . fromInteger
 {-# INLINE fromIntegerA #-}
 
 (./)
@@ -190,13 +190,13 @@ recipA = liftArray recip
 fromRationalA
   :: (Index ix, Fractional e)
   => Rational -> Array D ix e
-fromRationalA = singleton . fromRational
+fromRationalA = singleton Seq . fromRational
 {-# INLINE fromRationalA #-}
 
 piA
   :: (Index ix, Floating e)
   => Array D ix e
-piA = singleton pi
+piA = singleton Seq pi
 {-# INLINE piA #-}
 
 expA
