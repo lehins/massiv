@@ -57,11 +57,11 @@ instance Index ix => Source D ix e where
   unsafeIndex = dUnsafeIndex
   {-# INLINE unsafeIndex #-}
 
-instance Index ix => Shape D ix e where
-  unsafeReshape !sz !arr =
+instance Index ix => Size D ix e where
+  unsafeResize !sz !arr =
     DArray (getComp arr) sz $ \ !ix ->
       unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
-  {-# INLINE unsafeReshape #-}
+  {-# INLINE unsafeResize #-}
 
   unsafeExtract !sIx !newSz !arr =
     DArray (getComp arr) newSz $ \ !ix ->
@@ -75,7 +75,7 @@ instance ( Index ix
          Slice D ix e where
   unsafeSlice arr start cutSz dim = do
     newSz <- dropDim cutSz dim
-    return $ unsafeReshape newSz (unsafeExtract start cutSz arr)
+    return $ unsafeResize newSz (unsafeExtract start cutSz arr)
   {-# INLINE unsafeSlice #-}
 
 

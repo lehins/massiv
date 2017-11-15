@@ -71,9 +71,9 @@ instance (Prim e, Index ix) => Source P ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (Prim e, Index ix) => Shape P ix e where
-  unsafeReshape !sz !arr = arr { pSize = sz }
-  {-# INLINE unsafeReshape #-}
+instance (Prim e, Index ix) => Size P ix e where
+  unsafeResize !sz !arr = arr { pSize = sz }
+  {-# INLINE unsafeResize #-}
 
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}

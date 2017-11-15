@@ -76,9 +76,9 @@ instance Index ix => Source B ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Shape B ix e where
-  unsafeReshape !sz !arr = arr { bSize = sz }
-  {-# INLINE unsafeReshape #-}
+instance Index ix => Size B ix e where
+  unsafeResize !sz !arr = arr { bSize = sz }
+  {-# INLINE unsafeResize #-}
 
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}

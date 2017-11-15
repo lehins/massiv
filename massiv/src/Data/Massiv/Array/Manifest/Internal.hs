@@ -97,10 +97,10 @@ instance Index ix => Manifest M ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance Index ix => Shape M ix e where
+instance Index ix => Size M ix e where
 
-  unsafeReshape !sz !arr = arr { mSize = sz }
-  {-# INLINE unsafeReshape #-}
+  unsafeResize !sz !arr = arr { mSize = sz }
+  {-# INLINE unsafeResize #-}
 
   unsafeExtract !sIx !newSz !arr =
     MArray (getComp arr) newSz $ \ i ->
@@ -120,7 +120,7 @@ instance ( Index ix
          Slice M ix e where
   unsafeSlice arr start cutSz dim = do
     newSz <- dropDim cutSz dim
-    return $ unsafeReshape newSz (unsafeExtract start cutSz arr)
+    return $ unsafeResize newSz (unsafeExtract start cutSz arr)
   {-# INLINE unsafeSlice #-}
 
 instance {-# OVERLAPPING #-} OuterSlice M Ix1 e where

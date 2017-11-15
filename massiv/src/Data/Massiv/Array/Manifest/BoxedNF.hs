@@ -81,10 +81,10 @@ instance (Index ix, NFData e) => Source N ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (Index ix, NFData e) => Shape N ix e where
+instance (Index ix, NFData e) => Size N ix e where
 
-  unsafeReshape !sz !arr = arr { nSize = sz }
-  {-# INLINE unsafeReshape #-}
+  unsafeResize !sz !arr = arr { nSize = sz }
+  {-# INLINE unsafeResize #-}
 
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}

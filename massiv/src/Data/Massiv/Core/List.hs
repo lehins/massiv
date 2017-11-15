@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
@@ -158,7 +158,7 @@ instance ( Index ix
   edgeSize arr =
     consDim (length (unList (lData arr))) $
     case uncons arr of
-      Nothing -> zeroIndex
+      Nothing     -> zeroIndex
       Just (x, _) -> edgeSize x
   {-# INLINE edgeSize #-}
   outerLength = length . unList . lData

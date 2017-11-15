@@ -12,13 +12,13 @@ import           Test.Hspec
 import           Test.QuickCheck
 
 -----------
--- Shape --
+-- Size --
 -----------
 
 -- extract
 
 prop_ExtractEqualsExtractFromTo
-  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Shape r ix e)
+  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Size r ix e)
   => proxy (r, ix, e) -> SzIx ix -> Array r ix e -> Bool
 prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
   extractFromTo sIx eIx arr == extract sIx (liftIndex2 (-) eIx sIx) arr
@@ -26,10 +26,10 @@ prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
 
 
 
-specShapeN
-  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Shape r ix e)
+specSizeN
+  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Size r ix e)
   => proxy (r, ix, e) -> Spec
-specShapeN proxy = do
+specSizeN proxy = do
   describe "extract" $ do
     it "ExtractEqualsExtractFromTo" $ property $ prop_ExtractEqualsExtractFromTo proxy
 
@@ -192,9 +192,9 @@ specSliceN proxy = do
 spec :: Spec
 spec = do
   describe "Ix1" $ do
-    specShapeN (Nothing :: Maybe (D, Ix1, Int))
+    specSizeN (Nothing :: Maybe (D, Ix1, Int))
   describe "Ix2" $ do
-    specShapeN (Nothing :: Maybe (D, Ix2, Int))
+    specSizeN (Nothing :: Maybe (D, Ix2, Int))
     specSliceN (Nothing :: Maybe (D, Ix2, Int))
     describe "SliceIndex" $ do
       it "Delayed" $ property $ prop_SliceIndexDim2D
@@ -202,7 +202,7 @@ spec = do
       it "Manifest" $ property $ prop_SliceIndexDim2M
       it "Rank - Manifest" $ property $ prop_SliceIndexDim2RankM
   describe "Ix3" $ do
-    specShapeN (Nothing :: Maybe (D, Ix3, Int))
+    specSizeN (Nothing :: Maybe (D, Ix3, Int))
     specSliceN (Nothing :: Maybe (D, Ix3, Int))
     describe "SliceIndex" $ do
       it "Delayed" $ property $ prop_SliceIndexDim3D
@@ -210,7 +210,7 @@ spec = do
       it "Manifest" $ property $ prop_SliceIndexDim3M
       it "Rank - Manifest" $ property $ prop_SliceIndexDim3RankM
   describe "Ix4" $ do
-    specShapeN (Nothing :: Maybe (D, Ix4, Int))
+    specSizeN (Nothing :: Maybe (D, Ix4, Int))
     specSliceN (Nothing :: Maybe (D, Ix4, Int))
     describe "SliceIndex" $ do
       it "Delayed" $ property $ prop_SliceIndexDim4D

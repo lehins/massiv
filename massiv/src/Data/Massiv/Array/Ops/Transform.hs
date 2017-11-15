@@ -11,12 +11,14 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Transform
-  ( transpose
+  ( -- ** Transpose
+    transpose
   , transposeInner
   , transposeOuter
+  -- ** Backpermute
   , backpermute
-  , reshape
-  , reshape'
+  , resize
+  , resize'
   , extract
   , extractFromTo
   , append
@@ -35,7 +37,7 @@ import           Prelude                            hiding (splitAt, traverse)
 
 
 
-extract :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
+extract :: Size r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
   | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
     Just $ unsafeExtract sIx newSz arr
@@ -46,7 +48,7 @@ extract !sIx !newSz !arr
     eIx = liftIndex2 (+) sIx newSz
 {-# INLINE extract #-}
 
-extractFromTo :: Shape r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
+extractFromTo :: Size r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
 extractFromTo sIx eIx = extract sIx newSz
   where
     newSz = liftIndex2 (-) eIx sIx
@@ -54,22 +56,22 @@ extractFromTo sIx eIx = extract sIx newSz
 
 -- | /O(1)/ - Changes the shape of the array. Will return `Nothing` if total
 -- number of elements does not match the source array.
-reshape :: (Index ix', Shape r ix e) => ix' -> Array r ix e -> Maybe (Array r ix' e)
-reshape !sz !arr
-  | totalElem sz == totalElem (size arr) = Just $ unsafeReshape sz arr
+resize :: (Index ix', Size r ix e) => ix' -> Array r ix e -> Maybe (Array r ix' e)
+resize !sz !arr
+  | totalElem sz == totalElem (size arr) = Just $ unsafeResize sz arr
   | otherwise = Nothing
-{-# INLINE reshape #-}
+{-# INLINE resize #-}
 
--- | Same as `reshape`, but raise an error if supplied dimensions are incorrect.
-reshape' :: (Index ix', Shape r ix e) => ix' -> Array r ix e -> Array r ix' e
-reshape' !sz !arr =
+-- | Same as `resize`, but will throw an error if supplied dimensions are incorrect.
+resize' :: (Index ix', Size r ix e) => ix' -> Array r ix e -> Array r ix' e
+resize' !sz !arr =
   maybe
     (error $
      "Total number of elements do not match: " ++
      show sz ++ " vs " ++ show (size arr))
     id $
-  reshape sz arr
-{-# INLINE reshape' #-}
+  resize sz arr
+{-# INLINE resize' #-}
 
 
 transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
@@ -113,7 +115,7 @@ backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
 {-# INLINE backpermute #-}
 
 
-
+-- | Append two arrays together along a particular dimension.
 append :: (Source r1 ix e, Source r2 ix e) =>
           Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array D ix e)
 append n !arr1 !arr2 = do
@@ -149,7 +151,7 @@ append' n arr1 arr2 =
 {-# INLINE append' #-}
 
 -- | /O(1)/ - Split an array at an index in a particular dimension.
-splitAt :: (Shape r ix e, r' ~ EltRepr r ix) =>
+splitAt :: (Size r ix e, r' ~ EltRepr r ix) =>
   Dim -> ix -> Array r ix e -> Maybe (Array r' ix e, Array r' ix e)
 splitAt dim ix arr = do
   let sz = size arr

@@ -24,7 +24,7 @@ module Data.Massiv.Core
   , Construct(..)
   , Source(..)
   , Load(..)
-  , Shape(..)
+  , Size(..)
   , Slice(..)
   , OuterSlice(..)
   , InnerSlice(..)

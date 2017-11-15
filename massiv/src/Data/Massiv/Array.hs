@@ -43,6 +43,7 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Ops.Map
   -- * Folding
   , module Data.Massiv.Array.Ops.Fold
+  -- * Transforming
   -- * Conversion
   -- ** List
   , fromList
@@ -50,7 +51,8 @@ module Data.Massiv.Array
   -- ** Vector
   , fromVector
   , toVector
-
+  -- * Stencil
+  , module Data.Massiv.Array.Stencil
   ) where
 
 --import           Data.Massiv.Array.Delayed as A
@@ -60,6 +62,7 @@ import           Data.Massiv.Array.Manifest         as A
 import           Data.Massiv.Array.Ops              as A
 import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Array.Ops.Map
+import           Data.Massiv.Array.Stencil
 import           Data.Massiv.Core                   as A
 
 

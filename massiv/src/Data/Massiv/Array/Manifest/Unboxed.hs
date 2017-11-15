@@ -69,9 +69,9 @@ instance (VU.Unbox e, Index ix) => Source U ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (VU.Unbox e, Index ix) => Shape U ix e where
-  unsafeReshape !sz !arr = arr { uSize = sz }
-  {-# INLINE unsafeReshape #-}
+instance (VU.Unbox e, Index ix) => Size U ix e where
+  unsafeResize !sz !arr = arr { uSize = sz }
+  {-# INLINE unsafeResize #-}
 
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}

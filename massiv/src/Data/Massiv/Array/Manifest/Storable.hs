@@ -66,9 +66,9 @@ instance (VS.Storable e, Index ix) => Source S ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (VS.Storable e, Index ix) => Shape S ix e where
-  unsafeReshape !sz !arr = arr { sSize = sz }
-  {-# INLINE unsafeReshape #-}
+instance (VS.Storable e, Index ix) => Size S ix e where
+  unsafeResize !sz !arr = arr { sSize = sz }
+  {-# INLINE unsafeResize #-}
 
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}

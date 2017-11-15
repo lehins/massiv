@@ -75,18 +75,18 @@ class Construct r ix e => Load r ix e where
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
 
-class (InnerSlice r ix e, OuterSlice r ix e) => Slice r ix e where
-  unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
-
 class Construct r ix e => OuterSlice r ix e where
   unsafeOuterSlice :: Array r ix e -> (Int, Lower ix) -> Int -> Elt r ix e
 
 class Construct r ix e => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
 
+class (InnerSlice r ix e, OuterSlice r ix e) => Slice r ix e where
+  unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
 
-class Source r ix e => Shape r ix e where
-  unsafeReshape :: Index ix' => ix' -> Array r ix e -> Array r ix' e
+
+class Construct r ix e => Size r ix e where
+  unsafeResize :: Index ix' => ix' -> Array r ix e -> Array r ix' e
 
   unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
