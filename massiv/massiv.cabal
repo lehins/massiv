@@ -6,7 +6,7 @@ homepage:            https://github.com/lehins/massiv
 license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
-maintainer:          lehins@yandex.ru
+maintainer:          alexey@kuleshevi.ch
 copyright:           2017 Alexey Kuleshevich
 category:            Data, Data Structures
 build-type:          Simple

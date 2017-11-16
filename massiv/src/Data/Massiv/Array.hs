@@ -26,7 +26,7 @@ module Data.Massiv.Array
   -- * Indexing
   , (!)
   , (!?)
-  , (?)
+  , (??)
   , index
   , maybeIndex
   , defaultIndex
@@ -74,5 +74,3 @@ elemsCount = totalElem . size
 isEmpty :: Size r ix e => Array r ix e -> Bool
 isEmpty !arr = 0 == elemsCount arr
 {-# INLINE isEmpty #-}
-
-

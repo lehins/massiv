@@ -25,7 +25,7 @@ prop_NestedFoldP arr = sum (setComp Par (map sum $ setComp Par arr)) == sum (map
 prop_FoldrOnP :: Int -> [Int] -> ArrP D Ix1 Int -> Property
 prop_FoldrOnP wId wIds (ArrP arr) =
   P.length arr > P.length wIds ==> monadicIO $ do
-    res <- run $ ifoldrOnP wIdsNE (:) [] (\_ -> (+)) 0 arr
+    res <- run $ ifoldrOnP wIdsNE (\_ -> (+)) 0 (:) [] arr
     if P.length arr `mod` P.length wIdsNE == 0
       then assert (P.length res == P.length wIdsNE)
       else assert (P.length res == P.length wIdsNE + 1)
@@ -36,7 +36,7 @@ prop_FoldrOnP wId wIds (ArrP arr) =
 prop_FoldlOnP :: Int -> [Int] -> ArrP D Ix1 Int -> Property
 prop_FoldlOnP wId wIds (ArrP arr) =
   P.length arr > P.length wIds ==> monadicIO $ do
-    res <- run $ ifoldlOnP wIdsNE (flip (:)) [] (\a _ x -> a + x) 0 arr
+    res <- run $ ifoldlOnP wIdsNE (\a _ x -> a + x) 0 (flip (:)) [] arr
     if P.length arr `mod` P.length wIdsNE == 0
       then assert (P.length res == P.length wIdsNE)
       else assert (P.length res == P.length wIdsNE + 1)

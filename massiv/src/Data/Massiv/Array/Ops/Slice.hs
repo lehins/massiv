@@ -15,24 +15,36 @@ module Data.Massiv.Array.Ops.Slice
   -- ** From the outside
     (!>)
   , (!?>)
-  , (?>)
+  , (??>)
   -- ** From the inside
   , (<!)
   , (<!?)
-  , (<?)
+  , (<??)
   -- ** From within
   , (<!>)
   , (<!?>)
-  , (<?>)
+  , (<??>)
   ) where
 
 import           Control.Monad    (guard)
 import           Data.Massiv.Core.Common
 
 
-infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?
+infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 
 
+-- | /O(1)/ - Slices the array from the outside. For 2-dimensional array this will
+-- be equivalent of taking a row. Throws an error when index is out of bounds.
+(!>) :: OuterSlice r ix e => Array r ix e -> Int -> Elt r ix e
+(!>) !arr !ix =
+  case arr !?> ix of
+    Just res -> res
+    Nothing  -> errorIx "(!>)" (size arr) ix
+{-# INLINE (!>) #-}
+
+
+-- | /O(1)/ - Just like `!>` slices the array from the outside, but returns
+-- `Nothing` when index is out of bounds.
 (!?>) :: OuterSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
 (!?>) !arr !i
   | isSafeIndex m i = Just $ unsafeOuterSlice arr sz i
@@ -40,6 +52,13 @@ infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?
   where
     !sz@(m, _) = unconsDim (size arr)
 {-# INLINE (!?>) #-}
+
+
+(??>) :: OuterSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
+(??>) Nothing      _ = Nothing
+(??>) (Just arr) !ix = arr !?> ix
+{-# INLINE (??>) #-}
+
 
 (<!?) :: InnerSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
 (<!?) !arr !i
@@ -49,6 +68,20 @@ infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?
     !sz@(_, m) = unsnocDim (size arr)
 {-# INLINE (<!?) #-}
 
+
+(<!) :: InnerSlice r ix e => Array r ix e -> Int -> Elt r ix e
+(<!) !arr !ix =
+  case arr <!? ix of
+    Just res -> res
+    Nothing  -> errorIx "(<!)" (size arr) ix
+{-# INLINE (<!) #-}
+
+
+-- | /O(1)/ - Continue to slice an array from the inside
+(<??) :: InnerSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
+(<??) Nothing      _ = Nothing
+(<??) (Just arr) !ix = arr <!? ix
+{-# INLINE (<??) #-}
 
 
 (<!?>) :: (Slice r ix e)
@@ -62,35 +95,12 @@ infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?
 {-# INLINE (<!?>) #-}
 
 
-(?>) :: OuterSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
-(?>) Nothing      _ = Nothing
-(?>) (Just arr) !ix = arr !?> ix
-{-# INLINE (?>) #-}
-
-(<?) :: InnerSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
-(<?) Nothing      _ = Nothing
-(<?) (Just arr) !ix = arr <!? ix
-{-# INLINE (<?) #-}
-
-(<?>) :: Slice r ix e => Maybe (Array r ix e) -> (Dim, Int) -> Maybe (Elt r ix e)
-(<?>) Nothing      _ = Nothing
-(<?>) (Just arr) !ix = arr <!?> ix
-{-# INLINE (<?>) #-}
-
-(!>) :: OuterSlice r ix e => Array r ix e -> Int -> Elt r ix e
-(!>) !arr !ix =
-  case arr !?> ix of
-    Just res -> res
-    Nothing  -> errorIx "(!>)" (size arr) ix
-{-# INLINE (!>) #-}
-
-(<!) :: InnerSlice r ix e => Array r ix e -> Int -> Elt r ix e
-(<!) !arr !ix =
-  case arr <!? ix of
-    Just res -> res
-    Nothing  -> errorIx "(<!)" (size arr) ix
-{-# INLINE (<!) #-}
-
+-- | /O(1)/ - Slices the array in any available dimension. Throws an error when
+-- index is out of bounds or dimensions is invalid.
+--
+-- prop> arr !> i == arr <!> (rank (size arr), i)
+-- prop> arr <! i == arr <!> (1,i)
+--
 (<!>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Elt r ix e
 (<!>) !arr !(dim, i) =
   case arr <!?> (dim, i) of
@@ -103,3 +113,9 @@ infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?
                 show dim ++ " for Array of rank: " ++ show arrRank
            else errorIx "(<!>)" (size arr) (dim, i)
 {-# INLINE (<!>) #-}
+
+
+(<??>) :: Slice r ix e => Maybe (Array r ix e) -> (Dim, Int) -> Maybe (Elt r ix e)
+(<??>) Nothing      _ = Nothing
+(<??>) (Just arr) !ix = arr <!?> ix
+{-# INLINE (<??>) #-}

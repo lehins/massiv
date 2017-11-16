@@ -21,11 +21,6 @@ module Data.Massiv.Array.Ops.Fold
   , or
   , all
   , any
-  -- ** Directed folds
-  , foldl
-  , ifoldl
-  , foldr
-  , ifoldr
   -- ** Sequential folds
   , foldlS
   , foldrS
@@ -189,12 +184,12 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 -- [[10,9],[8,7,6],[5,4,3],[2,1,0]]
 --
 foldlP :: Source r ix e =>
-          (b -> a -> b) -- ^ Chunk results folding function @f@.
-       -> b -- ^ Accumulator for results of chunks folding.
-       -> (a -> e -> a) -- ^ Folding function @g@.
+          (a -> e -> a) -- ^ Folding function @g@.
        -> a -- ^ Accumulator. Will be applied to @g@ multiple times, thus must be neutral.
+       -> (b -> a -> b) -- ^ Chunk results folding function @f@.
+       -> b -- ^ Accumulator for results of chunks folding.
        -> Array r ix e -> IO b
-foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
+foldlP f = ifoldlP (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
 
@@ -213,16 +208,16 @@ foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 --
 foldlOnP
   :: Source r ix e
-  => [Int] -> (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> IO b
-foldlOnP wIds g !tAcc f = ifoldlOnP wIds g tAcc (\ x _ -> f x)
+  => [Int] -> (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
+foldlOnP wIds f = ifoldlOnP wIds (\ x _ -> f x)
 {-# INLINE foldlOnP #-}
 
 
 -- | Just like `ifoldlP`, but allows you to specify which cores to run
 -- computation on.
 ifoldlOnP :: Source r ix e =>
-           [Int] -> (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
-ifoldlOnP wIds g !tAcc f !initAcc !arr = do
+           [Int] -> (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
+ifoldlOnP wIds f !initAcc g !tAcc !arr = do
   let !sz = size arr
   results <-
     divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
@@ -245,7 +240,7 @@ ifoldlOnP wIds g !tAcc f !initAcc !arr = do
 -- like `foldlP`, except that folding function will receive an index of an
 -- element it is being applied to.
 ifoldlP :: Source r ix e =>
-           (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> IO b
+           (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
 ifoldlP = ifoldlOnP []
 {-# INLINE ifoldlP #-}
 
@@ -259,8 +254,8 @@ ifoldlP = ifoldlOnP []
 -- [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3),(2,0),(2,1),(2,2),(2,3)]
 --
 foldrP :: Source r ix e =>
-          (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
-foldrP g !tAcc f = ifoldrP g tAcc (const f)
+          (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
+foldrP f = ifoldrP (const f)
 {-# INLINE foldrP #-}
 
 
@@ -291,16 +286,16 @@ foldrP g !tAcc f = ifoldrP g tAcc (const f)
 -- [(4,[0,1,2]),(3,[3,4,5]),(2,[6,7,8]),(1,[9,10])]
 --
 foldrOnP :: Source r ix e =>
-            [Int] -> (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> IO b
-foldrOnP wIds g !tAcc f = ifoldrOnP wIds g tAcc (const f)
+            [Int] -> (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
+foldrOnP wIds f = ifoldrOnP wIds (const f)
 {-# INLINE foldrOnP #-}
 
 
 -- | Just like `ifoldrP`, but allows you to specify which cores to run
 -- computation on.
 ifoldrOnP :: Source r ix e =>
-           [Int] -> (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
-ifoldrOnP wIds g !tAcc f !initAcc !arr = do
+           [Int] -> (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
+ifoldrOnP wIds f !initAcc g !tAcc !arr = do
   let !sz = size arr
   results <-
     divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
@@ -321,7 +316,7 @@ ifoldrOnP wIds g !tAcc f !initAcc !arr = do
 -- Same as `ifoldlP`, except directed from the last element in the array towards
 -- beginning.
 ifoldrP :: Source r ix e =>
-           (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> IO b
+           (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
 ifoldrP = ifoldrOnP []
 {-# INLINE ifoldrP #-}
 
@@ -331,14 +326,11 @@ ifoldrP = ifoldrOnP []
 fold :: Source r ix e =>
         (e -> e -> e) -- ^ Folding function (like with left fold, first argument
                       -- is an accumulator)
-     -> e -- ^ Initial element, that is neutral with respect to the folding
+     -> e -- ^ Initial element. Has to be neutral with respect to the folding
           -- function.
      -> Array r ix e -- ^ Source array
      -> e
-fold f initAcc = \ arr ->
-  case getComp arr of
-    Seq        -> foldlS f initAcc arr
-    ParOn wIds -> unsafePerformIO $ foldlOnP wIds f initAcc f initAcc arr
+fold f initAcc = foldl f initAcc f initAcc
 {-# INLINE fold #-}
 
 
@@ -373,55 +365,25 @@ or = fold (||) False
 -- | Determines whether all element of the array satisfy the predicate.
 all :: Source r ix e =>
        (e -> Bool) -> Array r ix e -> Bool
-all f = foldl (&&) True (\acc el -> acc && f el) True
+all f = foldl (\acc el -> acc && f el) True (&&) True
 {-# INLINE all #-}
 
 -- | Determines whether any element of the array satisfies the predicate.
 any :: Source r ix e =>
        (e -> Bool) -> Array r ix e -> Bool
-any f = foldl (||) False (\acc el -> acc || f el) False
+any f = foldl (\acc el -> acc || f el) False (||) False
 {-# INLINE any #-}
 
 
--- | /O(n)/ - Left fold of an array.
+-- | This folding function breaks referencial transparency on some functions
+-- @f@, therefore it is kept here for internal use only.
 foldl :: Source r ix e =>
-     (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> b
-foldl f resAcc g initAcc = \ arr ->
+         (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
+foldl g initAcc f resAcc = \ arr ->
   case getComp arr of
     Seq        -> f resAcc (foldlS g initAcc arr)
-    ParOn wIds -> unsafePerformIO $ foldlOnP wIds f resAcc g initAcc arr
+    ParOn wIds -> unsafePerformIO $ foldlOnP wIds g initAcc f resAcc arr
 {-# INLINE foldl #-}
-
-
--- | /O(n)/ - Right fold of an array.
-foldr :: Source r ix e =>
-         (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> b
-foldr f resAcc g initAcc = \ arr ->
-  case getComp arr of
-    Seq        -> f (foldrS g initAcc arr) resAcc
-    ParOn wIds -> unsafePerformIO $ foldrOnP wIds f resAcc g initAcc arr
-{-# INLINE foldr #-}
-
-
--- | /O(n)/ - Index aware left fold of an array.
-ifoldl :: Source r ix e =>
-     (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> b
-ifoldl f resAcc g initAcc = \ arr ->
-  case getComp arr of
-    Seq        -> f resAcc (ifoldlS g initAcc arr)
-    ParOn wIds -> unsafePerformIO $ ifoldlOnP wIds f resAcc g initAcc arr
-{-# INLINE ifoldl #-}
-
-
--- | /O(n)/ - Index aware right fold of an array.
-ifoldr :: Source r ix e =>
-          (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> b
-ifoldr f resAcc g initAcc = \ arr ->
-  case getComp arr of
-    Seq        -> f (ifoldrS g initAcc arr) resAcc
-    ParOn wIds -> unsafePerformIO $ ifoldrOnP wIds f resAcc g initAcc arr
-{-# INLINE ifoldr #-}
-
 
 
 -- -- | Just like `ifoldrP`, but allows you to specify which cores to run

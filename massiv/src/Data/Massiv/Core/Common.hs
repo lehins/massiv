@@ -34,7 +34,7 @@ module Data.Massiv.Core.Common
   , index
   , (!?)
   , maybeIndex
-  , (?)
+  , (??)
   , defaultIndex
   , borderIndex
   , evaluateAt
@@ -204,7 +204,7 @@ singleton !c = unsafeMakeArray c oneIndex . const
 {-# INLINE singleton #-}
 
 
-infixl 4 !, !?, ?
+infixl 4 !, !?, ??
 
 -- | Infix version of `index`.
 (!) :: Manifest r ix e => Array r ix e -> ix -> e
@@ -222,13 +222,13 @@ infixl 4 !, !?, ?
 -- `Nothing`. This operator is useful when used together with slicing or other
 -- functions that return `Maybe` array:
 --
--- >>> (fromList Seq [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)) ?> 1 ? (0 :. 2)
+-- >>> (fromList Seq [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)) ??> 1 ?? (0 :. 2)
 -- Just 6
 --
-(?) :: Manifest r ix e => Maybe (Array r ix e) -> ix -> Maybe e
-(?) Nothing    = const Nothing
-(?) (Just arr) = (arr !?)
-{-# INLINE (?) #-}
+(??) :: Manifest r ix e => Maybe (Array r ix e) -> ix -> Maybe e
+(??) Nothing    = const Nothing
+(??) (Just arr) = (arr !?)
+{-# INLINE (??) #-}
 
 -- | /O(1)/ - Lookup an element in the array. Returns `Nothing`, when index is out
 -- of bounds, `Just` element otherwise.
