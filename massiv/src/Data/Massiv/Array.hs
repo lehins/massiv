@@ -67,12 +67,12 @@ import           Data.Massiv.Core                   as A
 
 
 -- | /O(1)/ - Get the number of elements in the array
-elemsCount :: Construct r ix e => Array r ix e -> Int
+elemsCount :: Size r ix e => Array r ix e -> Int
 elemsCount = totalElem . size
 {-# INLINE elemsCount #-}
 
 -- | /O(1)/ - Check if array is empty and has no elements.
-isEmpty :: Construct r ix e => Array r ix e -> Bool
+isEmpty :: Size r ix e => Array r ix e -> Bool
 isEmpty !arr = 0 == elemsCount arr
 {-# INLINE isEmpty #-}
 

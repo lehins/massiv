@@ -40,9 +40,6 @@ data instance Array D ix e = DArray { dComp :: !Comp
 type instance EltRepr D ix = D
 
 instance Index ix => Construct D ix e where
-  size = dSize
-  {-# INLINE size #-}
-
   getComp = dComp
   {-# INLINE getComp #-}
 
@@ -58,6 +55,9 @@ instance Index ix => Source D ix e where
   {-# INLINE unsafeIndex #-}
 
 instance Index ix => Size D ix e where
+  size = dSize
+  {-# INLINE size #-}
+
   unsafeResize !sz !arr =
     DArray (getComp arr) sz $ \ !ix ->
       unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))

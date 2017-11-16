@@ -53,9 +53,6 @@ instance (Prim e, Eq e, Index ix) => Eq (Array P ix e) where
 
 
 instance (Prim e, Index ix) => Construct P ix e where
-  size = pSize
-  {-# INLINE size #-}
-
   getComp = pComp
   {-# INLINE getComp #-}
 
@@ -72,6 +69,9 @@ instance (Prim e, Index ix) => Source P ix e where
 
 
 instance (Prim e, Index ix) => Size P ix e where
+  size = pSize
+  {-# INLINE size #-}
+
   unsafeResize !sz !arr = arr { pSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -151,10 +151,9 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance (VP.Prim e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
-         IsList (Array P ix e) where
+instance (VP.Prim e, IsList (Array L ix e), Ragged L ix e) => IsList (Array P ix e) where
   type Item (Array P ix e) = Item (Array L ix e)
-  fromList xs = compute (fromList xs :: Array L ix e)
+  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
   toList = toList . toListArray
   {-# INLINE toList #-}

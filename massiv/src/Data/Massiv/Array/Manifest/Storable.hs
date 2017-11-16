@@ -47,9 +47,6 @@ instance (VS.Storable e, Eq e, Index ix) => Eq (Array S ix e) where
   {-# INLINE (==) #-}
 
 instance (VS.Storable e, Index ix) => Construct S ix e where
-  size = sSize
-  {-# INLINE size #-}
-
   getComp = sComp
   {-# INLINE getComp #-}
 
@@ -67,6 +64,9 @@ instance (VS.Storable e, Index ix) => Source S ix e where
 
 
 instance (VS.Storable e, Index ix) => Size S ix e where
+  size = sSize
+  {-# INLINE size #-}
+
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -124,10 +124,9 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance (VS.Storable e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
-         IsList (Array S ix e) where
+instance (VS.Storable e, IsList (Array L ix e), Ragged L ix e) => IsList (Array S ix e) where
   type Item (Array S ix e) = Item (Array L ix e)
-  fromList xs = compute (fromList xs :: Array L ix e)
+  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
   toList = toList . toListArray
   {-# INLINE toList #-}

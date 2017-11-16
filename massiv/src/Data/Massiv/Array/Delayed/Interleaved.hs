@@ -26,11 +26,11 @@ import           Data.Massiv.Core.Scheduler
 -- computation.
 data DI
 
-data instance Array DI ix e = DIArray { idArray :: !(Array D ix e) }
+type instance EltRepr DI ix = DI
+
+newtype instance Array DI ix e = DIArray { idArray :: (Array D ix e) }
 
 instance Index ix => Construct DI ix e where
-  size (DIArray arr) = size arr
-
   getComp = dComp . idArray
   {-# INLINE getComp #-}
 
@@ -42,6 +42,16 @@ instance Index ix => Construct DI ix e where
 
 instance Functor (Array DI ix) where
   fmap f (DIArray arr) = DIArray (fmap f arr)
+
+instance Index ix => Size DI ix e where
+  size (DIArray arr) = size arr
+  {-# INLINE size #-}
+
+  unsafeResize sz = DIArray . unsafeResize sz . idArray
+  {-# INLINE unsafeResize #-}
+
+  unsafeExtract sIx newSz = DIArray . unsafeExtract sIx newSz . idArray
+  {-# INLINE unsafeExtract #-}
 
 
 instance Index ix => Load DI ix e where

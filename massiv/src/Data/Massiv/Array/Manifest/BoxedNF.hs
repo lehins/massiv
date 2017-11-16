@@ -63,9 +63,6 @@ instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
 
 
 instance (Index ix, NFData e) => Construct N ix e where
-  size = nSize
-  {-# INLINE size #-}
-
   getComp = nComp
   {-# INLINE getComp #-}
 
@@ -82,6 +79,8 @@ instance (Index ix, NFData e) => Source N ix e where
 
 
 instance (Index ix, NFData e) => Size N ix e where
+  size = nSize
+  {-# INLINE size #-}
 
   unsafeResize !sz !arr = arr { nSize = sz }
   {-# INLINE unsafeResize #-}
@@ -195,10 +194,9 @@ castVectorToArray v =
 
 
 
-instance (NFData e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
-         IsList (Array N ix e) where
+instance (NFData e, IsList (Array L ix e), Ragged L ix e) => IsList (Array N ix e) where
   type Item (Array N ix e) = Item (Array L ix e)
-  fromList xs = compute (fromList xs :: Array L ix e)
+  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
   toList = toList . toListArray
   {-# INLINE toList #-}

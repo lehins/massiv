@@ -27,16 +27,20 @@ module Data.Massiv.Array.Mutable
   , unsafeWrite
   , sequenceP
   , sequenceOnP
+  , fromRaggedArray
+  , fromRaggedArray'
   , unsafeGenerateArray
   , unsafeGenerateArrayP
   ) where
 
+import           Control.Exception
 import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST                    (runST)
 import           Data.Massiv.Array.Delayed.Internal  (delay)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Ops.Map           (iforM_)
 import           Data.Massiv.Core
+import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
@@ -44,9 +48,8 @@ import           System.IO.Unsafe                    (unsafePerformIO)
 
 
 
-
 loadMutableS :: (Load r' ix e, Mutable r ix e) =>
-               Array r' ix e -> Array r ix e
+                Array r' ix e -> Array r ix e
 loadMutableS !arr =
   runST $ do
     mArr <- unsafeNew (size arr)
@@ -161,6 +164,31 @@ sequenceP = sequenceOnP []
 -- {-# INLINE sequenceP' #-}
 
 
+fromRaggedArray :: (Ragged r' ix e, Mutable r ix e) =>
+                   Array r' ix e -> Either ShapeError (Array r ix e)
+fromRaggedArray arr = unsafePerformIO $ do
+  let sz = edgeSize arr
+  mArr <- unsafeNew sz
+  let loadWith using =
+        loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) (tailDim sz) arr
+  eExc <- try $ case getComp arr of
+                  Seq -> loadWith id
+                  ParOn ss -> withScheduler_ ss (loadWith . scheduleWork)
+  case eExc of
+    Left exc  -> return $ Left exc
+    Right _ -> Right <$> unsafeFreeze (getComp arr) mArr
+{-# INLINE fromRaggedArray #-}
+
+-- | Same as `fromRaggedArray`, but will throw an error if shape is not
+-- rectangular in its nature.
+fromRaggedArray' :: (Ragged r' ix e, Mutable r ix e) =>
+                    Array r' ix e -> Array r ix e
+fromRaggedArray' arr =
+  case fromRaggedArray arr of
+    Left RowTooShortError -> error "Not enough elements in a row"
+    Left RowTooLongError  -> error "Too many elements in a row"
+    Right resArr -> resArr
+{-# INLINE fromRaggedArray' #-}
 
 
 -- | Create an array sequentially using mutable interface

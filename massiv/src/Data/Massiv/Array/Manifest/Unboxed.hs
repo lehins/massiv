@@ -45,9 +45,6 @@ instance (Index ix, NFData e) => NFData (Array U ix e) where
 
 
 instance (VU.Unbox e, Index ix) => Construct U ix e where
-  size = uSize
-  {-# INLINE size #-}
-
   getComp = uComp
   {-# INLINE getComp #-}
 
@@ -70,6 +67,9 @@ instance (VU.Unbox e, Index ix) => Source U ix e where
 
 
 instance (VU.Unbox e, Index ix) => Size U ix e where
+  size = uSize
+  {-# INLINE size #-}
+
   unsafeResize !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -148,10 +148,9 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance (VU.Unbox e, IsList (Array L ix e), Load L ix e, Construct L ix e) =>
-         IsList (Array U ix e) where
+instance (VU.Unbox e, IsList (Array L ix e), Ragged L ix e) => IsList (Array U ix e) where
   type Item (Array U ix e) = Item (Array L ix e)
-  fromList xs = compute (fromList xs :: Array L ix e)
+  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
   toList = toList . toListArray
   {-# INLINE toList #-}

@@ -58,9 +58,6 @@ instance (Index ix, Eq e) => Eq (Array B ix e) where
   {-# INLINE (==) #-}
 
 instance Index ix => Construct B ix e where
-  size = bSize
-  {-# INLINE size #-}
-
   getComp = bComp
   {-# INLINE getComp #-}
 
@@ -77,6 +74,9 @@ instance Index ix => Source B ix e where
 
 
 instance Index ix => Size B ix e where
+  size = bSize
+  {-# INLINE size #-}
+
   unsafeResize !sz !arr = arr { bSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -159,10 +159,9 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE toList #-}
 
 
-instance (IsList (Array L ix e), Load L ix e, Construct L ix e) =>
-         IsList (Array B ix e) where
+instance (IsList (Array L ix e), Ragged L ix e) => IsList (Array B ix e) where
   type Item (Array B ix e) = Item (Array L ix e)
-  fromList xs = compute (fromList xs :: Array L ix e)
+  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
   {-# INLINE fromList #-}
   toList = toList . toListArray
   {-# INLINE toList #-}

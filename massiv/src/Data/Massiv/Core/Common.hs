@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns            #-}
-{-# LANGUAGE FlexibleContexts        #-}
-{-# LANGUAGE MultiParamTypeClasses   #-}
-{-# LANGUAGE TypeFamilies            #-}
-{-# LANGUAGE UndecidableInstances    #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Core.Common
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -16,7 +16,6 @@ module Data.Massiv.Core.Common where
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Typeable
-
 
 -- | The array family. All array representations @r@ describe how data is
 -- arranged. All arrays have a common property that each index @ix@ always maps
@@ -36,16 +35,22 @@ type family NestedStruct r ix e :: *
 -- | Index polymorphic arrays.
 class (Typeable r, Index ix) => Construct r ix e where
 
-  size :: Array r ix e -> ix
-
   getComp :: Array r ix e -> Comp
 
   setComp :: Comp -> Array r ix e -> Array r ix e
 
   unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
 
+class Construct r ix e => Size r ix e where
 
-class Construct r ix e => Source r ix e where
+  size :: Array r ix e -> ix
+
+  unsafeResize :: Index ix' => ix' -> Array r ix e -> Array r ix' e
+
+  unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
+
+
+class Size r ix e => Source r ix e where
 
   unsafeIndex :: Array r ix e -> ix -> e
   unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
@@ -56,7 +61,7 @@ class Construct r ix e => Source r ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-class Construct r ix e => Load r ix e where
+class Size r ix e => Load r ix e where
   -- | Load an array into memory sequentially
   loadS
     :: Monad m =>
@@ -75,20 +80,15 @@ class Construct r ix e => Load r ix e where
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
 
-class Construct r ix e => OuterSlice r ix e where
+class Size r ix e => OuterSlice r ix e where
   unsafeOuterSlice :: Array r ix e -> (Int, Lower ix) -> Int -> Elt r ix e
 
-class Construct r ix e => InnerSlice r ix e where
+class Size r ix e => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
 
 class (InnerSlice r ix e, OuterSlice r ix e) => Slice r ix e where
   unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
 
-
-class Construct r ix e => Size r ix e where
-  unsafeResize :: Index ix' => ix' -> Array r ix e -> Array r ix' e
-
-  unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 class Nested r ix e where
   fromNested :: NestedStruct r ix e -> Array r ix e
@@ -96,7 +96,7 @@ class Nested r ix e where
   toNested :: Array r ix e -> NestedStruct r ix e
 
 
-class Ragged r ix e where
+class Construct r ix e => Ragged r ix e where
 
   empty :: Comp -> Array r ix e
 
@@ -115,8 +115,7 @@ class Ragged r ix e where
   flatten :: Array r ix e -> Array r Ix1 e
 
   loadRagged ::
-    (Monad m) =>
-    (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Lower ix -> Array r ix e -> m ()
+    (IO () -> IO ()) -> (Int -> e -> IO a) -> Int -> Int -> Lower ix -> Array r ix e -> IO ()
 
   -- TODO: test property:
   -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls

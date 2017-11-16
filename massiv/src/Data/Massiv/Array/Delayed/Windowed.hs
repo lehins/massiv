@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -23,8 +24,10 @@ import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Scheduler
 
--- | Delayed Windowed Array repres
+-- | Delayed Windowed Array representation.
 data DW
+
+type instance EltRepr DW ix = D
 
 data instance Array DW ix e = DWArray { wdArray :: !(Array D ix e)
                                       , wdStencilSize :: Maybe ix
@@ -36,9 +39,6 @@ data instance Array DW ix e = DWArray { wdArray :: !(Array D ix e)
                                       , wdWindowUnsafeIndex :: ix -> e }
 
 instance Index ix => Construct DW ix e where
-  size = size . wdArray
-  {-# INLINE size #-}
-
   getComp = dComp . wdArray
   {-# INLINE getComp #-}
 
@@ -47,6 +47,22 @@ instance Index ix => Construct DW ix e where
 
   unsafeMakeArray c sz f = DWArray (unsafeMakeArray c sz f) Nothing zeroIndex zeroIndex f
   {-# INLINE unsafeMakeArray #-}
+
+
+-- | Any resize or extract on Windowed Array will hurt the performance.
+instance Index ix => Size DW ix e where
+  size = size . wdArray
+  {-# INLINE size #-}
+  unsafeResize sz DWArray {..} =
+    let dArr = unsafeResize sz wdArray
+    in DWArray
+       { wdArray = dArr
+       , wdStencilSize = Nothing
+       , wdWindowStartIndex = zeroIndex
+       , wdWindowSize = zeroIndex
+       , wdWindowUnsafeIndex = evaluateAt dArr
+       }
+  unsafeExtract sIx newSz = unsafeExtract sIx newSz . wdArray
 
 
 instance Functor (Array DW ix) where

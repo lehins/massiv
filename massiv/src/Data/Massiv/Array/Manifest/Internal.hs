@@ -39,9 +39,6 @@ data instance Array M ix e = MArray { mComp :: !Comp
 type instance EltRepr M ix = M
 
 instance Index ix => Construct M ix e where
-  size = mSize
-  {-# INLINE size #-}
-
   getComp = mComp
   {-# INLINE getComp #-}
 
@@ -98,6 +95,8 @@ instance Index ix => Manifest M ix e where
 
 
 instance Index ix => Size M ix e where
+  size = mSize
+  {-# INLINE size #-}
 
   unsafeResize !sz !arr = arr { mSize = sz }
   {-# INLINE unsafeResize #-}
