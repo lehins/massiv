@@ -1,10 +1,10 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -24,14 +24,15 @@ import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Monad.ST                    (runST)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core
+import           Data.Massiv.Array.Manifest.List     as A
+import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types                (Prim)
 import qualified Data.Vector.Primitive               as VP
-import           GHC.Exts                            (IsList (..))
+import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
 data P = P deriving Show
@@ -151,11 +152,17 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance (VP.Prim e, IsList (Array L ix e), Ragged L ix e) => IsList (Array P ix e) where
+instance ( VP.Prim e
+         , IsList (Array L ix e)
+         , Nested LN ix e
+         , Nested L ix e
+         , Ragged L ix e
+         ) =>
+         IsList (Array P ix e) where
   type Item (Array P ix e) = Item (Array L ix e)
-  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
+  fromList = A.fromList' Seq
   {-# INLINE fromList #-}
-  toList = toList . toListArray
+  toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
 

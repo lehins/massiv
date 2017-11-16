@@ -19,7 +19,7 @@ import           Control.DeepSeq
 -- import           Control.Monad               (unless, void, when)
 -- import           Control.Monad.Primitive     (PrimMonad)
 -- import           Control.Monad.ST
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Array.Delayed.Internal
 -- import           Data.Massiv.Array.Manifest
 import           Data.Default.Class                (Default (def))

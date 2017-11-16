@@ -5,16 +5,15 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 -- |
--- Module      : Data.Massiv.Array.Mutable
+-- Module      : Data.Massiv.Array.Manifest.Mutable
 -- Copyright   : (c) Alexey Kuleshevich 2017
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Mutable
-  ( Mutable(..)
-  , compute
+module Data.Massiv.Array.Manifest.Mutable
+  ( compute
   , computeAs
   , computeSource
   , copy
@@ -39,7 +38,7 @@ import           Control.Monad.ST                    (runST)
 import           Data.Massiv.Array.Delayed.Internal  (delay)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Ops.Map           (iforM_)
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
@@ -100,7 +99,7 @@ gcastArr :: forall r' r ix e. (Typeable r, Typeable r')
 gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 
 
--- | /O(n)/ - conversion between manifest types, unless source and result arrays
+-- | /O(n)/ - conversion between manifest types, except when source and result arrays
 -- are of the same representation, in which case it is an /O(1)/ operation.
 convert :: (Manifest r' ix e, Mutable r ix e)
         => Array r' ix e -> Array r ix e
@@ -171,16 +170,15 @@ fromRaggedArray arr = unsafePerformIO $ do
   mArr <- unsafeNew sz
   let loadWith using =
         loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) (tailDim sz) arr
-  eExc <- try $ case getComp arr of
-                  Seq -> loadWith id
-                  ParOn ss -> withScheduler_ ss (loadWith . scheduleWork)
-  case eExc of
-    Left exc  -> return $ Left exc
-    Right _ -> Right <$> unsafeFreeze (getComp arr) mArr
+  try $ case getComp arr of
+          Seq -> loadWith id >> unsafeFreeze (getComp arr) mArr
+          ParOn ss -> do
+            withScheduler_ ss (loadWith . scheduleWork)
+            unsafeFreeze (getComp arr) mArr
 {-# INLINE fromRaggedArray #-}
 
--- | Same as `fromRaggedArray`, but will throw an error if shape is not
--- rectangular in its nature.
+-- | Same as `fromRaggedArray`, but will throw an error if its shape is not
+-- rectangular.
 fromRaggedArray' :: (Ragged r' ix e, Mutable r ix e) =>
                     Array r' ix e -> Array r ix e
 fromRaggedArray' arr =

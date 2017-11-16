@@ -3,10 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.Ops.TransformSpec (spec) where
 
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Ops      as M
-import           Data.Massiv.CoreArbitrary
+import           Data.Massiv.CoreArbitrary  as A
 import           Data.Typeable              (Typeable)
 import           Test.Hspec
 import           Test.QuickCheck
@@ -17,7 +14,7 @@ prop_ExtractAppend
   :: (Eq e, Size r ix e, Source r ix e, Source (EltRepr r ix) ix e, Arbitrary (ArrIx r ix e))
   => proxy (r, ix, e) -> DimIx ix -> ArrIx r ix e -> Bool
 prop_ExtractAppend _ (DimIx dim) (ArrIx arr ix) =
-  maybe False ((delay arr ==) . uncurry (append' dim)) $ M.splitAt dim ix arr
+  maybe False ((delay arr ==) . uncurry (append' dim)) $ A.splitAt dim ix arr
 
 
 prop_transposeOuterInner :: Arr D Ix2 Int -> Property

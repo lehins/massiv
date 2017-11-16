@@ -12,7 +12,6 @@ import           Criterion.Main
 import           Data.Array.Repa     as R
 import           GHC.Exts            as GHC
 -- import           Data.Functor.Identity
-import qualified Data.Vector.Unboxed as VU
 import           Prelude             as P
 
 
@@ -58,33 +57,27 @@ main = do
           [ bench "GHC.Exts.fromList :: [Double] -> VU.Vector Double" $
             whnf (GHC.fromList :: [Double] -> Vector Double) xs
           , bench
-              "Massiv.Array.Ops.fromListIx1As :: [Double] -> A.Array U Ix1 Double" $
-            whnf (fromListIx1As U Seq) xs
-          , bench
-              "Massiv.Array.Manifest.fromList :: [Double] -> A.Array U Ix1 Double" $
+              "Massiv.Array.Manifest.fromList :: [Double] -> A.Array A.U Ix1 Double" $
             whnf
-              (A.fromList Seq :: [Double] -> A.Array A.U Ix1 Double)
+              (A.fromList' Seq :: [Double] -> A.Array A.U Ix1 Double)
               xs
-          , bench "GHC.Exts.fromList :: [Double] -> A.Array U Ix1 Double" $
+          , bench "GHC.Exts.fromList :: [Double] -> A.Array A.U Ix1 Double" $
             whnf (GHC.fromList :: [Double] -> A.Array A.U Ix1 Double) xs
-          , bench "Repa.fromListUnboxed :: [Double] -> R.Array U DIM1 Double" $
+          , bench "Repa.fromListUnboxed :: [Double] -> R.Array R.U DIM1 Double" $
             whnf (R.fromListUnboxed (Z R.:. totalElem t2)) xs
           ]
     , env (return ls) $ \xs ->
         bgroup
           "fromList[[]]"
           [ bench
-              "Massiv.Array.Ops.fromListIx2As :: [[Double]] -> A.Array U Ix2 Double" $
-            whnf (fromListIx2As U Seq) xs
-          , bench
-              "Massiv.Array.Manifest.fromList Seq:: [[Double]] -> A.Array U Ix2 Double" $
+              "Massiv.Array.Manifest.fromList Seq :: [[Double]] -> A.Array U Ix2 Double" $
             whnf
-              (A.fromList Seq :: [[Double]] -> A.Array A.U Ix2 Double)
+              (A.fromList' Seq :: [[Double]] -> A.Array A.U Ix2 Double)
               xs
           , bench
-              "Massiv.Array.Manifest.fromList :: [[Double]] -> A.Array U Ix2 Double" $
+              "Massiv.Array.Manifest.fromList Par :: [[Double]] -> A.Array U Ix2 Double" $
             whnf
-              (A.fromList Par :: [[Double]] -> A.Array A.U Ix2 Double)
+              (A.fromList' Par :: [[Double]] -> A.Array A.U Ix2 Double)
               xs
           ]
     ]

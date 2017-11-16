@@ -10,7 +10,7 @@
 --
 module Data.Massiv.Array.Stencil.Convolution where
 
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Array.Ops.Fold         (ifoldlS)
 import           Data.Massiv.Array.Stencil.Internal
 import           GHC.Exts                           (inline)

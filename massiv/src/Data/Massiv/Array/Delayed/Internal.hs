@@ -17,14 +17,13 @@ module Data.Massiv.Array.Delayed.Internal
   , Array(..)
   , delay
   , eq
-  , singleton
   , liftArray
   , liftArray2
   ) where
 
 import           Data.Foldable              (Foldable (..))
-import           Data.Massiv.Array.Ops.Fold as M
-import           Data.Massiv.Core
+import           Data.Massiv.Array.Ops.Fold as A
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                ((<>))
 import           GHC.Base                   (build)
@@ -212,7 +211,7 @@ eq :: (Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
-  M.fold
+  A.fold
     (&&)
     True
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->

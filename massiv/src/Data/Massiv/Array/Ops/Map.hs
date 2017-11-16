@@ -10,17 +10,16 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Map
-  ( -- * Mapping
-    map
+  ( map
   , imap
-  -- * Monadic Mapping
+  -- ** Monadic
   , mapM_
   , imapM_
   , forM_
   , iforM_
   , mapP_
   , imapP_
-  -- * Zipping
+  -- ** Zipping
   , zip
   , zip3
   , unzip
@@ -33,7 +32,7 @@ module Data.Massiv.Array.Ops.Map
 
 import           Control.Monad              (void, when)
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import           Prelude                    hiding (map, mapM_, unzip, unzip3,
                                              zip, zip3, zipWith, zipWith3)

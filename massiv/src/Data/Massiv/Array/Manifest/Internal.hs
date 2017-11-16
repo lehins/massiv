@@ -24,7 +24,7 @@ module Data.Massiv.Array.Manifest.Internal
 import           Data.Foldable                      (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Fold         as M
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import qualified Data.Vector                        as V
 import           GHC.Base                           (build)

@@ -14,10 +14,10 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core.Index
-  ( module Data.Massiv.Core.Index.Class
-  , module Data.Massiv.Core.Index.Ix
+  ( module Data.Massiv.Core.Index.Ix
   , Border(..)
   , handleBorderIndex
+  , module Data.Massiv.Core.Index.Class
   , oneIndex
   , isSafeSize
   , isNonEmpty
@@ -27,14 +27,13 @@ module Data.Massiv.Core.Index
   , initDim
   , iterLinearM
   , iterLinearM_
+  , module Data.Massiv.Core.Iterator
   ) where
-
 
 import           Control.DeepSeq
 import           Data.Massiv.Core.Index.Class
 import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Iterator
-
 
 
 -- | Approach to be used near the borders during various transformations.

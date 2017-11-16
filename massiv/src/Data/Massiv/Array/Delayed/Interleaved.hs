@@ -18,7 +18,7 @@ module Data.Massiv.Array.Delayed.Interleaved
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 
 

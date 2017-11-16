@@ -3,10 +3,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-module Data.Massiv.Array.ManifestSpec (spec) where
+module Data.Massiv.Array.Manifest.VectorSpec (spec) where
 
 import           Data.Massiv.CoreArbitrary
-import           Data.Massiv.Array.Manifest
+import           Data.Massiv.Array.Manifest.Vector
 import           Data.Proxy
 import           Data.Typeable
 import qualified Data.Vector                  as VB

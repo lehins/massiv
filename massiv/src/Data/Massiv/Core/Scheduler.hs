@@ -178,8 +178,8 @@ divideWork_ wss sz submit = divideWork wss sz submit >> return ()
 
 -- | Linearly (row-major first) and equally divide work among available
 -- workers. Submit function will receive a `Scheduler`, length of each chunk,
--- total number of elements and where chunks end and slack begins. Slack work
--- will get picked up by the first worker that will be finished with his
+-- total number of elements, as well as where chunks end and slack begins. Slack
+-- work will get picked up by the first worker, that has finished working on his
 -- chunk. Returns list with results in the same order that work was submitted
 divideWork :: Index ix
            => [Int] -- ^ Worker Stations (capabilities)

@@ -10,14 +10,23 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Ops.Unsafe
+module Data.Massiv.Array.Unsafe
   ( unsafeBackpermute
   , unsafeTraverse
   , unsafeTraverse2
+  , Construct(unsafeMakeArray)
+  , Source(..)
+  , Size(unsafeResize, unsafeExtract)
+  , Slice(..)
+  , OuterSlice(..)
+  , InnerSlice(..)
+  , Manifest(..)
+  , Mutable(unsafeThaw, unsafeFreeze, unsafeNew, unsafeLinearRead, unsafeLinearWrite)
+  , Ragged(unsafeGenerateM)
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal (D)
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 
 
 unsafeBackpermute :: (Source r' ix' e, Index ix) =>

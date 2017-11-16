@@ -1,8 +1,8 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold
 -- Copyright   : (c) Alexey Kuleshevich 2017
@@ -13,19 +13,29 @@
 --
 module Data.Massiv.Array.Ops.Fold
   (
-  -- * Unstructured folds
+  -- ** Unstructured folds
     fold
   , sum
   , product
-  -- * Sequential folds
+  , and
+  , or
+  , all
+  , any
+  -- ** Directed folds
+  , foldl
+  , ifoldl
+  , foldr
+  , ifoldr
+  -- ** Sequential folds
   , foldlS
-  , lazyFoldlS
   , foldrS
-  , foldrFB
-  , lazyFoldrS
   , ifoldlS
   , ifoldrS
-  -- * Parallel folds
+  -- ** Special folds
+  , foldrFB
+  , lazyFoldlS
+  , lazyFoldrS
+  -- ** Parallel folds
   , foldlP
   , foldrP
   , ifoldlP
@@ -34,7 +44,7 @@ module Data.Massiv.Array.Ops.Fold
   , foldrOnP
   , ifoldlOnP
   , ifoldrOnP
-  -- * Monadic folds
+  -- ** Monadic folds
   , foldlM
   , foldrM
   , foldlM_
@@ -45,13 +55,14 @@ module Data.Massiv.Array.Ops.Fold
   , ifoldrM_
   ) where
 
-import           Control.Monad               (void, when)
-import           Data.Massiv.Core
+import           Control.Monad              (void, when)
+import qualified Data.Foldable              as F
+import           Data.Functor.Identity      (runIdentity)
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
-import qualified Data.Foldable               as F
-import           Data.Functor.Identity       (runIdentity)
-import           Prelude                     hiding (product, sum)
-import           System.IO.Unsafe            (unsafePerformIO)
+import           Prelude                    hiding (all, and, any, foldl, foldr,
+                                             or, product, sum)
+import           System.IO.Unsafe           (unsafePerformIO)
 
 
 -- | /O(n)/ - Monadic left fold.
@@ -151,29 +162,6 @@ foldrFB c n arr = go 0
 {-# INLINE [0] foldrFB #-}
 
 
--- foldrS :: (Source r ix e) => (e -> a -> a) -> a -> Array r ix e -> a
--- foldrS f !acc !arr =
---   iter (liftIndex (subtract 1) (size arr)) zeroIndex (-1) (>=) acc $ \ !ix !acc0 ->
---     f (unsafeIndex arr ix) acc0
--- {-# INLINE foldrS #-}
-
--- foldrS' :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
--- foldrS' f acc arr =
---   iter (totalElem sz) 0 (-1) (>=) acc $ \ !i !acc0 ->
---     f (unsafeLinearIndex arr i) acc0
---   where
---     !sz = size arr
--- {-# INLINE foldrS' #-}
-
--- foldlS' :: Source r ix e => (a -> e -> a) -> a -> Array r ix e -> a
--- foldlS' f !acc !arr =
---   iter zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a (unsafeIndex arr ix)
---   -- iter 0 (totalElem (size arr)) 1 (<) acc $ \ !i !acc0 ->
---   --   f acc0 (unsafeLinearIndex arr i)
--- {-# INLINE foldlS' #-}
-
-
-
 
 -- | /O(n)/ - Right fold with an index aware function, computed sequentially.
 ifoldrS :: Source r ix e => (ix -> e -> a -> a) -> a -> Array r ix e -> a
@@ -188,7 +176,7 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 -- same as number of available cores (capabilities) plus one, and each chunk is
 -- individually folded by a separate core with a function @g@. Results from
 -- folding each chunk are further folded with another function @f@, thus
--- allowing us to use information about the strucutre of an array during
+-- allowing us to use information about the structure of an array during
 -- folding.
 --
 -- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
@@ -203,8 +191,8 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 foldlP :: Source r ix e =>
           (b -> a -> b) -- ^ Chunk results folding function @f@.
        -> b -- ^ Accumulator for results of chunks folding.
-       -> (a -> e -> a) -- ^ Chunks folding function @g@.
-       -> a -- ^ Accumulator for each chunk.
+       -> (a -> e -> a) -- ^ Folding function @g@.
+       -> a -- ^ Accumulator. Will be applied to @g@ multiple times, thus must be neutral.
        -> Array r ix e -> IO b
 foldlP g !tAcc f = ifoldlP g tAcc (\ x _ -> f x)
 {-# INLINE foldlP #-}
@@ -251,7 +239,7 @@ ifoldlOnP wIds g !tAcc f !initAcc !arr = do
   return $ F.foldl' g tAcc results
 {-# INLINE ifoldlOnP #-}
 
------------
+
 
 -- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
 -- like `foldlP`, except that folding function will receive an index of an
@@ -340,7 +328,7 @@ ifoldrP = ifoldrOnP []
 
 
 -- | /O(n)/ - Unstructured fold of an array.
-fold :: (Source r ix e) =>
+fold :: Source r ix e =>
         (e -> e -> e) -- ^ Folding function (like with left fold, first argument
                       -- is an accumulator)
      -> e -- ^ Initial element, that is neutral with respect to the folding
@@ -354,20 +342,85 @@ fold f initAcc = \ arr ->
 {-# INLINE fold #-}
 
 
--- | /O(n)/ - Compute sum in parallel.
+-- | /O(n)/ - Compute sum of all elements.
 sum :: (Source r ix e, Num e) =>
         Array r ix e -> e
 sum = fold (+) 0
 {-# INLINE sum #-}
 
 
--- | /O(n)/ - Compute product in parallel.
+-- | /O(n)/ - Compute product of all elements.
 product :: (Source r ix e, Num e) =>
             Array r ix e -> e
 product = fold (*) 1
 {-# INLINE product #-}
 
 
+-- | /O(n)/ - Compute conjunction of all elements.
+and :: (Source r ix Bool) =>
+       Array r ix Bool -> Bool
+and = fold (&&) True
+{-# INLINE and #-}
+
+
+-- | /O(n)/ - Compute disjunction of all elements.
+or :: Source r ix Bool =>
+      Array r ix Bool -> Bool
+or = fold (||) False
+{-# INLINE or #-}
+
+
+-- | Determines whether all element of the array satisfy the predicate.
+all :: Source r ix e =>
+       (e -> Bool) -> Array r ix e -> Bool
+all f = foldl (&&) True (\acc el -> acc && f el) True
+{-# INLINE all #-}
+
+-- | Determines whether any element of the array satisfies the predicate.
+any :: Source r ix e =>
+       (e -> Bool) -> Array r ix e -> Bool
+any f = foldl (||) False (\acc el -> acc || f el) False
+{-# INLINE any #-}
+
+
+-- | /O(n)/ - Left fold of an array.
+foldl :: Source r ix e =>
+     (b -> a -> b) -> b -> (a -> e -> a) -> a -> Array r ix e -> b
+foldl f resAcc g initAcc = \ arr ->
+  case getComp arr of
+    Seq        -> f resAcc (foldlS g initAcc arr)
+    ParOn wIds -> unsafePerformIO $ foldlOnP wIds f resAcc g initAcc arr
+{-# INLINE foldl #-}
+
+
+-- | /O(n)/ - Right fold of an array.
+foldr :: Source r ix e =>
+         (a -> b -> b) -> b -> (e -> a -> a) -> a -> Array r ix e -> b
+foldr f resAcc g initAcc = \ arr ->
+  case getComp arr of
+    Seq        -> f (foldrS g initAcc arr) resAcc
+    ParOn wIds -> unsafePerformIO $ foldrOnP wIds f resAcc g initAcc arr
+{-# INLINE foldr #-}
+
+
+-- | /O(n)/ - Index aware left fold of an array.
+ifoldl :: Source r ix e =>
+     (b -> a -> b) -> b -> (a -> ix -> e -> a) -> a -> Array r ix e -> b
+ifoldl f resAcc g initAcc = \ arr ->
+  case getComp arr of
+    Seq        -> f resAcc (ifoldlS g initAcc arr)
+    ParOn wIds -> unsafePerformIO $ ifoldlOnP wIds f resAcc g initAcc arr
+{-# INLINE ifoldl #-}
+
+
+-- | /O(n)/ - Index aware right fold of an array.
+ifoldr :: Source r ix e =>
+          (a -> b -> b) -> b -> (ix -> e -> a -> a) -> a -> Array r ix e -> b
+ifoldr f resAcc g initAcc = \ arr ->
+  case getComp arr of
+    Seq        -> f (ifoldrS g initAcc arr) resAcc
+    ParOn wIds -> unsafePerformIO $ ifoldrOnP wIds f resAcc g initAcc arr
+{-# INLINE ifoldr #-}
 
 
 

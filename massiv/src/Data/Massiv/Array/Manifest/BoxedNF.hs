@@ -27,14 +27,15 @@ import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Monad.ST                    (runST)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Array.Manifest.List     as A
+import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
+import           Data.Massiv.Core.Scheduler
 import qualified Data.Primitive.Array                as A
 import qualified Data.Vector                         as VB
 import qualified Data.Vector.Mutable                 as VB
-import           GHC.Exts                            (IsList (..))
+import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
@@ -194,9 +195,15 @@ castVectorToArray v =
 
 
 
-instance (NFData e, IsList (Array L ix e), Ragged L ix e) => IsList (Array N ix e) where
+instance ( NFData e
+         , IsList (Array L ix e)
+         , Nested LN ix e
+         , Nested L ix e
+         , Ragged L ix e
+         ) =>
+         IsList (Array N ix e) where
   type Item (Array N ix e) = Item (Array L ix e)
-  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
+  fromList = A.fromList' Seq
   {-# INLINE fromList #-}
-  toList = toList . toListArray
+  toList = GHC.toList . toListArray
   {-# INLINE toList #-}

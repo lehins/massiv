@@ -4,10 +4,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.Ops.SliceSpec (spec) where
 
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Ops
 import           Data.Massiv.CoreArbitrary
+import           Data.Massiv.Array.Unsafe
 import           Test.Hspec
 import           Test.QuickCheck
 

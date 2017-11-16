@@ -3,10 +3,7 @@
 {-# LANGUAGE GADTs            #-}
 module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 
-import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops
-import           Data.Massiv.CoreArbitrary
+import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
 import qualified GHC.Exts                   as GHC (IsList (..))
 import           Prelude                    as P
@@ -48,7 +45,7 @@ prop_toFromList _ (Arr arr) = arr === fromList' (getComp arr) (toList arr :: [Li
 
 prop_excFromToListIx2 :: Comp -> [[Int]] -> Property
 prop_excFromToListIx2 comp ls2 =
-  if P.null lsL || all (head lsL ==) lsL
+  if P.null lsL || P.all (head lsL ==) lsL
      then label "Expected Success" $ resultLs === ls2
      else label "Expected Failure" $ assertSomeException resultLs
   where
@@ -56,18 +53,18 @@ prop_excFromToListIx2 comp ls2 =
     resultLs = toList (fromList' comp ls2 :: Array U Ix2 Int)
 
 
-prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
-prop_excFromToListIx3 comp ls3 =
-  if P.null lsL ||
-     (all (head lsL ==) lsL &&
-      (P.null (head lsLL) || P.and (P.map (all (head (head lsLL) ==)) lsLL)))
-    then classify True "Expected Success" $ resultLs === ls3
-    else classify True "Expected Failure" $
-         assertSomeException resultLs
-  where
-    resultLs = toList (fromList' comp ls3 :: Array U Ix3 Int)
-    lsL = P.map P.length ls3
-    lsLL = P.map (P.map P.length) ls3
+-- prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
+-- prop_excFromToListIx3 comp ls3 =
+--   if P.null lsL ||
+--      (P.all (head lsL ==) lsL &&
+--       (P.null (head lsLL) || P.and (P.map (P.all (head (head lsLL) ==)) lsLL)))
+--     then classify True "Expected Success" $ resultLs === ls3
+--     else classify True "Expected Failure" $
+--          assertSomeException resultLs
+--   where
+--     resultLs = toList (fromList' comp ls3 :: Array U Ix3 Int)
+--     lsL = P.map P.length ls3
+--     lsLL = P.map (P.map P.length) ls3
 
 
 specIx1 :: Spec

@@ -18,11 +18,12 @@ library
   exposed-modules:     Data.Massiv.Array
                      , Data.Massiv.Array.Delayed
                      , Data.Massiv.Array.Manifest
-                     , Data.Massiv.Array.Mutable
-                     , Data.Massiv.Array.Ops
-                     , Data.Massiv.Array.Ops.Unsafe
+                     , Data.Massiv.Array.Manifest.Vector
+                     , Data.Massiv.Array.Manifest.Mutable
+                     , Data.Massiv.Array.Numeric
                      , Data.Massiv.Array.Stencil
                      , Data.Massiv.Array.Stencil.Convolution
+                     , Data.Massiv.Array.Unsafe
                      , Data.Massiv.Core
                      , Data.Massiv.Core.Scheduler
                      , Data.Massiv.Core.Index
@@ -33,6 +34,7 @@ library
                      , Data.Massiv.Array.Manifest.BoxedNF
                      , Data.Massiv.Array.Manifest.BoxedStrict
                      , Data.Massiv.Array.Manifest.Internal
+                     , Data.Massiv.Array.Manifest.List
                      , Data.Massiv.Array.Manifest.Primitive
                      , Data.Massiv.Array.Manifest.Storable
                      , Data.Massiv.Array.Manifest.Unboxed
@@ -41,7 +43,6 @@ library
                      , Data.Massiv.Array.Ops.Map
                      , Data.Massiv.Array.Ops.Slice
                      , Data.Massiv.Array.Ops.Transform
-                     , Data.Massiv.Array.Ops.Numeric
                      , Data.Massiv.Array.Stencil.Internal
                      , Data.Massiv.Core.Common
                      , Data.Massiv.Core.Computation
@@ -64,7 +65,7 @@ Test-Suite tests
   HS-Source-Dirs:     tests
   Main-Is:            Spec.hs
   Other-Modules:      Data.Massiv.Array.DelayedSpec
-                    , Data.Massiv.Array.ManifestSpec
+                    , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec

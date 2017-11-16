@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 module Bench.Massiv.Array (
   module A
   , tupleToIx2
@@ -24,11 +25,10 @@ module Bench.Massiv.Array (
   , average3x3FilterConv
   ) where
 
-import           Bench.Common              (heavyFunc, lightFunc)
+import           Bench.Common      (heavyFunc, lightFunc)
 import           Control.DeepSeq
-import           Data.Default              (Default)
-import           Data.Massiv.Array         as A
-import           Data.Massiv.Array.Stencil as A
+import           Data.Default      (Default)
+import           Data.Massiv.Array as A
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
 instance Index ix => NFData (Array D ix e) where
@@ -79,11 +79,11 @@ arrDHeavyIx2T comp arrSz = makeArray comp arrSz (\ (i, j) -> heavyFunc i j)
 
 
 sobelKernelStencilX
-  :: (Eq e, Num e, Unbox e) => Border e -> Stencil Ix2 e e
+  :: forall e . (Eq e, Num e, Unbox e) => Border e -> Stencil Ix2 e e
 sobelKernelStencilX b =
-  mkConvolutionStencilFromKernel b $ fromListIx2As U Seq [ [ 1, 0, -1 ]
-                                                         , [ 2, 0, -2 ]
-                                                         , [ 1, 0, -1 ] ]
+  mkConvolutionStencilFromKernel b $ (fromList' Seq [ [ 1, 0, -1 ]
+                                                    , [ 2, 0, -2 ]
+                                                    , [ 1, 0, -1 ] ] :: Array U Ix2 e)
 {-# INLINE sobelKernelStencilX #-}
 
 

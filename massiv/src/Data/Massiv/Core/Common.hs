@@ -11,8 +11,38 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Core.Common where
+module Data.Massiv.Core.Common
+  ( Array
+  , Elt
+  , EltRepr
+  , Construct(..)
+  , Source(..)
+  , Load(..)
+  , Size(..)
+  , Slice(..)
+  , OuterSlice(..)
+  , InnerSlice(..)
+  , Manifest(..)
+  , Mutable(..)
+  , Ragged(..)
+  , Nested(..)
+  , NestedStruct
+  , makeArray
+  , singleton
+  -- * Indexing
+  , (!)
+  , index
+  , (!?)
+  , maybeIndex
+  , (?)
+  , defaultIndex
+  , borderIndex
+  , evaluateAt
+  , module Data.Massiv.Core.Index
+  , module Data.Massiv.Core.Computation
+  ) where
 
+import           Control.Monad.Primitive      (PrimMonad (..))
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Typeable
@@ -43,6 +73,7 @@ class (Typeable r, Index ix) => Construct r ix e where
 
 class Construct r ix e => Size r ix e where
 
+  -- | /O(1)/ - Get the size of an array
   size :: Array r ix e -> ix
 
   unsafeResize :: Index ix' => ix' -> Array r ix e -> Array r ix' e
@@ -90,6 +121,37 @@ class (InnerSlice r ix e, OuterSlice r ix e) => Slice r ix e where
   unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
 
 
+-- | Manifest arrays are backed by actual memory and values are looked up versus
+-- computed as it is with delayed arrays. Because of this fact indexing functions
+-- `(!)`, `(!?)`, etc. are constrained to manifest arrays only.
+class Source r ix e => Manifest r ix e where
+
+  unsafeLinearIndexM :: Array r ix e -> Int -> e
+
+
+class Manifest r ix e => Mutable r ix e where
+  data MArray s r ix e :: *
+
+  -- | Get the size of a mutable array.
+  msize :: MArray s r ix e -> ix
+
+  unsafeThaw :: PrimMonad m =>
+                Array r ix e -> m (MArray (PrimState m) r ix e)
+
+  unsafeFreeze :: PrimMonad m =>
+                  Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
+
+  unsafeNew :: PrimMonad m =>
+               ix -> m (MArray (PrimState m) r ix e)
+
+  unsafeLinearRead :: PrimMonad m =>
+                      MArray (PrimState m) r ix e -> Int -> m e
+
+  unsafeLinearWrite :: PrimMonad m =>
+                       MArray (PrimState m) r ix e -> Int -> e -> m ()
+
+
+
 class Nested r ix e where
   fromNested :: NestedStruct r ix e -> Array r ix e
 
@@ -121,3 +183,87 @@ class Construct r ix e => Ragged r ix e where
   -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls
   raggedFormat :: (e -> String) -> String -> Array r ix e -> String
 
+
+
+-- | Create an Array.
+makeArray :: Construct r ix e =>
+             Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
+          -> ix -- ^ Size of the result Array
+          -> (ix -> e) -- ^ Function to generate elements at a particular index
+          -> Array r ix e
+makeArray !c = unsafeMakeArray c . liftIndex (max 0)
+{-# INLINE makeArray #-}
+
+
+-- | Create an Array with a single element.
+singleton :: Construct r ix e =>
+             Comp -- ^ Computation strategy
+          -> e -- ^ The element
+          -> Array r ix e
+singleton !c = unsafeMakeArray c oneIndex . const
+{-# INLINE singleton #-}
+
+
+infixl 4 !, !?, ?
+
+-- | Infix version of `index`.
+(!) :: Manifest r ix e => Array r ix e -> ix -> e
+(!) = index
+{-# INLINE (!) #-}
+
+
+-- | Infix version of `maybeIndex`.
+(!?) :: Manifest r ix e => Array r ix e -> ix -> Maybe e
+(!?) = maybeIndex
+{-# INLINE (!?) #-}
+
+
+-- | /O(1)/ - Lookup an element in the array, where array can itself be
+-- `Nothing`. This operator is useful when used together with slicing or other
+-- functions that return `Maybe` array:
+--
+-- >>> (fromList Seq [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)) ?> 1 ? (0 :. 2)
+-- Just 6
+--
+(?) :: Manifest r ix e => Maybe (Array r ix e) -> ix -> Maybe e
+(?) Nothing    = const Nothing
+(?) (Just arr) = (arr !?)
+{-# INLINE (?) #-}
+
+-- | /O(1)/ - Lookup an element in the array. Returns `Nothing`, when index is out
+-- of bounds, `Just` element otherwise.
+maybeIndex :: Manifest r ix e => Array r ix e -> ix -> Maybe e
+maybeIndex arr = handleBorderIndex (Fill Nothing) (size arr) (Just . unsafeIndex arr)
+{-# INLINE maybeIndex #-}
+
+-- | /O(1)/ - Lookup an element in the array, while using default element when
+-- index is out of bounds.
+defaultIndex :: Manifest r ix e => e -> Array r ix e -> ix -> e
+defaultIndex defVal = borderIndex (Fill defVal)
+{-# INLINE defaultIndex #-}
+
+-- | /O(1)/ - Lookup an element in the array. Use a border resolution technique
+-- when index is out of bounds.
+borderIndex :: Manifest r ix e => Border e -> Array r ix e -> ix -> e
+borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
+{-# INLINE borderIndex #-}
+
+-- | /O(1)/ - Lookup an element in the array. Throw an error if index is out of bounds.
+index :: Manifest r ix e => Array r ix e -> ix -> e
+index arr ix =
+  borderIndex (Fill (errorIx "Data.Massiv.Array.index" (size arr) ix)) arr ix
+{-# INLINE index #-}
+
+
+-- | This is just like `index` function, but it allows getting values from
+-- delayed arrays as well as manifest. As the name suggests, indexing into a
+-- delayed array at the same index multiple times will cause evaluation of the
+-- value each time and can destroy the performace if used without care.
+evaluateAt :: Source r ix e => Array r ix e -> ix -> e
+evaluateAt !arr !ix =
+  handleBorderIndex
+    (Fill (errorIx "Data.Massiv.Array.evaluateAt" (size arr) ix))
+    (size arr)
+    (unsafeIndex arr)
+    ix
+{-# INLINE evaluateAt #-}

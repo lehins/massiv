@@ -10,7 +10,7 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Ops.Numeric
+module Data.Massiv.Array.Numeric
   ( -- * Num
     (.+)
   , (.-)
@@ -62,12 +62,13 @@ module Data.Massiv.Array.Ops.Numeric
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Mutable          (compute)
+import           Data.Massiv.Array.Manifest.Mutable (compute)
 import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A
 import           Data.Massiv.Array.Ops.Slice        as A
 import           Data.Massiv.Array.Ops.Transform    as A
 import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Monoid                        ((<>))
 import           Prelude                            as P
 
@@ -373,34 +374,9 @@ floorA
 floorA = liftArray floor
 {-# INLINE floorA #-}
 
-
-
 atan2A
   :: (Source r ix e, RealFloat e)
   => Array r ix e -> Array r ix e -> Array D ix e
 atan2A = liftArray2 atan2
 {-# INLINE atan2A #-}
-
--- SIMD operations:
---
--- broadcast :: a -> Vec a
--- pack :: HashTuple a -> Vec a
--- unpack :: Vec a -> HashTuple a
--- insert :: Vec a -> a -> Int -> Vec a
--- plus :: Vec a -> Vec a -> Vec a
--- minus :: Vec a -> Vec a -> Vec a
--- times :: Vec a -> Vec a -> Vec a
--- divide :: Vec a -> Vec a -> Vec a
--- quot :: Vec a -> Vec a -> Vec a
--- rem :: Vec a -> Vec a -> Vec a
--- negate :: Vec a -> Vec a
---
--- index :: Arr a -> Int -> Vec a
--- indexAs :: Arr a -> Int -> Vec a
---
--- read :: MArr a -> Int -> State s -> (# State s, Vec a #)
--- write :: MArr a -> Int -> Vec a -> State s -> State s
--- indexAddr :: Addr a -> Int -> Vec a
--- readAddr :: Addr a -> Int -> State s -> (# State s, Vec a #)
--- writeAddr :: Addr a -> Int -> Vec a -> State s -> State s
 

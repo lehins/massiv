@@ -22,12 +22,13 @@ module Data.Massiv.Array.Manifest.Unboxed
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core
+import           Data.Massiv.Array.Manifest.List     as A
+import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
-import           GHC.Exts                            (IsList (..))
+import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
 data U = U deriving Show
@@ -148,9 +149,15 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance (VU.Unbox e, IsList (Array L ix e), Ragged L ix e) => IsList (Array U ix e) where
+instance ( VU.Unbox e
+         , IsList (Array L ix e)
+         , Nested LN ix e
+         , Nested L ix e
+         , Ragged L ix e
+         ) =>
+         IsList (Array U ix e) where
   type Item (Array U ix e) = Item (Array L ix e)
-  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
+  fromList = A.fromList' Seq
   {-# INLINE fromList #-}
-  toList = toList . toListArray
+  toList = GHC.toList . toListArray
   {-# INLINE toList #-}

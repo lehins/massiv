@@ -4,15 +4,11 @@
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
 import           Control.Concurrent
-import           Control.Exception.Base        (ArithException (DivideByZero),
-                                                AsyncException (ThreadKilled))
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops         as M
+import           Control.Exception.Base     (ArithException (DivideByZero),
+                                             AsyncException (ThreadKilled))
 import           Data.Massiv.Core.Scheduler
-import           Data.Massiv.CoreArbitrary
-import           Prelude                       as P
+import           Data.Massiv.CoreArbitrary  as A
+import           Prelude                    as P
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
@@ -23,8 +19,8 @@ prop_CatchDivideByZero :: ArrIx D Ix2 Int -> [Int] -> Property
 prop_CatchDivideByZero (ArrIx arr ix) caps =
   assertException
     (== DivideByZero)
-    (M.sum $
-     M.imap
+    (A.sum $
+     A.imap
        (\ix' x ->
           if ix == ix'
             then x `div` 0
@@ -37,11 +33,11 @@ prop_CatchNested (ArrIx arr ix) caps =
   assertException
     (== DivideByZero)
     (computeAs U $
-     M.map M.sum $
-     M.imap
+     A.map A.sum $
+     A.imap
        (\ix' (ArrIxP iarr ixi) ->
           if ix == ix'
-            then M.imap
+            then A.imap
                    (\ixi' e ->
                       if ixi == ixi'
                         then e `div` 0

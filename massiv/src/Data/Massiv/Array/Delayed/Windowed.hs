@@ -22,6 +22,7 @@ module Data.Massiv.Array.Delayed.Windowed
 import           Control.Monad                      (when)
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 
 -- | Delayed Windowed Array representation.

@@ -4,8 +4,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.Ops.FoldSpec (spec) where
 
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Ops
 import           Data.Massiv.CoreArbitrary
 import           Prelude                   hiding (map, product, sum)
 import qualified Prelude                   as P (length, sum)

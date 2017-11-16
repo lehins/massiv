@@ -17,13 +17,17 @@ module Data.Massiv.Array.Ops.Transform
   , transposeOuter
   -- ** Backpermute
   , backpermute
+  -- ** Resize
   , resize
   , resize'
+  -- ** Extract
   , extract
   , extractFromTo
+  -- ** Append/Split
   , append
   , append'
   , splitAt
+  -- * Traverse
   , traverse
   , traverse2
   ) where
@@ -31,7 +35,7 @@ module Data.Massiv.Array.Ops.Transform
 import           Control.Monad                      (guard)
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Construct
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 import           Data.Maybe                         (fromMaybe)
 import           Prelude                            hiding (splitAt, traverse)
 

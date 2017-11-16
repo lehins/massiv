@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs            #-}
 module Main where
 
-import           Bench.Massiv          as M hiding (tupleToIx2)
 import           Bench.Massiv.Array    as A
 import           Bench.Repa
 import           Bench.Vector
@@ -10,6 +8,7 @@ import           Criterion.Main
 import           Data.Array.Repa       as R
 import           Data.Functor.Identity
 import           Data.Vector.Unboxed   as VU
+import           GHC.Exts              as GHC
 import           Prelude               as P
 
 main :: IO ()
@@ -23,9 +22,6 @@ main = do
             [ env
                 (return (tupleToIx2 t2))
                 (bench "Array Ix2 U" . whnf (A.foldlS (+) 0 . arrDLightIx2 Seq))
-            , env
-                (return (tupleToIx2 t2))
-                (bench "Array Ix2 B" . whnf (A.foldlS (+) 0 . arrRLightIx2 B Seq))
             , env
                 (return t2)
                 (bench "Vector U" . whnf (VU.foldl' (+) 0 . vecLight2))
@@ -82,6 +78,12 @@ main = do
             "Sequential"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U (A.toList)" . nf A.toList)
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U (GHC.toList)" . nf GHC.toList)
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U (A.toListIx2)" . nf A.toListIx2)
             , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
@@ -112,9 +114,6 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Array U Ix2" . whnf A.sum)
-            , env
-                (return (massDLightIx2 (tupleToIx2 t2)))
-                (bench "Massiv Ix2" . whnf M.sum)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (runIdentity . R.sumAllP))

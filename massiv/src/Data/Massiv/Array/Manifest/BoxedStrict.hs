@@ -26,13 +26,14 @@ import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.BoxedNF  (deepseqArray,
                                                       deepseqArrayP)
 import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Manifest.List     as A
+import           Data.Massiv.Array.Manifest.Mutable
 import           Data.Massiv.Array.Ops.Fold
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
-import           Data.Massiv.Core
 import qualified Data.Primitive.Array                as A
 import           GHC.Base                            (build)
-import           GHC.Exts                            (IsList (..))
+import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
 
@@ -159,9 +160,14 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE toList #-}
 
 
-instance (IsList (Array L ix e), Ragged L ix e) => IsList (Array B ix e) where
+instance ( IsList (Array L ix e)
+         , Nested LN ix e
+         , Nested L ix e
+         , Ragged L ix e
+         ) =>
+         IsList (Array B ix e) where
   type Item (Array B ix e) = Item (Array L ix e)
-  fromList xs = fromRaggedArray' (fromList xs :: Array L ix e)
+  fromList = A.fromList' Seq
   {-# INLINE fromList #-}
-  toList = toList . toListArray
+  toList = GHC.toList . toListArray
   {-# INLINE toList #-}

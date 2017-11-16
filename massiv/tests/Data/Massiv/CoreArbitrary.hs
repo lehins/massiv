@@ -17,13 +17,13 @@ module Data.Massiv.CoreArbitrary
   , assertSomeException
   , assertExceptionIO
   , assertSomeExceptionIO
-  , module Data.Massiv.Core
+  , module Data.Massiv.Array
   ) where
 
 import           Control.DeepSeq            (NFData, deepseq)
 import           Control.Exception          (Exception, SomeException, catch)
-import           Data.Massiv.Array.Ops
-import           Data.Massiv.Core
+--import           Data.Massiv.Array.Ops.Construct
+import           Data.Massiv.Array
 import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
 import           Test.QuickCheck

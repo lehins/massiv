@@ -12,22 +12,22 @@
 --
 module Data.Massiv.Array.Ops.Slice
   (
-  -- * From the Left
+  -- ** From the outside
     (!>)
   , (!?>)
   , (?>)
-  -- * From the Right
+  -- ** From the inside
   , (<!)
   , (<!?)
   , (<?)
-  -- * Slice in the middle
+  -- ** From within
   , (<!>)
   , (<!?>)
   , (<?>)
   ) where
 
 import           Control.Monad    (guard)
-import           Data.Massiv.Core
+import           Data.Massiv.Core.Common
 
 
 infixl 4 !>, ?>, <!, <?, <!>, <!?>, <?>, !?>, <!?

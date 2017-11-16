@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns          #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -24,18 +26,17 @@ module Data.Massiv.Core.List
   ) where
 
 import           Control.Exception
-import           Control.Monad                (unless)
+import           Control.Monad              (unless)
 import           Data.Coerce
-import           Data.Foldable                (foldr')
+import           Data.Foldable              (foldr')
 import           Data.Functor.Identity
-import qualified Data.List                    as L
+import qualified Data.List                  as L
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Computation
-import           Data.Massiv.Core.Index
-import           Data.Massiv.Core.Iterator
 import           Data.Massiv.Core.Scheduler
+import           Data.Proxy
+import           Data.Typeable
 import           GHC.Exts
-import           System.IO.Unsafe             (unsafePerformIO)
+import           System.IO.Unsafe           (unsafePerformIO)
 
 data LN
 
@@ -93,9 +94,7 @@ instance Exception ShapeError
 
 
 instance (Ragged L ix e) => Nested L ix e where
-  fromNested xs =
-    let newArr = LArray Seq xs
-    in newArr
+  fromNested = LArray Seq
   {-# INLINE fromNested #-}
   toNested = lData
   {-# INLINE toNested #-}
@@ -103,9 +102,7 @@ instance (Ragged L ix e) => Nested L ix e where
 
 instance (Nested LN ix e, Ragged L ix e) => IsList (Array L ix e) where
   type Item (Array L ix e) = ListItem ix e
-  fromList xs =
-    let newArr = LArray Seq (fromNested xs)
-    in newArr
+  fromList = LArray Seq . fromNested
   {-# INLINE fromList #-}
   toList = toNested . lData
   {-# INLINE toList #-}
@@ -121,18 +118,16 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   {-# INLINE edgeSize #-}
   outerLength = length . unList . lData
   {-# INLINE outerLength #-}
-  cons x arr = newArr
-    where
-      newArr = arr { lData = coerce (x : coerce (lData arr)) }
+  cons x arr = arr { lData = coerce (x : coerce (lData arr)) }
   {-# INLINE cons #-}
   uncons LArray {..} =
     case L.uncons $ coerce lData of
       Nothing      -> Nothing
-      Just (x, xs) -> let newArr = LArray lComp (coerce xs) in Just (x, newArr)
+      Just (x, xs) -> Just (x, LArray lComp (coerce xs))
   {-# INLINE uncons #-}
   flatten = id
   {-# INLINE flatten #-}
-  unsafeGenerateM comp k f = do
+  unsafeGenerateM !comp !k f = do
     xs <- loopM (k - 1) (>= 0) (subtract 1) [] $ \i acc -> do
       e <- f i
       return (e:acc)
@@ -143,9 +138,9 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
       leftOver <-
         loopM start (< end) (+ 1) xs $ \i xs' ->
           case uncons xs' of
-            Nothing      -> error $ "Row is too short"
+            Nothing      -> throwIO RowTooShortError
             Just (y, ys) -> uWrite i y >> return ys
-      unless (isNull leftOver) $ error "Row is too long"
+      unless (isNull leftOver) $ throwIO RowTooLongError
   {-# INLINE loadRagged #-}
   raggedFormat f _ arr = L.concat $ "[ " : (L.intersperse "," $ map f (coerce (lData arr))) ++ [" ]"]
 
@@ -183,10 +178,10 @@ instance ( Index ix
             newX = LArray lComp x
         in Just (newX, newArr)
   {-# INLINE uncons #-}
-  unsafeGenerateM comp sz f = do
-    let (k, szL) = unconsDim sz
+  unsafeGenerateM !comp !sz f = do
+    let !(k, szL) = unconsDim sz
     loopM (k - 1) (>= 0) (subtract 1) (empty comp) $ \i acc -> do
-      e <- unsafeGenerateM comp szL (\ixL -> f (consDim i ixL))
+      e <- unsafeGenerateM comp szL (\ !ixL -> f (consDim i ixL))
       return (cons e acc)
   {-# INLINE unsafeGenerateM #-}
   flatten arr = LArray {lComp = lComp arr, lData = coerce xs}
@@ -269,7 +264,7 @@ unsafeGenerateN ::
   -> Array r ix e
 unsafeGenerateN Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)
 unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
-  let (m, szL) = unconsDim sz
+  let !(m, szL) = unconsDim sz
   xs <- withScheduler' wss $ \scheduler -> do
     loopM_ 0 (< m) (+ 1) $ \i -> scheduleWork scheduler $ do
       unsafeGenerateM c szL $ \ix -> return $ f (consDim i ix)
@@ -280,7 +275,7 @@ unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
 toListArray :: (Construct L ix e, Source r ix e)
             => Array r ix e
             -> Array L ix e
-toListArray arr =
+toListArray !arr =
   unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE toListArray #-}
 
@@ -298,5 +293,21 @@ toListArray arr =
 -- {-# INLINE [0] foldrFB #-}
 
 
+
+
+instance ( Ragged L ix e
+         , Construct L ix e
+         , Source r ix e
+         , Show e
+         ) =>
+         Show (Array r ix e) where
+  show arr =
+    "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+    showComp (getComp arr) ++ " (" ++
+    (show (size arr)) ++ ")\n" ++
+    show (makeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"
+    where showComp Seq = "Seq"
+          showComp Par = "Par"
+          showComp c   = "(" ++ show c ++ ")"
 
 
