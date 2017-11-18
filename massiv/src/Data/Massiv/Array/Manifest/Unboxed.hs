@@ -95,7 +95,7 @@ instance ( VU.Unbox e
 
 
 instance {-# OVERLAPPING #-} VU.Unbox e => OuterSlice U Ix1 e where
-  unsafeOuterSlice arr _ = unsafeLinearIndex arr
+  unsafeOuterSlice = unsafeLinearIndex
   {-# INLINE unsafeOuterSlice #-}
 
 instance ( VU.Unbox e

@@ -43,8 +43,6 @@ instance (NFData e, Index ix) => NFData (Stencil ix e a) where
 
 newtype Value e = Value { unValue :: e } deriving (Show, Eq, Ord, Bounded)
 
-instance NFData e => NFData (Value e) where
-  rnf (Value e) = rnf e
 
 instance Functor Value where
   fmap f (Value e) = Value (f e)

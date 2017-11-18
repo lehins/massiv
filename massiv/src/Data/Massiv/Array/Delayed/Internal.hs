@@ -80,8 +80,8 @@ instance ( Index ix
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e where
 
-  unsafeOuterSlice !arr !(_, szL) !i =
-    DArray (getComp arr) szL (\ !ix -> unsafeIndex arr (consDim i ix))
+  unsafeOuterSlice !arr !i =
+    DArray (getComp arr) (tailDim (size arr)) (\ !ix -> unsafeIndex arr (consDim i ix))
   {-# INLINE unsafeOuterSlice #-}
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e where

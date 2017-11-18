@@ -96,7 +96,7 @@ instance ( Prim e
   {-# INLINE unsafeSlice #-}
 
 instance {-# OVERLAPPING #-} Prim e => OuterSlice P Ix1 e where
-  unsafeOuterSlice arr _ = unsafeLinearIndex arr
+  unsafeOuterSlice  = unsafeLinearIndex
   {-# INLINE unsafeOuterSlice #-}
 
 instance ( Prim e

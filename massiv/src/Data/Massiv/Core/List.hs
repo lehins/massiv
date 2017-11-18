@@ -114,10 +114,8 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   {-# INLINE isNull #-}
   empty comp = LArray comp (List [])
   {-# INLINE empty #-}
-  edgeSize = outerLength
+  edgeSize = length . unList . lData
   {-# INLINE edgeSize #-}
-  outerLength = length . unList . lData
-  {-# INLINE outerLength #-}
   cons x arr = arr { lData = coerce (x : coerce (lData arr)) }
   {-# INLINE cons #-}
   uncons LArray {..} =
@@ -163,8 +161,6 @@ instance ( Index ix
       Nothing     -> zeroIndex
       Just (x, _) -> edgeSize x
   {-# INLINE edgeSize #-}
-  outerLength = length . unList . lData
-  {-# INLINE outerLength #-}
   cons (LArray _ x) arr = newArr
     where
       newArr =
@@ -208,23 +204,6 @@ instance ( Index ix
       (\s y -> raggedFormat f s (LArray comp y :: Array L (Lower ix) e))
       sep
       (coerce xs)
-
-
-instance {-# OVERLAPPING #-} (Ragged L ix e, Show e) =>
-  Show (Array L ix e) where
-  show arr = raggedFormat show "\n" arr
-
-instance {-# OVERLAPPING #-} (Ragged L ix e, Nested LN ix e, Show e) =>
-  Show (Array LN ix e) where
-  show arr = show (fromNested arr :: Array L ix e)
-
-
-
-showN :: (String -> a -> String) -> String -> [a] -> String
-showN fShow lnPrefix ls =
-  L.concat
-    (["[ "] ++
-     (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
 
 
 instance {-# OVERLAPPING #-} Construct L Ix1 e where
@@ -293,7 +272,19 @@ toListArray !arr =
 -- {-# INLINE [0] foldrFB #-}
 
 
+instance {-# OVERLAPPING #-} (Ragged L ix e, Show e) => Show (Array L ix e) where
+  show = raggedFormat show "\n"
 
+instance {-# OVERLAPPING #-} (Ragged L ix e, Nested LN ix e, Show e) =>
+  Show (Array LN ix e) where
+  show arr = show (fromNested arr :: Array L ix e)
+
+
+showN :: (String -> a -> String) -> String -> [a] -> String
+showN fShow lnPrefix ls =
+  L.concat
+    (["[ "] ++
+     (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
 
 instance ( Ragged L ix e
          , Construct L ix e
@@ -311,3 +302,23 @@ instance ( Ragged L ix e
           showComp c   = "(" ++ show c ++ ")"
 
 
+
+
+instance {-# OVERLAPPING #-} OuterSlice L Ix1 e where
+  unsafeOuterSlice (LArray _ xs) = (coerce xs !!)
+  {-# INLINE unsafeOuterSlice #-}
+  outerLength = length . (coerce :: Array LN Ix1 e -> [e]). lData
+  {-# INLINE outerLength #-}
+
+
+instance Ragged L ix e => OuterSlice L ix e where
+  unsafeOuterSlice arr' i = go 0 arr'
+    where
+      go n arr =
+        case uncons arr of
+          Nothing -> errorIx "Data.Massiv.Core.List.unsafeOuterSlice" (outerLength arr') i
+          Just (x, _) | n == i -> x
+          Just (_, xs) -> go (n + 1) xs
+  {-# INLINE unsafeOuterSlice #-}
+  outerLength = length . (coerce :: Array LN ix e -> [Elt LN ix e]) . lData
+  {-# INLINE outerLength #-}

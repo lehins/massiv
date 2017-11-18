@@ -75,7 +75,7 @@ castFromVector comp sz vector = do
          arr <- castVectorToArray bVector
          return $ BArray {bComp = comp, bSize = sz, bData = arr}
     ]
-{-# INLINE castFromVector #-}
+{-# NOINLINE castFromVector #-}
 
 
 -- | In case when resulting array representation matches the one of vector's it
@@ -97,7 +97,7 @@ fromVector comp sz v =
              "Data.Array.Massiv.Manifest.fromVector: Supplied size: " ++
              show sz ++ " doesn't match vector length: " ++ show (VG.length v)
         else unsafeMakeArray comp sz ((v VG.!) . toLinearIndex sz)
-{-# INLINE fromVector #-}
+{-# NOINLINE fromVector #-}
 
 
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will
@@ -123,7 +123,7 @@ castToVector arr =
          bArr <- gcastArr arr
          return $ vectorFromArray (size arr) $ nData bArr
     ]
-{-# INLINE castToVector #-}
+{-# NOINLINE castToVector #-}
 
 
 -- | Convert an array into a vector. Will perform a cast if resulting vector is
@@ -159,5 +159,5 @@ toVector arr =
   case castToVector (convert arr :: Array (ARepr v) ix e) of
     Just v -> v
     Nothing -> VG.generate (totalElem (size arr)) (unsafeLinearIndex arr)
-{-# INLINE toVector #-}
+{-# NOINLINE toVector #-}
 

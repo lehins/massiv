@@ -123,12 +123,12 @@ instance ( Index ix
   {-# INLINE unsafeSlice #-}
 
 instance {-# OVERLAPPING #-} OuterSlice M Ix1 e where
-  unsafeOuterSlice !arr _ = unsafeIndex arr
+  unsafeOuterSlice !arr = unsafeIndex arr
   {-# INLINE unsafeOuterSlice #-}
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => OuterSlice M ix e where
-  unsafeOuterSlice !arr !(_, szL) !i =
-    MArray (getComp arr) szL (unsafeLinearIndex arr . (+ kStart))
+  unsafeOuterSlice !arr !i =
+    MArray (getComp arr) (tailDim (size arr)) (unsafeLinearIndex arr . (+ kStart))
     where
       !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
   {-# INLINE unsafeOuterSlice #-}

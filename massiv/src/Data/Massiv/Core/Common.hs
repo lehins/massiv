@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -65,10 +66,13 @@ type family NestedStruct r ix e :: *
 -- | Index polymorphic arrays.
 class (Typeable r, Index ix) => Construct r ix e where
 
+  -- | Get computation strategy of this array
   getComp :: Array r ix e -> Comp
 
+  -- | Set computation strategy for this array
   setComp :: Comp -> Array r ix e -> Array r ix e
 
+  -- | Construct an array. No size validation is performed.
   unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
 
 class Construct r ix e => Size r ix e where
@@ -76,17 +80,24 @@ class Construct r ix e => Size r ix e where
   -- | /O(1)/ - Get the size of an array
   size :: Array r ix e -> ix
 
+  -- | /O(1)/ - Change the size of an array. New size is not validated.
   unsafeResize :: Index ix' => ix' -> Array r ix e -> Array r ix' e
 
+  -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
+  -- not validated.
   unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 
 class Size r ix e => Source r ix e where
 
+  -- | Lookup element in the array. No bounds check is performed and access of
+  -- arbitrary memory is possible when invalid index is supplied.
   unsafeIndex :: Array r ix e -> ix -> e
   unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
   {-# INLINE unsafeIndex #-}
 
+  -- | Lookup element in the array using flat index in a row-major fasion. No
+  -- bounds check is performed
   unsafeLinearIndex :: Array r ix e -> Int -> e
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
@@ -111,13 +122,18 @@ class Size r ix e => Load r ix e where
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
 
-class Size r ix e => OuterSlice r ix e where
-  unsafeOuterSlice :: Array r ix e -> (Int, Lower ix) -> Int -> Elt r ix e
+class OuterSlice r ix e where
+  -- | /O(1)/ - Take a slice out of an array from the outside
+  unsafeOuterSlice :: Array r ix e -> Int -> Elt r ix e
+
+  outerLength :: Array r ix e -> Int
+  default outerLength :: Size r ix e => Array r ix e -> Int
+  outerLength = headDim . size
 
 class Size r ix e => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
 
-class (InnerSlice r ix e, OuterSlice r ix e) => Slice r ix e where
+class Size r ix e => Slice r ix e where
   unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
 
 
@@ -151,7 +167,6 @@ class Manifest r ix e => Mutable r ix e where
                        MArray (PrimState m) r ix e -> Int -> e -> m ()
 
 
-
 class Nested r ix e where
   fromNested :: NestedStruct r ix e -> Array r ix e
 
@@ -168,11 +183,15 @@ class Construct r ix e => Ragged r ix e where
 
   uncons :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
 
+  -- head :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
+
+  -- tail :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
+
   unsafeGenerateM :: Monad m => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
 
   edgeSize :: Array r ix e -> ix
 
-  outerLength :: Array r ix e -> Int
+  --outerLength :: Array r ix e -> Int
 
   flatten :: Array r ix e -> Array r Ix1 e
 
@@ -267,3 +286,9 @@ evaluateAt !arr !ix =
     (unsafeIndex arr)
     ix
 {-# INLINE evaluateAt #-}
+
+
+-- errorImpossible :: String -> a
+-- errorImpossible loc =
+--   error $ "Please report this error. Impossible happend at: " ++ loc
+-- {-# NOINLINE errorImpossible #-}
