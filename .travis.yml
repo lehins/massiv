@@ -46,58 +46,58 @@ matrix:
   #- env: BUILD=cabal GHCVER=7.6.3 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7
   #  compiler: ": #GHC 7.6.3"
   #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.6.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  - env: BUILD=cabal GHCVER=7.8.4 CABALVER=1.18 HAPPYVER=1.19.5 ALEXVER=3.1.7 BUILD_OS=linux
+  - env: BUILD=cabal GHCVER=7.8.4 CABALVER=1.18 HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC 7.8.4"
     addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  - env: BUILD=cabal GHCVER=7.10.3 CABALVER=1.22 HAPPYVER=1.19.5 ALEXVER=3.1.7 BUILD_OS=linux
+  - env: BUILD=cabal GHCVER=7.10.3 CABALVER=1.22 HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC 7.10.3"
     addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  - env: BUILD=cabal GHCVER=8.0.2 CABALVER=1.24 HAPPYVER=1.19.5 ALEXVER=3.1.7 BUILD_OS=linux
+  - env: BUILD=cabal GHCVER=8.0.2 CABALVER=1.24 HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC 8.0.2"
     addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 BUILD_OS=linux
+  - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC 8.2.2"
     addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
   # Build with the newest GHC and cabal-install. This is an accepted failure,
   # see below.
-  - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7 BUILD_OS=linux
+  - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC HEAD"
     addons: {apt: {packages: [cabal-install-head,ghc-head,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
-  - env: BUILD=stack ARGS="" BUILD_OS=linux
+  - env: BUILD=stack ARGS=""
     compiler: ": #stack default"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-2" BUILD_OS=linux
+  - env: BUILD=stack ARGS="--resolver lts-2"
     compiler: ": #stack 7.8.4"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-3" BUILD_OS=linux
+  - env: BUILD=stack ARGS="--resolver lts-3"
     compiler: ": #stack 7.10.2"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-6" BUILD_OS=linux
+  - env: BUILD=stack ARGS="--resolver lts-6"
     compiler: ": #stack 7.10.3"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-7" BUILD_OS=linux
+  - env: BUILD=stack ARGS="--resolver lts-7"
     compiler: ": #stack 8.0.1"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver lts-9" BUILD_OS=linux
+  - env: BUILD=stack ARGS="--resolver lts-9"
     compiler: ": #stack 8.0.2"
     addons: {apt: {packages: [libgmp-dev]}}
 
   # Nightly builds are allowed to fail
-  - env: BUILD=stack ARGS="--resolver nightly" BUILD_OS=linux
+  - env: BUILD=stack ARGS="--resolver nightly"
     compiler: ": #stack nightly"
     addons: {apt: {packages: [libgmp-dev]}}
 
   # Build on macOS in addition to Linux
-  - env: BUILD=stack ARGS="" BUILD_OS=osx
+  - env: BUILD=stack ARGS=""
     compiler: ": #stack default osx"
     os: osx
 
@@ -106,23 +106,23 @@ matrix:
   #  compiler: ": #stack 7.8.4 osx"
   #  os: osx
 
-  # - env: BUILD=stack ARGS="--resolver lts-3" BUILD_OS=osx
+  # - env: BUILD=stack ARGS="--resolver lts-3"
   #   compiler: ": #stack 7.10.2 osx"
   #   os: osx
 
-  # - env: BUILD=stack ARGS="--resolver lts-6" BUILD_OS=osx
+  # - env: BUILD=stack ARGS="--resolver lts-6"
   #   compiler: ": #stack 7.10.3 osx"
   #   os: osx
 
-  # - env: BUILD=stack ARGS="--resolver lts-7" BUILD_OS=osx
+  # - env: BUILD=stack ARGS="--resolver lts-7"
   #   compiler: ": #stack 8.0.1 osx"
   #   os: osx
 
-  # - env: BUILD=stack ARGS="--resolver lts-9" BUILD_OS=osx
+  # - env: BUILD=stack ARGS="--resolver lts-9"
   #   compiler: ": #stack 8.0.2 osx"
   #   os: osx
 
-  # - env: BUILD=stack ARGS="--resolver nightly" BUILD_OS=osx
+  # - env: BUILD=stack ARGS="--resolver nightly"
   #   compiler: ": #stack nightly osx"
   #   os: osx
 
@@ -166,7 +166,6 @@ install:
 - if [ -f configure.ac ]; then autoreconf -i; fi
 - |
   set -ex
-  cd massiv
   case "$BUILD" in
     stack)
       # Add in extra-deps for older snapshots, as necessary
@@ -197,11 +196,11 @@ script:
   cd massiv
   case "$BUILD" in
     stack)
-      cache-s3 -b $S3_BUCKET --prefix massiv -v debug restore --base-branch master stack
-      cache-s3 -b $S3_BUCKET --prefix massiv -v debug restore --base-branch master stack work
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore --base-branch master stack
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore --base-branch master stack work
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
-      cache-s3 -b $S3_BUCKET --prefix massiv -v debug save stack
-      cache-s3 -b $S3_BUCKET --prefix massiv -v debug save stack work
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack work
       ;;
     cabal)
       cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
