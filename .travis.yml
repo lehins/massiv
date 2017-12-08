@@ -165,6 +165,7 @@ install:
 - if [ -f configure.ac ]; then autoreconf -i; fi
 - |
   set -ex
+  cd massiv
   case "$BUILD" in
     stack)
       # Add in extra-deps for older snapshots, as necessary
@@ -192,6 +193,7 @@ install:
 script:
 - |
   set -ex
+  cd massiv
   case "$BUILD" in
     stack)
       cache-s3 -b $S3_BUCKET --prefix massiv -v debug restore --base-branch master stack
