@@ -14,11 +14,12 @@ sudo: false
 # Do not choose a language; we provide our own build tools.
 language: generic
 
+# Caching so the next build will be fast too.
 cache:
   directories:
   - $HOME/.ghc
   - $HOME/.cabal
-
+  - $HOME/.stack
 
 # The different configurations we want to test. We have BUILD=cabal which uses
 # cabal-install, and BUILD=stack which uses Stack. More documentation on each
@@ -147,7 +148,6 @@ before_install:
     travis_retry curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
   else
     travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    travis_retry curl -L https://s3.amazonaws.com/lehins-ci-cache/cache-s3 -o ~/.local/bin/cache-s3
   fi
 
   # Use the more reliable S3 mirror of Hackage
@@ -194,11 +194,7 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      cache-s3 -b $S3_BUCKET --prefix massiv restore --base-branch master stack
-      cache-s3 -b $S3_BUCKET --prefix massiv restore --base-branch master stack work
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
-      cache-s3 -b $S3_BUCKET --prefix massiv save stack
-      cache-s3 -b $S3_BUCKET --prefix massiv save stack work
       ;;
     cabal)
       cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
