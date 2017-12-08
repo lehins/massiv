@@ -196,11 +196,11 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore --base-branch master stack
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore --base-branch master stack work
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore stack --base-branch=master $ARGS
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore stack work --base-branch=master $ARGS
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack work
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack $ARGS
+      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack work $ARGS
       ;;
     cabal)
       cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
