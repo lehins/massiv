@@ -14,6 +14,12 @@ sudo: false
 # Do not choose a language; we provide our own build tools.
 language: generic
 
+cache:
+  directories:
+  - $HOME/.ghc
+  - $HOME/.cabal
+
+
 # The different configurations we want to test. We have BUILD=cabal which uses
 # cabal-install, and BUILD=stack which uses Stack. More documentation on each
 # of those below.
