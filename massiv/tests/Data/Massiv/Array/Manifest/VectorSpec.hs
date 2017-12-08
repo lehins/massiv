@@ -71,10 +71,6 @@ toFromVectorSpec  = do
   it_prop "BoxedStrict" B
 
 
--- Puts GHC into infinite loop at compile time :o. Even GHCi goes into the
--- infinity. All because of changes to Data.Array.Core.List introduced in the
--- same commit?!?!?
-
 castToFromVectorSpec :: Spec
 castToFromVectorSpec  = do
   let it_prop name r = describe name $ do
@@ -82,9 +78,9 @@ castToFromVectorSpec  = do
         it "Ix2" $ property $ prop_castToFromVector (Proxy :: Proxy Ix2) r
         it "Ix3" $ property $ prop_castToFromVector (Proxy :: Proxy Ix3) r
   it_prop "Unboxed" U
-  -- it_prop "Primitive" P
-  -- it_prop "Storable" S
-  -- it_prop "BoxedStrict" B
+  it_prop "Primitive" P
+  it_prop "Storable" S
+  it_prop "BoxedStrict" B
 
 
 spec :: Spec
