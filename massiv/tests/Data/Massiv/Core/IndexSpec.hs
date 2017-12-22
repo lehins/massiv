@@ -87,17 +87,17 @@ instance CoArbitrary Ix5 where
   coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
 
 
-prop_IsSafeIx :: (Index ix) => proxy ix -> SzIx ix -> Bool
+prop_IsSafeIx :: Index ix => proxy ix -> SzIx ix -> Bool
 prop_IsSafeIx _ (SzIx (Sz sz) ix) = isSafeIndex sz ix
 
 prop_RepairSafeIx :: Index ix => proxy ix -> SzIx ix -> Bool
 prop_RepairSafeIx _ (SzIx (Sz sz) ix) =
   ix == repairIndex sz ix (error "Impossible") (error "Impossible")
 
-prop_UnconsCons :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
+prop_UnconsCons :: Index ix => proxy ix -> ix -> Bool
 prop_UnconsCons _ ix = ix == uncurry consDim (unconsDim ix)
 
-prop_UnsnocSnoc :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
+prop_UnsnocSnoc :: Index ix => proxy ix -> ix -> Bool
 prop_UnsnocSnoc _ ix = ix == uncurry snocDim (unsnocDim ix)
 
 prop_ToFromLinearIndex :: Index ix => proxy ix -> SzIx ix -> Property

@@ -93,14 +93,14 @@ data ShapeError = RowTooShortError
 instance Exception ShapeError
 
 
-instance (Ragged L ix e) => Nested L ix e where
+instance Nested L ix e where
   fromNested = LArray Seq
   {-# INLINE fromNested #-}
   toNested = lData
   {-# INLINE toNested #-}
 
 
-instance (Nested LN ix e, Ragged L ix e) => IsList (Array L ix e) where
+instance Nested LN ix e => IsList (Array L ix e) where
   type Item (Array L ix e) = ListItem ix e
   fromList = LArray Seq . fromNested
   {-# INLINE fromList #-}

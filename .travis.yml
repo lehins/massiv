@@ -83,11 +83,11 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-7"
-    compiler: ": #stack GHC-8.0.1 (lts-7.24)"
-    addons:
-      apt:
-        packages: [libgmp-dev]
+  # - env: BUILD=stack ARGS="--resolver lts-7"
+  #   compiler: ": #stack GHC-8.0.1 (lts-7.24)"
+  #   addons:
+  #     apt:
+  #       packages: [libgmp-dev]
 
   - env: BUILD=stack ARGS="--resolver lts-8.24"
     compiler: ": #stack GHC-8.0.2 (lts-8.24)"
@@ -185,7 +185,7 @@ install:
   set -ex
   case "$BUILD" in
     stack)
-      stack --no-terminal --install-ghc $ARGS test --only-dependencies
+      stack --install-ghc $ARGS test --only-dependencies
       ;;
     cabal)
       cabal --version
@@ -204,7 +204,7 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack --no-terminal $ARGS test --haddock --no-haddock-deps
+      stack $ARGS test --haddock --no-haddock-deps
       ;;
     cabal)
       cabal install --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
