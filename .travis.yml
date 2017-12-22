@@ -18,6 +18,8 @@ cache:
   directories:
   - $HOME/.ghc
   - $HOME/.cabal
+  - $HOME/.stack
+  - $TRAVIS_BUILD_DIR/massiv/.stack-work
 
 
 # The different configurations we want to test. We have BUILD=cabal which uses
@@ -34,36 +36,34 @@ matrix:
   include:
   # We grab the appropriate GHC and cabal-install versions from hvr's PPA. See:
   # https://github.com/hvr/multi-ghc-travis
-  #- env: BUILD=cabal GHCVER=7.0.4 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7
-  #  compiler: ": #GHC 7.0.4"
-  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.0.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  #- env: BUILD=cabal GHCVER=7.2.2 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7
-  #  compiler: ": #GHC 7.2.2"
-  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  #- env: BUILD=cabal GHCVER=7.4.2 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7
-  #  compiler: ": #GHC 7.4.2"
-  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.4.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  #- env: BUILD=cabal GHCVER=7.6.3 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7
-  #  compiler: ": #GHC 7.6.3"
-  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.6.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  # - env: BUILD=cabal GHCVER=7.8.4 CABALVER=1.18 HAPPYVER=1.19.5 ALEXVER=3.1.7
-  #   compiler: ": #GHC 7.8.4"
-  #   addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  # - env: BUILD=cabal GHCVER=7.10.3 CABALVER=1.22 HAPPYVER=1.19.5 ALEXVER=3.1.7
-  #   compiler: ": #GHC 7.10.3"
-  #   addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=7.10.3 CABALVER=1.24 HAPPYVER=1.19.5 ALEXVER=3.1.7
+    compiler: ": #GHC 7.10.3"
+    addons:
+      apt:
+        packages: [cabal-install-1.24,ghc-7.10.3,happy-1.19.5,alex-3.1.7]
+        sources: [hvr-ghc]
+
   - env: BUILD=cabal GHCVER=8.0.2 CABALVER=1.24 HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC 8.0.2"
-    addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+    addons:
+      apt:
+        packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7]
+        sources: [hvr-ghc]
+
   - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC 8.2.2"
-    addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+    addons:
+      apt:
+        packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7]
+        sources: [hvr-ghc]
 
-  # Build with the newest GHC and cabal-install. This is an accepted failure,
-  # see below.
+  # Build with the newest GHC and cabal-install. This is an accepted failure, see below.
   - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
     compiler: ": #GHC HEAD"
-    addons: {apt: {packages: [cabal-install-head,ghc-head,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+    addons:
+      apt:
+        packages: [cabal-install-head,ghc-head,happy-1.19.5,alex-3.1.7]
+        sources: [hvr-ghc]
 
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
@@ -71,30 +71,48 @@ matrix:
     compiler: ": #stack default"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  # - env: BUILD=stack ARGS="--resolver lts-2"
-  #   compiler: ": #stack 7.8.4"
-  #   addons: {apt: {packages: [libgmp-dev]}}
+  - env: BUILD=stack ARGS="--stack-yaml stack.lts-3.yaml"
+    compiler: ": #stack GHC-7.10.2 (lts-3.22)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
-  # - env: BUILD=stack ARGS="--resolver lts-3"
-  #   compiler: ": #stack 7.10.2"
-  #   addons: {apt: {packages: [libgmp-dev]}}
-
-  # - env: BUILD=stack ARGS="--resolver lts-6"
-  #   compiler: ": #stack 7.10.3"
-  #   addons: {apt: {packages: [libgmp-dev]}}
+  - env: BUILD=stack ARGS="--resolver lts-6"
+    compiler: ": #stack GHC-7.10.3 (lts-6.30)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
   - env: BUILD=stack ARGS="--resolver lts-7"
-    compiler: ": #stack 8.0.1"
-    addons: {apt: {packages: [libgmp-dev]}}
+    compiler: ": #stack GHC-8.0.1 (lts-7.24)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-9"
-    compiler: ": #stack 8.0.2"
-    addons: {apt: {packages: [libgmp-dev]}}
+  - env: BUILD=stack ARGS="--resolver lts-8.24"
+    compiler: ": #stack GHC-8.0.2 (lts-8.24)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
+
+  - env: BUILD=stack ARGS=""
+    compiler: ": #stack GHC-8.0.2 (lts-9.20) - default"
+    addons:
+      apt:
+        packages: [libgmp-dev]
+
+  - env: BUILD=stack ARGS="--resolver lts-10"
+    compiler: ": #stack GHC-8.2.2 (lts-10)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
   # Nightly builds are allowed to fail
   - env: BUILD=stack ARGS="--resolver nightly"
     compiler: ": #stack nightly"
-    addons: {apt: {packages: [libgmp-dev]}}
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
   # Build on macOS in addition to Linux
   - env: BUILD=stack ARGS=""
@@ -127,7 +145,7 @@ matrix:
   #   os: osx
 
   allow_failures:
-  - env: BUILD=cabal GHCVER=head  CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
+  - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
   - env: BUILD=stack ARGS="--resolver nightly"
 
 before_install:
@@ -135,58 +153,48 @@ before_install:
 - unset CC
 
 # We want to always allow newer versions of packages when building on GHC HEAD
-- CABALARGS=""
-- if [ "x$GHCVER" = "xhead" ]; then CABALARGS=--allow-newer; fi
-
-# Download and unpack the stack executable
+- if [ ! -v "CABALARGS" ]; then CABALARGS=""; fi
+- if [ "x$GHCVER" = "xhead" ]; then CABALARGS="$CABALARGS --allow-newer"; fi
 - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
 - mkdir -p ~/.local/bin
 - |
-  if [ `uname` = "Darwin" ]
-  then
-    travis_retry curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
-  else
-    travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    travis_retry curl -L https://s3.amazonaws.com/lehins-ci-cache/cache-s3 -o ~/.local/bin/cache-s3
-    chmod a+x ~/.local/bin/cache-s3
-  fi
 
-  # Use the more reliable S3 mirror of Hackage
-  mkdir -p $HOME/.cabal
-  echo 'remote-repo: hackage.haskell.org:http://hackage.fpcomplete.com/' > $HOME/.cabal/config
-  echo 'remote-repo-cache: $HOME/.cabal/packages' >> $HOME/.cabal/config
-
-  if [ "$CABALVER" != "1.16" ]
-  then
-    echo 'jobs: $ncpus' >> $HOME/.cabal/config
-  fi
+  case "$BUILD" in
+    stack)
+      if [ "$TRAVIS_OS_NAME" = "osx" ]
+      then
+        travis_retry curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
+      else
+        travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+      fi
+      cd $TRAVIS_BUILD_DIR/massiv
+      ;;
+    cabal)
+      # Use the more reliable S3 mirror of Hackage
+      mkdir -p $HOME/.cabal
+      echo 'remote-repo: hackage.haskell.org:http://hackage.fpcomplete.com/' > $HOME/.cabal/config
+      echo 'remote-repo-cache: $HOME/.cabal/packages' >> $HOME/.cabal/config
+      ;;
+  esac
 
 install:
+- while [ true ] ; do echo "Prevent death by Travis due to no output"; sleep 540; done &
 - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
 - if [ -f configure.ac ]; then autoreconf -i; fi
 - |
   set -ex
-  cd massiv
   case "$BUILD" in
     stack)
-      # Add in extra-deps for older snapshots, as necessary
-      stack --no-terminal --install-ghc $ARGS test --bench --dry-run || ( \
-        stack --no-terminal $ARGS build cabal-install && \
-        stack --no-terminal $ARGS solver --update-config)
-
-      # Build the dependencies
-      stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
+      stack --no-terminal --install-ghc $ARGS test --only-dependencies
       ;;
     cabal)
       cabal --version
       travis_retry cabal update
 
-      # Get the list of packages from the stack.yaml file. Note that
-      # this will also implicitly run hpack as necessary to generate
-      # the .cabal files needed by cabal-install.
-      PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@')
+      PACKAGES="$TRAVIS_BUILD_DIR/massiv"
+      echo $PACKAGES
 
-      cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+      cabal install --only-dependencies --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
       ;;
   esac
   set +ex
@@ -196,15 +204,10 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore stack --base-branch=master $ARGS
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug restore stack work --base-branch=master $ARGS
-      stack --no-terminal $ARGS build
-      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps --ghc-options='-v2'
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack $ARGS
-      cache-s3 -b $S3_BUCKET --prefix=massiv --suffix=$TRAVIS_OS_NAME -v debug save stack work $ARGS
+      stack --no-terminal $ARGS test --haddock --no-haddock-deps
       ;;
     cabal)
-      cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+      cabal install --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
 
       ORIGDIR=$(pwd)
       for dir in $PACKAGES
@@ -219,7 +222,6 @@ script:
         cd "$PKGVER"
         cabal configure --enable-tests
         cabal build
-        cabal test
         cd $ORIGDIR
       done
       ;;

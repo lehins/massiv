@@ -2,10 +2,11 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Data.Massiv.Array.Ops.SliceSpec (spec) where
 
-import           Data.Massiv.CoreArbitrary
 import           Data.Massiv.Array.Unsafe
+import           Data.Massiv.CoreArbitrary
 import           Test.Hspec
 import           Test.QuickCheck
 

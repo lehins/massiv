@@ -2,13 +2,14 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications      #-}
 module Data.Massiv.Array.StencilSpec (spec) where
 
-import           Control.DeepSeq            (deepseq)
+import           Control.DeepSeq           (deepseq)
+import           Data.Default
 import           Data.Massiv.Array.Stencil
 import           Data.Massiv.CoreArbitrary as A
-import           Data.Maybe                 (fromJust)
+import           Data.Maybe                (fromJust)
+import           Data.Proxy
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
@@ -27,13 +28,14 @@ singletonStencil f b = makeStencil b oneIndex zeroIndex $ \ get -> fmap f (get z
 
 
 prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int) =>
-                            Fun Int Int -> Border Int -> ArrP U ix Int -> Bool
-prop_MapSingletonStencil f b (ArrP arr) =
+                            Proxy ix -> Fun Int Int -> Border Int -> ArrP U ix Int -> Bool
+prop_MapSingletonStencil _ f b (ArrP arr) =
   computeAs U (mapStencil (singletonStencil (apply f) b) arr) == computeAs U (A.map (apply f) arr)
 
 -- Tests out of bounds stencil indexing
-prop_DangerousStencil :: Index ix => NonZero Int -> DimIx ix -> Border Int -> SzIx ix -> Property
-prop_DangerousStencil (NonZero s) (DimIx r) b (SzIx (Sz sz) ix) =
+prop_DangerousStencil ::
+     Index ix => Proxy ix -> NonZero Int -> DimIx ix -> Border Int -> SzIx ix -> Property
+prop_DangerousStencil _ (NonZero s) (DimIx r) b (SzIx (Sz sz) ix) =
   ix' `deepseq` assertSomeException $ makeStencil b sz ix $ \get -> get ix'
   where
     ix' =
@@ -46,15 +48,15 @@ prop_DangerousStencil (NonZero s) (DimIx r) b (SzIx (Sz sz) ix) =
 stencilSpec :: Spec
 stencilSpec = do
   describe "MapSingletonStencil" $ do
-    it "Ix1" $ property $ prop_MapSingletonStencil @Ix1
-    it "Ix2" $ property $ prop_MapSingletonStencil @Ix2
-    it "Ix3" $ property $ prop_MapSingletonStencil @Ix3
-    it "Ix4" $ property $ prop_MapSingletonStencil @Ix4
+    it "Ix1" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix1)
+    it "Ix2" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2)
+    it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
+    it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
   describe "DangerousStencil" $ do
-    it "Ix1" $ property $ prop_DangerousStencil @Ix1
-    it "Ix2" $ property $ prop_DangerousStencil @Ix2
-    it "Ix3" $ property $ prop_DangerousStencil @Ix3
-    it "Ix4" $ property $ prop_DangerousStencil @Ix4
+    it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
+    it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
+    it "Ix3" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix3)
+    it "Ix4" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix4)
 --   describe "Storable" $ do
 --     it "Ix1" $ property $ prop_toFromVector (Nothing :: Maybe Ix1) S
 --     it "Ix2" $ property $ prop_toFromVector (Nothing :: Maybe Ix2) S

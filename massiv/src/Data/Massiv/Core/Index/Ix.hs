@@ -75,20 +75,13 @@ type family Ix (n :: Nat) = r | r -> n where
 #else
 
 data IxN (n :: Nat) where
-  (:>) :: RankIx (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
+  (:>) :: Rank (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
 
 type family Ix (n :: Nat) where
   Ix 0 = Ix0
   Ix 1 = Ix1
   Ix 2 = Ix2
   Ix n = IxN n
-
-type family RankIx ix where
-  RankIx Ix0 = 0
-  RankIx Ix1 = 1
-  RankIx Ix2 = 2
-  RankIx (IxN n) = n
-
 
 #endif
 
@@ -345,11 +338,20 @@ instance V.Vector VU.Vector Ix2 where
 
 
 -- | Unboxing of a `IxN`.
-instance (3 <= n, VU.Unbox (Ix (n-1))) => VU.Unbox (IxN n)
+instance (3 <= n,
+#if __GLASGOW_HASKELL__ < 800
+          Rank (Ix (n - 1)) ~ (n - 1),
+#endif
+          VU.Unbox (Ix (n-1))) => VU.Unbox (IxN n)
 
 newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (Ix (n-1)))
 
-instance (3 <= n, VU.Unbox (Ix (n-1))) => VM.MVector VU.MVector (IxN n) where
+instance (3 <= n,
+#if __GLASGOW_HASKELL__ < 800
+          Rank (Ix (n - 1)) ~ (n - 1),
+#endif
+          VU.Unbox (Ix (n - 1))) =>
+         VM.MVector VU.MVector (IxN n) where
   basicLength (MV_IxN (_, mvec)) = VM.basicLength mvec
   {-# INLINE basicLength #-}
   basicUnsafeSlice idx len (MV_IxN (mvec1, mvec)) =
@@ -377,11 +379,9 @@ instance (3 <= n, VU.Unbox (Ix (n-1))) => VM.MVector VU.MVector (IxN n) where
     VM.basicUnsafeWrite mvec1 idx i
     VM.basicUnsafeWrite mvec idx ix
   {-# INLINE basicUnsafeWrite #-}
-  basicClear (MV_IxN (mvec1, mvec)) =
-    VM.basicClear mvec1 >> VM.basicClear mvec
+  basicClear (MV_IxN (mvec1, mvec)) = VM.basicClear mvec1 >> VM.basicClear mvec
   {-# INLINE basicClear #-}
-  basicSet (MV_IxN (mvec1, mvec)) (i :> ix) =
-    VM.basicSet mvec1 i >> VM.basicSet mvec ix
+  basicSet (MV_IxN (mvec1, mvec)) (i :> ix) = VM.basicSet mvec1 i >> VM.basicSet mvec ix
   {-# INLINE basicSet #-}
   basicUnsafeCopy (MV_IxN (mvec1, mvec)) (MV_IxN (mvec1', mvec')) =
     VM.basicUnsafeCopy mvec1 mvec1' >> VM.basicUnsafeCopy mvec mvec'
@@ -403,7 +403,11 @@ instance (3 <= n, VU.Unbox (Ix (n-1))) => VM.MVector VU.MVector (IxN n) where
 
 newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n-1)))
 
-instance (3 <= n, VU.Unbox (Ix (n-1))) => V.Vector VU.Vector (IxN n) where
+instance (3 <= n,
+#if __GLASGOW_HASKELL__ < 800
+          Rank (Ix (n - 1)) ~ (n - 1),
+#endif
+          VU.Unbox (Ix (n-1))) => V.Vector VU.Vector (IxN n) where
   basicUnsafeFreeze (MV_IxN (mvec1, mvec)) = do
     iv <- V.basicUnsafeFreeze mvec1
     ivs <- V.basicUnsafeFreeze mvec

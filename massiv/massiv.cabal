@@ -76,6 +76,7 @@ Test-Suite tests
                     , Data.Massiv.Core.SchedulerSpec
   Build-Depends:      base            >= 4.5 && < 5
                     , deepseq
+                    , data-default
                     , safe-exceptions
                     , massiv
                     , hspec

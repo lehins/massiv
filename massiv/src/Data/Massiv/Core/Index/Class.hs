@@ -92,16 +92,14 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
                 -> ix -- ^ Index
                 -> Int
 
-  default toLinearIndex :: Index (Lower ix) =>
-                           ix -> ix -> Int
+  default toLinearIndex :: Index (Lower ix) => ix -> ix -> Int
   toLinearIndex !sz !ix = toLinearIndex szL ixL * n + i
     where !(szL, n) = unsnocDim sz
           !(ixL, i) = unsnocDim ix
   {-# INLINE [1] toLinearIndex #-}
 
   toLinearIndexAcc :: Int -> ix -> ix -> Int
-  default toLinearIndexAcc :: (Index (Lower ix), Index ix) =>
-                              Int -> ix -> ix -> Int
+  default toLinearIndexAcc :: Index (Lower ix) => Int -> ix -> ix -> Int
   toLinearIndexAcc !acc !sz !ix = toLinearIndexAcc (acc * n + i) szL ixL
     where !(n, szL) = unconsDim sz
           !(i, ixL) = unconsDim ix
@@ -135,11 +133,6 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   iter sIx eIx inc cond acc f =
     runIdentity $ iterM sIx eIx inc cond acc (\ix -> return . f ix)
   {-# INLINE iter #-}
-
-  -- iterM_ :: Monad m => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
-  -- iterM_ sIx eIx inc cond f =
-  --   iterM sIx eIx inc cond () (\ix _ -> f ix >> return ())
-  -- {-# INLINE iterM_ #-}
 
   iterM :: Monad m =>
            ix -- ^ Start index
