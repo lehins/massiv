@@ -83,11 +83,11 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  # - env: BUILD=stack ARGS="--resolver lts-7"
-  #   compiler: ": #stack GHC-8.0.1 (lts-7.24)"
-  #   addons:
-  #     apt:
-  #       packages: [libgmp-dev]
+  - env: BUILD=stack ARGS="--resolver lts-7"
+    compiler: ": #stack GHC-8.0.1 (lts-7.24)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
   - env: BUILD=stack ARGS="--resolver lts-8.24"
     compiler: ": #stack GHC-8.0.2 (lts-8.24)"
@@ -178,7 +178,7 @@ before_install:
   esac
 
 install:
-- while [ true ] ; do echo "Prevent death by Travis due to no output"; sleep 540; done &
+#- while [ true ] ; do echo "Prevent death by Travis due to no output"; sleep 540; done &
 - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
 - if [ -f configure.ac ]; then autoreconf -i; fi
 - |

@@ -218,17 +218,11 @@ prop_BorderIx1 (Positive period) border getVal (Sz sz) ix =
     else case border of
            Fill defVal -> defVal == val
            Wrap ->
-             val ==
-             handleBorderIndex
-               border
-               sz
-               getVal
-               (liftIndex2 (+) (liftIndex (* period) sz) ix)
+             val == handleBorderIndex border sz getVal (liftIndex2 (+) (liftIndex (* period) sz) ix)
            Edge ->
              if ix < 0
                then val == getVal (liftIndex (max 0) ix)
-               else val ==
-                    getVal (liftIndex2 min (liftIndex (subtract 1) sz) ix)
+               else val == getVal (liftIndex2 min (liftIndex (subtract 1) sz) ix)
            Reflect ->
              val ==
              handleBorderIndex
@@ -264,8 +258,8 @@ specDimN proxy = do
     it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards proxy (2000000)
     it "MonotonicM" $ property $ prop_IterMonotonicM proxy (2000000)
     it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM proxy (2000000)
-  describe "Border" $ do
-    it "BorderRepairSafe" $ property $ prop_BorderRepairSafe proxy
+  -- describe "Border" $ do
+  --   it "BorderRepairSafe" $ property $ prop_BorderRepairSafe proxy
   describe "SetGetDrop" $ do
     it "SetAll" $ property $ prop_SetAll proxy
     it "SetGet" $ property $ prop_SetGet proxy
