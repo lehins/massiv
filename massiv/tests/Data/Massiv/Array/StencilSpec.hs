@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE CPP                    #-}
 module Data.Massiv.Array.StencilSpec (spec) where
 
 import           Control.DeepSeq           (deepseq)
@@ -13,9 +12,7 @@ import           Data.Proxy
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
-#if __GLASGOW_HASKELL__ < 800
-import           Data.Default
-#endif
+import           Data.Default              ()
 -- sum3x3Stencil :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
 -- sum3x3Stencil b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
 --   get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
