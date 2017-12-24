@@ -36,7 +36,7 @@ prop_toFromListIsList _ (Arr arr) = arr === GHC.fromList (GHC.toList arr)
 
 
 prop_toFromList ::
-  forall ix . (Show (Array U ix Int), Nested LN ix Int, Nested L ix Int, Ragged L ix Int, Construct L ix Int, Index ix)
+  forall ix . (Show (Array U ix Int), Nested LN ix Int, Nested L ix Int, Ragged L ix Int)
   => Proxy ix
   -> Arr U ix Int
   -> Property

@@ -190,6 +190,9 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :. j0) (i1 :. j1) = f i0 i1 :. f j0 j1
   {-# INLINE [1] liftIndex2 #-}
+  repairIndex (n :. szL) (i :. ixL) rBelow rOver =
+    repairIndex n i rBelow rOver :. repairIndex szL ixL rBelow rOver
+  {-# INLINE [1] repairIndex #-}
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
@@ -234,6 +237,9 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :> j0 :. k0) (i1 :> j1 :. k1) = f i0 i1 :> f j0 j1 :. f k0 k1
   {-# INLINE [1] liftIndex2 #-}
+  repairIndex (n :> szL) (i :> ixL) rBelow rOver =
+    repairIndex n i rBelow rOver :> repairIndex szL ixL rBelow rOver
+  {-# INLINE [1] repairIndex #-}
 
 instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
@@ -272,6 +278,9 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i1 :> ix1) (i2 :> ix2) = f i1 i2 :> liftIndex2 f ix1 ix2
   {-# INLINE [1] liftIndex2 #-}
+  repairIndex (n :> szL) (i :> ixL) rBelow rOver =
+    repairIndex n i rBelow rOver :> repairIndex szL ixL rBelow rOver
+  {-# INLINE [1] repairIndex #-}
 
 
 

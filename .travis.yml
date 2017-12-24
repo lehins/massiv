@@ -204,10 +204,10 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack $ARGS test --haddock --no-haddock-deps
+      stack $ARGS test # --haddock --no-haddock-deps
       ;;
     cabal)
-      cabal install --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+      # cabal install --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
 
       ORIGDIR=$(pwd)
       for dir in $PACKAGES
@@ -221,7 +221,7 @@ script:
         tar zxfv "$SRC_TGZ"
         cd "$PKGVER"
         cabal configure --enable-tests
-        cabal build
+        cabal test --show-details=streaming
         cd $ORIGDIR
       done
       ;;

@@ -187,42 +187,48 @@ prop_BorderRepairSafe _ border (Sz sz) ix =
   not (isSafeIndex sz ix) ==> isSafeIndex sz (handleBorderIndex border sz id ix)
 
 
-prop_UnconsGetDrop :: (Arbitrary ix, Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
+prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
 prop_UnconsGetDrop _ ix =
   Just (unconsDim ix) == do
     i <- getIndex ix (rank ix)
     ixL <- dropDim ix (rank ix)
     return (i, ixL)
 
-prop_UnsnocGetDrop :: (Arbitrary ix, Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
+prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
 prop_UnsnocGetDrop _ ix =
   Just (unsnocDim ix) == do
     i <- getIndex ix 1
     ixL <- dropDim ix 1
     return (ixL, i)
 
-prop_SetAll :: (Arbitrary ix, Index ix) => proxy ix -> ix -> Int -> Bool
+prop_SetAll :: Index ix => proxy ix -> ix -> Int -> Bool
 prop_SetAll _ ix i =
   foldM (\cix d -> setIndex cix d i) ix [1 .. rank ix] ==
   Just (liftIndex (+ i) zeroIndex)
 
 
-prop_SetGet :: (Arbitrary ix, Index ix) => proxy ix -> ix -> DimIx ix -> Int -> Bool
+prop_SetGet :: Index ix => proxy ix -> ix -> DimIx ix -> Int -> Bool
 prop_SetGet _ ix (DimIx dim) n = Just n == (setIndex ix dim n >>= (`getIndex` dim))
 
 
-prop_BorderIx1 :: (Positive Int) -> Border Double -> (Ix1 -> Double) -> Sz Ix1 -> Ix1 -> Bool
+prop_BorderIx1 :: Positive Int -> Border Double -> (Ix1 -> Double) -> Sz Ix1 -> Ix1 -> Bool
 prop_BorderIx1 (Positive period) border getVal (Sz sz) ix =
   if isSafeIndex sz ix
     then getVal ix == val
     else case border of
            Fill defVal -> defVal == val
            Wrap ->
-             val == handleBorderIndex border sz getVal (liftIndex2 (+) (liftIndex (* period) sz) ix)
+             val ==
+             handleBorderIndex
+               border
+               sz
+               getVal
+               (liftIndex2 (+) (liftIndex (* period) sz) ix)
            Edge ->
              if ix < 0
                then val == getVal (liftIndex (max 0) ix)
-               else val == getVal (liftIndex2 min (liftIndex (subtract 1) sz) ix)
+               else val ==
+                    getVal (liftIndex2 min (liftIndex (subtract 1) sz) ix)
            Reflect ->
              val ==
              handleBorderIndex
@@ -258,8 +264,8 @@ specDimN proxy = do
     it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards proxy (2000000)
     it "MonotonicM" $ property $ prop_IterMonotonicM proxy (2000000)
     it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM proxy (2000000)
-  -- describe "Border" $ do
-  --   it "BorderRepairSafe" $ property $ prop_BorderRepairSafe proxy
+  describe "Border" $ do
+    it "BorderRepairSafe" $ property $ prop_BorderRepairSafe proxy
   describe "SetGetDrop" $ do
     it "SetAll" $ property $ prop_SetAll proxy
     it "SetGet" $ property $ prop_SetGet proxy

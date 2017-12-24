@@ -18,8 +18,7 @@ import           Test.Hspec
 import           Test.QuickCheck
 
 prop_castToFromVector
-  :: ( Arbitrary (Arr r ix Int)
-     , VG.Vector (VRepr r) Int
+  :: ( VG.Vector (VRepr r) Int
      , Mutable r ix Int
      , Typeable (VRepr r)
      , ARepr (VRepr r) ~ r
@@ -33,8 +32,7 @@ prop_castToFromVector _ _ (Arr arr) =
 
 prop_toFromVector ::
      forall r ix v.
-     ( Arbitrary (Arr r ix Int)
-     , Mutable r ix Int
+     ( Mutable r ix Int
      , Mutable (ARepr v) ix Int
      , VRepr (ARepr v) ~ v
      , Eq (Array r ix Int)
