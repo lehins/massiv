@@ -15,7 +15,7 @@ main = hspec $ do
   Scheduler.spec
   Index.spec
   Delayed.spec
-  Stencil.spec
+  --Stencil.spec
 
 -- -- | Test suite.
 -- spec :: Spec
