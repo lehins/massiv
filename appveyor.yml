@@ -29,7 +29,6 @@ before_test:
 - Echo WORK_DIR = %WORK_DIR%
 - dir %WORK_DIR%
 - Echo STACK_ROOT = %STACK_ROOT%
-- dir %STACK_ROOT%
 
 
 # Install stack

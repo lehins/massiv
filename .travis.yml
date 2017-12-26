@@ -221,7 +221,7 @@ script:
         tar zxfv "$SRC_TGZ"
         cd "$PKGVER"
         cabal configure --enable-tests
-        cabal test --show-details=streaming
+        cabal test --show-details=streaming --log=/dev/stdout
         cd $ORIGDIR
       done
       ;;
