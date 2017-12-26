@@ -8,63 +8,28 @@ environment:
     # Avoid long paths on Windows
     STACK_ROOT: "c:\\s"
     STACK_WORK: ".w"
-    CACHE_DIR: "c:\\c"
     WORK_DIR: "c:\\w"
 
 init:
-  - SET BRANCH_CACHE_DIR=%CACHE_DIR%\%APPVEYOR_REPO_BRANCH:/=_%
-  - SET CACHED_STACK_ROOT=%BRANCH_CACHE_DIR%\sr
-  - SET CACHED_STACK_WORK=%BRANCH_CACHE_DIR%\sw
+  - SET WORK_DIR_NO_PR=%WORK_DIR%\%APPVEYOR_REPO_BRANCH%
+  - SET STACK_ROOT_NO_PR=%STACK_ROOT%\%APPVEYOR_REPO_BRANCH%
+  - SET WORK_DIR=%WORK_DIR%\%APPVEYOR_PULL_REQUEST_NUMBER%\%APPVEYOR_REPO_BRANCH%\
+  - SET STACK_ROOT=%STACK_ROOT%\%APPVEYOR_PULL_REQUEST_NUMBER%\%APPVEYOR_REPO_BRANCH%\
 
 cache:
-  # TODO: https://github.com/commercialhaskell/stack/issues/1176#issuecomment-269520803
-
-  # Appveyor's cache is shared across all branch/PR builds for this project, so
-  # dependency/version differences can corrupt the cache. To fix that, we store
-  # copies of %STACK_ROOT% and .stack-work in the cache namespaced by branch,
-  # but only from branch builds. PR builds, which could make arbitrary changes
-  # to the dependency closure, are not allowed to update the cache; however,
-  # they get read access to the cache.
-
-  # Another quirk of Appveyor's cache is any cache directory not listed here
-  # gets deleted at the end of the build. The hardcoded branch directories will
-  # be preserved, even when building a branch which isn't listed. Managing
-  # hardcoded branches is necessary because there's an upper limit on supported
-  # cache size of any single cache directory. Branches which don't appear
-  # explicitly here are optimistically cached for consecutive builds on the same
-  # branch; however, their cache directories will be deleted whenever a
-  # different branch is built.
-  - "%BRANCH_CACHE_DIR%"        # e.g. C:\cache\feature_abc123
-  - "%CACHE_DIR%\\master"
-  # Add more "%CACHE_DIR%\\<branch_name>" directories as needed
+  - "%STACK_ROOT_NO_PR%"
+  - "%WORK_DIR_NO_PR%"
 
 before_test:
 # Avoid long paths not to each MAX_PATH of 260 chars
 - xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv\massiv "%WORK_DIR%"
 - cd "%WORK_DIR%"
 # Setup cache dirs
-- IF NOT EXIST %CACHE_DIR% mkdir %CACHE_DIR%
-- IF NOT EXIST %BRANCH_CACHE_DIR% mkdir %BRANCH_CACHE_DIR%
-- IF NOT EXIST %CACHED_STACK_ROOT% mkdir %CACHED_STACK_ROOT%
-- IF NOT EXIST %CACHED_STACK_WORK% mkdir %CACHED_STACK_WORK%
-- Echo %APPVEYOR_BUILD_VERSION% > build-id
-- xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_ROOT% %STACK_ROOT%
-- xcopy /q /s /e /r /k /i /v /h /y %CACHED_STACK_WORK% %STACK_WORK%
 # Debug paths
 - Echo WORK_DIR = %WORK_DIR%
 - dir %WORK_DIR%
-- Echo CACHE_DIR = %CACHE_DIR%
-- dir %CACHE_DIR%
-- Echo BRANCH_CACHE_DIR = %BRANCH_CACHE_DIR%
-- dir %BRANCH_CACHE_DIR%
 - Echo STACK_ROOT = %STACK_ROOT%
 - dir %STACK_ROOT%
-- Echo STACK_WORK = %STACK_WORK%
-- dir %STACK_WORK%
-- Echo CACHED_STACK_ROOT = %CACHED_STACK_ROOT%
-- dir %CACHED_STACK_ROOT%
-- Echo CACHED_STACK_WORK = %CACHED_STACK_WORK%
-- dir %CACHED_STACK_WORK%
 
 
 # Install stack
@@ -77,31 +42,9 @@ test_script:
   - stack test massiv:tests
       -j 2
       --no-terminal
-      --local-bin-path %WORK_DIR%
       --no-haddock-deps
       --work-dir %STACK_WORK%
-      --extra-lib-dirs="%WORK_DIR%"
 
-
-after_test:
-# populate stack cache
-- IF EXIST %STACK_ROOT% xcopy /q /s /e /r /k /i /v /h /y %STACK_ROOT% %CACHED_STACK_ROOT%
-- IF EXIST %STACK_WORK% xcopy /q /s /e /r /k /i /v /h /y %STACK_WORK% %CACHED_STACK_WORK%
-# Debug paths
-- Echo WORK_DIR = %WORK_DIR%
-- dir %WORK_DIR%
-- Echo CACHE_DIR = %CACHE_DIR%
-- dir %CACHE_DIR%
-- Echo BRANCH_CACHE_DIR = %BRANCH_CACHE_DIR%
-- dir %BRANCH_CACHE_DIR%
-- Echo STACK_ROOT = %STACK_ROOT%
-- dir %STACK_ROOT%
-- Echo STACK_WORK = %STACK_WORK%
-- dir %STACK_WORK%
-- Echo CACHED_STACK_ROOT = %CACHED_STACK_ROOT%
-- dir %CACHED_STACK_ROOT%
-- Echo CACHED_STACK_WORK = %CACHED_STACK_WORK%
-- dir %CACHED_STACK_WORK%
 
 notifications:
   - provider: Email
