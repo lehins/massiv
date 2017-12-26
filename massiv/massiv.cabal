@@ -83,7 +83,7 @@ Test-Suite tests
                     , QuickCheck
                     , vector
   Default-Language:   Haskell2010
-  GHC-Options:        -Wall -O2 -fno-warn-orphans -threaded -with-rtsopts=-N
+  GHC-Options:        -Wall -O2 -fno-warn-orphans -threaded -with-rtsopts=-N2
 
 source-repository head
   type:     git
