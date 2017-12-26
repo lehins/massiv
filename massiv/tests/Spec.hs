@@ -1,13 +1,16 @@
---{-# OPTIONS_GHC -F -pgmF hspec-discover #-}
-
 module Main where
 
-import           Data.Massiv.Array.DelayedSpec  as Delayed
-import           Data.Massiv.Array.StencilSpec  as Stencil
-import           Data.Massiv.Core.IndexSpec     as Index
-import           Data.Massiv.Core.SchedulerSpec as Scheduler
-import           System.IO                      (BufferMode (LineBuffering),
-                                                 hSetBuffering, stdout)
+import           Data.Massiv.Array.DelayedSpec         as Delayed
+import           Data.Massiv.Array.Manifest.VectorSpec as Vector
+import           Data.Massiv.Array.Ops.ConstructSpec   as Construct
+import           Data.Massiv.Array.Ops.FoldSpec        as Fold
+import           Data.Massiv.Array.Ops.SliceSpec       as Slice
+import           Data.Massiv.Array.Ops.TransformSpec   as Transform
+import           Data.Massiv.Array.StencilSpec         as Stencil
+import           Data.Massiv.Core.IndexSpec            as Index
+import           Data.Massiv.Core.SchedulerSpec        as Scheduler
+import           System.IO                             (BufferMode (LineBuffering),
+                                                        hSetBuffering, stdout)
 import           Test.Hspec
 
 
@@ -16,11 +19,14 @@ main :: IO ()
 main = do
   hSetBuffering stdout LineBuffering
   hspec $ do
-    Scheduler.spec
-    Index.spec
+    describe "Core" $ do
+      Scheduler.spec
+      Index.spec
+    describe "Ops" $ do
+      Construct.spec
+      Fold.spec
+      Slice.spec
+      Transform.spec
     Delayed.spec
     Stencil.spec
-
--- -- | Test suite.
--- spec :: Spec
--- spec =
+    Vector.spec

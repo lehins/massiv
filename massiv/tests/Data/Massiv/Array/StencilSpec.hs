@@ -45,17 +45,17 @@ prop_DangerousStencil _ (NonZero s) (DimIx r) b (SzIx (Sz sz) ix) =
 
 
 stencilSpec :: Spec
-stencilSpec = return ()
-  -- describe "MapSingletonStencil" $ do
-  --   it "Ix1" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix1)
-  --   it "Ix2" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2)
-  --   it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
-  --   it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
-  -- describe "DangerousStencil" $ do
-  --   it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
-  --   it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
-  --   it "Ix3" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix3)
-  --   it "Ix4" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix4)
+stencilSpec = do
+  describe "MapSingletonStencil" $ do
+    it "Ix1" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix1)
+    it "Ix2" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2)
+    it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
+    it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
+  describe "DangerousStencil" $ do
+    it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
+    it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
+    it "Ix3" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix3)
+    it "Ix4" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix4)
 --   describe "Storable" $ do
 --     it "Ix1" $ property $ prop_toFromVector (Nothing :: Maybe Ix1) S
 --     it "Ix2" $ property $ prop_toFromVector (Nothing :: Maybe Ix2) S
