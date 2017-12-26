@@ -13,11 +13,13 @@ import           Test.Hspec
 
 -- | Main entry point. Returns ExitFailure if a test fails.
 main :: IO ()
-main = hSetBuffering stdout LineBuffering >> hspec $ do
-  Scheduler.spec
-  Index.spec
-  Delayed.spec
-  Stencil.spec
+main = do
+  hSetBuffering stdout LineBuffering
+  hspec $ do
+    Scheduler.spec
+    Index.spec
+    Delayed.spec
+    Stencil.spec
 
 -- -- | Test suite.
 -- spec :: Spec
