@@ -7,7 +7,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
--- Copyright   : (c) Alexey Kuleshevich 2017
+-- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
