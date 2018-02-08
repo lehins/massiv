@@ -1,5 +1,2 @@
-resolver: nightly-2017-07-31
-extra-deps:
-- repa-3.4.1.2
-- repa-algorithms-3.4.1.1
+resolver: lts-10.0
 allow-newer: true

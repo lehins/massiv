@@ -64,7 +64,9 @@ loadMutableOnP wIds !arr = do
   unsafeFreeze (ParOn wIds) mArr
 {-# INLINE loadMutableOnP #-}
 
-
+-- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
+-- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
+-- before calling @compute@
 compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
 compute !arr =
   case getComp arr of
@@ -72,12 +74,14 @@ compute !arr =
     ParOn wIds -> unsafePerformIO $ loadMutableOnP wIds arr
 {-# INLINE compute #-}
 
-
+-- | Just as `compute`, but let's you supply resulting representation type as an argument.
 computeAs :: (Load r' ix e, Mutable r ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
 {-# INLINE computeAs #-}
 
 
+-- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if
+-- resulting type is the same as the input.
 computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr =
@@ -85,9 +89,7 @@ computeSource arr =
 {-# INLINE computeSource #-}
 
 
-
-
-
+-- | /O(n)/ - Make a copy of an Array.
 copy :: Mutable r ix e => Array r ix e -> Array r ix e
 copy = compute . toManifest
 {-# INLINE copy #-}
@@ -107,7 +109,7 @@ convert arr =
   fromMaybe (compute $ toManifest arr) (gcastArr arr)
 {-# INLINE convert #-}
 
-
+-- | Just as `convert`, but let's you supply resulting representation type as an argument.
 convertAs :: (Mutable r' ix e, Mutable r ix e, Typeable ix, Typeable e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
@@ -162,7 +164,7 @@ sequenceP = sequenceOnP []
 -- sequenceP' = sequenceOnP' []
 -- {-# INLINE sequenceP' #-}
 
-
+-- | Convert a ragged array into a usual rectangular shaped one.
 fromRaggedArray :: (Ragged r' ix e, Mutable r ix e) =>
                    Array r' ix e -> Either ShapeError (Array r ix e)
 fromRaggedArray arr = unsafePerformIO $ do

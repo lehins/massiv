@@ -50,12 +50,13 @@ matrix:
         packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7]
         sources: [hvr-ghc]
 
-  - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
-    compiler: ": #GHC 8.2.2"
-    addons:
-      apt:
-        packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7]
-        sources: [hvr-ghc]
+  # FIX: Turned off for now. Compiling with cabal runs out of memory on Travis
+  # - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
+  #   compiler: ": #GHC 8.2.2"
+  #   addons:
+  #     apt:
+  #       packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7]
+  #       sources: [hvr-ghc]
 
   # Build with the newest GHC and cabal-install. This is an accepted failure, see below.
   - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7

@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
@@ -17,12 +16,14 @@ module Data.Massiv.Array
   , setComp
   , compute
   , computeAs
+  , computeSource
+  , copy
   , convert
   , convertAs
   -- * Size
   , size
-  , elemsCount
-  , isEmpty
+  , Core.elemsCount
+  , Core.isEmpty
   -- * Indexing
   , (!)
   , (!?)
@@ -61,16 +62,8 @@ import           Data.Massiv.Array.Ops.Map
 import           Data.Massiv.Array.Ops.Slice
 import           Data.Massiv.Array.Ops.Transform
 import           Data.Massiv.Array.Stencil
-import           Data.Massiv.Core
+import           Data.Massiv.Core                   hiding (isEmpty, elemsCount)
+import qualified Data.Massiv.Core                   as Core (isEmpty, elemsCount)
 import           Data.Massiv.Core.Common
 import           Prelude                            as P hiding (foldl, foldr)
 
--- | /O(1)/ - Get the number of elements in the array
-elemsCount :: Size r ix e => Array r ix e -> Int
-elemsCount = totalElem . size
-{-# INLINE elemsCount #-}
-
--- | /O(1)/ - Check if array has no elements.
-isEmpty :: Size r ix e => Array r ix e -> Bool
-isEmpty !arr = 0 == elemsCount arr
-{-# INLINE isEmpty #-}

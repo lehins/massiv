@@ -15,6 +15,8 @@ module Data.Massiv.Array.Ops.Fold
   (
   -- ** Unstructured folds
     fold
+  , minimum
+  , maximum
   , sum
   , product
   , and
@@ -55,10 +57,11 @@ module Data.Massiv.Array.Ops.Fold
 import           Control.Monad              (void, when)
 import qualified Data.Foldable              as F
 import           Data.Functor.Identity      (runIdentity)
+import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import           Prelude                    hiding (all, and, any, foldl, foldr,
-                                             or, product, sum)
+                                             maximum, minimum, or, product, sum)
 import           System.IO.Unsafe           (unsafePerformIO)
 
 
@@ -352,6 +355,25 @@ fold :: Source r ix e =>
      -> e
 fold f initAcc = foldl f initAcc f initAcc
 {-# INLINE fold #-}
+
+-- | /O(n)/ - Compute maximum of all elements.
+maximum :: (Source r ix e, Ord e) =>
+           Array r ix e -> e
+maximum = \arr ->
+  if isEmpty arr
+    then error "Data.Massiv.Array.maximum - empty"
+    else fold max (evaluateAt arr zeroIndex) arr
+{-# INLINE maximum #-}
+
+
+-- | /O(n)/ - Compute minimum of all elements.
+minimum :: (Source r ix e, Ord e) =>
+           Array r ix e -> e
+minimum = \arr ->
+  if isEmpty arr
+    then error "Data.Massiv.Array.minimum - empty"
+    else fold max (evaluateAt arr zeroIndex) arr
+{-# INLINE minimum #-}
 
 
 -- | /O(n)/ - Compute sum of all elements.
