@@ -37,7 +37,7 @@ import qualified Data.Vector.Unboxed         as VU
 import           GHC.TypeLits
 
 
-infixr 5 :>, :.
+infixr 6 :>, :.
 
 type Ix1 = Int
 
@@ -95,6 +95,30 @@ instance Show Ix2 where
 
 instance Show (Ix (n - 1)) => Show (IxN n) where
   show (i :> ix) = show i ++ " :> " ++ show ix
+
+
+instance Num Ix2 where
+  (+) = liftIndex2 (+)
+  (-) = liftIndex2 (-)
+  (*) = liftIndex2 (*)
+  negate = liftIndex negate
+  abs = liftIndex abs
+  signum = liftIndex signum
+
+instance {-# OVERLAPPABLE #-} (4 <= n,
+          KnownNat n,
+          Index (Ix (n - 1)),
+#if __GLASGOW_HASKELL__ < 800
+          Rank (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
+#endif
+          IxN (n - 1) ~ Ix (n - 1)
+          ) => Num (IxN n) where
+  (+) = liftIndex2 (+)
+  (-) = liftIndex2 (-)
+  (*) = liftIndex2 (*)
+  negate = liftIndex negate
+  abs = liftIndex abs
+  signum = liftIndex signum
 
 
 instance NFData Ix2 where

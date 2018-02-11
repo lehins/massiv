@@ -30,15 +30,15 @@ import           Prelude                            as P
 --
 -- >>> makeArrayR U Par (2 :> 3 :. 4) (\ (i :> j :. k) -> i * i + j * j == k * k)
 -- (Array U Par (2 :> 3 :. 4)
--- [ [ [ True,False,False,False ]
---   , [ False,True,False,False ]
---   , [ False,False,True,False ]
---   ]
--- , [ [ False,True,False,False ]
---   , [ False,False,False,False ]
---   , [ False,False,False,False ]
---   ]
--- ])
+--   [ [ [ True,False,False,False ]
+--     , [ False,True,False,False ]
+--     , [ False,False,True,False ]
+--     ]
+--   , [ [ False,True,False,False ]
+--     , [ False,False,False,False ]
+--     , [ False,False,False,False ]
+--     ]
+--   ])
 --
 makeArrayR :: Construct r ix e => r -> Comp -> ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
@@ -50,10 +50,10 @@ makeArrayR _ = makeArray
 --
 -- >>> range Seq 1 6
 -- (Array D Seq (5)
--- [ 1,2,3,4,5 ])
+--   [ 1,2,3,4,5 ])
 -- >>> range Seq (-2) 3
 -- (Array D Seq (5)
--- [ -2,-1,0,1,2 ])
+--   [ -2,-1,0,1,2 ])
 --
 range :: Comp -> Int -> Int -> Array D Ix1 Int
 range comp !from !to = makeArray comp (max 0 (to - from)) (+ from)
@@ -64,7 +64,7 @@ range comp !from !to = makeArray comp (max 0 (to - from)) (+ from)
 --
 -- >>> rangeStep Seq 1 2 6
 -- (Array D Seq (3)
--- [ 1,3,5 ])
+--   [ 1,3,5 ])
 --
 rangeStep :: Comp -- ^ Computation strategy
           -> Int -- ^ Start
@@ -83,7 +83,7 @@ rangeStep comp !from !step !to
 --
 -- >>> enumFromN Seq (5 :: Double) 3
 -- (Array D Seq (3)
--- [ 5.0,6.0,7.0 ])
+--   [ 5.0,6.0,7.0 ])
 --
 enumFromN :: Num e =>
              Comp
@@ -101,7 +101,7 @@ enumFromN comp !from !sz = makeArray comp sz $ \ i -> fromIntegral i + from
 --
 -- >>> enumFromStepN Seq 1 (0.1 :: Double) 5
 -- (Array D Seq (5)
--- [ 1.0,1.1,1.2,1.3,1.4 ])
+--   [ 1.0,1.1,1.2,1.3,1.4 ])
 --
 enumFromStepN :: Num e =>
                  Comp

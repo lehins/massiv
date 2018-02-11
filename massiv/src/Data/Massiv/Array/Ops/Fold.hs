@@ -14,6 +14,9 @@
 module Data.Massiv.Array.Ops.Fold
   (
   -- ** Unstructured folds
+
+  -- $unstruct_folds
+
     fold
   , minimum
   , maximum
@@ -24,15 +27,30 @@ module Data.Massiv.Array.Ops.Fold
   , all
   , any
   -- ** Sequential folds
+
+  -- $seq_folds
+
   , foldlS
   , foldrS
   , ifoldlS
   , ifoldrS
-  -- ** Special folds
+  -- *** Monadic
+  , foldlM
+  , foldrM
+  , foldlM_
+  , foldrM_
+  , ifoldlM
+  , ifoldrM
+  , ifoldlM_
+  , ifoldrM_
+  -- *** Special folds
   , foldrFB
   , lazyFoldlS
   , lazyFoldrS
   -- ** Parallel folds
+
+  -- $par_folds
+
   , foldlP
   , foldrP
   , ifoldlP
@@ -43,15 +61,6 @@ module Data.Massiv.Array.Ops.Fold
   , ifoldlOnP
   , ifoldrOnP
   , ifoldrIO
-  -- ** Monadic folds
-  , foldlM
-  , foldrM
-  , foldlM_
-  , foldrM_
-  , ifoldlM
-  , ifoldrM
-  , ifoldlM_
-  , ifoldrM_
   ) where
 
 import           Control.Monad              (void, when)
@@ -151,7 +160,7 @@ foldrS f = ifoldrS (\_ e a -> f e a)
 {-# INLINE foldrS #-}
 
 
--- | Version of foldr that supports foldr/build list fusion implemented by GHC.
+-- | Version of foldr that supports @foldr/build@ list fusion implemented by GHC.
 foldrFB :: Source r ix e => (e -> b -> b) -> b -> Array r ix e -> b
 foldrFB c n arr = go 0
   where
@@ -170,22 +179,20 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 
 
 
--- | /O(n)/ - Left fold, computed in parallel. Parallelization of folding
--- is implemented in such a way that an array is split into a number of chunks
--- of equal length, plus an extra one for the remainder. Number of chunks is the
--- same as number of available cores (capabilities) plus one, and each chunk is
--- individually folded by a separate core with a function @g@. Results from
--- folding each chunk are further folded with another function @f@, thus
--- allowing us to use information about the structure of an array during
--- folding.
+-- | /O(n)/ - Left fold, computed in parallel. Parallelization of folding is implemented in such a
+-- way that an array is split into a number of chunks of equal length, plus an extra one for the
+-- left over. Number of chunks is the same as number of available cores (capabilities) plus one, and
+-- each chunk is individually folded by a separate core with a function @g@. Results from folding
+-- each chunk are further folded with another function @f@, thus allowing us to use information
+-- about the structure of an array during folding.
 --
--- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
+-- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArrayR U Seq (Ix1 11) id
 -- [[10,9,8,7,6,5,4,3,2,1,0]]
 --
--- This is how the result would look like if the above computation would be
--- performed in a program compiled with @+RTS -N3@, i.e. with 3 capabilities:
+-- And this is how the result would look like if the above computation would be performed in a
+-- program executed with @+RTS -N3@, i.e. with 3 capabilities:
 --
--- >>> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
+-- >>> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArrayR U Seq (Ix1 11) id
 -- [[10,9],[8,7,6],[5,4,3],[2,1,0]]
 --
 foldlP :: Source r ix e =>
@@ -198,15 +205,11 @@ foldlP f = ifoldlP (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
 
--- | Just like `foldlP`, but allows you to specify which cores (capabilities) to run
--- computation on.
---
--- ==== __Examples__
---
+-- | Just like `foldlP`, but allows you to specify which cores (capabilities) to run computation on.
 -- The order in which chunked results will be supplied to function @f@ is
--- guaranteed to be consecutive, i.e. aligned with folding direction.
+-- guaranteed to be consecutive and aligned with the folding direction.
 --
--- >>> fmap snd $ foldlOnP [1,2,3] (\(i, acc) x -> (i + 1, (i, x):acc)) (1, []) (flip (:)) [] $ makeArray1D 11 id
+-- >>> fmap snd $ foldlOnP [1,2,3] (\(i, acc) x -> (i + 1, (i, x):acc)) (1, []) (flip (:)) [] $ makeArrayR U Seq 11 id
 -- [(4,[10,9]),(3,[8,7,6]),(2,[5,4,3]),(1,[2,1,0])]
 -- >>> fmap (P.zip [4,3..]) <$> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
 -- [(4,[10,9]),(3,[8,7,6]),(2,[5,4,3]),(1,[2,1,0])]
@@ -222,9 +225,9 @@ foldlOnP wIds f = ifoldlOnP wIds (\ x _ -> f x)
 -- | Parallel left fold.
 ifoldlIO :: Source r ix e =>
             [Int] -- ^ List of capabilities
-         -> (a -> ix -> e -> IO a) -- ^ Index aware folding function
+         -> (a -> ix -> e -> IO a) -- ^ Index aware folding IO action
          -> a -- ^ Accumulator
-         -> (b -> a -> IO b) -- ^ Folding funding that is applied to results of parallel fold
+         -> (b -> a -> IO b) -- ^ Folding action that is applied to results of parallel fold
          -> b -- ^ Accumulator for chunks folding
          -> Array r ix e -> IO b
 ifoldlIO wIds f !initAcc g !tAcc !arr = do
@@ -308,7 +311,8 @@ foldrOnP wIds f = ifoldrOnP wIds (const f)
 {-# INLINE foldrOnP #-}
 
 
--- | Parallel right fold
+-- | Parallel right fold. Differs from `ifoldrP` in that it accepts `IO` actions instead of the
+-- usual pure functions as arguments.
 ifoldrIO :: Source r ix e =>
            [Int] -> (ix -> e -> a -> IO a) -> a -> (a -> b -> IO b) -> b -> Array r ix e -> IO b
 ifoldrIO wIds f !initAcc g !tAcc !arr = do
@@ -323,11 +327,13 @@ ifoldrIO wIds f !initAcc g !tAcc !arr = do
         scheduleWork scheduler $
           iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
             f ix (unsafeLinearIndex arr i) acc
-  F.foldrM g tAcc results
+  F.foldlM (flip g) tAcc results
 {-# INLINE ifoldrIO #-}
 
--- | Just like `ifoldrP`, but allows you to specify which cores to run
--- computation on.
+
+-- | /O(n)/ - Right fold with an index aware function, computed in parallel.
+-- Same as `ifoldlP`, except directed from the last element in the array towards
+-- beginning.
 ifoldrOnP :: Source r ix e =>
            [Int] -> (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
 ifoldrOnP wIds f !initAcc g =
@@ -335,9 +341,7 @@ ifoldrOnP wIds f !initAcc g =
 {-# INLINE ifoldrOnP #-}
 
 
--- | /O(n)/ - Right fold with an index aware function, computed in parallel.
--- Same as `ifoldlP`, except directed from the last element in the array towards
--- beginning.
+-- | Just like `ifoldrOnP`, but allows you to specify which cores to run computation on.
 ifoldrP :: Source r ix e =>
            (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
 ifoldrP = ifoldrOnP []
@@ -428,23 +432,35 @@ foldl g initAcc f resAcc = \ arr ->
 {-# INLINE foldl #-}
 
 
--- -- | Just like `ifoldrP`, but allows you to specify which cores to run
--- -- computation on.
--- foldOnP :: Source r ix a =>
---            [Int] -> (a -> a -> a) -> a -> Array r ix a -> IO a
--- foldOnP wIds f !initAcc !arr = do
---   let !sz = size arr
---   results <-
---     splitWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---       when (slackStart < totalLength) $
---         scheduleWork scheduler $
---         JobRequest $
---         iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i _ !acc ->
---           return $ f (unsafeLinearIndex arr i) acc
---       loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
---         scheduleWork scheduler $
---           JobRequest $
---           iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i _ !acc ->
---             return $! f (unsafeLinearIndex arr i) acc
---   return $ F.foldl' f initAcc $ map jobResult results
--- {-# INLINE foldOnP #-}
+{- $unstruct_folds
+
+Functions in this section will fold any `Source` array with respect to the inner
+`Comp`utation strategy setting.
+
+-}
+
+
+{- $seq_folds
+
+Functions in this section will fold any `Source` array sequentially, regardless of the inner
+`Comp`utation strategy setting.
+
+-}
+
+
+{- $par_folds
+
+__Note__ It is important to compile with @-threaded -with-rtsopts=-N@ flags, otherwise there will be
+no parallelization.
+
+Functions in this section will fold any `Source` array in parallel, regardless of the inner
+`Comp`utation strategy setting. All of the parallel structured folds are performed inside `IO`
+monad, because referential transparency can't generally be preserved and results will depend on the
+number of cores/capabilities that computation is being performed on.
+
+In contrast to sequential folds, each parallel folding function accepts two functions and two
+initial elements as arguments. This is necessary because an array is first split into chunks, which
+folded individually on separate cores with the first function, and the results of those folds are
+further folded with the second function.
+
+-}

@@ -273,7 +273,7 @@ toListArray !arr =
 
 
 instance {-# OVERLAPPING #-} (Ragged L ix e, Show e) => Show (Array L ix e) where
-  show = raggedFormat show "\n"
+  show arr = "  " ++ raggedFormat show "\n  " arr
 
 instance {-# OVERLAPPING #-} (Ragged L ix e, Nested LN ix e, Show e) =>
   Show (Array LN ix e) where
@@ -281,6 +281,7 @@ instance {-# OVERLAPPING #-} (Ragged L ix e, Nested LN ix e, Show e) =>
 
 
 showN :: (String -> a -> String) -> String -> [a] -> String
+showN _     _        [] = "[  ]"
 showN fShow lnPrefix ls =
   L.concat
     (["[ "] ++

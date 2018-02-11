@@ -27,6 +27,7 @@ module Data.Massiv.Array.Ops.Transform
   , append
   , append'
   , splitAt
+  , splitAt'
   -- * Traverse
   , traverse
   , traverse2
@@ -40,7 +41,7 @@ import           Data.Maybe                         (fromMaybe)
 import           Prelude                            hiding (splitAt, traverse)
 
 
-
+-- | Extract a sub-array from within a larger one
 extract :: Size r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
   | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
@@ -58,7 +59,7 @@ extractFromTo sIx eIx = extract sIx newSz
     newSz = liftIndex2 (-) eIx sIx
 {-# INLINE extractFromTo #-}
 
--- | /O(1)/ - Changes the shape of the array. Will return `Nothing` if total
+-- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
 -- number of elements does not match the source array.
 resize :: (Index ix', Size r ix e) => ix' -> Array r ix e -> Maybe (Array r ix' e)
 resize !sz !arr
@@ -82,18 +83,18 @@ resize' !sz !arr =
 --
 -- ===__Examples__
 --
--- >>> let arr = makeArrayR U Seq (2 :. 3) (\ (i :. j) -> j + i * 3)
+-- >>> let arr = makeArrayR U Seq (2 :. 3) (toLinearIndex (2 :. 3))
 -- >>> arr
 -- (ArrayU Seq (2 :. 3)
--- [ [ 0,1,2 ]
--- , [ 3,4,5 ]
--- ])
+--   [ [ 0,1,2 ]
+--   , [ 3,4,5 ]
+--   ])
 -- >>> transpose arr
 -- (Array D Seq (3 :. 2)
--- [ [ 0,3 ]
--- , [ 1,4 ]
--- , [ 2,5 ]
--- ])
+--   [ [ 0,3 ]
+--   , [ 1,4 ]
+--   , [ 2,5 ]
+--   ])
 --
 transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
 transpose = transposeInner
@@ -102,32 +103,32 @@ transpose = transposeInner
 
 -- | Transpose inner two dimensions of at least rank-2 array.
 --
--- ===___Examples__
+-- ===__Examples__
 --
 -- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
 -- >>> arr
 -- (Array U Seq (2 :> 3 :. 4)
--- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---   , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---   , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
---   ]
--- , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
---   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
---   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
---   ]
--- ])
+--   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--     , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--     , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--     ]
+--   , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--     ]
+--   ])
 -- >>> transposeInner arr
 -- (Array D Seq (3 :> 2 :. 4)
--- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---   , [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
---   ]
--- , [ [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
---   ]
--- , [ [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
---   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
---   ]
--- ])
+--   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--     , [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--     ]
+--   , [ [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--     ]
+--   , [ [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--     ]
+--   ])
 --
 transposeInner :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
@@ -146,20 +147,20 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
 
 -- | Transpose outer two dimensions of at least rank-2 array.
 --
--- ===___Examples__
+-- ===__Examples__
 --
 -- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
 -- >>> arr
 -- (Array U Seq (2 :> 3 :. 4)
--- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---   , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---   , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
---   ]
--- , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
---   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
---   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
---   ]
--- ])
+--   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--     , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--     , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--     ]
+--   , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--     ]
+--   ])
 -- >>> transposeOuter arr
 -- (Array D Seq (2 :> 4 :. 3)
 -- [ [ [ (0,0,0),(0,1,0),(0,2,0) ]
@@ -179,7 +180,7 @@ transposeOuter :: (Index (Lower ix), Source r' ix e)
 transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newVal
   where
     transOuter !ix =
-      fromMaybe (error "transposeOuter: Impossible happened") $ do
+      fromMaybe (error $ "transposeOuter: Impossible happened: " ++ show ix) $ do
         n <- getIndex ix 1
         m <- getIndex ix 2
         ix' <- setIndex ix 1 m
@@ -197,22 +198,22 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
 -- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
 -- >>> arr
 -- (Array U Seq (2 :> 3 :. 4)
--- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---   , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---   , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
---   ]
--- , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
---   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
---   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
---   ]
--- ])
+--   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--     , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--     , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--     ]
+--   , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--     ]
+--   ])
 -- >>> backpermute (4 :. 3) (\(i :. j) -> 0 :> j :. i) arr
 -- (Array D Seq (4 :. 3)
--- [ [ (0,0,0),(0,1,0),(0,2,0) ]
--- , [ (0,0,1),(0,1,1),(0,2,1) ]
--- , [ (0,0,2),(0,1,2),(0,2,2) ]
--- , [ (0,0,3),(0,1,3),(0,2,3) ]
--- ])
+--   [ [ (0,0,0),(0,1,0),(0,2,0) ]
+--   , [ (0,0,1),(0,1,1),(0,2,1) ]
+--   , [ (0,0,2),(0,1,2),(0,2,2) ]
+--   , [ (0,0,3),(0,1,3),(0,2,3) ]
+--   ])
 --
 backpermute :: (Source r' ix' e, Index ix) =>
                ix -- ^ Size of the result array
@@ -223,7 +224,40 @@ backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
 {-# INLINE backpermute #-}
 
 
--- | Append two arrays together along a particular dimension.
+-- | Append two arrays together along a particular dimension. Sizes of both arrays must match, with
+-- an allowed exception of the dimension they are being appended along, otherwise `Nothing` is
+-- returned.
+--
+-- ===__Examples__
+--
+-- Append two 2D arrays along both dimensions. Note that they have the same shape.
+--
+-- >>> let arrA = makeArrayR U Seq (2 :. 3) (\(i :. j) -> ('A', i, j))
+-- >>> let arrB = makeArrayR U Seq (2 :. 3) (\(i :. j) -> ('B', i, j))
+-- >>> append 1 arrA arrB
+-- Just (Array D Seq (2 :. 6)
+--   [ [ ('A',0,0),('A',0,1),('A',0,2),('B',0,0),('B',0,1),('B',0,2) ]
+--   , [ ('A',1,0),('A',1,1),('A',1,2),('B',1,0),('B',1,1),('B',1,2) ]
+--   ])
+-- >>> append 2 arrA arrB
+-- Just (Array D Seq (4 :. 3)
+--   [ [ ('A',0,0),('A',0,1),('A',0,2) ]
+--   , [ ('A',1,0),('A',1,1),('A',1,2) ]
+--   , [ ('B',0,0),('B',0,1),('B',0,2) ]
+--   , [ ('B',1,0),('B',1,1),('B',1,2) ]
+--   ])
+--
+-- Now appending arrays with different sizes:
+--
+-- >>> let arrC = makeArrayR U Seq (2 :. 4) (\(i :. j) -> ('C', i, j))
+-- >>> append 1 arrA arrC
+-- Just (Array D Seq (2 :. 7)
+--   [ [ ('A',0,0),('A',0,1),('A',0,2),('C',0,0),('C',0,1),('C',0,2),('C',0,3) ]
+--   , [ ('A',1,0),('A',1,1),('A',1,2),('C',1,0),('C',1,1),('C',1,2),('C',1,3) ]
+--   ])
+-- >>> append 2 arrA arrC
+-- Nothing
+--
 append :: (Source r1 ix e, Source r2 ix e) =>
           Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array D ix e)
 append n !arr1 !arr2 = do
@@ -236,7 +270,7 @@ append n !arr1 !arr2 = do
   newSz <- setIndex sz1 n (k1 + k2)
   return $
     unsafeMakeArray (getComp arr1) newSz $ \ !ix ->
-      fromMaybe (error "append: Impossible happened") $ do
+      fromMaybe (error $ "Data.Massiv.Array.append: Impossible happened " ++ show ix) $ do
         k' <- getIndex ix n
         if k' < k1
           then Just (unsafeIndex arr1 ix)
@@ -246,24 +280,28 @@ append n !arr1 !arr2 = do
             return $ unsafeIndex arr2 ix'
 {-# INLINE append #-}
 
+-- | Same as `append`, but will throw an error instead of returning `Nothing` on mismatched sizes.
 append' :: (Source r1 ix e, Source r2 ix e) =>
            Dim -> Array r1 ix e -> Array r2 ix e -> Array D ix e
-append' n arr1 arr2 =
-  case append n arr1 arr2 of
+append' dim arr1 arr2 =
+  case append dim arr1 arr2 of
     Just arr -> arr
     Nothing ->
       error $
-      if 0 < n && n <= rank (size arr1)
+      if 0 < dim && dim <= rank (size arr1)
         then "append': Dimension mismatch: " ++ show (size arr1) ++ " and " ++ show (size arr2)
-        else "append': Invalid dimension index: " ++ show n
+        else "append': Invalid dimension: " ++ show dim
 {-# INLINE append' #-}
 
--- | /O(1)/ - Split an array at an index in a particular dimension.
-splitAt :: (Size r ix e, r' ~ EltRepr r ix) =>
-  Dim -> ix -> Array r ix e -> Maybe (Array r' ix e, Array r' ix e)
-splitAt dim ix arr = do
+-- | /O(1)/ - Split an array at an index along a specified dimension.
+splitAt ::
+     (Size r ix e, r' ~ EltRepr r ix)
+  => Dim -- ^ Dimension along which to split
+  -> Int -- ^ Index along the dimension to split at
+  -> Array r ix e -- ^ Source array
+  -> Maybe (Array r' ix e, Array r' ix e)
+splitAt dim i arr = do
   let sz = size arr
-  i <- getIndex ix dim
   eIx <- setIndex sz dim i
   sIx <- setIndex zeroIndex dim i
   arr1 <- extractFromTo zeroIndex eIx arr
@@ -271,17 +309,35 @@ splitAt dim ix arr = do
   return (arr1, arr2)
 {-# INLINE splitAt #-}
 
+-- | Same as `splitAt`, but will throw an error instead of returning `Nothing` on wrong dimension
+-- and index out of bounds.
+splitAt' :: (Size r ix e, r' ~ EltRepr r ix) =>
+           Dim -> Int -> Array r ix e -> (Array r' ix e, Array r' ix e)
+splitAt' dim i arr =
+  case splitAt dim i arr of
+    Just res -> res
+    Nothing ->
+      error $
+      "Data.Massiv.Array.splitAt': " ++
+      if 0 < dim && dim <= rank (size arr)
+        then "Index out of bounds: " ++
+             show i ++ " for dimension: " ++ show dim ++ " and array with size: " ++ show (size arr)
+        else "Invalid dimension: " ++ show dim ++ " for array with size: " ++ show (size arr)
+{-# INLINE splitAt' #-}
 
+-- | Create an array by traversing a source array.
 traverse
   :: (Source r1 ix1 e1, Index ix)
-  => ix
-  -> ((ix1 -> e1) -> ix -> e)
-  -> Array r1 ix1 e1
+  => ix -- ^ Size of the result array
+  -> ((ix1 -> e1) -> ix -> e) -- ^ Function that will receive a source array safe index function and
+                              -- an index for an element it should return a value of.
+  -> Array r1 ix1 e1 -- ^ Source array
   -> Array D ix e
 traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluateAt arr1))
 {-# INLINE traverse #-}
 
 
+-- | Create an array by traversing two source arrays.
 traverse2
   :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
   => ix

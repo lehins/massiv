@@ -96,6 +96,9 @@ module Data.Massiv.Array
   -- * Mapping
   , module Data.Massiv.Array.Ops.Map
   -- * Folding
+
+  -- $folding
+
   , module Data.Massiv.Array.Ops.Fold
   -- * Transforming
   , module Data.Massiv.Array.Ops.Transform
@@ -126,5 +129,10 @@ import           Data.Massiv.Array.Stencil
 import           Data.Massiv.Core                   hiding (isEmpty, elemsCount)
 import qualified Data.Massiv.Core                   as Core (isEmpty, elemsCount)
 import           Data.Massiv.Core.Common
-import           Prelude                            as P hiding (foldl, foldr)
+import           Prelude                            as P hiding (foldl, foldr, splitAt)
 
+{- $folding
+
+All folding is done in a row-major order.
+
+-}
