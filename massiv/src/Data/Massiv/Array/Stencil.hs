@@ -42,21 +42,6 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
 {-# INLINE mapStencil #-}
 
 
--- mapStencilM :: (Source r ix e, Eq e, Num e, Manifest r ix e) =>
---                  StencilM ix e a -> Array r ix e -> Array WMD ix a
--- mapStencilM (StencilM b sSz sCenter deps stencilM) !arr =
---   WMDArray
---     sz
---     (stencilM (borderIndex b arr))
---     (Just sSz)
---     sCenter
---     (liftIndex2 (-) sz (liftIndex2 (-) sSz oneIndex))
---     (stencilM (unsafeIndex arr))
---     deps
---   where
---     !sz = size arr
--- {-# INLINE mapStencilM #-}
-
 -- | Construct a stencil from a function, which describes how to calculate the
 -- value at a point while having access to neighboring elements with a function
 -- that accepts idices relative to the center of stencil. Trying to index

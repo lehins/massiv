@@ -78,10 +78,57 @@ resize' !sz !arr =
 {-# INLINE resize' #-}
 
 
+-- | Transpose a 2-dimensional array
+--
+-- ===__Examples__
+--
+-- >>> let arr = makeArrayR U Seq (2 :. 3) (\ (i :. j) -> j + i * 3)
+-- >>> arr
+-- (ArrayU Seq (2 :. 3)
+-- [ [ 0,1,2 ]
+-- , [ 3,4,5 ]
+-- ])
+-- >>> transpose arr
+-- (Array D Seq (3 :. 2)
+-- [ [ 0,3 ]
+-- , [ 1,4 ]
+-- , [ 2,5 ]
+-- ])
+--
 transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
 transpose = transposeInner
 {-# INLINE transpose #-}
 
+
+-- | Transpose inner two dimensions of at least rank-2 array.
+--
+-- ===___Examples__
+--
+-- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
+-- >>> arr
+-- (Array U Seq (2 :> 3 :. 4)
+-- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--   , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--   , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--   ]
+-- , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   ]
+-- ])
+-- >>> transposeInner arr
+-- (Array D Seq (3 :> 2 :. 4)
+-- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--   , [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--   ]
+-- , [ [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--   ]
+-- , [ [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   ]
+-- ])
+--
 transposeInner :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
 transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newVal
@@ -97,6 +144,36 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
     {-# INLINE newVal #-}
 {-# INLINE transposeInner #-}
 
+-- | Transpose outer two dimensions of at least rank-2 array.
+--
+-- ===___Examples__
+--
+-- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
+-- >>> arr
+-- (Array U Seq (2 :> 3 :. 4)
+-- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--   , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--   , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--   ]
+-- , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   ]
+-- ])
+-- >>> transposeOuter arr
+-- (Array D Seq (2 :> 4 :. 3)
+-- [ [ [ (0,0,0),(0,1,0),(0,2,0) ]
+--   , [ (0,0,1),(0,1,1),(0,2,1) ]
+--   , [ (0,0,2),(0,1,2),(0,2,2) ]
+--   , [ (0,0,3),(0,1,3),(0,2,3) ]
+--   ]
+-- , [ [ (1,0,0),(1,1,0),(1,2,0) ]
+--   , [ (1,0,1),(1,1,1),(1,2,1) ]
+--   , [ (1,0,2),(1,1,2),(1,2,2) ]
+--   , [ (1,0,3),(1,1,3),(1,2,3) ]
+--   ]
+-- ])
+--
 transposeOuter :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
 transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newVal
@@ -113,8 +190,35 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
 {-# INLINE transposeOuter #-}
 
 
+-- | Rearrange elements of an array into a new one.
+--
+-- ===__Examples__
+--
+-- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
+-- >>> arr
+-- (Array U Seq (2 :> 3 :. 4)
+-- [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
+--   , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
+--   , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+--   ]
+-- , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+--   , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--   , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   ]
+-- ])
+-- >>> backpermute (4 :. 3) (\(i :. j) -> 0 :> j :. i) arr
+-- (Array D Seq (4 :. 3)
+-- [ [ (0,0,0),(0,1,0),(0,2,0) ]
+-- , [ (0,0,1),(0,1,1),(0,2,1) ]
+-- , [ (0,0,2),(0,1,2),(0,2,2) ]
+-- , [ (0,0,3),(0,1,3),(0,2,3) ]
+-- ])
+--
 backpermute :: (Source r' ix' e, Index ix) =>
-               ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
+               ix -- ^ Size of the result array
+            -> (ix -> ix') -- ^ A function that maps indices of old array into the source one.
+            -> Array r' ix' e -- ^ Source array.
+            -> Array D ix e
 backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
 {-# INLINE backpermute #-}
 

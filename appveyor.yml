@@ -33,7 +33,7 @@ before_test:
 
 # Install stack
 - ps: Start-FileDownload http://www.stackage.org/stack/windows-x86_64 -FileName stack.zip
-- 7z x stack.zip stack.exe
+- 7z x stack.zip stack.exe -aoa
 
 test_script:
   - cd "%WORK_DIR%"

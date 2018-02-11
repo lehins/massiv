@@ -13,9 +13,9 @@
 -- sequentially. Depending on the representation (@__r__@), an @__`Array` r ix e__@ will have
 -- certain properties that are unique to that particular representation, but all of them will share
 -- the same trait, that an array is simply a mapping from an index (@__ix__@) of an arbitrary
--- dimension to an element (@__e__@) of some value. Which means, that some of arrays actually do
--- have a contiguous chunk of memory reserved for the elements, namely arrays with `Manifest`
--- representations:
+-- dimension to an element (@__e__@) of some value. Which means that some of the array types are
+-- pretty classic and are represented by a contiguous chunk of memory reserved for the elements,
+-- namely arrays with `Manifest` representations:
 --
 -- * `B` - The most basic type of array that can hold any type of element in a boxed form, i.e. each
 --         element is a pointer to the actual value, therefore it is also the slowest
@@ -57,8 +57,16 @@
 --       ability to be converted to and from nested lists in constant time, provide an amazing
 --       intermediary for list/array conversion.
 --
--- Most of the `Manifest` arrays are capable of in-place mutation. Checkout
+-- Most of the `Manifest` arrays are capable of in-place mutation. Check out
 -- "Data.Massiv.Array.Mutable" module for available functionality.
+--
+-- Many of the function names exported by this package will clash with the ones
+-- from "Prelude", hence it can be more convenient to import like this:
+--
+-- @
+-- import Prelude as P
+-- import Data.Massiv.Array as A
+-- @
 --
 module Data.Massiv.Array
   ( -- * Construct
@@ -85,14 +93,14 @@ module Data.Massiv.Array
   , defaultIndex
   , borderIndex
   , evaluateAt
-  -- * Slicing
-  , module Data.Massiv.Array.Ops.Slice
   -- * Mapping
   , module Data.Massiv.Array.Ops.Map
   -- * Folding
   , module Data.Massiv.Array.Ops.Fold
   -- * Transforming
   , module Data.Massiv.Array.Ops.Transform
+  -- * Slicing
+  , module Data.Massiv.Array.Ops.Slice
   -- * Conversion
   , module Data.Massiv.Array.Manifest.List
   -- * Stencil

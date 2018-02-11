@@ -16,18 +16,9 @@ module Data.Massiv.Array.Stencil.Internal where
 
 import           Control.Applicative
 import           Control.DeepSeq
--- import           Control.Monad               (unless, void, when)
--- import           Control.Monad.Primitive     (PrimMonad)
--- import           Control.Monad.ST
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Array.Delayed.Internal
--- import           Data.Massiv.Array.Manifest
 import           Data.Default.Class                (Default (def))
--- import           Data.Maybe                  (fromJust)
--- import           GHC.Exts                    (inline)
-
--- import qualified Data.Vector.Unboxed         as VU
--- import qualified Data.Vector.Unboxed.Mutable as MVU
 
 
 data Stencil ix e a = Stencil
@@ -114,69 +105,6 @@ instance Floating e => Floating (Value e) where
   atanh = fmap atanh
   {-# INLINE atanh #-}
 
-
--- data Dependency ix = Dependency { depDimension :: Int
---                                 , depDirection :: Int }
-
--- data StencilM ix e a = StencilM
---   { mStencilBorder :: Border e
---   , mStencilSize   :: !ix
---   , mStencilCenter :: !ix
---   , mStencilDeps   :: Array M Int Int
---   , mStencilFunc   :: forall m . PrimMonad m => (ix -> e) -> (ix -> m a) -> ix -> m a
---   }
-
-
--- -- | __Warning__: Highly experimental and untested, use at your own risk.
--- makeStencilM
---   :: forall ix e a . (Index ix, Default e, Default a)
---   => Border e
---   -> ix
---   -> ix
---   -> (forall m . PrimMonad m => ((ix -> e) -> (ix -> m a) -> m a))
---   -> StencilM ix e a
--- makeStencilM b !sSz !sCenter relStencil =
---   StencilM b sSz sCenter deps stencil
---   where
---     stencil
---       :: (Default a, PrimMonad m)
---       => (ix -> e) -> (ix -> m a) -> ix -> m a
---     stencil getVal getCurValM !ix =
---       inline
---         relStencil
---         (\ !ixD -> getVal (liftIndex2 (-) ix ixD))
---         (\ !ixD -> getCurValM (liftIndex2 (-) ix ixD))
---     {-# INLINE stencil #-}
---     Dim sRank = rank sSz
---     defArrA :: Array D ix a
---     defArrA = DArray Seq sSz (const def)
---     defArr = DArray Seq sSz (const def)
---     deps = toManifest $ fromJust $ castFromVector Seq sRank $ VU.create makeDeps
---     -- TODO: switch to mutable Array, once it is implemented.
---     makeDeps :: ST s (MVU.MVector s Int)
---     makeDeps = do
---       mv <- MVU.new sRank
---       -- Need to record at which dimensions and directions there are dependencies
---       let checkWrite ix = do
---             unless (isSafeIndex sSz ix) $
---               error "mkStaticStencilM: Invalid StencilM index access"
---             loopM_ 0 (< sRank) (+ 1) $ \i -> do
---               let !r =
---                     maybe (errorImpossible "mkStaticStencilM") signum $
---                     getIndex ix (Dim i)
---               when (r /= 0) $ do
---                 curVal <- MVU.read mv i
---                 if curVal == 0
---                   then MVU.write mv i r
---                   else when (curVal /= r) $
---                        error
---                          "mkStaticStencilM: Stencil creates an invalid dependency"
---             return $ unsafeIndex defArrA ix
---           checkRead = return . safeStencilIndex defArrA
---       void $ stencil (safeStencilIndex defArr) checkRead sCenter
---       void $ relStencil (unsafeIndex defArr) checkWrite
---       return mv
--- {-# INLINE makeStencilM #-}
 
 
 
