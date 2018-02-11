@@ -25,8 +25,8 @@ import           Data.Massiv.Core.Common
 import           Prelude                            as P
 
 
--- | Just like `makeArray` but with ability to specify the result representation. Note the `U`nboxed
--- type constructor in the below example.
+-- | Just like `makeArray` but with ability to specify the result representation as an
+-- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
 --
 -- >>> makeArrayR U Par (2 :> 3 :. 4) (\ (i :> j :. k) -> i * i + j * j == k * k)
 -- (Array U Par (2 :> 3 :. 4)
@@ -54,6 +54,7 @@ makeArrayR _ = makeArray
 -- >>> range Seq (-2) 3
 -- (Array D Seq (5)
 -- [ -2,-1,0,1,2 ])
+--
 range :: Comp -> Int -> Int -> Array D Ix1 Int
 range comp !from !to = makeArray comp (max 0 (to - from)) (+ from)
 {-# INLINE range #-}
@@ -78,29 +79,35 @@ rangeStep comp !from !step !to
 {-# INLINE rangeStep #-}
 
 
--- |
+-- | Same as `enumFromStepN` with step @delta = 1@.
 --
--- >>> toListIx1 $ enumFromN Seq 5 3
--- [5,6,7]
+-- >>> enumFromN Seq (5 :: Double) 3
+-- (Array D Seq (3)
+-- [ 5.0,6.0,7.0 ])
 --
 enumFromN :: Num e =>
              Comp
-          -> e -- ^ Start value
-          -> Int -- ^ Length of resulting array
+          -> e -- ^ @x@ - start value
+          -> Int -- ^ @n@ - length of resulting vector.
           -> Array D Ix1 e
 enumFromN comp !from !sz = makeArray comp sz $ \ i -> fromIntegral i + from
 {-# INLINE enumFromN #-}
 
--- |
+
+-- | Create a vector with length @n@ that has it's 0th value set to @x@ and gradually increasing
+-- with @step@ delta until the end. Similar to: @`Data.Massiv.Array.fromList'` `Seq` $ `take` n [x,
+-- x + delta ..]@. Major difference is that `fromList` constructs an `Array` with manifest
+-- representation, while `enumFromStepN` is delayed.
 --
--- >>> toListIx1 $ enumFromStepN Seq 1 0.1 5
--- [1.0,1.1,1.2,1.3,1.4]
+-- >>> enumFromStepN Seq 1 (0.1 :: Double) 5
+-- (Array D Seq (5)
+-- [ 1.0,1.1,1.2,1.3,1.4 ])
 --
 enumFromStepN :: Num e =>
                  Comp
-              -> e -- ^ Start value
-              -> e -- ^ Step value
-              -> Int -- ^ Length of resulting vector
+              -> e -- ^ @x@ - start value
+              -> e -- ^ @delta@ - step value
+              -> Int -- ^ @n@ - length of resulting vector
               -> Array D Ix1 e
 enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}

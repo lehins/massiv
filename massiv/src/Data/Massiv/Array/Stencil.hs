@@ -70,14 +70,12 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
 -- for each element in that array. /Note:/ Make sure to add @INLINE@ pragma,
 -- otherwise performance will be terrible.
 --
--- @@@
--- average3x3Stencil :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
--- average3x3Stencil b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
---   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
---      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
---      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
--- {-# INLINE average3x3Stencil #-}
--- @@@
+-- > average3x3Stencil :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
+-- > average3x3Stencil b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
+-- >   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
+-- >      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
+-- >      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
+-- > {-# INLINE average3x3Stencil #-}
 --
 makeStencil
   :: (Index ix, Default e)

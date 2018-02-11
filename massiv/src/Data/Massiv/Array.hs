@@ -8,6 +8,58 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
+--
+-- Massiv is a library, that allows creation and manipulation of arrays in parallel and
+-- sequentially. Depending on the representation (@__r__@), an @__`Array` r ix e__@ will have
+-- certain properties that are unique to that particular representation, but all of them will share
+-- the same trait, that an array is simply a mapping from an index (@__ix__@) of an arbitrary
+-- dimension to an element (@__e__@) of some value. Which means, that some of arrays actually do
+-- have a contiguous chunk of memory reserved for the elements, namely arrays with `Manifest`
+-- representations:
+--
+-- * `B` - The most basic type of array that can hold any type of element in a boxed form, i.e. each
+--         element is a pointer to the actual value, therefore it is also the slowest
+--         representation. Elements are kept in a Weak Head Normal Form (WHNF).
+--
+-- * `N` - Similar to `B`, is also a boxed type, except it's elements are always kept in a Normal
+--         Form (NF). This property is very useful for parallel processing, i.e. when calling
+--         `compute` you do want all of your elements to be fully evaluated.
+--
+-- * `S` - Is a type of array that is backed by pinned memory, therefore pointers to those arrays
+--         can be passed to FFI calls, because Garbage Collector (GC) is guaranteed not to move
+--         it. Elements must be an instance of `Storable` class. It is just as efficient as `P` and
+--         `U` arrays, except it is subject to fragmentation.
+--
+-- * `U` - Unboxed representation. Elements must be an instance of `Unbox` class.
+--
+-- * `P` - Array that can hold Haskell primitives, such as `Int`, `Word`, `Double`, etc. Any element
+--        must be an instance of `Prim` class.
+--
+-- * `M` - General manifest array type, that any of the above representations can be converted to in
+--       constant time using `toManifest`.
+--
+-- While at the same time, there are arrays that only describe how values for it's elements can be
+-- computed, and have no memory overhead on their own.
+--
+-- * `D` - delayed array that is a mere function from an index to an element. Crucial representation
+--         for fusing computation. Use `computeAs` in order to load array into `Manifest`
+--         representation.
+--
+-- * `DI` - delayed interleaved array. Same as `D`, but performced better with unbalanced
+--         computation, when evaluation one element takes much longer than it's neighbor.
+--
+-- * `DW` - delayed windowed array. This peculiar representation allows for very fast `Stencil`
+--        computation.
+--
+-- Other Array types:
+--
+-- * `L` and `LN` - those types aren't particularly useful on their own, but because of their unique
+--       ability to be converted to and from nested lists in constant time, provide an amazing
+--       intermediary for list/array conversion.
+--
+-- Most of the `Manifest` arrays are capable of in-place mutation. Checkout
+-- "Data.Massiv.Array.Mutable" module for available functionality.
+--
 module Data.Massiv.Array
   ( -- * Construct
     module Data.Massiv.Array.Ops.Construct
@@ -17,7 +69,7 @@ module Data.Massiv.Array
   , compute
   , computeAs
   , computeSource
-  , copy
+  , clone
   , convert
   , convertAs
   -- * Size
@@ -25,11 +77,11 @@ module Data.Massiv.Array
   , Core.elemsCount
   , Core.isEmpty
   -- * Indexing
-  , (!)
   , (!?)
+  , (!)
   , (??)
   , index
-  , maybeIndex
+  , index'
   , defaultIndex
   , borderIndex
   , evaluateAt
@@ -55,7 +107,8 @@ module Data.Massiv.Array
 import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Manifest.List
-import           Data.Massiv.Array.Manifest.Mutable as A
+import           Data.Massiv.Array.Manifest.Internal
+import           Data.Massiv.Array.Mutable as A
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Array.Ops.Map

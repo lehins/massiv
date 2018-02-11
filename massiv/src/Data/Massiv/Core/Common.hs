@@ -11,7 +11,6 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Core.Common
   ( Array
   , Elt
@@ -31,10 +30,10 @@ module Data.Massiv.Core.Common
   , makeArray
   , singleton
   -- * Indexing
-  , (!)
-  , index
   , (!?)
-  , maybeIndex
+  , index
+  , (!)
+  , index'
   , (??)
   , defaultIndex
   , borderIndex
@@ -139,7 +138,7 @@ class Size r ix e => Slice r ix e where
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
--- `(!)`, `(!?)`, etc. are constrained to manifest arrays only.
+-- @(`!`)@, @(`!?`)@, etc. are constrained to manifest arrays only.
 class Source r ix e => Manifest r ix e where
 
   unsafeLinearIndexM :: Array r ix e -> Int -> e
@@ -157,8 +156,15 @@ class Manifest r ix e => Mutable r ix e where
   unsafeFreeze :: PrimMonad m =>
                   Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
 
+  -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
+  -- either.
   unsafeNew :: PrimMonad m =>
                ix -> m (MArray (PrimState m) r ix e)
+
+  -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
+  -- either.
+  unsafeNewZero :: PrimMonad m =>
+                   ix -> m (MArray (PrimState m) r ix e)
 
   unsafeLinearRead :: PrimMonad m =>
                       MArray (PrimState m) r ix e -> Int -> m e
@@ -204,10 +210,19 @@ class Construct r ix e => Ragged r ix e where
 
 
 
--- | Create an Array.
+-- | Create an Array. Resulting type either has to be unambiguously inferred or restricted manually,
+-- like in the example below.
+--
+-- >>> makeArray Seq (3 :. 4) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
+-- (Array D Seq (3 :. 4)
+-- [ [ 0,0,0,0 ]
+-- , [ 0,1,0,0 ]
+-- , [ 0,0,2,0 ]
+-- ])
+--
 makeArray :: Construct r ix e =>
              Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
-          -> ix -- ^ Size of the result Array
+          -> ix -- ^ Size of the result array. Negative values will result in an empty array.
           -> (ix -> e) -- ^ Function to generate elements at a particular index
           -> Array r ix e
 makeArray !c = unsafeMakeArray c . liftIndex (max 0)
@@ -225,15 +240,15 @@ singleton !c = unsafeMakeArray c oneIndex . const
 
 infixl 4 !, !?, ??
 
--- | Infix version of `index`.
+-- | Infix version of `index'`.
 (!) :: Manifest r ix e => Array r ix e -> ix -> e
-(!) = index
+(!) = index'
 {-# INLINE (!) #-}
 
 
--- | Infix version of `maybeIndex`.
+-- | Infix version of `index`.
 (!?) :: Manifest r ix e => Array r ix e -> ix -> Maybe e
-(!?) = maybeIndex
+(!?) = index
 {-# INLINE (!?) #-}
 
 
@@ -251,9 +266,9 @@ infixl 4 !, !?, ??
 
 -- | /O(1)/ - Lookup an element in the array. Returns `Nothing`, when index is out
 -- of bounds, `Just` element otherwise.
-maybeIndex :: Manifest r ix e => Array r ix e -> ix -> Maybe e
-maybeIndex arr = handleBorderIndex (Fill Nothing) (size arr) (Just . unsafeIndex arr)
-{-# INLINE maybeIndex #-}
+index :: Manifest r ix e => Array r ix e -> ix -> Maybe e
+index arr = handleBorderIndex (Fill Nothing) (size arr) (Just . unsafeIndex arr)
+{-# INLINE index #-}
 
 -- | /O(1)/ - Lookup an element in the array, while using default element when
 -- index is out of bounds.
@@ -268,13 +283,13 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 {-# INLINE borderIndex #-}
 
 -- | /O(1)/ - Lookup an element in the array. Throw an error if index is out of bounds.
-index :: Manifest r ix e => Array r ix e -> ix -> e
-index arr ix =
+index' :: Manifest r ix e => Array r ix e -> ix -> e
+index' arr ix =
   borderIndex (Fill (errorIx "Data.Massiv.Array.index" (size arr) ix)) arr ix
-{-# INLINE index #-}
+{-# INLINE index' #-}
 
 
--- | This is just like `index` function, but it allows getting values from
+-- | This is just like `index'` function, but it allows getting values from
 -- delayed arrays as well as manifest. As the name suggests, indexing into a
 -- delayed array at the same index multiple times will cause evaluation of the
 -- value each time and can destroy the performace if used without care.

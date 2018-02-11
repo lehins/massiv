@@ -25,7 +25,9 @@ import           Control.Monad.ST                    (runST)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
-import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
+                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
@@ -144,6 +146,13 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
   unsafeNew sz = MPArray sz <$> newByteArray (totalElem sz * sizeOf (undefined :: e))
   {-# INLINE unsafeNew #-}
+
+  unsafeNewZero sz = do
+    let szBytes = totalElem sz * sizeOf (undefined :: e)
+    barr <- newByteArray szBytes
+    fillByteArray barr 0 szBytes 0
+    return $ MPArray sz barr
+  {-# INLINE unsafeNewZero #-}
 
   unsafeLinearRead (MPArray _ a) = readByteArray a
   {-# INLINE unsafeLinearRead #-}

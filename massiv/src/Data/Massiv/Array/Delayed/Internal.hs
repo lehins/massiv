@@ -110,7 +110,7 @@ instance Index ix => Applicative (Array D ix) where
   {-# INLINE (<*>) #-}
 
 
--- | Row-major folding over a delayed array.
+-- | Row-major sequential folding over a delayed array.
 instance Index ix => Foldable (Array D ix) where
   foldl = lazyFoldlS
   {-# INLINE foldl #-}

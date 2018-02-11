@@ -23,7 +23,9 @@ import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as A
-import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
+                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Vector.Unboxed                 as VU
@@ -141,6 +143,9 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
 
   unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
+
+  unsafeNewZero sz = MUArray sz <$> MVU.new (totalElem sz)
+  {-# INLINE unsafeNewZero #-}
 
   unsafeLinearRead (MUArray _ v) i = MVU.unsafeRead v i
   {-# INLINE unsafeLinearRead #-}

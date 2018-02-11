@@ -1,11 +1,9 @@
 {-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
@@ -25,9 +23,11 @@ import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.BoxedNF  (deepseqArray,
                                                       deepseqArrayP)
+import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
+                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
-import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
@@ -131,6 +131,9 @@ instance Index ix => Mutable B ix e where
   unsafeNew sz = MBArray sz <$> A.newArray (totalElem sz) uninitialized
   {-# INLINE unsafeNew #-}
 
+  unsafeNewZero = unsafeNew
+  {-# INLINE unsafeNewZero #-}
+
   unsafeLinearRead (MBArray _ ma) i = A.readArray ma i
   {-# INLINE unsafeLinearRead #-}
 
@@ -138,7 +141,7 @@ instance Index ix => Mutable B ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
--- | Row-major folding over a Boxed array.
+-- | Row-major sequential folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
   foldl = lazyFoldlS
   {-# INLINE foldl #-}

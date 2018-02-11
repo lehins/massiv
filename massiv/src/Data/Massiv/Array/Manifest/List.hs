@@ -26,7 +26,7 @@ module Data.Massiv.Array.Manifest.List
   ) where
 
 import           Data.Massiv.Array.Delayed          (D (..))
-import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Ops.Construct    (makeArrayR)
 import           Data.Massiv.Array.Ops.Fold         (foldrFB, foldrS)
 import           Data.Massiv.Core.Common
@@ -45,7 +45,7 @@ fromList comp = either (const Nothing) Just . fromRaggedArray . setComp comp . t
 -- which should be specified through an explicit type signature.
 --
 -- __Note__: This function is almost the same (modulo customizable computation strategy) if you
--- would turn on `{-# LANGUAGE OverloadedLists #-}`. For that reason you can also use
+-- would turn on @{-# LANGUAGE OverloadedLists #-}@. For that reason you can also use
 -- `GHC.Exts.fromList`.
 --
 -- ==== __Examples__
@@ -72,7 +72,7 @@ fromList comp = either (const Nothing) Just . fromRaggedArray . setComp comp . t
 -- , [ [4,5] ]
 -- ])
 --
--- Above example implemented using GHC `OverloadedLists` extension:
+-- Above example implemented using GHC's `OverloadedLists` extension:
 --
 -- >>> :set -XOverloadedLists
 -- >>> [[[1,2,3]],[[4,5]]] :: Array B Ix2 [Int]

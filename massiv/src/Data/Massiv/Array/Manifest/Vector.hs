@@ -21,20 +21,21 @@ module Data.Massiv.Array.Manifest.Vector
   , VRepr
   ) where
 
-import           Control.Monad                        (guard, join, msum)
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Manifest.BoxedStrict
+import           Control.Monad                          (guard, join, msum)
 import           Data.Massiv.Array.Manifest.BoxedNF
+import           Data.Massiv.Array.Manifest.BoxedStrict
+import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.Primitive
 import           Data.Massiv.Array.Manifest.Storable
 import           Data.Massiv.Array.Manifest.Unboxed
-import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Core.Common
 import           Data.Typeable
-import qualified Data.Vector                          as VB
-import qualified Data.Vector.Generic                  as VG
-import qualified Data.Vector.Primitive                as VP
-import qualified Data.Vector.Storable                 as VS
-import qualified Data.Vector.Unboxed                  as VU
+import qualified Data.Vector                            as VB
+import qualified Data.Vector.Generic                    as VG
+import qualified Data.Vector.Primitive                  as VP
+import qualified Data.Vector.Storable                   as VS
+import qualified Data.Vector.Unboxed                    as VU
 
 type family ARepr (v :: * -> *) :: *
 type family VRepr r :: * -> *
@@ -157,7 +158,7 @@ toVector ::
   -> v e
 toVector arr =
   case castToVector (convert arr :: Array (ARepr v) ix e) of
-    Just v -> v
+    Just v  -> v
     Nothing -> VG.generate (totalElem (size arr)) (unsafeLinearIndex arr)
 {-# NOINLINE toVector #-}
 

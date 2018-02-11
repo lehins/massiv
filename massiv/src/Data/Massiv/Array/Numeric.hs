@@ -62,7 +62,7 @@ module Data.Massiv.Array.Numeric
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Manifest.Mutable (compute)
+import           Data.Massiv.Array.Manifest.Internal (compute)
 import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A
 import           Data.Massiv.Array.Ops.Slice        as A

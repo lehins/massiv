@@ -28,7 +28,9 @@ import           Control.Monad.ST                    (runST)
 import           Data.Massiv.Array.Delayed.Internal  (eq)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as A
-import           Data.Massiv.Array.Manifest.Mutable
+import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
+                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
@@ -135,6 +137,9 @@ instance (Index ix, NFData e) => Mutable N ix e where
 
   unsafeNew sz = MNArray sz <$> A.newArray (totalElem sz) uninitialized
   {-# INLINE unsafeNew #-}
+
+  unsafeNewZero = unsafeNew
+  {-# INLINE unsafeNewZero #-}
 
   unsafeLinearRead (MNArray _ ma) i = A.readArray ma i
   {-# INLINE unsafeLinearRead #-}
