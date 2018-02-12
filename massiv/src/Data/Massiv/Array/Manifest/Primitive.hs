@@ -37,6 +37,7 @@ import qualified Data.Vector.Primitive               as VP
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
+-- | Representation for `Prim`itive elements
 data P = P deriving Show
 
 type instance EltRepr P ix = M

@@ -22,6 +22,7 @@ module Data.Massiv.Array.Ops.Transform
   , resize'
   -- ** Extract
   , extract
+  , extract'
   , extractFromTo
   -- ** Append/Split
   , append
@@ -41,8 +42,13 @@ import           Data.Maybe                         (fromMaybe)
 import           Prelude                            hiding (splitAt, traverse)
 
 
--- | Extract a sub-array from within a larger one
-extract :: Size r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
+-- | Extract a sub-array from within a larger source array. Array that is being extracted must be
+-- fully encapsulated in a source array, otherwise `Nothing` is returned,
+extract :: Size r ix e
+        => ix -- ^ Starting index
+        -> ix -- ^ Size fo the resulting array
+        -> Array r ix e -- ^ Source array
+        -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
   | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
     Just $ unsafeExtract sIx newSz arr
@@ -53,10 +59,30 @@ extract !sIx !newSz !arr
     eIx = liftIndex2 (+) sIx newSz
 {-# INLINE extract #-}
 
-extractFromTo :: Size r ix e => ix -> ix -> Array r ix e -> Maybe (Array (EltRepr r ix) ix e)
-extractFromTo sIx eIx = extract sIx newSz
-  where
-    newSz = liftIndex2 (-) eIx sIx
+-- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
+extract' :: Size r ix e
+        => ix -- ^ Starting index
+        -> ix -- ^ Size fo the resulting array
+        -> Array r ix e -- ^ Source array
+        -> Array (EltRepr r ix) ix e
+extract' !sIx !newSz !arr =
+  case extract sIx newSz arr of
+    Just arr' -> arr'
+    Nothing ->
+      error $
+      "Data.Massiv.Array.extract': Cannot extract an array of size " ++
+      show newSz ++
+      " starting at " ++ show sIx ++ " from within an array of size: " ++ show (size arr)
+{-# INLINE extract' #-}
+
+-- | Similar to `extract`, except it takes starting and ending index. Result array will not include
+-- the ending index.
+extractFromTo :: Size r ix e =>
+                 ix -- ^ Starting index
+              -> ix -- ^ Index up to which elmenets should be extracted.
+              -> Array r ix e -- ^ Source array.
+              -> Maybe (Array (EltRepr r ix) ix e)
+extractFromTo sIx eIx = extract sIx $ liftIndex2 (-) eIx sIx
 {-# INLINE extractFromTo #-}
 
 -- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
@@ -135,7 +161,7 @@ transposeInner :: (Index (Lower ix), Source r' ix e)
 transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newVal
   where
     transInner !ix =
-      fromMaybe (error "transposeInner: Impossible happened") $ do
+      fromMaybe (errorImpossible "transposeInner" ix) $ do
         n <- getIndex ix (rank ix)
         m <- getIndex ix (rank ix - 1)
         ix' <- setIndex ix (rank ix) m
@@ -163,24 +189,24 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
 --   ])
 -- >>> transposeOuter arr
 -- (Array D Seq (2 :> 4 :. 3)
--- [ [ [ (0,0,0),(0,1,0),(0,2,0) ]
---   , [ (0,0,1),(0,1,1),(0,2,1) ]
---   , [ (0,0,2),(0,1,2),(0,2,2) ]
---   , [ (0,0,3),(0,1,3),(0,2,3) ]
---   ]
--- , [ [ (1,0,0),(1,1,0),(1,2,0) ]
---   , [ (1,0,1),(1,1,1),(1,2,1) ]
---   , [ (1,0,2),(1,1,2),(1,2,2) ]
---   , [ (1,0,3),(1,1,3),(1,2,3) ]
---   ]
--- ])
+--   [ [ [ (0,0,0),(0,1,0),(0,2,0) ]
+--     , [ (0,0,1),(0,1,1),(0,2,1) ]
+--     , [ (0,0,2),(0,1,2),(0,2,2) ]
+--     , [ (0,0,3),(0,1,3),(0,2,3) ]
+--     ]
+--   , [ [ (1,0,0),(1,1,0),(1,2,0) ]
+--     , [ (1,0,1),(1,1,1),(1,2,1) ]
+--     , [ (1,0,2),(1,1,2),(1,2,2) ]
+--     , [ (1,0,3),(1,1,3),(1,2,3) ]
+--     ]
+--   ])
 --
 transposeOuter :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
 transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newVal
   where
     transOuter !ix =
-      fromMaybe (error $ "transposeOuter: Impossible happened: " ++ show ix) $ do
+      fromMaybe (errorImpossible "transposeOuter" ix) $ do
         n <- getIndex ix 1
         m <- getIndex ix 2
         ix' <- setIndex ix 1 m
@@ -270,7 +296,7 @@ append n !arr1 !arr2 = do
   newSz <- setIndex sz1 n (k1 + k2)
   return $
     unsafeMakeArray (getComp arr1) newSz $ \ !ix ->
-      fromMaybe (error $ "Data.Massiv.Array.append: Impossible happened " ++ show ix) $ do
+      fromMaybe (errorImpossible "append" ix) $ do
         k' <- getIndex ix n
         if k' < k1
           then Just (unsafeIndex arr1 ix)
@@ -347,3 +373,10 @@ traverse2
   -> Array D ix e
 traverse2 sz f arr1 arr2 = makeArray (getComp arr1) sz (f (evaluateAt arr1) (evaluateAt arr2))
 {-# INLINE traverse2 #-}
+
+
+-- | Throw an impossible error on a `Nothing`
+errorImpossible :: Show c => String -> c -> a
+errorImpossible fName cause =
+  error $ "Data.Massiv.Array." ++ fName ++ ": Impossible happened " ++ show cause
+{-# NOINLINE errorImpossible #-}

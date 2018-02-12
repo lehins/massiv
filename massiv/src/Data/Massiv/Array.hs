@@ -106,13 +106,13 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Ops.Slice
   -- * Conversion
   , module Data.Massiv.Array.Manifest.List
-  -- * Stencil
-  , module Data.Massiv.Array.Stencil
   -- * Core
   , module Data.Massiv.Core
   -- * Representations
   , module Data.Massiv.Array.Delayed
   , module Data.Massiv.Array.Manifest
+  -- * Stencil
+  , module Data.Massiv.Array.Stencil
   ) where
 
 import           Data.Massiv.Array.Delayed

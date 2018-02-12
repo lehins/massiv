@@ -136,7 +136,7 @@ instance {-# OVERLAPPING #-} Load DW Ix2 e where
   loadS arr _ unsafeWrite = do
     let (DWArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) indexW) =
           arr
-    let (ib :. jb) = (wm + it :. wn + jt)
+    let (ib :. jb) = (wm + it) :. (wn + jt)
         blockHeight = case mStencilSz of
                         Just (i :. _) -> i
                         _             -> 1
@@ -154,7 +154,7 @@ instance {-# OVERLAPPING #-} Load DW Ix2 e where
   loadP wIds arr _ unsafeWrite = do
     let (DWArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) indexW) = arr
     withScheduler_ wIds $ \scheduler -> do
-      let (ib :. jb) = (wm + it :. wn + jt)
+      let (ib :. jb) = (wm + it) :. (wn + jt)
           !blockHeight = case mStencilSz of
                            Just (i :. _) -> i
                            _             -> 1
@@ -265,12 +265,12 @@ unrollAndJam :: Monad m =>
                 Int -> Ix2 -> Ix2 -> (Ix2 -> m a) -> m ()
 unrollAndJam !bH (it :. ib) (jt :. jb) f = do
   let !bH' = min (max 1 bH) 7
-  let f2 (i :. j) = f (i :. j) >> f  (i+1 :. j)
-  let f3 (i :. j) = f (i :. j) >> f2 (i+1 :. j)
-  let f4 (i :. j) = f (i :. j) >> f3 (i+1 :. j)
-  let f5 (i :. j) = f (i :. j) >> f4 (i+1 :. j)
-  let f6 (i :. j) = f (i :. j) >> f5 (i+1 :. j)
-  let f7 (i :. j) = f (i :. j) >> f6 (i+1 :. j)
+  let f2 (i :. j) = f (i :. j) >> f  ((i + 1) :. j)
+  let f3 (i :. j) = f (i :. j) >> f2 ((i + 1) :. j)
+  let f4 (i :. j) = f (i :. j) >> f3 ((i + 1) :. j)
+  let f5 (i :. j) = f (i :. j) >> f4 ((i + 1) :. j)
+  let f6 (i :. j) = f (i :. j) >> f5 ((i + 1) :. j)
+  let f7 (i :. j) = f (i :. j) >> f6 ((i + 1) :. j)
   let f' = case bH' of
              1 -> f
              2 -> f2

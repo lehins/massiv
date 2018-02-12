@@ -24,10 +24,10 @@ module Data.Massiv.Core
   , EltRepr
   , Construct
   , Source
-  , Load
+  , Load(..)
   , Size
   , Slice
-  , OuterSlice
+  , OuterSlice(outerLength)
   , InnerSlice
   , Manifest
   , Mutable

@@ -20,7 +20,9 @@ import           Data.Massiv.Core.Common
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Default.Class                (Default (def))
 
-
+-- | Stencil is abstract description of how to handle elements in the neighborhood of every array
+-- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
+-- `Data.Array.makeConvolutionStencil` in order to create a stencil.
 data Stencil ix e a = Stencil
   { stencilBorder :: Border e
   , stencilSize   :: !ix
@@ -31,7 +33,9 @@ data Stencil ix e a = Stencil
 instance (NFData e, Index ix) => NFData (Stencil ix e a) where
   rnf (Stencil b sz ix f) = b `deepseq` sz `deepseq` ix `deepseq` f `seq` ()
 
-
+-- | This is a simple wrapper for value of an array cell. It is used in order to improve safety of
+-- `Stencil` mapping. Using various class instances, such as `Num` and `Functor` fopr example, make
+-- it possible to manipulate the value, without having direct access to it.
 newtype Value e = Value { unValue :: e } deriving (Show, Eq, Ord, Bounded)
 
 
@@ -209,6 +213,7 @@ safeStencilIndex DArray {..} ix
     "Index is out of bounds: " ++ show ix ++ " for stencil size: " ++ show dSize
 
 
+-- | Make sure constructed stencil doesn't index outside the allowed stencil size boundary.
 validateStencil
   :: Index ix
   => e -> Stencil ix e a -> Stencil ix e a
@@ -216,9 +221,3 @@ validateStencil d s@(Stencil _ sSz sCenter stencil) =
   let valArr = DArray Seq sSz (const d)
   in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
-
-
-errorImpossible :: String -> a
-errorImpossible fName =
-  error $ fName ++ ": Impossible happened. Please report this error."
-{-# NOINLINE errorImpossible #-}

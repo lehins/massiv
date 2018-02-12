@@ -12,10 +12,10 @@
 module Data.Massiv.Array.Stencil
   ( Stencil
   , Value
-  , makeStencil
-  , mkConvolutionStencil
-  , mkConvolutionStencilFromKernel
   , mapStencil
+  , makeStencil
+  , makeConvolutionStencil
+  , makeConvolutionStencilFromKernel
   ) where
 
 import           Data.Default.Class                    (Default (def))
@@ -27,7 +27,8 @@ import           Data.Massiv.Core.Common
 import           GHC.Exts                              (inline)
 
 
-
+-- | Map a constructed stencil over an array. Resulting array must be `compute`d in order to be
+-- useful.
 mapStencil :: (Source r ix e, Manifest r ix e) =>
               Stencil ix e a -> Array r ix e -> Array DW ix a
 mapStencil (Stencil b sSz sCenter stencilF) !arr =

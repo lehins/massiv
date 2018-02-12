@@ -33,6 +33,7 @@ import qualified Data.Vector.Storable.Mutable        as MVS
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
+-- | Representation for `Storable` elements
 data S = S deriving Show
 
 type instance EltRepr S ix = M

@@ -34,6 +34,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeThaw
   , unsafeFreeze
   , unsafeNew
+  , unsafeNewZero
   , unsafeRead
   , unsafeLinearRead
   , unsafeWrite

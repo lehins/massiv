@@ -19,10 +19,10 @@ module Data.Massiv.Array.Manifest.List
     fromList
   , fromList'
   , toList
-  , toListIx1
-  , toListIx2
-  , toListIx3
-  , toListIx4
+  , toList1
+  , toList2
+  , toList3
+  , toList4
   ) where
 
 import           Data.Massiv.Array.Delayed          (D (..))
@@ -52,35 +52,35 @@ fromList comp = either (const Nothing) Just . fromRaggedArray . setComp comp . t
 --
 -- >>> fromList' Seq [[1,2],[3,4]] :: Array U Ix2 Int
 -- (Array U Seq (2 :. 2)
--- [ [ 1,2 ]
--- , [ 3,4 ]
--- ])
+--   [ [ 1,2 ]
+--   , [ 3,4 ]
+--   ])
 --
 -- >>> fromList' Par [[[1,2,3]],[[4,5,6]]] :: Array U Ix3 Int
 -- (Array U Par (2 :> 1 :. 3)
--- [ [ [ 1,2,3 ]
---   ]
--- , [ [ 4,5,6 ]
---   ]
--- ])
+--   [ [ [ 1,2,3 ]
+--     ]
+--   , [ [ 4,5,6 ]
+--     ]
+--   ])
 --
 -- Elements of a boxed array could be lists themselves if necessary:
 --
 -- >>> fromList' Seq [[[1,2,3]],[[4,5]]] :: Array B Ix2 [Int]
 -- (Array B Seq (2 :. 1)
--- [ [ [1,2,3] ]
--- , [ [4,5] ]
--- ])
+--   [ [ [1,2,3] ]
+--   , [ [4,5] ]
+--   ])
 --
 -- Above example implemented using GHC's `OverloadedLists` extension:
 --
 -- >>> :set -XOverloadedLists
 -- >>> [[[1,2,3]],[[4,5]]] :: Array B Ix2 [Int]
 -- (Array B Seq (2 :. 1)
--- [ [ [1,2,3] ]
--- , [ [4,5] ]
--- ])
-
+--   [ [ [1,2,3] ]
+--   , [ [4,5] ]
+--   ])
+--
 fromList' :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Mutable r ix e)
          => Comp -- ^ Computation startegy to use
          -> [ListItem ix e] -- ^ Nested list
@@ -95,7 +95,7 @@ throughNested xs = fromNested (fromNested xs :: Array LN ix e)
 
 
 -- | /O(n)/ - Convert an array into a nested list. Array rank and list nestedness will always match,
--- but you can use `toListIx1`, `toListIx2`, etc. if flattening of inner dimensions is desired.
+-- but you can use `toList1`, `toList2`, etc. if flattening of inner dimensions is desired.
 --
 -- __Note__: This function is almost the same as `GHC.Exts.toList`.
 --
@@ -104,11 +104,11 @@ throughNested xs = fromNested (fromNested xs :: Array LN ix e)
 -- >>> let arr = makeArrayR U Seq (2 :> 1 :. 3) fromIx3
 -- >>> print arr
 -- (Array U Seq (2 :> 1 :. 3)
--- [ [ [ (0,0,0),(0,0,1),(0,0,2) ]
---   ]
--- , [ [ (1,0,0),(1,0,1),(1,0,2) ]
---   ]
--- ])
+--   [ [ [ (0,0,0),(0,0,1),(0,0,2) ]
+--     ]
+--   , [ [ (1,0,0),(1,0,1),(1,0,2) ]
+--     ]
+--   ])
 -- >>> toList arr
 -- [[[(0,0,0),(0,0,1),(0,0,2)]],[[(1,0,0),(1,0,1),(1,0,2)]]]
 --
@@ -120,38 +120,42 @@ toList = toNested . toNested . toListArray
 
 
 
--- | Convert an array into a list.
---
--- >>> toListIx1 $ makeArrayR U Seq (2 :. 3) fromIx2
--- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
---
-toListIx1 :: Source r ix e => Array r ix e -> [e]
-toListIx1 !arr = build (\ c n -> foldrFB c n arr)
-{-# INLINE toListIx1 #-}
-
-
--- | Convert an array with at least 2 dimensions into a list of lists. Inner
--- dimensions will get flattened into a list.
+-- | Convert any array to a flat list list.
 --
 -- ==== __Examples__
 --
--- >>> toListIx2 $ makeArrayR U Seq (2 :. 3) fromIx2
+-- >>> toList1 $ makeArrayR U Seq (2 :. 3) fromIx2
+-- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+--
+toList1 :: Source r ix e => Array r ix e -> [e]
+toList1 !arr = build (\ c n -> foldrFB c n arr)
+{-# INLINE toList1 #-}
+
+
+-- | Convert an array with at least 2 dimensions into a list of lists. Inner dimensions will get
+-- flattened.
+--
+-- ==== __Examples__
+--
+-- >>> toList2 $ makeArrayR U Seq (2 :. 3) fromIx2
 -- [[(0,0),(0,1),(0,2)],[(1,0),(1,1),(1,2)]]
--- >>> toListIx2 $ makeArrayR U Seq (2 :> 1 :. 3) fromIx3
+-- >>> toList2 $ makeArrayR U Seq (2 :> 1 :. 3) fromIx3
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
-toListIx2 :: (Source r ix e, Index (Lower ix)) => Array r ix e -> [[e]]
-toListIx2 = toListIx1 . foldrInner (:) []
-{-# INLINE toListIx2 #-}
+toList2 :: (Source r ix e, Index (Lower ix)) => Array r ix e -> [[e]]
+toList2 = toList1 . foldrInner (:) []
+{-# INLINE toList2 #-}
 
 
--- | Similar to `toListIx1` and `toListIx2`, but for 3 deep nested list.
-toListIx3 :: (Index (Lower (Lower ix)), Index (Lower ix), Source r ix e) => Array r ix e -> [[[e]]]
-toListIx3 = toListIx1 . foldrInner (:) [] . foldrInner (:) []
-{-# INLINE toListIx3 #-}
+-- | Convert an array with at least 3 dimensions into a 3 deep nested list. Inner dimensions will
+-- get flattened.
+toList3 :: (Index (Lower (Lower ix)), Index (Lower ix), Source r ix e) => Array r ix e -> [[[e]]]
+toList3 = toList1 . foldrInner (:) [] . foldrInner (:) []
+{-# INLINE toList3 #-}
 
--- | Convert an array with the `Rank` of at least `4` into 4 deep nested list.
-toListIx4 ::
+-- | Convert an array with at least 4 dimensions into a 4 deep nested list. Inner dimensions will
+-- get flattened.
+toList4 ::
      ( Index (Lower (Lower (Lower ix)))
      , Index (Lower (Lower ix))
      , Index (Lower ix)
@@ -159,8 +163,8 @@ toListIx4 ::
      )
   => Array r ix e
   -> [[[[e]]]]
-toListIx4 = toListIx1 . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
-{-# INLINE toListIx4 #-}
+toList4 = toList1 . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
+{-# INLINE toList4 #-}
 
 
 -- | Right fold with an index aware function of inner most dimension.

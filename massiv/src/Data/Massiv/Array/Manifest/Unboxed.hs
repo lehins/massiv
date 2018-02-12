@@ -33,6 +33,7 @@ import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
+-- | Representation for `Unbox`ed elements
 data U = U deriving Show
 
 type instance EltRepr U ix = M

@@ -99,11 +99,36 @@ instance Show (Ix (n - 1)) => Show (IxN n) where
 
 instance Num Ix2 where
   (+) = liftIndex2 (+)
+  {-# INLINE [1] (+) #-}
   (-) = liftIndex2 (-)
+  {-# INLINE [1] (-) #-}
   (*) = liftIndex2 (*)
+  {-# INLINE [1] (*) #-}
   negate = liftIndex negate
+  {-# INLINE [1] negate #-}
   abs = liftIndex abs
+  {-# INLINE [1] abs #-}
   signum = liftIndex signum
+  {-# INLINE [1] signum #-}
+  fromInteger = pureIndex . fromInteger
+  {-# INLINE [1] fromInteger #-}
+
+instance Num Ix3 where
+  (+) = liftIndex2 (+)
+  {-# INLINE [1] (+) #-}
+  (-) = liftIndex2 (-)
+  {-# INLINE [1] (-) #-}
+  (*) = liftIndex2 (*)
+  {-# INLINE [1] (*) #-}
+  negate = liftIndex negate
+  {-# INLINE [1] negate #-}
+  abs = liftIndex abs
+  {-# INLINE [1] abs #-}
+  signum = liftIndex signum
+  {-# INLINE [1] signum #-}
+  fromInteger = pureIndex . fromInteger
+  {-# INLINE [1] fromInteger #-}
+
 
 instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
@@ -114,11 +139,19 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
           IxN (n - 1) ~ Ix (n - 1)
           ) => Num (IxN n) where
   (+) = liftIndex2 (+)
+  {-# INLINE [1] (+) #-}
   (-) = liftIndex2 (-)
+  {-# INLINE [1] (-) #-}
   (*) = liftIndex2 (*)
+  {-# INLINE [1] (*) #-}
   negate = liftIndex negate
+  {-# INLINE [1] negate #-}
   abs = liftIndex abs
+  {-# INLINE [1] abs #-}
   signum = liftIndex signum
+  {-# INLINE [1] signum #-}
+  fromInteger = pureIndex . fromInteger
+  {-# INLINE [1] fromInteger #-}
 
 
 instance NFData Ix2 where
@@ -179,8 +212,6 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   type Rank Ix2 = 2
   rank _ = 2
   {-# INLINE [1] rank #-}
-  zeroIndex = 0 :. 0
-  {-# INLINE [1] zeroIndex #-}
   totalElem (m :. n) = m * n
   {-# INLINE [1] totalElem #-}
   isSafeIndex (m :. n) (i :. j) = 0 <= i && 0 <= j && i < m && j < n
@@ -210,6 +241,8 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   dropDim (i :. _) 1 = Just i
   dropDim _      _   = Nothing
   {-# INLINE [1] dropDim #-}
+  pureIndex i = i :. i
+  {-# INLINE [1] pureIndex #-}
   liftIndex f (i :. j) = f i :. f j
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :. j0) (i1 :. j1) = f i0 i1 :. f j0 j1
@@ -223,8 +256,6 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   type Rank Ix3 = 3
   rank _ = 3
   {-# INLINE [1] rank #-}
-  zeroIndex = 0 :> 0 :. 0
-  {-# INLINE [1] zeroIndex #-}
   totalElem (m :> n :. o) = m * n * o
   {-# INLINE [1] totalElem #-}
   isSafeIndex (m :> n :. o) (i :> j :. k) =
@@ -257,6 +288,8 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   dropDim (i :> j :. _) 1 = Just (i :. j)
   dropDim _             _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pureIndex i = i :> i :. i
+  {-# INLINE [1] pureIndex #-}
   liftIndex f (i :> j :. k) = f i :> f j :. f k
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i0 :> j0 :. k0) (i1 :> j1 :. k1) = f i0 i1 :> f j0 j1 :. f k0 k1
@@ -276,8 +309,6 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   type Rank (IxN n) = n
   rank _ = fromInteger $ natVal (Proxy :: Proxy n)
   {-# INLINE [1] rank #-}
-  zeroIndex = 0 :> (zeroIndex :: Ix (n - 1))
-  {-# INLINE [1] zeroIndex #-}
   totalElem (i :> ix) = i * totalElem ix
   {-# INLINE [1] totalElem #-}
   consDim = (:>)
@@ -298,6 +329,8 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   dropDim ix@(j :> jx) k | k == rank ix = Just jx
                            | otherwise = (j :>) <$> dropDim jx k
   {-# INLINE [1] dropDim #-}
+  pureIndex i = i :> (pureIndex i :: Ix (n - 1))
+  {-# INLINE [1] pureIndex #-}
   liftIndex f (i :> ix) = f i :> liftIndex f ix
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i1 :> ix1) (i2 :> ix2) = f i1 i2 :> liftIndex2 f ix1 ix2

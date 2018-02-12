@@ -66,7 +66,8 @@ instance Index ix => Load DI ix e where
           unsafeWrite k $ f ix
   {-# INLINE loadP #-}
 
-
+-- | Convert a source array into an array that, when computed, will have its elemets evaluated out
+-- of order (interleaved amoungs cores), hence making unbalanced computation better parallelizable.
 toInterleaved :: Source r ix e => Array r ix e -> Array DI ix e
 toInterleaved = DIArray . delay
 {-# INLINE toInterleaved #-}

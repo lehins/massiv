@@ -49,8 +49,6 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
   rank :: ix -> Dim
 
-  zeroIndex :: ix
-
   -- | Total number of elements in an array of this size.
   totalElem :: ix -> Int
 
@@ -68,8 +66,14 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
   setIndex :: ix -> Dim -> Int -> Maybe ix
 
+  pureIndex :: Int -> ix
+
   -- | Zip together two indices with a function
   liftIndex2 :: (Int -> Int -> Int) -> ix -> ix -> ix
+
+  zeroIndex :: ix
+  zeroIndex = pureIndex 0
+  {-# INLINE [1] zeroIndex #-}
 
   -- | Map a function over an index
   liftIndex :: (Int -> Int) -> ix -> ix
@@ -170,8 +174,6 @@ instance Index Ix1T where
   type Rank Ix1T = 1
   rank _ = 1
   {-# INLINE [1] rank #-}
-  zeroIndex = 0
-  {-# INLINE [1] zeroIndex #-}
   totalElem = id
   {-# INLINE [1] totalElem #-}
   isSafeIndex !k !i = 0 <= i && i < k
@@ -206,6 +208,8 @@ instance Index Ix1T where
   dropDim _ 1 = Just Ix0
   dropDim _ _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pureIndex i = i
+  {-# INLINE [1] pureIndex #-}
   liftIndex f = f
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f = f
@@ -222,8 +226,6 @@ instance Index Ix2T where
   type Rank Ix2T = 2
   rank _ = 2
   {-# INLINE [1] rank #-}
-  zeroIndex = (0, 0)
-  {-# INLINE [1] zeroIndex #-}
   totalElem !(m, n) = m * n
   {-# INLINE [1] totalElem #-}
   toLinearIndex !(_, n) !(i, j) = n * i + j
@@ -250,6 +252,8 @@ instance Index Ix2T where
   dropDim (i, _) 1 = Just i
   dropDim _      _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pureIndex i = (i, i)
+  {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, j0) (i1, j1) = (f i0 i1, f j0 j1)
   {-# INLINE [1] liftIndex2 #-}
 
@@ -258,8 +262,6 @@ instance Index Ix3T where
   type Rank Ix3T = 3
   rank _ = 3
   {-# INLINE [1] rank #-}
-  zeroIndex = (0, 0, 0)
-  {-# INLINE [1] zeroIndex #-}
   totalElem !(m, n, o) = m * n * o
   {-# INLINE [1] totalElem #-}
   consDim i (j, k) = (i, j, k)
@@ -285,6 +287,8 @@ instance Index Ix3T where
   dropDim (i, j, _) 1 = Just (i, j)
   dropDim _      _    = Nothing
   {-# INLINE [1] dropDim #-}
+  pureIndex i = (i, i, i)
+  {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, j0, k0) (i1, j1, k1) = (f i0 i1, f j0 j1, f k0 k1)
   {-# INLINE [1] liftIndex2 #-}
 
@@ -293,8 +297,6 @@ instance Index Ix4T where
   type Rank Ix4T = 4
   rank _ = 4
   {-# INLINE [1] rank #-}
-  zeroIndex = (0, 0, 0, 0)
-  {-# INLINE [1] zeroIndex #-}
   totalElem !(n1, n2, n3, n4) = n1 * n2 * n3 * n4
   {-# INLINE [1] totalElem #-}
   consDim i1 (i2, i3, i4) = (i1, i2, i3, i4)
@@ -323,6 +325,8 @@ instance Index Ix4T where
   dropDim (i1, i2, i3,  _) 1 = Just (i1, i2, i3)
   dropDim _      _           = Nothing
   {-# INLINE [1] dropDim #-}
+  pureIndex i = (i, i, i, i)
+  {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, i1, i2, i3) (j0, j1, j2, j3) = (f i0 j0, f i1 j1, f i2 j2, f i3 j3)
   {-# INLINE [1] liftIndex2 #-}
 
@@ -331,8 +335,6 @@ instance Index Ix5T where
   type Rank Ix5T = 5
   rank _ = 5
   {-# INLINE [1] rank #-}
-  zeroIndex = (0, 0, 0, 0, 0)
-  {-# INLINE [1] zeroIndex #-}
   totalElem !(n1, n2, n3, n4, n5) = n1 * n2 * n3 * n4 * n5
   {-# INLINE [1] totalElem #-}
   consDim i1 (i2, i3, i4, i5) = (i1, i2, i3, i4, i5)
@@ -364,10 +366,11 @@ instance Index Ix5T where
   dropDim (i1, i2, i3, i4,  _) 1 = Just (i1, i2, i3, i4)
   dropDim _                    _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pureIndex i = (i, i, i, i, i)
+  {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, i1, i2, i3, i4) (j0, j1, j2, j3, j4) =
     (f i0 j0, f i1 j1, f i2 j2, f i3 j3, f i4 j4)
   {-# INLINE [1] liftIndex2 #-}
-
 
 
 errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a

@@ -23,20 +23,20 @@ import           GHC.Exts                           (inline)
 -- Here is how to create a 2D horizontal Sobel Stencil:
 --
 -- > sobelX :: Num e => Border e -> Stencil Ix2 e e
--- > sobelX b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $
+-- > sobelX b = makeConvolutionStencil b (3 :. 3) (1 :. 1) $
 -- >            \f -> f (-1 :. -1) 1 . f (-1 :. 1) (-1) .
 -- >                  f ( 0 :. -1) 2 . f ( 0 :. 1) (-2) .
 -- >                  f ( 1 :. -1) 1 . f ( 1 :. 1) (-1)
 -- > {-# INLINE sobelX #-}
 --
-mkConvolutionStencil
+makeConvolutionStencil
   :: (Index ix, Num e)
   => Border e
   -> ix
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
-mkConvolutionStencil b !sSz !sCenter relStencil =
+makeConvolutionStencil b !sSz !sCenter relStencil =
   validateStencil 0 $ Stencil b sSz sCenter stencil
   where
     stencil getVal !ix =
@@ -44,18 +44,18 @@ mkConvolutionStencil b !sSz !sCenter relStencil =
             (getVal (liftIndex2 (-) ix ixD)) * kVal + acc)
            0)
     {-# INLINE stencil #-}
-{-# INLINE mkConvolutionStencil #-}
+{-# INLINE makeConvolutionStencil #-}
 
 
 -- | Make a stencil out of a Kernel Array. This `Stencil` will be slower than if
--- `mkConvolutionStencil` is used, but sometimes we just really don't know the
+-- `makeConvolutionStencil` is used, but sometimes we just really don't know the
 -- kernel at compile time.
-mkConvolutionStencilFromKernel
+makeConvolutionStencilFromKernel
   :: (Manifest r ix e, Num e)
   => Border e
   -> Array r ix e
   -> Stencil ix e e
-mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
+makeConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = (liftIndex (`div` 2) sz)
@@ -64,4 +64,4 @@ mkConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
         unValue (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
       {-# INLINE accum #-}
     {-# INLINE stencil #-}
-{-# INLINE mkConvolutionStencilFromKernel #-}
+{-# INLINE makeConvolutionStencilFromKernel #-}

@@ -70,7 +70,7 @@ instance Index ix => Construct M ix e where
   unsafeMakeArray !c !sz f = MArray c sz (V.unsafeIndex (makeBoxedVector sz f))
   {-# INLINE unsafeMakeArray #-}
 
-
+-- | Create a boxed from usual size and index to element function
 makeBoxedVector :: Index ix => ix -> (ix -> a) -> V.Vector a
 makeBoxedVector !sz f = V.generate (totalElem sz) (f . fromLinearIndex sz)
 {-# INLINE makeBoxedVector #-}

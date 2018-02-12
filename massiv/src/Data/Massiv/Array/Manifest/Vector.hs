@@ -37,7 +37,9 @@ import qualified Data.Vector.Primitive                  as VP
 import qualified Data.Vector.Storable                   as VS
 import qualified Data.Vector.Unboxed                    as VU
 
+-- | Match vector type to array representation
 type family ARepr (v :: * -> *) :: *
+-- | Match array representation to a vector type
 type family VRepr r :: * -> *
 
 type instance ARepr VU.Vector = U
