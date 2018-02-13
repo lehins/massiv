@@ -4,14 +4,14 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 -- |
--- Module      : Data.Array.Massiv.IO.Image
+-- Module      : Data.Massiv.Array.IO.Image
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.IO.Image
+module Data.Massiv.Array.IO.Image
   ( Encode
   , encodeImage
   , imageWriteFormats
@@ -20,15 +20,15 @@ module Data.Array.Massiv.IO.Image
   , decodeImage
   , imageReadFormats
   , imageReadAutoFormats
-  , module Data.Array.Massiv.IO.Image.JuicyPixels
-  , module Data.Array.Massiv.IO.Image.Netpbm
+  , module Data.Massiv.Array.IO.Image.JuicyPixels
+  , module Data.Massiv.Array.IO.Image.Netpbm
   ) where
 
 import           Control.Exception                      (throw)
-import           Data.Array.Massiv
-import           Data.Array.Massiv.IO.Base
-import           Data.Array.Massiv.IO.Image.JuicyPixels
-import           Data.Array.Massiv.IO.Image.Netpbm
+import           Data.Massiv.Array
+import           Data.Massiv.Array.IO.Base
+import           Data.Massiv.Array.IO.Image.JuicyPixels
+import           Data.Massiv.Array.IO.Image.Netpbm
 import qualified Data.ByteString                        as B (ByteString)
 import qualified Data.ByteString.Lazy                   as BL (ByteString)
 import           Data.Char                              (toLower)

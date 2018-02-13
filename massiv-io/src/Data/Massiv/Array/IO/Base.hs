@@ -4,14 +4,14 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
--- Module      : Data.Array.Massiv.IO.Base
+-- Module      : Data.Massiv.Array.IO.Base
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.IO.Base
+module Data.Massiv.Array.IO.Base
   ( FileFormat(..)
   , Readable(..)
   , Writable(..)
@@ -29,7 +29,7 @@ module Data.Array.Massiv.IO.Base
   ) where
 
 import           Control.Exception    (throw, Exception)
-import           Data.Array.Massiv    (Array, Ix2)
+import           Data.Massiv.Array    (Array, Ix2)
 import qualified Data.ByteString      as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import           Data.Default         (Default (..))

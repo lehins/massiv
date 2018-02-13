@@ -13,6 +13,7 @@
 module Data.Massiv.Array.Ops.Construct
   ( makeArray
   , makeArrayR
+  , makeVectorR
   , singleton
   , range
   , rangeStep
@@ -43,6 +44,12 @@ import           Prelude                            as P
 makeArrayR :: Construct r ix e => r -> Comp -> ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
 {-# INLINE makeArrayR #-}
+
+
+-- | Same as `makeArrayR`, but restricted to 1-dimensional arrays.
+makeVectorR :: Construct r Ix1 e => r -> Comp -> Ix1-> (Ix1 -> e) -> Array r Ix1 e
+makeVectorR _ = makeArray
+{-# INLINE makeVectorR #-}
 
 
 -- | Create a vector with a range of @Int@s incremented by 1.

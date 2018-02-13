@@ -37,7 +37,7 @@ import qualified Data.Vector.Unboxed         as VU
 import           GHC.TypeLits
 
 
-infixr 6 :>, :.
+infixr 5 :>, :.
 
 type Ix1 = Int
 
@@ -153,6 +153,32 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   fromInteger = pureIndex . fromInteger
   {-# INLINE [1] fromInteger #-}
 
+
+
+instance Bounded Ix2 where
+  minBound = pureIndex minBound
+  {-# INLINE minBound #-}
+  maxBound = pureIndex maxBound
+  {-# INLINE maxBound #-}
+
+instance Bounded Ix3 where
+  minBound = pureIndex minBound
+  {-# INLINE minBound #-}
+  maxBound = pureIndex maxBound
+  {-# INLINE maxBound #-}
+
+instance {-# OVERLAPPABLE #-} (4 <= n,
+          KnownNat n,
+          Index (Ix (n - 1)),
+#if __GLASGOW_HASKELL__ < 800
+          Rank (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
+#endif
+          IxN (n - 1) ~ Ix (n - 1)
+          ) => Bounded (IxN n) where
+  minBound = pureIndex minBound
+  {-# INLINE minBound #-}
+  maxBound = pureIndex maxBound
+  {-# INLINE maxBound #-}
 
 instance NFData Ix2 where
   rnf ix = ix `seq` ()

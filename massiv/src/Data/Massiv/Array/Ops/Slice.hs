@@ -30,7 +30,7 @@ import           Control.Monad    (guard)
 import           Data.Massiv.Core.Common
 
 
-infixl 5 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
+infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 
 
 -- | /O(1)/ - Slices the array from the outside. For 2-dimensional array this will

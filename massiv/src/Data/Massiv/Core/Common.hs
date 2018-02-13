@@ -238,7 +238,7 @@ singleton !c = unsafeMakeArray c oneIndex . const
 {-# INLINE singleton #-}
 
 
-infixl 5 !, !?, ??
+infixl 4 !, !?, ??
 
 -- | Infix version of `index'`.
 (!) :: Manifest r ix e => Array r ix e -> ix -> e

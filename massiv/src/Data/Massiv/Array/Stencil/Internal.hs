@@ -221,3 +221,4 @@ validateStencil d s@(Stencil _ sSz sCenter stencil) =
   let valArr = DArray Seq sSz (const d)
   in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
+

@@ -1,56 +1,45 @@
 # massiv
 
-`massiv` is a Haskell library for array manipulation. The goal of this library
-is to be fast and easy to use. Performance is one of its main goals, thus it is
-able to effortlessly run almost all operations in parallel as well as
-sequentially.
+`massiv` is a Haskell library for array manipulation. Performance is one of its main goals, thus it
+is able to run effortlessly almost all operations in parallel as well as sequentially.
 
-The name for this library comes from the Russian word Massiv (Масси́в), which means an
-Array.
+The name for this library comes from the Russian word Massiv (Масси́в), which means an Array.
 
-__Disclaimer__: Current status of this library is under development, so anything
-in its API is subject to change. That being said it is already pretty
-functional with some decent testing in place, so it is at a great stage to be
-experimented with—at your own risk, of course.
+__Disclaimer__: Current status of this library is still under development, but it is already at a
+much more stable point, so no significant API changes should happen.
 
 ## Introduction
 
-Everything in the library revolves around an `Array r ix e` - a data type family
-for anything that can be thought of as an array. The type variables, from the
-end, are:
+Everything in the library revolves around an `Array r ix e` - a data type family for anything that
+can be thought of as an array. The type variables, from the end, are:
 
 * `e` - element of an array.
-* `ix` - an index that will map to an actual element. Index must be an instance of
-  the `Index` class with default one being an `Ix n` type family and an optional
-  being tuples of `Int`s.
+* `ix` - an index that will map to an actual element. Index must be an instance of the `Index` class
+  with default one being an `Ix n` type family and an optional being tuples of `Int`s.
 * `r` - underlying representation. Main representations are:
 
-    * `D` - delayed array, which is simply a function from an index to an
-      element: `(ix -> e)`. Therefore indexing of this type of array is not
-      possible, although elements can be computed with the `evaluateAt` function.
-    * `P` - Array with elements that are an instance of `Prim` type class,
-      i.e. common Haskell primitive types: `Int`, `Word`, `Char`, etc. Backed by
-      the usual `ByteArray`.
-    * `U` - Unboxed arrays. Elements have instances of `Unbox` class. Just as
-      fast as `P`, but has a much wider range of data types that it can work
-      with.
-    * `S` - Storable arrays. Backed by pinned `ByteArray`s and elements are
-      instances of `Storable` class.
-    * `B` - Boxed arrays that don't have restrictions on its elements, since
-      they are represented as pointers to elements, thus making them the slowest
-      type of array, but the most general. Arrays of this representation are
-      element strict, in other words its elements are kept in Weak-Head Normal
-      Form (WHNF).
-    * `N` - Also boxed array, but unlike previous representation its elements
-      are in Normal Form, in a fully evaluated state and no thunks or memory
-      leaks are possible. It does require `NFData` instance for the elements
-      though.
-    * `M` - Manifest arrays, which is a general type of array that is backed by
-      some memory representation, therefore any of the above `P`, `U`, `S`, `B`
-      type of arrays can be converted to `M` in constant time with `toManifest`
-      function. It is mostly useful during constant time slicing of manifest
-      arrays, as this becomes the result representation. More on that
-      in the [slicing](#slicing) section.
+    * `D` - delayed array, which is simply a function from an index to an element: `(ix ->
+      e)`. Therefore indexing of this type of array is not possible, although elements can be
+      computed with the `evaluateAt` function.
+    * `P` - Array with elements that are an instance of `Prim` type class, i.e. common Haskell
+      primitive types: `Int`, `Word`, `Char`, etc. Backed by the usual `ByteArray`.
+    * `U` - Unboxed arrays. Elements have instances of `Unbox` class. Just as fast as `P`, but has a
+      wider range of data types that it can work with. Notable data types that can be stored as
+      elemenets are `Bool`, tuples and the `Ix n`.
+    * `S` - Storable arrays. Backed by pinned `ByteArray`s and elements are instances of `Storable`
+      class.
+    * `B` - Boxed arrays that don't have restrictions on its elements, since they are represented as
+      pointers to elements, thus making them the slowest type of array, but the most general. Arrays
+      of this representation are element strict, in other words its elements are kept in Weak-Head
+      Normal Form (WHNF).
+    * `N` - Also boxed array, but unlike previous representation its elements are in Normal Form,
+      i.e. in a fully evaluated state and no thunks or memory leaks are possible. It does require
+      `NFData` instance for the elements though.
+    * `M` - Manifest arrays, which is a general type of array that is backed by some memory
+      representation, therefore any of the above `P`, `U`, `S`, `B` type of arrays can be converted
+      to `M` in constant time with `toManifest` function. It is mostly useful during constant time
+      slicing of manifest arrays, as this becomes the result representation. More on that in the
+      [slicing](#slicing) section.
 
 ## Construct
 
@@ -58,10 +47,11 @@ Creating a delayed type of array allows us to fuse any future operation we decid
 to perform on it. Let's look at this example:
 
 ```haskell
-λ> import Data.Array.Massiv as M
+λ> import Data.Massiv.Array as A
 λ> let vec = makeVectorR D Seq 10 id
-λ> :t vec
-vec :: Array D Int Int
+λ> vec
+(Array D Seq (10)
+  [ 0,1,2,3,4,5,6,7,8,9 ])
 ```
 
 Here we created a delayed vector, which is in reality just an `id` function from
@@ -70,7 +60,7 @@ its index to an element. So let's go ahead and square its elements
 ```haskell
 λ> evaluateAt vec 4
 4
-λ> let vec2 = fmap (^2) vec
+λ> let vec2 = fmap (^ (2::Int)) vec
 λ> evaluateAt vec2 4
 16
 ```
@@ -79,33 +69,39 @@ It's not that exciting, since every time we call `evaluateAt` it will recompute
 the element, __every time__, therefore this function should be avoided at all
 costs. Instead we can use all of the functions that take `Source` like arrays
 and then fuse that computation together by calling `compute`, or a handy
-`computeAs` function and only afterwards apply an `index` function or its
+`computeAs` function and only afterwards apply an `index'` function or its
 synonym: `(!)`. Any delayed array can also be reduced using one of the folding
 functions, thus completely avoiding any memory allocation, or converted to a
 list, if that's what you need:
 
 ```haskell
 λ> let vec2U = computeAs U vec2
-λ> :t vec2U
-vec2U :: Array U Int Int
+λ> vec2U
+(Array U Seq (10)
+  [ 0,1,4,9,16,25,36,49,64,81 ])
 λ> vec2U ! 4
 16
 λ> toListIx1 vec2U
 [0,1,4,9,16,25,36,49,64,81]
-λ> M.sum vec2U
+λ> A.sum vec2U
 285
 ```
 
-Other means of constructing arrays are through conversion from lists, vectors
-from the `vector` library and few other helper functions as `range`, `enumFromN`,
-etc. It's worth noting that, in the next example, nested lists will be loaded in
-parallel as well as further computation of the `sum` will be distributed amongst
-available cores (that is if it would be compiled instead of executed in ghci):
+Other means of constructing arrays are through conversion from lists, vectors from the `vector`
+library and few other helper functions as `range`, `enumFromN`, etc. It's worth noting that, in the
+next example, nested lists will be loaded into an unboxed manifest array and the sum of its elements
+will be computed in parallel on available cores.
 
 ```haskell
-λ> M.sum (fromListIx2 Par [[0,0,0,0,0],[0,1,2,3,4],[0,2,4,6,8]] :: Array U Ix2 Double)
+λ> A.sum (fromListIx2 Par [[0,0,0,0,0],[0,1,2,3,4],[0,2,4,6,8]] :: Array U Ix2 Double)
 30.0
 ```
+
+Above wouldn't run in parallel in ghci of course, program would have to be compiled with ghc and
+`-threaded -with-rtsopts=-N` flags in order to use all available cores. Alternatively we could do
+compilation with `-threaded` flag and than passing number of capabilities directly to the runtime
+with `+RTS -N<n>`, where `<n>` is the number of cores you'd like to utilize.
+
 
 ## Index
 
@@ -116,31 +112,39 @@ type signature.
 
 There are three distinguishable constructors for the index:
 
-* First one is simply an integer: `Ix1 = Ix 1 = Int`, therefore vectors can be indexed in
-  a usual way without some extra wrapping data type, just as it was demonstrated
-  in a previous section.
+* First one is simply an int: `Ix1 = Ix 1 = Int`, therefore vectors can be indexed in a usual way
+  without some extra wrapping data type, just as it was demonstrated in a previous section.
 * Second one is `Ix2` for operating on 2-dimensional arrays and has a constructor `:.`
 
 ```haskell
-λ> toListIx2 $ makeArrayR D Seq (3 :. 5) (\ (i :. j) -> i * j)
-[[0,0,0,0,0],[0,1,2,3,4],[0,2,4,6,8]]
+λ> makeArrayR D Seq (3 :. 5) (\ (i :. j) -> i * j)
+(Array D Seq (3 :. 5)
+  [ [ 0,0,0,0,0 ]
+  , [ 0,1,2,3,4 ]
+  , [ 0,2,4,6,8 ]
+  ])
 ```
 
-* Next one is `IxN n` and is for creating and indexing N-dimensional arrays, and
-  has a similar looking constructor `:>`, except that it can be chained
-  indefinitely on top of `:.`
+* Next one is `IxN n` and is for working with N-dimensional arrays, and has a similar looking
+  constructor `:>`, except that it can be chained indefinitely on top of `:.`
 
 ```haskell
 λ> :t makeArrayR D Seq (10 :> 20 :. 30) $ \ (i :> j :. k) -> i * j + k
 makeArrayR D Seq (10 :> 20 :. 30) $ \ (i :> j :. k) -> i * j + k
   :: Array D (IxN 3) Int
+λ> :t (10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1) -- 10-dimensional index
+(10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1) -- 10-dimensional index
+  :: IxN 10
+```
+
+Here is how to construct a 4-dimensional array and sum it's all elements in constant memory:
+
+```haskell
 λ> let arr = makeArrayR D Seq (10 :> 20 :> 30 :. 40) $ \ (i :> j :> k :. l) -> (i * j + k) * k + l
 λ> :t arr -- a 4-dimensional array
 arr :: Array D (IxN 4) Int
-λ> M.sum arr
+λ> A.sum arr
 221890000
-λ> :t (10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1) -- 10-dimensional index
-(10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1) :: IxN 10
 ```
 
 Alternatively tuples of `Int`s can be used for working with Arrays, up to and
@@ -148,10 +152,26 @@ including 5-tuples (type synonims: `Ix2T` - `Ix5T`), but since tuples are
 polymorphic it is necessary to restrict the resulting array type:
 
 ```haskell
-λ> makeArray Seq (10, 20) (uncurry (*)) :: Array D Ix2T Int
-<Array D (10,20) (Int)>
+λ> makeArray Seq (4, 20) (uncurry (*)) :: Array P Ix2T Int
+(Array P Seq ((4,20))
+  [ [ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ]
+  , [ 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 ]
+  , [ 0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38 ]
+  , [ 0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57 ]
+  ])
 λ> :i Ix2T
 type Ix2T = (Int, Int)
+```
+
+There are helper functions that can go back and forth between indices. Also `Ix n` is an instance of `Num` so basic numeric operations are made easier:
+
+```haskell
+λ> fromIx4 (3 :> 4 :> 5 :. 6)
+(3,4,5,6)
+λ> toIx5 (3,4,5,6,7)
+3 :> 4 :> 5 :> 6 :. 7
+λ> (1 :> 2 :. 3) + (3 :> 2 :. 1)
+4 :> 4 :. 4
 ```
 
 ## Slicing
@@ -162,65 +182,103 @@ slicing, resizing and extraction operators that can do it all in constant time,
 modulo the index manipulation:
 
 ```haskell
-λ> let arr = computeAs U $ makeArrayR D Seq (10 :> 20 :. 30) $ \ (i :> j :. k) -> (i, j, k)
-λ> :t arr !> 3 <! 2
-arr !> 3 <! 2 :: Array M Ix1 (Int, Int, Int)
-λ> arr !> 3 <! 2 ! 1
-(3,1,2)
+λ> let arr = makeArrayR U Seq (4 :> 2 :. 6) fromIx3
+λ> arr !> 3 !> 1
+(Array M Seq (6)
+  [ (3,1,0),(3,1,1),(3,1,2),(3,1,3),(3,1,4),(3,1,5) ])
 ```
 
-In above example we first take a slice at 3rd page, then at a 2nd column and
-finaly we pull out the first element in that column. Pretty neat, hah?
-
-As you might suspect those slicing and indexing operators are partial, and those
-are frowned upon in Haskell, so we can do this in a much safer way:
+As you might suspect all of the slicing, indexing, extracting, resizing operations are all partial,
+and those are frowned upon in Haskell. So there are matching functions that can do the same
+operations safely by returning `Nothing` on failure.
 
 ```haskell
-λ> :t arr !?> 3
-arr !?> 3 :: Maybe (Array M Ix2 (Int, Int, Int))
-λ> :t arr !?> 3 <? 2
-arr !?> 3 <? 2 :: Maybe (Array M Ix1 (Int, Int, Int))
-λ> arr !?> 3 <? 2 ? 1
-Just (3,1,2)
-λ> arr !?> 3 ?> 1 ? 2
-Just (3,1,2)
+λ> arr !?> 3 ??> 1
+Just (Array M Seq (6)
+  [ (3,1,0),(3,1,1),(3,1,2),(3,1,3),(3,1,4),(3,1,5) ])
+λ> arr !?> 3 ??> 1 ??> 0
+Just (3,1,0)
+```
+
+
+In above examples we first take a slice at 3rd page, then another one at 1st row (both counts start
+at 0). While in the last example we also take 0th element. Pretty neat, huh? Naturally, by doing a
+slice we always reduce dimension by one. We can also do slicing from the outside as well as from the
+inside:
+
+```haskell
+λ> let a = resize' (3 :. 3) $ range Seq 1 10
+λ> a
+(Array D Seq (3 :. 3)
+  [ [ 1,2,3 ]
+  , [ 4,5,6 ]
+  , [ 7,8,9 ]
+  ])
+λ> a !> 0
+(Array D Seq (3)
+  [ 1,2,3 ])
+λ> a <! 0
+(Array D Seq (3)
+  [ 1,4,7 ])
+```
+
+Or we can slice along any dimension:
+
+```haskell
+λ> a <!> (2, 0)
+(Array D Seq (3)
+  [ 1,2,3 ])
+λ> a <!> (1, 0)
+(Array D Seq (3)
+  [ 1,4,7 ])
+```
+
+In order to extract sub-array while preserving dimensionality we can use `extract` or `extractFromTo`.
+
+```haskell
+λ> extract' 0 (1 :. 3) a
+(Array D Seq (1 :. 3)
+  [ [ 1,2,3 ]
+  ])
+λ> extract' 0 (3 :. 1) a
+(Array D Seq (3 :. 1)
+  [ [ 1 ]
+  , [ 4 ]
+  , [ 7 ]
+  ])
 ```
 
 ## Computation
 
-There is a data type `Comp`, that controls how elements will be computed when calling
-`compute` function. It has two constructors:
+There is a data type `Comp`, that controls how elements will be computed when calling `compute`
+function. It has two constructors:
 
 * `Seq` - computation will be done sequentially on one core.
-* `ParOn [Int]` - perform computation in parallel while pinning the workers to
-  particular cores. Providing an empty list will result in computation being
-  distributed over all available cores, or better known in Haskell as
-  capabilities.
-* `Par` - isn't really a constructor but a `pattern` for constructing `ParOn
-  []`, thus should be used instead of `ParOn`.
+* `ParOn [Int]` - perform computation in parallel while pinning the workers to particular
+  cores. Providing an empty list will result in computation being distributed over all available
+  cores, or better known in Haskell as capabilities.
+* `Par` - isn't really a constructor but a `pattern` for constructing `ParOn []`, thus should be
+  used instead of `ParOn`.
 
-Just to make sure a simple novice mistake is prevented, which I have seen in the
-past, make sure your source code is compiled with
-`ghc -O2 -threaded -rtsopts -with-rtsopts=-N`, otherwise no parallelization and
-poor performance are waiting for you. Also a bit later you might notice
-`{-# INLINE funcName #-}` pragma being used, often times it is a good idea to do
-that, but not always required. It is worth to benchmark and experiment.
+Just to make sure a simple novice mistake is prevented, which I have seen in the past, make sure
+your source code is compiled with `ghc -O2 -threaded -with-rtsopts=-N`, otherwise no parallelization
+and poor performance are waiting for you. Also a bit later you might notice `{-# INLINE funcName
+#-}` pragma being used, often times it is a good idea to do that, but not always required. It is
+worth to benchmark and experiment.
 
 ## Stencil
 
-Instead of manually iterating over a multidimensional array and applying a
-function to each element, while reading it's neighboring elements, as you would
-do in an imperative language, in a functional language it is much more efficient
-to apply a stencil function and let the library take care of all of bounds
-checking and iterating in a cache friendly manner.
+Instead of manually iterating over a multidimensional array and applying a function to each element,
+while reading it's neighboring elements, as you would do in an imperative language, in a functional
+language it is much more efficient to apply a stencil function and let the library take care of all
+of bounds checking and iterating in a cache friendly manner.
 
-What's a stencil? It is a declarative way of specifying a pattern of how
-elements of an array in a neighborhood will be used in order to update each
-element of that array. To be more precise for this library it is a function that
-possesses a way to index an element, which is assumed to be at a center of a
-stencil, i.e. zero index, and it's neighbors using an offset indexing, but not
-beyond the specified size with respect to the center index. A mouthful, will go
-for an example as it is worth a thousand words.
+What's a stencil? It is a declarative way of specifying a pattern for how elements of an array in a
+neighborhood will be used in order to update each element of that array. To be more precise for this
+library it is a function that possesses a way to index an element, which is assumed to be at a
+center of a stencil, i.e. zero index, and it's neighbors using an offset indexing, but not beyond
+the specified size with respect to the center index. A mouthful, will go for an example as it is
+worth a thousand words.
 
 Let's create a simple, but somewhat meaningful array and create an average
 stencil. There is nothing super interesting about the array itself, but the
@@ -247,28 +305,25 @@ funky periodic function, make sure it is computed prior to mapping an average
 stencil over it:
 
 ```haskell
-λ> let arr = arrLightIx2 Par (600 :. 800)
+λ> let arr = computeAs U $ arrLightIx2 Par (600 :. 800)
 λ> :t arr
-arr :: Array D Ix2 Double
-λ> :t mapStencil (average3x3Filter Edge) $ computeAs U arr
-mapStencil (average3x3Filter Edge) $ computeAs U arr
-  :: Array WD Ix2 Double
+arr :: Array U Ix2 Double
+λ> :t mapStencil (average3x3Filter Edge) arr
+mapStencil (average3x3Filter Edge) arr :: Array WD Ix2 Double
 ```
 
-As you can see, that operation produced an array of some weird representation
-`WD`, which stands for Windowed Delayed array. In it's essence `WD` is an array
-type that does no bounds checking in order to gain performance, except when it's
-near the border, where it uses a border resolution technique supplied by the
-user, like `Edge` in the example above. Currently it is used only in stencils
-and there is not much else can be done to an array of this type besides further
-computing it into a manifest representation.
+As you can see, that operation produced an array of some weird representation `WD`, which stands for
+Windowed Delayed array. In it's essence `WD` is an array type that does no bounds checking in order
+to gain performance, except when it's near the border, where it uses a border resolution technique
+supplied by the user, like `Edge` in the example above. Currently it is used only in stencils and
+there is not much else can be done to an array of this type besides further computing it into a
+manifest representation.
 
-This example will be continued in the next section, but before that I would like
-to mention that some might notice that it looks very much like convolution, and
-in fact convolution can be implemented with a stencil, therefore here is a
-helper function `mkConvolutionStencil` that let's you do just that. Although,
-instead of going the easy route, for the sake of example we'll do a sum of all
-neighbors:
+This example will be continued in the next section, but before that I would like to mention that
+some might notice that it looks very much like convolution, and in fact convolution can be
+implemented with a stencil, therefore here is a helper function `mkConvolutionStencil` that let's
+you do just that. Although, instead of going the easy route, for the sake of example we'll do a sum
+of all neighbors:
 
 ```haskell
 sum3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
@@ -279,22 +334,21 @@ sum3x3Filter b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
 {-# INLINE sum3x3Filter #-}
 ```
 
-There is not a single plus, because that is summing elements is convolution, so
-instead we have composition of functions applied to an offseet index and a
-multiplier. After we map that stencil, we can further divide each element of the
-array by 9 in order to get the average. Yeah, I lied a bit, `Array WD ix` is an
-instance of a `Functor`, so we can map functions over it, which will be fused as
-with a regular `D`elayed array:
+There is not a single plus sign, that is because convolutions is actually summation of elements, so
+instead we have composition of functions applied to an offseet index and a multiplier. After we map
+that stencil, we can further divide each element of the array by 9 in order to get the
+average. Yeah, I lied a bit, `Array WD ix` is an instance of `Functor` class, so we can map functions
+over it, which will be fused as with a regular `D`elayed array:
 
 ```haskell
-computeAs U $ fmap (/9) . mapStencil (sum3x3Filter Edge) $ computeAs U arr
+computeAs U $ fmap (/9) . mapStencil (sum3x3Filter Edge) arr
 ```
 
 # massiv-io
 
 In order to do anything useful with arrays we need to be able to read some data
 from a file. Considering that most common array-like files are images and
-`massiv-io` provides an interface to read, write and display images in common
+[massiv-io](massiv-io) provides an interface to read, write and display images in common
 formats using Haskell native JuicyPixels and Netpbm packages.
 
 There are also a variety of colorspaces (or rather color models) and pixel types
@@ -307,6 +361,8 @@ Previous example wasn't particularly interesting, since we couldn't visualize
 what is actually going on, so let's expend on it:
 
 ```haskell
+import Data.Massiv.Array.IO
+
 main :: IO ()
 main = do
   let arr = arrLightIx2 Par (600 :. 800)
@@ -315,17 +371,17 @@ main = do
   writeImage "files/light_avg.png" $ computeAs S $ mapStencil (average3x3Filter Edge) img
 ```
 
-`files/light.png`:
+`massiv-io/examples/files/light.png`:
 
-![Light](files/light.png)
+![Light](massiv-io/examples/files/light.png)
 
-`files/light_avg.png`:
+`massiv-io/examples/files/light_avg.png`:
 
-![Light](files/light_avg.png)
+![Light](massiv-io/examples/files/light_avg.png)
 
 
-The full example is in the root of the repository and if you have stack
-installed you can run it as:
+The full example is in the [massiv-io/examples](massiv-io/examples) and if you have stack installed
+you can run it as:
 
 ```bash
 $ ./Examples.hs && ./Examples
@@ -334,36 +390,31 @@ $ ./Examples.hs && ./Examples
 
 # Other libraries
 
-A natural question might come to mind: Why even bother with a new array library
-when we already have a few really good ones in Haskell world? The main reasons
-for me are performance and usability. I personally felt like there was much room
-for improvement even before I started work on this package, and it seems as it
-turned out to be true. For example, the most common goto library for dealing with
-multidimensional arrays and parallel computation over them is Repa, which I
-personally was a big fan of for the longest time, to the point that I even wrote
-a [Haskell Image Processing](https://hackage.haskell.org/package/hip) library
-based on Repa.
+A natural question might come to mind: Why even bother with a new array library when we already have
+a few really good ones in Haskell world? The main reasons for me are performance and usability. I
+personally felt like there was much room for improvement even before I started work on this package,
+and it seems as it turned out to be true. For example, the most common goto library for dealing with
+multidimensional arrays and parallel computation is Repa, which I personally was a big fan of for
+the longest time, to the point that I even wrote a [Haskell Image
+Processing](https://hackage.haskell.org/package/hip) library based on Repa.
 
 Here is a quick summary of how `massiv` compares to Repa so far:
 
 * Better scheduler, that is capable of handling nested parallel computation.
 * Still shape polymorphic, but with improved default indexing data types.
-* Safe stencils for arbitrary dimensions, not only convolution. Stencils are
-  composable through an instance of Applicative (currently there is performance
-  regression on this point for the new index type, but that is in the works of
-  being fixed)
-* Improved performance on almost all operations. (I might be wrong here, but so
-  far it looks promising and rigorous benchmarks are coming to prove the claim)
+* Safe stencils for arbitrary dimensions, not only convolution. Stencils are composable through an
+  instance of Applicative
+* Improved performance on almost all operations. (I might be wrong here, but so far it looks
+  promising and rigorous benchmarks are coming to prove the claim)
 * Structural parallel folds (i.e. left/right - direction is preserved)
 * Super easy slicing.
-* Delayed arrays aren't indexable, only Manifest are (saving user from common
-  pitfall in Repa of trying to read elements of delayed array)
+* Delayed arrays aren't indexable, only Manifest are (saving user from common pitfall in Repa of
+  trying to read elements of delayed array)
 
-As far as usability of the library goes, it is very subjective, thus I'll let
-you be a judge of that. When talking about performance it is the facts that do
-matter.  Thus, not continue this discussion in pure abstract words, below is a
-glimpse into benchmarks against Repa library running with GHC 8.0.2 on Intel®
-Core™ i7-3740QM CPU @ 2.70GHz × 8
+As far as usability of the library goes, it is very subjective, thus I'll let you be a judge of
+that. When talking about performance it is the facts that do matter.  Thus, not continue this
+discussion in pure abstract words, below is a glimpse into benchmarks against Repa library running
+with GHC 8.0.2 on Intel® Core™ i7-3740QM CPU @ 2.70GHz × 8
 
 Stencil example discussed earlier:
 

@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          lehins@yandex.ru
-copyright:           2017 Alexey Kuleshevich
+copyright:           2018 Alexey Kuleshevich
 category:            Data, Data Structures
 build-type:          Simple
 extra-source-files:  README.md
@@ -24,13 +24,13 @@ library
                      , Graphics.ColorSpace.X
                      , Graphics.ColorSpace.Y
                      , Graphics.ColorSpace.YCbCr
-                     , Data.Array.Massiv.IO
+                     , Data.Massiv.Array.IO
   other-modules:       Graphics.ColorSpace.Elevator
                      , Graphics.ColorSpace.Internal
-                     , Data.Array.Massiv.IO.Base
-                     , Data.Array.Massiv.IO.Image
-                     , Data.Array.Massiv.IO.Image.JuicyPixels
-                     , Data.Array.Massiv.IO.Image.Netpbm
+                     , Data.Massiv.Array.IO.Base
+                     , Data.Massiv.Array.IO.Image
+                     , Data.Massiv.Array.IO.Image.JuicyPixels
+                     , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.7 && < 5
                      , bytestring
                      , data-default

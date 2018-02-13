@@ -47,6 +47,8 @@ import           Data.Massiv.Core.Common
 --   -- TODO: use load
 --   imapM_ (unsafeWrite)
 
+
+
 -- | Initialize a new mutable array. Negative size will result in an empty array.
 new :: (Mutable r ix e, PrimMonad m) => ix -> m (MArray (PrimState m) r ix e)
 new sz = unsafeNewZero (liftIndex (max 0) sz)

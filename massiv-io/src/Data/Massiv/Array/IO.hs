@@ -7,14 +7,14 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 -- |
--- Module      : Graphics.Image.IO
+-- Module      : Data.Massiv.Array.IO
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.IO
+module Data.Massiv.Array.IO
   -- -- * Reading
   -- readImage, readImage',
   -- readImageExact, readImageExact',
@@ -46,9 +46,9 @@ import           Control.Concurrent         (forkIO)
 import           Control.Exception          (bracket)
 import           Control.Monad              (void)
 --import qualified Control.Monad              as M (foldM)
-import           Data.Array.Massiv
-import           Data.Array.Massiv.IO.Base
-import           Data.Array.Massiv.IO.Image
+import           Data.Massiv.Array
+import           Data.Massiv.Array.IO.Base
+import           Data.Massiv.Array.IO.Image
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
 -- import           Data.Maybe                 (fromMaybe)

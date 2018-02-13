@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 -- |
--- Module      : Data.Massiv.Array.Ops.Numeric
+-- Module      : Data.Massiv.Array.Numeric
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>

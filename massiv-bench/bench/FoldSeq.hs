@@ -7,7 +7,7 @@ import           Bench.Vector
 import           Criterion.Main
 import           Data.Array.Repa       as R
 import           Data.Functor.Identity
-import           Data.Vector.Unboxed   as VU
+import qualified Data.Vector.Unboxed   as VU
 import           GHC.Exts              as GHC
 import           Prelude               as P
 
@@ -84,13 +84,10 @@ main = do
                 (bench "Array Ix2 U (GHC.toList)" . nf GHC.toList)
             , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U (A.toListIx2)" . nf A.toListIx2)
+                (bench "Array Ix2 U (A.toListIx2)" . nf A.toList2)
             , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U (A.toListIx2')" . nf A.toListIx2')
-            , env
-                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U (A.toListIx1)" . nf A.toListIx1)
+                (bench "Array Ix2 U (A.toListIx1)" . nf A.toList1)
             , env (return (vecLight2 t2)) (bench "Vector U" . nf VU.toList)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
@@ -104,6 +101,12 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" . whnf A.sum)
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U (+)" . whnf (A.foldlS (+) 0))
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U monoid" . whnf sum')
             , env (return (vecLight2 t2)) (bench "Vector U" . whnf VU.sum)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
@@ -120,3 +123,4 @@ main = do
             ]
         ]
     ]
+

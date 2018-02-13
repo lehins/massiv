@@ -186,6 +186,8 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 -- each chunk are further folded with another function @f@, thus allowing us to use information
 -- about the structure of an array during folding.
 --
+-- ===__Examples__
+--
 -- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArrayR U Seq (Ix1 11) id
 -- [[10,9,8,7,6,5,4,3,2,1,0]]
 --
@@ -205,15 +207,9 @@ foldlP f = ifoldlP (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
 
--- | Just like `foldlP`, but allows you to specify which cores (capabilities) to run computation on.
--- The order in which chunked results will be supplied to function @f@ is
--- guaranteed to be consecutive and aligned with the folding direction.
---
--- >>> fmap snd $ foldlOnP [1,2,3] (\(i, acc) x -> (i + 1, (i, x):acc)) (1, []) (flip (:)) [] $ makeArrayR U Seq 11 id
--- [(4,[10,9]),(3,[8,7,6]),(2,[5,4,3]),(1,[2,1,0])]
--- >>> fmap (P.zip [4,3..]) <$> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArray1D 11 id
--- [(4,[10,9]),(3,[8,7,6]),(2,[5,4,3]),(1,[2,1,0])]
---
+-- | Just like `foldlP`, but allows you to specify which cores (capabilities) to run computation
+-- on. The order in which chunked results will be supplied to function @f@ is guaranteed to be
+-- consecutive and aligned with the folding direction.
 foldlOnP
   :: Source r ix e
   => [Int] -> (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
@@ -359,6 +355,7 @@ fold :: Source r ix e =>
      -> e
 fold f initAcc = foldl f initAcc f initAcc
 {-# INLINE fold #-}
+
 
 -- | /O(n)/ - Compute maximum of all elements.
 maximum :: (Source r ix e, Ord e) =>

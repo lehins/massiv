@@ -8,14 +8,14 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 -- |
--- Module      : Graphics.Image.IO.Formats.Netpbm
+-- Module      : Data.Massiv.Array.IO.Image.Netpbm
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Array.Massiv.IO.Image.Netpbm
+module Data.Massiv.Array.IO.Image.Netpbm
   ( -- * Netpbm formats
     -- ** PBM
     PBM(..)
@@ -26,9 +26,9 @@ module Data.Array.Massiv.IO.Image.Netpbm
   ) where
 
 import           Control.Exception
-import           Data.Array.Massiv                      as M
-import           Data.Array.Massiv.IO.Base
-import           Data.Array.Massiv.IO.Image.JuicyPixels (toAnyCS)
+import           Data.Massiv.Array                      as M
+import           Data.Massiv.Array.IO.Base
+import           Data.Massiv.Array.IO.Image.JuicyPixels (toAnyCS)
 import qualified Data.ByteString                        as B (ByteString)
 import           Data.Typeable
 import qualified Data.Vector.Storable                   as V
