@@ -40,7 +40,7 @@ prop_toFromList ::
   => Proxy ix
   -> Arr U ix Int
   -> Property
-prop_toFromList _ (Arr arr) = arr === fromList' (getComp arr) (toList arr :: [ListItem ix Int])
+prop_toFromList _ (Arr arr) = arr === fromLists' (getComp arr) (toLists arr :: [ListItem ix Int])
 
 
 prop_excFromToListIx2 :: Comp -> [[Int]] -> Property
@@ -50,7 +50,7 @@ prop_excFromToListIx2 comp ls2 =
      else label "Expected Failure" $ assertSomeException resultLs
   where
     lsL = P.map P.length ls2
-    resultLs = toList (fromList' comp ls2 :: Array U Ix2 Int)
+    resultLs = toLists (fromLists' comp ls2 :: Array U Ix2 Int)
 
 
 -- prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property

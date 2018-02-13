@@ -203,8 +203,8 @@ prop_UnsnocGetDrop _ ix =
 
 prop_SetAll :: Index ix => proxy ix -> ix -> Int -> Bool
 prop_SetAll _ ix i =
-  foldM (\cix d -> setIndex cix d i) ix [1 .. rank ix] ==
-  Just (liftIndex (+ i) zeroIndex)
+  foldM (\cix d -> setIndex cix d i) ix ([1 .. rank ix] :: [Dim]) ==
+  Just (pureIndex i)
 
 
 prop_SetGet :: Index ix => proxy ix -> ix -> DimIx ix -> Int -> Bool

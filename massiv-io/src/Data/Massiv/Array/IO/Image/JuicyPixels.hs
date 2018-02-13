@@ -1,10 +1,10 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 -- |
@@ -81,25 +81,24 @@ module Data.Massiv.Array.IO.Image.JuicyPixels
   -- , fromJPImageCMYK16
   ) where
 
-import           Prelude                   as P
+import           Prelude                           as P
 
-import qualified Codec.Picture             as JP
-import qualified Codec.Picture.ColorQuant  as JP
-import qualified Codec.Picture.Gif         as JP
-import qualified Codec.Picture.Jpg         as JP
-import           Control.Monad             (msum, guard)
+import qualified Codec.Picture                     as JP
+import qualified Codec.Picture.ColorQuant          as JP
+import qualified Codec.Picture.Gif                 as JP
+import qualified Codec.Picture.Jpg                 as JP
 import           Control.Exception
-import           Data.Massiv.Array         as M
+import           Control.Monad                     (guard, msum)
+import           Data.Bifunctor
+import qualified Data.ByteString                   as B (ByteString)
+import qualified Data.ByteString.Lazy              as BL (ByteString)
+import           Data.Default                      (Default (..))
+import           Data.Massiv.Array                 as M
 import           Data.Massiv.Array.IO.Base
 import           Data.Massiv.Array.Manifest.Vector
-
-import qualified Data.ByteString           as B (ByteString)
-import qualified Data.ByteString.Lazy      as BL (ByteString)
-import           Data.Default              (Default (..))
 import           Data.Typeable
-import qualified Data.Vector.Storable      as V
+import qualified Data.Vector.Storable              as V
 import           Graphics.ColorSpace
-import Data.Bifunctor
 --------------------------------------------------------------------------------
 -- BMP Format ------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -980,7 +979,7 @@ toJPImageCMYK16 = toJPImageUnsafe
 fromJPImageUnsafe :: (Storable (Pixel cs e), JP.Pixel jpx) =>
                      JP.Image jpx -> Maybe (Image S cs e)
 fromJPImageUnsafe (JP.Image n m !v) = do
-  guard (n*m == V.length v)
+  guard (n * m == V.length v)
   return $ fromVector Seq (m :. n) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 
