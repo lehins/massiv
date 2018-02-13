@@ -81,7 +81,7 @@ list, if that's what you need:
   [ 0,1,4,9,16,25,36,49,64,81 ])
 λ> vec2U ! 4
 16
-λ> toListIx1 vec2U
+λ> toList vec2U
 [0,1,4,9,16,25,36,49,64,81]
 λ> A.sum vec2U
 285
@@ -90,10 +90,10 @@ list, if that's what you need:
 Other means of constructing arrays are through conversion from lists, vectors from the `vector`
 library and few other helper functions as `range`, `enumFromN`, etc. It's worth noting that, in the
 next example, nested lists will be loaded into an unboxed manifest array and the sum of its elements
-will be computed in parallel on available cores.
+will be computed in parallel on all available cores.
 
 ```haskell
-λ> A.sum (fromListIx2 Par [[0,0,0,0,0],[0,1,2,3,4],[0,2,4,6,8]] :: Array U Ix2 Double)
+λ> A.sum (fromLists' Par [[0,0,0,0,0],[0,1,2,3,4],[0,2,4,6,8]] :: Array U Ix2 Double)
 30.0
 ```
 

@@ -26,6 +26,7 @@ module Data.Massiv.Array.IO.Base
   , toProxy
   , fromMaybeEncode
   , fromEitherDecode
+  , convertEither
   ) where
 
 import           Control.Exception    (throw, Exception)
@@ -158,4 +159,26 @@ fromEitherDecode f showCS conv (Right eImg) =
         showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
         showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
         showsTypeRep (typeRep (Proxy :: Proxy e)) ">"))
+    (conv eImg)
+
+
+-- | Convert an image using the supplied function and return ConvertError error in case of failure.
+convertEither :: forall r cs e a f. (ColorSpace cs e, FileFormat f, Typeable r) =>
+                    f
+                 -> (a -> String)
+                 -> (a -> Maybe (Image r cs e))
+                 -> a
+                 -> Either ConvertError (Image r cs e)
+convertEither f showCS conv eImg =
+  maybe
+    (Left $
+     ConvertError
+       ("Cannot convert " ++ show f ++ " image <" ++
+        showCS eImg ++
+        "> as " ++
+        "<Image " ++
+        showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+        showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
+        showsTypeRep (typeRep (Proxy :: Proxy e)) ">"))
+    Right
     (conv eImg)

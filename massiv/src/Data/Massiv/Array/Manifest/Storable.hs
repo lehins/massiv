@@ -139,7 +139,7 @@ instance ( VS.Storable e
          ) =>
          IsList (Array S ix e) where
   type Item (Array S ix e) = Item (Array L ix e)
-  fromList = A.fromList' Seq
+  fromList = A.fromLists' Seq
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}

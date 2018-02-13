@@ -138,7 +138,6 @@ import           Prelude                             as P hiding (all, and, any,
                                                            maximum, minimum, or,
                                                            product, splitAt,
                                                            sum)
-import           Control.Monad.ST
 {- $folding
 
 All folding is done in a row-major order.

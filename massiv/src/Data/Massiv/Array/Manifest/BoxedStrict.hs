@@ -170,7 +170,7 @@ instance ( IsList (Array L ix e)
          ) =>
          IsList (Array B ix e) where
   type Item (Array B ix e) = Item (Array L ix e)
-  fromList = A.fromList' Seq
+  fromList = A.fromLists' Seq
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}

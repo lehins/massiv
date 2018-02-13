@@ -208,7 +208,7 @@ instance ( NFData e
          ) =>
          IsList (Array N ix e) where
   type Item (Array N ix e) = Item (Array L ix e)
-  fromList = A.fromList' Seq
+  fromList = A.fromLists' Seq
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}

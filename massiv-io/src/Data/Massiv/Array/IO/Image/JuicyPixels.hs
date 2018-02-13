@@ -99,7 +99,7 @@ import           Data.Default              (Default (..))
 import           Data.Typeable
 import qualified Data.Vector.Storable      as V
 import           Graphics.ColorSpace
-
+import Data.Bifunctor
 --------------------------------------------------------------------------------
 -- BMP Format ------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -324,11 +324,14 @@ decodeGIFs
   -> (JP.DynamicImage -> Maybe (Image r cs e))
   -> B.ByteString
   -> Array B Ix1 (Image r cs e)
-decodeGIFs f decoder bs = do
-  either
-    (throw . DecodeError)
-    (fromList' Seq)
-    (P.map (fromEitherDecode f showJP decoder . Right) <$> JP.decodeGifImages bs)
+decodeGIFs f converter bs =
+  either throw (fromList Seq) $ do
+    jpImgs <- first (toException . DecodeError) $ JP.decodeGifImages bs
+    first toException $ mapM (convertEither f showJP converter) jpImgs
+  -- either
+  --   (throw . DecodeError)
+  --   (fromList' Seq)
+  --   (P.map (fromEitherDecode f showJP decoder . Right) <$> JP.decodeGifImages bs)
 {-# INLINE decodeGIFs #-}
 
 
@@ -339,12 +342,12 @@ decodeGIFsWithDelays
   -> (JP.DynamicImage -> Maybe (Image S cs e))
   -> B.ByteString
   -> Array B Ix1 (JP.GifDelay, Image S cs e)
-decodeGIFsWithDelays f decoder bs =
-  either (throw . DecodeError) (fromList Seq) $ do
-    jpImgsLs <- JP.decodeGifImages bs
-    delays <- JP.getDelaysGifImages bs
-    return $
-      P.zip delays $ P.map (fromEitherDecode f showJP decoder . Right) jpImgsLs
+decodeGIFsWithDelays f converter bs =
+  either throw (fromList Seq) $ do
+    jpImgsLs <- first (toException . DecodeError) $ JP.decodeGifImages bs
+    delays <- first (toException . DecodeError) $ JP.getDelaysGifImages bs
+    imgs <- first toException $ mapM (convertEither f showJP converter) jpImgsLs
+    return $ P.zip delays imgs
 {-# INLINE decodeGIFsWithDelays #-}
 
 

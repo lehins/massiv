@@ -124,7 +124,7 @@ readImage path = decodeImage imageReadFormats path <$> B.readFile path
 -- | Same as `readImage`, but will perform any possible color space and
 -- precision conversions in order to match the result image type. Very useful
 -- whenever image format isn't known at compile time.
-readImageAuto :: (Target r Ix2 (Pixel cs e), ColorSpace cs e) =>
+readImageAuto :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
                   FilePath -- ^ File path for an image
                -> IO (Image r cs e)
 readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path

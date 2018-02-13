@@ -139,7 +139,7 @@ imageReadFormats =
   ]
 
 imageReadAutoFormats
-  :: (Target r Ix2 (Pixel cs e), ColorSpace cs e)
+  :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs e)
   => [Decode (Image r cs e)]
 imageReadAutoFormats =
   [ DecodeAs (Auto BMP)

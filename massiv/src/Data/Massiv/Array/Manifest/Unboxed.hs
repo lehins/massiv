@@ -163,7 +163,7 @@ instance ( VU.Unbox e
          ) =>
          IsList (Array U ix e) where
   type Item (Array U ix e) = Item (Array L ix e)
-  fromList = A.fromList' Seq
+  fromList = A.fromLists' Seq
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
