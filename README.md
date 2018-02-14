@@ -1,38 +1,42 @@
 # massiv
 
-`massiv` is a Haskell library for array manipulation. Performance is one of its main goals, thus it
-is able to run effortlessly almost all operations in parallel as well as sequentially.
+`massiv` is a Haskell library for array manipulation. Performance is one of its
+main goals, thus it is able to run effortlessly almost all operations in
+parallel as well as sequentially.
 
-The name for this library comes from the Russian word Massiv (Масси́в), which means an Array.
+The name for this library comes from the Russian word Massiv (Масси́в), which
+means an Array.
 
-__Disclaimer__: Current status of this library is still under development, but it is already at a
-much more stable point, so no significant API changes should happen.
+__Disclaimer__: The current status of this library is still under development,
+but it is already at a rather stable point, so no significant API changes
+should happen.
 
 ## Introduction
 
-Everything in the library revolves around an `Array r ix e` - a data type family for anything that
-can be thought of as an array. The type variables, from the end, are:
+Everything in the library revolves around an `Array r ix e` - a data type
+family for anything that can be thought of as an array. The type variables,
+from the end, are:
 
 * `e` - element of an array.
-* `ix` - an index that will map to an actual element. Index must be an instance of the `Index` class
-  with default one being an `Ix n` type family and an optional being tuples of `Int`s.
-* `r` - underlying representation. Main representations are:
+* `ix` - an index that will map to an actual element. The index must be an instance of the `Index` class
+  with the default one being an `Ix n` type family and an optional being tuples of `Int`s.
+* `r` - underlying representation. The main representations are:
 
     * `D` - delayed array, which is simply a function from an index to an element: `(ix ->
       e)`. Therefore indexing of this type of array is not possible, although elements can be
       computed with the `evaluateAt` function.
     * `P` - Array with elements that are an instance of `Prim` type class, i.e. common Haskell
       primitive types: `Int`, `Word`, `Char`, etc. Backed by the usual `ByteArray`.
-    * `U` - Unboxed arrays. Elements have instances of `Unbox` class. Just as fast as `P`, but has a
+    * `U` - Unboxed arrays. The elements are instances of the `Unbox` type class. Just as fast as `P`, but has a
       wider range of data types that it can work with. Notable data types that can be stored as
-      elemenets are `Bool`, tuples and the `Ix n`.
-    * `S` - Storable arrays. Backed by pinned `ByteArray`s and elements are instances of `Storable`
-      class.
-    * `B` - Boxed arrays that don't have restrictions on its elements, since they are represented as
-      pointers to elements, thus making them the slowest type of array, but the most general. Arrays
+      elemenets are `Bool`, tuples and `Ix n`.
+    * `S` - Storable arrays. Backed by a pinned `ByteArray`s and elements are instances of the `Storable`
+      type class.
+    * `B` - Boxed arrays that don't have restrictions on their elements, since they are represented as
+      pointers to elements, thus making them the slowest type of array, but also the most general. Arrays
       of this representation are element strict, in other words its elements are kept in Weak-Head
       Normal Form (WHNF).
-    * `N` - Also boxed array, but unlike previous representation its elements are in Normal Form,
+    * `N` - Also boxed array, but unlike the other representations its elements are in Normal Form,
       i.e. in a fully evaluated state and no thunks or memory leaks are possible. It does require
       `NFData` instance for the elements though.
     * `M` - Manifest arrays, which is a general type of array that is backed by some memory
@@ -54,8 +58,9 @@ to perform on it. Let's look at this example:
   [ 0,1,2,3,4,5,6,7,8,9 ])
 ```
 
-Here we created a delayed vector, which is in reality just an `id` function from
-its index to an element. So let's go ahead and square its elements
+Here we created a delayed vector of size 10, which is in reality just an `id`
+function from its index to an element (see the [Computation](#computation)
+section for the meaning of `Seq`). So let's go ahead and square its elements
 
 ```haskell
 λ> evaluateAt vec 4
@@ -88,7 +93,7 @@ list, if that's what you need:
 ```
 
 Other means of constructing arrays are through conversion from lists, vectors from the `vector`
-library and few other helper functions as `range`, `enumFromN`, etc. It's worth noting that, in the
+library and using a few other helper functions as `range`, `enumFromN`, etc. It's worth noting that, in the
 next example, nested lists will be loaded into an unboxed manifest array and the sum of its elements
 will be computed in parallel on all available cores.
 
@@ -97,11 +102,11 @@ will be computed in parallel on all available cores.
 30.0
 ```
 
-Above wouldn't run in parallel in ghci of course, program would have to be compiled with ghc and
-`-threaded -with-rtsopts=-N` flags in order to use all available cores. Alternatively we could do
-compilation with `-threaded` flag and than passing number of capabilities directly to the runtime
-with `+RTS -N<n>`, where `<n>` is the number of cores you'd like to utilize.
-
+The above wouldn't run in parallel in ghci of course, as the program would have
+to be compiled with ghc and `-threaded -with-rtsopts=-N` flags in order to use
+all available cores. Alternatively we could do compile with the `-threaded`
+flag and then pass the number of capabilities directly to the runtime with
+`+RTS -N<n>`, where `<n>` is the number of cores you'd like to utilize.
 
 ## Index
 
@@ -112,9 +117,9 @@ type signature.
 
 There are three distinguishable constructors for the index:
 
-* First one is simply an int: `Ix1 = Ix 1 = Int`, therefore vectors can be indexed in a usual way
+* The first one is simply an int: `Ix1 = Ix 1 = Int`, therefore vectors can be indexed in a usual way
   without some extra wrapping data type, just as it was demonstrated in a previous section.
-* Second one is `Ix2` for operating on 2-dimensional arrays and has a constructor `:.`
+* The second one is `Ix2` for operating on 2-dimensional arrays and has a constructor `:.`
 
 ```haskell
 λ> makeArrayR D Seq (3 :. 5) (\ (i :. j) -> i * j)
@@ -125,7 +130,7 @@ There are three distinguishable constructors for the index:
   ])
 ```
 
-* Next one is `IxN n` and is for working with N-dimensional arrays, and has a similar looking
+* The third one is `IxN n` and is for working with N-dimensional arrays, and has a similar looking
   constructor `:>`, except that it can be chained indefinitely on top of `:.`
 
 ```haskell
@@ -137,7 +142,8 @@ makeArrayR D Seq (10 :> 20 :. 30) $ \ (i :> j :. k) -> i * j + k
   :: IxN 10
 ```
 
-Here is how to construct a 4-dimensional array and sum it's all elements in constant memory:
+Here is how to construct a 4-dimensional array and sum its elements in constant
+memory:
 
 ```haskell
 λ> let arr = makeArrayR D Seq (10 :> 20 :> 30 :. 40) $ \ (i :> j :> k :. l) -> (i * j + k) * k + l
@@ -148,7 +154,7 @@ arr :: Array D (IxN 4) Int
 ```
 
 Alternatively tuples of `Int`s can be used for working with Arrays, up to and
-including 5-tuples (type synonims: `Ix2T` - `Ix5T`), but since tuples are
+including 5-tuples (type synonyms: `Ix2T` - `Ix5T`), but since tuples are
 polymorphic it is necessary to restrict the resulting array type:
 
 ```haskell
@@ -188,7 +194,7 @@ modulo the index manipulation:
   [ (3,1,0),(3,1,1),(3,1,2),(3,1,3),(3,1,4),(3,1,5) ])
 ```
 
-As you might suspect all of the slicing, indexing, extracting, resizing operations are all partial,
+As you might suspect all of the slicing, indexing, extracting, resizing operations are partial,
 and those are frowned upon in Haskell. So there are matching functions that can do the same
 operations safely by returning `Nothing` on failure.
 
@@ -201,9 +207,9 @@ Just (3,1,0)
 ```
 
 
-In above examples we first take a slice at 3rd page, then another one at 1st row (both counts start
+In above examples we first take a slice at the 3rd page, then another one at the 1st row (both counts start
 at 0). While in the last example we also take 0th element. Pretty neat, huh? Naturally, by doing a
-slice we always reduce dimension by one. We can also do slicing from the outside as well as from the
+slice we always reduce dimension by one. We can do slicing from the outside as well as from the
 inside:
 
 ```haskell
@@ -250,12 +256,12 @@ In order to extract sub-array while preserving dimensionality we can use `extrac
 
 ## Computation
 
-There is a data type `Comp`, that controls how elements will be computed when calling `compute`
+There is a data type `Comp` that controls how elements will be computed when calling the `compute`
 function. It has two constructors:
 
 * `Seq` - computation will be done sequentially on one core.
 * `ParOn [Int]` - perform computation in parallel while pinning the workers to particular
-  cores. Providing an empty list will result in computation being distributed over all available
+  cores. Providing an empty list will result in the computation being distributed over all available
   cores, or better known in Haskell as capabilities.
 * `Par` - isn't really a constructor but a `pattern` for constructing `ParOn []`, thus should be
   used instead of `ParOn`.
