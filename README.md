@@ -268,28 +268,30 @@ function. It has two constructors:
 
 Just to make sure a simple novice mistake is prevented, which I have seen in the past, make sure
 your source code is compiled with `ghc -O2 -threaded -with-rtsopts=-N`, otherwise no parallelization
-and poor performance are waiting for you. Also a bit later you might notice `{-# INLINE funcName
+and poor performance are waiting for you. Also a bit later you might notice the `{-# INLINE funcName
 #-}` pragma being used, often times it is a good idea to do that, but not always required. It is
 worth to benchmark and experiment.
 
 ## Stencil
 
 Instead of manually iterating over a multidimensional array and applying a function to each element,
-while reading it's neighboring elements, as you would do in an imperative language, in a functional
+while reading its neighboring elements (as you would do in an imperative language) in a functional
 language it is much more efficient to apply a stencil function and let the library take care of all
 of bounds checking and iterating in a cache friendly manner.
 
-What's a stencil? It is a declarative way of specifying a pattern for how elements of an array in a
-neighborhood will be used in order to update each element of that array. To be more precise for this
-library it is a function that possesses a way to index an element, which is assumed to be at a
-center of a stencil, i.e. zero index, and it's neighbors using an offset indexing, but not beyond
-the specified size with respect to the center index. A mouthful, will go for an example as it is
-worth a thousand words.
+What's a [stencil](https://en.wikipedia.org/wiki/Stencil_code)? It is a
+declarative way of specifying a pattern for how elements of an array in a
+neighborhood will be used in order to update each element of that array. In
+massiv a stencil is a function that can read the neighboring elements of the
+stencil's _center_ (the zero index), and only those, and then outputs a new
+value for the center element.
 
-Let's create a simple, but somewhat meaningful array and create an average
-stencil. There is nothing super interesting about the array itself, but the
-filter is a stencil that will sum the elements in
-a [Moore neighborhood](https://en.wikipedia.org/wiki/Moore_neighborhood) and
+![stencil](massiv-examples/files/stencil.png)
+
+Let's create a simple, but somewhat meaningful array and create an averaging
+stencil. There is nothing particular about the array itself, but the filter is
+a stencil that sums the elements in a [Moore
+neighborhood](https://en.wikipedia.org/wiki/Moore_neighborhood) and
 divide the result by 9, i.e. finds the average of a 3 by 3 square.
 
 ```haskell
@@ -307,29 +309,28 @@ average3x3Filter b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
 ```
 
 Here is what it would look like in GHCi. We create a delayed array with some
-funky periodic function, make sure it is computed prior to mapping an average
-stencil over it:
+funky periodic function, and make sure it is computed prior to mapping an
+average stencil over it:
 
 ```haskell
 λ> let arr = computeAs U $ arrLightIx2 Par (600 :. 800)
 λ> :t arr
 arr :: Array U Ix2 Double
 λ> :t mapStencil (average3x3Filter Edge) arr
-mapStencil (average3x3Filter Edge) arr :: Array WD Ix2 Double
+mapStencil (average3x3Filter Edge) arr :: Array DW Ix2 Double
 ```
 
-As you can see, that operation produced an array of some weird representation `WD`, which stands for
-Windowed Delayed array. In it's essence `WD` is an array type that does no bounds checking in order
+As you can see, that operation produced an array of some weird representation `DW`, which stands for
+Delayed Windowed array. In its essence `DW` is an array type that does no bounds checking in order
 to gain performance, except when it's near the border, where it uses a border resolution technique
-supplied by the user, like `Edge` in the example above. Currently it is used only in stencils and
-there is not much else can be done to an array of this type besides further computing it into a
+supplied by the user (`Edge` in the example above). Currently it is used only in stencils and
+not much else can be done to an array of this type besides further computing it into a
 manifest representation.
 
 This example will be continued in the next section, but before that I would like to mention that
 some might notice that it looks very much like convolution, and in fact convolution can be
-implemented with a stencil, therefore here is a helper function `mkConvolutionStencil` that let's
-you do just that. Although, instead of going the easy route, for the sake of example we'll do a sum
-of all neighbors:
+implemented with a stencil. There is a helper function `mkConvolutionStencil` that lets
+you do just that. For the sake of example we'll do a sum of all neighbors by hand instead:
 
 ```haskell
 sum3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
@@ -341,9 +342,9 @@ sum3x3Filter b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
 ```
 
 There is not a single plus sign, that is because convolutions is actually summation of elements, so
-instead we have composition of functions applied to an offseet index and a multiplier. After we map
+instead we have composition of functions applied to an offset index and a multiplier. After we map
 that stencil, we can further divide each element of the array by 9 in order to get the
-average. Yeah, I lied a bit, `Array WD ix` is an instance of `Functor` class, so we can map functions
+average. Yeah, I lied a bit, `Array DW ix` is an instance of `Functor` class, so we can map functions
 over it, which will be fused as with a regular `D`elayed array:
 
 ```haskell
@@ -353,17 +354,17 @@ computeAs U $ fmap (/9) . mapStencil (sum3x3Filter Edge) arr
 # massiv-io
 
 In order to do anything useful with arrays we need to be able to read some data
-from a file. Considering that most common array-like files are images and
+from a file. Considering that most common array-like files are images,
 [massiv-io](massiv-io) provides an interface to read, write and display images in common
 formats using Haskell native JuicyPixels and Netpbm packages.
 
-There are also a variety of colorspaces (or rather color models) and pixel types
+There is also a variety of colorspaces (or rather color models) and pixel types
 that are currently included in this package, which will likely find a separate
-home in the future, but for now we can sort of ignore those color spaces and
+home in the future, but for now we can ignore those colorspaces and
 pretend that `Pixel` is some magic wrapper around numeric values that this
 package is capable of reading/writing.
 
-Previous example wasn't particularly interesting, since we couldn't visualize
+The previous example wasn't particularly interesting, since we couldn't visualize
 what is actually going on, so let's expend on it:
 
 ```haskell
@@ -386,23 +387,22 @@ main = do
 ![Light](massiv-io/examples/files/light_avg.png)
 
 
-The full example is in the [massiv-io/examples](massiv-io/examples) and if you have stack installed
+The full example is in the [massiv-examples](massiv-examples) directory and if you have stack installed
 you can run it as:
 
 ```bash
 $ ./Examples.hs && ./Examples
 ```
 
-
 # Other libraries
 
 A natural question might come to mind: Why even bother with a new array library when we already have
-a few really good ones in Haskell world? The main reasons for me are performance and usability. I
+a few really good ones in the Haskell world? The main reasons for me are performance and usability. I
 personally felt like there was much room for improvement even before I started work on this package,
 and it seems as it turned out to be true. For example, the most common goto library for dealing with
-multidimensional arrays and parallel computation is Repa, which I personally was a big fan of for
+multidimensional arrays and parallel computation is [Repa](https://hackage.haskell.org/package/repa), which I personally was a big fan of for
 the longest time, to the point that I even wrote a [Haskell Image
-Processing](https://hackage.haskell.org/package/hip) library based on Repa.
+Processing](https://hackage.haskell.org/package/hip) library based on it.
 
 Here is a quick summary of how `massiv` compares to Repa so far:
 
@@ -418,7 +418,7 @@ Here is a quick summary of how `massiv` compares to Repa so far:
   trying to read elements of delayed array)
 
 As far as usability of the library goes, it is very subjective, thus I'll let you be a judge of
-that. When talking about performance it is the facts that do matter.  Thus, not continue this
+that. When talking about performance it is the facts that do matter. Thus, let's not continue this
 discussion in pure abstract words, below is a glimpse into benchmarks against Repa library running
 with GHC 8.0.2 on Intel® Core™ i7-3740QM CPU @ 2.70GHz × 8
 
