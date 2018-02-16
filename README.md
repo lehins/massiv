@@ -378,13 +378,13 @@ main = do
   writeImage "files/light_avg.png" $ computeAs S $ mapStencil (average3x3Filter Edge) img
 ```
 
-`massiv-io/examples/files/light.png`:
+`massiv-examples/files/light.png`:
 
-![Light](massiv-io/examples/files/light.png)
+![Light](massiv-examples/files/light.png)
 
-`massiv-io/examples/files/light_avg.png`:
+`massiv-examples/files/light_avg.png`:
 
-![Light](massiv-io/examples/files/light_avg.png)
+![Light](massiv-examples/files/light_avg.png)
 
 
 The full example is in the [massiv-examples](massiv-examples) directory and if you have stack installed
