@@ -21,7 +21,7 @@ library
                      , Bench.Massiv.Array
                      , Bench.Repa
                      , Bench.Vector
-  build-depends:       base            >= 4.7 && < 5
+  build-depends:       base            >= 4.8 && < 5
                      , deepseq
                      , data-default
                      , massiv
