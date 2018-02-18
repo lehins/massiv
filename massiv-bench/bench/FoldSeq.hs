@@ -84,10 +84,10 @@ main = do
                 (bench "Array Ix2 U (GHC.toList)" . nf GHC.toList)
             , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U (A.toListIx2)" . nf A.toList2)
+                (bench "Array Ix2 U (A.toLists2)" . nf A.toLists2)
             , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U (A.toListIx1)" . nf A.toList1)
+                (bench "Array Ix2 U (A.toList)" . nf A.toList)
             , env (return (vecLight2 t2)) (bench "Vector U" . nf VU.toList)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))

@@ -1,12 +1,14 @@
 name:                massiv-io
 version:             0.1.0.0
-synopsis:            Import/export of Image files into Arrays
-description:         Massiv (Масси́в) is a Russian word for an Array.
+synopsis:            Import/export of Image files into massiv Arrays
+description:         This package contains functionality for import/export of arrays
+                     into the real world. For now it only has the ability to read/write
+                     image files in varios formats.
 homepage:            https://github.com/lehins/massiv
 license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
-maintainer:          lehins@yandex.ru
+maintainer:          alexey@kuleshevi.ch
 copyright:           2018 Alexey Kuleshevich
 category:            Data, Data Structures
 build-type:          Simple

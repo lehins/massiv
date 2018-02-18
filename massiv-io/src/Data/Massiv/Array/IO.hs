@@ -14,45 +14,39 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.IO
-  -- -- * Reading
-  -- readImage, readImage',
-  -- readImageExact, readImageExact',
-  -- -- * Writing
-  -- writeImage, writeImage', writeImageExact,
-  -- -- * Displaying
-  -- ExternalViewer(..),
-  -- displayImage,
-  -- displayImageUsing,
-  -- -- ** Common viewers
-  -- displayImageFile,
-  -- defaultViewer,
-  -- eogViewer,
-  -- gpicviewViewer,
-  -- fehViewer,
-  -- gimpViewer,
-  -- -- * Supported Image Formats
-  -- module Graphics.Image.IO.Formats
+module Data.Massiv.Array.IO (
+  -- * Reading
+  readArray, readImage, readImageAuto,
+  -- * Writing
+  writeArray ,writeImage, writeImageAuto,
+  -- * Displaying
+  ExternalViewer(..),
+  displayImage,
+  displayImageUsing,
+  displayImageFile,
+  -- ** Common viewers
+  defaultViewer,
+  eogViewer,
+  gpicviewViewer,
+  fehViewer,
+  gimpViewer,
+  -- * Supported Image Formats
+  module Data.Massiv.Array.IO.Base,
+  module Data.Massiv.Array.IO.Image
 
   -- $supported
-
-  -- * Hands on examples
-  -- ** Animated GIF
-
-  -- $animation
-  where
+  ) where
 
 import           Control.Concurrent         (forkIO)
 import           Control.Exception          (bracket)
 import           Control.Monad              (void)
---import qualified Control.Monad              as M (foldM)
-import           Data.Massiv.Array
-import           Data.Massiv.Array.IO.Base
-import           Data.Massiv.Array.IO.Image
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
--- import           Data.Maybe                 (fromMaybe)
--- import           Data.Proxy
+import           Data.Massiv.Array
+import           Data.Massiv.Array.IO.Base  hiding (convertEither,
+                                             fromEitherDecode, fromMaybeEncode,
+                                             toProxy)
+import           Data.Massiv.Array.IO.Image
 import           Graphics.ColorSpace
 import           Prelude                    as P hiding (readFile, writeFile)
 import           System.Directory           (createDirectoryIfMissing,
@@ -163,71 +157,6 @@ writeImageAuto path = BL.writeFile path . encodeImage imageWriteAutoFormats path
 
 
 
-
--- -- | Just like `readImage`, but will throw an exception if incorrect format is
--- -- detected.
--- readImage' :: Readable (Image S cs e) InputFormat =>
---               FilePath -> IO (Image S cs e)
--- readImage' path = either error id <$> readImage path
--- {-# INLINE readImage' #-}
-
-
--- -- | This function allows for reading all supported image in their exact
--- -- colorspace and precision. Only `S` image representation can be read
--- -- natively, but `Graphics.Image.exchange` can be use later to switch to a
--- -- different representation. For instance, "frog.jpg" image can be read into
--- -- it's 'Graphics.Image.ColorSpace.YCbCr' colorspace with
--- -- 'Graphics.Image.ColorSpace.Word8' precision:
--- --
--- -- >>> readImageExact JPG "images/frog.jpg" :: IO (Either String (Image S YCbCr Word8))
--- -- Right <Image S YCbCr (Word8): 200x320>
--- --
--- -- The drawback here is that colorspace and precision has to match exactly,
--- -- otherwise it will return an error:
--- --
--- -- >>> readImageExact JPG "images/frog.jpg" :: IO (Either String (Image S RGB Word8))
--- -- Left "JuicyPixel decoding error: Input image is in YCbCr8 (Pixel YCbCr Word8), cannot convert it to RGB8 (Pixel RGB Word8) colorspace."
--- --
--- -- Any attempt to read an image in a color space, which is not supported by
--- -- supplied format, will result in a compile error. Refer to 'Readable' class
--- -- for all images that can be decoded.
--- readImageExact :: Readable img format =>
---                   format
---                   -- ^ A file format that an image should be read as. See
---                    -- <#g:4 Supported Image Formats>
---                -> FilePath -- ^ Location of an image.
---                -> IO (Either String img)
--- readImageExact format path = fmap (decode format) (B.readFile path)
--- {-# INLINE readImageExact #-}
-
-
--- -- | Just like `readImageExact`, but will throw an exception if incorrect format
--- -- is detected.
--- readImageExact' :: Readable b format => format -> FilePath -> IO b
--- readImageExact' format path = either error id <$> readImageExact format path
--- {-# INLINE readImageExact' #-}
-
-
-
-
-
--- -- | Write an image in a specific format, while supplying any format specific
--- -- options. Precision and color space, that an image will be written as, is decided
--- -- from image's type. Attempt to write image file in a format that does not
--- -- support color space and precision combination will result in a compile error.
--- writeImageExact :: Writable img format =>
---                    format
---                    -- ^ A file format that an image should be saved in. See
---                    -- <#g:4 Supported Image Formats>
---                 -> [SaveOption format] -- ^ A list of format specific options.
---                 -> FilePath -- ^ Location where an image should be written.
---                 -> img -- ^ An image to write. Can be a list of images in case
---                        -- of formats supporting animation.
---                 -> IO ()
--- writeImageExact format opts path = BL.writeFile path . encode format opts
--- {-# INLINE writeImageExact #-}
-
-
 -- | An image is written as a @.tiff@ file into an operating system's temporary
 -- directory and passed as an argument to the external viewer program.
 -- displayImageUsing :: Writable (Auto TIF) (Image r cs e) =>
@@ -312,6 +241,7 @@ gimpViewer = ExternalViewer "gimp" [] 0
 
 
 {- $supported
+
 Encoding and decoding of images is done using
 <http://hackage.haskell.org/package/JuicyPixels JuicyPixels> and
 <http://hackage.haskell.org/package/netpbm netpbm> packages.
@@ -378,46 +308,5 @@ conversion:
 
     * __read__: ('RGB' 'Word8'), ('RGB' 'Word16')
     * Also supports sequence of images in one file, when read as @['PPM']@
-
--}
-
-
-
-{- $animation
-
-JuicyPixels is capable of encoding/decoding all sorts of poular formats, one of
-which is animated GIFs. Here I would like to present a short demonstration on
-how it is possible to work with image seqences.
-
-<<images/downloaded/strawberry.gif>>
-
-So, we download and image, but it's a little bit too big, and it's in RGBA
-colorspace.
-
-* Read an animated GIF as a list of images:
-
->>> imgs <- readImageExact' GIFA "images/downloaded/strawberry.gif" :: IO [(GifDelay, Image S RGBA Word8)]
-
-* convert to `RGB` colorspace by dropping alpha channel and increasing precision,
-since we cannot write GIFs in RGBA colorspace:
-
->>> let imgsRGB = fmap (fmap toImageRGB) imgs
-
-* if `toImageRGB` hadn't increased the precision to `Double` in the previous
-  step, `Bilinear` interpolation would have simply destroyed the image quality
-  in this step. Scale all images in the sequence by a half:
-
->>> let imgsRGBsmall = fmap (fmap (scale Bilinear Edge (0.5, 0.5))) imgsRGB
-
-* Here we save the sequence as a new animated image. We don't need to drop
-  precision back to `Word8`, it will be taken care for us:
-
->>> writeImageExact GIFA [GIFALooping LoopingForever] "images/strawberry.gif" imgsRGBsmall
-
-* Now lets extend the animation a bit:
-
->>> writeImageExact GIFA [GIFALooping LoopingForever] "images/strawberry_backwards.gif" (imgsRGBsmall ++ reverse imgsRGBsmall)
-
-<<images/strawberry.gif>> <<images/strawberry_backwards.gif>>
 
 -}

@@ -47,11 +47,10 @@ import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Typeable
 
--- | The array family. All array representations @r@ describe how data is
--- arranged. All arrays have a common property that each index @ix@ always maps
--- to the same unique element, even if that element does not exist in memory and
--- has to be computed upon lookup. Data is always arranged in a nested fasion,
--- depth of which is controlled by @`Rank` ix@.
+-- | The array family. Representations @r@ describes how data is arranged or computed. All arrays
+-- have a common property that each index @ix@ always maps to the same unique element, even if that
+-- element does not exist in memory and has to be computed upon lookup. Data is always arranged in a
+-- nested fasion, depth of which is controlled by @`Rank` ix@.
 data family Array r ix e :: *
 
 type family EltRepr r ix :: *
@@ -62,7 +61,7 @@ type family Elt r ix e :: * where
 
 type family NestedStruct r ix e :: *
 
--- | Index polymorphic arrays.
+-- | Array types that can be constructed.
 class (Typeable r, Index ix) => Construct r ix e where
 
   -- | Get computation strategy of this array
@@ -74,6 +73,9 @@ class (Typeable r, Index ix) => Construct r ix e where
   -- | Construct an array. No size validation is performed.
   unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
 
+
+-- | An array that contains size information. They can be resized and new arrays extracted from it
+-- in constant time.
 class Construct r ix e => Size r ix e where
 
   -- | /O(1)/ - Get the size of an array
@@ -87,6 +89,7 @@ class Construct r ix e => Size r ix e where
   unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 
+-- | Arrays that can be used as source to practically any manipulation function.
 class Size r ix e => Source r ix e where
 
   -- | Lookup element in the array. No bounds check is performed and access of
@@ -101,7 +104,7 @@ class Size r ix e => Source r ix e where
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
-
+-- | Any array that can be computed
 class Size r ix e => Load r ix e where
   -- | Load an array into memory sequentially
   loadS
@@ -234,7 +237,7 @@ singleton :: Construct r ix e =>
              Comp -- ^ Computation strategy
           -> e -- ^ The element
           -> Array r ix e
-singleton !c = unsafeMakeArray c oneIndex . const
+singleton !c = unsafeMakeArray c (pureIndex 1) . const
 {-# INLINE singleton #-}
 
 

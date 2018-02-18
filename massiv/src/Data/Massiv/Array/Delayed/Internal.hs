@@ -239,6 +239,7 @@ liftArray2 f !arr1 !arr2
     "Array dimensions must be the same, instead got: " ++
     show (size arr1) ++ " and " ++ show (size arr2)
   where
+    oneIndex = pureIndex 1
     sz1 = size arr1
     sz2 = size arr2
 {-# INLINE liftArray2 #-}

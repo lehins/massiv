@@ -36,7 +36,7 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
     (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
     (Just sSz)
     sCenter
-    (liftIndex2 (-) sz (liftIndex2 (-) sSz oneIndex))
+    (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
     (unValue . stencilF (Value . unsafeIndex arr))
   where
     !sz = size arr

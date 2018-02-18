@@ -21,12 +21,12 @@ import           Data.Default              ()
 -- {-# INLINE sum3x3Stencil #-}
 
 
-singletonStencil :: Index ix => (Int -> Int) -> Border Int -> Stencil ix Int Int
-singletonStencil f b = makeStencil b oneIndex zeroIndex $ \ get -> fmap f (get zeroIndex)
+singletonStencil :: (Num ix, Index ix) => (Int -> Int) -> Border Int -> Stencil ix Int Int
+singletonStencil f b = makeStencil b 1 0 $ \ get -> fmap f (get zeroIndex)
 {-# INLINE singletonStencil #-}
 
 
-prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int) =>
+prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int, Num ix) =>
                             Proxy ix -> Fun Int Int -> Border Int -> ArrP U ix Int -> Bool
 prop_MapSingletonStencil _ f b (ArrP arr) =
   computeAs U (mapStencil (singletonStencil (apply f) b) arr) == computeAs U (A.map (apply f) arr)

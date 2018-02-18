@@ -82,7 +82,7 @@ toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr) where
 {-# INLINE toManifest #-}
 
 
--- | Row-major folding over a Manifest array.
+-- | Row-major sequential folding over a Manifest array.
 instance Index ix => Foldable (Array M ix) where
   foldl = lazyFoldlS
   {-# INLINE foldl #-}

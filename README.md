@@ -420,7 +420,7 @@ Here is a quick summary of how `massiv` compares to Repa so far:
 As far as usability of the library goes, it is very subjective, thus I'll let you be a judge of
 that. When talking about performance it is the facts that do matter. Thus, let's not continue this
 discussion in pure abstract words, below is a glimpse into benchmarks against Repa library running
-with GHC 8.0.2 on Intel® Core™ i7-3740QM CPU @ 2.70GHz × 8
+with GHC 8.2.2 on Intel® Core™ i7-3740QM CPU @ 2.70GHz × 8
 
 Stencil example discussed earlier:
 

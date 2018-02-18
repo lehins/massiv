@@ -31,8 +31,8 @@ module Data.Massiv.Core
   , InnerSlice
   , Manifest
   , Mutable
-  , Ragged
-  , Nested
+  , Ragged(..)
+  , Nested(..)
   , NestedStruct
   , L(..)
   , LN
@@ -49,7 +49,7 @@ module Data.Massiv.Core
   , isEmpty
   ) where
 
-import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Common hiding (unsafeGenerateM)
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Index
 

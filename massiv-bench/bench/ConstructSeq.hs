@@ -20,7 +20,7 @@ import           Prelude                     as P
 main :: IO ()
 main = do
   let t2 = (1600, 1200) :: (Int, Int)
-      ls = toListIx2 (arrDLightIx2 Seq (tupleToIx2 t2))
+      ls = toLists2 (arrDLightIx2 Seq (tupleToIx2 t2))
   defaultMain
     [ bgroup
         "makeArray"
@@ -78,7 +78,7 @@ main = do
           [ bench "GHC.Exts.fromList :: [Double] -> VU.Vector Double" $
             whnf (GHC.fromList :: [Double] -> Vector Double) xs
           , bench "Massiv.Array.Manifest.fromList :: [Double] -> A.Array A.U Ix1 Double" $
-            whnf (A.fromList' Seq :: [Double] -> A.Array A.U Ix1 Double) xs
+            whnf (A.fromList Seq :: [Double] -> A.Array A.U Ix1 Double) xs
           , bench "GHC.Exts.fromList :: [Double] -> A.Array A.U Ix1 Double" $
             whnf (GHC.fromList :: [Double] -> A.Array A.U Ix1 Double) xs
           , bench "Repa.fromListUnboxed :: [Double] -> R.Array R.U DIM1 Double" $
@@ -88,8 +88,8 @@ main = do
         bgroup
           "fromList[[]]"
           [ bench "Massiv.Array.Manifest.fromList Seq :: [[Double]] -> A.Array U Ix2 Double" $
-            whnf (A.fromList' Seq :: [[Double]] -> A.Array A.U Ix2 Double) xs
+            whnf (A.fromLists' Seq :: [[Double]] -> A.Array A.U Ix2 Double) xs
           , bench "Massiv.Array.Manifest.fromList Par :: [[Double]] -> A.Array U Ix2 Double" $
-            whnf (A.fromList' Par :: [[Double]] -> A.Array A.U Ix2 Double) xs
+            whnf (A.fromLists' Par :: [[Double]] -> A.Array A.U Ix2 Double) xs
           ]
     ]

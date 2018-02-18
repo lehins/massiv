@@ -5,7 +5,6 @@ module Main where
 
 import           Bench
 import           Bench.Massiv                 as A
-import           Bench.Massiv.Auto            as M hiding (tupleToIx2)
 import           Criterion.Main
 import           Prelude                      as P
 
@@ -22,10 +21,6 @@ main = do
         [ bgroup
             "Average Seq"
             [ env
-                (return (massDLightIx2 Seq (tupleToIx2 t2)))
-                (bench "Massiv Ix2" .
-                 whnf (M.mapStencil (average3x3Filter Edge)))
-            , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2" .
                  whnf (computeAs U . A.mapStencil (average3x3Filter Edge)))

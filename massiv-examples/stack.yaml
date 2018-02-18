@@ -1,5 +1,6 @@
-resolver: lts-8.16
+resolver: lts-10.0
 packages:
+- '.'
 - '../massiv/'
 - '../massiv-io/'
 extra-deps: []

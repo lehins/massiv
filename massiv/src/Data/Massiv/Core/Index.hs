@@ -18,7 +18,6 @@ module Data.Massiv.Core.Index
   , Border(..)
   , handleBorderIndex
   , module Data.Massiv.Core.Index.Class
-  , oneIndex
   , isSafeSize
   , isNonEmpty
   , headDim
@@ -87,8 +86,14 @@ instance NFData e => NFData (Border e) where
             Continue -> ()
 
 
-
-handleBorderIndex :: Index ix => Border e -> ix -> (ix -> e) -> ix -> e
+-- | Apply a border resolution technique to an index
+handleBorderIndex ::
+     Index ix
+  => Border e -- ^ Broder resolution technique
+  -> ix -- ^ Size
+  -> (ix -> e) -- ^ Index function that produces an element
+  -> ix -- ^ Index
+  -> e
 handleBorderIndex border !sz getVal !ix =
   case border of
     Fill val -> if isSafeIndex sz ix then getVal ix else val
@@ -99,12 +104,6 @@ handleBorderIndex border !sz getVal !ix =
     Continue -> getVal (repairIndex sz ix (\ !k !i -> abs i `mod` k)
                         (\ !k !i -> (-i - 2) `mod` k))
 {-# INLINE [1] handleBorderIndex #-}
-
-
--- | Just like `zeroIndex`, but with all dimensions are set to @1@.
-oneIndex :: Index ix => ix
-oneIndex = liftIndex (+ 1) zeroIndex
-{-# INLINE [1] oneIndex #-}
 
 
 
