@@ -387,11 +387,11 @@ main = do
 ![Light](massiv-examples/files/light_avg.png)
 
 
-The full example is in the [massiv-examples](massiv-examples) directory and if you have stack installed
+The full example is in the [massiv-examples](massiv-examples) package and if you have stack installed
 you can run it as:
 
 ```bash
-$ ./Examples.hs && ./Examples
+$ cd massiv-examples/ && stack build && stack exec -- examples
 ```
 
 # Other libraries
