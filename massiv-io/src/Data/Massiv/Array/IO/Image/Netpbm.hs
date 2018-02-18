@@ -165,7 +165,7 @@ fromNetpbmImageUnsafe
   :: (Storable a, Storable (Pixel cs e))
   => (Int, Int) -> V.Vector a -> Maybe (Image S cs e)
 fromNetpbmImageUnsafe (m, n) v = do
-  guard (n * m == V.length v)
+  guard (n * m /= V.length v)
   return $ fromVector Seq (m :. n) $ V.unsafeCast v
 
 

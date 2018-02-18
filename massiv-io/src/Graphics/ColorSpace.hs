@@ -9,6 +9,7 @@
 {-# LANGUAGE ViewPatterns          #-}
 #if __GLASGOW_HASKELL__ >= 800
   {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+  {-# LANGUAGE MonoLocalBinds          #-}
 #endif
 -- |
 -- Module      : Graphics.ColorSpace
@@ -110,6 +111,7 @@ module Graphics.ColorSpace (
   X(..),
   -- * Precision
   -- ** Pixel
+  Elevator,
   toWord8,
   toWord16,
   toWord32,

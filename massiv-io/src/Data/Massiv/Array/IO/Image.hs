@@ -47,6 +47,8 @@ instance Show (Encode out) where
 instance FileFormat (Encode (Image r cs e)) where
   ext (EncodeAs f) = ext f
 
+  exts (EncodeAs f) = exts f
+
 instance Writable (Encode (Image r cs e)) (Image r cs e) where
   encode (EncodeAs f) _ = encode f (defaultWriteOptions f)
 
@@ -104,6 +106,8 @@ instance Show (Decode out) where
 
 instance FileFormat (Decode (Image r cs e)) where
   ext (DecodeAs f) = ext f
+
+  exts (DecodeAs f) = exts f
 
 instance Readable (Decode (Image r cs e)) (Image r cs e) where
   decode (DecodeAs f) _ = decode f (defaultReadOptions f)

@@ -63,22 +63,8 @@ module Data.Massiv.Array.IO.Image.JuicyPixels
   , toJPImageRGBF
   , toJPImageYCbCr8
   , toJPImageCMYK8
-  , toJPImageCMYK16
+  -- , toJPImageCMYK16
   -- ** From JuicyPixels
-  -- O(1) Conversion from JuicyPixels images
-  -- , fromJPImageY8
-  -- , fromJPImageYA8
-  -- , fromJPImageY16
-  -- , fromJPImageYA16
-  -- , fromJPImageYF
-  -- , fromJPImageRGB8
-  -- , fromJPImageRGBA8
-  -- , fromJPImageRGB16
-  -- , fromJPImageRGBA16
-  -- , fromJPImageRGBF
-  -- , fromJPImageYCbCr8
-  -- , fromJPImageCMYK8
-  -- , fromJPImageCMYK16
   ) where
 
 import           Prelude                           as P
@@ -694,9 +680,9 @@ encodeTIF img =
          msum
            [ do Refl <- eqT :: Maybe (e :~: Word8)
                 return $ JP.encodeTiff $ toJPImageCMYK8 img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                return $ JP.encodeTiff $ toJPImageCMYK16 img
-           , return $ JP.encodeTiff $ toJPImageCMYK16 $ M.map toWord16 img
+           -- , do Refl <- eqT :: Maybe (e :~: Word16)
+           --      return $ JP.encodeTiff $ toJPImageCMYK16 img
+           , return $ JP.encodeTiff $ toJPImageCMYK8 $ M.map toWord8 img
            ]
     ]
 
@@ -966,9 +952,10 @@ toJPImageCMYK8 :: Source r Ix2 (Pixel CMYK Word8) => Image r CMYK Word8 -> JP.Im
 toJPImageCMYK8 = toJPImageUnsafe
 {-# INLINE toJPImageCMYK8 #-}
 
-toJPImageCMYK16 :: Source r Ix2 (Pixel CMYK Word16) => Image r CMYK Word16 -> JP.Image JP.PixelCMYK16
-toJPImageCMYK16 = toJPImageUnsafe
-{-# INLINE toJPImageCMYK16 #-}
+-- FIXME: debug writing to file of TIF files.
+-- toJPImageCMYK16 :: Source r Ix2 (Pixel CMYK Word16) => Image r CMYK Word16 -> JP.Image JP.PixelCMYK16
+-- toJPImageCMYK16 = toJPImageUnsafe
+-- {-# INLINE toJPImageCMYK16 #-}
 
 
 
@@ -979,7 +966,7 @@ toJPImageCMYK16 = toJPImageUnsafe
 fromJPImageUnsafe :: (Storable (Pixel cs e), JP.Pixel jpx) =>
                      JP.Image jpx -> Maybe (Image S cs e)
 fromJPImageUnsafe (JP.Image n m !v) = do
-  guard (n * m == V.length v)
+  guard (n * m /= V.length v)
   return $ fromVector Seq (m :. n) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 

@@ -101,7 +101,7 @@ instance Storable e => Storable (Pixel CMYK e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     c <- peek q
     m <- peekElemOff q 1
     y <- peekElemOff q 2
@@ -109,7 +109,7 @@ instance Storable e => Storable (Pixel CMYK e) where
     return (PixelCMYK c m y k)
   {-# INLINE peek #-}
   poke !p (PixelCMYK c m y k) = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     poke q c
     pokeElemOff q 1 m
     pokeElemOff q 2 y

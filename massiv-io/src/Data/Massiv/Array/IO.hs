@@ -42,7 +42,7 @@ import           Control.Exception          (bracket)
 import           Control.Monad              (void)
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
-import           Data.Massiv.Array
+import           Data.Massiv.Array          as A
 import           Data.Massiv.Array.IO.Base  hiding (convertEither,
                                              fromEitherDecode, fromMaybeEncode,
                                              toProxy)
@@ -87,26 +87,30 @@ writeArray format opts path arr = BL.writeFile path (encode format opts arr)
 {-# INLINE writeArray #-}
 
 
--- | Try to guess an image format from file's extension, then attempt to decode
--- it as such. In order to supply the format manually and thus avoid this
--- guessing technique, use `readArray` instead. Color space and precision of the
--- result array must match exactly that of the actual image, in order to apply
--- auto conversion use `readImageAuto` instead.
+-- | Try to guess an image format from file's extension, then attempt to decode it as such. In order
+-- to supply the format manually and thus avoid this guessing technique, use `readArray`
+-- instead. Color space and precision of the result array must match exactly that of the actual
+-- image, in order to apply auto conversion use `readImageAuto` instead.
 --
--- Might throw `ConvertError`, `DecodeError` and other standard errors related
--- to file IO.
+-- Might throw `ConvertError`, `DecodeError` and other standard errors related to file IO.
 --
 -- Result image will be read as specified by the type signature:
 --
--- >>> frog :: Image S YCbCr Word8 <- readImage "files/frog.jpg"
+-- >>> frog <- readImage "files/frog.jpg" :: IO (Image S YCbCr Word8)
 -- >>> displayImage frog
 --
--- In case when the result image type does not match the color space or
--- precision of the actual image file, `ConvertError` will be thrown.
+-- In case when the result image type does not match the color space or precision of the actual
+-- image file, `ConvertError` will be thrown.
 --
--- >>> frog :: Image S YCbCr Double <- readImage "files/frog.jpg"
--- >>> frog `seq` ()
--- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S YCbCr Double>"
+-- >>> frog <- readImage "files/frog.jpg" :: IO (Image S CMYK Word8)
+-- >>> displayImage frog
+-- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S CMYK Word8>"
+--
+-- Whenever image is not in the color space or precision that we need, either use `readImageAuto` or
+-- manually convert to the desired one by using the appropriate conversion functions:
+--
+-- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S CMYK Double)
+-- >>> displayImage frogCMYK
 --
 readImage :: (Source S Ix2 (Pixel cs e), ColorSpace cs e) =>
               FilePath -- ^ File path for an image
@@ -126,17 +130,15 @@ readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
 
 
 
--- | Inverse of the 'readImage', but similarly to it, will guess an output file
--- format from the file extension and will write to file any image with the
--- color space that is supported by that format. Precision of the image might be
--- adjusted using `Elevator` if precision of the source array is not supported
--- by the image file format. For instance, <'Image' @r@ 'RGBA' 'Double'> being
--- saved as 'PNG' file would be written as <'Image' @r@ 'RGBA' 'Word16'>, thus
--- using highest supported precision 'Word16' for that format. If automatic
--- colors space is also desired, `writeImageAuto` can be used instead.
+-- | Inverse of the 'readImage', but similarly to it, will guess an output file format from the file
+-- extension and will write to file any image with the colorspace that is supported by that
+-- format. Precision of the image might be adjusted using `Elevator` if precision of the source
+-- array is not supported by the image file format. For instance, <'Image' @r@ 'RGBA' 'Double'>
+-- being saved as 'PNG' file would be written as <'Image' @r@ 'RGBA' 'Word16'>, thus using highest
+-- supported precision 'Word16' for that format. If automatic colors space is also desired,
+-- `writeImageAuto` can be used instead.
 --
--- Might throw `ConvertError`, `EncodeError` and other standard errors related
--- to file IO.
+-- Can throw `ConvertError`, `EncodeError` and other usual IO errors.
 --
 writeImage :: (Source r Ix2 (Pixel cs e), ColorSpace cs e) =>
                FilePath -> Image r cs e -> IO ()
@@ -170,7 +172,7 @@ displayImageUsing :: Writable (Auto TIF) (Image r cs e) =>
 displayImageUsing viewer block img =
   if block
     then display
-    else void $ forkIO display
+    else img `seq` void (forkIO display)
   where
     display = do
       tmpDir <- fmap (</> "hip") getTemporaryDirectory
