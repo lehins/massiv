@@ -17,4 +17,3 @@ cabal.sandbox.config
 *.eventlog
 .stack-work/
 cabal.project.local
-Examples
