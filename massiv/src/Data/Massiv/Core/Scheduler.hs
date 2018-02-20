@@ -79,9 +79,9 @@ uninitialized :: a
 uninitialized = error "Data.Array.Massiv.Scheduler: uncomputed job result"
 
 
--- | Execute some action that needs a resource. Perform different cleanup
--- actions depending if thataction resulted in an error or was successful. Sort
--- of like `bracket` and `bracketOnError` with info about exception combined.
+-- | Execute some action that needs a resource. Perform different cleanup actions depending if
+-- thataction resulted in an error or was successful. Sort of like `bracket` and `bracketOnError`
+-- with info about exception combined.
 bracketWithException :: forall a b c d .
   IO a -- ^ Acquire resource
   -> (a -> IO b) -- ^ Run after successfull execution
@@ -99,18 +99,16 @@ bracketWithException before afterSuccess afterError thing = mask $ \restore -> d
       _ <- uninterruptibleMask_ $ afterSuccess x
       return y
 
--- | Run arbitrary computations in parallel. A pool of workers is initialized,
--- unless Worker Stations list is empty and a global worker pool is currently
--- available. All of those workers will be stealing work that you can schedule
--- using `scheduleWork`. The order in which work is scheduled will be the same
--- as the order of the resuts of those computations, stored withing the
--- resulting array. Size of the array, which is also the first element in the
--- returned tuple, will match the number of times `scheduleWork` has been
--- invoked. This function blocks until all of the submitted jobs has finished or
--- one of them resulted in an exception, which will be re-thrown here.
+-- | Run arbitrary computations in parallel. A pool of workers is initialized, unless Worker
+-- Stations list is empty and a global worker pool is currently available. All of those workers will
+-- be stealing work that you can schedule using `scheduleWork`. The order in which work is scheduled
+-- will be the same as the order of the resuts of those computations, stored withing the resulting
+-- array. Size of the array, which is also the first element in the returned tuple, will match the
+-- number of times `scheduleWork` has been invoked. This function blocks until all of the submitted
+-- jobs has finished or one of them resulted in an exception, which will be re-thrown here.
 --
--- __Important__: In order to get work done truly in parallel, program needs to be
--- compiled with @-threaded@ GHC flag and executed with @+RTS -N@.
+-- __Important__: In order to get work done truly in parallel, program needs to be compiled with
+-- @-threaded@ GHC flag and executed with @+RTS -N@.
 --
 withScheduler :: [Int] -- ^ Worker Stations, i.e. capabilities. Empty list will
                        -- result in utilization of all available capabilities.
@@ -176,11 +174,10 @@ divideWork_ :: Index ix
 divideWork_ wss sz submit = divideWork wss sz submit >> return ()
 
 
--- | Linearly (row-major first) and equally divide work among available
--- workers. Submit function will receive a `Scheduler`, length of each chunk,
--- total number of elements, as well as where chunks end and slack begins. Slack
--- work will get picked up by the first worker, that has finished working on his
--- chunk. Returns list with results in the same order that work was submitted
+-- | Linearly (row-major first) and equally divide work among available workers. Submit function
+-- will receive a `Scheduler`, length of each chunk, total number of elements, as well as where
+-- chunks end and slack begins. Slack work will get picked up by the first worker, that has finished
+-- working on his chunk. Returns list with results in the same order that work was submitted
 divideWork :: Index ix
            => [Int] -- ^ Worker Stations (capabilities)
            -> ix -- ^ Size
@@ -195,9 +192,8 @@ divideWork wss sz submit
           !slackStart = chunkLength * numWorkers scheduler
       submit scheduler chunkLength totalLength slackStart
 
--- | Wait till workers finished with all submitted jobs, but raise an exception
--- if either of them has died. Raised exception is the same one that was the
--- cause of worker's death.
+-- | Wait till workers finished with all submitted jobs, but raise an exception if either of them
+-- has died. Raised exception is the same one that was the cause of worker's death.
 waitTillDone :: Scheduler a -> IO ()
 waitTillDone (Scheduler {..}) = readIORef jobsCountIORef >>= waitTill 0
   where
@@ -210,11 +206,10 @@ waitTillDone (Scheduler {..}) = readIORef jobsCountIORef >>= waitTill 0
             Nothing  -> waitTill (jobsDone + 1) jobsCount
 
 
--- | Worker can either be doing work, waiting for a job, or going into
--- retirement. Temp workers are rarely in waiting state, unless there is simply
--- not enough work for all workers in the pool. Unlike temp workers, global
--- workers do spend quite a bit of time waiting for work and they are never
--- retired, but ruthlessly killed.
+-- | Worker can either be doing work, waiting for a job, or going into retirement. Temp workers are
+-- rarely in waiting state, unless there is simply not enough work for all workers in the
+-- pool. Unlike temp workers, global workers do spend quite a bit of time waiting for work and they
+-- are never retired, but ruthlessly killed.
 runWorker :: MVar [Job] -> IO ()
 runWorker jobsMVar = do
   jobs <- takeMVar jobsMVar
@@ -224,9 +219,8 @@ runWorker jobsMVar = do
     []             -> runWorker jobsMVar
 
 
--- | Used whenever a pool of new workers is needed. If list is empty all
--- capabilities are utilized, otherwise each element in the list will be an
--- argument to `forkOn`.
+-- | Used whenever a pool of new workers is needed. If list is empty all capabilities are utilized,
+-- otherwise each element in the list will be an argument to `forkOn`.
 hireWorkers :: [Int] -> IO Workers
 hireWorkers wss = do
   wss' <-
@@ -246,11 +240,10 @@ hireWorkers wss = do
           (unmask . putMVar workerJobDone . Just)
   workerThreadIds `deepseq` return Workers {..}
 
--- | Global workers are the most utilized ones, therefore they are rarily
--- restarted, in particular, only in case when one of them dies of an
--- exception. Weak reference is used so workers don't continue running after
--- MVar has been cleaned up by the GC. Each global worker has his own station,
--- i.e. global workers always span all available capabilities.
+-- | Global workers are the most utilized ones, therefore they are rarily restarted, in particular,
+-- only in case when one of them dies of an exception. Weak reference is used so workers don't
+-- continue running after MVar has been cleaned up by the GC. Each global worker has his own
+-- station, i.e. global workers always span all available capabilities.
 globalWorkersMVar :: MVar (Weak Workers)
 globalWorkersMVar = unsafePerformIO $ do
   workersMVar <- newEmptyMVar
@@ -260,8 +253,8 @@ globalWorkersMVar = unsafePerformIO $ do
 {-# NOINLINE globalWorkersMVar #-}
 
 
--- | Hire workers under weak pointers. Finilizer will kill all the
--- workers. These will be used as global workers
+-- | Hire workers under weak pointers. Finalizer will kill all the workers. These will be used as
+-- global workers
 hireWeakWorkers :: key -> IO (Weak Workers)
 hireWeakWorkers k = do
   workers <- hireWorkers []
