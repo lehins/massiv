@@ -270,7 +270,7 @@ Just to make sure a simple novice mistake is prevented, which I have seen in the
 your source code is compiled with `ghc -O2 -threaded -with-rtsopts=-N`, otherwise no parallelization
 and poor performance are waiting for you. Also a bit later you might notice the `{-# INLINE funcName
 #-}` pragma being used, often times it is a good idea to do that, but not always required. It is
-worth to benchmark and experiment.
+worthwhile to benchmark and experiment.
 
 ## Stencil
 
@@ -292,7 +292,7 @@ Let's create a simple, but somewhat meaningful array and create an averaging
 stencil. There is nothing particular about the array itself, but the filter is
 a stencil that sums the elements in a [Moore
 neighborhood](https://en.wikipedia.org/wiki/Moore_neighborhood) and
-divide the result by 9, i.e. finds the average of a 3 by 3 square.
+divides the result by 9, i.e. finds the average of a 3 by 3 square.
 
 ```haskell
 arrLightIx2 :: Comp -> Ix2 -> Array D Ix2 Double
