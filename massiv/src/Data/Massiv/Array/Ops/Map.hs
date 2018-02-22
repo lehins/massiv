@@ -37,7 +37,6 @@ import           Data.Massiv.Core.Scheduler
 import           Prelude                    hiding (map, mapM_, unzip, unzip3,
                                              zip, zip3, zipWith, zipWith3)
 
-
 -- | Map a function over an array
 map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
 map f = imap (const f)

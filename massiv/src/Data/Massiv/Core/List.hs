@@ -260,18 +260,6 @@ toListArray !arr =
 
 
 
-
--- -- | Version of foldr that supports foldr/build list fusion implemented by GHC.
--- foldrFB :: (e -> b -> b) -> b -> Int -> (Int -> e) -> b
--- --foldrFB c n k f = loop (k - 1) (>= 0) (subtract 1) n $ \i acc -> f i `c` acc
--- foldrFB c n k f = go 0
---   where
---     go !i
---       | i == k = n
---       | otherwise = let !v = f i in v `c` go (i + 1)
--- {-# INLINE [0] foldrFB #-}
-
-
 instance {-# OVERLAPPING #-} (Ragged L ix e, Show e) => Show (Array L ix e) where
   show arr = "  " ++ raggedFormat show "\n  " arr
 

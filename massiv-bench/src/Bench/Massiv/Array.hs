@@ -8,6 +8,8 @@
 module Bench.Massiv.Array (
   module A
   , sum'
+  , mapM
+  , imapM
   , tupleToIx2
   , tupleToIx2T
   , lightFuncIx2
@@ -32,6 +34,7 @@ import           Data.Default             (Default)
 import           Data.Massiv.Array        as A
 import           Data.Massiv.Array.Unsafe as A
 import           Data.Monoid
+import           Prelude                  hiding (mapM)
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
 instance Index ix => NFData (Array D ix e) where
@@ -192,3 +195,24 @@ sum' :: (A.Source r ix e, Num e) =>
 sum' arr =
   getSum $ foldM $ makeArrayR D (getComp arr) (A.size arr) (\ !ix -> Sum (A.unsafeIndex arr ix))
 {-# INLINE sum' #-}
+
+
+
+imapListM
+  :: (Ragged L ix e', Monad m, Source r ix e) =>
+     (ix -> e -> m e') -> Array r ix e -> m (Array L ix e')
+imapListM f arr = unsafeGenerateM (getComp arr) (size arr) (\ix -> f ix (unsafeIndex arr ix))
+{-# INLINE imapListM #-}
+
+
+imapM :: (Source r ix e, Ragged L ix e', Mutable r' ix e', Monad m) =>
+         (ix -> e -> m e') -> Array r ix e -> m (Array r' ix e')
+imapM f = fmap fromRaggedArray' . imapListM f
+{-# INLINE imapM #-}
+
+
+mapM :: (Source r ix e, Ragged L ix e', Mutable r ix e', Monad m) =>
+         (e -> m e') -> Array r ix e -> m (Array r ix e')
+mapM f = imapM (const f)
+{-# INLINE mapM #-}
+

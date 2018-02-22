@@ -317,4 +317,3 @@ fromRaggedArray' arr =
     Left RowTooLongError  -> error "Too many elements in a row"
     Right resArr          -> resArr
 {-# INLINE fromRaggedArray' #-}
-

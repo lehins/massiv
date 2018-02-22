@@ -80,6 +80,8 @@ module Data.Massiv.Array
   , clone
   , convert
   , convertAs
+  , fromRaggedArray
+  , fromRaggedArray'
   -- * Size
   , size
   , Core.elemsCount
