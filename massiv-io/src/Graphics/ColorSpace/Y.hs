@@ -115,7 +115,7 @@ data YA = LumaYA  -- ^ Luma
         | AlphaYA -- ^ Alpha channel
         deriving (Eq, Enum, Show, Bounded, Typeable)
 
-data instance Pixel YA e = PixelYA !e !e deriving Eq
+data instance Pixel YA e = PixelYA !e !e deriving (Eq, Ord)
 
 
 instance Show e => Show (Pixel YA e) where

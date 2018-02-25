@@ -41,7 +41,7 @@ instance Show e => Show (Pixel CMYK e) where
   show (PixelCMYK c m y k) = "<CMYK:("++show c++"|"++show m++"|"++show y++"|"++show k++")>"
 
 
-data instance Pixel CMYK e = PixelCMYK !e !e !e !e deriving Eq
+data instance Pixel CMYK e = PixelCMYK !e !e !e !e deriving (Eq, Ord)
 
 instance Elevator e => ColorSpace CMYK e where
   type Components CMYK e = (e, e, e, e)
@@ -129,7 +129,7 @@ data CMYKA = CyanCMYKA  -- ^ Cyan
            deriving (Eq, Enum, Show, Bounded, Typeable)
 
 
-data instance Pixel CMYKA e = PixelCMYKA !e !e !e !e !e deriving Eq
+data instance Pixel CMYKA e = PixelCMYKA !e !e !e !e !e deriving (Eq, Ord)
 
 
 instance Show e => Show (Pixel CMYKA e) where

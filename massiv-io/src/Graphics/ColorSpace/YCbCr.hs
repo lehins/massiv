@@ -36,7 +36,7 @@ data YCbCr = LumaYCbCr  -- ^ Luma component (commonly denoted as __Y'__)
            | CRedYCbCr  -- ^ Red difference chroma component
            deriving (Eq, Enum, Show, Bounded, Typeable)
 
-data instance Pixel YCbCr e = PixelYCbCr !e !e !e deriving Eq
+data instance Pixel YCbCr e = PixelYCbCr !e !e !e deriving (Eq, Ord)
 
 
 instance Show e => Show (Pixel YCbCr e) where
@@ -123,7 +123,7 @@ data YCbCrA = LumaYCbCrA  -- ^ Luma component (commonly denoted as __Y'__)
             | AlphaYCbCrA -- ^ Alpha component.
             deriving (Eq, Enum, Show, Bounded, Typeable)
 
-data instance Pixel YCbCrA e = PixelYCbCrA !e !e !e !e deriving Eq
+data instance Pixel YCbCrA e = PixelYCbCrA !e !e !e !e deriving (Eq, Ord)
 
 
 instance Show e => Show (Pixel YCbCrA e) where
