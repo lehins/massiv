@@ -17,6 +17,7 @@ module Data.Massiv.Array.Delayed.Internal
   , Array(..)
   , delay
   , eq
+  , ord
   , liftArray
   , liftArray2
   ) where
@@ -95,6 +96,9 @@ instance (Eq e, Index ix) => Eq (Array D ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
 
+instance (Ord e, Index ix) => Ord (Array D ix e) where
+  compare = ord compare
+  {-# INLINE compare #-}
 
 instance Functor (Array D ix) where
   fmap f (DArray c sz g) = DArray c sz (f . g)
@@ -217,6 +221,20 @@ eq f arr1 arr2 =
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE eq #-}
+
+-- | /O(n1 + n2)/ - Compute array ordering by applying a comparing function to each element.
+-- The exact ordering is unspecified so this is only intended for use in maps and the like where
+-- you need an ordering but do not care about which one is used.
+ord :: (Source r1 ix e1, Source r2 ix e2) =>
+       (e1 -> e2 -> Ordering) -> Array r1 ix e1 -> Array r2 ix e2 -> Ordering
+ord f arr1 arr2 =
+  (compare (size arr1) (size arr2)) <>
+  A.fold
+    (<>)
+    mempty
+    (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
+       f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+{-# INLINE ord #-}
 
 
 liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e

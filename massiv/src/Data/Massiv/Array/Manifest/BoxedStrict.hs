@@ -20,7 +20,7 @@ module Data.Massiv.Array.Manifest.BoxedStrict
 
 import           Control.DeepSeq                     (NFData (..))
 import qualified Data.Foldable                       as F (Foldable (..))
-import           Data.Massiv.Array.Delayed.Internal  (eq)
+import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
 import           Data.Massiv.Array.Manifest.BoxedNF  (deepseqArray,
                                                       deepseqArrayP)
 import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
@@ -57,6 +57,10 @@ instance (Index ix, NFData e) => NFData (Array B ix e) where
 instance (Index ix, Eq e) => Eq (Array B ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
+
+instance (Index ix, Ord e) => Ord (Array B ix e) where
+  compare = ord compare
+  {-# INLINE compare #-}
 
 instance Index ix => Construct B ix e where
   getComp = bComp

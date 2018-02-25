@@ -22,7 +22,7 @@ module Data.Massiv.Array.Manifest.Primitive
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Monad.ST                    (runST)
-import           Data.Massiv.Array.Delayed.Internal  (eq)
+import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
@@ -55,6 +55,9 @@ instance (Prim e, Eq e, Index ix) => Eq (Array P ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
 
+instance (Prim e, Ord e, Index ix) => Ord (Array P ix e) where
+  compare = ord compare
+  {-# INLINE compare #-}
 
 instance (Prim e, Index ix) => Construct P ix e where
   getComp = pComp
