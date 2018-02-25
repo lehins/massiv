@@ -295,16 +295,19 @@ sequenceP = sequenceOnP []
 -- | Convert a ragged array into a usual rectangular shaped one.
 fromRaggedArray :: (Ragged r' ix e, Mutable r ix e) =>
                    Array r' ix e -> Either ShapeError (Array r ix e)
-fromRaggedArray arr = unsafePerformIO $ do
-  let sz = edgeSize arr
-  mArr <- unsafeNew sz
-  let loadWith using =
-        loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) (tailDim sz) arr
-  try $ case getComp arr of
-          Seq -> loadWith id >> unsafeFreeze (getComp arr) mArr
-          ParOn ss -> do
-            withScheduler_ ss (loadWith . scheduleWork)
-            unsafeFreeze (getComp arr) mArr
+fromRaggedArray arr =
+  unsafePerformIO $ do
+    let sz = edgeSize arr
+    mArr <- unsafeNew sz
+    let loadWith using = loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) (tailDim sz) arr
+    try $
+      case getComp arr of
+        Seq -> do
+          loadWith id
+          unsafeFreeze Seq mArr
+        pComp@(ParOn ss) -> do
+          withScheduler_ ss (loadWith . scheduleWork)
+          unsafeFreeze pComp mArr
 {-# INLINE fromRaggedArray #-}
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not

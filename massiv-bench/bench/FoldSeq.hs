@@ -119,6 +119,9 @@ main = do
         [ env
             (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
             (bench "Array Ix2 U" . nf (A.mapM Just))
+        , env
+            (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+            (bench "Array Ix2 U" . nf (A.mapM Just))
         , env (return (vecLight2 t2)) (bench "Vector U" . nf (VU.mapM Just))
         ]
     ]

@@ -40,7 +40,7 @@ prop_toFromList ::
   => Proxy ix
   -> Arr U ix Int
   -> Property
-prop_toFromList _ (Arr arr) = arr === fromLists' (getComp arr) (toLists arr :: [ListItem ix Int])
+prop_toFromList _ (Arr arr) = arr === fromLists' (getComp arr) (toLists arr)
 
 
 prop_excFromToListIx2 :: Comp -> [[Int]] -> Property
