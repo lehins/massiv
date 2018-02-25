@@ -25,7 +25,7 @@ module Data.Massiv.Array.Manifest.BoxedNF
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Monad.ST                    (runST)
-import           Data.Massiv.Array.Delayed.Internal  (eq)
+import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
@@ -63,6 +63,10 @@ instance (Index ix, NFData e) => NFData (Array N ix e) where
 instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
+
+instance (Index ix, NFData e, Ord e) => Ord (Array N ix e) where
+  compare = ord compare
+  {-# INLINE compare #-}
 
 
 instance (Index ix, NFData e) => Construct N ix e where

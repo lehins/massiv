@@ -20,7 +20,7 @@ module Data.Massiv.Array.Manifest.Storable
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Data.Massiv.Array.Delayed.Internal  (eq)
+import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
@@ -49,6 +49,10 @@ instance (Index ix, NFData e) => NFData (Array S ix e) where
 instance (VS.Storable e, Eq e, Index ix) => Eq (Array S ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
+
+instance (VS.Storable e, Ord e, Index ix) => Ord (Array S ix e) where
+  compare = ord compare
+  {-# INLINE compare #-}
 
 instance (VS.Storable e, Index ix) => Construct S ix e where
   getComp = sComp
