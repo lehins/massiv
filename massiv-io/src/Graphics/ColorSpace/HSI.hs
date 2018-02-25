@@ -35,7 +35,7 @@ data HSI = HueHSI -- ^ Hue
          | IntHSI -- ^ Intensity
          deriving (Eq, Enum, Show, Bounded, Typeable)
 
-data instance Pixel HSI e = PixelHSI !e !e !e deriving Eq
+data instance Pixel HSI e = PixelHSI !e !e !e deriving (Eq, Ord)
 
 
 instance Show e => Show (Pixel HSI e) where
@@ -121,7 +121,7 @@ data HSIA = HueHSIA   -- ^ Hue
           deriving (Eq, Enum, Show, Bounded, Typeable)
 
 
-data instance Pixel HSIA e = PixelHSIA !e !e !e !e deriving Eq
+data instance Pixel HSIA e = PixelHSIA !e !e !e !e deriving (Eq, Ord)
 
 
 instance Show e => Show (Pixel HSIA e) where

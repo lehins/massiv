@@ -35,7 +35,7 @@ data RGB = RedRGB
          | BlueRGB deriving (Eq, Enum, Show, Bounded, Typeable)
 
 
-data instance Pixel RGB e = PixelRGB !e !e !e deriving Eq
+data instance Pixel RGB e = PixelRGB !e !e !e deriving (Eq, Ord)
 
 instance Show e => Show (Pixel RGB e) where
   show (PixelRGB r g b) = "<RGB:("++show r++"|"++show g++"|"++show b++")>"
@@ -115,7 +115,7 @@ data RGBA = RedRGBA
           | BlueRGBA
           | AlphaRGBA deriving (Eq, Enum, Show, Bounded, Typeable)
 
-data instance Pixel RGBA e = PixelRGBA !e !e !e !e deriving Eq
+data instance Pixel RGBA e = PixelRGBA !e !e !e !e deriving (Eq, Ord)
 
 
 instance Show e => Show (Pixel RGBA e) where
