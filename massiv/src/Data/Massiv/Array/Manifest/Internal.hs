@@ -40,7 +40,6 @@ import           Control.Monad.ST                   (runST)
 import           Data.Foldable                      (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Fold         as M
-import           Data.Massiv.Array.Ops.Map          (iforM_)
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
@@ -259,7 +258,7 @@ sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
 sequenceOnP wIds !arr = do
   resArrM <- unsafeNew (size arr)
   withScheduler_ wIds $ \scheduler ->
-    iforM_ arr $ \ !ix action ->
+    flip imapM_ arr $ \ !ix action ->
       scheduleWork scheduler $ action >>= unsafeWrite resArrM ix
   unsafeFreeze (getComp arr) resArrM
 {-# INLINE sequenceOnP #-}
@@ -320,3 +319,23 @@ fromRaggedArray' arr =
     Left RowTooLongError  -> error "Too many elements in a row"
     Right resArr          -> resArr
 {-# INLINE fromRaggedArray' #-}
+
+
+
+imapListM
+  :: (Ragged L ix e', Monad m, Source r ix e) =>
+     (ix -> e -> m e') -> Array r ix e -> m (Array L ix e')
+imapListM f arr = unsafeGenerateM (getComp arr) (size arr) (\ix -> f ix (unsafeIndex arr ix))
+{-# INLINE imapListM #-}
+
+
+imapM :: (Source r ix e, Ragged L ix e', Mutable r' ix e', Monad m) =>
+         (ix -> e -> m e') -> Array r ix e -> m (Array r' ix e')
+imapM f = fmap fromRaggedArray' . imapListM f
+{-# INLINE imapM #-}
+
+
+mapM :: (Source r ix e, Ragged L ix e', Mutable r ix e', Monad m) =>
+         (e -> m e') -> Array r ix e -> m (Array r ix e')
+mapM f = imapM (const f)
+{-# INLINE mapM #-}

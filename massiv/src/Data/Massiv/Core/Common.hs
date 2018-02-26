@@ -39,6 +39,8 @@ module Data.Massiv.Core.Common
   , borderIndex
   , evaluateAt
   , module Data.Massiv.Core.Index
+  -- * Common Operations
+  , imapM_
   , module Data.Massiv.Core.Computation
   ) where
 
@@ -310,3 +312,21 @@ evaluateAt !arr !ix =
 -- errorImpossible loc =
 --   error $ "Please report this error. Impossible happend at: " ++ loc
 -- {-# NOINLINE errorImpossible #-}
+
+
+
+-- | Map a monadic index aware function over an array sequentially, while discarding the result.
+--
+-- ==== __Examples__
+--
+-- >>> imapM_ (curry print) $ range 10 15
+-- (0,10)
+-- (1,11)
+-- (2,12)
+-- (3,13)
+-- (4,14)
+--
+imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
+imapM_ f !arr =
+  iterM_ zeroIndex (size arr) 1 (<) $ \ !ix -> f ix (unsafeIndex arr ix)
+{-# INLINE imapM_ #-}

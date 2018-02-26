@@ -139,21 +139,9 @@ import           Prelude                             as P hiding (all, and, any,
                                                            foldl, foldr,
                                                            maximum, minimum, or,
                                                            product, splitAt,
-                                                           sum)
-import Data.Monoid
+                                                           sum, mapM, mapM_)
 {- $folding
 
 All folding is done in a row-major order.
 
 -}
-
-
-ord :: (Manifest r1 ix e1, Manifest r2 ix e2) =>
-       (e1 -> e2 -> Ordering) -> Array r1 ix e1 -> Array r2 ix e2 -> Ordering
-ord f arr1 arr2 =
-  (compare (size arr1) (size arr2)) <>
-  fold
-    (<>)
-    mempty
-    (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
-       f (index' arr1 ix) (index' arr2 ix))
