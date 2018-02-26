@@ -120,9 +120,11 @@ main = do
         [ env (return (vecLight2 t2)) (bench "Vector U" . nf (VU.mapM Just))
         , env
             (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-            (bench "Array Ix2 U Seq" . nf (A.mapM Just :: (A.Array A.U Ix2 Double -> Maybe (A.Array A.U Ix2 Double))))
+            (bench "Array Ix2 U Seq" .
+             nf (A.mapM Just :: (A.Array A.U Ix2 Double -> Maybe (A.Array A.U Ix2 Double))))
         , env
             (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-            (bench "Array Ix2 U Par" . nf (A.mapM Just :: (A.Array A.U Ix2 Double -> Maybe (A.Array A.U Ix2 Double))))
+            (bench "Array Ix2 U Par" .
+             nf (A.mapM Just :: (A.Array A.U Ix2 Double -> Maybe (A.Array A.U Ix2 Double))))
         ]
     ]
