@@ -29,7 +29,7 @@ from the end, are:
       primitive types: `Int`, `Word`, `Char`, etc. Backed by the usual `ByteArray`.
     * `U` - Unboxed arrays. The elements are instances of the `Unbox` type class. Just as fast as `P`, but has a
       wider range of data types that it can work with. Notable data types that can be stored as
-      elemenets are `Bool`, tuples and `Ix n`.
+      elements are `Bool`, tuples and `Ix n`.
     * `S` - Storable arrays. Backed by a pinned `ByteArray`s and elements are instances of the `Storable`
       type class.
     * `B` - Boxed arrays that don't have restrictions on their elements, since they are represented as
