@@ -1,9 +1,11 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UnboxedTuples         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
@@ -33,8 +35,12 @@ import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types                (Prim)
+import           Data.Primitive.Types
 import qualified Data.Vector.Primitive               as VP
+import           GHC.Base                            (unsafeCoerce#)
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Int                             (Int (..))
+import           GHC.Prim
 import           Prelude                             hiding (mapM)
 
 -- | Representation for `Prim`itive elements
@@ -161,6 +167,33 @@ instance (Index ix, Prim e) => Mutable P ix e where
   unsafeLinearWrite (MPArray _ v) = writeByteArray v
   {-# INLINE unsafeLinearWrite #-}
 
+  unsafeNewA sz (State s#) =
+    let kb# = totalSize# sz (undefined :: e)
+        (# s'#, mba# #) = newByteArray# kb# s# in
+      pure (State s'#, MPArray sz (MutableByteArray mba#))
+  {-# INLINE unsafeNewA #-}
+
+  unsafeThawA (PArray _ sz (ByteArray ba#)) s =
+    pure (s, MPArray sz (MutableByteArray (unsafeCoerce# ba#)))
+  {-# INLINE unsafeThawA #-}
+
+  unsafeFreezeA comp (MPArray sz (MutableByteArray mba#)) (State s#) =
+    let (# s'#, ba# #) = unsafeFreezeByteArray# mba# s# in
+      pure (State s'#, PArray comp sz (ByteArray ba#))
+  {-# INLINE unsafeFreezeA #-}
+
+  unsafeLinearWriteA (MPArray _ (MutableByteArray mba#)) (I# i#) val (State s#) =
+    pure (State (writeByteArray# mba# i# val s#))
+  {-# INLINE unsafeLinearWriteA #-}
+
+
+
+totalSize# :: (Index ix, Prim e) => ix -> e -> Int#
+totalSize# sz dummy = k# *# sizeOf# dummy
+  where
+    !(I# k#) = totalElem sz
+{-# INLINE totalSize# #-}
+
 
 instance ( VP.Prim e
          , IsList (Array L ix e)
@@ -186,5 +219,4 @@ vectorToByteArray (VP.Vector start len arr) =
            copyByteArray marr 0 arr (start * elSize) (len * elSize)
            unsafeFreezeByteArray marr
 {-# INLINE vectorToByteArray #-}
-
 

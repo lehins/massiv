@@ -6,6 +6,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 module Data.Massiv.CoreArbitrary
   ( Arr(..)
+  , ArrTiny(..)
   , ArrIx(..)
   , ArrP(..)
   , ArrIxP(..)
@@ -31,6 +32,8 @@ import           Test.QuickCheck.Monadic
 
 data Arr r ix e = Arr (Array r ix e)
 
+data ArrTiny r ix e = ArrTiny (Array r ix e)
+
 data ArrS r ix e = ArrS (Array r ix e)
 
 data ArrP r ix e = ArrP (Array r ix e)
@@ -42,6 +45,7 @@ data ArrIxS r ix e = ArrIxS (Array r ix e) ix
 data ArrIxP r ix e = ArrIxP (Array r ix e) ix
 
 deriving instance (Show (Array r ix e)) => Show (Arr r ix e)
+deriving instance (Show (Array r ix e)) => Show (ArrTiny r ix e)
 deriving instance (Show (Array r ix e)) => Show (ArrS r ix e)
 deriving instance (Show (Array r ix e)) => Show (ArrP r ix e)
 deriving instance (Show (Array r ix e), Show ix) => Show (ArrIx r ix e)
@@ -62,6 +66,15 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     return $ makeArray comp sz func
 
 
+-- | Arbitrary small and possibly empty array. Computation strategy can be either `Seq` or `Par`.
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
+         Arbitrary (ArrTiny r ix e) where
+  arbitrary = do
+    SzZ sz <- arbitrary
+    func <- arbitrary
+    comp <- oneof [pure Seq, pure Par]
+    return $ ArrTiny $ makeArray comp (liftIndex (`mod` 10) sz) func
+
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (Arr r ix e) where
@@ -70,6 +83,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
     return $ Arr $ makeArray comp sz func
+
 
 -- | Arbitrary non-empty array
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>

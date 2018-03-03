@@ -1,6 +1,7 @@
 # 0.1.1
 
-* Addition of `mapM` and `imapM` functions. Fixes #5
+* Addition of experimental `mapM`, `imapM`, `forM`, `iforM`, `generateM` and `generateLinearM`
+  functions. Fixes #5
 
 # 0.1.0
 

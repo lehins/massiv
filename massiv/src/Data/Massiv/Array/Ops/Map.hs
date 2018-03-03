@@ -13,12 +13,8 @@ module Data.Massiv.Array.Ops.Map
   ( map
   , imap
   -- ** Monadic
-  , mapM
-  , forM
   , mapM_
   , forM_
-  , imapM
-  , iforM
   , imapM_
   , iforM_
   , mapP_
@@ -37,9 +33,7 @@ module Data.Massiv.Array.Ops.Map
 
 import           Control.Monad                       (void, when)
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
 import           Prelude                             hiding (map, mapM, mapM_,
                                                       unzip, unzip3, zip, zip3,
@@ -187,49 +181,4 @@ imapP_ f arr = do
       iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i ix -> do
         void $ f ix (unsafeLinearIndex arr i)
 {-# INLINE imapP_ #-}
-
-
-
-imapListM
-  :: (Ragged L ix e', Monad m, Source r ix e) =>
-     (ix -> e -> m e') -> Array r ix e -> m (Array L ix e')
-imapListM f arr = unsafeGenerateM (getComp arr) (size arr) (\ix -> f ix (unsafeIndex arr ix))
-{-# INLINE imapListM #-}
-
--- | Map a monadic function over an Array. This operation will force the computation and will result
--- in a manifest Array. For arrays of rank higher than 2 computation is paralellizable.
---
--- @since 0.1.1
-mapM :: (Source r' ix e', Ragged L ix e, Mutable r ix e, Monad m) =>
-         (e' -> m e) -> Array r' ix e' -> m (Array r ix e)
-mapM f = imapM (const f)
-{-# INLINE mapM #-}
-
-
--- | Map a monadic index aware function over an Array. This operation will force the computation and
--- will result in a manifest Array.
---
--- @since 0.1.1
-imapM :: (Source r' ix e', Ragged L ix e, Mutable r ix e, Monad m) =>
-         (ix -> e' -> m e) -> Array r' ix e' -> m (Array r ix e)
-imapM f = fmap fromRaggedArray' . imapListM f
-{-# INLINE imapM #-}
-
-
--- | Same as `mapM`, but the arguments are flipped.
---
--- @since 0.1.1
-forM :: (Source r' ix e', Ragged L ix e, Mutable r ix e, Monad m) =>
-         Array r' ix e' -> (e' -> m e) -> m (Array r ix e)
-forM = flip mapM
-{-# INLINE forM #-}
-
-
--- | Same as `imapM`, but the arguments are flipped.
---
--- @since 0.1.1
-iforM :: (Source r' ix e', Ragged L ix e, Mutable r ix e, Monad m) =>
-         Array r' ix e' -> (ix -> e' -> m e) -> m (Array r ix e)
-iforM = flip imapM
-{-# INLINE iforM #-}
 

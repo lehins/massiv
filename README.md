@@ -480,3 +480,30 @@ variance introduced by outliers: 34% (moderately inflated)
 
 Benchmark fold-seq: FINISH
 ```
+
+Here is also a recent addition `mapM` over an array. Comparing only with unboxed vectors, since Repa
+doesn't have such an implementation. There is 100x speedup over `vector` package since direct
+mutation is used versus a fallback onto lists, like it is done with @Vector@:
+
+```
+benchmarking mapM/Array Ix2 P Seq
+time                 2.408 ms   (2.346 ms .. 2.464 ms)
+                     0.994 R²   (0.991 R² .. 0.997 R²)
+mean                 2.464 ms   (2.417 ms .. 2.532 ms)
+std dev              183.6 μs   (135.2 μs .. 236.3 μs)
+variance introduced by outliers: 53% (severely inflated)
+
+benchmarking mapM/Array Ix2 U Seq
+time                 5.858 ms   (5.508 ms .. 6.148 ms)
+                     0.979 R²   (0.961 R² .. 0.989 R²)
+mean                 5.627 ms   (5.476 ms .. 5.812 ms)
+std dev              476.9 μs   (383.0 μs .. 621.8 μs)
+variance introduced by outliers: 52% (severely inflated)
+
+benchmarking mapM/Vector U
+time                 269.6 ms   (216.1 ms .. 317.4 ms)
+                     0.989 R²   (0.973 R² .. 1.000 R²)
+mean                 272.2 ms   (261.7 ms .. 281.6 ms)
+std dev              11.88 ms   (5.525 ms .. 15.30 ms)
+variance introduced by outliers: 16% (moderately inflated)
+```

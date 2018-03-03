@@ -22,10 +22,12 @@ module Data.Massiv.Array.Manifest.Internal
   , toManifest
   , compute
   , computeAs
+  , computeProxy
   , computeSource
   , clone
   , convert
   , convertAs
+  , convertProxy
   , gcastArr
   , loadMutableS
   , loadMutableOnP
@@ -212,9 +214,34 @@ compute !arr =
 {-# INLINE compute #-}
 
 -- | Just as `compute`, but let's you supply resulting representation type as an argument.
+--
+-- ====__Examples__
+--
+-- >>> computeAs P $ range Seq 0 10
+-- (Array P Seq (10)
+--   [ 0,1,2,3,4,5,6,7,8,9 ])
+--
 computeAs :: (Load r' ix e, Mutable r ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
 {-# INLINE computeAs #-}
+
+
+-- | Same as `convert` and `convertAs`, but let's you supply resulting representation type as a proxy
+-- argument.
+--
+-- @since 0.1.1
+--
+-- ====__Examples__
+--
+-- Useful for cases when representation constructor isn't available for some reason:
+--
+-- >>> computeProxy (Nothing :: Maybe P) $ range Seq 0 10
+-- (Array P Seq (10)
+--   [ 0,1,2,3,4,5,6,7,8,9 ])
+--
+computeProxy :: (Load r' ix e, Mutable r ix e) => proxy r -> Array r' ix e -> Array r ix e
+computeProxy _ = compute
+{-# INLINE computeProxy #-}
 
 
 -- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if
@@ -253,6 +280,16 @@ convertAs _ = convert
 {-# INLINE convertAs #-}
 
 
+-- | Same as `convert` and `convertAs`, but let's you supply resulting representation type as a
+-- proxy argument.
+--
+-- @since 0.1.1
+--
+convertProxy :: (Mutable r' ix e, Mutable r ix e, Typeable ix, Typeable e)
+             => proxy r -> Array r' ix e -> Array r ix e
+convertProxy _ = convert
+{-# INLINE convertProxy #-}
+
 sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
 sequenceOnP wIds !arr = do
@@ -268,28 +305,6 @@ sequenceP :: (Source r1 ix (IO e), Mutable r ix e) => Array r1 ix (IO e) -> IO (
 sequenceP = sequenceOnP []
 {-# INLINE sequenceP #-}
 
-
-
-
-
--- sequenceOnP' :: (NFData e, Source r1 ix (IO e), Mutable r ix e) =>
---                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
--- sequenceOnP' wIds !arr = do
---   resArrM <- unsafeNew (size arr)
---   scheduler <- makeScheduler wIds
---   iforM_ arr $ \ !ix action ->
---     submitRequest scheduler $ JobRequest $ do
---       res <- action
---       res `deepseq` unsafeWrite resArrM ix res
---   waitTillDone scheduler
---   unsafeFreeze resArrM
--- {-# INLINE sequenceOnP' #-}
-
-
--- sequenceP' :: (NFData e, Source r1 ix (IO e), Mutable r ix e)
---            => Array r1 ix (IO e) -> IO (Array r ix e)
--- sequenceP' = sequenceOnP' []
--- {-# INLINE sequenceP' #-}
 
 -- | Convert a ragged array into a usual rectangular shaped one.
 fromRaggedArray :: (Ragged r' ix e, Mutable r ix e) =>
@@ -319,23 +334,3 @@ fromRaggedArray' arr =
     Left RowTooLongError  -> error "Too many elements in a row"
     Right resArr          -> resArr
 {-# INLINE fromRaggedArray' #-}
-
-
-
-imapListM
-  :: (Ragged L ix e', Monad m, Source r ix e) =>
-     (ix -> e -> m e') -> Array r ix e -> m (Array L ix e')
-imapListM f arr = unsafeGenerateM (getComp arr) (size arr) (\ix -> f ix (unsafeIndex arr ix))
-{-# INLINE imapListM #-}
-
-
-imapM :: (Source r ix e, Ragged L ix e', Mutable r' ix e', Monad m) =>
-         (ix -> e -> m e') -> Array r ix e -> m (Array r' ix e')
-imapM f = fmap fromRaggedArray' . imapListM f
-{-# INLINE imapM #-}
-
-
-mapM :: (Source r ix e, Ragged L ix e', Mutable r ix e', Monad m) =>
-         (e -> m e') -> Array r ix e -> m (Array r ix e')
-mapM f = imapM (const f)
-{-# INLINE mapM #-}

@@ -1,8 +1,11 @@
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE UnboxedTuples         #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -26,15 +29,27 @@ module Data.Massiv.Array.Mutable
   , modify'
   , swap
   , swap'
+  -- * Generate (experimental)
+
+  -- $generate
+  , generateM
+  , generateLinearM
+  , mapM
+  , imapM
+  , forM
+  , iforM
+  , sequenceM
   ) where
 
-import           Prelude                  hiding (read)
+import           Prelude                             hiding (mapM, read)
 
-import           Control.Monad            (unless)
-import           Control.Monad.Primitive  (PrimMonad (..))
+import           Control.Monad                       (unless)
+import           Control.Monad.Primitive             (PrimMonad (..))
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
+import           GHC.Int                             (Int (..))
+import           GHC.Prim
 
 -- errorSizeMismatch fName sz1 sz2 =
 --   error $ fName ++ ": Size mismatch: " ++ show sz1 ++ " /= " ++ show sz2
@@ -156,3 +171,133 @@ swap' marr ix1 ix2 = do
       else ix1
 {-# INLINE swap' #-}
 
+
+unsafeLinearFillM :: (Mutable r ix e, Monad m) =>
+                     MArray RealWorld r ix e -> (Int -> m e) -> WorldState -> m WorldState
+unsafeLinearFillM ma f (State s_#) = go 0# s_#
+  where
+    !(I# k#) = totalElem (msize ma)
+    go i# s# =
+      case i# <# k# of
+        0# -> return (State s#)
+        _ -> do
+          let i = I# i#
+          res <- f i
+          State s'# <- unsafeLinearWriteA ma i res (State s#)
+          go (i# +# 1#) s'#
+{-# INLINE unsafeLinearFillM #-}
+
+
+-- | /O(n)/ - Same as `generateM` but using a flat index.
+--
+-- @since 0.1.1
+generateLinearM :: (Monad m, Mutable r ix e) => Comp -> ix -> (Int -> m e) -> m (Array r ix e)
+generateLinearM comp sz f = do
+  (s, mba) <- unsafeNewA (liftIndex (max 0) sz) (State (noDuplicate# realWorld#))
+  s' <- unsafeLinearFillM mba f s
+  (_, ba) <- unsafeFreezeA comp mba s'
+  return ba
+{-# INLINE generateLinearM #-}
+
+-- | /O(n)/ - Generate an array monadically using it's mutable interface. Computation will be done
+  -- sequentially, regardless of `Comp` argument.
+--
+-- @since 0.1.1
+generateM :: (Monad m, Mutable r ix e) => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
+generateM comp sz f = generateLinearM comp sz (f . fromLinearIndex sz)
+{-# INLINE generateM #-}
+
+
+-- | /O(n)/ - Map an index aware monadic action over an Array. This operation will force computation
+-- sequentially and will result in a manifest Array.
+--
+-- @since 0.1.1
+imapM
+  :: (Monad m, Source r ix e, Mutable r' ix e') =>
+     r' -> (ix -> e -> m e') -> Array r ix e -> m (Array r' ix e')
+imapM _ f arr =
+  generateLinearM (getComp arr) sz (\ !i -> f (fromLinearIndex sz i) (unsafeLinearIndex arr i))
+  where
+    !sz = size arr
+{-# INLINE imapM #-}
+
+-- | /O(n)/ - Map a monadic action over an Array. This operation will force computation sequentially
+-- and will result in a manifest Array.
+--
+-- @since 0.1.1
+--
+-- ====__Examples__
+--
+-- >>> mapM P (\i -> Just (i*i)) $ range Seq 0 5
+-- Just (Array P Seq (5)
+--   [ 0,1,4,9,16 ])
+--
+mapM
+  :: (Monad m, Source r ix e, Mutable r' ix e') =>
+     r' -> (e -> m e') -> Array r ix e -> m (Array r' ix e')
+mapM r f = imapM r (const f)
+{-# INLINE mapM #-}
+
+
+-- | /O(n)/ - Same as `mapM`, but with its arguments flipped.
+--
+-- @since 0.1.1
+forM ::
+     (Monad m, Source r ix e, Mutable r' ix e')
+  => r'
+  -> Array r ix e
+  -> (e -> m e')
+  -> m (Array r' ix e')
+forM r = flip (mapM r)
+{-# INLINE forM #-}
+
+
+-- | /O(n)/ - Same as `imapM`, but with its arguments flipped.
+--
+-- @since 0.1.1
+iforM :: (Monad m, Source r ix e, Mutable r' ix e') =>
+         r' -> Array r ix e -> (ix -> e -> m e') -> m (Array r' ix e')
+iforM r = flip (imapM r)
+{-# INLINE iforM #-}
+
+
+-- | /O(n)/ - Sequence monadic actions in a source Array. This operation will force the computation
+-- sequentially and will result in a manifest Array.
+--
+-- @since 0.1.1
+sequenceM
+  :: (Monad m, Source r ix (m e), Mutable r' ix e) =>
+     r' -> Array r ix (m e) -> m (Array r' ix e)
+sequenceM r = mapM r id
+{-# INLINE sequenceM #-}
+
+
+{- $generate
+
+Functions in this sections can monadically generate manifest arrays using their associated mutable
+interface. Due to the sequential nature of monads generation is done also sequentially regardless of
+supplied computation strategy. All of functions are very much experimental, so please
+<https://github.com/lehins/massiv/issues/new report an issue> if you see something not working
+properly.
+
+Here is a very imperative like for loop that creates an array while performing a side effect for
+each newly created element:
+
+@
+printSquare :: Int -> IO (Array P Ix1 Int)
+printSquare n = forM P (range Seq 0 n) $ \i -> do
+  let e = i*i
+  putStrLn $ "Element at index: " ++ show i ++ " = " ++ show e ++ ";"
+  return e
+@
+
+>>> printSquare 5
+Element at index: 0 = 0;
+Element at index: 1 = 1;
+Element at index: 2 = 4;
+Element at index: 3 = 9;
+Element at index: 4 = 16;
+(Array P Seq (5)
+  [ 0,1,4,9,16 ])
+
+-}

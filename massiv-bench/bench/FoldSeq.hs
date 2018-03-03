@@ -11,10 +11,13 @@ import           Data.Functor.Identity
 import qualified Data.Vector.Unboxed   as VU
 import           GHC.Exts              as GHC
 import           Prelude               as P
+import Control.Concurrent
+import           Data.Massiv.Array.Unsafe    as A
 
 main :: IO ()
 main = do
   let t2 = (1600, 1200) :: (Int, Int)
+  -- a <- unsafeGenerateM Par 25 (\i -> putStr (show i P.++ ": ") >> (myThreadId >>= print) >> myThreadId) :: IO (A.Array L Int ThreadId)
   defaultMain
     [ bgroup
         "Uncomputed"
@@ -117,14 +120,18 @@ main = do
         ]
     , bgroup
         "mapM"
-        [ env (return (vecLight2 t2)) (bench "Vector U" . nf (VU.mapM Just))
+        [ env
+            (return (computeAs P (arrDLightIx2 Seq (tupleToIx2 t2))))
+            (bench "Array Ix2 P Seq" . whnf (A.mapM A.P Just))
         , env
             (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-            (bench "Array Ix2 U Seq" .
-             nf (A.mapM Just :: (A.Array A.U Ix2 Double -> Maybe (A.Array A.U Ix2 Double))))
+            (bench "Array Ix2 U Seq" . whnf (A.mapM A.U Just))
         , env
-            (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-            (bench "Array Ix2 U Par" .
-             nf (A.mapM Just :: (A.Array A.U Ix2 Double -> Maybe (A.Array A.U Ix2 Double))))
+            (return (computeAs S (arrDLightIx2 Seq (tupleToIx2 t2))))
+            (bench "Array Ix2 S Seq" . whnf (A.mapM A.S Just))
+        , env
+            (return (computeAs N (arrDLightIx2 Seq (tupleToIx2 t2))))
+            (bench "Array Ix2 N Seq" . whnf (A.mapM A.N Just))
+        , env (return (vecLight2 t2)) (bench "Vector U" . whnf (VU.mapM Just))
         ]
     ]
