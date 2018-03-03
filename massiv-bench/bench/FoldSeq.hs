@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 module Main where
 
 import           Bench.Massiv.Array    as A
@@ -10,10 +11,13 @@ import           Data.Functor.Identity
 import qualified Data.Vector.Unboxed   as VU
 import           GHC.Exts              as GHC
 import           Prelude               as P
+import Control.Concurrent
+import           Data.Massiv.Array.Unsafe    as A
 
 main :: IO ()
 main = do
   let t2 = (1600, 1200) :: (Int, Int)
+  -- a <- unsafeGenerateM Par 25 (\i -> putStr (show i P.++ ": ") >> (myThreadId >>= print) >> myThreadId) :: IO (A.Array L Int ThreadId)
   defaultMain
     [ bgroup
         "Uncomputed"
@@ -22,9 +26,7 @@ main = do
             [ env
                 (return (tupleToIx2 t2))
                 (bench "Array Ix2 U" . whnf (A.foldlS (+) 0 . arrDLightIx2 Seq))
-            , env
-                (return t2)
-                (bench "Vector U" . whnf (VU.foldl' (+) 0 . vecLight2))
+            , env (return t2) (bench "Vector U" . whnf (VU.foldl' (+) 0 . vecLight2))
             , env
                 (return (tupleToSh2 t2))
                 (bench "Repa DIM2 U" . whnf (R.foldAllS (+) 0 . arrDLightSh2))
@@ -34,9 +36,7 @@ main = do
             [ env
                 (return (tupleToIx2 t2))
                 (bench "Array Ix2 U" . whnf (A.foldrS (+) 0 . arrDLightIx2 Seq))
-            , env
-                (return t2)
-                (bench "Vector U" . whnf (VU.foldr' (+) 0 . vecLight2))
+            , env (return t2) (bench "Vector U" . whnf (VU.foldr' (+) 0 . vecLight2))
             , env
                 (return (tupleToSh2 t2))
                 (bench "Repa DIM2 U" . whnf (R.foldAllS (+) 0 . arrDLightSh2))
@@ -52,9 +52,7 @@ main = do
             , env
                 (return (computeAs B (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 B" . whnf (A.foldlS (+) 0))
-            , env
-                (return (vecLight2 t2))
-                (bench "Vector U" . whnf (VU.foldl' (+) 0))
+            , env (return (vecLight2 t2)) (bench "Vector U" . whnf (VU.foldl' (+) 0))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (R.foldAllS (+) 0))
@@ -64,9 +62,7 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" . whnf (A.foldrS (+) 0))
-            , env
-                (return (vecLight2 t2))
-                (bench "Vector U" . whnf (VU.foldr' (+) 0))
+            , env (return (vecLight2 t2)) (bench "Vector U" . whnf (VU.foldr' (+) 0))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (R.foldAllS (+) 0))
@@ -122,5 +118,20 @@ main = do
                 (bench "Repa DIM2 U" . whnf (runIdentity . R.sumAllP))
             ]
         ]
+    , bgroup
+        "mapM"
+        [ env
+            (return (computeAs P (arrDLightIx2 Seq (tupleToIx2 t2))))
+            (bench "Array Ix2 P Seq" . whnf (A.mapM A.P Just))
+        , env
+            (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+            (bench "Array Ix2 U Seq" . whnf (A.mapM A.U Just))
+        , env
+            (return (computeAs S (arrDLightIx2 Seq (tupleToIx2 t2))))
+            (bench "Array Ix2 S Seq" . whnf (A.mapM A.S Just))
+        , env
+            (return (computeAs N (arrDLightIx2 Seq (tupleToIx2 t2))))
+            (bench "Array Ix2 N Seq" . whnf (A.mapM A.N Just))
+        , env (return (vecLight2 t2)) (bench "Vector U" . whnf (VU.mapM Just))
+        ]
     ]
-

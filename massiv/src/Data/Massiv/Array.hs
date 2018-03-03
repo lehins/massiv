@@ -76,10 +76,14 @@ module Data.Massiv.Array
   , setComp
   , compute
   , computeAs
+  , computeProxy
   , computeSource
   , clone
   , convert
   , convertAs
+  , convertProxy
+  , fromRaggedArray
+  , fromRaggedArray'
   -- * Size
   , size
   , Core.elemsCount
@@ -106,6 +110,8 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Ops.Slice
   -- * Conversion
   , module Data.Massiv.Array.Manifest.List
+  -- * Mutable
+  , module Data.Massiv.Array.Mutable
   -- * Core
   , module Data.Massiv.Core
   -- * Representations
@@ -118,10 +124,10 @@ module Data.Massiv.Array
 
 import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Numeric
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List
-import           Data.Massiv.Array.Mutable           as A
+import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Numeric
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Array.Ops.Map
@@ -134,10 +140,10 @@ import qualified Data.Massiv.Core                    as Core (elemsCount,
                                                               isEmpty)
 import           Data.Massiv.Core.Common
 import           Prelude                             as P hiding (all, and, any,
-                                                           foldl, foldr,
-                                                           maximum, minimum, or,
-                                                           product, splitAt,
-                                                           sum)
+                                                           foldl, foldr, mapM,
+                                                           mapM_, maximum,
+                                                           minimum, or, product,
+                                                           splitAt, sum)
 {- $folding
 
 All folding is done in a row-major order.

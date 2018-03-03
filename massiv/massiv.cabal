@@ -1,5 +1,5 @@
 name:                massiv
-version:             0.1.0.0
+version:             0.1.1.0
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -66,6 +66,7 @@ Test-Suite tests
   Main-Is:            Spec.hs
   Other-Modules:      Data.Massiv.Array.DelayedSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
+                    , Data.Massiv.Array.MutableSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec

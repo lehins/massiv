@@ -32,6 +32,7 @@ import           Data.Default             (Default)
 import           Data.Massiv.Array        as A
 import           Data.Massiv.Array.Unsafe as A
 import           Data.Monoid
+import           Prelude                  hiding (mapM)
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
 instance Index ix => NFData (Array D ix e) where
@@ -192,3 +193,4 @@ sum' :: (A.Source r ix e, Num e) =>
 sum' arr =
   getSum $ foldM $ makeArrayR D (getComp arr) (A.size arr) (\ !ix -> Sum (A.unsafeIndex arr ix))
 {-# INLINE sum' #-}
+

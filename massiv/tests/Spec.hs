@@ -2,6 +2,7 @@ module Main where
 
 import           Data.Massiv.Array.DelayedSpec         as Delayed
 import           Data.Massiv.Array.Manifest.VectorSpec as Vector
+import           Data.Massiv.Array.MutableSpec         as Mutable
 import           Data.Massiv.Array.Ops.ConstructSpec   as Construct
 import           Data.Massiv.Array.Ops.FoldSpec        as Fold
 import           Data.Massiv.Array.Ops.SliceSpec       as Slice
@@ -27,6 +28,7 @@ main = do
       Fold.spec
       Slice.spec
       Transform.spec
-    Delayed.spec
-    Stencil.spec
-    Vector.spec
+    describe "Delayed" $ Delayed.spec
+    describe "Mutable" $ Mutable.spec
+    describe "Stencil" $ Stencil.spec
+    describe "Vector" $ Vector.spec
