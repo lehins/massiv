@@ -21,20 +21,30 @@ import           Data.Functor.Identity     (runIdentity)
 import           Data.Massiv.Core.Iterator
 import           GHC.TypeLits
 
+-- | A way to select Array dimension.
 newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
 
+-- | Zero-dimension, i.e. a scalar. Can't really be used directly as there are no instances of
+-- `Index` for it, and is included for completeness.
 data Ix0 = Ix0 deriving (Eq, Ord, Show)
 
+-- | 1-dimensional index. Synonym for `Int` and `Data.Massiv.Core.Index.Ix.Ix1`.
 type Ix1T = Int
 
+-- | 2-dimensional index as tuple of `Int`s.
 type Ix2T = (Int, Int)
 
+-- | 3-dimensional index as 3-tuple of `Int`s.
 type Ix3T = (Int, Int, Int)
 
+-- | 4-dimensional index as 4-tuple of `Int`s.
 type Ix4T = (Int, Int, Int, Int)
 
+-- | 5-dimensional index as 5-tuple of `Int`s.
 type Ix5T = (Int, Int, Int, Int, Int)
 
+-- | This type family will always point to a type for a dimension that is one lower than the type
+-- argument.
 type family Lower ix :: *
 
 type instance Lower Ix1T = Ix0
@@ -43,34 +53,46 @@ type instance Lower Ix3T = Ix2T
 type instance Lower Ix4T = Ix3T
 type instance Lower Ix5T = Ix4T
 
-
+-- | This is bread and butter of multi-dimensional array indexing. It is unlikely that any of the
+-- functions in this class will be useful to a regular user, unless general algorithms are being
+-- implemented that do span multiple dimensions.
 class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   type Rank ix :: Nat
 
+  -- | Rank of an array that has this index type, i.e. what is the dimensionality.
   rank :: ix -> Dim
 
   -- | Total number of elements in an array of this size.
   totalElem :: ix -> Int
 
+  -- | Prepend a dimension to the index
   consDim :: Int -> Lower ix -> ix
 
+  -- | Take a dimension from the index from the outside
   unconsDim :: ix -> (Int, Lower ix)
 
+  -- | Apppend a dimension to the index
   snocDim :: Lower ix -> Int -> ix
 
+  -- | Take a dimension from the index from the inside
   unsnocDim :: ix -> (Lower ix, Int)
 
+  -- | Remove a dimension from the index
   dropDim :: ix -> Dim -> Maybe (Lower ix)
 
+  -- | Extract the value index has at specified dimension.
   getIndex :: ix -> Dim -> Maybe Int
 
+  -- | Set the value for an index at specified dimension.
   setIndex :: ix -> Dim -> Int -> Maybe ix
 
+  -- | Lift an `Int` to any index by replicating the value as many times as there are dimensions.
   pureIndex :: Int -> ix
 
   -- | Zip together two indices with a function
   liftIndex2 :: (Int -> Int -> Int) -> ix -> ix -> ix
 
+  -- | Index with all zeros
   zeroIndex :: ix
   zeroIndex = pureIndex 0
   {-# INLINE [1] zeroIndex #-}
@@ -91,17 +113,18 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
       !(i0, ixL) = unconsDim ix
   {-# INLINE [1] isSafeIndex #-}
 
-  -- | Produce linear index from size and index
+  -- | Convert linear index from size and index
   toLinearIndex :: ix -- ^ Size
                 -> ix -- ^ Index
                 -> Int
-
   default toLinearIndex :: Index (Lower ix) => ix -> ix -> Int
   toLinearIndex !sz !ix = toLinearIndex szL ixL * n + i
     where !(szL, n) = unsnocDim sz
           !(ixL, i) = unsnocDim ix
   {-# INLINE [1] toLinearIndex #-}
 
+  -- | Convert linear index from size and index with an accumulator. Currently is useless and will
+  -- likley be removed in future versions.
   toLinearIndexAcc :: Int -> ix -> ix -> Int
   default toLinearIndexAcc :: Index (Lower ix) => Int -> ix -> ix -> Int
   toLinearIndexAcc !acc !sz !ix = toLinearIndexAcc (acc * n + i) szL ixL
@@ -109,13 +132,15 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
           !(i, ixL) = unconsDim ix
   {-# INLINE [1] toLinearIndexAcc #-}
 
-  -- | Produce N Dim index from size and linear index
+  -- | Compute an index from size and linear index
   fromLinearIndex :: ix -> Int -> ix
   default fromLinearIndex :: Index (Lower ix) => ix -> Int -> ix
   fromLinearIndex sz k = consDim q ixL
     where !(q, ixL) = fromLinearIndexAcc (snd (unconsDim sz)) k
   {-# INLINE [1] fromLinearIndex #-}
 
+  -- | Compute an index from size and linear index using an accumulator, thus trying to optimize for
+  -- tail recursion while getting the index computed.
   fromLinearIndexAcc :: ix -> Int -> (Int, ix)
   default fromLinearIndexAcc :: Index (Lower ix) => ix -> Int -> (Int, ix)
   fromLinearIndexAcc ix' !k = (q, consDim r ixL)
@@ -124,7 +149,13 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
           !(q, r) = quotRem kL m
   {-# INLINE [1] fromLinearIndexAcc #-}
 
-  repairIndex :: ix -> ix -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> ix
+  -- | A way to make sure index is withing the bounds for the supplied size. Takes two functions
+  -- that will be invoked whenever index (2nd arg) is outsize the supplied size (1st arg)
+  repairIndex :: ix -- ^ Size
+              -> ix -- ^ Index
+              -> (Int -> Int -> Int) -- ^ Repair when below zero
+              -> (Int -> Int -> Int) -- ^ Repair when higher than size
+              -> ix
   default repairIndex :: Index (Lower ix)
     => ix -> ix -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> ix
   repairIndex !sz !ix rBelow rOver =
@@ -133,16 +164,18 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
           !(i, ixL) = unconsDim ix
   {-# INLINE [1] repairIndex #-}
 
+  -- | Iterator for the index. Same as `iterM`, but pure.
   iter :: ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
   iter sIx eIx inc cond acc f =
     runIdentity $ iterM sIx eIx inc cond acc (\ix -> return . f ix)
   {-# INLINE iter #-}
 
+  -- | This function is what makes it possible to iterate over an array of any dimension.
   iterM :: Monad m =>
            ix -- ^ Start index
         -> ix -- ^ End index
         -> Int -- ^ Increment
-        -> (Int -> Int -> Bool) -- ^ Continue iteration while predicate is True (eg. until end of row)
+        -> (Int -> Int -> Bool) -- ^ Continue iterating while predicate is True (eg. until end of row)
         -> a -- ^ Initial value for an accumulator
         -> (ix -> a -> m a) -- ^ Accumulator function
         -> m a
@@ -157,6 +190,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
       !(k1, eIxL) = unconsDim eIx
   {-# INLINE iterM #-}
 
+  -- | Same as `iterM`, but don't bother with accumulator and return value.
   iterM_ :: Monad m => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
   default iterM_ :: (Index (Lower ix), Monad m)
     => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
@@ -372,7 +406,7 @@ instance Index Ix5T where
     (f i0 j0, f i1 j1, f i2 j2, f i3 j3, f i4 j4)
   {-# INLINE [1] liftIndex2 #-}
 
-
+-- | Helper function for throwing out of bounds errors
 errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
 errorIx fName sz ix =
   error $

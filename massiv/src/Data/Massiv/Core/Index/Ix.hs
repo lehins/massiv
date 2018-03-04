@@ -39,33 +39,51 @@ import           GHC.TypeLits
 
 infixr 5 :>, :.
 
+-- | Another type synonym for 1-dimensional index, i.e. `Int` and `Ix1T`. Provided here purely for
+-- consistency.
 type Ix1 = Int
 
+-- | This is a very handy pattern synonym to indicate that any arbitrary whole number is an `Int`,
+-- i.e. a 1-dimensional index: @(Ix1 i) == (i :: Int)@
 pattern Ix1 :: Int -> Ix1
 pattern Ix1 i = i
 
+-- | 2-dimensional index. This also a base index for higher dimensions.
 data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
+
+-- | 2-dimensional index constructor. Useful when @TypeOperators@ extension isn't enabled, or simply
+-- infix notation is inconvenient. @(Ix2 i j) == (i :. j)@.
 pattern Ix2 :: Int -> Int -> Ix2
 pattern Ix2 i j = i :. j
 
+-- | 3-dimensional type synonym. Useful as a alternative to enabling @DataKinds@ and using type
+-- level Nats.
 type Ix3 = IxN 3
+
+-- | 3-dimensional index constructor. @(Ix3 i j k) == (i :> j :. k)@.
 pattern Ix3 :: Int -> Int -> Int -> Ix3
 pattern Ix3 i j k = i :> j :. k
 
+-- | 4-dimensional type synonym.
 type Ix4 = IxN 4
+-- | 4-dimensional index constructor. @(Ix4 i j k l) == (i :> j :> k :. l)@.
 pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
 pattern Ix4 i j k l = i :> j :> k :. l
 
+-- | 5-dimensional type synonym.
 type Ix5 = IxN 5
+-- | 5-dimensional index constructor.  @(Ix5 i j k l m) = (i :> j :> k :> l :. m)@.
 pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
 pattern Ix5 i j k l m = i :> j :> k :> l :. m
 
 
 #if __GLASGOW_HASKELL__ >= 800
 
+-- | n-dimensional index. Needs a base case, which is the `Ix2`.
 data IxN (n :: Nat) where
   (:>) :: {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
 
+-- | Define n-dimensional index by relating a general `IxN` with two few cases.
 type family Ix (n :: Nat) = r | r -> n where
   Ix 0 = Ix0
   Ix 1 = Ix1
@@ -200,35 +218,42 @@ instance Ord Ix2 where
 instance Ord (Ix (n - 1)) => Ord (IxN n) where
   compare (i1 :> ix1) (i2 :> ix2) = compare i1 i2 <> compare ix1 ix2
 
-
+-- | Convert a `Int` tuple to `Ix2`
 toIx2 :: Ix2T -> Ix2
 toIx2 (i, j) = i :. j
 {-# INLINE toIx2 #-}
 
+-- | Convert an `Ix2` to `Int` tuple
 fromIx2 :: Ix2 -> Ix2T
 fromIx2 (i :. j) = (i, j)
 {-# INLINE fromIx2 #-}
 
+-- | Convert a `Int` 3-tuple to `Ix3`
 toIx3 :: Ix3T -> Ix3
 toIx3 (i, j, k) = i :> j :. k
 {-# INLINE toIx3 #-}
 
+-- | Convert an `Ix3` to `Int` 3-tuple
 fromIx3 :: Ix3 -> Ix3T
 fromIx3 (i :> j :. k) = (i, j, k)
 {-# INLINE fromIx3 #-}
 
+-- | Convert a `Int` 4-tuple to `Ix4`
 toIx4 :: Ix4T -> Ix4
 toIx4 (i, j, k, l) = i :> j :> k :. l
 {-# INLINE toIx4 #-}
 
+-- | Convert an `Ix4` to `Int` 4-tuple
 fromIx4 :: Ix4 -> Ix4T
 fromIx4 (i :> j :> k :. l) = (i, j, k, l)
 {-# INLINE fromIx4 #-}
 
+-- | Convert a `Int` 5-tuple to `Ix5`
 toIx5 :: Ix5T -> Ix5
 toIx5 (i, j, k, l, m) = i :> j :> k :> l :. m
 {-# INLINE toIx5 #-}
 
+-- | Convert an `Ix5` to `Int` 5-tuple
 fromIx5 :: Ix5 -> Ix5T
 fromIx5 (i :> j :> k :> l :. m) = (i, j, k, l, m)
 {-# INLINE fromIx5 #-}

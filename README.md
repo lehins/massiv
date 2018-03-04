@@ -27,18 +27,18 @@ from the end, are:
       computed with the `evaluateAt` function.
     * `P` - Array with elements that are an instance of `Prim` type class, i.e. common Haskell
       primitive types: `Int`, `Word`, `Char`, etc. Backed by the usual `ByteArray`.
-    * `U` - Unboxed arrays. The elements are instances of the `Unbox` type class. Just as fast as `P`, but has a
-      wider range of data types that it can work with. Notable data types that can be stored as
-      elements are `Bool`, tuples and `Ix n`.
-    * `S` - Storable arrays. Backed by a pinned `ByteArray`s and elements are instances of the `Storable`
-      type class.
-    * `B` - Boxed arrays that don't have restrictions on their elements, since they are represented as
-      pointers to elements, thus making them the slowest type of array, but also the most general. Arrays
-      of this representation are element strict, in other words its elements are kept in Weak-Head
-      Normal Form (WHNF).
-    * `N` - Also boxed array, but unlike the other representations its elements are in Normal Form,
-      i.e. in a fully evaluated state and no thunks or memory leaks are possible. It does require
-      `NFData` instance for the elements though.
+    * `U` - Unboxed arrays. The elements are instances of the `Unbox` type class. Just as fast as
+      `P`, but has a wider range of data types that it can work with. Notable data types that can be
+      stored as elements are `Bool`, tuples and `Ix n`.
+    * `S` - Storable arrays. Backed by a pinned `ByteArray`s and elements are instances of the
+      `Storable` type class.
+    * `B` - Boxed arrays that don't have restrictions on their elements, since they are represented
+      as pointers to elements, thus making them the slowest type of array, but also the most
+      general. Arrays of this representation are element strict, in other words its elements are
+      kept in Weak-Head Normal Form (WHNF).
+    * `N` - Also boxed arrays, but unlike the other representation `B`, its elements are in Normal
+      Form, i.e. in a fully evaluated state and no thunks or memory leaks are possible. It does
+      require `NFData` instance for the elements though.
     * `M` - Manifest arrays, which is a general type of array that is backed by some memory
       representation, therefore any of the above `P`, `U`, `S`, `B` type of arrays can be converted
       to `M` in constant time with `toManifest` function. It is mostly useful during constant time

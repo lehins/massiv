@@ -276,7 +276,7 @@ sequenceM r = mapM r id
 
 Functions in this sections can monadically generate manifest arrays using their associated mutable
 interface. Due to the sequential nature of monads generation is done also sequentially regardless of
-supplied computation strategy. All of functions are very much experimental, so please
+supplied computation strategy. All of functions here are very much experimental, so please
 <https://github.com/lehins/massiv/issues/new report an issue> if you see something not working
 properly.
 
