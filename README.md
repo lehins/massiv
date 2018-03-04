@@ -11,6 +11,14 @@ __Disclaimer__: The current status of this library is still under development,
 but it is already at a rather stable point, so no significant API changes
 should happen.
 
+* `massiv`: ![Hackage](https://img.shields.io/hackage/v/massiv.svg)
+* `massiv-io`: ![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)
+
+* Travis: ![Travis](https://img.shields.io/travis/USER/REPO.svg)
+* AppVeyor: ![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv.svg)
+
+
+
 ## Introduction
 
 Everything in the library revolves around an `Array r ix e` - a data type

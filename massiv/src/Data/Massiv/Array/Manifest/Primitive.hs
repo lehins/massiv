@@ -34,12 +34,10 @@ import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
-import           Data.Primitive.Types                (Prim)
 import           Data.Primitive.Types
 import qualified Data.Vector.Primitive               as VP
-import           GHC.Base                            (unsafeCoerce#)
+import           GHC.Base                            (Int(..))
 import           GHC.Exts                            as GHC (IsList (..))
-import           GHC.Int                             (Int (..))
 import           GHC.Prim
 import           Prelude                             hiding (mapM)
 

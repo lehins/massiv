@@ -48,7 +48,7 @@ import           Control.Monad.Primitive             (PrimMonad (..))
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
-import           GHC.Int                             (Int (..))
+import           GHC.Base                             (Int (..))
 import           GHC.Prim
 
 -- errorSizeMismatch fName sz1 sz2 =
