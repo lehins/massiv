@@ -488,7 +488,7 @@ Benchmark fold-seq: FINISH
 
 Here is also a recent addition `mapM` over an array. Comparing only with unboxed vectors, since Repa
 doesn't have such an implementation. There is 100x speedup over `vector` package since direct
-mutation is used versus a fallback onto lists, like it is done with @Vector@:
+mutation is used versus a fallback onto lists, like it is done even with unboxed vectors:
 
 ```
 benchmarking mapM/Array Ix2 P Seq

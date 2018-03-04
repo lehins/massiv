@@ -83,7 +83,7 @@ pattern Ix5 i j k l m = i :> j :> k :> l :. m
 data IxN (n :: Nat) where
   (:>) :: {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
 
--- | Define n-dimensional index by relating a general `IxN` with two few cases.
+-- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 type family Ix (n :: Nat) = r | r -> n where
   Ix 0 = Ix0
   Ix 1 = Ix1
