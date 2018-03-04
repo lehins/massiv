@@ -72,11 +72,11 @@ matrix:
     compiler: ": #stack default"
     addons: {apt: {packages: [libgmp-dev]}}
 
-  # - env: BUILD=stack ARGS="--stack-yaml stack.lts-3.yaml"
-  #   compiler: ": #stack GHC-7.10.2 (lts-3.22)"
-  #   addons:
-  #     apt:
-  #       packages: [libgmp-dev]
+  - env: BUILD=stack ARGS="--stack-yaml stack.lts-3.yaml"
+    compiler: ": #stack GHC-7.10.2 (lts-3.22)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
   - env: BUILD=stack ARGS="--resolver lts-6"
     compiler: ": #stack GHC-7.10.3 (lts-6.30)"

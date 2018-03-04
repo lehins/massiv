@@ -28,8 +28,8 @@ prop_CatchDivideByZero (ArrIx arr ix) caps =
        (setComp (ParOn caps) arr))
 
 -- | Ensure proper exception handling in nested parallel computation
-prop_CatchNested :: ArrIx D Ix1 (ArrIxP D Ix1 Int) -> [Int] -> Property
-prop_CatchNested (ArrIx arr ix) caps =
+_prop_CatchNested :: ArrIx D Ix1 (ArrIxP D Ix1 Int) -> [Int] -> Property
+_prop_CatchNested (ArrIx arr ix) caps =
   assertException
     (== DivideByZero)
     (computeAs U $
@@ -73,6 +73,8 @@ spec :: Spec
 spec = do
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
-    it "CatchNested" $ property prop_CatchNested
+    it "CatchNested" $ do
+      pendingWith "Behaves weirdly with GHC 7.10 and whenever executed with --coverage"
+      --property prop_CatchNested
     it "AllWorkersDied" $ property prop_AllWorkersDied
     it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed
