@@ -14,7 +14,7 @@ a rather stable point, so no significant API changes should happen.
 
 | Language | [massiv](https://hackage.haskell.org/package/massiv) | [massiv-io](https://hackage.haskell.org/package/massiv-io) | [Travis](https://travis-ci.org/lehins/massiv) | [AppVeyor](https://ci.appveyor.com/project/lehins/massiv)
 |:---:|:---:|:---:|:---:|:---:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/badges/shields.svg) | ![Hackage](https://img.shields.io/hackage/v/massiv.svg) | ![Hackage](https://img.shields.io/hackage/v/massiv-io.svg) | ![Travis](https://img.shields.io/travis/lehins/massiv.svg) | ![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv.svg)
+| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | ![Hackage](https://img.shields.io/hackage/v/massiv.svg) | ![Hackage](https://img.shields.io/hackage/v/massiv-io.svg) | ![Travis](https://img.shields.io/travis/lehins/massiv.svg) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv.svg)](https://ci.appveyor.com/project/lehins/massiv)
 
 ## Introduction
 
