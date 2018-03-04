@@ -7,17 +7,14 @@ parallel as well as sequentially.
 The name for this library comes from the Russian word Massiv (Масси́в), which
 means an Array.
 
-__Disclaimer__: The current status of this library is still under development,
-but it is already at a rather stable point, so no significant API changes
-should happen.
+## Status
 
-* `massiv`: ![Hackage](https://img.shields.io/hackage/v/massiv.svg)
-* `massiv-io`: ![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)
+__Disclaimer__: The current status of this library is still under development, but it is already at
+a rather stable point, so no significant API changes should happen.
 
-* Travis: ![Travis](https://img.shields.io/travis/USER/REPO.svg)
-* AppVeyor: ![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv.svg)
-
-
+| Language | [massiv](https://hackage.haskell.org/package/massiv) | [massiv-io](https://hackage.haskell.org/package/massiv-io) | [Travis](https://travis-ci.org/lehins/massiv) | [AppVeyor](https://ci.appveyor.com/project/lehins/massiv)
+|:---:|:---:|:---:|:---:|:---:|
+| ![GitHub top language](https://img.shields.io/github/languages/top/badges/shields.svg) | ![Hackage](https://img.shields.io/hackage/v/massiv.svg) | ![Hackage](https://img.shields.io/hackage/v/massiv-io.svg) | ![Travis](https://img.shields.io/travis/lehins/massiv.svg) | ![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv.svg)
 
 ## Introduction
 
