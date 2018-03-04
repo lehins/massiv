@@ -39,7 +39,7 @@ library
                      , deepseq
                      , directory
                      , filepath        >= 1.0
-                     , massiv
+                     , massiv          >= 0.1.1
                      , process
                      , JuicyPixels     >= 3.2.7
                      , netpbm

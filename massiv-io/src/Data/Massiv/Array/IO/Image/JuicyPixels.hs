@@ -312,7 +312,7 @@ decodeGIFs
 decodeGIFs f converter bs =
   either throw (fromList Seq) $ do
     jpImgs <- first (toException . DecodeError) $ JP.decodeGifImages bs
-    first toException $ mapM (convertEither f showJP converter) jpImgs
+    first toException $ P.mapM (convertEither f showJP converter) jpImgs
   -- either
   --   (throw . DecodeError)
   --   (fromList' Seq)
@@ -331,7 +331,7 @@ decodeGIFsWithDelays f converter bs =
   either throw (fromList Seq) $ do
     jpImgsLs <- first (toException . DecodeError) $ JP.decodeGifImages bs
     delays <- first (toException . DecodeError) $ JP.getDelaysGifImages bs
-    imgs <- first toException $ mapM (convertEither f showJP converter) jpImgsLs
+    imgs <- first toException $ P.mapM (convertEither f showJP converter) jpImgsLs
     return $ P.zip delays imgs
 {-# INLINE decodeGIFsWithDelays #-}
 
