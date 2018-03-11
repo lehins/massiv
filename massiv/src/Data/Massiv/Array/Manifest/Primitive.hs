@@ -170,7 +170,7 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
   unsafeNewA sz (State s#) =
     let kb# = totalSize# sz (undefined :: e)
-        (# s'#, mba# #) = newByteArray# kb# s# in
+        !(# s'#, mba# #) = newByteArray# kb# s# in
       pure (State s'#, MPArray sz (MutableByteArray mba#))
   {-# INLINE unsafeNewA #-}
 
@@ -179,7 +179,7 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeThawA #-}
 
   unsafeFreezeA comp (MPArray sz (MutableByteArray mba#)) (State s#) =
-    let (# s'#, ba# #) = unsafeFreezeByteArray# mba# s# in
+    let !(# s'#, ba# #) = unsafeFreezeByteArray# mba# s# in
       pure (State s'#, PArray comp sz (ByteArray ba#))
   {-# INLINE unsafeFreezeA #-}
 
