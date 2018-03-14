@@ -1,0 +1,8 @@
+resolver: nightly-2018-03-14
+packages:
+- '.'
+- '../massiv/'
+extra-deps:
+- repa-3.4.1.2
+- repa-algorithms-3.4.1.1
+allow-newer: true
