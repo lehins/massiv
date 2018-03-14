@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE PatternSynonyms     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
@@ -14,6 +15,14 @@ module Data.Massiv.Core.Computation
   ) where
 
 import           Control.DeepSeq (NFData (..), deepseq)
+#if MIN_VERSION_base(4,9,0)
+
+instance Semigroup Comp where
+  (<>) = joinComp
+
+#endif
+
+
 
 -- | Computation type to use.
 data Comp

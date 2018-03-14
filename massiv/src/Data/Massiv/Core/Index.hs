@@ -37,41 +37,41 @@ import           Data.Massiv.Core.Iterator
 
 -- | Approach to be used near the borders during various transformations.
 -- Whenever a function needs information not only about an element of interest, but
--- also about it's neighbours, it will go out of bounds around the image edges,
--- hence is this set of approaches that can be used in such situtation.
+-- also about it's neighbors, it will go out of bounds near the array edges,
+-- hence is this set of approaches that specify how to handle such situation.
 data Border e =
   Fill e    -- ^ Fill in a constant element.
               --
               -- @
-              --            outside |  Image  | outside
+              --            outside |  Array  | outside
               -- ('Fill' 0) : 0 0 0 0 | 1 2 3 4 | 0 0 0 0
               -- @
               --
   | Wrap      -- ^ Wrap around from the opposite border of the array.
               --
               -- @
-              --            outside |  Image  | outside
+              --            outside |  Array  | outside
               -- 'Wrap' :     1 2 3 4 | 1 2 3 4 | 1 2 3 4
               -- @
               --
   | Edge      -- ^ Replicate the element at the edge.
               --
               -- @
-              --            outside |  Image  | outside
+              --            outside |  Array  | outside
               -- 'Edge' :     1 1 1 1 | 1 2 3 4 | 4 4 4 4
               -- @
               --
   | Reflect   -- ^ Mirror like reflection.
               --
               -- @
-              --            outside |  Image  | outside
+              --            outside |  Array  | outside
               -- 'Reflect' :  4 3 2 1 | 1 2 3 4 | 4 3 2 1
               -- @
               --
   | Continue  -- ^ Also mirror like reflection, but without repeating the edge element.
               --
               -- @
-              --            outside |  Image  | outside
+              --            outside |  Array  | outside
               -- 'Continue' : 1 4 3 2 | 1 2 3 4 | 3 2 1 4
               -- @
               --

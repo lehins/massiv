@@ -1,3 +1,8 @@
+# 0.1.2
+
+* Support for GHC-8.4 - instance of `Comp` for `Semigroup`
+* Brought back support for GHC-7.10
+
 # 0.1.1
 
 * Addition of experimental `mapM`, `imapM`, `forM`, `iforM`, `generateM` and `generateLinearM`
