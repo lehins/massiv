@@ -16,11 +16,11 @@ module Data.Massiv.Core.Computation
 
 import           Control.DeepSeq (NFData (..), deepseq)
 #if MIN_VERSION_base(4,9,0)
+#if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
-
+#endif
 instance Semigroup Comp where
   (<>) = joinComp
-
 #endif
 
 
