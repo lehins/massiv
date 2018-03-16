@@ -78,6 +78,8 @@ instance Functor (Array DW ix) where
 -- | Supply a separate generating function for interior of an array. This is
 -- very usful for stencil mapping, where interior function does not perform
 -- boundary checks, thus significantly speeding up computation process.
+--
+-- @since 0.1.3
 makeWindowedArray
   :: Source r ix e
   => Array r ix e -- ^ Source array that will have a window inserted into it

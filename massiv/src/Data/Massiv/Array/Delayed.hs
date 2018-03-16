@@ -15,6 +15,7 @@ module Data.Massiv.Array.Delayed
   , DI
   , toInterleaved
   , DW
+  , makeWindowedArray
   ) where
 
 import           Data.Massiv.Array.Delayed.Interleaved

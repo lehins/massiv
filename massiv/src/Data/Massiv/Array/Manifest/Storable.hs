@@ -17,6 +17,7 @@ module Data.Massiv.Array.Manifest.Storable
   ( S (..)
   , Array(..)
   , VS.Storable
+  , unsafeWithPtr
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
@@ -30,6 +31,7 @@ import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
+import           Foreign.Ptr
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
@@ -147,3 +149,10 @@ instance ( VS.Storable e
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
+
+-- | Points to the beginning of originally created array, i.e. various index manipulation functions
+-- that do slicing, extracting, etc. have no affect on this pointer.
+--
+-- @since 0.1.3
+unsafeWithPtr :: VS.Storable a => Array S ix a -> (Ptr a -> IO b) -> IO b
+unsafeWithPtr arr = VS.unsafeWith (sData arr)
