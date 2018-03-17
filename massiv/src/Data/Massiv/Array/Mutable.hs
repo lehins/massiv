@@ -29,6 +29,9 @@ module Data.Massiv.Array.Mutable
   , modify'
   , swap
   , swap'
+  -- * Computation
+  , RealWorld
+  , computeInto
   -- * Generate (experimental)
 
   -- $generate

@@ -252,12 +252,11 @@ liftArray2 f !arr1 !arr2
   | sz2 == oneIndex = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
   | sz1 == sz2 =
     DArray (getComp arr1) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise =
-    error $
-    "Array dimensions must be the same, instead got: " ++
-    show (size arr1) ++ " and " ++ show (size arr2)
+  | otherwise = errorSizeMismatch "liftArray2" (size arr1) (size arr2)
   where
     oneIndex = pureIndex 1
     sz1 = size arr1
     sz2 = size arr2
 {-# INLINE liftArray2 #-}
+
+

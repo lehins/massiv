@@ -413,3 +413,10 @@ errorIx fName sz ix =
   fName ++
   ": Index out of bounds: " ++ show ix ++ " for Array of size: " ++ show sz
 {-# NOINLINE errorIx #-}
+
+
+-- | Helper function for throwing error when sizes do not match
+errorSizeMismatch :: (Show ix, Show ix') => String -> ix -> ix' -> a
+errorSizeMismatch fName sz sz' =
+  error $ fName ++ ": Mismatch in size of arrays " ++ show sz ++ " vs " ++ show sz'
+{-# NOINLINE errorSizeMismatch #-}

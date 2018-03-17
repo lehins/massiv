@@ -24,6 +24,7 @@ module Data.Massiv.Array.Manifest.Internal
   , computeAs
   , computeProxy
   , computeSource
+  , computeInto
   , clone
   , convert
   , convertAs
@@ -38,7 +39,8 @@ module Data.Massiv.Array.Manifest.Internal
   ) where
 
 import           Control.Exception                  (try)
-import           Control.Monad.ST                   (runST)
+import           Control.Monad                      (unless)
+import           Control.Monad.ST                   (RealWorld, runST)
 import           Data.Foldable                      (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Fold         as M
@@ -185,7 +187,6 @@ instance Index ix => Load M ix e where
   {-# INLINE loadP #-}
 
 
-
 loadMutableS :: (Load r' ix e, Mutable r ix e) =>
                 Array r' ix e -> Array r ix e
 loadMutableS !arr =
@@ -226,7 +227,7 @@ computeAs _ = compute
 {-# INLINE computeAs #-}
 
 
--- | Same as `convert` and `convertAs`, but let's you supply resulting representation type as a proxy
+-- | Same as `compute` and `computeAs`, but let's you supply resulting representation type as a proxy
 -- argument.
 --
 -- @since 0.1.1
@@ -242,6 +243,23 @@ computeAs _ = compute
 computeProxy :: (Load r' ix e, Mutable r ix e) => proxy r -> Array r' ix e -> Array r ix e
 computeProxy _ = compute
 {-# INLINE computeProxy #-}
+
+
+-- | Compute an Array while loading the results into the supplied mutable target array. Sizes of
+-- both arrays must agree, otherwise error.
+--
+-- @since 0.1.3
+computeInto ::
+     (Load r' ix e, Mutable r ix e)
+  => MArray RealWorld r ix e -- ^ Target Array
+  -> Array r' ix e -- ^ Array to load
+  -> IO ()
+computeInto !mArr !arr = do
+  unless (msize mArr == size arr) $ errorSizeMismatch "computeInto" (msize mArr) (size arr)
+  case getComp arr of
+    Seq        -> loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+    ParOn wIds -> loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+{-# INLINE computeInto #-}
 
 
 -- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if

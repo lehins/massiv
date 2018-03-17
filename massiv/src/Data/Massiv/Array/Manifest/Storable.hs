@@ -17,6 +17,7 @@ module Data.Massiv.Array.Manifest.Storable
   ( S (..)
   , Array(..)
   , VS.Storable
+  , withPtr
   , unsafeWithPtr
   ) where
 
@@ -150,9 +151,17 @@ instance ( VS.Storable e
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
--- | Points to the beginning of originally created array, i.e. various index manipulation functions
--- that do slicing, extracting, etc. have no affect on this pointer.
+-- | A pointer to the beginning of originally created array, i.e. various index manipulation
+-- functions that do slicing, extracting, etc. have no affect on this pointer.
 --
 -- @since 0.1.3
 unsafeWithPtr :: VS.Storable a => Array S ix a -> (Ptr a -> IO b) -> IO b
 unsafeWithPtr arr = VS.unsafeWith (sData arr)
+
+
+
+-- | A pointer to the beginning of the mutable array.
+--
+-- @since 0.1.3
+withPtr :: (Index ix, VS.Storable a) => MArray RealWorld S ix a -> (Ptr a -> IO b) -> IO b
+withPtr (MSArray _ mv) = MVS.unsafeWith mv

@@ -27,6 +27,7 @@ module Data.Massiv.Array.Manifest
   -- * Storable
   , S(..)
   , Storable
+  , withPtr
   , unsafeWithPtr
   -- * Unboxed
   , U(..)
