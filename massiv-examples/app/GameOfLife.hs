@@ -3,10 +3,14 @@
 module Main where
 
 import           Control.Concurrent
-import           Data.Massiv.Array                 as A
+import           Control.Monad
+import           Data.Massiv.Array        as A
+import           Data.Massiv.Array.Unsafe as A
 import           Data.Word
 import           Graphics.ColorSpace
-import           Graphics.UI.GLUT                  as G
+import           Graphics.UI.GLUT         as G
+import           System.Exit              (ExitCode (..), exitWith)
+import           Text.Read                (readMaybe)
 
 lifeRules :: Word8 -> Word8 -> Word8
 lifeRules 0 3 = 1
@@ -43,45 +47,81 @@ glider = [ [0, 1, 0]
          , [0, 0, 1]
          , [1, 1, 1] ]
 
+inf2 :: Array S Ix2 Word8
+inf2 = [ [1, 1, 1, 0, 1]
+       , [1, 0, 0, 0, 0]
+       , [0, 0, 0, 1, 1]
+       , [0, 1, 1, 0, 1]
+       , [1, 0, 1, 0, 1] ]
+
 -- | Scale the array, negate values and create an image with a grid.
-pixelGrid :: Word8 -> Array S Ix2 Word8 -> Array D Ix2 Word8
-pixelGrid k8 arr = A.transpose $ A.traverse sz' getNewPx arr
+pixelGrid :: Int -> Array S Ix2 Word8 -> Array D Ix2 Word8
+pixelGrid k8 arr = A.makeArray (getComp arr) sz' getNewElt
   where
-    k = succ $ fromIntegral k8
-    (m :. n) = size arr
+    k = succ k8
+    (n :. m) = size arr
     sz' = (1 + m * k :. 1 + n * k)
-    getNewPx getPx (i :. j) =
-            if i `mod` k == 0 || j `mod` k == 0
-              then 128
-              else ((1 - getPx ((i - 1) `div` k :. (j - 1) `div` k)) * 255)
+    getNewElt (j :. i) =
+      if i `mod` k == 0 || j `mod` k == 0
+        then 128
+        else (1 - A.unsafeIndex arr ((i - 1) `div` k :. (j - 1) `div` k)) * 255
 
 sizeFromIx2 :: Ix2 -> G.Size
 sizeFromIx2 (m :. n) = Size (fromIntegral n) (fromIntegral m)
 
 main :: IO ()
 main = do
-  (_progName, _args) <- getArgsAndInitialize
-  w <- createWindow "Game of Life"
-  rowAlignment Unpack $= 1
-  displayCallback $= display
+  let helpTxt =
+        "Usage:\n\
+                \    life [WIDTH HEIGHT] [SCALE]\n\
+                \ * WIDTH - number of cells horizontally (default 100)\n\
+                \ * HEIGHT - number of cells vertically (default 70)\n\
+                \ * SCALE - scaling factor, or how many pixels one cell should take on a screen\n"
+  (_progName, args) <- getArgsAndInitialize
+  when (args == ["--help"]) $ putStrLn helpTxt >> exitWith ExitSuccess
+  (m, n, s) <- case fmap readMaybe args of
+    [Just m, Just n, Just s]
+      | m > 0 && n > 0 && s > 0 -> return (m, n, s)
+    [Just m, Just n]
+      | m > 0 && n > 0 -> return (m, n, 10)
+    [] -> return (100, 70, 10)
+    _ -> do
+      putStrLn "Invalid arguments."
+      putStrLn helpTxt
+      exitWith $ ExitFailure 1
+  _w <- createWindow "Game of Life"
+  startGameOfLife (m :. n) s
   mainLoop
 
-drawLife :: Array S Ix2 Word8 -> IO ()
-drawLife arr = do
-  let grid = compute $ pixelGrid 10 arr
-  A.unsafeWithPtr grid $ \ptr ->
-    drawPixels (sizeFromIx2 (size grid)) (PixelData Luminance UnsignedByte ptr)
 
-display :: DisplayCallback
-display = do
-  clear [ ColorBuffer ]
-  gameOfLife (initLife (27 :. 27) glider)
+startGameOfLife :: Ix2 -> Int -> IO ()
+startGameOfLife sz s = do
+  rowAlignment Unpack $= 1
+  let iLife = initLife sz inf2
+      wSz = size (pixelGrid s iLife)
+  windowSize $= sizeFromIx2 wSz
+  mArr <- new wSz
+  displayCallback $= clear [ColorBuffer]
+  runGameOfLife s mArr iLife
 
-gameOfLife :: Array S Ix2 Word8 -> IO ()
-gameOfLife arr = do
-  drawLife arr
+
+drawLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
+drawLife s mArr = go
+  where
+    go arr
+          -- let grid = computeAs A.S $ pixelGrid s arr
+          -- A.unsafeWithPtr grid $ \ptr ->
+          --   drawPixels (sizeFromIx2 (size grid)) (PixelData Luminance UnsignedByte ptr)
+     = do
+      computeInto mArr $ pixelGrid s arr
+      A.withPtr mArr $ \ptr ->
+        drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
+
+runGameOfLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
+runGameOfLife s mArr arr = do
+  drawLife s mArr arr
   flush
-  addTimerCallback 20 $ gameOfLife (life arr)
+  addTimerCallback 10 $ runGameOfLife s mArr (life arr)
 
 
 
