@@ -2,12 +2,10 @@
 {-# LANGUAGE OverloadedLists  #-}
 module Main where
 
-import           Control.Concurrent
 import           Control.Monad
 import           Data.Massiv.Array        as A
 import           Data.Massiv.Array.Unsafe as A
 import           Data.Word
-import           Graphics.ColorSpace
 import           Graphics.UI.GLUT         as G
 import           System.Exit              (ExitCode (..), exitWith)
 import           Text.Read                (readMaybe)
@@ -31,7 +29,7 @@ life = compute . A.mapStencil lifeStencil
 initLife :: Ix2 -> Array S Ix2 Word8 -> Array S Ix2 Word8
 initLife sz arr =
   compute $
-  makeWindowedArray (makeArrayR D Seq sz (const 0)) ix0 (size arr) (index' arr . subtract ix0)
+  makeWindowedArray (makeArrayR D Par sz (const 0)) ix0 (size arr) (index' arr . subtract ix0)
   where
     ix0 = liftIndex (`div` 2) (sz - size arr)
 
@@ -108,11 +106,7 @@ startGameOfLife sz s = do
 drawLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
 drawLife s mArr = go
   where
-    go arr
-          -- let grid = computeAs A.S $ pixelGrid s arr
-          -- A.unsafeWithPtr grid $ \ptr ->
-          --   drawPixels (sizeFromIx2 (size grid)) (PixelData Luminance UnsignedByte ptr)
-     = do
+    go arr = do
       computeInto mArr $ pixelGrid s arr
       A.withPtr mArr $ \ptr ->
         drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)

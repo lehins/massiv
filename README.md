@@ -346,15 +346,40 @@ sum3x3Filter b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
 {-# INLINE sum3x3Filter #-}
 ```
 
-There is not a single plus sign, that is because convolutions is actually summation of elements, so
-instead we have composition of functions applied to an offset index and a multiplier. After we map
-that stencil, we can further divide each element of the array by 9 in order to get the
-average. Yeah, I lied a bit, `Array DW ix` is an instance of `Functor` class, so we can map functions
-over it, which will be fused as with a regular `D`elayed array:
+There is not a single plus sign, that is because convolutions is actually summation of elements
+multiplied by a kernel element, so instead we have composition of functions applied to an offset
+index and a multiplier. After we map that stencil, we can further divide each element of the array
+by 9 in order to get the average. Yeah, I lied a bit, `Array DW ix` is an instance of `Functor`
+class, so we can map functions over it, which will be fused as with a regular `D`elayed array:
 
 ```haskell
 computeAs U $ fmap (/9) . mapStencil (sum3x3Filter Edge) arr
 ```
+
+If you are still confused of what a stencil is, but you are familiar with [Conway's Game of
+Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) this should hopefully clarify it a
+bit more. The function `life` below is a single iteration of Game of Life:
+
+```
+lifeRules :: Word8 -> Word8 -> Word8
+lifeRules 0 3 = 1
+lifeRules 1 2 = 1
+lifeRules 1 3 = 1
+lifeRules _ _ = 0
+
+lifeStencil :: Stencil Ix2 Word8 Word8
+lifeStencil = makeStencil Wrap (3 :. 3) (1 :. 1) $ \ get ->
+  lifeRules <$> get (0 :. 0) <*>
+  (get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
+   get ( 0 :. -1)         +         get ( 0 :. 1) +
+   get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1))
+
+life :: Array S Ix2 Word8 -> Array S Ix2 Word8
+life = compute . mapStencil lifeStencil
+```
+
+The full working example that uses GLUT and OpenGL is located in
+[massiv-examples](massiv-examples/app/GameOfLife.hs)
 
 # massiv-io
 
