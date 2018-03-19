@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLists  #-}
+{-# LANGUAGE TypeFamilies     #-}
 module Main where
 
 import           Control.Monad
@@ -100,22 +101,35 @@ startGameOfLife sz s = do
   windowSize $= sizeFromIx2 wSz
   mArr <- new wSz
   displayCallback $= clear [ColorBuffer]
+  drawLife s mArr iLife
   runGameOfLife s mArr iLife
 
 
 drawLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
-drawLife s mArr = go
+drawLife s mArr arr = do
+  computeInto mArr $ pixelGrid s arr
+  A.withPtr mArr $ \ptr ->
+    drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
+
+
+drawLifeStep :: Int -> MArray RealWorld S Ix2 Word8 -> Array D Ix2 (Word8, Word8) -> IO ()
+drawLifeStep s mArr arr = do
+  imapM_ updateCellLife arr
+  A.withPtr mArr $ \ptr ->
+    drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
   where
-    go arr = do
-      computeInto mArr $ pixelGrid s arr
-      A.withPtr mArr $ \ptr ->
-        drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
+    k = s + 1
+    updateCellLife (i :. j) (prev, next) =
+      when (prev /= next) $ do
+        let ixArr = makeArrayR D Seq (s :. s) $ \(jc :. ic) -> (1 + jc + j * k) :. (1 + ic + i * k)
+            nVal = (1 - next) * 255
+        A.forM_ ixArr $ \ix -> write mArr ix nVal
 
 runGameOfLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
-runGameOfLife s mArr arr = do
-  drawLife s mArr arr
-  flush
-  addTimerCallback 10 $ runGameOfLife s mArr (life arr)
-
-
-
+runGameOfLife s mArr = go
+  where
+    go arr = do
+      let nextLife = life arr
+      drawLifeStep s mArr $ A.zip arr nextLife
+      flush
+      addTimerCallback 10 $ go nextLife

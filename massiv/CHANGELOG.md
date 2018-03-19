@@ -1,3 +1,9 @@
+# 0.1.3
+
+* Addition of `withPtr` and `unsafeWithPtr` for Storable arrays
+* Addition of `computeInto`.
+* Exposed `makeWindowedArray`.
+
 # 0.1.2
 
 * Support for GHC-8.4 - instance of `Comp` for `Semigroup`
