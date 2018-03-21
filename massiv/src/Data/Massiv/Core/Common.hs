@@ -166,6 +166,8 @@ class Manifest r ix e => Mutable r ix e where
   -- | Get the size of a mutable array.
   msize :: MArray s r ix e -> ix
 
+  unsafeSetSize :: MArray s r ix e -> ix' -> MArray s r ix' e
+
   unsafeThaw :: PrimMonad m =>
                 Array r ix e -> m (MArray (PrimState m) r ix e)
 
