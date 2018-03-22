@@ -2,17 +2,18 @@
 {-# LANGUAGE TypeApplications #-}
 module Main where
 
-import           Bench.Massiv.Array    as A
+import           Bench.Massiv.Array       as A
 import           Bench.Repa
 import           Bench.Vector
+import           Control.Concurrent
 import           Criterion.Main
-import           Data.Array.Repa       as R
+import           Data.Array.Repa          as R
 import           Data.Functor.Identity
-import qualified Data.Vector.Unboxed   as VU
-import           GHC.Exts              as GHC
-import           Prelude               as P
-import Control.Concurrent
-import           Data.Massiv.Array.Unsafe    as A
+import           Data.Massiv.Array.Unsafe as A
+import           Data.Monoid
+import qualified Data.Vector.Unboxed      as VU
+import           GHC.Exts                 as GHC
+import           Prelude                  as P
 
 main :: IO ()
 main = do
@@ -102,7 +103,7 @@ main = do
                 (bench "Array Ix2 U (+)" . whnf (A.foldlS (+) 0))
             , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U monoid" . whnf sum')
+                (bench "Array Ix2 U monoid" . whnf (getSum . foldMono Sum))
             , env (return (vecLight2 t2)) (bench "Vector U" . whnf VU.sum)
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))

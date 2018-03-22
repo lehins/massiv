@@ -23,7 +23,7 @@ module Data.Massiv.Array.Delayed.Internal
   ) where
 
 import           Data.Foldable              (Foldable (..))
-import           Data.Massiv.Array.Ops.Fold as A
+import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                ((<>))
@@ -236,14 +236,16 @@ ord f arr1 arr2 =
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE ord #-}
 
-
+-- | The usual map.
 liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
 liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE liftArray #-}
 
--- | Similar to @zipWith@, except dimensions of both arrays either have to be the
--- same, or at least one of two array must be a singleton array, in which
--- case it will behave as @fmap@.
+-- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays either have to be the
+-- same, or at least one of the two array must be a singleton array, in which case it will behave as
+-- a `Data.Massiv.Array.map`.
+--
+-- @since 0.1.4
 liftArray2
   :: (Source r1 ix a, Source r2 ix b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e

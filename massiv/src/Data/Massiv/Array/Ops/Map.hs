@@ -28,6 +28,7 @@ module Data.Massiv.Array.Ops.Map
   , zipWith3
   , izipWith
   , izipWith3
+  , liftArray2
   ) where
 
 

@@ -7,7 +7,6 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 module Bench.Massiv.Array (
   module A
-  , sum'
   , tupleToIx2
   , tupleToIx2T
   , lightFuncIx2
@@ -31,7 +30,6 @@ import           Control.DeepSeq
 import           Data.Default             (Default)
 import           Data.Massiv.Array        as A
 import           Data.Massiv.Array.Unsafe as A
-import           Data.Monoid
 import           Prelude                  hiding (mapM)
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
@@ -175,22 +173,3 @@ average3x3FilterConv b = let _9th = 1/9 in
   get ( 0 :. -1) _9th . get ( 0 :. 0) _9th . get ( 0 :. 1) _9th .
   get ( 1 :. -1) _9th . get ( 1 :. 0) _9th . get ( 1 :. 1) _9th
 {-# INLINE average3x3FilterConv #-}
-
-
-
--- | /O(n)/ - Unstructured fold of an array.
-foldM ::
-     (A.Source r ix m, Monoid m)
-  => A.Array r ix m -- ^ Source array
-  -> m
-foldM = foldlS mappend mempty
-{-# INLINE foldM #-}
-
-
--- | /O(n)/ - Compute sum of all elements.
-sum' :: (A.Source r ix e, Num e) =>
-        A.Array r ix e -> e
-sum' arr =
-  getSum $ foldM $ makeArrayR D (getComp arr) (A.size arr) (\ !ix -> Sum (A.unsafeIndex arr ix))
-{-# INLINE sum' #-}
-

@@ -1,3 +1,8 @@
+# 0.1.4
+
+* Addition of Monoidal folding `foldMono`.
+* Expose `liftArray2`.
+
 # 0.1.3
 
 * Addition of `withPtr` and `unsafeWithPtr` for Storable arrays
