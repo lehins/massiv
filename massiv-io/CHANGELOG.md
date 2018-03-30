@@ -1,3 +1,7 @@
+# 0.1.2
+
+* Exposed `Elevator` internal functions.
+
 # 0.1.1
 
 * Addition of `Ord` instances to Pixels.

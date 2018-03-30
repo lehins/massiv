@@ -111,7 +111,7 @@ module Graphics.ColorSpace (
   X(..),
   -- * Precision
   -- ** Pixel
-  Elevator,
+  Elevator(..),
   toWord8,
   toWord16,
   toWord32,
