@@ -14,11 +14,12 @@
 --
 module Data.Massiv.Array.Stencil.Internal where
 
-import           Control.Applicative
-import           Control.DeepSeq
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Delayed.Internal
-import           Data.Default.Class                (Default (def))
+import Control.Applicative
+import Control.DeepSeq
+import Data.Default.Class (Default (def))
+import Data.Massiv.Array.Delayed.Internal
+import Data.Massiv.Core.Common
+import Data.Semigroup
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
@@ -38,7 +39,6 @@ instance (NFData e, Index ix) => NFData (Stencil ix e a) where
 -- it possible to manipulate the value, without having direct access to it.
 newtype Value e = Value { unValue :: e } deriving (Show, Eq, Ord, Bounded)
 
-
 instance Functor Value where
   fmap f (Value e) = Value (f e)
   {-# INLINE fmap #-}
@@ -48,6 +48,30 @@ instance Applicative Value where
   {-# INLINE pure #-}
   (<*>) (Value f) (Value e) = Value (f e)
   {-# INLINE (<*>) #-}
+
+instance Monad Value where
+  return = pure
+  {-# INLINE return #-}
+  (Value a) >>= f = f a
+  {-# INLINE (>>=) #-}
+
+instance Foldable Value where
+  foldMap f (Value a) = f a
+  {-# INLINE foldMap #-}
+
+instance Traversable Value where
+  traverse f (Value a) = fmap Value (f a)
+  {-# INLINE traverse #-}
+
+instance Semigroup a => Semigroup (Value a) where
+  Value a <> Value b = Value (a <> b)
+  {-# INLINE (<>) #-}
+
+instance Monoid a => Monoid (Value a) where
+  mempty = Value mempty
+  {-# INLINE mempty #-}
+  Value a `mappend` Value b = Value (a `mappend` b)
+  {-# INLINE mappend #-}
 
 instance Num e => Num (Value e) where
   (+) = liftA2 (+)
@@ -221,4 +245,3 @@ validateStencil d s@(Stencil _ sSz sCenter stencil) =
   let valArr = DArray Seq sSz (const d)
   in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
-
