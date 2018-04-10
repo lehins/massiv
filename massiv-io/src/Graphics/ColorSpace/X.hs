@@ -20,7 +20,6 @@ module Graphics.ColorSpace.X
   , fromPixelsX
   ) where
 
-import           Control.Applicative
 import           Data.Foldable
 import           Data.Typeable                (Typeable)
 import           Foreign.Ptr
@@ -46,8 +45,6 @@ instance Show e => Show (Pixel X e) where
 instance Elevator e => ColorSpace X e where
   type Components X e = e
 
-  promote = PixelX
-  {-# INLINE promote #-}
   fromComponents = PixelX
   {-# INLINE fromComponents #-}
   toComponents (PixelX g) = g
@@ -58,12 +55,6 @@ instance Elevator e => ColorSpace X e where
   {-# INLINE setPxC #-}
   mapPxC f (PixelX g) = PixelX (f X g)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelX g1) (PixelX g2) = f z g1 g2
   {-# INLINE foldlPx2 #-}
 
@@ -118,7 +109,7 @@ instance Storable e => Storable (Pixel X e) where
 -- [<X:(4)>,<X:(5)>,<X:(6)>]
 --
 toPixelsX :: ColorSpace cs e => Pixel cs e -> [Pixel X e]
-toPixelsX = foldrPx ((:) . PixelX) []
+toPixelsX = fmap PixelX . toList
 
 -- | Combine a list of `X` pixels into a Pixel with a specified channel
 -- order. Not the most efficient way to construct a pixel, but might prove
@@ -130,7 +121,7 @@ toPixelsX = foldrPx ((:) . PixelX) []
 -- <RGB:(4.0|5.0|6.0)>
 --
 fromPixelsX :: ColorSpace cs e => [(cs, Pixel X e)] -> Pixel cs e
-fromPixelsX = foldl' f (promote 0) where
+fromPixelsX = foldl' f (pure 0) where
   f !px (c, PixelX x) = setPxC px c x
 
 

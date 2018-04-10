@@ -270,11 +270,11 @@ class ColorSpace cs e => ToRGB cs e where
 
 
 instance ToRGB X Bit where
-  toPixelRGB (PixelX b) = promote $ eToDouble b
+  toPixelRGB (PixelX b) = pure $ eToDouble b
   {-# INLINE toPixelRGB #-}
 
 instance Elevator e => ToRGB Y e where
-  toPixelRGB (PixelY g) = promote $ eToDouble g
+  toPixelRGB (PixelY g) = pure $ eToDouble g
   {-# INLINE toPixelRGB #-}
 
 instance Elevator e => ToRGB YA e where

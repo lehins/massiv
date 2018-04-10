@@ -17,7 +17,6 @@ module Graphics.ColorSpace.Y (
   Y(..), YA(..), Pixel(..)
   ) where
 
-import           Control.Applicative
 import           Data.Foldable
 import           Data.Typeable                (Typeable)
 import           Foreign.Ptr
@@ -40,8 +39,6 @@ instance Show e => Show (Pixel Y e) where
 
 instance Elevator e => ColorSpace Y e where
   type Components Y e = e
-  promote = PixelY
-  {-# INLINE promote #-}
   fromComponents = PixelY
   {-# INLINE fromComponents #-}
   toComponents (PixelY y) = y
@@ -52,12 +49,6 @@ instance Elevator e => ColorSpace Y e where
   {-# INLINE setPxC #-}
   mapPxC f (PixelY y) = PixelY (f LumaY y)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelY y1) (PixelY y2) = f z y1 y2
   {-# INLINE foldlPx2 #-}
 
@@ -124,8 +115,6 @@ instance Show e => Show (Pixel YA e) where
 
 instance Elevator e => ColorSpace YA e where
   type Components YA e = (e, e)
-  promote e = PixelYA e e
-  {-# INLINE promote #-}
   fromComponents (y, a) = PixelYA y a
   {-# INLINE fromComponents #-}
   toComponents (PixelYA y a) = (y, a)
@@ -138,12 +127,6 @@ instance Elevator e => ColorSpace YA e where
   {-# INLINE setPxC #-}
   mapPxC f (PixelYA y a) = PixelYA (f LumaYA y) (f AlphaYA a)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelYA y1 a1) (PixelYA y2 a2) = f (f z y1 y2) a1 a2
   {-# INLINE foldlPx2 #-}
 

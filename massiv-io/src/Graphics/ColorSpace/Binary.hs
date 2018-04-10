@@ -18,6 +18,7 @@ module Graphics.ColorSpace.Binary (
   Bit(..), on, off, isOn, isOff, fromBool, zero, one, bit2bool, bool2bit, toNum, fromNum
   ) where
 
+import           Control.Applicative
 import           Control.Monad
 import           Data.Bits
 import           Data.Typeable                (Typeable)
@@ -85,21 +86,21 @@ instance Bits Bit where
 
 
 instance Bits (Pixel X Bit) where
-  (.&.) = liftPx2 (.&.)
+  (.&.) = liftA2 (.&.)
   {-# INLINE (.&.) #-}
-  (.|.) = liftPx2 (.|.)
+  (.|.) = liftA2 (.|.)
   {-# INLINE (.|.) #-}
-  xor = liftPx2 xor
+  xor = liftA2 xor
   {-# INLINE xor #-}
-  complement = liftPx complement
+  complement = liftA complement
   {-# INLINE complement #-}
-  shift !b !n = liftPx (`shift` n) b
+  shift !b !n = liftA (`shift` n) b
   {-# INLINE shift #-}
-  rotate !b !n = liftPx (`rotate` n) b
+  rotate !b !n = liftA (`rotate` n) b
   {-# INLINE rotate #-}
-  zeroBits = promote zeroBits
+  zeroBits = pure zeroBits
   {-# INLINE zeroBits #-}
-  bit = promote . bit
+  bit = pure . bit
   {-# INLINE bit #-}
   testBit (PixelX (Bit 1)) 0 = True
   testBit _                _ = False

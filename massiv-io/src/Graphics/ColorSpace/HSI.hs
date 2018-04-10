@@ -17,7 +17,6 @@ module Graphics.ColorSpace.HSI (
   HSI(..), HSIA(..), Pixel(..)
   ) where
 
-import           Control.Applicative
 import           Data.Foldable
 import           Data.Typeable                (Typeable)
 import           Foreign.Ptr
@@ -49,8 +48,6 @@ instance Elevator e => ColorSpace HSI e where
   {-# INLINE toComponents #-}
   fromComponents !(h, s, i) = PixelHSI h s i
   {-# INLINE fromComponents #-}
-  promote = pure
-  {-# INLINE promote #-}
   getPxC (PixelHSI h _ _) HueHSI = h
   getPxC (PixelHSI _ s _) SatHSI = s
   getPxC (PixelHSI _ _ i) IntHSI = i
@@ -61,10 +58,6 @@ instance Elevator e => ColorSpace HSI e where
   {-# INLINE setPxC #-}
   mapPxC f (PixelHSI h s i) = PixelHSI (f HueHSI h) (f SatHSI s) (f IntHSI i)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
   foldlPx = foldl'
   {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelHSI h1 s1 i1) (PixelHSI h2 s2 i2) =
@@ -135,8 +128,6 @@ instance Elevator e => ColorSpace HSIA e where
   {-# INLINE toComponents #-}
   fromComponents !(h, s, i, a) = PixelHSIA h s i a
   {-# INLINE fromComponents #-}
-  promote = pure
-  {-# INLINE promote #-}
   getPxC (PixelHSIA h _ _ _) HueHSIA   = h
   getPxC (PixelHSIA _ s _ _) SatHSIA   = s
   getPxC (PixelHSIA _ _ i _) IntHSIA   = i
@@ -150,12 +141,6 @@ instance Elevator e => ColorSpace HSIA e where
   mapPxC f (PixelHSIA h s i a) =
     PixelHSIA (f HueHSIA h) (f SatHSIA s) (f IntHSIA i) (f AlphaHSIA a)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelHSIA h1 s1 i1 a1) (PixelHSIA h2 s2 i2 a2) =
     f (f (f (f z h1 h2) s1 s2) i1 i2) a1 a2
   {-# INLINE foldlPx2 #-}

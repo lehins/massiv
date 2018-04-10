@@ -17,7 +17,6 @@ module Graphics.ColorSpace.CMYK (
   CMYK(..), CMYKA(..), Pixel(..)
   ) where
 
-import           Control.Applicative
 import           Data.Foldable
 import           Data.Typeable                (Typeable)
 import           Foreign.Ptr
@@ -50,8 +49,6 @@ instance Elevator e => ColorSpace CMYK e where
   {-# INLINE fromComponents #-}
   toComponents (PixelCMYK c m y k) = (c, m, y, k)
   {-# INLINE toComponents #-}
-  promote !e = PixelCMYK e e e e
-  {-# INLINE promote #-}
   getPxC (PixelCMYK c _ _ _) CyanCMYK = c
   getPxC (PixelCMYK _ m _ _) MagCMYK  = m
   getPxC (PixelCMYK _ _ y _) YelCMYK  = y
@@ -65,10 +62,6 @@ instance Elevator e => ColorSpace CMYK e where
   mapPxC f (PixelCMYK c m y k) =
     PixelCMYK (f CyanCMYK c) (f MagCMYK m) (f YelCMYK y) (f KeyCMYK k)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
   foldlPx = foldl'
   {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelCMYK c1 m1 y1 k1) (PixelCMYK c2 m2 y2 k2) =
@@ -144,8 +137,6 @@ instance Elevator e => ColorSpace CMYKA e where
   {-# INLINE fromComponents #-}
   toComponents (PixelCMYKA c m y k a) = (c, m, y, k, a)
   {-# INLINE toComponents #-}
-  promote !e = PixelCMYKA e e e e e
-  {-# INLINE promote #-}
   getPxC (PixelCMYKA c _ _ _ _) CyanCMYKA  = c
   getPxC (PixelCMYKA _ m _ _ _) MagCMYKA   = m
   getPxC (PixelCMYKA _ _ y _ _) YelCMYKA   = y
@@ -161,12 +152,6 @@ instance Elevator e => ColorSpace CMYKA e where
   mapPxC f (PixelCMYKA c m y k a) =
     PixelCMYKA (f CyanCMYKA c) (f MagCMYKA m) (f YelCMYKA y) (f KeyCMYKA k) (f AlphaCMYKA a)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelCMYKA c1 m1 y1 k1 a1) (PixelCMYKA c2 m2 y2 k2 a2) =
     f (f (f (f (f z c1 c2) m1 m2) y1 y2) k1 k2) a1 a2
   {-# INLINE foldlPx2 #-}

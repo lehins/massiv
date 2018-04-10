@@ -18,11 +18,11 @@ module Graphics.ColorSpace.Internal
   , module Graphics.ColorSpace.Elevator
   ) where
 
+import           Control.Applicative
 import           Control.DeepSeq              (NFData (rnf), deepseq)
 import           Control.Monad                (liftM)
 import           Data.Default
 import           Data.Foldable
-import           Data.Maybe                   (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector.Generic          as V
 import qualified Data.Vector.Generic.Mutable  as VM
@@ -36,7 +36,8 @@ data family Pixel cs e :: *
 
 
 class (Eq cs, Enum cs, Show cs, Bounded cs, Typeable cs,
-      Eq (Pixel cs e), VU.Unbox (Components cs e), VS.Storable (Pixel cs e), Elevator e)
+       Functor (Pixel cs), Applicative (Pixel cs), Foldable (Pixel cs),
+       Eq (Pixel cs e), VU.Unbox (Components cs e), VS.Storable (Pixel cs e), Elevator e)
       => ColorSpace cs e where
 
   type Components cs e
@@ -50,6 +51,8 @@ class (Eq cs, Enum cs, Show cs, Bounded cs, Typeable cs,
 
   -- | Construt a Pixel by replicating the same value across all of the components.
   promote :: e -> Pixel cs e
+  promote = pure
+  {-# INLINE promote #-}
 
   -- | Retrieve Pixel's component value
   getPxC :: Pixel cs e -> cs -> e
@@ -60,36 +63,40 @@ class (Eq cs, Enum cs, Show cs, Bounded cs, Typeable cs,
   -- | Map a channel aware function over all Pixel's components.
   mapPxC :: (cs -> e -> e) -> Pixel cs e -> Pixel cs e
 
+  -- | Left fold on two pixels a the same time. If accumulator is nutrual to the folding funciton
+  -- then it's equivalent to @foldlPx2 f acc px1 px2 == foldl' acc (liftA2 (f acc) px1 px2)@
+  foldlPx2 :: (b -> e -> e -> b) -> b -> Pixel cs e -> Pixel cs e -> b
+
   -- | Map a function over all Pixel's componenets.
   liftPx :: (e -> e) -> Pixel cs e -> Pixel cs e
+  liftPx = fmap
+  {-# INLINE liftPx #-}
 
   -- | Zip two Pixels with a function.
   liftPx2 :: (e -> e -> e) -> Pixel cs e -> Pixel cs e -> Pixel cs e
-
-  -- | Left fold on two pixels a the same time.
-  foldlPx2 :: (b -> e -> e -> b) -> b -> Pixel cs e -> Pixel cs e -> b
+  liftPx2 = liftA2
+  {-# INLINE liftPx2 #-}
 
   -- | Right fold over all Pixel's components.
   foldrPx :: (e -> b -> b) -> b -> Pixel cs e -> b
-  foldrPx f !z0 !xs = foldlPx f' id xs z0
-      where f' k x !z = k $! f x z
+  foldrPx = foldr'
+  {-# INLINE foldrPx #-}
 
   -- | Left strict fold over all Pixel's components.
   foldlPx :: (b -> e -> b) -> b -> Pixel cs e -> b
-  foldlPx f !z0 !xs = foldrPx f' id xs z0
-      where f' x k !z = k $! f z x
+  foldlPx = foldl'
+  {-# INLINE foldlPx #-}
 
   foldl1Px :: (e -> e -> e) -> Pixel cs e -> e
-  foldl1Px f !xs = fromMaybe (error "foldl1Px: empty Pixel")
-                  (foldlPx mf Nothing xs)
-      where
-        mf m !y = Just (case m of
-                           Nothing -> y
-                           Just x  -> f x y)
-  toListPx :: Pixel cs e -> [e]
-  toListPx !px = foldr' f [] (enumFrom (toEnum 0))
-    where f !cs !ls = getPxC px cs:ls
+  foldl1Px = foldl1
+  {-# INLINE foldl1Px #-}
 
+{-# DEPRECATED liftPx "Use `fmap` from `Functor` instead" #-}
+{-# DEPRECATED liftPx2 "Use `liftA2` from `Applicative` instead" #-}
+{-# DEPRECATED promote "Use `pure` from `Applicative` instead" #-}
+{-# DEPRECATED foldlPx "Use `foldl'` from `Foldable` instead" #-}
+{-# DEPRECATED foldrPx "Use `foldr'` from `Foldable` instead" #-}
+{-# DEPRECATED foldl1Px "Use `foldl1` from `Foldable` instead" #-}
 
 -- | A color space that supports transparency.
 class (ColorSpace (Opaque cs) e, ColorSpace cs e) => AlphaSpace cs e where
@@ -118,24 +125,24 @@ instance ColorSpace cs e => Default (Pixel cs e) where
 
 
 instance ColorSpace cs e => Num (Pixel cs e) where
-  (+)         = liftPx2 (+)
+  (+)         = liftA2 (+)
   {-# INLINE (+) #-}
-  (-)         = liftPx2 (-)
+  (-)         = liftA2 (-)
   {-# INLINE (-) #-}
-  (*)         = liftPx2 (*)
+  (*)         = liftA2 (*)
   {-# INLINE (*) #-}
-  abs         = liftPx abs
+  abs         = liftA abs
   {-# INLINE abs #-}
-  signum      = liftPx signum
+  signum      = liftA signum
   {-# INLINE signum #-}
   fromInteger = promote . fromInteger
   {-# INLINE fromInteger #-}
 
 
 instance (ColorSpace cs e, Fractional e) => Fractional (Pixel cs e) where
-  (/)          = liftPx2 (/)
+  (/)          = liftA2 (/)
   {-# INLINE (/) #-}
-  recip        = liftPx recip
+  recip        = liftA recip
   {-# INLINE recip #-}
   fromRational = promote . fromRational
   {-# INLINE fromRational #-}
@@ -144,29 +151,29 @@ instance (ColorSpace cs e, Fractional e) => Fractional (Pixel cs e) where
 instance (ColorSpace cs e, Floating e) => Floating (Pixel cs e) where
   pi      = promote pi
   {-# INLINE pi #-}
-  exp     = liftPx exp
+  exp     = liftA exp
   {-# INLINE exp #-}
-  log     = liftPx log
+  log     = liftA log
   {-# INLINE log #-}
-  sin     = liftPx sin
+  sin     = liftA sin
   {-# INLINE sin #-}
-  cos     = liftPx cos
+  cos     = liftA cos
   {-# INLINE cos #-}
-  asin    = liftPx asin
+  asin    = liftA asin
   {-# INLINE asin #-}
-  atan    = liftPx atan
+  atan    = liftA atan
   {-# INLINE atan #-}
-  acos    = liftPx acos
+  acos    = liftA acos
   {-# INLINE acos #-}
-  sinh    = liftPx sinh
+  sinh    = liftA sinh
   {-# INLINE sinh #-}
-  cosh    = liftPx cosh
+  cosh    = liftA cosh
   {-# INLINE cosh #-}
-  asinh   = liftPx asinh
+  asinh   = liftA asinh
   {-# INLINE asinh #-}
-  atanh   = liftPx atanh
+  atanh   = liftA atanh
   {-# INLINE atanh #-}
-  acosh   = liftPx acosh
+  acosh   = liftA acosh
   {-# INLINE acosh #-}
 
 instance (ColorSpace cs e, Bounded e) => Bounded (Pixel cs e) where
@@ -177,7 +184,7 @@ instance (ColorSpace cs e, Bounded e) => Bounded (Pixel cs e) where
 
 instance (ColorSpace cs e, NFData e) => NFData (Pixel cs e) where
 
-  rnf = foldrPx deepseq ()
+  rnf = foldr' deepseq ()
   {-# INLINE rnf #-}
 
 

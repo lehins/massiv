@@ -18,10 +18,8 @@ module Graphics.ColorSpace.RGB (
   ) where
 
 import Prelude hiding (map)
-import Control.Applicative
 import Foreign.Ptr
 import Foreign.Storable
-import Data.Foldable
 import Data.Typeable (Typeable)
 import Graphics.ColorSpace.Internal
 
@@ -48,8 +46,6 @@ instance Elevator e => ColorSpace RGB e where
   {-# INLINE toComponents #-}
   fromComponents !(r, g, b) = PixelRGB r g b
   {-# INLINE fromComponents #-}
-  promote = pure
-  {-# INLINE promote #-}
   getPxC (PixelRGB r _ _) RedRGB   = r
   getPxC (PixelRGB _ g _) GreenRGB = g
   getPxC (PixelRGB _ _ b) BlueRGB  = b
@@ -60,12 +56,6 @@ instance Elevator e => ColorSpace RGB e where
   {-# INLINE setPxC #-}
   mapPxC f (PixelRGB r g b) = PixelRGB (f RedRGB r) (f GreenRGB g) (f BlueRGB b)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelRGB r1 g1 b1) (PixelRGB r2 g2 b2) =
     f (f (f z r1 r2) g1 g2) b1 b2
   {-# INLINE foldlPx2 #-}
@@ -129,8 +119,6 @@ instance Elevator e => ColorSpace RGBA e where
   {-# INLINE toComponents #-}
   fromComponents !(r, g, b, a) = PixelRGBA r g b a
   {-# INLINE fromComponents #-}
-  promote = pure
-  {-# INLINE promote #-}
   getPxC (PixelRGBA r _ _ _) RedRGBA   = r
   getPxC (PixelRGBA _ g _ _) GreenRGBA = g
   getPxC (PixelRGBA _ _ b _) BlueRGBA  = b
@@ -144,12 +132,6 @@ instance Elevator e => ColorSpace RGBA e where
   mapPxC f (PixelRGBA r g b a) =
     PixelRGBA (f RedRGBA r) (f GreenRGBA g) (f BlueRGBA b) (f AlphaRGBA a)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelRGBA r1 g1 b1 a1) (PixelRGBA r2 g2 b2 a2) =
     f (f (f (f z r1 r2) g1 g2) b1 b2) a1 a2
   {-# INLINE foldlPx2 #-}

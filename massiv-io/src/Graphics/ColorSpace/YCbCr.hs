@@ -17,7 +17,6 @@ module Graphics.ColorSpace.YCbCr (
   YCbCr(..), YCbCrA(..), Pixel(..)
   ) where
 
-import           Control.Applicative
 import           Data.Foldable
 import           Data.Typeable            (Typeable)
 import           Foreign.Ptr
@@ -46,8 +45,6 @@ instance Show e => Show (Pixel YCbCr e) where
 instance Elevator e => ColorSpace YCbCr e where
   type Components YCbCr e = (e, e, e)
 
-  promote !e = PixelYCbCr e e e
-  {-# INLINE promote #-}
   fromComponents !(y, b, r) = PixelYCbCr y b r
   {-# INLINE fromComponents #-}
   toComponents (PixelYCbCr y b r) = (y, b, r)
@@ -62,12 +59,6 @@ instance Elevator e => ColorSpace YCbCr e where
   {-# INLINE setPxC #-}
   mapPxC f (PixelYCbCr y b r) = PixelYCbCr (f LumaYCbCr y) (f CBlueYCbCr b) (f CRedYCbCr r)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelYCbCr y1 b1 r1) (PixelYCbCr y2 b2 r2) =
     f (f (f z y1 y2) b1 b2) r1 r2
   {-# INLINE foldlPx2 #-}
@@ -133,8 +124,6 @@ instance Show e => Show (Pixel YCbCrA e) where
 instance Elevator e => ColorSpace YCbCrA e where
   type Components YCbCrA e = (e, e, e, e)
 
-  promote !e = PixelYCbCrA e e e e
-  {-# INLINE promote #-}
   fromComponents !(y, b, r, a) = PixelYCbCrA y b r a
   {-# INLINE fromComponents #-}
   toComponents (PixelYCbCrA y b r a) = (y, b, r, a)
@@ -152,12 +141,6 @@ instance Elevator e => ColorSpace YCbCrA e where
   mapPxC f (PixelYCbCrA y b r a) =
     PixelYCbCrA (f LumaYCbCrA y) (f CBlueYCbCrA b) (f CRedYCbCrA r) (f AlphaYCbCrA a)
   {-# INLINE mapPxC #-}
-  liftPx = fmap
-  {-# INLINE liftPx #-}
-  liftPx2 = liftA2
-  {-# INLINE liftPx2 #-}
-  foldlPx = foldl'
-  {-# INLINE foldlPx #-}
   foldlPx2 f !z (PixelYCbCrA y1 b1 r1 a1) (PixelYCbCrA y2 b2 r2 a2) =
     f (f (f (f z y1 y2) b1 b2) r1 r2) a1 a2
   {-# INLINE foldlPx2 #-}
