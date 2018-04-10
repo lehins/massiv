@@ -5,6 +5,7 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ApplicativeDo   #-}
 module Bench.Massiv.Array (
   module A
   , tupleToIx2
@@ -23,6 +24,7 @@ module Bench.Massiv.Array (
   , sobelOperatorUnfused
   , average3x3Filter
   , average3x3FilterConv
+  , average3x3FilterUnsafe
   ) where
 
 import           Bench.Common             (heavyFunc, lightFunc)
@@ -31,6 +33,9 @@ import           Data.Default             (Default)
 import           Data.Massiv.Array        as A
 import           Data.Massiv.Array.Unsafe as A
 import           Prelude                  hiding (mapM)
+import Data.Maybe
+
+
 
 -- | Bogus DeepSeq for delayed array so it can be fed to the `env`.
 instance Index ix => NFData (Array D ix e) where
@@ -156,6 +161,15 @@ sobelOperatorUnfused b arr = computeAs U $ A.map sqrt (A.zipWith (+) sX sY)
 --       f ( 1 :.  1) (-3)
 --     {-# INLINE accum #-}
 -- {-# INLINE kirschWStencil #-}
+
+
+average3x3FilterUnsafe :: (Manifest r Ix2 a, Fractional a) => Array r Ix2 a -> Array DW Ix2 a
+average3x3FilterUnsafe arr = forStencilUnsafe arr (3 :. 3) (1 :. 1) $ \ get ->
+  let get' = fromMaybe 0 . get in
+  (  get' (-1 :. -1) + get' (-1 :. 0) + get' (-1 :. 1) +
+     get' ( 0 :. -1) + get' ( 0 :. 0) + get' ( 0 :. 1) +
+     get' ( 1 :. -1) + get' ( 1 :. 0) + get' ( 1 :. 1)   ) / 9
+{-# INLINE average3x3FilterUnsafe #-}
 
 
 average3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
