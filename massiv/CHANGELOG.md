@@ -1,3 +1,8 @@
+# 0.1.5
+
+* Fix inverted stencil index calculation [#12](https://github.com/lehins/massiv/issues/12)
+* Add support for cross-correlation.
+
 # 0.1.4
 
 * Addition of Monoidal folding `foldMono`.

@@ -8,7 +8,12 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Stencil.Convolution where
+module Data.Massiv.Array.Stencil.Convolution
+  ( makeConvolutionStencil
+  , makeConvolutionStencilFromKernel
+  , makeCorrelationStencil
+  , makeCorrelationStencilFromKernel
+  ) where
 
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Array.Ops.Fold         (ifoldlS)
@@ -65,3 +70,43 @@ makeConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
       {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE makeConvolutionStencilFromKernel #-}
+
+
+
+-- | Make a <https://en.wikipedia.org/wiki/Cross-correlation cross-correlation> stencil.
+makeCorrelationStencil
+  :: (Index ix, Num e)
+  => Border e
+  -> ix
+  -> ix
+  -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
+  -> Stencil ix e e
+makeCorrelationStencil b !sSz !sCenter relStencil =
+  validateStencil 0 $ Stencil b sSz sCenter stencil
+  where
+    stencil getVal !ix =
+        ((inline relStencil $ \ !ixD !kVal !acc ->
+            (getVal (liftIndex2 (+) ix ixD)) * kVal + acc)
+           0)
+    {-# INLINE stencil #-}
+{-# INLINE makeCorrelationStencil #-}
+
+
+-- | Make a stencil out of a Kernel Array. This `Stencil` will be slower than if
+-- `makeCorrelationStencil` is used, but sometimes we just really don't know the
+-- kernel at compile time.
+makeCorrelationStencilFromKernel
+  :: (Manifest r ix e, Num e)
+  => Border e
+  -> Array r ix e
+  -> Stencil ix e e
+makeCorrelationStencilFromKernel b kArr = Stencil b sz sCenter stencil
+  where
+    !sz = size kArr
+    !sCenter = (liftIndex (`div` 2) sz)
+    stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
+      accum !acc !kIx !kVal =
+        unValue (getVal (liftIndex2 (+) ix (liftIndex2 (+) sCenter kIx))) * kVal + acc
+      {-# INLINE accum #-}
+    {-# INLINE stencil #-}
+{-# INLINE makeCorrelationStencilFromKernel #-}

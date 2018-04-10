@@ -10,12 +10,13 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Stencil
-  ( Stencil
+  ( -- * Stencil
+    Stencil
   , Value
   , mapStencil
   , makeStencil
-  , makeConvolutionStencil
-  , makeConvolutionStencilFromKernel
+  -- * Convolution
+  , module Data.Massiv.Array.Stencil.Convolution
   ) where
 
 import           Data.Default.Class                    (Default (def))
