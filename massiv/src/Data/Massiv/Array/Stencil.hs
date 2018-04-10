@@ -80,7 +80,7 @@ makeStencil b !sSz !sCenter relStencil =
   validateStencil def $ Stencil b sSz sCenter stencil
   where
     stencil getVal !ix =
-      (inline relStencil $ \ !ixD -> getVal (liftIndex2 (-) ix ixD))
+      (inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD))
     {-# INLINE stencil #-}
 {-# INLINE makeStencil #-}
 

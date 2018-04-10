@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MonoLocalBinds        #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.StencilSpec (spec) where
 
@@ -12,7 +13,7 @@ import           Data.Proxy
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
-import           Data.Default              ()
+import           Data.Default              (Default(def))
 -- sum3x3Stencil :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
 -- sum3x3Stencil b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
 --   get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
@@ -44,6 +45,7 @@ prop_DangerousStencil _ (NonZero s) (DimIx r) b (SzIx (Sz sz) ix) =
         setIndex zeroIndex r i
 
 
+
 stencilSpec :: Spec
 stencilSpec = do
   describe "MapSingletonStencil" $ do
@@ -70,6 +72,33 @@ stencilSpec = do
 --     it "Ix3" $ property $ prop_toFromVector (Nothing :: Maybe Ix3) B
 
 
+stencilDirection :: (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Array r Ix2 a -> Array U Ix2 a
+stencilDirection ix = computeAs U . mapStencil (makeStencil (Fill def) (3 :. 3) (1 :. 1) $ \f -> f ix)
+
+
+stencilCorners ::
+     (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Ix2 -> Array r Ix2 a -> Array U Ix2 a
+stencilCorners ixC ix = computeAs U . mapStencil (makeStencil (Fill def) (3 :. 3) ixC $ \f -> f ix)
 
 spec :: Spec
-spec = describe "Stencil" stencilSpec
+spec = do
+  describe "Stencil" $ do
+    stencilSpec
+    describe "Unit tests Ix2" $ do
+      let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
+      it "Direction Left" $
+        stencilDirection (0 :. 1) arr `shouldBe` [[2, 3, 0], [5, 6, 0], [8, 9, 0]]
+      it "Direction Right" $
+        stencilDirection (0 :. -1) arr `shouldBe` [[0, 1, 2], [0, 4, 5], [0, 7, 8]]
+      it "Direction Down" $
+        stencilDirection (1 :. 0) arr `shouldBe` [[4, 5, 6], [7, 8, 9], [0, 0, 0]]
+      it "Direction Up" $
+        stencilDirection (-1 :. 0) arr `shouldBe` [[0, 0, 0], [1, 2, 3], [4, 5, 6]]
+      it "Direction Left/Top Corner" $
+        stencilCorners (0 :. 0) (2 :. 2) arr `shouldBe` [[9, 0, 0], [0, 0, 0], [0, 0, 0]]
+      it "Direction Right/Top Corner" $
+        stencilCorners (0 :. 2) (2 :. -2) arr `shouldBe` [[0, 0, 7], [0, 0, 0], [0, 0, 0]]
+      it "Direction Right/Bottom Corner" $
+        stencilCorners (2 :. 2) (-2 :. -2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [0, 0, 1]]
+      it "Direction Left/Bottom Corner" $
+        stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
