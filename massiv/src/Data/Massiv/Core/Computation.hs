@@ -15,14 +15,9 @@ module Data.Massiv.Core.Computation
   ) where
 
 import           Control.DeepSeq (NFData (..), deepseq)
-#if MIN_VERSION_base(4,9,0)
 #if !MIN_VERSION_base(4,11,0)
-import Data.Semigroup
+import           Data.Semigroup
 #endif
-instance Semigroup Comp where
-  (<>) = joinComp
-#endif
-
 
 
 -- | Computation type to use.
@@ -58,6 +53,10 @@ instance Monoid Comp where
   {-# INLINE mempty #-}
   mappend = joinComp
   {-# INLINE mappend #-}
+
+instance Semigroup Comp where
+  (<>) = joinComp
+  {-# INLINE (<>) #-}
 
 
 joinComp :: Comp -> Comp -> Comp

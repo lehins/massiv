@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -20,8 +21,10 @@ import           Data.Default.Class                 (Default (def))
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Delayed.Windowed
 import           Data.Massiv.Core.Common
-import           Data.Semigroup
 import           GHC.Exts                           (inline)
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Semigroup
+#endif
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
@@ -234,9 +237,10 @@ validateStencil d s@(Stencil _ sSz sCenter stencil) =
   in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
 
+
 -- | This is an unsafe version of the stencil computation. There are no bounds check further from
 -- the border, so if you make sure you don't go outside the size of the stencil, you will be safe,
--- but this is not enforces.
+-- but this is not enforced.
 forStencilUnsafe ::
      (Source r ix e, Manifest r ix e)
   => Array r ix e
