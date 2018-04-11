@@ -23,22 +23,26 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3Filter Edge)))
+                 whnf (computeAs U . A.mapStencil (average3x3Filter (Fill 0))))
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Unsafe Array Ix2" .
+                 whnf (computeAs U . average3x3FilterUnsafe))
             , env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Convolve Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
+                 whnf (computeAs U . A.mapStencil (average3x3FilterConv (Fill 0))))
             ]
         , bgroup
             "Average Par"
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3Filter Edge)))
+                 whnf (computeAs U . A.mapStencil (average3x3Filter (Fill 0))))
             , env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Convolve Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
+                 whnf (computeAs U . A.mapStencil (average3x3FilterConv (Fill 0))))
             ]
         ]
     -- , bgroup
