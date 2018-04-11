@@ -20,6 +20,7 @@ import           Data.Default.Class                 (Default (def))
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Delayed.Windowed
 import           Data.Massiv.Core.Common
+import           Data.Semigroup
 import           GHC.Exts                           (inline)
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
@@ -40,7 +41,6 @@ instance (NFData e, Index ix) => NFData (Stencil ix e a) where
 -- it possible to manipulate the value, without having direct access to it.
 newtype Value e = Value { unValue :: e } deriving (Show, Eq, Ord, Bounded)
 
-
 instance Functor Value where
   fmap f (Value e) = Value (f e)
   {-# INLINE fmap #-}
@@ -50,6 +50,16 @@ instance Applicative Value where
   {-# INLINE pure #-}
   (<*>) (Value f) (Value e) = Value (f e)
   {-# INLINE (<*>) #-}
+
+instance Semigroup a => Semigroup (Value a) where
+  Value a <> Value b = Value (a <> b)
+  {-# INLINE (<>) #-}
+
+instance Monoid a => Monoid (Value a) where
+  mempty = Value mempty
+  {-# INLINE mempty #-}
+  Value a `mappend` Value b = Value (a `mappend` b)
+  {-# INLINE mappend #-}
 
 instance Num e => Num (Value e) where
   (+) = liftA2 (+)
@@ -223,7 +233,6 @@ validateStencil d s@(Stencil _ sSz sCenter stencil) =
   let valArr = DArray Seq sSz (const d)
   in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}
-
 
 -- | This is an unsafe version of the stencil computation. There are no bounds check further from
 -- the border, so if you make sure you don't go outside the size of the stencil, you will be safe,
