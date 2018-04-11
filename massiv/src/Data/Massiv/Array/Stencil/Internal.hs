@@ -49,20 +49,6 @@ instance Applicative Value where
   (<*>) (Value f) (Value e) = Value (f e)
   {-# INLINE (<*>) #-}
 
-instance Monad Value where
-  return = pure
-  {-# INLINE return #-}
-  (Value a) >>= f = f a
-  {-# INLINE (>>=) #-}
-
-instance Foldable Value where
-  foldMap f (Value a) = f a
-  {-# INLINE foldMap #-}
-
-instance Traversable Value where
-  traverse f (Value a) = fmap Value (f a)
-  {-# INLINE traverse #-}
-
 instance Semigroup a => Semigroup (Value a) where
   Value a <> Value b = Value (a <> b)
   {-# INLINE (<>) #-}
