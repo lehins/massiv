@@ -1,3 +1,8 @@
+# 0.1.6
+
+* `Semigroup` and `Monoid` instance for `Value`.
+* Addition of `forStencilUnsafe`
+
 # 0.1.5
 
 * Fix inverted stencil index calculation [#12](https://github.com/lehins/massiv/issues/12)

@@ -54,10 +54,12 @@ instance Applicative Value where
   (<*>) (Value f) (Value e) = Value (f e)
   {-# INLINE (<*>) #-}
 
+-- | @since 0.1.5
 instance Semigroup a => Semigroup (Value a) where
   Value a <> Value b = Value (a <> b)
   {-# INLINE (<>) #-}
 
+-- | @since 0.1.5
 instance Monoid a => Monoid (Value a) where
   mempty = Value mempty
   {-# INLINE mempty #-}

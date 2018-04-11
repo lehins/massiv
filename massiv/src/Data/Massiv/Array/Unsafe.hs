@@ -106,6 +106,8 @@ unsafeGenerateArray !sz f = runST $ do
 
 
 -- | Create an array in parallel using mutable interface
+--
+-- @since 0.1.5
 unsafeGenerateArrayP :: Mutable r ix e => [Int] -> ix -> (ix -> e) -> Array r ix e
 unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
   marr <- unsafeNew sz
