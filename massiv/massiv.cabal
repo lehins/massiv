@@ -65,11 +65,11 @@ library
   ghc-options:         -Wall
 
 
-Test-Suite tests
-  Type:               exitcode-stdio-1.0
-  HS-Source-Dirs:     tests
-  Main-Is:            Spec.hs
-  Other-Modules:      Data.Massiv.Array.DelayedSpec
+test-suite tests
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     tests
+  main-is:            Spec.hs
+  other-modules:      Data.Massiv.Array.DelayedSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.MutableSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
@@ -80,7 +80,7 @@ Test-Suite tests
                     , Data.Massiv.CoreArbitrary
                     , Data.Massiv.Core.IndexSpec
                     , Data.Massiv.Core.SchedulerSpec
-  Build-Depends:      base            >= 4.8 && < 5
+  build-depends:      base            >= 4.8 && < 5
                     , deepseq
                     , data-default
                     , safe-exceptions
@@ -88,8 +88,11 @@ Test-Suite tests
                     , hspec
                     , QuickCheck
                     , vector
-  Default-Language:   Haskell2010
-  GHC-Options:        -Wall -O2 -fno-warn-orphans -threaded -with-rtsopts=-N2
+  if impl(ghc < 8.0)
+    build-depends: semigroups
+
+  default-language:   Haskell2010
+  ghc-options:        -Wall -O2 -fno-warn-orphans -threaded -with-rtsopts=-N2
 
 source-repository head
   type:     git
