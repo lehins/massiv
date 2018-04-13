@@ -18,6 +18,7 @@ module Data.Massiv.Array.Ops.Fold
 
     fold
   , foldMono
+  , foldSemi
   , minimum
   , maximum
   , sum
@@ -71,7 +72,7 @@ import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Array.Ops.Map           (map)
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
-import           Data.Monoid
+import           Data.Semigroup
 import           Prelude                             hiding (all, and, any,
                                                       foldl, foldr, map,
                                                       maximum, minimum, or,
@@ -85,8 +86,21 @@ foldMono ::
   => (e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
   -> Array r ix e -- ^ Source array
   -> m
-foldMono f = foldl (<>) mempty (<>) mempty . map f
+foldMono f = foldl mappend mempty mappend mempty . map f
 {-# INLINE foldMono #-}
+
+
+-- | /O(n)/ - Semigroup fold over an array.
+--
+-- @since 0.1.6
+foldSemi ::
+     (Source r ix e, Semigroup m)
+  => (e -> m) -- ^ Convert each element of an array to an appropriate `Semigroup`.
+  -> m -- ^ Initial element that must be neutral to the (`<>`) function.
+  -> Array r ix e -- ^ Source array
+  -> m
+foldSemi f m = foldl (<>) m (<>) m . map f
+{-# INLINE foldSemi #-}
 
 
 -- | /O(n)/ - Compute maximum of all elements.
@@ -105,7 +119,7 @@ minimum :: (Source r ix e, Ord e) =>
 minimum = \arr ->
   if isEmpty arr
     then error "Data.Massiv.Array.minimum - empty"
-    else fold max (evaluateAt arr zeroIndex) arr
+    else fold min (evaluateAt arr zeroIndex) arr
 {-# INLINE minimum #-}
 
 

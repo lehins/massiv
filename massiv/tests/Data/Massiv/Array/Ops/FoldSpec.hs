@@ -4,11 +4,14 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.Ops.FoldSpec (spec) where
 
-import           Data.Massiv.CoreArbitrary
+import qualified Data.Foldable             as F
+import           Data.Massiv.CoreArbitrary as A
+import           Data.Semigroup
 import           Prelude                   hiding (map, product, sum)
 import qualified Prelude                   as P (length, sum)
 import           Test.Hspec
 import           Test.QuickCheck
+import           Test.QuickCheck.Function
 import           Test.QuickCheck.Monadic
 
 
@@ -55,6 +58,20 @@ specFold proxy dimStr = do
     it "sumS Eq sumP" $ property $ prop_SumSEqSumP proxy
     it "prodS Eq prodP" $ property $ prop_ProdSEqProdP proxy
 
+foldOpsProp :: (Source P ix Int) => proxy ix -> Fun Int Bool -> ArrTiny1 P ix Int -> Property
+foldOpsProp _ f (ArrTiny1 arr) =
+  (A.maximum arr === getMax (foldMono Max arr)) .&&.
+  (A.minimum arr === getMin (foldSemi Min maxBound arr)) .&&.
+  (A.sum arr === F.sum ls) .&&.
+  (A.product (A.map ((+ 0.1) . (fromIntegral :: Int -> Double)) arr) ===
+   getProduct (foldMono (Product . (+ 0.1) . fromIntegral) arr)) .&&.
+  (A.all (apply f) arr === F.all (apply f) ls) .&&.
+  (A.any (apply f) arr === F.any (apply f) ls) .&&.
+  (A.or (A.map (apply f) arr) === F.or (fmap (apply f) ls)) .&&.
+  (A.and (A.map (apply f) arr) === F.and (fmap (apply f) ls))
+  where
+    ls = toList arr
+
 spec :: Spec
 spec = do
   specFold (Nothing :: Maybe Ix1) "Ix1"
@@ -62,3 +79,7 @@ spec = do
   it "Nested Parallel Fold" $ property prop_NestedFoldP
   it "FoldrOnP" $ property $ prop_FoldrOnP
   it "FoldlOnP" $ property $ prop_FoldlOnP
+  describe "Foldable Props" $ do
+    it "Ix1" $ property $ foldOpsProp (Nothing :: Maybe Ix1)
+    it "Ix2" $ property $ foldOpsProp (Nothing :: Maybe Ix2)
+    it "Ix3" $ property $ foldOpsProp (Nothing :: Maybe Ix3)

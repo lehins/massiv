@@ -7,8 +7,10 @@
 module Data.Massiv.CoreArbitrary
   ( Arr(..)
   , ArrTiny(..)
+  , ArrTiny1(..)
   , ArrIx(..)
   , ArrP(..)
+  , ArrS(..)
   , ArrIxP(..)
   , Sz(..)
   , SzIx(..)
@@ -23,20 +25,22 @@ module Data.Massiv.CoreArbitrary
 
 import           Control.DeepSeq            (NFData, deepseq)
 import           Control.Exception          (Exception, SomeException, catch)
---import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Array
 import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 
-data Arr r ix e = Arr (Array r ix e)
+newtype Arr r ix e = Arr {unArr :: Array r ix e}
 
-data ArrTiny r ix e = ArrTiny (Array r ix e)
+newtype ArrTiny r ix e = ArrTiny {unArrTiny :: Array r ix e}
 
-data ArrS r ix e = ArrS (Array r ix e)
+-- | Tiny but non-empty
+newtype ArrTiny1 r ix e = ArrTiny1 {unArrTiny1 :: Array r ix e}
 
-data ArrP r ix e = ArrP (Array r ix e)
+newtype ArrS r ix e = ArrS {unArrS :: Array r ix e}
+
+newtype ArrP r ix e = ArrP {unArrP :: Array r ix e}
 
 data ArrIx r ix e = ArrIx (Array r ix e) ix
 
@@ -46,6 +50,7 @@ data ArrIxP r ix e = ArrIxP (Array r ix e) ix
 
 deriving instance (Show (Array r ix e)) => Show (Arr r ix e)
 deriving instance (Show (Array r ix e)) => Show (ArrTiny r ix e)
+deriving instance (Show (Array r ix e)) => Show (ArrTiny1 r ix e)
 deriving instance (Show (Array r ix e)) => Show (ArrS r ix e)
 deriving instance (Show (Array r ix e)) => Show (ArrP r ix e)
 deriving instance (Show (Array r ix e), Show ix) => Show (ArrIx r ix e)
@@ -74,6 +79,15 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
     return $ ArrTiny $ makeArray comp (liftIndex (`mod` 10) sz) func
+
+-- | Arbitrary small and possibly empty array. Computation strategy can be either `Seq` or `Par`.
+instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
+         Arbitrary (ArrTiny1 r ix e) where
+  arbitrary = do
+    SzZ sz <- arbitrary
+    func <- arbitrary
+    comp <- oneof [pure Seq, pure Par]
+    return $ ArrTiny1 $ makeArray comp (liftIndex (succ . (`mod` 10)) sz) func
 
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>

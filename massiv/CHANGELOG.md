@@ -1,7 +1,9 @@
 # 0.1.6
 
 * `Semigroup` and `Monoid` instance for `Value`.
-* Addition of `forStencilUnsafe`
+* Addition of `forStencilUnsafe`.
+* Fix `minimum` behaving as `maximum`.
+* Addition of `foldSemi`.
 
 # 0.1.5
 
