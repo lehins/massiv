@@ -1,6 +1,6 @@
 # 0.1.3
 
-* Instance of `Writable` for `DW` arrays.
+* 
 
 # 0.1.2
 

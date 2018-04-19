@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -16,26 +14,29 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.IO (
-  -- * Reading
-  readArray, readImage, readImageAuto,
+module Data.Massiv.Array.IO
+  ( -- * Reading
+    readArray
+  , readImage
+  , readImageAuto
   -- * Writing
-  writeArray ,writeImage, writeImageAuto,
+  , writeArray
+  , writeImage
+  , writeImageAuto
   -- * Displaying
-  ExternalViewer(..),
-  displayImage,
-  displayImageUsing,
-  displayImageFile,
+  , ExternalViewer(..)
+  , displayImage
+  , displayImageUsing
+  , displayImageFile
   -- ** Common viewers
-  defaultViewer,
-  eogViewer,
-  gpicviewViewer,
-  fehViewer,
-  gimpViewer,
+  , defaultViewer
+  , eogViewer
+  , gpicviewViewer
+  , fehViewer
+  , gimpViewer
   -- * Supported Image Formats
-  module Data.Massiv.Array.IO.Base,
-  module Data.Massiv.Array.IO.Image
-
+  , module Data.Massiv.Array.IO.Base
+  , module Data.Massiv.Array.IO.Image
   -- $supported
   ) where
 
@@ -58,10 +59,6 @@ import           System.IO                  (hClose, openBinaryTempFile)
 import           System.Process             (readProcess)
 
 
--- | @since 0.1.3
-instance {-# OVERLAPPING #-} (Storable e, Load DW ix e, Writable f (Array S ix e)) =>
-  Writable f (Array DW ix e) where
-  encode f opts arr = encode f opts (computeAs S arr)
 
 
 -- | External viewing application to use for displaying images.
@@ -139,13 +136,12 @@ readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
 
 
 
--- | Inverse of the 'readImage', but similarly to it, will guess an output file format from the file
--- extension and will write to file any image with the colorspace that is supported by that
--- format. Precision of the image might be adjusted using `Elevator` if precision of the source
--- array is not supported by the image file format. For instance, <'Image' @r@ 'RGBA' 'Double'>
--- being saved as 'PNG' file would be written as <'Image' @r@ 'RGBA' 'Word16'>, thus using highest
--- supported precision 'Word16' for that format. If automatic colors space is also desired,
--- `writeImageAuto` can be used instead.
+-- | This function will guess an output file format from the file extension and will write to file
+-- any image with the colorspace that is supported by that format. Precision of the image might be
+-- adjusted using `Elevator` if precision of the source array is not supported by the image file
+-- format. For instance an @(`Image` r `RGBA` `Double`)@ being saved as `PNG` file would be written as
+-- @(`Image` r `RGBA` `Word16`)@, thus using highest supported precision `Word16` for that
+-- format. If automatic colors space is also desired, `writeImageAuto` can be used instead.
 --
 -- Can throw `ConvertError`, `EncodeError` and other usual IO errors.
 --
@@ -154,7 +150,7 @@ writeImage :: (Source r Ix2 (Pixel cs e), ColorSpace cs e) =>
 writeImage path = BL.writeFile path . encodeImage imageWriteFormats path
 
 
-
+-- | Write an image to file while performing all necessary precisiona and color space conversions.
 writeImageAuto
   :: ( Source r Ix2 (Pixel cs e)
      , ColorSpace cs e
@@ -170,10 +166,6 @@ writeImageAuto path = BL.writeFile path . encodeImage imageWriteAutoFormats path
 
 -- | An image is written as a @.tiff@ file into an operating system's temporary
 -- directory and passed as an argument to the external viewer program.
--- displayImageUsing :: Writable (Auto TIF) (Image r cs e) =>
---                      ExternalViewer -- ^ Image viewer program
---                   -> Bool -- ^ Should a call block the cuurrent thread untul viewer is closed.
---                   -> Image r cs e -> IO ()
 displayImageUsing :: Writable (Auto TIF) (Image r cs e) =>
                      ExternalViewer -- ^ Image viewer program
                   -> Bool -- ^ Should a call block the cuurrent thread untul viewer is closed.
