@@ -26,13 +26,13 @@ module Data.Massiv.Array.Manifest.List
   , toLists4
   ) where
 
-import           Data.Massiv.Array.Delayed          (D (..))
+import           Data.Massiv.Array.Delayed.Internal  (D (..))
 import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Ops.Construct    (makeArrayR)
-import           Data.Massiv.Array.Ops.Fold         (foldrFB, foldrS)
+import           Data.Massiv.Array.Ops.Construct     (makeArrayR)
+import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB, foldrS)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
-import           GHC.Base                           (build)
+import           GHC.Base                            (build)
 
 -- | Convert a flat list into a vector
 fromList :: (Nested LN Ix1 e, Nested L Ix1 e, Ragged L Ix1 e, Mutable r Ix1 e)

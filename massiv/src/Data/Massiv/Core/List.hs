@@ -21,6 +21,7 @@ module Data.Massiv.Core.List
   , L(..)
   , Array(..)
   , toListArray
+  , showArray
   , ListItem
   , ShapeError(..)
   ) where
@@ -373,8 +374,22 @@ instance ( Ragged L ix e
          , Show e
          ) =>
          Show (Array r ix e) where
-  show arr =
-    "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+  show arr = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ") arr
+    -- "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
+    -- showComp (getComp arr) ++ " (" ++
+    -- (show (size arr)) ++ ")\n" ++
+    -- show (makeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"
+    -- where showComp Seq = "Seq"
+    --       showComp Par = "Par"
+    --       showComp c   = "(" ++ show c ++ ")"
+
+showArray ::
+     forall r ix e. (Ragged L ix e, Construct L ix e, Source r ix e, Show e)
+  => String
+  -> Array r ix e
+  -> String
+showArray tyStr arr =
+    "(Array " ++ tyStr ++
     showComp (getComp arr) ++ " (" ++
     (show (size arr)) ++ ")\n" ++
     show (makeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"

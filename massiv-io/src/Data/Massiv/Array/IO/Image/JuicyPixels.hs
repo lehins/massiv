@@ -97,7 +97,7 @@ instance FileFormat BMP where
   ext _ = ".bmp"
 
 
-instance (ColorSpace cs e, Source r Ix2 (Pixel cs e)) =>
+instance {-# OVERLAPPABLE #-} (ColorSpace cs e, Source r Ix2 (Pixel cs e)) =>
          Writable BMP (Image r cs e) where
   encode f _ img = fromMaybeEncode f (toProxy img) $ encodeBMP img
 

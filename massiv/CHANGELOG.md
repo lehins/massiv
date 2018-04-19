@@ -1,3 +1,8 @@
+# 0.1.7
+
+* `Show` instance for `DW` arrays.
+* Create new `Data.Massiv.Array.Stencil.Unsafe` module and move `forStencilUnsafe` into it.
+
 # 0.1.6
 
 * `Semigroup` and `Monoid` instance for `Value`.

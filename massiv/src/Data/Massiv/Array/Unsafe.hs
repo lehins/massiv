@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
--- Module      : Data.Massiv.Array.Ops.Unsafe
+-- Module      : Data.Massiv.Array.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
@@ -39,14 +39,11 @@ module Data.Massiv.Array.Unsafe
   , unsafeLinearRead
   , unsafeWrite
   , unsafeLinearWrite
-  -- * Stencil
-  , forStencilUnsafe
   ) where
 
 import           Control.Monad.Primitive            (PrimMonad (..))
 import           Control.Monad.ST                   (runST)
 import           Data.Massiv.Array.Delayed.Internal (D)
-import           Data.Massiv.Array.Stencil.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import           System.IO.Unsafe                   (unsafePerformIO)

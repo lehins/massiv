@@ -28,7 +28,7 @@ import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Fold
+import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Primitive.Array                as A

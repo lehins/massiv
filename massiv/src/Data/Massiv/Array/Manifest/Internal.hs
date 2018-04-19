@@ -38,21 +38,21 @@ module Data.Massiv.Array.Manifest.Internal
   , fromRaggedArray'
   ) where
 
-import           Control.Exception                  (try)
-import           Control.Monad                      (unless)
-import           Control.Monad.ST                   (RealWorld, runST)
-import           Data.Foldable                      (Foldable (..))
+import           Control.Exception                   (try)
+import           Control.Monad                       (unless)
+import           Control.Monad.ST                    (RealWorld, runST)
+import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Ops.Fold         as M
+import           Data.Massiv.Array.Ops.Fold.Internal as M
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
-import           Data.Maybe                         (fromMaybe)
+import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
-import qualified Data.Vector                        as V
-import           GHC.Base                           (build)
-import           System.IO.Unsafe                   (unsafePerformIO)
+import qualified Data.Vector                         as V
+import           GHC.Base                            (build)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 
 -- | General Manifest representation

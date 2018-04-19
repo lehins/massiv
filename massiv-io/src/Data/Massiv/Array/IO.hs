@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -54,6 +56,13 @@ import           System.Directory           (createDirectoryIfMissing,
 import           System.FilePath
 import           System.IO                  (hClose, openBinaryTempFile)
 import           System.Process             (readProcess)
+
+
+-- | @since 0.1.3
+instance {-# OVERLAPPING #-} (Storable e, Load DW ix e, Writable f (Array S ix e)) =>
+  Writable f (Array DW ix e) where
+  encode f opts arr = encode f opts (computeAs S arr)
+
 
 -- | External viewing application to use for displaying images.
 data ExternalViewer =

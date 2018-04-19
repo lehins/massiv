@@ -1,5 +1,5 @@
 name:                massiv-io
-version:             0.1.2.0
+version:             0.1.3.0
 synopsis:            Import/export of Image files into massiv Arrays
 description:         This package contains functionality for import/export of arrays
                      into the real world. For now it only has the ability to read/write

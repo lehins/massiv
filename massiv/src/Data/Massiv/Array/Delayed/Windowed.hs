@@ -1,8 +1,8 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
@@ -19,11 +19,16 @@ module Data.Massiv.Array.Delayed.Windowed
   , makeWindowedArray
   ) where
 
-import           Control.Monad                      (when)
+import           Control.Monad                          (when)
 import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Manifest.BoxedStrict
+import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.List                  (showArray)
 import           Data.Massiv.Core.Scheduler
+import           Data.Proxy                             (Proxy (..))
+import           Data.Typeable                          (showsTypeRep, typeRep)
 
 -- | Delayed Windowed Array representation.
 data DW
@@ -38,6 +43,12 @@ data instance Array DW ix e = DWArray { wdArray :: !(Array D ix e)
                                       , wdWindowStartIndex :: !ix
                                       , wdWindowSize :: !ix
                                       , wdWindowUnsafeIndex :: ix -> e }
+
+
+instance {-# OVERLAPPING #-} (Show e, Ragged L ix e, Load DW ix e) =>
+  Show (Array DW ix e) where
+  show arr = showArray (showsTypeRep (typeRep (Proxy :: Proxy DW)) " ") (computeAs B arr)
+
 
 instance Index ix => Construct DW ix e where
   getComp = dComp . wdArray

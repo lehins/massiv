@@ -1,5 +1,5 @@
 name:                massiv
-version:             0.1.6.1
+version:             0.1.7.0
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -22,6 +22,7 @@ library
                      , Data.Massiv.Array.Mutable
                      , Data.Massiv.Array.Numeric
                      , Data.Massiv.Array.Stencil
+                     , Data.Massiv.Array.Stencil.Unsafe
                      , Data.Massiv.Array.Unsafe
                      , Data.Massiv.Core
                      , Data.Massiv.Core.Scheduler
