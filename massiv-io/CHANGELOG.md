@@ -1,6 +1,7 @@
 # 0.1.3
 
-* 
+* Fixed #22 - Invalid guard against image size
+* Made sure format is inferred from all supported file extensions for auto decoding.
 
 # 0.1.2
 

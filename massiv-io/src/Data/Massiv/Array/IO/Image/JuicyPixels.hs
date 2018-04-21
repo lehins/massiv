@@ -76,7 +76,7 @@ import qualified Codec.Picture.Jpg                 as JP
 import           Control.Exception
 import           Control.Monad                     (guard, msum)
 import           Data.Bifunctor
-import qualified Data.ByteString                   as B (ByteString)
+import qualified Data.ByteString                   as B
 import qualified Data.ByteString.Lazy              as BL (ByteString)
 import           Data.Default                      (Default (..))
 import           Data.Massiv.Array                 as M
@@ -84,6 +84,7 @@ import           Data.Massiv.Array.IO.Base
 import           Data.Massiv.Array.Manifest.Vector
 import           Data.Typeable
 import qualified Data.Vector.Storable              as V
+import           Foreign.Storable                  (Storable (sizeOf))
 import           Graphics.ColorSpace
 --------------------------------------------------------------------------------
 -- BMP Format ------------------------------------------------------------------
@@ -962,11 +963,10 @@ toJPImageCMYK8 = toJPImageUnsafe
 
 -- General decoding and helper functions
 
--- | TODO: Validate size
-fromJPImageUnsafe :: (Storable (Pixel cs e), JP.Pixel jpx) =>
+fromJPImageUnsafe :: forall jpx cs e . (Storable (Pixel cs e), JP.Pixel jpx) =>
                      JP.Image jpx -> Maybe (Image S cs e)
 fromJPImageUnsafe (JP.Image n m !v) = do
-  guard (n * m /= V.length v)
+  guard (n * m * sizeOf (undefined :: Pixel cs e) == V.length v)
   return $ fromVector Seq (m :. n) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 

@@ -109,6 +109,7 @@ data PPM = PPM deriving Show
 
 instance FileFormat PPM where
   ext _ = ".ppm"
+  exts _ = [".ppm", ".pnm"]
 
 instance FileFormat (Sequence PPM) where
   type WriteOptions (Sequence PPM) = WriteOptions PPM
@@ -160,12 +161,11 @@ decodePPM f decoder bs = fromEitherDecode f showNetpbmCS decoder $ do
 {-# INLINE decodePPM #-}
 
 
--- | TODO: validate sizes
 fromNetpbmImageUnsafe
   :: (Storable a, Storable (Pixel cs e))
-  => (Int, Int) -> V.Vector a -> Maybe (Image S cs e)
-fromNetpbmImageUnsafe (m, n) v = do
-  guard (n * m /= V.length v)
+  => Int -> Int -> V.Vector a -> Maybe (Image S cs e)
+fromNetpbmImageUnsafe m n v = do
+  guard (n * m == V.length v)
   return $ fromVector Seq (m :. n) $ V.unsafeCast v
 
 
@@ -184,34 +184,36 @@ fromNetpbmImage
   :: forall cs e . (ColorSpace cs e, V.Storable (Pixel cs e)) =>
      Netpbm.PPM -> Maybe (Image S cs e)
 fromNetpbmImage Netpbm.PPM {..} = do
-  let sz = (ppmHeight ppmHeader, ppmWidth ppmHeader)
+  let m = ppmHeight ppmHeader
+      n = ppmWidth ppmHeader
   case ppmData of
     PbmPixelData v      -> do Refl <- eqT :: Maybe (Pixel cs e :~: Pixel X Bit)
-                              fromNetpbmImageUnsafe sz v
+                              fromNetpbmImageUnsafe m n v
     PgmPixelData8 v     -> do Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Word8)
-                              fromNetpbmImageUnsafe sz v
+                              fromNetpbmImageUnsafe m n v
     PgmPixelData16 v    -> do Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Word16)
-                              fromNetpbmImageUnsafe sz v
+                              fromNetpbmImageUnsafe m n v
     PpmPixelDataRGB8 v  -> do Refl <- eqT :: Maybe (Pixel cs e :~: Pixel RGB Word8)
-                              fromNetpbmImageUnsafe sz v
+                              fromNetpbmImageUnsafe m n v
     PpmPixelDataRGB16 v -> do Refl <- eqT :: Maybe (Pixel cs e :~: Pixel RGB Word16)
-                              fromNetpbmImageUnsafe sz v
+                              fromNetpbmImageUnsafe m n v
 
 
 fromNetpbmImageAuto
   :: forall cs e r . (Mutable r Ix2 (Pixel cs e), ColorSpace cs e, V.Storable (Pixel cs e)) =>
      Netpbm.PPM -> Maybe (Image r cs e)
 fromNetpbmImageAuto Netpbm.PPM {..} = do
-  let sz = (ppmHeight ppmHeader, ppmWidth ppmHeader)
+  let m = ppmHeight ppmHeader
+      n = ppmWidth ppmHeader
   case ppmData of
     PbmPixelData v ->
-      (fromNetpbmImageUnsafe sz v :: Maybe (Image S X Bit)) >>= (toAnyCS . M.map fromPixelBinary)
+      (fromNetpbmImageUnsafe m n v :: Maybe (Image S X Bit)) >>= (toAnyCS . M.map fromPixelBinary)
     PgmPixelData8 v ->
-      (fromNetpbmImageUnsafe sz v :: Maybe (Image S Y Word8)) >>= toAnyCS
+      (fromNetpbmImageUnsafe m n v :: Maybe (Image S Y Word8)) >>= toAnyCS
     PgmPixelData16 v ->
-      (fromNetpbmImageUnsafe sz v :: Maybe (Image S Y Word16)) >>= toAnyCS
+      (fromNetpbmImageUnsafe m n v :: Maybe (Image S Y Word16)) >>= toAnyCS
     PpmPixelDataRGB8 v ->
-      (fromNetpbmImageUnsafe sz v :: Maybe (Image S RGB Word8)) >>= toAnyCS
+      (fromNetpbmImageUnsafe m n v :: Maybe (Image S RGB Word8)) >>= toAnyCS
     PpmPixelDataRGB16 v ->
-      (fromNetpbmImageUnsafe sz v :: Maybe (Image S RGB Word16)) >>= toAnyCS
+      (fromNetpbmImageUnsafe m n v :: Maybe (Image S RGB Word16)) >>= toAnyCS
 

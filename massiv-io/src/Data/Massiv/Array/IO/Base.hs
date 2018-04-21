@@ -107,6 +107,8 @@ instance FileFormat f => FileFormat (Auto f) where
   type WriteOptions (Auto f) = WriteOptions f
 
   ext (Auto f) = ext f
+  exts (Auto f) = exts f
+
 
 -- | File formats that can be read into an Array.
 class Readable f arr where
