@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE ApplicativeDo         #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE ApplicativeDo   #-}
 module Bench.Massiv.Array (
   module A
   , tupleToIx2
@@ -27,13 +27,14 @@ module Bench.Massiv.Array (
   , average3x3FilterUnsafe
   ) where
 
-import           Bench.Common             (heavyFunc, lightFunc)
+import           Bench.Common                     (heavyFunc, lightFunc)
 import           Control.DeepSeq
-import           Data.Default             (Default)
-import           Data.Massiv.Array        as A
-import           Data.Massiv.Array.Unsafe as A
-import           Prelude                  hiding (mapM)
-import Data.Maybe
+import           Data.Default                     (Default)
+import           Data.Massiv.Array                as A
+import           Data.Massiv.Array.Stencil.Unsafe as A
+import           Data.Massiv.Array.Unsafe         as A
+import           Data.Maybe
+import           Prelude                          hiding (mapM)
 
 
 

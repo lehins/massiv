@@ -15,7 +15,7 @@
 -- Portability : non-portable
 --
 module Graphics.ColorSpace.Binary (
-  Bit(..), on, off, isOn, isOff, fromBool, zero, one, bit2bool, bool2bit, toNum, fromNum
+  Bit, on, off, isOn, isOff, fromBool, zero, one, bit2bool, bool2bit, toNum, fromNum
   ) where
 
 import           Control.Applicative

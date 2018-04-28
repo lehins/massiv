@@ -1,3 +1,7 @@
+# 0.1.4
+
+* Fixed wrongful export of `Bit` constructor.
+
 # 0.1.3
 
 * Fixed #22 - Invalid guard against image size
