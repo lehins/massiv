@@ -21,6 +21,8 @@ library
                      , Data.Massiv.Array.Manifest.Vector
                      , Data.Massiv.Array.Mutable
                      , Data.Massiv.Array.Numeric
+                     , Data.Massiv.Array.Manifest.Foreign.Internal
+                     , Data.Massiv.Array.Manifest.Foreign.Int32
                      , Data.Massiv.Array.Stencil
                      , Data.Massiv.Array.Stencil.Unsafe
                      , Data.Massiv.Array.Unsafe
@@ -64,6 +66,8 @@ library
 
   default-language:    Haskell2010
   ghc-options:         -Wall
+  c-sources:           cbits/int32.c
+  cc-options:          -Wall -O3 -msse2
 
 
 test-suite tests

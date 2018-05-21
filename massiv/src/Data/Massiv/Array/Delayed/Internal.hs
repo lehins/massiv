@@ -238,7 +238,7 @@ ord f arr1 arr2 =
 
 -- | The usual map.
 liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
-liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
+liftArray f arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE liftArray #-}
 
 -- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays either have to be the
@@ -249,14 +249,16 @@ liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
 liftArray2
   :: (Source r1 ix a, Source r2 ix b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
-liftArray2 f !arr1 !arr2
-  | sz1 == oneIndex = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
-  | sz2 == oneIndex = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
-  | sz1 == sz2 =
-    DArray (getComp arr1) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = errorSizeMismatch "liftArray2" (size arr1) (size arr2)
+liftArray2 f arr1 arr2
+  | sz1 == sz2 = DArray (getComp arr1) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  -- | sz1 == pureIndex 1 = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
+  | totalElem (size arr1) == 1 =
+      DArray (getComp arr2) (size arr2) (\ !ix -> f (unsafeLinearIndex arr1 0) (unsafeIndex arr2 ix))
+  -- | sz2 == oneIndex = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
+  | otherwise =
+    if totalElem (size arr1) == 1 then DArray (getComp arr2) (size arr2) (\ !ix -> f (unsafeLinearIndex arr1 0) (unsafeIndex arr2 ix)) else  errorSizeMismatch "liftArray2" (size arr1) (size arr2)
   where
-    oneIndex = pureIndex 1
+    --oneIndex = pureIndex 1
     sz1 = size arr1
     sz2 = size arr2
 {-# INLINE liftArray2 #-}

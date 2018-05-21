@@ -6,41 +6,31 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
--- Module      : Data.Massiv.Array.Manifest.Foreign.Word8
+-- Module      : Data.Massiv.Array.Manifest.Foreign.Int32
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Manifest.Foreign.Word8 where
+module Data.Massiv.Array.Manifest.Foreign.Int32 where
 
-import           Control.DeepSeq                             (NFData (..),
-                                                              deepseq)
-import           Control.Monad.Primitive
-import           Control.Monad.ST                    (runST)
-import           Data.Int
-import           Data.Massiv.Array.Delayed.Internal          (eq, ord)
-import           Data.Massiv.Array.Manifest.Foreign.Internal
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Manifest.List             as A
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Unsafe                    (unsafeGenerateArray,
-                                                              unsafeGenerateArrayP)
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import qualified Data.Vector.Storable                        as VS
-import qualified Data.Vector.Storable.Mutable                as MVS
-import           Foreign.ForeignPtr
-import           Foreign.Storable
-import           GHC.Exts                                    as GHC (IsList (..))
-import           Prelude                                     hiding (mapM)
-import           System.IO.Unsafe
-import Data.Massiv.Array.Ops.Map (forM_)
+import Control.Monad
+import Data.Int
+import Data.Massiv.Array.Manifest.Foreign.Internal
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Unsafe (unsafeGenerateArray, unsafeGenerateArrayP)
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Scheduler
 import Data.Monoid
+import Foreign.Ptr
+import Prelude hiding (mapM)
+import System.IO.Unsafe
+import Control.DeepSeq
 
--- instance (Index ix, NFData e) => NFData (Array S ix e) where
---   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
+instance (Index ix, NFData e) => NFData (Array F ix e) where
+  rnf (FArray c v) = c `deepseq` v `seq` ()
 
 -- instance (VS.Storable e, Eq e, Index ix) => Eq (Array S ix e) where
 --   (==) = eq (==)
@@ -106,7 +96,7 @@ instance (Index ix, Mutable F ix e) => Manifest F ix e where
 
 
 instance Index ix => Mutable F ix Int32 where
-  data MArray s F ix Int32 = MFArrayInt32 !ix !(MFArray Int32)
+  data MArray s F ix Int32 = MFArrayInt32 !ix !(ArrayPtr Int32)
 
   msize (MFArrayInt32 sz _) = sz
   {-# INLINE msize #-}
@@ -187,12 +177,125 @@ instance {-# OVERLAPPABLE #-}  (Mutable F ix e, Num e) => Num (Array F ix e) whe
     unsafeFreeze (ca <> cb) fc
 
 
-instance {-# OVERLAPPING #-} Index ix => Num (Array F ix Int32) where
-  (+) (FArray ca fa) (FArray cb fb) = unsafePerformIO $ do
+-- instance {-# OVERLAPPING #-} Index ix => Num (Array F ix Int32) where
+--   (+) (FArray ca fa) (FArray cb fb) = unsafePerformIO $ do
+
+
+-- plusF ::
+--      (Mutable F ix e, Mutable F ix e, Num e)
+--   => Array F ix e
+--   -> Array F ix e
+--   -> Array F ix e
+-- plusF (FArray ca fa) (FArray cb fb) =
+--   unsafePerformIO $ do
+--     let sz = msize fa
+--     fc <- unsafeNew sz
+--     loopM_ 0 (< totalElem sz) (+ 1) $ \i -> do
+--       a <- unsafeLinearRead fa i
+--       b <- unsafeLinearRead fb i
+--       unsafeLinearWrite fc i (a + b)
+--     unsafeFreeze (ca <> cb) fc
+-- {-# INLINE plusF #-}
+
+plusF :: Index ix => Array F ix Int32 -> Array F ix Int32 -> Array F ix Int32
+plusF (FArray ca fa) (FArray cb fb) =
+  unsafePerformIO $ do
     let sz = msize fa
     fc <- unsafeNew sz
-    loopM_ 0 (< totalElem sz) (+1) $ \i -> do
+    loopM_ 0 (< totalElem sz) (+ 1) $ \i -> do
       a <- unsafeLinearRead fa i
       b <- unsafeLinearRead fb i
       unsafeLinearWrite fc i (a + b)
     unsafeFreeze (ca <> cb) fc
+{-# INLINE plusF #-}
+
+
+plusSimpleInt32 :: Index ix => Array F ix Int32 -> Array F ix Int32 -> Array F ix Int32
+plusSimpleInt32 (FArray ca (MFArrayInt32 sz ma)) (FArray cb (MFArrayInt32 sz' mb)) = do
+  unsafePerformIO $ do
+    guard (sz == sz')
+    let n = totalElem sz
+    marr@(MFArrayInt32 _ mr) <- unsafeNew sz
+    withArrayPtr mr $ \vr -> do
+      withArrayPtr ma $ \va -> do
+        withArrayPtr mb $ \vb -> do
+          add_i32_simple vr va vb n
+    unsafeFreeze (ca <> cb) marr
+{-# INLINE plusSimpleInt32 #-}
+
+
+plusInt32 :: Index ix => Array F ix Int32 -> Array F ix Int32 -> Array F ix Int32
+plusInt32 (FArray ca (MFArrayInt32 sz ma)) (FArray cb (MFArrayInt32 sz' mb)) = do
+  unsafePerformIO $ do
+    --guard (sz == sz')
+    let n = totalElem sz
+    marr@(MFArrayInt32 _ mr) <- unsafeNew sz
+    let vn = n `div` 4
+    withArrayPtr mr $ \vr -> do
+      withArrayPtr ma $ \va -> do
+        withArrayPtr mb $ \vb -> do
+          add_i32 vr va vb vn
+    -- loopM_ vn (< n) (+ 1) $ \i -> do
+    --   a <- mfUnsafeLinearRead ma i
+    --   b <- mfUnsafeLinearRead mb i
+    --   mfUnsafeLinearWrite mr i (a + b)
+    unsafeFreeze (ca <> cb) marr
+{-# INLINE plusInt32 #-}
+
+
+plusSeqInt32 :: Index ix => Array F ix Int32 -> Array F ix Int32 -> Array F ix Int32
+plusSeqInt32 (FArray ca (MFArrayInt32 sz ma)) (FArray cb (MFArrayInt32 sz' mb)) = do
+  unsafePerformIO $ do
+    guard (sz == sz')
+    marr@(MFArrayInt32 _ mr) <- unsafeNew sz
+    withArrayPtr mr $ \ !vr -> do
+      withArrayPtr ma $ \ !va -> do
+        withArrayPtr mb $ \ !vb -> do
+          add_i32_full vr va vb (totalElem sz)
+    unsafeFreeze (ca  <> cb) marr
+{-# INLINE plusSeqInt32 #-}
+
+
+
+plusParInt32 :: Index ix => Array F ix Int32 -> Array F ix Int32 -> Array F ix Int32
+plusParInt32 (FArray ca (MFArrayInt32 sz ma)) (FArray cb (MFArrayInt32 sz' mb)) = do
+  unsafePerformIO $ do
+    guard (sz == sz')
+    let n = totalElem sz
+    marr@(MFArrayInt32 _ mr) <- unsafeNew sz
+    withScheduler_ [] $ \scheduler -> do
+      let vn = n `div` 4
+          wn = numWorkers scheduler
+      withArrayPtr mr $ \vr -> do
+        withArrayPtr ma $ \va -> do
+          withArrayPtr mb $ \vb -> do
+            let perWorker = vn `div` wn
+            loopM_ 0 (< wn) (+ 1) $ \w -> do
+              scheduleWork scheduler $ do
+                let shift = w * perWorker * 4 * 4
+                add_i32 (plusPtr vr shift) (plusPtr va shift) (plusPtr vb shift) perWorker
+      scheduleWork scheduler $ do
+        loopM_ (vn * wn * 4) (< n) (+ 1) $ \i -> do
+          a <- mfUnsafeLinearRead ma i
+          b <- mfUnsafeLinearRead mb i
+          mfUnsafeLinearWrite mr i (a + b)
+    unsafeFreeze (ca <> cb) marr
+{-# INLINE plusParInt32 #-}
+
+
+foreign import ccall unsafe "add_i32" add_i32 ::
+               Ptr Int32 -> Ptr Int32 -> Ptr Int32 -> Int -> IO ()
+
+foreign import ccall unsafe "add_i32_alt" add_i32_alt ::
+               Ptr Int32 -> Ptr Int32 -> Ptr Int32 -> Int -> IO ()
+
+foreign import ccall unsafe "add_i32_simple" add_i32_simple ::
+               Ptr Int32 -> Ptr Int32 -> Ptr Int32 -> Int -> IO ()
+
+foreign import ccall unsafe "add_i32_full" add_i32_full ::
+               Ptr Int32 -> Ptr Int32 -> Ptr Int32 -> Int -> IO ()
+
+
+
+
+-- let a = (unsafeMakeArray Seq (12 :. 5) $ \(i :. j) -> fromIntegral (i*j)) :: Array F Ix2 Int32

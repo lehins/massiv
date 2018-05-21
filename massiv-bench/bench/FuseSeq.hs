@@ -4,6 +4,8 @@ module Main where
 
 import           Bench
 import           Bench.Massiv        as A
+import Data.Massiv.Array.Manifest.Foreign.Internal
+import Data.Massiv.Array.Manifest.Foreign.Int32
 import           Criterion.Main
 import           Data.Array.Repa     as R
 import           Data.Vector.Unboxed as VU
@@ -12,6 +14,10 @@ import           Prelude             as P
 main :: IO ()
 main = do
   let t2 = (1600, 1200) :: (Int, Int)
+      arrF = computeAs F $ A.map (round . (*10000)) $ arrDLightIx2 Seq (tupleToIx2 t2)
+      arrF' = computeAs F $ A.backpermute (tupleToIx2 t2) (\(i A.:. j) -> (1600 - i - 1) A.:. j) arrF
+      arrP = computeAs P $ A.map (round . (*10000)) $ arrDLightIx2 Seq (tupleToIx2 t2)
+      arrP' = computeAs P $ A.backpermute (tupleToIx2 t2) (\(i A.:. j) -> (1600 - i - 1) A.:. j) arrF
   defaultMain
     [ bgroup
         "map (+25)"
@@ -28,6 +34,33 @@ main = do
             (return (tupleToSh2 t2))
             (bench "Repa DIM2 U" .
              whnf (R.computeUnboxedS . R.map (+ 25) . arrDLightSh2))
+        ]
+    , bgroup
+        "plus"
+        [ env
+            (return (arrP, arrP'))
+            (bench "regular P (.+)" . whnf (computeAs P . uncurry (.+)))
+        , env
+            (return (arrP, arrP'))
+            (bench "regular P zipWith (+)" . whnf (computeAs P . uncurry (A.zipWith (+))))
+        , env
+            (return (arrP, arrP'))
+            (bench "regular P liftArray2 (+)" . whnf (computeAs P . uncurry (A.liftArray2 (+))))
+        , env
+            (return (arrF, arrF'))
+            (bench "regular F" . whnf (uncurry plusF))
+        , env
+            (return (arrF, arrF'))
+            (bench "Good F" . whnf (uncurry plusInt32))
+        , env
+            (return (arrF, arrF'))
+            (bench "Seq F" . whnf (uncurry plusSeqInt32))
+        , env
+            (return (arrF, arrF'))
+            (bench "Simple F" . whnf (uncurry plusSimpleInt32))
+        -- , env
+        --     (return (arrF, arrF'))
+        --     (bench "Par F" . whnf (uncurry plusParInt32))
         ]
     , bgroup
         "zipWith (*) . map (+25)"

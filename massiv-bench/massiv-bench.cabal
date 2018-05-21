@@ -52,9 +52,11 @@ benchmark fuse-seq
   hs-source-dirs:      bench
   main-is:             FuseSeq.hs
   ghc-options:         -threaded -O2
+                       ---rtsopts -with-rtsopts=-N7
   build-depends:       base
                      , criterion
                      , deepseq
+                     , massiv
                      , massiv-bench
                      , vector
                      , repa
