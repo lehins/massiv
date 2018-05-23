@@ -14,7 +14,7 @@ a rather stable point, so no significant API changes should happen.
 
 | Language | `massiv` | `massiv-io` | Travis | AppVeyor
 |:---:|:---:|:---:|:---:|:---:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv) | [![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)](https://hackage.haskell.org/package/massiv-io) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv.svg)](https://ci.appveyor.com/project/lehins/massiv)
+| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv) | [![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)](https://hackage.haskell.org/package/massiv-io) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv/master.svg)](https://ci.appveyor.com/project/lehins/massiv)
 
 ## Introduction
 
