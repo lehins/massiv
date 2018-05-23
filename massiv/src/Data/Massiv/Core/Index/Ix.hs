@@ -3,7 +3,6 @@
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE PatternSynonyms        #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
@@ -12,9 +11,9 @@
 {-# LANGUAGE UndecidableInstances   #-}
 
 #if __GLASGOW_HASKELL__ >= 800
-
 {-# LANGUAGE TypeFamilyDependencies #-}
-
+#else
+{-# LANGUAGE GADTs                  #-}
 #endif
 -- |
 -- Module      : Data.Massiv.Core.Index.Ix
@@ -27,13 +26,13 @@
 module Data.Massiv.Core.Index.Ix where
 
 import           Control.DeepSeq
-import           Control.Monad               (liftM)
+import           Control.Monad                (liftM)
 import           Data.Massiv.Core.Index.Class
-import           Data.Monoid                 ((<>))
+import           Data.Monoid                  ((<>))
 import           Data.Proxy
-import qualified Data.Vector.Generic         as V
-import qualified Data.Vector.Generic.Mutable as VM
-import qualified Data.Vector.Unboxed         as VU
+import qualified Data.Vector.Generic          as V
+import qualified Data.Vector.Generic.Mutable  as VM
+import qualified Data.Vector.Unboxed          as VU
 import           GHC.TypeLits
 
 
@@ -80,8 +79,7 @@ pattern Ix5 i j k l m = i :> j :> k :> l :. m
 #if __GLASGOW_HASKELL__ >= 800
 
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
-data IxN (n :: Nat) where
-  (:>) :: {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
+data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
 
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 type family Ix (n :: Nat) = r | r -> n where
