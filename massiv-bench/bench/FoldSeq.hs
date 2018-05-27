@@ -121,18 +121,21 @@ main = do
         ]
     , bgroup
         "mapM"
-        [ env
-            (return (computeAs P (arrDLightIx2 Seq (tupleToIx2 t2))))
-            (bench "Array Ix2 P Seq" . whnf (A.mapM A.P Just))
-        , env
-            (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-            (bench "Array Ix2 U Seq" . whnf (A.mapM A.U Just))
-        , env
-            (return (computeAs S (arrDLightIx2 Seq (tupleToIx2 t2))))
-            (bench "Array Ix2 S Seq" . whnf (A.mapM A.S Just))
-        , env
-            (return (computeAs N (arrDLightIx2 Seq (tupleToIx2 t2))))
-            (bench "Array Ix2 N Seq" . whnf (A.mapM A.N Just))
+        [ bgroup
+            "Massiv"
+            [ env
+                (return (computeAs P (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 P Seq" . whnf (A.mapM A.P Just))
+            , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 U Seq" . whnf (A.mapM A.U Just))
+            , env
+                (return (computeAs S (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 S Seq" . whnf (A.mapM A.S Just))
+            , env
+                (return (computeAs N (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Array Ix2 N Seq" . whnf (A.mapM A.N Just))
+            ]
         , env (return (vecLight2 t2)) (bench "Vector U" . whnf (VU.mapM Just))
         ]
     ]

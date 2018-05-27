@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards           #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 -- |
--- Module      : Data.Array.Massiv.Scheduler
+-- Module      : Data.Massiv.Core.Scheduler
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
