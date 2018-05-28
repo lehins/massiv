@@ -116,11 +116,24 @@ benchmark maximum
                      , vector
   default-language:    Haskell2010
 
-benchmark mw-seq
+benchmark mw
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
-  main-is:             MonadicWarsawSeq.hs
+  main-is:             MonadicWarsaw.hs
   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+                     , vector
+                     , repa
+  default-language:    Haskell2010
+
+benchmark mw-llvm
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             MonadicWarsaw.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7 -Odph -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3
   build-depends:       base
                      , criterion
                      , massiv

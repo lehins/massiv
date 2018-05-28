@@ -42,9 +42,7 @@ main = do
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" .
-                 whnf
-                   (runIdentity .
-                    computeUnboxedP . mapStencil2 BoundClamp averageStencil))
+                 whnf (runIdentity . computeUnboxedP . mapStencil2 BoundClamp averageStencil))
             ]
         ]
     , bgroup
@@ -53,8 +51,7 @@ main = do
             "Horizontal"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelX Edge)))
+                (bench "Array Ix2 U" . whnf (computeAs U . A.mapStencil (sobelX Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . mapSobelRX))
@@ -63,8 +60,7 @@ main = do
             "Vertical"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelY Edge)))
+                (bench "Array Ix2 U" . whnf (computeAs U . A.mapStencil (sobelY Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . mapSobelRY))
@@ -73,8 +69,7 @@ main = do
             "Operator Fused Seq"
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
-                (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
+                (bench "Array Ix2 U" . whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . sobelOperatorR))
@@ -83,12 +78,10 @@ main = do
             "Operator Fused Par"
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
-                (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
+                (bench "Array Ix2 U" . whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
-                (bench "Repa DIM2 U" .
-                 whnf (runIdentity . computeUnboxedP . sobelOperatorR))
+                (bench "Repa DIM2 U" . whnf (runIdentity . computeUnboxedP . sobelOperatorR))
             ]
         , bgroup
             "Operator Unfused"
