@@ -1,7 +1,10 @@
 resolver: nightly-2018-05-27
+#resolver: nightly-2018-06-01 # ghc-8.4.3
 packages:
 - '.'
 - '../massiv/'
 extra-deps:
 - repa-algorithms-3.4.1.1
+# - accelerate-1.1.1.0
+# - accelerate-llvm-1.1.0.0
 allow-newer: true
