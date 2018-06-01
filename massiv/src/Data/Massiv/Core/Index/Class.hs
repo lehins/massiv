@@ -28,7 +28,7 @@ newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
 -- `Index` for it, and is included for completeness.
 data Ix0 = Ix0 deriving (Eq, Ord, Show)
 
--- | 1-dimensional index. Synonym for `Int` and `Data.Massiv.Core.Index.Ix.Ix1`.
+-- | 1-dimensional index. Synonym for `Int` and `Data.Massiv.Core.Index.Ix1`.
 type Ix1T = Int
 
 -- | 2-dimensional index as tuple of `Int`s.
