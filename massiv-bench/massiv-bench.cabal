@@ -146,7 +146,7 @@ benchmark mw-accelerate
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Accelerate.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N -fllvm
+  ghc-options:         -threaded -O2 -rtsopts -fllvm -optlo-O3
   build-depends:       base
                      , accelerate
                      , accelerate-llvm-native
