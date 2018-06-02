@@ -14,7 +14,7 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Delayed.Windowed
-  ( DW
+  ( DW(..)
   , Array(..)
   , makeWindowedArray
   ) where

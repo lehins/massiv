@@ -13,7 +13,7 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Delayed.Interleaved
-  ( DI
+  ( DI(..)
   , toInterleaved
   ) where
 
