@@ -292,7 +292,7 @@ convert arr =
 {-# INLINE convert #-}
 
 -- | Same as `convert`, but let's you supply resulting representation type as an argument.
-convertAs :: (Mutable r' ix e, Mutable r ix e, Typeable ix, Typeable e)
+convertAs :: (Manifest r' ix e, Mutable r ix e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
 {-# INLINE convertAs #-}
@@ -303,7 +303,7 @@ convertAs _ = convert
 --
 -- @since 0.1.1
 --
-convertProxy :: (Mutable r' ix e, Mutable r ix e, Typeable ix, Typeable e)
+convertProxy :: (Manifest r' ix e, Mutable r ix e)
              => proxy r -> Array r' ix e -> Array r ix e
 convertProxy _ = convert
 {-# INLINE convertProxy #-}
