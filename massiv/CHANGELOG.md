@@ -1,5 +1,6 @@
 # 0.1.7
 
+* Added type constructors for `DW` and `DI`
 * `Show` instance for `DW` arrays.
 * Create new `Data.Massiv.Array.Stencil.Unsafe` module and move `forStencilUnsafe` into it.
 

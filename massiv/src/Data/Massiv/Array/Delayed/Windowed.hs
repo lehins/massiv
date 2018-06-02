@@ -31,7 +31,7 @@ import           Data.Proxy                             (Proxy (..))
 import           Data.Typeable                          (showsTypeRep, typeRep)
 
 -- | Delayed Windowed Array representation.
-data DW
+data DW = DW
 
 type instance EltRepr DW ix = D
 

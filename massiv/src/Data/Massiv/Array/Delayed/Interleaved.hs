@@ -24,7 +24,7 @@ import           Data.Massiv.Core.Scheduler
 
 -- | Delayed array that will be loaded in an interleaved fasion during parallel
 -- computation.
-data DI
+data DI = DI
 
 type instance EltRepr DI ix = DI
 
