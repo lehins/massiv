@@ -12,9 +12,9 @@
 module Data.Massiv.Array.Delayed
   ( D(..)
   , delay
-  , DI
+  , DI(..)
   , toInterleaved
-  , DW
+  , DW(..)
   , makeWindowedArray
   ) where
 
