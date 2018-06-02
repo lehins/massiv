@@ -3,13 +3,14 @@
 {-# LANGUAGE TypeFamilies     #-}
 module Main where
 
-import           Control.Monad
-import           Data.Massiv.Array        as A
-import           Data.Massiv.Array.Unsafe as A
-import           Data.Word
-import           Graphics.UI.GLUT         as G
-import           System.Exit              (ExitCode (..), exitWith)
-import           Text.Read                (readMaybe)
+import Control.Monad
+import Data.Massiv.Array as A
+import Data.Massiv.Array.Unsafe as A
+import Data.Word
+import Examples.PixelGrid
+import Graphics.UI.GLUT as G hiding (get)
+import System.Exit (ExitCode (..), exitWith)
+import Text.Read (readMaybe)
 
 lifeRules :: Word8 -> Word8 -> Word8
 lifeRules 0 3 = 1
@@ -53,17 +54,6 @@ inf2 = [ [1, 1, 1, 0, 1]
        , [0, 1, 1, 0, 1]
        , [1, 0, 1, 0, 1] ]
 
--- | Scale the array, negate values and create an image with a grid.
-pixelGrid :: Int -> Array S Ix2 Word8 -> Array D Ix2 Word8
-pixelGrid k8 arr = A.makeArray (getComp arr) sz' getNewElt
-  where
-    k = succ k8
-    (n :. m) = size arr
-    sz' = (1 + m * k :. 1 + n * k)
-    getNewElt (j :. i) =
-      if i `mod` k == 0 || j `mod` k == 0
-        then 128
-        else (1 - A.unsafeIndex arr ((i - 1) `div` k :. (j - 1) `div` k)) * 255
 
 sizeFromIx2 :: Ix2 -> G.Size
 sizeFromIx2 (m :. n) = Size (fromIntegral n) (fromIntegral m)
@@ -93,11 +83,25 @@ main = do
   mainLoop
 
 
+
+-- | Scale the array, negate values and create an image with a grid.
+pixelGridBinary :: Int -> Array S Ix2 Word8 -> Array D Ix2 Word8
+pixelGridBinary k8 arr = A.makeArray (getComp arr) sz' getNewElt
+  where
+    k = succ k8
+    (n :. m) = size arr
+    sz' = (1 + m * k :. 1 + n * k)
+    getNewElt (j :. i) =
+      if i `mod` k == 0 || j `mod` k == 0
+        then 128
+        else (1 - A.unsafeIndex arr ((i - 1) `div` k :. (j - 1) `div` k)) * 255
+
+
 startGameOfLife :: Ix2 -> Int -> IO ()
 startGameOfLife sz s = do
   rowAlignment Unpack $= 1
   let iLife = initLife sz inf2
-      wSz = size (pixelGrid s iLife)
+      wSz = size (pixelGridBinary s iLife)
   windowSize $= sizeFromIx2 wSz
   mArr <- new wSz
   displayCallback $= clear [ColorBuffer]
@@ -107,7 +111,7 @@ startGameOfLife sz s = do
 
 drawLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
 drawLife s mArr arr = do
-  computeInto mArr $ pixelGrid s arr
+  computeInto mArr $ pixelGridBinary s arr
   A.withPtr mArr $ \ptr ->
     drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
 

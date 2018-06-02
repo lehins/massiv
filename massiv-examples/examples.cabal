@@ -29,6 +29,7 @@ library
               , massiv-io
   exposed-modules:
                   Examples.Convolution
+                  Examples.PixelGrid
   default-language: Haskell2010
 
 executable examples
