@@ -28,8 +28,12 @@ paintThreads r sz = do
 
 main :: IO ()
 main = do
-  caps <- paintThreads (undefined :: DI) (80 :. 60)
-  displayImageUsing defaultViewer True $ pixelGrid 10 caps
+  caps <- paintThreads D (50 :. 80)
+  --displayImageUsing defaultViewer True $ pixelGrid 10 caps
+  writeImage "D.png" $ pixelGrid 10 caps
+  caps <- paintThreads DI (50 :. 80)
+  --displayImageUsing defaultViewer True $ pixelGrid 10 caps
+  writeImage "DI.png" $ pixelGrid 10 caps
   -- let arr = arrLightIx2 Par (600 :. 800)
   --     img = computeAs S $ fmap PixelY arr
   -- writeImage "files/light.png" img
