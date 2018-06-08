@@ -1,6 +1,7 @@
 # 0.1.4
 
 * Fixed wrongful export of `Bit` constructor.
+* Added export of `fromDynamicImage` and `fromAnyDynamicImage`
 
 # 0.1.3
 

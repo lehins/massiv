@@ -65,6 +65,8 @@ module Data.Massiv.Array.IO.Image.JuicyPixels
   , toJPImageCMYK8
   -- , toJPImageCMYK16
   -- ** From JuicyPixels
+  , fromDynamicImage
+  , fromAnyDynamicImage
   ) where
 
 import           Prelude                           as P
