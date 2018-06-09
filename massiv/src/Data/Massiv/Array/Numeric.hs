@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -59,11 +60,14 @@ module Data.Massiv.Array.Numeric
   , floorA
   -- * RealFloat
   , atan2A
+  , inverse
   ) where
 
+import Data.Massiv.Array.Manifest.List as A
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Manifest.Internal (compute)
+import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Ops.Fold         as A
+import           Data.Massiv.Array.Manifest.Internal (compute)
 import           Data.Massiv.Array.Ops.Map          as A
 import           Data.Massiv.Array.Ops.Slice        as A
 import           Data.Massiv.Array.Ops.Transform    as A
@@ -71,6 +75,24 @@ import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Monoid                        ((<>))
 import           Prelude                            as P
+
+
+inverse
+  :: forall e r.
+     ( Mutable r Ix2 e
+     , Fractional e
+     , Num e
+     ) => Array r Ix2 e -> Maybe (Array D Ix2 e)
+  -- Array r ix e -> Maybe (Array r ix e)
+inverse l = do
+  a <- l !? (0 :. 0)
+  b <- l !? (0 :. 1)
+  c <- l !? (1 :. 0)
+  d <- l !? (1 :. 1)
+  let det =  1 / (a*d - b*c)
+  pure $ (A.map (det *)) (A.fromLists' Seq [[d, -b], [-c, a]] :: Array B Ix2 e)
+
+
 
 
 infixr 8  .^, .^^
