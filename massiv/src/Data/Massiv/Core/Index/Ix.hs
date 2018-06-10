@@ -91,7 +91,7 @@ type family Ix (n :: Nat) = r | r -> n where
 #else
 
 data IxN (n :: Nat) where
-  (:>) :: Rank (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
+  (:>) :: Dimensions (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
 
 type family Ix (n :: Nat) where
   Ix 0 = Ix0
@@ -150,7 +150,7 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
 #if __GLASGOW_HASKELL__ < 800
-          Rank (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
+          Dimensions (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
 #endif
           IxN (n - 1) ~ Ix (n - 1)
           ) => Num (IxN n) where
@@ -187,7 +187,7 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
 #if __GLASGOW_HASKELL__ < 800
-          Rank (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
+          Dimensions (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
 #endif
           IxN (n - 1) ~ Ix (n - 1)
           ) => Bounded (IxN n) where
@@ -258,9 +258,9 @@ fromIx5 (i :> j :> k :> l :. m) = (i, j, k, l, m)
 
 
 instance {-# OVERLAPPING #-} Index Ix2 where
-  type Rank Ix2 = 2
-  rank _ = 2
-  {-# INLINE [1] rank #-}
+  type Dimensions Ix2 = 2
+  dimensions _ = 2
+  {-# INLINE [1] dimensions #-}
   totalElem (m :. n) = m * n
   {-# INLINE [1] totalElem #-}
   isSafeIndex (m :. n) (i :. j) = 0 <= i && 0 <= j && i < m && j < n
@@ -302,9 +302,9 @@ instance {-# OVERLAPPING #-} Index Ix2 where
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
-  type Rank Ix3 = 3
-  rank _ = 3
-  {-# INLINE [1] rank #-}
+  type Dimensions Ix3 = 3
+  dimensions _ = 3
+  {-# INLINE [1] dimensions #-}
   totalElem (m :> n :. o) = m * n * o
   {-# INLINE [1] totalElem #-}
   isSafeIndex (m :> n :. o) (i :> j :. k) =
@@ -351,13 +351,13 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
 #if __GLASGOW_HASKELL__ < 800
-          Rank (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
+          Dimensions (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
 #endif
           IxN (n - 1) ~ Ix (n - 1)
           ) => Index (IxN n) where
-  type Rank (IxN n) = n
-  rank _ = fromInteger $ natVal (Proxy :: Proxy n)
-  {-# INLINE [1] rank #-}
+  type Dimensions (IxN n) = n
+  dimensions _ = fromInteger $ natVal (Proxy :: Proxy n)
+  {-# INLINE [1] dimensions #-}
   totalElem (i :> ix) = i * totalElem ix
   {-# INLINE [1] totalElem #-}
   consDim = (:>)
@@ -369,13 +369,13 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   unsnocDim (i :> ix) = case unsnocDim ix of
                           (jx, j) -> (i :> jx, j)
   {-# INLINE [1] unsnocDim #-}
-  getIndex ix@(j :> jx) k | k == rank ix = Just j
+  getIndex ix@(j :> jx) k | k == dimensions ix = Just j
                           | otherwise = getIndex jx k
   {-# INLINE [1] getIndex #-}
-  setIndex ix@(j :> jx) k o | k == rank ix = Just (o :> jx)
+  setIndex ix@(j :> jx) k o | k == dimensions ix = Just (o :> jx)
                             | otherwise = (j :>) <$> setIndex jx k o
   {-# INLINE [1] setIndex #-}
-  dropDim ix@(j :> jx) k | k == rank ix = Just jx
+  dropDim ix@(j :> jx) k | k == dimensions ix = Just jx
                            | otherwise = (j :>) <$> dropDim jx k
   {-# INLINE [1] dropDim #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
@@ -455,7 +455,7 @@ instance V.Vector VU.Vector Ix2 where
 -- | Unboxing of a `IxN`.
 instance (3 <= n,
 #if __GLASGOW_HASKELL__ < 800
-          Rank (Ix (n - 1)) ~ (n - 1),
+          Dimensions (Ix (n - 1)) ~ (n - 1),
 #endif
           VU.Unbox (Ix (n-1))) => VU.Unbox (IxN n)
 
@@ -463,7 +463,7 @@ newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (
 
 instance (3 <= n,
 #if __GLASGOW_HASKELL__ < 800
-          Rank (Ix (n - 1)) ~ (n - 1),
+          Dimensions (Ix (n - 1)) ~ (n - 1),
 #endif
           VU.Unbox (Ix (n - 1))) =>
          VM.MVector VU.MVector (IxN n) where
@@ -520,7 +520,7 @@ newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n-1)))
 
 instance (3 <= n,
 #if __GLASGOW_HASKELL__ < 800
-          Rank (Ix (n - 1)) ~ (n - 1),
+          Dimensions (Ix (n - 1)) ~ (n - 1),
 #endif
           VU.Unbox (Ix (n-1))) => V.Vector VU.Vector (IxN n) where
   basicUnsafeFreeze (MV_IxN (mvec1, mvec)) = do

@@ -60,7 +60,7 @@ instance Arbitrary e => Arbitrary (Border e) where
 instance Index ix => Arbitrary (DimIx ix) where
   arbitrary = do
     n <- arbitrary
-    return $ DimIx (1 + (Dim n `mod` (rank (undefined :: ix))))
+    return $ DimIx (1 + (Dim n `mod` (dimensions (undefined :: ix))))
 
 instance Arbitrary Ix2 where
   arbitrary = (:.) <$> arbitrary <*> arbitrary
@@ -190,8 +190,8 @@ prop_BorderRepairSafe _ border (Sz sz) ix =
 prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
 prop_UnconsGetDrop _ ix =
   Just (unconsDim ix) == do
-    i <- getIndex ix (rank ix)
-    ixL <- dropDim ix (rank ix)
+    i <- getIndex ix (dimensions ix)
+    ixL <- dropDim ix (dimensions ix)
     return (i, ixL)
 
 prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
@@ -203,7 +203,7 @@ prop_UnsnocGetDrop _ ix =
 
 prop_SetAll :: Index ix => proxy ix -> ix -> Int -> Bool
 prop_SetAll _ ix i =
-  foldM (\cix d -> setIndex cix d i) ix ([1 .. rank ix] :: [Dim]) ==
+  foldM (\cix d -> setIndex cix d i) ix ([1 .. dimensions ix] :: [Dim]) ==
   Just (pureIndex i)
 
 
