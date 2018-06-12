@@ -1,9 +1,12 @@
-# 0.1.7
+# 0.2.0
 
 * Fixed type signatures for `convertAs` and `convertProxy`
 * Added type constructors for `DW` and `DI`
 * `Show` instance for `DW` arrays.
-* Create new `Data.Massiv.Array.Stencil.Unsafe` module and move `forStencilUnsafe` into it.
+* Breaking changes:
+  * Create new `Data.Massiv.Array.Stencil.Unsafe` module and move `forStencilUnsafe` into it.
+  * Rename of rank -> dimensions #25
+  * Removal `Eq` and `Ord` instances for `Value` #19
 
 # 0.1.6
 

@@ -40,7 +40,7 @@ instance (NFData e, Index ix) => NFData (Stencil ix e a) where
 -- | This is a simple wrapper for value of an array cell. It is used in order to improve safety of
 -- `Stencil` mapping. Using various class instances, such as `Num` and `Functor` for example, make
 -- it possible to manipulate the value, without having direct access to it.
-newtype Value e = Value { unValue :: e } deriving (Show, Eq, Ord, Bounded)
+newtype Value e = Value { unValue :: e } deriving (Show, Bounded)
 
 instance Functor Value where
   fmap f (Value e) = Value (f e)
