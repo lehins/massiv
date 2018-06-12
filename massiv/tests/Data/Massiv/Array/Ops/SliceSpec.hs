@@ -40,7 +40,7 @@ specSizeN proxy = do
 
 prop_SliceRight :: (Arbitrary (Array r ix e), Slice r ix e, OuterSlice r ix e, Eq (Elt r ix e))
   => proxy (r, ix, e) -> Int -> Array r ix e -> Bool
-prop_SliceRight _ i arr = (arr !?> i) == (arr <!?> (rank (size arr), i))
+prop_SliceRight _ i arr = (arr !?> i) == (arr <!?> (dimensions (size arr), i))
 
 
 prop_SliceLeft :: (Arbitrary (Array r ix e), Slice r ix e, InnerSlice r ix e, Eq (Elt r ix e))

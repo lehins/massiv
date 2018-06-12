@@ -148,7 +148,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- | /O(1)/ - Slices the array in any available dimension. Throws an error when
 -- index is out of bounds or dimensions is invalid.
 --
--- prop> arr !> i == arr <!> (rank (size arr), i)
+-- prop> arr !> i == arr <!> (dimensions (size arr), i)
 -- prop> arr <! i == arr <!> (1,i)
 --
 (<!>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Elt r ix e
@@ -156,11 +156,11 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
   case arr <!?> (dim, i) of
     Just res -> res
     Nothing ->
-      let arrRank = rank (size arr)
-      in if dim < 1 || dim > arrRank
+      let arrDims = dimensions (size arr)
+      in if dim < 1 || dim > arrDims
            then error $
                 "(<!>): Invalid dimension: " ++
-                show dim ++ " for Array of rank: " ++ show arrRank
+                show dim ++ " for Array of dimensions: " ++ show arrDims
            else errorIx "(<!>)" (size arr) (dim, i)
 {-# INLINE (<!>) #-}
 

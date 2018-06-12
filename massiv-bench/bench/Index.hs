@@ -296,9 +296,9 @@ getIndexGroup groupName !((_, i1), (_, i2), _) =
   bgroup
     groupName
     [ bgroup
-        "(rank)"
-        [ bench "Ix" $ whnf (`getIndex` M.rank i1) i1
-        , bench "Tuple" $ whnf (`getIndex` M.rank i2) i2
+        "(dimensions)"
+        [ bench "Ix" $ whnf (`getIndex` M.dimensions i1) i1
+        , bench "Tuple" $ whnf (`getIndex` M.dimensions i2) i2
         ]
     , bgroup
         "(1)"
@@ -314,9 +314,9 @@ setIndexGroup groupName !((_, i1), (_, i2), _) =
   bgroup
     groupName
     [ bgroup
-        "(rank)"
-        [ bench "Ix" $ whnf (setIndex i1 (M.rank i1)) 8
-        , bench "Tuple" $ nf (setIndex i2 (M.rank i2)) 8
+        "(dimensions)"
+        [ bench "Ix" $ whnf (setIndex i1 (M.dimensions i1)) 8
+        , bench "Tuple" $ nf (setIndex i2 (M.dimensions i2)) 8
         ]
     , bgroup
         "(1)"
@@ -332,9 +332,9 @@ dropDimGroup groupName !((_, i1), (_, i2), _) =
   bgroup
     groupName
     [ bgroup
-        "(rank)"
-        [ bench "Ix" $ whnf (`dropDim` M.rank i1) i1
-        , bench "Tuple" $ nf (`dropDim` M.rank i2) i2
+        "(dimensions)"
+        [ bench "Ix" $ whnf (`dropDim` M.dimensions i1) i1
+        , bench "Tuple" $ nf (`dropDim` M.dimensions i2) i2
         ]
     , bgroup
         "(1)"

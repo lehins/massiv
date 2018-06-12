@@ -57,10 +57,10 @@ type instance Lower Ix5T = Ix4T
 -- functions in this class will be useful to a regular user, unless general algorithms are being
 -- implemented that do span multiple dimensions.
 class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
-  type Rank ix :: Nat
+  type Dimensions ix :: Nat
 
-  -- | Rank of an array that has this index type, i.e. what is the dimensionality.
-  rank :: ix -> Dim
+  -- | Dimensions of an array that has this index type, i.e. what is the dimensionality.
+  dimensions :: ix -> Dim
 
   -- | Total number of elements in an array of this size.
   totalElem :: ix -> Int
@@ -205,9 +205,9 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
 
 instance Index Ix1T where
-  type Rank Ix1T = 1
-  rank _ = 1
-  {-# INLINE [1] rank #-}
+  type Dimensions Ix1T = 1
+  dimensions _ = 1
+  {-# INLINE [1] dimensions #-}
   totalElem = id
   {-# INLINE [1] totalElem #-}
   isSafeIndex !k !i = 0 <= i && i < k
@@ -257,9 +257,9 @@ instance Index Ix1T where
 
 
 instance Index Ix2T where
-  type Rank Ix2T = 2
-  rank _ = 2
-  {-# INLINE [1] rank #-}
+  type Dimensions Ix2T = 2
+  dimensions _ = 2
+  {-# INLINE [1] dimensions #-}
   totalElem !(m, n) = m * n
   {-# INLINE [1] totalElem #-}
   toLinearIndex !(_, n) !(i, j) = n * i + j
@@ -293,9 +293,9 @@ instance Index Ix2T where
 
 
 instance Index Ix3T where
-  type Rank Ix3T = 3
-  rank _ = 3
-  {-# INLINE [1] rank #-}
+  type Dimensions Ix3T = 3
+  dimensions _ = 3
+  {-# INLINE [1] dimensions #-}
   totalElem !(m, n, o) = m * n * o
   {-# INLINE [1] totalElem #-}
   consDim i (j, k) = (i, j, k)
@@ -328,9 +328,9 @@ instance Index Ix3T where
 
 
 instance Index Ix4T where
-  type Rank Ix4T = 4
-  rank _ = 4
-  {-# INLINE [1] rank #-}
+  type Dimensions Ix4T = 4
+  dimensions _ = 4
+  {-# INLINE [1] dimensions #-}
   totalElem !(n1, n2, n3, n4) = n1 * n2 * n3 * n4
   {-# INLINE [1] totalElem #-}
   consDim i1 (i2, i3, i4) = (i1, i2, i3, i4)
@@ -366,9 +366,9 @@ instance Index Ix4T where
 
 
 instance Index Ix5T where
-  type Rank Ix5T = 5
-  rank _ = 5
-  {-# INLINE [1] rank #-}
+  type Dimensions Ix5T = 5
+  dimensions _ = 5
+  {-# INLINE [1] dimensions #-}
   totalElem !(n1, n2, n3, n4, n5) = n1 * n2 * n3 * n4 * n5
   {-# INLINE [1] totalElem #-}
   consDim i1 (i2, i3, i4, i5) = (i1, i2, i3, i4, i5)

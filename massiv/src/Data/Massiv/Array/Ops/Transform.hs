@@ -162,10 +162,10 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
   where
     transInner !ix =
       fromMaybe (errorImpossible "transposeInner" ix) $ do
-        n <- getIndex ix (rank ix)
-        m <- getIndex ix (rank ix - 1)
-        ix' <- setIndex ix (rank ix) m
-        setIndex ix' (rank ix - 1) n
+        n <- getIndex ix (dimensions ix)
+        m <- getIndex ix (dimensions ix - 1)
+        ix' <- setIndex ix (dimensions ix) m
+        setIndex ix' (dimensions ix - 1) n
     {-# INLINE transInner #-}
     newVal = unsafeIndex arr . transInner
     {-# INLINE newVal #-}
@@ -314,7 +314,7 @@ append' dim arr1 arr2 =
     Just arr -> arr
     Nothing ->
       error $
-      if 0 < dim && dim <= rank (size arr1)
+      if 0 < dim && dim <= dimensions (size arr1)
         then "append': Dimension mismatch: " ++ show (size arr1) ++ " and " ++ show (size arr2)
         else "append': Invalid dimension: " ++ show dim
 {-# INLINE append' #-}
@@ -345,7 +345,7 @@ splitAt' dim i arr =
     Nothing ->
       error $
       "Data.Massiv.Array.splitAt': " ++
-      if 0 < dim && dim <= rank (size arr)
+      if 0 < dim && dim <= dimensions (size arr)
         then "Index out of bounds: " ++
              show i ++ " for dimension: " ++ show dim ++ " and array with size: " ++ show (size arr)
         else "Invalid dimension: " ++ show dim ++ " for array with size: " ++ show (size arr)
