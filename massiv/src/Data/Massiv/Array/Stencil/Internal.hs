@@ -28,14 +28,13 @@ import           Data.Semigroup
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
 -- `Data.Array.makeConvolutionStencil` in order to create a stencil.
 data Stencil ix e a = Stencil
-  { stencilBorder :: Border e
-  , stencilSize   :: !ix
+  { stencilSize   :: !ix
   , stencilCenter :: !ix
   , stencilFunc   :: (ix -> Value e) -> ix -> Value a
   }
 
 instance (NFData e, Index ix) => NFData (Stencil ix e a) where
-  rnf (Stencil b sz ix f) = b `deepseq` sz `deepseq` ix `deepseq` f `seq` ()
+  rnf (Stencil sz ix f) = sz `deepseq` ix `deepseq` f `seq` ()
 
 -- | This is a simple wrapper for value of an array cell. It is used in order to improve safety of
 -- `Stencil` mapping. Using various class instances, such as `Num` and `Functor` for example, make
@@ -142,10 +141,10 @@ instance Functor (Stencil ix e) where
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance (Default e, Index ix) => Applicative (Stencil ix e) where
-  pure a = Stencil Edge (pureIndex 1) zeroIndex (const (const (Value a)))
+  pure a = Stencil (pureIndex 1) zeroIndex (const (const (Value a)))
   {-# INLINE pure #-}
-  (<*>) (Stencil _ sSz1 sC1 f1) (Stencil sB sSz2 sC2 f2) =
-    validateStencil def (Stencil sB newSz maxCenter stF)
+  (<*>) (Stencil sSz1 sC1 f1) (Stencil sSz2 sC2 f2) =
+    validateStencil def (Stencil newSz maxCenter stF)
     where
       stF gV !ix = Value ((unValue (f1 gV ix)) (unValue (f2 gV ix)))
       {-# INLINE stF #-}
@@ -232,7 +231,7 @@ safeStencilIndex DArray {..} ix
 validateStencil
   :: Index ix
   => e -> Stencil ix e a -> Stencil ix e a
-validateStencil d s@(Stencil _ sSz sCenter stencil) =
+validateStencil d s@(Stencil sSz sCenter stencil) =
   let valArr = DArray Seq sSz (const d)
   in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
 {-# INLINE validateStencil #-}

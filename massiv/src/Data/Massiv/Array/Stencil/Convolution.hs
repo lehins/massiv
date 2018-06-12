@@ -36,13 +36,12 @@ import           GHC.Exts                           (inline)
 --
 makeConvolutionStencil
   :: (Index ix, Num e)
-  => Border e
-  -> ix
+  => ix
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
-makeConvolutionStencil b !sSz !sCenter relStencil =
-  validateStencil 0 $ Stencil b sSz sCenter stencil
+makeConvolutionStencil !sSz !sCenter relStencil =
+  validateStencil 0 $ Stencil sSz sCenter stencil
   where
     stencil getVal !ix =
         ((inline relStencil $ \ !ixD !kVal !acc ->
@@ -57,10 +56,9 @@ makeConvolutionStencil b !sSz !sCenter relStencil =
 -- kernel at compile time.
 makeConvolutionStencilFromKernel
   :: (Manifest r ix e, Num e)
-  => Border e
-  -> Array r ix e
+  => Array r ix e
   -> Stencil ix e e
-makeConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
+makeConvolutionStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = (liftIndex (`div` 2) sz)
@@ -76,13 +74,12 @@ makeConvolutionStencilFromKernel b kArr = Stencil b sz sCenter stencil
 -- | Make a <https://en.wikipedia.org/wiki/Cross-correlation cross-correlation> stencil.
 makeCorrelationStencil
   :: (Index ix, Num e)
-  => Border e
-  -> ix
+  => ix
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
-makeCorrelationStencil b !sSz !sCenter relStencil =
-  validateStencil 0 $ Stencil b sSz sCenter stencil
+makeCorrelationStencil !sSz !sCenter relStencil =
+  validateStencil 0 $ Stencil sSz sCenter stencil
   where
     stencil getVal !ix =
         ((inline relStencil $ \ !ixD !kVal !acc ->
@@ -97,10 +94,9 @@ makeCorrelationStencil b !sSz !sCenter relStencil =
 -- kernel at compile time.
 makeCorrelationStencilFromKernel
   :: (Manifest r ix e, Num e)
-  => Border e
-  -> Array r ix e
+  => Array r ix e
   -> Stencil ix e e
-makeCorrelationStencilFromKernel b kArr = Stencil b sz sCenter stencil
+makeCorrelationStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = (liftIndex (`div` 2) sz)

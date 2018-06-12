@@ -27,7 +27,7 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Convolve Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
+                 whnf (computeAs U . A.mapStencil Edge average3x3FilterConv))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" .
@@ -38,7 +38,7 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Convolve Array Ix2" .
-                 whnf (computeAs U . A.mapStencil (average3x3FilterConv Edge)))
+                 whnf (computeAs U . A.mapStencil Edge average3x3FilterConv))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" .
@@ -54,7 +54,7 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelX Edge)))
+                 whnf (computeAs U . A.mapStencil Edge sobelX))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . mapSobelRX))
@@ -64,7 +64,7 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelY Edge)))
+                 whnf (computeAs U . A.mapStencil Edge sobelY))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . mapSobelRY))
@@ -74,7 +74,7 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
                 (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
+                 whnf (computeAs U . A.mapStencil Edge sobelOperator))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" . whnf (computeUnboxedS . sobelOperatorR))
@@ -84,7 +84,7 @@ main = do
             [ env
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Array Ix2 U" .
-                 whnf (computeAs U . A.mapStencil (sobelOperator Edge)))
+                 whnf (computeAs U . A.mapStencil Edge sobelOperator))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" .

@@ -89,9 +89,9 @@ arrDHeavyIx2T comp arrSz = makeArray comp arrSz (\ (i, j) -> heavyFunc i j)
 sobelKernelStencilX
   :: forall e . (Eq e, Num e, Unbox e) => Border e -> Stencil Ix2 e e
 sobelKernelStencilX b =
-  makeConvolutionStencilFromKernel b $ (fromLists' Seq [ [ 1, 0, -1 ]
-                                                       , [ 2, 0, -2 ]
-                                                       , [ 1, 0, -1 ] ] :: Array U Ix2 e)
+  makeConvolutionStencilFromKernel $ (fromLists' Seq [ [ 1, 0, -1 ]
+                                                     , [ 2, 0, -2 ]
+                                                     , [ 1, 0, -1 ] ] :: Array U Ix2 e)
 {-# INLINE sobelKernelStencilX #-}
 
 
@@ -101,8 +101,8 @@ sobelKernelStencilX b =
 --            \f -> f (f (-1 :. -1) 1 2 :. 0) 4
 -- {-# INLINE sobelX' #-}
 
-sobelX :: Num e => Border e -> Stencil Ix2 e e
-sobelX b = makeConvolutionStencil b (3 :. 3) (1 :. 1) accum where
+sobelX :: Num e => Stencil Ix2 e e
+sobelX = makeConvolutionStencil (3 :. 3) (1 :. 1) accum where
   accum f =
      f (-1 :. -1)   1  .
      f ( 0 :. -1)   2  .
@@ -114,8 +114,8 @@ sobelX b = makeConvolutionStencil b (3 :. 3) (1 :. 1) accum where
 {-# INLINE sobelX #-}
 
 
-sobelY :: Num e => Border e -> Stencil Ix2 e e
-sobelY b = makeConvolutionStencil b (3 :. 3) (1 :. 1) accum where
+sobelY :: Num e => Stencil Ix2 e e
+sobelY = makeConvolutionStencil (3 :. 3) (1 :. 1) accum where
   accum f =
      f (-1 :. -1)   1  .
      f (-1 :.  0)   2  .
@@ -128,11 +128,11 @@ sobelY b = makeConvolutionStencil b (3 :. 3) (1 :. 1) accum where
 
 
 
-sobelOperator :: (Default b, Floating b) => Border b -> Stencil Ix2 b b
-sobelOperator b = sqrt (sX + sY)
+sobelOperator :: (Default b, Floating b) => Stencil Ix2 b b
+sobelOperator = sqrt (sX + sY)
   where
-    !sX = fmap (^ (2 :: Int)) (sobelX b)
-    !sY = fmap (^ (2 :: Int)) (sobelY b)
+    !sX = fmap (^ (2 :: Int)) sobelX
+    !sY = fmap (^ (2 :: Int)) sobelY
 {-# INLINE sobelOperator #-}
 
 
@@ -141,8 +141,8 @@ sobelOperatorUnfused
   => Border b -> Array U Ix2 b -> Array U Ix2 b
 sobelOperatorUnfused b arr = computeAs U $ A.map sqrt (A.zipWith (+) sX sY)
   where
-    !sX = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelX b) arr)
-    !sY = A.map (^ (2 :: Int)) (computeAs U $ mapStencil (sobelY b) arr)
+    !sX = A.map (^ (2 :: Int)) (computeAs U $ mapStencil b sobelX arr)
+    !sY = A.map (^ (2 :: Int)) (computeAs U $ mapStencil b sobelY arr)
 {-# INLINE sobelOperatorUnfused #-}
 
 
@@ -173,17 +173,17 @@ average3x3FilterUnsafe arr = forStencilUnsafe arr (3 :. 3) (1 :. 1) $ \ get ->
 {-# INLINE average3x3FilterUnsafe #-}
 
 
-average3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
-average3x3Filter b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
+average3x3Filter :: (Default a, Fractional a) => Stencil Ix2 a a
+average3x3Filter = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
 {-# INLINE average3x3Filter #-}
 
 
-average3x3FilterConv :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
-average3x3FilterConv b = let _9th = 1/9 in
-  makeConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
+average3x3FilterConv :: (Default a, Fractional a) => Stencil Ix2 a a
+average3x3FilterConv = let _9th = 1/9 in
+  makeConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
   get (-1 :. -1) _9th . get (-1 :. 0) _9th . get (-1 :. 1) _9th .
   get ( 0 :. -1) _9th . get ( 0 :. 0) _9th . get ( 0 :. 1) _9th .
   get ( 1 :. -1) _9th . get ( 1 :. 0) _9th . get ( 1 :. 1) _9th

@@ -30,9 +30,13 @@ import           GHC.Exts                              (inline)
 
 -- | Map a constructed stencil over an array. Resulting array must be `compute`d in order to be
 -- useful.
-mapStencil :: (Source r ix e, Manifest r ix e) =>
-              Stencil ix e a -> Array r ix e -> Array DW ix a
-mapStencil (Stencil b sSz sCenter stencilF) !arr =
+mapStencil ::
+     (Source r ix e, Manifest r ix e)
+  => Border e -- ^ Border resolution technique
+  -> Stencil ix e a -- ^ Stencil to map over the array
+  -> Array r ix e -- ^ Source array
+  -> Array DW ix a
+mapStencil b (Stencil sSz sCenter stencilF) !arr =
   DWArray
     (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
     (Just sSz)
@@ -66,8 +70,7 @@ mapStencil (Stencil b sSz sCenter stencilF) !arr =
 --
 makeStencil
   :: (Index ix, Default e)
-  => Border e -- ^ Border resolution technique
-  -> ix -- ^ Size of the stencil
+  => ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
   -> ((ix -> Value e) -> Value a)
   -- ^ Stencil function that receives a "get" function as it's argument that can
@@ -77,8 +80,8 @@ makeStencil
   -- cannot go outside the boundaries of the stencil, otherwise an error will be
   -- raised during stencil creation.
   -> Stencil ix e a
-makeStencil b !sSz !sCenter relStencil =
-  validateStencil def $ Stencil b sSz sCenter stencil
+makeStencil !sSz !sCenter relStencil =
+  validateStencil def $ Stencil sSz sCenter stencil
   where
     stencil getVal !ix =
       (inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD))

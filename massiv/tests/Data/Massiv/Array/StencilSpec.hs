@@ -22,21 +22,21 @@ import           Data.Default              (Default(def))
 -- {-# INLINE sum3x3Stencil #-}
 
 
-singletonStencil :: (Num ix, Index ix) => (Int -> Int) -> Border Int -> Stencil ix Int Int
-singletonStencil f b = makeStencil b 1 0 $ \ get -> fmap f (get zeroIndex)
+singletonStencil :: (Num ix, Index ix) => (Int -> Int) -> Stencil ix Int Int
+singletonStencil f = makeStencil 1 0 $ \ get -> fmap f (get zeroIndex)
 {-# INLINE singletonStencil #-}
 
 
 prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int, Num ix) =>
                             Proxy ix -> Fun Int Int -> Border Int -> ArrP U ix Int -> Bool
 prop_MapSingletonStencil _ f b (ArrP arr) =
-  computeAs U (mapStencil (singletonStencil (apply f) b) arr) == computeAs U (A.map (apply f) arr)
+  computeAs U (mapStencil b (singletonStencil (apply f)) arr) == computeAs U (A.map (apply f) arr)
 
 -- Tests out of bounds stencil indexing
 prop_DangerousStencil ::
-     Index ix => Proxy ix -> NonZero Int -> DimIx ix -> Border Int -> SzIx ix -> Property
-prop_DangerousStencil _ (NonZero s) (DimIx r) b (SzIx (Sz sz) ix) =
-  ix' `deepseq` assertSomeException $ makeStencil b sz ix $ \get -> get ix'
+     Index ix => Proxy ix -> NonZero Int -> DimIx ix -> SzIx ix -> Property
+prop_DangerousStencil _ (NonZero s) (DimIx r) (SzIx (Sz sz) ix) =
+  ix' `deepseq` assertSomeException $ makeStencil sz ix $ \get -> (get ix' :: Value Int)
   where
     ix' =
       liftIndex (* signum s) $
@@ -73,12 +73,12 @@ stencilSpec = do
 
 
 stencilDirection :: (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Array r Ix2 a -> Array U Ix2 a
-stencilDirection ix = computeAs U . mapStencil (makeStencil (Fill def) (3 :. 3) (1 :. 1) $ \f -> f ix)
+stencilDirection ix = computeAs U . mapStencil (Fill def) (makeStencil (3 :. 3) (1 :. 1) $ \f -> f ix)
 
 
 stencilCorners ::
      (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Ix2 -> Array r Ix2 a -> Array U Ix2 a
-stencilCorners ixC ix = computeAs U . mapStencil (makeStencil (Fill def) (3 :. 3) ixC $ \f -> f ix)
+stencilCorners ixC ix = computeAs U . mapStencil (Fill def) (makeStencil (3 :. 3) ixC $ \f -> f ix)
 
 spec :: Spec
 spec = do
