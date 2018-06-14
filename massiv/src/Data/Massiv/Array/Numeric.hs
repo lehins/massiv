@@ -61,8 +61,13 @@ module Data.Massiv.Array.Numeric
   -- * RealFloat
   , atan2A
   , inverse
+  , det
+  , subAt
   ) where
 
+import Control.Applicative
+import Control.Monad
+import Data.Function
 import Data.Massiv.Array.Manifest.List as A
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Manifest
@@ -76,24 +81,94 @@ import           Data.Massiv.Core.Common
 import           Data.Monoid                        ((<>))
 import           Prelude                            as P
 
+type Matrix r e = Array r Ix2 e
 
 inverse
   :: forall e r.
      ( Mutable r Ix2 e
      , Fractional e
      , Num e
-     ) => Array r Ix2 e -> Maybe (Array D Ix2 e)
-  -- Array r ix e -> Maybe (Array r ix e)
-inverse l = do
-  a <- l !? (0 :. 0)
-  b <- l !? (0 :. 1)
-  c <- l !? (1 :. 0)
-  d <- l !? (1 :. 1)
-  let det =  1 / (a*d - b*c)
-  pure $ (A.map (det *)) (A.fromLists' Seq [[d, -b], [-c, a]] :: Array B Ix2 e)
+     ) => Matrix r e -> Maybe (Matrix r e)
+inverse arr
+  | (rs :. cs) <- size arr
+  , rs /= cs = Nothing
+  | 1 :. 1 <- size arr = do
+    let dt = 1 / (arr ! (0 :. 0))
+    pure $ fromLists' Seq [[dt]]
+  | size arr == 2 :. 2 =
+    let
+        a = arr ! (0 :. 0)
+        b = arr ! (0 :. 1)
+        c = arr ! (1 :. 0)
+        d = arr ! (1 :. 1)
+        dt = 1 / (a*d - b*c)
+        ls = fmap (fmap (/dt)) [[d, -b], [-c, a]]
+    in pure $ fromLists' Seq ls
+  | otherwise = Just $ compute $ imap ( \(j :. i) e ->
+      let scale = if odd $ j + i then 1 else -1
+      in e
+
+      ) arr
+
+  {-
+      generateM (size arr) (\(i :. j) -> do
+        let v = arr ! (j :. i)
+        undefined
+  -}
+        -- v' <- det (subAt
+
+
+-- matrixOfCoFactors
+  -- :: Matrix r e -> Maybe (Matrix r e)
+-- matrixOfCoFactors =
 
 
 
+det :: (Manifest r Ix2 e, Fractional e, Mutable r Ix2 e) => Matrix r e -> Maybe e
+det arr
+  | rs /= cs = Nothing
+  | rs :. cs == 1 :. 1 = Just $ arr ! (0 :. 0)
+  | rs :. cs == 2 :. 2 =
+    let
+        a = arr ! (0 :. 0)
+        b = arr ! (0 :. 1)
+        c = arr ! (1 :. 0)
+        d = arr ! (1 :. 1)
+    in pure $ (a*d - b*c)
+  | otherwise =
+      fix
+        (\f j acc ->
+          case arr !? (0 :. j) of
+            Nothing -> acc
+            Just e -> do
+              let op = liftA2 $ if even j then (+) else (-)
+              let term = (e *) <$>  minorAt (0 :. j) arr -- det (subAt (0 :. j) arr)
+              f (j+1) $ acc `op` term
+        )
+        0  -- start index
+        (Just 0) -- determinant
+  where
+    rs :. cs = size arr
+
+minorAt :: (Manifest r Ix2 e, Fractional e, Mutable r Ix2 e) => Ix2 -> Matrix r e -> Maybe e
+minorAt ix arr
+    | rs /= cs = Nothing
+    | otherwise =det $ subAt ix arr
+  where
+    rs :. cs = size arr
+
+-- | Given index (i, j) computes the submatrix formed by removing row i and
+-- column j.
+subAt :: Mutable r Ix2 e => Ix2 -> Matrix r e -> Matrix r e
+subAt (dr :. dc) arr = compute $ backpermute (size arr - 1 ) f arr
+  where
+    f (row :. col) = (skipOne dr row :. skipOne dc col)
+    skipOne xDropped x
+      | x < xDropped = x
+      | otherwise = x + 1
+
+-- submatrix :: Ix2 -> Matrix r e -> Matrix r e
+-- submatrix = undefined
 
 infixr 8  .^, .^^
 infixl 7  .*, ./, `quotA`, `remA`, `divA`, `modA`
