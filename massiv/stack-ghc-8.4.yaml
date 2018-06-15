@@ -3,5 +3,6 @@ packages:
 - '.'
 extra-deps:
 - safe-exceptions-0.1.7.0
+- validity-0.6.0.0
 flags: {}
 extra-package-dbs: []

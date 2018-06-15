@@ -4,6 +4,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Interleaved
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -20,15 +22,21 @@ module Data.Massiv.Array.Delayed.Interleaved
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
+import           Data.Validity
+import           GHC.Generics (Generic)
 
 
 -- | Delayed array that will be loaded in an interleaved fasion during parallel
 -- computation.
-data DI = DI
+data DI = DI deriving (Generic)
+
+instance Validity DI
 
 type instance EltRepr DI ix = DI
 
-newtype instance Array DI ix e = DIArray { idArray :: (Array D ix e) }
+newtype instance Array DI ix e = DIArray { idArray :: (Array D ix e) } deriving (Generic)
+
+instance (Index ix, Validity ix, Validity e) => Validity (Array DI ix e)
 
 instance Index ix => Construct DI ix e where
   getComp = dComp . idArray

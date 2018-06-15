@@ -33,6 +33,7 @@ import           Control.DeepSeq
 import           Data.Massiv.Core.Index.Class
 import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Iterator
+import           Data.Validity
 
 
 -- | Approach to be used near the borders during various transformations.
@@ -76,6 +77,13 @@ data Border e =
               -- @
               --
   deriving (Eq, Show)
+
+instance Validity e => Validity (Border e) where
+    validate (Fill e) = delve "Fill" e
+    validate Wrap = valid
+    validate Edge = valid
+    validate Reflect = valid
+    validate Continue = valid
 
 instance NFData e => NFData (Border e) where
   rnf b = case b of

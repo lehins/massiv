@@ -18,6 +18,7 @@ import           Control.DeepSeq (NFData (..), deepseq)
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup
 #endif
+import           Data.Validity
 
 
 -- | Computation type to use.
@@ -34,6 +35,10 @@ data Comp
   -- where @x@ is the number of capabilities. Ommiting @x@ in above flags
   -- defaults to number available cores.
   deriving (Show, Eq)
+
+instance Validity Comp where
+    validate Seq = valid
+    validate (ParOn x) = delve "ParOn" x
 
 -- | Parallel computation using all available cores.
 pattern Par :: Comp

@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -23,6 +24,8 @@ import           Data.Massiv.Core.Common
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup
 #endif
+import           Data.Validity
+import           GHC.Generics (Generic)
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
@@ -33,13 +36,22 @@ data Stencil ix e a = Stencil
   , stencilFunc   :: (ix -> Value e) -> ix -> Value a
   }
 
+instance (Validity ix, Index ix) => Validity (Stencil ix e a) where
+    validate Stencil {..} = mconcat
+        [ delve "size" stencilSize
+        , delve "center" stencilCenter
+        , declare "center < size" $ stencilCenter < stencilSize
+        ]
+
 instance (NFData e, Index ix) => NFData (Stencil ix e a) where
   rnf (Stencil sz ix f) = sz `deepseq` ix `deepseq` f `seq` ()
 
 -- | This is a simple wrapper for value of an array cell. It is used in order to improve safety of
 -- `Stencil` mapping. Using various class instances, such as `Num` and `Functor` for example, make
 -- it possible to manipulate the value, without having direct access to it.
-newtype Value e = Value { unValue :: e } deriving (Show, Bounded)
+newtype Value e = Value { unValue :: e } deriving (Show, Bounded, Generic)
+
+instance Validity e => Validity (Value e)
 
 instance Functor Value where
   fmap f (Value e) = Value (f e)

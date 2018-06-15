@@ -30,6 +30,7 @@ import           Control.Monad                (liftM)
 import           Data.Massiv.Core.Index.Class
 import           Data.Monoid                  ((<>))
 import           Data.Proxy
+import           Data.Validity
 import qualified Data.Vector.Generic          as V
 import qualified Data.Vector.Generic.Mutable  as VM
 import qualified Data.Vector.Unboxed          as VU
@@ -49,6 +50,10 @@ pattern Ix1 i = i
 
 -- | 2-dimensional index. This also a base index for higher dimensions.
 data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
+
+instance Validity Ix2 where
+  validate (a :. b) = declare "Ix2: first element is positive" (a > 0)
+                      <> declare "Ix2: second element is positive" (b > 0)
 
 -- | 2-dimensional index constructor. Useful when @TypeOperators@ extension isn't enabled, or simply
 -- infix notation is inconvenient. @(Ix2 i j) == (i :. j)@.
@@ -81,6 +86,9 @@ pattern Ix5 i j k l m = i :> j :> k :> l :. m
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
 data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
 
+instance Validity (Ix (n - 1)) => Validity (IxN n) where
+  validate (a :> b) = declare "first element is positive" (a > 0) <> delve "tail" b
+
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 type family Ix (n :: Nat) = r | r -> n where
   Ix 0 = Ix0
@@ -92,6 +100,9 @@ type family Ix (n :: Nat) = r | r -> n where
 
 data IxN (n :: Nat) where
   (:>) :: Dimensions (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
+
+instance Validity (Ix (n - 1)) => Validity (IxN n) where
+  validate (a :> b) = declare "first element is positive" (a > 0) <> delve "tail" b
 
 type family Ix (n :: Nat) where
   Ix 0 = Ix0

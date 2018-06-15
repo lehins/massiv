@@ -7,6 +7,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UnboxedTuples         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE RecordWildCards       #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -35,14 +37,18 @@ import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types
+import           Data.Validity
 import qualified Data.Vector.Primitive               as VP
 import           GHC.Base                            (Int(..))
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Generics (Generic)
 import           GHC.Prim
 import           Prelude                             hiding (mapM)
 
 -- | Representation for `Prim`itive elements
-data P = P deriving Show
+data P = P deriving (Show, Generic)
+
+instance Validity P
 
 type instance EltRepr P ix = M
 
@@ -50,6 +56,9 @@ data instance Array P ix e = PArray { pComp :: !Comp
                                     , pSize :: !ix
                                     , pData :: {-# UNPACK #-} !ByteArray
                                     }
+
+instance (Validity ix, Index ix) => Validity (Array P ix e) where
+    validate PArray {..} = delve "comp" pComp `mappend` delve "size" pSize
 
 instance (Index ix, NFData e) => NFData (Array P ix e) where
   rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()
