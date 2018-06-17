@@ -399,6 +399,7 @@ what is actually going on, so let's expend on it:
 
 ```haskell
 import Data.Massiv.Array.IO
+import Graphics.ColorSpace
 
 main :: IO ()
 main = do
