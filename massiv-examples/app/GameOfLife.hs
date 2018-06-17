@@ -18,14 +18,14 @@ lifeRules 1 3 = 1
 lifeRules _ _ = 0
 
 lifeStencil :: Stencil Ix2 Word8 Word8
-lifeStencil = makeStencil Wrap (3 :. 3) (1 :. 1) $ \ get ->
+lifeStencil = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
   lifeRules <$> get (0 :. 0) <*>
   (get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
    get ( 0 :. -1)         +         get ( 0 :. 1) +
    get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1))
 
 life :: Array S Ix2 Word8 -> Array S Ix2 Word8
-life = compute . A.mapStencil lifeStencil
+life = compute . A.mapStencil Wrap lifeStencil
 
 initLife :: Ix2 -> Array S Ix2 Word8 -> Array S Ix2 Word8
 initLife sz arr =

@@ -6,3 +6,5 @@ packages:
 extra-deps: []
 flags: {}
 extra-package-dbs: []
+nix:
+  packages: [ zlib libGLU ]
