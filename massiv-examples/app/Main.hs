@@ -12,5 +12,5 @@ main = do
       img = computeAs S $ fmap PixelY arr
   writeImage "files/light.png" img
   putStrLn "written: files/light.png"
-  writeImage "files/light_avg.png" $ computeAs S $ mapStencil (average3x3Filter Edge) img
+  writeImage "files/light_avg.png" $ computeAs S $ mapStencil Edge average3x3Filter img
   putStrLn "written: files/light_avg.png"

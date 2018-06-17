@@ -306,7 +306,7 @@ arrLightIx2 comp arrSz = makeArray comp arrSz lightFunc
 {-# INLINE arrLightIx2 #-}
 
 average3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
-average3x3Filter b = makeStencil b (3 :. 3) (1 :. 1) $ \ get ->
+average3x3Filter = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
@@ -321,8 +321,8 @@ average stencil over it:
 λ> let arr = computeAs U $ arrLightIx2 Par (600 :. 800)
 λ> :t arr
 arr :: Array U Ix2 Double
-λ> :t mapStencil (average3x3Filter Edge) arr
-mapStencil (average3x3Filter Edge) arr :: Array DW Ix2 Double
+λ> :t mapStencil Edge average3x3Filter arr
+mapStencil Edge average3x3Filter arr :: Array DW Ix2 Double
 ```
 
 As you can see, that operation produced an array of some weird representation `DW`, which stands for
@@ -338,8 +338,8 @@ implemented with a stencil. There is a helper function `mkConvolutionStencil` th
 you do just that. For the sake of example we'll do a sum of all neighbors by hand instead:
 
 ```haskell
-sum3x3Filter :: (Default a, Fractional a) => Border a -> Stencil Ix2 a a
-sum3x3Filter b = mkConvolutionStencil b (3 :. 3) (1 :. 1) $ \ get ->
+sum3x3Filter :: Fractional a => Stencil Ix2 a a
+sum3x3Filter = mkConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
   get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
   get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
   get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
@@ -353,7 +353,7 @@ by 9 in order to get the average. Yeah, I lied a bit, `Array DW ix` is an instan
 class, so we can map functions over it, which will be fused as with a regular `D`elayed array:
 
 ```haskell
-computeAs U $ fmap (/9) . mapStencil (sum3x3Filter Edge) arr
+computeAs U $ fmap (/9) . mapStencil Edge sum3x3Filter arr
 ```
 
 If you are still confused of what a stencil is, but you are familiar with [Conway's Game of
@@ -368,14 +368,14 @@ lifeRules 1 3 = 1
 lifeRules _ _ = 0
 
 lifeStencil :: Stencil Ix2 Word8 Word8
-lifeStencil = makeStencil Wrap (3 :. 3) (1 :. 1) $ \ get ->
+lifeStencil = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
   lifeRules <$> get (0 :. 0) <*>
   (get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
    get ( 0 :. -1)         +         get ( 0 :. 1) +
    get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1))
 
 life :: Array S Ix2 Word8 -> Array S Ix2 Word8
-life = compute . mapStencil lifeStencil
+life = compute . mapStencil Wrap lifeStencil
 ```
 
 The full working example that uses GLUT and OpenGL is located in
@@ -405,7 +405,7 @@ main = do
   let arr = arrLightIx2 Par (600 :. 800)
       img = computeAs S $ fmap PixelY arr -- convert an array into a grayscale image
   writeImage "files/light.png" img
-  writeImage "files/light_avg.png" $ computeAs S $ mapStencil (average3x3Filter Edge) img
+  writeImage "files/light_avg.png" $ computeAs S $ mapStencil Edge average3x3Filter img
 ```
 
 `massiv-examples/files/light.png`:
