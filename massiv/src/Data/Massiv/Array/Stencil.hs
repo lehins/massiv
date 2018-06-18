@@ -15,6 +15,7 @@ module Data.Massiv.Array.Stencil
     Stencil
   , Value
   , mapStencil
+  , resizeDW
   , makeStencil
   , strideMapStencil2
   -- * Convolution
@@ -48,6 +49,25 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
+
+resizeDW :: Index ix
+    => ix -- ^ Start index of resulting array (so the resulting array is tr    anslated by this amount)
+    -> ix -- ^ Size of resulting array
+    -> Array DW ix a
+    -> Array DW ix a
+resizeDW si sz dwarr@DWArray{..} =
+     dwarr
+       { wdArray = wdArray
+           { dSize = sz
+           , dUnsafeIndex = dUnsafeIndex wdArray . toNewIndex
+           }
+       , wdWindowStartIndex = toOldIndex wdWindowStartIndex
+       , wdWindowUnsafeIndex = wdWindowUnsafeIndex . toNewIndex
+       }
+  where
+    toNewIndex = liftIndex2 (+) si
+    toOldIndex ix = liftIndex2 (-) ix si
+
 
 strideMapStencil2 ::
        (Source r Ix2 e, Manifest r Ix2 e)

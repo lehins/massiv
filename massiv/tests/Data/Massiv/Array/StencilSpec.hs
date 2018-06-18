@@ -122,3 +122,17 @@ spec = do
               strideArr =
                   strideMapStencil2 stride (Fill 0) stencil largeArr
            in computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
+      describe "resizeDW" $
+        it "Unit test" $
+          let kernel =
+                  [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+              stencil = makeConvolutionStencilFromKernel kernel
+              result = computeAs U $ resizeDW (-1 :. -1) (5 :. 5) $ mapStencil (Fill 0) stencil arr
+              expectation =
+                    [ [ -1, -2, -2,  2,  3]
+                    , [ -4, -4,  0,  8,  6]
+                    , [ -8, -6,  1, 16, 12]
+                    , [ -4,  2,  6, 14,  6]
+                    , [ -7, -8, -2,  8,  9]
+                    ]
+           in result `shouldBe` expectation
