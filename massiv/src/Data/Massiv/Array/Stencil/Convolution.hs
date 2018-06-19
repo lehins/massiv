@@ -27,8 +27,8 @@ import           GHC.Exts                           (inline)
 --
 -- Here is how to create a 2D horizontal Sobel Stencil:
 --
--- > sobelX :: Num e => Border e -> Stencil Ix2 e e
--- > sobelX b = makeConvolutionStencil b (3 :. 3) (1 :. 1) $
+-- > sobelX :: Num e => Stencil Ix2 e e
+-- > sobelX = makeConvolutionStencil (3 :. 3) (1 :. 1) $
 -- >            \f -> f (-1 :. -1) 1 . f (-1 :. 1) (-1) .
 -- >                  f ( 0 :. -1) 2 . f ( 0 :. 1) (-2) .
 -- >                  f ( 1 :. -1) 1 . f ( 1 :. 1) (-1)

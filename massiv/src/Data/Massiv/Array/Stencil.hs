@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -15,6 +16,7 @@ module Data.Massiv.Array.Stencil
   , Value
   , mapStencil
   , makeStencil
+  , strideMapStencil2
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
   ) where
@@ -47,6 +49,32 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
     !sz = size arr
 {-# INLINE mapStencil #-}
 
+strideMapStencil2 ::
+       (Source r Ix2 e, Manifest r Ix2 e)
+    => Int -- ^ Stride
+    -> Border e -- ^ Border resolution technique
+    -> Stencil Ix2 e a -- ^ Stencil to map over the array
+    -> Array r Ix2 e -- ^ Source array
+    -> Array DW Ix2 a
+strideMapStencil2 stride b stencil arr =
+    let newArr@DWArray {..} = mapStencil b stencil arr
+    in newArr
+        { wdArray = wdArray
+            { dSize = liftIndex divStride $ dSize wdArray
+            , dUnsafeIndex = dUnsafeIndex wdArray . indexMap
+            }
+        , wdWindowStartIndex = ceilingDivStride2d wdWindowSize
+        , wdWindowSize = ceilingDivStride2d (wdWindowSize + wdWindowStartIndex) - wdWindowStartIndex
+        , wdWindowUnsafeIndex = wdWindowUnsafeIndex . indexMap
+        }
+  where
+    ceilingDivStride a =
+        let a' = fromIntegral a :: Double
+            stride' = fromIntegral stride
+        in ceiling $ a' / stride'
+    ceilingDivStride2d = liftIndex $ ceilingDivStride
+    divStride x = x `div` stride
+    indexMap = liftIndex (* stride)
 
 -- | Construct a stencil from a function, which describes how to calculate the
 -- value at a point while having access to neighboring elements with a function
