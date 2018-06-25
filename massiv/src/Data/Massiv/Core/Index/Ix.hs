@@ -52,8 +52,7 @@ pattern Ix1 i = i
 data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
 
 instance Validity Ix2 where
-  validate (a :. b) = declare "Ix2: first element is positive" (a > 0)
-                      <> declare "Ix2: second element is positive" (b > 0)
+  validate = trivialValidation
 
 -- | 2-dimensional index constructor. Useful when @TypeOperators@ extension isn't enabled, or simply
 -- infix notation is inconvenient. @(Ix2 i j) == (i :. j)@.
@@ -87,7 +86,7 @@ pattern Ix5 i j k l m = i :> j :> k :> l :. m
 data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
 
 instance Validity (Ix (n - 1)) => Validity (IxN n) where
-  validate (a :> b) = declare "first element is positive" (a > 0) <> delve "tail" b
+  validate (a :> b) = delve "tail" b
 
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 type family Ix (n :: Nat) = r | r -> n where

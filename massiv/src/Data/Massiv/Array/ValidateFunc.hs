@@ -5,5 +5,5 @@ import Data.Validity
 
 validateFunc :: (Index ix, Validity e) => ix -> ix -> (ix -> e) -> Validation
 validateFunc initial sz arr =
-    iter initial sz 1 (\_ _ -> True) valid $ \ix validation ->
+    iter initial sz 1 (<) valid $ \ix validation ->
         validate (arr ix) `mappend` validation
