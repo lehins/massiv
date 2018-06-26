@@ -243,7 +243,7 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
 --
 backpermute :: (Source r' ix' e, Index ix) =>
                ix -- ^ Size of the result array
-            -> (ix -> ix') -- ^ A function that maps indices of old array into the source one.
+            -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
             -> Array r' ix' e -- ^ Source array.
             -> Array D ix e
 backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
