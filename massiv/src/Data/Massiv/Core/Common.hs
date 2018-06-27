@@ -53,6 +53,7 @@ import           Control.Monad.Primitive
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Typeable
+import           Data.Validity
 import           GHC.Prim
 
 -- | The array family. Representations @r@ describes how data is arranged or computed. All arrays
@@ -156,6 +157,9 @@ class Source r ix e => Manifest r ix e where
 
 
 data State s = State (State# s)
+
+instance Validity (State s) where
+    validate = trivialValidation
 
 type WorldState = State RealWorld
 

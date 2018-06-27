@@ -6,6 +6,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE DeriveGeneric              #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Class
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -19,14 +21,21 @@ module Data.Massiv.Core.Index.Class where
 import           Control.DeepSeq           (NFData (..))
 import           Data.Functor.Identity     (runIdentity)
 import           Data.Massiv.Core.Iterator
+import           Data.Validity
 import           GHC.TypeLits
+import           GHC.Generics (Generic)
 
 -- | A way to select Array dimension.
 newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
 
+instance Validity Dim where
+  validate (Dim n) = declare "A Dim is positive" $ n >= 0
+
 -- | Zero-dimension, i.e. a scalar. Can't really be used directly as there are no instances of
 -- `Index` for it, and is included for completeness.
-data Ix0 = Ix0 deriving (Eq, Ord, Show)
+data Ix0 = Ix0 deriving (Eq, Ord, Show, Generic)
+
+instance Validity Ix0
 
 -- | 1-dimensional index. Synonym for `Int` and `Data.Massiv.Core.Index.Ix1`.
 type Ix1T = Int

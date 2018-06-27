@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -5,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -30,21 +32,30 @@ import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
                                                       unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
+import           Data.Validity
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           Foreign.Ptr
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Generics (Generic)
 import           Prelude                             hiding (mapM)
 
 -- | Representation for `Storable` elements
-data S = S deriving Show
+data S = S deriving (Show, Generic)
+
+instance Validity S
 
 type instance EltRepr S ix = M
+
+instance (MVS.Storable e, Validity e) => Validity (VS.Vector e) where
+    validate = foldMap validate . GHC.toList
 
 data instance Array S ix e = SArray { sComp :: !Comp
                                     , sSize :: !ix
                                     , sData :: !(VS.Vector e)
-                                    }
+                                    } deriving (Generic)
+
+instance (MVS.Storable e, Validity ix, Index ix, Validity e) => Validity (Array S ix e)
 
 instance (Index ix, NFData e) => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()

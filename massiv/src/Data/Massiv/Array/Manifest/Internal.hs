@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE RecordWildCards       #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -50,6 +51,7 @@ import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
+import           Data.Validity
 import qualified Data.Vector                         as V
 import           GHC.Base                            (build)
 import           System.IO.Unsafe                    (unsafePerformIO)
@@ -61,6 +63,17 @@ data M
 data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !ix
                                     , mUnsafeLinearIndex :: Int -> e }
+
+instance (Validity ix, Index ix, Validity e) => Validity (Array M ix e) where
+    validate MArray {..} = mconcat
+        [ delve "comp" mComp
+        , delve "size" mSize
+        , checkUnsafeLinearIndex (totalElem mSize) mUnsafeLinearIndex
+        ]
+
+checkUnsafeLinearIndex :: Validity e => Int -> (Int -> e) -> Validation
+checkUnsafeLinearIndex n func = foldMap (validate . func) $ [0..n - 1]
+
 type instance EltRepr M ix = M
 
 instance Index ix => Construct M ix e where

@@ -23,15 +23,20 @@ import           Control.Monad                          (when)
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Manifest.BoxedStrict
 import           Data.Massiv.Array.Manifest.Internal
+import           Data.Massiv.Array.ValidateFunc
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List                  (showArray)
 import           Data.Massiv.Core.Scheduler
 import           Data.Proxy                             (Proxy (..))
 import           Data.Typeable                          (showsTypeRep, typeRep)
+import           Data.Validity
 
 -- | Delayed Windowed Array representation.
 data DW = DW
+
+instance Validity DW where
+    validate = trivialValidation
 
 type instance EltRepr DW ix = D
 
@@ -44,6 +49,16 @@ data instance Array DW ix e = DWArray { wdArray :: !(Array D ix e)
                                       , wdWindowSize :: !ix
                                       , wdWindowUnsafeIndex :: ix -> e }
 
+instance (Num ix, Index ix, Validity ix, Validity (Array D ix e), Validity e) => Validity (Array DW ix e) where
+    validate DWArray {..} = mconcat
+        [ delve "Array D" wdArray
+        , delve "stencil size" wdStencilSize
+        , delve "window start index" wdWindowStartIndex
+        , delve "window size" wdWindowSize
+        , declare "window start index must be positive" $ wdWindowStartIndex >= pureIndex 0
+        , declare "window fits in array" $ wdWindowStartIndex + wdWindowSize <= size wdArray
+        , validateFunc wdWindowStartIndex (wdWindowStartIndex + wdWindowSize) wdWindowUnsafeIndex
+        ]
 
 instance {-# OVERLAPPING #-} (Show e, Ragged L ix e, Load DW ix e) =>
   Show (Array DW ix e) where

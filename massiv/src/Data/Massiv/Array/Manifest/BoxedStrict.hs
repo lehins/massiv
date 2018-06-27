@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -32,21 +33,27 @@ import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Primitive.Array                as A
+import           Data.Validity
 import           GHC.Base                            (build)
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Generics (Generic)
 import           Prelude                             hiding (mapM)
 
 
 -- | Array representation for Boxed elements. This structure is element and
 -- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
-data B = B deriving Show
+data B = B deriving (Show, Generic)
+
+instance Validity B
 
 type instance EltRepr B ix = M
 
 data instance Array B ix e = BArray { bComp :: !Comp
                                     , bSize :: !ix
                                     , bData :: {-# UNPACK #-} !(A.Array e)
-                                    }
+                                    } deriving (Generic)
+
+instance (Validity ix, Index ix, Validity e) => Validity (Array B ix e)
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
   rnf (BArray comp sz arr) =

@@ -1,9 +1,11 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Unboxed
@@ -28,21 +30,29 @@ import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
                                                       unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
+import           Data.Validity
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Generics (Generic)
 import           Prelude                             hiding (mapM)
 
 -- | Representation for `Unbox`ed elements
-data U = U deriving Show
+data U = U deriving (Show, Generic)
+
+instance Validity U
 
 type instance EltRepr U ix = M
 
 data instance Array U ix e = UArray { uComp :: !Comp
                                     , uSize :: !ix
                                     , uData :: !(VU.Vector e)
-                                    }
+                                    } deriving (Generic)
 
+instance (MVU.Unbox e, Validity e) => Validity (VU.Vector e) where
+    validate = VU.foldl' (\val x -> val `mappend` validate x) mempty
+
+instance (MVU.Unbox e, Validity ix, Index ix, Validity e) => Validity (Array U ix e)
 
 instance (Index ix, NFData e) => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()

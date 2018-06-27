@@ -4,6 +4,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -24,19 +26,32 @@ module Data.Massiv.Array.Delayed.Internal
 
 import           Data.Foldable              (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
+import           Data.Massiv.Array.ValidateFunc
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                ((<>))
+import           Data.Validity
 import           GHC.Base                   (build)
+import           GHC.Generics (Generic)
 import           Prelude                    hiding (zipWith)
 
 -- | Delayed representation.
-data D = D deriving Show
+data D = D deriving (Show, Generic)
+
+instance Validity D
 
 
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
+
+instance (Index ix, Validity ix, Validity e) => Validity (Array D ix e) where
+    validate DArray {..} = mconcat
+        [ delve "comp" dComp
+        , delve "size" dSize
+        , decorate "array" $ validateFunc (pureIndex 0) dSize dUnsafeIndex
+        ]
+
 type instance EltRepr D ix = D
 
 instance Index ix => Construct D ix e where

@@ -38,6 +38,7 @@ library
                      , Data.Massiv.Array.Manifest.Primitive
                      , Data.Massiv.Array.Manifest.Storable
                      , Data.Massiv.Array.Manifest.Unboxed
+                     , Data.Massiv.Array.ValidateFunc
                      , Data.Massiv.Array.Ops.Construct
                      , Data.Massiv.Array.Ops.Fold
                      , Data.Massiv.Array.Ops.Fold.Internal
@@ -57,6 +58,7 @@ library
                      , deepseq
                      , ghc-prim
                      , primitive
+                     , validity >= 0.6
                      , vector
 
   if impl(ghc < 8.0)

@@ -3,7 +3,8 @@ packages:
 - '.'
 - '../massiv/'
 - '../massiv-io/'
-extra-deps: []
+extra-deps:
+- validity-0.6.0.0
 flags: {}
 extra-package-dbs: []
 nix:

@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -5,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -35,23 +39,36 @@ import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
 import qualified Data.Primitive.Array                as A
+import           Data.Validity
 import qualified Data.Vector                         as VB
 import qualified Data.Vector.Mutable                 as VB
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
+import           GHC.Generics (Generic)
 
 -- | Array representation for Boxed elements. This structure is element and
 -- spine strict, and elements are always in Normal Form (NF), therefore `NFData`
 -- instance is required.
-data N = N deriving Show
+data N = N deriving (Show, Generic)
+
+instance Validity N
 
 type instance EltRepr N ix = M
+
+instance Validity a => Validity (A.Array a) where
+#if MIN_VERSION_primitive(0,6,2)
+    validate = foldMap validate
+#else
+    validate = trivialValidation
+#endif
 
 data instance Array N ix e = NArray { nComp :: Comp
                                     , nSize :: !ix
                                     , nData :: {-# UNPACK #-} !(A.Array e)
-                                    }
+                                    } deriving (Generic)
+
+instance (Validity ix, Index ix, Validity e) => Validity (Array N ix e)
 
 instance (Index ix, NFData e) => NFData (Array N ix e) where
   rnf (NArray comp sz arr) = -- comp `deepseq` sz `deepseq` a `seq` ()
