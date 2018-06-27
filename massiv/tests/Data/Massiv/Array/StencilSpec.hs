@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MonoLocalBinds        #-}
-{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedLists       #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.StencilSpec (spec) where
 
@@ -15,7 +15,7 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Function
 import           Data.Default              (Default(def))
 -- sum3x3Stencil :: Fractional a => Stencil Ix2 a a
--- sum3x3Stencil = mkConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
+-- sum3x3Stencil = makeConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
 --   get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
 --   get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
 --   get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
@@ -84,8 +84,8 @@ spec :: Spec
 spec = do
   describe "Stencil" $ do
     stencilSpec
+    let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
     describe "Unit tests Ix2" $ do
-      let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
       it "Direction Left" $
         stencilDirection (0 :. 1) arr `shouldBe` [[2, 3, 0], [5, 6, 0], [8, 9, 0]]
       it "Direction Right" $
@@ -102,3 +102,51 @@ spec = do
         stencilCorners (2 :. 2) (-2 :. -2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [0, 0, 1]]
       it "Direction Left/Bottom Corner" $
         stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
+    describe "reformDW" $ do
+      it "map stencil with stride on small array" $
+        let kernel =
+                [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+            stencil = makeConvolutionStencilFromKernel kernel
+            stride = 2
+            strideArr =
+                mapStride stride (1 :. 1) $ mapStencil (Fill 0) stencil arr
+        in computeAs U strideArr `shouldBe` [[-4]]
+      it "map stencil with stride on larger array" $
+        let kernel =
+                [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+            stencil = makeConvolutionStencilFromKernel kernel
+            stride = 2
+            largeArr = fromLists' Par
+                [ [5*n + 1 .. 5 * (n + 1)] | n <- [0..4]]
+                  :: Array U Ix2 Int
+            stencilledArr = mapStencil (Fill 0) stencil largeArr
+            strideArr = mapStride stride (2 :. 2) stencilledArr
+         in do
+            print largeArr
+            print $ computeAs U stencilledArr
+            print $ computeAs U strideArr
+            computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
+      it "resize DWArray resulting from mapStencil" $
+        let kernel =
+                [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+            stencil = makeConvolutionStencilFromKernel kernel
+            si = -1 :. -1
+            toNewIndex ix = liftIndex2 (-) ix si
+            toOldIndex = liftIndex2 (+) si
+            result = reformDW toNewIndex toOldIndex (5 :. 5) $ mapStencil (Fill 0) stencil arr
+            expectation =
+                  [ [ -1, -2, -2,  2,  3]
+                  , [ -4, -4,  0,  8,  6]
+                  , [ -8, -6,  1, 16, 12]
+                  , [ -4,  2,  6, 14,  6]
+                  , [ -7, -8, -2,  8,  9]
+                  ]
+         in computeAs U result `shouldBe` expectation
+
+mapStride :: Int -> Ix2 -> Array DW Ix2 e -> Array DW Ix2 e
+mapStride stride sz =
+    let toOldIndex = liftIndex (* stride)
+        ceilingDivStride a = ceiling $ (fromIntegral a :: Double)
+            / fromIntegral stride
+        toNewIndex = liftIndex ceilingDivStride
+    in reformDW toNewIndex toOldIndex sz

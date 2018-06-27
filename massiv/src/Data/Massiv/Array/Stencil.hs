@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -14,6 +15,7 @@ module Data.Massiv.Array.Stencil
     Stencil
   , Value
   , mapStencil
+  , reformDW
   , makeStencil
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
@@ -46,6 +48,29 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
+
+-- Note: windowStartIndex is mapped to the new windowStartIndex using the "old to new index" map.
+-- This means that the order of the elements should be preserved, or performance will take a major hit.
+reformDW :: Index ix
+    => (ix -> ix) -- ^ map from old to new index
+    -> (ix -> ix) -- ^ map from new to old index
+    -> ix -- ^ Size of resulting array
+    -> Array DW ix a
+    -> Array DW ix a
+reformDW toNewIndex toOldIndex sz DWArray{..} =
+    DWArray
+       { wdArray = DArray
+           { dComp = dComp wdArray
+           , dSize = sz
+           , dUnsafeIndex = dUnsafeIndex wdArray . toOldIndex
+           }
+       , wdStencilSize = wdStencilSize
+       , wdWindowStartIndex = newWindowStartIndex
+       , wdWindowSize = flip (liftIndex2 (-)) newWindowStartIndex $ toNewIndex $ liftIndex2 (+) wdWindowStartIndex wdWindowSize
+       , wdWindowUnsafeIndex = wdWindowUnsafeIndex . toOldIndex
+       }
+  where
+    newWindowStartIndex = toNewIndex wdWindowStartIndex
 
 
 -- | Construct a stencil from a function, which describes how to calculate the
