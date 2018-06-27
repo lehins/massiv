@@ -86,7 +86,7 @@ pattern Ix5 i j k l m = i :> j :> k :> l :. m
 data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
 
 instance Validity (Ix (n - 1)) => Validity (IxN n) where
-  validate (a :> b) = delve "tail" b
+  validate (_ :> b) = delve "tail" b
 
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 type family Ix (n :: Nat) = r | r -> n where

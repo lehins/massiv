@@ -49,11 +49,10 @@ data instance Array U ix e = UArray { uComp :: !Comp
                                     , uData :: !(VU.Vector e)
                                     } deriving (Generic)
 
-instance (Foldable VU.Vector, Validity e) => Validity (VU.Vector e) where
-    validate = foldMap validate
+instance (MVU.Unbox e, Validity e) => Validity (VU.Vector e) where
+    validate = VU.foldl' (\val x -> val `mappend` validate x) mempty
 
-instance (Foldable VU.Vector, Validity ix, Index ix, Validity e) => Validity (Array U ix e)
-
+instance (MVU.Unbox e, Validity ix, Index ix, Validity e) => Validity (Array U ix e)
 
 instance (Index ix, NFData e) => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
