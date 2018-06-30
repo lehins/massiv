@@ -1,2 +1,6 @@
-resolver: lts-10.0
-allow-newer: true
+resolver: lts-9.20
+packages:
+- '.'
+extra-deps: []
+flags: {}
+extra-package-dbs: []

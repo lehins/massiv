@@ -1,7 +1,0 @@
-resolver: nightly-2018-03-14
-packages:
-- '.'
-extra-deps:
-- safe-exceptions-0.1.7.0
-flags: {}
-extra-package-dbs: []
