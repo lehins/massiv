@@ -104,36 +104,25 @@ spec = do
         stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
     describe "reformDW" $ do
       it "map stencil with stride on small array" $
-        let kernel =
-                [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
             stencil = makeConvolutionStencilFromKernel kernel
             stride = 2
-            strideArr =
-                mapStride stride (1 :. 1) $ mapStencil (Fill 0) stencil arr
-        in computeAs U strideArr `shouldBe` [[-4]]
+            strideArr = mapStride stride (1 :. 1) $ mapStencil (Fill 0) stencil arr
+         in computeAs U strideArr `shouldBe` [[-4]]
       it "map stencil with stride on larger array" $
-        let kernel =
-                [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
             stencil = makeConvolutionStencilFromKernel kernel
             stride = 2
-            largeArr = fromLists' Par
-                [ [5*n + 1 .. 5 * (n + 1)] | n <- [0..4]]
-                  :: Array U Ix2 Int
+            largeArr =
+              fromLists' Par [[5 * n + 1 .. 5 * (n + 1)] | n <- [0 .. 4]] :: Array U Ix2 Int
             stencilledArr = mapStencil (Fill 0) stencil largeArr
             strideArr = mapStride stride (2 :. 2) stencilledArr
-         in do
-            print largeArr
-            print $ computeAs U stencilledArr
-            print $ computeAs U strideArr
-            computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
+         in do computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
       it "resize DWArray resulting from mapStencil" $
-        let kernel =
-                [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
             stencil = makeConvolutionStencilFromKernel kernel
             si = -1 :. -1
-            toNewIndex ix = liftIndex2 (-) ix si
-            toOldIndex = liftIndex2 (+) si
-            result = reformDW toNewIndex toOldIndex (5 :. 5) $ mapStencil (Fill 0) stencil arr
+            result = reformDW (subtract si) (+ si) (5 :. 5) $ mapStencil (Fill 0) stencil arr
             expectation =
                   [ [ -1, -2, -2,  2,  3]
                   , [ -4, -4,  0,  8,  6]
@@ -145,8 +134,7 @@ spec = do
 
 mapStride :: Int -> Ix2 -> Array DW Ix2 e -> Array DW Ix2 e
 mapStride stride sz =
-    let toOldIndex = liftIndex (* stride)
-        ceilingDivStride a = ceiling $ (fromIntegral a :: Double)
-            / fromIntegral stride
-        toNewIndex = liftIndex ceilingDivStride
-    in reformDW toNewIndex toOldIndex sz
+  let toOldIndex = liftIndex (* stride)
+      ceilingDivStride a = ceiling $ (fromIntegral a :: Double) / fromIntegral stride
+      toNewIndex = liftIndex ceilingDivStride
+   in reformDW toNewIndex toOldIndex sz

@@ -57,18 +57,17 @@ reformDW :: Index ix
     -> ix -- ^ Size of resulting array
     -> Array DW ix a
     -> Array DW ix a
-reformDW toNewIndex toOldIndex sz DWArray{..} =
-    DWArray
-       { wdArray = DArray
-           { dComp = dComp wdArray
-           , dSize = sz
-           , dUnsafeIndex = dUnsafeIndex wdArray . toOldIndex
-           }
-       , wdStencilSize = wdStencilSize
-       , wdWindowStartIndex = newWindowStartIndex
-       , wdWindowSize = flip (liftIndex2 (-)) newWindowStartIndex $ toNewIndex $ liftIndex2 (+) wdWindowStartIndex wdWindowSize
-       , wdWindowUnsafeIndex = wdWindowUnsafeIndex . toOldIndex
-       }
+reformDW toNewIndex toOldIndex sz DWArray {..} =
+  DWArray
+    { wdArray =
+        DArray {dComp = dComp wdArray, dSize = sz, dUnsafeIndex = dUnsafeIndex wdArray . toOldIndex}
+    , wdStencilSize = wdStencilSize
+    , wdWindowStartIndex = newWindowStartIndex
+    , wdWindowSize =
+        flip (liftIndex2 (-)) newWindowStartIndex $
+        toNewIndex $ liftIndex2 (+) wdWindowStartIndex wdWindowSize
+    , wdWindowUnsafeIndex = wdWindowUnsafeIndex . toOldIndex
+    }
   where
     newWindowStartIndex = toNewIndex wdWindowStartIndex
 
