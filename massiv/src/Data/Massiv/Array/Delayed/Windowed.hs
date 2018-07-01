@@ -17,6 +17,7 @@ module Data.Massiv.Array.Delayed.Windowed
   ( DW(..)
   , Array(..)
   , makeWindowedArray
+  , unsafeBackpermuteDW
   ) where
 
 import           Control.Monad                          (when)
@@ -118,11 +119,42 @@ makeWindowedArray !arr !wIx !wSz wUnsafeIndex
 {-# INLINE makeWindowedArray #-}
 
 
+-- | Backpermute a windowed array. If index mappings aren't correct reading memory out of bounds is
+-- very likely.
+--
+-- __Note__: windowStartIndex is mapped to the new windowStartIndex using the "old to new index"
+-- map.  This means that the order of the elements should be preserved, or performance will take a
+-- major hit.
+--
+-- @since 0.2.0
+unsafeBackpermuteDW ::
+     Index ix
+  => (ix -> ix) -- ^ map from old to new index
+  -> (ix -> ix) -- ^ map from new to old index
+  -> ix -- ^ Size of resulting array
+  -> Array DW ix a
+  -> Array DW ix a
+unsafeBackpermuteDW toNewIndex toOldIndex sz DWArray {..} =
+  DWArray
+    { wdArray =
+        DArray {dComp = dComp wdArray, dSize = sz, dUnsafeIndex = dUnsafeIndex wdArray . toOldIndex}
+    , wdStencilSize = wdStencilSize
+    , wdWindowStartIndex = newWindowStartIndex
+    , wdWindowSize =
+        liftIndex2
+          (-)
+          (toNewIndex (liftIndex2 (+) wdWindowStartIndex wdWindowSize))
+          newWindowStartIndex
+    , wdWindowUnsafeIndex = wdWindowUnsafeIndex . toOldIndex
+    }
+  where
+    !newWindowStartIndex = toNewIndex wdWindowStartIndex
+{-# INLINE unsafeBackpermuteDW #-}
 
 
 instance {-# OVERLAPPING #-} Load DW Ix1 e where
   loadS (DWArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
-    iterM_ 0 it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
+    iterM_ 0  it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
     iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
     iterM_ wk sz 1 (<) $ \ !i -> unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
