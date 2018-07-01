@@ -7,6 +7,7 @@ module Data.Massiv.Array.StencilSpec (spec) where
 
 import           Control.DeepSeq           (deepseq)
 import           Data.Massiv.Array.Stencil
+import           Data.Massiv.Array.Delayed
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Maybe                (fromJust)
 import           Data.Proxy

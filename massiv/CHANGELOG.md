@@ -3,6 +3,7 @@
 * Fixed type signatures for `convertAs` and `convertProxy`
 * Added type constructors for `DW` and `DI`
 * `Show` instance for `DW` arrays.
+* Addition of `unsafeBackpermuteDW`.
 * Breaking changes:
   * Create new `Data.Massiv.Array.Stencil.Unsafe` module and move `forStencilUnsafe` into it.
   * Rename of rank -> dimensions #25

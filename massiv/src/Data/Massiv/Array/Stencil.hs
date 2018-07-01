@@ -91,4 +91,3 @@ makeStencil !sSz !sCenter relStencil =
 {-# INLINE makeStencil #-}
 
 
-

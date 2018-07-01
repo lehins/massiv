@@ -122,7 +122,7 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Numeric
   ) where
 
-import           Data.Massiv.Array.Delayed
+import           Data.Massiv.Array.Delayed          hiding (unsafeBackpermuteDW)
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List
@@ -134,16 +134,24 @@ import           Data.Massiv.Array.Ops.Map
 import           Data.Massiv.Array.Ops.Slice
 import           Data.Massiv.Array.Ops.Transform
 import           Data.Massiv.Array.Stencil
-import           Data.Massiv.Core                    hiding (elemsCount,
-                                                      isEmpty)
-import qualified Data.Massiv.Core                    as Core (elemsCount,
-                                                              isEmpty)
+-- Slightly convoluted re-export of this functions is done for better haddock.
+import           Data.Massiv.Core                    hiding (elemsCount, isEmpty)
+import qualified Data.Massiv.Core                    as Core (elemsCount, isEmpty)
 import           Data.Massiv.Core.Common
-import           Prelude                             as P hiding (all, and, any,
-                                                           foldl, foldr, mapM,
-                                                           mapM_, maximum,
-                                                           minimum, or, product,
-                                                           splitAt, sum)
+import Prelude as P hiding ( all
+                           , and
+                           , any
+                           , foldl
+                           , foldr
+                           , mapM
+                           , mapM_
+                           , maximum
+                           , minimum
+                           , or
+                           , product
+                           , splitAt
+                           , sum
+                           )
 {- $folding
 
 All folding is done in a row-major order.
