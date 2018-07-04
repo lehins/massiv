@@ -16,6 +16,7 @@ module Data.Massiv.Array.Stencil
   , Value
   , makeStencil
   , mapStencil
+  , mapStencilStride
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
   ) where
@@ -43,10 +44,39 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
     (Just sSz)
     sCenter
     (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
+    (pureIndex 1)
     (unValue . stencilF (Value . unsafeIndex arr))
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
+
+-- | Same as `mapStencil` except with ability to set the stride, i.e. an index that specifies which
+-- elements to keep around.
+--
+-- @since 0.2.0
+mapStencilStride ::
+     (Source r ix e, Manifest r ix e)
+  => Border e -- ^ Border resolution technique
+  -> ix -- ^ Stride. Eg. `(2 :. 3)` means to keep every 2nd row and every 3rd column, while
+        -- discarding the rest.
+  -> Stencil ix e a -- ^ Stencil to map over the array
+  -> Array r ix e -- ^ Source array
+  -> Array DW ix a
+mapStencilStride b stride (Stencil sSz sCenter stencilF) !arr =
+  DWArray
+    (DArray
+       (getComp arr)
+       (liftIndex2 div sz strideIx)
+       (unValue . stencilF (Value . borderIndex b arr)))
+    (Just sSz)
+    sCenter
+    (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
+    stride
+    (unValue . stencilF (Value . unsafeIndex arr))
+  where
+    !strideIx = liftIndex (min 1) stride
+    !sz = size arr
+{-# INLINE mapStencilStride #-}
 
 
 -- | Construct a stencil from a function, which describes how to calculate the

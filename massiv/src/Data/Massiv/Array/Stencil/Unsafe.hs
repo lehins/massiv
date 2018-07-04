@@ -46,6 +46,7 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
     (Just sSz)
     sCenter
     (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
+    (pureIndex 1)
     (stencil (Just . unsafeIndex arr))
   where
     stencil getVal !ix = (inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD))
