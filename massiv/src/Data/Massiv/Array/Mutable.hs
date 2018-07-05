@@ -35,13 +35,13 @@ module Data.Massiv.Array.Mutable
   -- * Generate (experimental)
 
   -- $generate
-  , generateM
+  {-, generateM
   , generateLinearM
   , mapM
   , imapM
   , forM
   , iforM
-  , sequenceM
+  , sequenceM -}
   ) where
 
 import           Prelude                             hiding (mapM, read)
@@ -51,7 +51,7 @@ import           Control.Monad.Primitive             (PrimMonad (..))
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
-import           GHC.Base                             (Int (..))
+--import           GHC.Base                             (Int (..))
 import           GHC.Prim
 
 -- errorSizeMismatch fName sz1 sz2 =
@@ -174,7 +174,7 @@ swap' marr ix1 ix2 = do
       else ix1
 {-# INLINE swap' #-}
 
-
+{-
 unsafeLinearFillM :: (Mutable r ix e, Monad m) =>
                      MArray RealWorld r ix e -> (Int -> m e) -> WorldState -> m WorldState
 unsafeLinearFillM ma f (State s_#) = go 0# s_#
@@ -273,11 +273,17 @@ sequenceM
      r' -> Array r ix (m e) -> m (Array r' ix e)
 sequenceM r = mapM r id
 {-# INLINE sequenceM #-}
-
+-}
 
 {- $generate
 
-Functions in this sections can monadically generate manifest arrays using their associated mutable
+Functions in this section has been removed until better times due to a known bug https://github.com/lehins/massiv/issues/24
+
+-}
+
+{-
+
+Functions in this section can monadically generate manifest arrays using their associated mutable
 interface. Due to the sequential nature of monads generation is done also sequentially regardless of
 supplied computation strategy. All of functions here are very much experimental, so please
 <https://github.com/lehins/massiv/issues/new report an issue> if you see something not working

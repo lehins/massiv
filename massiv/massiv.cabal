@@ -74,7 +74,7 @@ test-suite tests
   main-is:            Spec.hs
   other-modules:      Data.Massiv.Array.DelayedSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
-                    , Data.Massiv.Array.MutableSpec
+                    --, Data.Massiv.Array.MutableSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec
