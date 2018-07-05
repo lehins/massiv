@@ -110,13 +110,15 @@ prop_FromToLinearIndex _ (Sz sz) i =
 
 prop_CountElements :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_CountElements _ thresh (Sz sz) =
-  totalElem sz < thresh ==> totalElem sz == iter zeroIndex sz 1 (<) 0 (\ _ acc -> (acc + 1))
+  totalElem sz < thresh ==> totalElem sz ==
+  iter zeroIndex sz (pureIndex 1) (<) 0 (\_ acc -> (acc + 1))
 
 prop_IterMonotonic :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonic _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $
-  iter (liftIndex succ zeroIndex) sz 1 (<) (True, zeroIndex) $ \ curIx (prevMono, prevIx) ->
-    let isMono = prevMono && prevIx < curIx in isMono `seq` (isMono, curIx)
+  iter (liftIndex succ zeroIndex) sz (pureIndex 1) (<) (True, zeroIndex) $ \curIx (prevMono, prevIx) ->
+    let isMono = prevMono && prevIx < curIx
+     in isMono `seq` (isMono, curIx)
 
 
 prop_IterMonotonic' :: Index ix => proxy ix -> Int -> Sz ix -> Property
@@ -128,7 +130,7 @@ prop_IterMonotonic' _ thresh (Sz sz) =
     else error (show a)
   where
     (isM, a, _) =
-      iter (liftIndex succ zeroIndex) sz 1 (<) (True, [], zeroIndex) $
+      iter (liftIndex succ zeroIndex) sz (pureIndex 1) (<) (True, [], zeroIndex) $
       \ curIx (prevMono, acc, prevIx) ->
         let nAcc = (prevIx, curIx, prevIx < curIx) : acc
             isMono = prevMono && prevIx < curIx
@@ -144,7 +146,7 @@ prop_IterMonotonicBackwards' _ thresh (Sz sz) =
     else error (show a)
   where
     (isM, a, _) =
-      iter (liftIndex pred sz) zeroIndex (-1) (>=) (True, [], sz) $
+      iter (liftIndex pred sz) zeroIndex (pureIndex (-1)) (>=) (True, [], sz) $
       \ curIx (prevMono, acc, prevIx) ->
       let isMono = prevMono && prevIx > curIx
           nAcc = (prevIx, curIx, prevIx > curIx) : acc
@@ -154,7 +156,7 @@ prop_IterMonotonicM :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonicM _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $
   runIdentity $
-  iterM (liftIndex succ zeroIndex) sz 1 (<) (True, zeroIndex) $ \curIx (prevMono, prevIx) ->
+  iterM (liftIndex succ zeroIndex) sz (pureIndex 1) (<) (True, zeroIndex) $ \curIx (prevMono, prevIx) ->
     let isMono = prevMono && prevIx < curIx
     in return $ isMono `seq` (isMono, curIx)
 
@@ -162,13 +164,13 @@ prop_IterMonotonicM _ thresh (Sz sz) =
 prop_IterMonotonicBackwards :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonicBackwards _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $
-  iter (liftIndex pred sz) zeroIndex (-1) (>=) (True, sz) $ \ curIx (prevMono, prevIx) ->
+  iter (liftIndex pred sz) zeroIndex (pureIndex (-1)) (>=) (True, sz) $ \ curIx (prevMono, prevIx) ->
     let isMono = prevMono && prevIx > curIx in isMono `seq` (isMono, curIx)
 
 prop_IterMonotonicBackwardsM :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonicBackwardsM _ thresh (Sz sz) =
   totalElem sz < thresh ==> fst $ runIdentity $
-  iterM (liftIndex pred sz) zeroIndex (-1) (>=) (True, sz) $ \ curIx (prevMono, prevIx) ->
+  iterM (liftIndex pred sz) zeroIndex (pureIndex (-1)) (>=) (True, sz) $ \ curIx (prevMono, prevIx) ->
     let isMono = prevMono && prevIx > curIx in return $ isMono `seq` (isMono, curIx)
 
 prop_LiftLift2 :: Index ix => proxy ix -> ix -> Int -> Bool

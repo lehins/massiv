@@ -9,6 +9,7 @@
   * Rename of rank -> dimensions #25
     * Removal `Eq` and `Ord` instances for `Value` #19
     * Move border resolution to `mapStencil` from `makeStencil`.
+  * Updated iterators `iterM`, `iterM_`, etc. to have a separate step per dimension.
 
 # 0.1.6
 

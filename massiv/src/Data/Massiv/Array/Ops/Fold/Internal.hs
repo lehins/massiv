@@ -86,7 +86,7 @@ foldlM_ f = ifoldlM_ (\ a _ b -> f a b)
 -- | /O(n)/ - Monadic left fold with an index aware function.
 ifoldlM :: (Source r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m a
 ifoldlM f !acc !arr =
-  iterM zeroIndex (size arr) 1 (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
+  iterM zeroIndex (size arr) (pureIndex 1) (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
 {-# INLINE ifoldlM #-}
 
 
@@ -111,7 +111,7 @@ foldrM_ f = ifoldrM_ (\_ e a -> f e a)
 -- | /O(n)/ - Monadic right fold with an index aware function.
 ifoldrM :: (Source r ix e, Monad m) => (ix -> e -> a -> m a) -> a -> Array r ix e -> m a
 ifoldrM f !acc !arr =
-  iterM (liftIndex (subtract 1) (size arr)) zeroIndex (-1) (>=) acc $ \ !ix !acc0 ->
+  iterM (liftIndex (subtract 1) (size arr)) zeroIndex (pureIndex (-1)) (>=) acc $ \ !ix !acc0 ->
     f ix (unsafeIndex arr ix) acc0
 {-# INLINE ifoldrM #-}
 

@@ -165,42 +165,44 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   {-# INLINE [1] repairIndex #-}
 
   -- | Iterator for the index. Same as `iterM`, but pure.
-  iter :: ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
-  iter sIx eIx inc cond acc f =
-    runIdentity $ iterM sIx eIx inc cond acc (\ix -> return . f ix)
+  iter :: ix -> ix -> ix -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
+  iter sIx eIx incIx cond acc f =
+    runIdentity $ iterM sIx eIx incIx cond acc (\ix -> return . f ix)
   {-# INLINE iter #-}
 
   -- | This function is what makes it possible to iterate over an array of any dimension.
   iterM :: Monad m =>
            ix -- ^ Start index
         -> ix -- ^ End index
-        -> Int -- ^ Increment
+        -> ix -- ^ Increment
         -> (Int -> Int -> Bool) -- ^ Continue iterating while predicate is True (eg. until end of row)
         -> a -- ^ Initial value for an accumulator
         -> (ix -> a -> m a) -- ^ Accumulator function
         -> m a
   default iterM :: (Index (Lower ix), Monad m)
-    => ix -> ix -> Int -> (Int -> Int -> Bool) -> a -> (ix -> a -> m a) -> m a
-  iterM !sIx !eIx !inc cond !acc f =
-    loopM k0 (`cond` k1) (+ inc) acc $ \ !i !acc0 ->
-      iterM sIxL eIxL inc cond acc0 $ \ !ix ->
+    => ix -> ix -> ix -> (Int -> Int -> Bool) -> a -> (ix -> a -> m a) -> m a
+  iterM !sIx !eIx !incIx cond !acc f =
+    loopM s (`cond` e) (+ inc) acc $ \ !i !acc0 ->
+      iterM sIxL eIxL incIxL cond acc0 $ \ !ix ->
         f (consDim i ix)
     where
-      !(k0, sIxL) = unconsDim sIx
-      !(k1, eIxL) = unconsDim eIx
+      !(s, sIxL) = unconsDim sIx
+      !(e, eIxL) = unconsDim eIx
+      !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM #-}
 
   -- | Same as `iterM`, but don't bother with accumulator and return value.
-  iterM_ :: Monad m => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
+  iterM_ :: Monad m => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
   default iterM_ :: (Index (Lower ix), Monad m)
-    => ix -> ix -> Int -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
-  iterM_ !sIx !eIx !inc cond f =
-    loopM_ k0 (`cond` k1) (+ inc) $ \ !i ->
-      iterM_ sIxL eIxL inc cond $ \ !ix ->
+    => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
+  iterM_ !sIx !eIx !incIx cond f =
+    loopM_ s (`cond` e) (+ inc) $ \ !i ->
+      iterM_ sIxL eIxL incIxL cond $ \ !ix ->
         f (consDim i ix)
     where
-      !(k0, sIxL) = unconsDim sIx
-      !(k1, eIxL) = unconsDim eIx
+      !(s, sIxL) = unconsDim sIx
+      !(e, eIxL) = unconsDim eIx
+      !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM_ #-}
 
 

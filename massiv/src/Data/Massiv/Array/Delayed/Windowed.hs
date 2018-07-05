@@ -126,6 +126,9 @@ makeWindowedArray !arr !wIx !wSz wUnsafeIndex
 -- map.  This means that the order of the elements should be preserved, or performance will take a
 -- major hit.
 --
+-- __Important__: This function is still experimental and can be removed in any future minor
+-- release.
+--
 -- @since 0.2.0
 unsafeBackpermuteDW ::
      Index ix
@@ -154,24 +157,24 @@ unsafeBackpermuteDW toNewIndex toOldIndex sz DWArray {..} =
 
 instance {-# OVERLAPPING #-} Load DW Ix1 e where
   loadS (DWArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
-    iterM_ 0  it 1 (<) $ \ !i -> unsafeWrite i (indexB i)
-    iterM_ it wk 1 (<) $ \ !i -> unsafeWrite i (indexW i)
-    iterM_ wk sz 1 (<) $ \ !i -> unsafeWrite i (indexB i)
+    iterM_ 0  it (pureIndex 1) (<) $ \ !i -> unsafeWrite i (indexB i)
+    iterM_ it wk (pureIndex 1) (<) $ \ !i -> unsafeWrite i (indexW i)
+    iterM_ wk sz (pureIndex 1) (<) $ \ !i -> unsafeWrite i (indexB i)
   {-# INLINE loadS #-}
   loadP wIds (DWArray (DArray _ sz indexB) _ it wk indexW) _ unsafeWrite = do
       divideWork_ wIds wk $ \ !scheduler !chunkLength !totalLength !slackStart -> do
         scheduleWork scheduler $
-          iterM_ 0 it 1 (<) $ \ !ix ->
+          iterM_ 0 it (pureIndex 1) (<) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexB ix)
         scheduleWork scheduler $
-          iterM_ wk sz 1 (<) $ \ !ix ->
+          iterM_ wk sz (pureIndex 1) (<) $ \ !ix ->
             unsafeWrite (toLinearIndex sz ix) (indexB ix)
         loopM_ it (< (slackStart + it)) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $
-          iterM_ start (start + chunkLength) 1 (<) $ \ !k ->
+          iterM_ start (start + chunkLength) (pureIndex 1) (<) $ \ !k ->
             unsafeWrite k $ indexW k
         scheduleWork scheduler $
-          iterM_ (slackStart + it) (totalLength + it) 1 (<) $ \ !k ->
+          iterM_ (slackStart + it) (totalLength + it) (pureIndex 1) (<) $ \ !k ->
             unsafeWrite k (indexW k)
   {-# INLINE loadP #-}
 
@@ -185,13 +188,13 @@ instance {-# OVERLAPPING #-} Load DW Ix2 e where
         blockHeight = case mStencilSz of
                         Just (i :. _) -> i
                         _             -> 1
-    iterM_ (0 :. 0) (it :. n) 1 (<) $ \ !ix ->
+    iterM_ (0 :. 0) (it :. n) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (ib :. 0) (m :. n) 1 (<) $ \ !ix ->
+    iterM_ (ib :. 0) (m :. n) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it :. 0) (ib :. jt) 1 (<) $ \ !ix ->
+    iterM_ (it :. 0) (ib :. jt) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it :. jb) (ib :. n) 1 (<) $ \ !ix ->
+    iterM_ (it :. jb) (ib :. n) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
     unrollAndJam blockHeight (it :. ib) (jt :. jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
@@ -209,16 +212,16 @@ instance {-# OVERLAPPING #-} Load DW Ix2 e where
               unsafeWrite (toLinearIndex sz ix) (indexW ix)
           {-# INLINE loadBlock #-}
       scheduleWork scheduler $
-        iterM_ (0 :. 0) (it :. n) 1 (<) $ \ !ix ->
+        iterM_ (0 :. 0) (it :. n) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       scheduleWork scheduler $
-        iterM_ (ib :. 0) (m :. n) 1 (<) $ \ !ix ->
+        iterM_ (ib :. 0) (m :. n) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       scheduleWork scheduler $
-        iterM_ (it :. 0) (ib :. jt) 1 (<) $ \ !ix ->
+        iterM_ (it :. 0) (ib :. jt) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       scheduleWork scheduler $
-        iterM_ (it :. jb) (ib :. n) 1 (<) $ \ !ix ->
+        iterM_ (it :. jb) (ib :. n) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
         let !it' = wid * chunkHeight + it
@@ -254,9 +257,9 @@ loadWindowedSRec (DWArray darr mStencilSz tix wSz indexW) _unsafeRead unsafeWrit
       !pageElements = totalElem szL
       unsafeWriteLower i k val = unsafeWrite (k + pageElements * i) val
       {-# INLINE unsafeWriteLower #-}
-  iterM_ zeroIndex tix 1 (<) $ \ !ix ->
+  iterM_ zeroIndex tix (pureIndex 1) (<) $ \ !ix ->
     unsafeWrite (toLinearIndex sz ix) (indexB ix)
-  iterM_ bix sz 1 (<) $ \ !ix ->
+  iterM_ bix sz (pureIndex 1) (<) $ \ !ix ->
     unsafeWrite (toLinearIndex sz ix) (indexB ix)
   loopM_ t (< headDim bix) (+ 1) $ \ !i ->
     let !lowerArr =
@@ -283,10 +286,10 @@ loadWindowedPRec wIds (DWArray darr mStencilSz tix wSz indexW) _unsafeRead unsaf
         unsafeWriteLower i k = unsafeWrite (k + pageElements * i)
         {-# INLINE unsafeWriteLower #-}
     scheduleWork scheduler $
-      iterM_ zeroIndex tix 1 (<) $ \ !ix ->
+      iterM_ zeroIndex tix (pureIndex 1) (<) $ \ !ix ->
         unsafeWrite (toLinearIndex sz ix) (indexB ix)
     scheduleWork scheduler $
-      iterM_ bix sz 1 (<) $ \ !ix ->
+      iterM_ bix sz (pureIndex 1) (<) $ \ !ix ->
         unsafeWrite (toLinearIndex sz ix) (indexB ix)
     loopM_ t (< headDim bix) (+ 1) $ \ !i ->
       let !lowerArr =
@@ -345,13 +348,13 @@ instance {-# OVERLAPPING #-} Load DW Ix2T e where
         blockHeight = case mStencilSz of
                         Just (i, _) -> i
                         _           -> 1
-    iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+    iterM_ (0, 0) (it, n) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+    iterM_ (ib, 0) (m, n) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+    iterM_ (it, 0) (ib, jt) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+    iterM_ (it, jb) (ib, n) (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexB ix)
     unrollAndJamT blockHeight (it, ib) (jt, jb) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (indexW ix)
@@ -369,16 +372,16 @@ instance {-# OVERLAPPING #-} Load DW Ix2T e where
               unsafeWrite (toLinearIndex sz ix) (indexW ix)
           {-# INLINE loadBlock #-}
       scheduleWork scheduler $
-        iterM_ (0, 0) (it, n) 1 (<) $ \ !ix ->
+        iterM_ (0, 0) (it, n) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       scheduleWork scheduler $
-        iterM_ (ib, 0) (m, n) 1 (<) $ \ !ix ->
+        iterM_ (ib, 0) (m, n) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       scheduleWork scheduler $
-        iterM_ (it, 0) (ib, jt) 1 (<) $ \ !ix ->
+        iterM_ (it, 0) (ib, jt) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       scheduleWork scheduler $
-        iterM_ (it, jb) (ib, n) 1 (<) $ \ !ix ->
+        iterM_ (it, jb) (ib, n) (pureIndex 1) (<) $ \ !ix ->
           unsafeWrite (toLinearIndex sz ix) (indexB ix)
       loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
         let !it' = wid * chunkHeight + it

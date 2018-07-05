@@ -128,7 +128,7 @@ izipWith3 f arr1 arr2 arr3 =
 -- 58
 --
 mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
-mapM_ f !arr = iterM_ zeroIndex (size arr) 1 (<) (f . unsafeIndex arr)
+mapM_ f !arr = iterM_ zeroIndex (size arr) (pureIndex 1) (<) (f . unsafeIndex arr)
 {-# INLINE mapM_ #-}
 
 

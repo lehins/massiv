@@ -138,7 +138,7 @@ instance Index ix => Foldable (Array D ix) where
 
 instance Index ix => Load D ix e where
   loadS (DArray _ sz f) _ unsafeWrite =
-    iterM_ zeroIndex sz 1 (<) $ \ !ix ->
+    iterM_ zeroIndex sz (pureIndex 1) (<) $ \ !ix ->
       unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
   loadP wIds (DArray _ sz f) _ unsafeWrite = do
@@ -146,7 +146,7 @@ instance Index ix => Load D ix e where
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
         scheduleWork scheduler $
         iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> do
-          unsafeWrite k $ f ix
+          unsafeWrite k (f ix)
       scheduleWork scheduler $
         iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> do
           unsafeWrite k (f ix)

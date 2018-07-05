@@ -369,5 +369,5 @@ evaluateAt !arr !ix =
 --
 imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
 imapM_ f !arr =
-  iterM_ zeroIndex (size arr) 1 (<) $ \ !ix -> f ix (unsafeIndex arr ix)
+  iterM_ zeroIndex (size arr) (pureIndex 1) (<) $ \ !ix -> f ix (unsafeIndex arr ix)
 {-# INLINE imapM_ #-}

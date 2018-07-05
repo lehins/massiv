@@ -14,8 +14,8 @@ module Data.Massiv.Array.Stencil
   ( -- * Stencil
     Stencil
   , Value
-  , mapStencil
   , makeStencil
+  , mapStencil
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
   ) where
@@ -47,7 +47,6 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   where
     !sz = size arr
 {-# INLINE mapStencil #-}
-
 
 
 -- | Construct a stencil from a function, which describes how to calculate the
