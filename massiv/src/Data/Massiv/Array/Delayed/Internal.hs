@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -22,13 +23,13 @@ module Data.Massiv.Array.Delayed.Internal
   , liftArray2
   ) where
 
-import           Data.Foldable              (Foldable (..))
+import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
-import           Data.Monoid                ((<>))
-import           GHC.Base                   (build)
-import           Prelude                    hiding (zipWith)
+import           Data.Monoid                         ((<>))
+import           GHC.Base                            (build)
+import           Prelude                             hiding (zipWith)
 
 -- | Delayed representation.
 data D = D deriving Show

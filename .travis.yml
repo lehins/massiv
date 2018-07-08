@@ -96,14 +96,14 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS=""
-    compiler: ": #stack GHC-8.0.2 (lts-9.20) - default"
+  - env: BUILD=stack ARGS="--resolver lts-9.21"
+    compiler: ": #stack GHC-8.0.2 (lts-9.21)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-10"
-    compiler: ": #stack GHC-8.2.2 (lts-10)"
+  - env: BUILD=stack ARGS="--resolver lts-11"
+    compiler: ": #stack GHC-8.2.2 (lts-11)"
     addons:
       apt:
         packages: [libgmp-dev]
@@ -122,34 +122,13 @@ matrix:
         packages: [libgmp-dev]
 
   # Build on macOS in addition to Linux
-  - env: BUILD=stack ARGS=""
-    compiler: ": #stack default osx"
+  - env: BUILD=stack ARGS="--resolver lts-9.21"
+    compiler: ": #stack GHC-8.0.2 (lts-9.21)"
     os: osx
 
-  # Travis includes an macOS which is incompatible with GHC 7.8.4
-  #- env: BUILD=stack ARGS="--resolver lts-2"
-  #  compiler: ": #stack 7.8.4 osx"
-  #  os: osx
-
-  # - env: BUILD=stack ARGS="--resolver lts-3"
-  #   compiler: ": #stack 7.10.2 osx"
-  #   os: osx
-
-  # - env: BUILD=stack ARGS="--resolver lts-6"
-  #   compiler: ": #stack 7.10.3 osx"
-  #   os: osx
-
-  # - env: BUILD=stack ARGS="--resolver lts-7"
-  #   compiler: ": #stack 8.0.1 osx"
-  #   os: osx
-
-  # - env: BUILD=stack ARGS="--resolver lts-9"
-  #   compiler: ": #stack 8.0.2 osx"
-  #   os: osx
-
-  # - env: BUILD=stack ARGS="--resolver nightly"
-  #   compiler: ": #stack nightly osx"
-  #   os: osx
+  - env: BUILD=stack ARGS="--resolver lts-11"
+    compiler: ": #stack GHC-8.2.2 (lts-11)"
+    os: osx
 
   allow_failures:
   - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
