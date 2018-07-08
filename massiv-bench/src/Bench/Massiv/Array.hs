@@ -87,8 +87,8 @@ arrDHeavyIx2T comp arrSz = makeArray comp arrSz (\ (i, j) -> heavyFunc i j)
 
 
 sobelKernelStencilX
-  :: forall e . (Eq e, Num e, Unbox e) => Border e -> Stencil Ix2 e e
-sobelKernelStencilX b =
+  :: forall e . (Eq e, Num e, Unbox e) => Stencil Ix2 e e
+sobelKernelStencilX =
   makeConvolutionStencilFromKernel $ (fromLists' Seq [ [ 1, 0, -1 ]
                                                      , [ 2, 0, -2 ]
                                                      , [ 1, 0, -1 ] ] :: Array U Ix2 e)
