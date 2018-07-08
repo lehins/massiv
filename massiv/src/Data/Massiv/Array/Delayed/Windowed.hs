@@ -67,7 +67,7 @@ instance Index ix => Construct DW ix e where
 -- | Any resize or extract on Windowed Array will loose all of the optimizations, thus hurt the
 -- performance.
 instance Index ix => Size DW ix e where
-  size = size . dwArray
+  size arr = liftIndex2 div (size (dwArray arr)) (dwStride arr)
   {-# INLINE size #-}
   unsafeResize _sz DWArray {..} = undefined -- TODO: drop strides and use the delayed
     -- let dArr = unsafeResize sz dwArray

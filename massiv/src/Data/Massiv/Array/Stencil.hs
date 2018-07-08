@@ -66,7 +66,7 @@ mapStencilStride b stride (Stencil sSz sCenter stencilF) !arr =
   DWArray
     (DArray
        (getComp arr)
-       (liftIndex2 div sz strideIx)
+       sz --(liftIndex2 div sz strideIx)
        (unValue . stencilF (Value . borderIndex b arr)))
     (Just sSz)
     sCenter
@@ -74,7 +74,7 @@ mapStencilStride b stride (Stencil sSz sCenter stencilF) !arr =
     stride
     (unValue . stencilF (Value . unsafeIndex arr))
   where
-    !strideIx = liftIndex (min 1) stride
+    !strideIx = liftIndex (max 1) stride
     !sz = size arr
 {-# INLINE mapStencilStride #-}
 

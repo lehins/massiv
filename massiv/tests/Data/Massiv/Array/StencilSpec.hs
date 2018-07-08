@@ -91,6 +91,20 @@ spec = do
         stencilCorners (2 :. 2) (-2 :. -2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [0, 0, 1]]
       it "Direction Left/Bottom Corner" $
         stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
+    describe "mapStencilStride" $ do
+      it "map stencil with stride on small array" $
+        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+            stencil = makeConvolutionStencilFromKernel kernel
+            stride = 2
+            strideArr = mapStencilStride (Fill 0) stride stencil arr
+         in computeAs U strideArr `shouldBe` [[-4]]
+      it "map stencil with stride on larger array" $
+        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+            stencil = makeConvolutionStencilFromKernel kernel
+            stride = 2
+            largeArr = makeArrayR U Seq (5 :. 5) (succ . toLinearIndex (5 :. 5))
+            strideArr = mapStencilStride (Fill 0) stride stencil largeArr
+         in do computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
     describe "reformDW" $ do
       it "map stencil with stride on small array" $
         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
