@@ -49,7 +49,7 @@ module Data.Massiv.Core
   , isEmpty
   ) where
 
-import           Data.Massiv.Core.Common hiding (unsafeGenerateM)
+import           Data.Massiv.Core.Common hiding (indexWith, unsafeGenerateM)
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Index
 

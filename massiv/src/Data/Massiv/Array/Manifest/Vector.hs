@@ -36,11 +36,12 @@ import qualified Data.Vector.Generic                    as VG
 import qualified Data.Vector.Primitive                  as VP
 import qualified Data.Vector.Storable                   as VS
 import qualified Data.Vector.Unboxed                    as VU
+import qualified GHC.Types as T ()
 
 -- | Match vector type to array representation
-type family ARepr (v :: * -> *) :: *
+type family ARepr (v :: T.* -> T.*) :: T.*
 -- | Match array representation to a vector type
-type family VRepr r :: * -> *
+type family VRepr r :: T.* -> T.*
 
 type instance ARepr VU.Vector = U
 type instance ARepr VS.Vector = S
@@ -99,7 +100,7 @@ fromVector comp sz v =
         then error $
              "Data.Array.Massiv.Manifest.fromVector: Supplied size: " ++
              show sz ++ " doesn't match vector length: " ++ show (VG.length v)
-        else unsafeMakeArray comp sz ((v VG.!) . toLinearIndex sz)
+        else makeArray comp sz ((VG.unsafeIndex v) . toLinearIndex sz)
 {-# NOINLINE fromVector #-}
 
 

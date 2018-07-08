@@ -13,6 +13,12 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+flag unsafe-checks
+  description: Enable all the bounds checks for unsafe functions at the cost of
+               significant performance penalty
+  default: False
+  manual: True
+
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Massiv.Array
@@ -58,6 +64,10 @@ library
                      , ghc-prim
                      , primitive
                      , vector
+  include-dirs: include
+
+  if flag(unsafe-checks)
+    cpp-options: -DMASSIV_UNSAFE_CHECKS
 
   if impl(ghc < 8.0)
     build-depends: semigroups

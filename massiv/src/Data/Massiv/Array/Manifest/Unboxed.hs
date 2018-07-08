@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -32,6 +33,8 @@ import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
+
+#include "massiv.h"
 
 -- | Representation for `Unbox`ed elements
 data U = U deriving Show
@@ -70,7 +73,8 @@ instance (VU.Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
 
 
 instance (VU.Unbox e, Index ix) => Source U ix e where
-  unsafeLinearIndex (UArray _ _ v) = VU.unsafeIndex v
+  unsafeLinearIndex (UArray _ _ v) =
+    INDEX_CHECK("(Source U ix e).unsafeLinearIndex", VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -131,7 +135,8 @@ instance ( VU.Unbox e
 
 instance (VU.Unbox e, Index ix) => Manifest U ix e where
 
-  unsafeLinearIndexM (UArray _ _ v) = VU.unsafeIndex v
+  unsafeLinearIndexM (UArray _ _ v) =
+    INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 instance (VU.Unbox e, Index ix) => Mutable U ix e where
@@ -152,10 +157,12 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   unsafeNewZero sz = MUArray sz <$> MVU.new (totalElem sz)
   {-# INLINE unsafeNewZero #-}
 
-  unsafeLinearRead (MUArray _ v) i = MVU.unsafeRead v i
+  unsafeLinearRead (MUArray _ mv) =
+    INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", MVU.length, MVU.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MUArray _ v) i = MVU.unsafeWrite v i
+  unsafeLinearWrite (MUArray _ mv) =
+    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", MVU.length, MVU.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
 

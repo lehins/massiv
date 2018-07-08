@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -36,6 +37,8 @@ import           Foreign.Ptr
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 
+#include "massiv.h"
+
 -- | Representation for `Storable` elements
 data S = S deriving Show
 
@@ -70,7 +73,8 @@ instance (VS.Storable e, Index ix) => Construct S ix e where
 
 
 instance (VS.Storable e, Index ix) => Source S ix e where
-  unsafeLinearIndex (SArray _ _ v) = VS.unsafeIndex v
+  unsafeLinearIndex (SArray _ _ v) =
+    INDEX_CHECK("(Source S ix e).unsafeLinearIndex", VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -109,7 +113,8 @@ instance ( VS.Storable e
 
 instance (Index ix, VS.Storable e) => Manifest S ix e where
 
-  unsafeLinearIndexM (SArray _ _ v) = VS.unsafeIndex v
+  unsafeLinearIndexM (SArray _ _ v) =
+    INDEX_CHECK("(Manifest S ix e).unsafeLinearIndexM", VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -131,10 +136,12 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   unsafeNewZero sz = MSArray sz <$> MVS.new (totalElem sz)
   {-# INLINE unsafeNewZero #-}
 
-  unsafeLinearRead (MSArray _ v) i = MVS.unsafeRead v i
+  unsafeLinearRead (MSArray _ mv) =
+    INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", MVS.length, MVS.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MSArray _ v) i = MVS.unsafeWrite v i
+  unsafeLinearWrite (MSArray _ mv) =
+    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", MVS.length, MVS.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -35,6 +36,8 @@ import qualified Data.Primitive.Array                as A
 import           GHC.Base                            (build)
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
+
+#include "massiv.h"
 
 
 -- | Array representation for Boxed elements. This structure is element and
@@ -74,7 +77,8 @@ instance Index ix => Construct B ix e where
   {-# INLINE unsafeMakeArray #-}
 
 instance Index ix => Source B ix e where
-  unsafeLinearIndex (BArray _ _ a) = A.indexArray a
+  unsafeLinearIndex (BArray _ _ a) =
+    INDEX_CHECK("(Source B ix e).unsafeLinearIndex", A.sizeofArray, A.indexArray) a
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -112,7 +116,8 @@ instance ( NFData e
 
 instance Index ix => Manifest B ix e where
 
-  unsafeLinearIndexM (BArray _ _ a) = A.indexArray a
+  unsafeLinearIndexM (BArray _ _ a) =
+    INDEX_CHECK("(Manifest B ix e).unsafeLinearIndexM", A.sizeofArray, A.indexArray) a
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -138,10 +143,12 @@ instance Index ix => Mutable B ix e where
   unsafeNewZero = unsafeNew
   {-# INLINE unsafeNewZero #-}
 
-  unsafeLinearRead (MBArray _ ma) i = A.readArray ma i
+  unsafeLinearRead (MBArray _ ma) =
+    INDEX_CHECK("(Mutable B ix e).unsafeLinearRead", A.sizeofMutableArray, A.readArray) ma
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBArray _ ma) i e = e `seq` A.writeArray ma i e
+  unsafeLinearWrite (MBArray _ ma) i e = e `seq`
+    INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite", A.sizeofMutableArray, A.writeArray) ma i e
   {-# INLINE unsafeLinearWrite #-}
 
 

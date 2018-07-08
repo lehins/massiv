@@ -413,7 +413,7 @@ errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
 errorIx fName sz ix =
   error $
   fName ++
-  ": Index out of bounds: " ++ show ix ++ " for Array of size: " ++ show sz
+  ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
 {-# NOINLINE errorIx #-}
 
 

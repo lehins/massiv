@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MagicHash             #-}
@@ -36,10 +37,12 @@ import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types
 import qualified Data.Vector.Primitive               as VP
-import           GHC.Base                            (Int(..))
+import           GHC.Base                            (Int (..))
 import           GHC.Exts                            as GHC (IsList (..))
 import           GHC.Prim
 import           Prelude                             hiding (mapM)
+
+#include "massiv.h"
 
 -- | Representation for `Prim`itive elements
 data P = P deriving Show
@@ -74,8 +77,14 @@ instance (Prim e, Index ix) => Construct P ix e where
   unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
+elemsByteArray :: Prim a => a -> ByteArray -> Int
+elemsByteArray dummy a = sizeofByteArray a `div` sizeOf dummy
+{-# INLINE elemsByteArray #-}
+
 instance (Prim e, Index ix) => Source P ix e where
-  unsafeLinearIndex (PArray _ _ a) = indexByteArray a
+  unsafeLinearIndex (PArray _ _ a) =
+    INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
+                elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -136,9 +145,15 @@ instance ( Prim e
 
 instance (Index ix, Prim e) => Manifest P ix e where
 
-  unsafeLinearIndexM (PArray _ _ a) = indexByteArray a
+  unsafeLinearIndexM (PArray _ _ a) =
+    INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
+                elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndexM #-}
 
+
+elemsMutableByteArray :: Prim a => a -> MutableByteArray s -> Int
+elemsMutableByteArray dummy a = sizeofMutableByteArray a `div` sizeOf dummy
+{-# INLINE elemsMutableByteArray #-}
 
 instance (Index ix, Prim e) => Mutable P ix e where
   data MArray s P ix e = MPArray !ix !(MutableByteArray s)
@@ -152,20 +167,24 @@ instance (Index ix, Prim e) => Mutable P ix e where
   unsafeFreeze comp (MPArray sz a) = PArray comp sz <$> unsafeFreezeByteArray a
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew sz = MPArray sz <$> newByteArray (totalElem sz * sizeOf (undefined :: e))
+  unsafeNew sz = MPArray sz <$> newByteArray (I# (totalSize# sz (undefined :: e)))
   {-# INLINE unsafeNew #-}
 
   unsafeNewZero sz = do
-    let szBytes = totalElem sz * sizeOf (undefined :: e)
+    let !szBytes = I# (totalSize# sz (undefined :: e))
     barr <- newByteArray szBytes
     fillByteArray barr 0 szBytes 0
     return $ MPArray sz barr
   {-# INLINE unsafeNewZero #-}
 
-  unsafeLinearRead (MPArray _ a) = readByteArray a
+  unsafeLinearRead (MPArray _ ma) =
+    INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
+                elemsMutableByteArray (undefined :: e), readByteArray) ma
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MPArray _ v) = writeByteArray v
+  unsafeLinearWrite (MPArray _ ma) =
+    INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
+                elemsMutableByteArray (undefined :: e), writeByteArray) ma
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeNewA sz (State s#) =

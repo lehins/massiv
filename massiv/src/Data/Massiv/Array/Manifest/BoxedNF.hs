@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -41,6 +42,8 @@ import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
+#include "massiv.h"
+
 -- | Array representation for Boxed elements. This structure is element and
 -- spine strict, and elements are always in Normal Form (NF), therefore `NFData`
 -- instance is required.
@@ -81,7 +84,8 @@ instance (Index ix, NFData e) => Construct N ix e where
   {-# INLINE unsafeMakeArray #-}
 
 instance (Index ix, NFData e) => Source N ix e where
-  unsafeLinearIndex (NArray _ _ a) = A.indexArray a
+  unsafeLinearIndex (NArray _ _ a) =
+    INDEX_CHECK("(Source N ix e).unsafeLinearIndex", A.sizeofArray, A.indexArray) a
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -119,7 +123,8 @@ instance ( NFData e
 
 instance (Index ix, NFData e) => Manifest N ix e where
 
-  unsafeLinearIndexM (NArray _ _ a) = A.indexArray a
+  unsafeLinearIndexM (NArray _ _ a) =
+    INDEX_CHECK("(Manifest N ix e).unsafeLinearIndexM", A.sizeofArray, A.indexArray) a
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -145,10 +150,12 @@ instance (Index ix, NFData e) => Mutable N ix e where
   unsafeNewZero = unsafeNew
   {-# INLINE unsafeNewZero #-}
 
-  unsafeLinearRead (MNArray _ ma) i = A.readArray ma i
+  unsafeLinearRead (MNArray _ ma) =
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", A.sizeofMutableArray, A.readArray) ma
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MNArray _ ma) i e = e `deepseq` A.writeArray ma i e
+  unsafeLinearWrite (MNArray _ ma) i e = e `deepseq`
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", A.sizeofMutableArray, A.writeArray) ma i e
   {-# INLINE unsafeLinearWrite #-}
 
 

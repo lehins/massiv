@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MagicHash             #-}
@@ -37,6 +38,7 @@ module Data.Massiv.Core.Common
   -- * Indexing
   , (!?)
   , index
+  , indexWith
   , (!)
   , index'
   , (??)
@@ -54,6 +56,8 @@ import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
 import           Data.Typeable
 import           GHC.Prim
+
+#include "massiv.h"
 
 -- | The array family. Representations @r@ describes how data is arranged or computed. All arrays
 -- have a common property that each index @ix@ always maps to the same unique element, even if that
@@ -103,7 +107,9 @@ class Size r ix e => Source r ix e where
   -- | Lookup element in the array. No bounds check is performed and access of
   -- arbitrary memory is possible when invalid index is supplied.
   unsafeIndex :: Array r ix e -> ix -> e
-  unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
+  unsafeIndex =
+    INDEX_CHECK("(Source r ix e).unsafeIndex",
+                size, \ !arr -> unsafeLinearIndex arr . toLinearIndex (size arr))
   {-# INLINE unsafeIndex #-}
 
   -- | Lookup element in the array using flat index in a row-major fasion. No
@@ -348,6 +354,28 @@ evaluateAt !arr !ix =
     ix
 {-# INLINE evaluateAt #-}
 
+
+indexWith ::
+     Index ix
+  => String -- ^ Source file name, eg. __FILE__
+  -> Int -- ^ Line number in th source file, eg. __LINE__
+  -> String
+  -> (arr -> ix) -- ^ Get size of the array
+  -> (arr -> ix -> e) -- ^ Indexing function
+  -> arr -- ^ Array
+  -> ix -- ^ Index
+  -> e
+indexWith fileName lineNo funName getSize f arr ix
+  | isSafeIndex (getSize arr) ix = f arr ix
+  | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) (getSize arr) ix
+{-# INLINE indexWith #-}
+
+
+-- indexWith :: Size r ix e => String -> Int -> (Array r ix e -> ix -> e) -> Array r ix e -> ix -> e
+-- indexWith fileName lineNo f arr ix
+--   | isSafeIndex (size arr) ix = f arr ix
+--   | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> indexWith") (size arr) ix
+-- {-# INLINE indexWith #-}
 
 -- errorImpossible :: String -> a
 -- errorImpossible loc =

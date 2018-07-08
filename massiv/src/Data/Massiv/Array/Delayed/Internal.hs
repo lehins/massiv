@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -31,6 +32,8 @@ import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
 
+#include "massiv.h"
+
 -- | Delayed representation.
 data D = D deriving Show
 
@@ -52,7 +55,7 @@ instance Index ix => Construct D ix e where
 
 
 instance Index ix => Source D ix e where
-  unsafeIndex = dUnsafeIndex
+  unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dUnsafeIndex)
   {-# INLINE unsafeIndex #-}
 
 instance Index ix => Size D ix e where
