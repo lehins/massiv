@@ -36,12 +36,11 @@ import qualified Data.Vector.Generic                    as VG
 import qualified Data.Vector.Primitive                  as VP
 import qualified Data.Vector.Storable                   as VS
 import qualified Data.Vector.Unboxed                    as VU
-import qualified GHC.Types as T ()
 
 -- | Match vector type to array representation
-type family ARepr (v :: T.* -> T.*) :: T.*
+type family ARepr (v :: * -> *) :: *
 -- | Match array representation to a vector type
-type family VRepr r :: T.* -> T.*
+type family VRepr r :: * -> *
 
 type instance ARepr VU.Vector = U
 type instance ARepr VS.Vector = S
