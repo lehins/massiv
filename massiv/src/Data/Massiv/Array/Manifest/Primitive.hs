@@ -77,14 +77,14 @@ instance (Prim e, Index ix) => Construct P ix e where
   unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
-elemsByteArray :: Prim a => a -> ByteArray -> Int
-elemsByteArray dummy a = sizeofByteArray a `div` sizeOf dummy
-{-# INLINE elemsByteArray #-}
+_elemsByteArray :: Prim a => a -> ByteArray -> Int
+_elemsByteArray dummy a = sizeofByteArray a `div` sizeOf dummy
+{-# INLINE _elemsByteArray #-}
 
 instance (Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex (PArray _ _ a) =
     INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
-                elemsByteArray (undefined :: e), indexByteArray) a
+                _elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -147,13 +147,13 @@ instance (Index ix, Prim e) => Manifest P ix e where
 
   unsafeLinearIndexM (PArray _ _ a) =
     INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
-                elemsByteArray (undefined :: e), indexByteArray) a
+                _elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndexM #-}
 
 
-elemsMutableByteArray :: Prim a => a -> MutableByteArray s -> Int
-elemsMutableByteArray dummy a = sizeofMutableByteArray a `div` sizeOf dummy
-{-# INLINE elemsMutableByteArray #-}
+_elemsMutableByteArray :: Prim a => a -> MutableByteArray s -> Int
+_elemsMutableByteArray dummy a = sizeofMutableByteArray a `div` sizeOf dummy
+{-# INLINE _elemsMutableByteArray #-}
 
 instance (Index ix, Prim e) => Mutable P ix e where
   data MArray s P ix e = MPArray !ix !(MutableByteArray s)
@@ -179,12 +179,12 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
   unsafeLinearRead (MPArray _ ma) =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
-                elemsMutableByteArray (undefined :: e), readByteArray) ma
+                _elemsMutableByteArray (undefined :: e), readByteArray) ma
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MPArray _ ma) =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
-                elemsMutableByteArray (undefined :: e), writeByteArray) ma
+                _elemsMutableByteArray (undefined :: e), writeByteArray) ma
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeNewA sz (State s#) =
