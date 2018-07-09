@@ -65,6 +65,7 @@ library
                      , primitive
                      , vector
   include-dirs: include
+  install-includes: massiv.h
 
   if flag(unsafe-checks)
     cpp-options: -DMASSIV_UNSAFE_CHECKS
