@@ -97,14 +97,14 @@ spec = do
             stencil = makeConvolutionStencilFromKernel kernel
             stride = 2
             strideArr = mapStencilStride (Fill 0) stride stencil arr
-         in computeAs U strideArr `shouldBe` [[-4]]
+         in computeAs U strideArr `shouldBe` [[-4, 8],[2, 14]]
       it "map stencil with stride on larger array" $
         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
             stencil = makeConvolutionStencilFromKernel kernel
             stride = 2
             largeArr = makeArrayR U Seq (5 :. 5) (succ . toLinearIndex (5 :. 5))
             strideArr = mapStencilStride (Fill 0) stride stencil largeArr
-         in do computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
+         in do computeAs U strideArr `shouldBe` [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
     describe "reformDW" $ do
       it "map stencil with stride on small array" $
         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int

@@ -71,10 +71,9 @@ mapStencilStride b stride (Stencil sSz sCenter stencilF) !arr =
     (Just sSz)
     sCenter
     (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
-    stride
+    (liftIndex (max 1) stride)
     (unValue . stencilF (Value . unsafeIndex arr))
   where
-    !strideIx = liftIndex (max 1) stride
     !sz = size arr
 {-# INLINE mapStencilStride #-}
 
