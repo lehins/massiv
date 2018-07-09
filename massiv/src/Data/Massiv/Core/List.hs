@@ -326,8 +326,7 @@ instance ( Index ix
 
  -- TODO: benchmark against using unsafeGenerateM directly
 unsafeGenerateN ::
-  ( Index ix
-  , Ragged r ix e
+  ( Ragged r ix e
   , Ragged r (Lower ix) e
   , Elt r ix e ~ Array r (Lower ix) e )
   => Comp
@@ -356,7 +355,7 @@ toListArray !arr =
 instance {-# OVERLAPPING #-} (Ragged L ix e, Show e) => Show (Array L ix e) where
   show arr = "  " ++ raggedFormat show "\n  " arr
 
-instance {-# OVERLAPPING #-} (Ragged L ix e, Nested LN ix e, Show e) =>
+instance {-# OVERLAPPING #-} (Ragged L ix e, Show e) =>
   Show (Array LN ix e) where
   show arr = show (fromNested arr :: Array L ix e)
 
@@ -368,23 +367,17 @@ showN fShow lnPrefix ls =
     (["[ "] ++
      (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
 
+
 instance ( Ragged L ix e
-         , Construct L ix e
          , Source r ix e
          , Show e
          ) =>
          Show (Array r ix e) where
   show arr = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ") arr
-    -- "(Array " ++ showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-    -- showComp (getComp arr) ++ " (" ++
-    -- (show (size arr)) ++ ")\n" ++
-    -- show (makeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"
-    -- where showComp Seq = "Seq"
-    --       showComp Par = "Par"
-    --       showComp c   = "(" ++ show c ++ ")"
+
 
 showArray ::
-     forall r ix e. (Ragged L ix e, Construct L ix e, Source r ix e, Show e)
+     forall r ix e. (Ragged L ix e, Source r ix e, Show e)
   => String
   -> Array r ix e
   -> String

@@ -33,7 +33,7 @@ data Stencil ix e a = Stencil
   , stencilFunc   :: (ix -> Value e) -> ix -> Value a
   }
 
-instance (NFData e, Index ix) => NFData (Stencil ix e a) where
+instance Index ix => NFData (Stencil ix e a) where
   rnf (Stencil sz ix f) = sz `deepseq` ix `deepseq` f `seq` ()
 
 -- | This is a simple wrapper for value of an array cell. It is used in order to improve safety of
