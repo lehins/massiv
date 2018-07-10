@@ -512,3 +512,9 @@ variance introduced by outliers: 34% (moderately inflated)
 Benchmark fold-seq: FINISH
 ```
 
+# Further resources on learning `massiv`:
+
+## Talk at [Monadic Warsaw](https://www.meetup.com/Monadic-Warsaw/events/249543097/)
+
+* [Slides](learning/slides/2018-MonadicWarsaw.pdf)
+* Video - coming soon.
