@@ -214,8 +214,6 @@ instance {-# OVERLAPPING #-} Load DW Ix2 e where
       then iterM_ (strideStart (it :. jt)) (ib :. jb) stride (<) $ \ !ix ->
              unsafeWrite (toLinearIndexStride ix) (indexW ix)
       else
-      -- unrollAndJam blockHeight (it :. ib) (jt :. jb) stride $ \ !ix ->
-      --        unsafeWrite (toLinearIndexStride ix) (indexW ix)
       unrollAndJam' blockHeight (strideStart (it :. jt)) (ib :. jb) js $ \ !ix ->
              unsafeWrite (toLinearIndexStride ix) (indexW ix)
   {-# INLINE loadS #-}
