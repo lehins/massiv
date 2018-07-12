@@ -28,13 +28,13 @@ data DI = DI
 
 type instance EltRepr DI ix = DI
 
-newtype instance Array DI ix e = DIArray { idArray :: (Array D ix e) }
+newtype instance Array DI ix e = DIArray { diArray :: Array D ix e }
 
 instance Index ix => Construct DI ix e where
-  getComp = dComp . idArray
+  getComp = dComp . diArray
   {-# INLINE getComp #-}
 
-  setComp c arr = arr { idArray = (idArray arr) { dComp = c } }
+  setComp c arr = arr { diArray = (diArray arr) { dComp = c } }
   {-# INLINE setComp #-}
 
   unsafeMakeArray c sz = DIArray . unsafeMakeArray c sz
@@ -47,10 +47,10 @@ instance Index ix => Size DI ix e where
   size (DIArray arr) = size arr
   {-# INLINE size #-}
 
-  unsafeResize sz = DIArray . unsafeResize sz . idArray
+  unsafeResize sz = DIArray . unsafeResize sz . diArray
   {-# INLINE unsafeResize #-}
 
-  unsafeExtract sIx newSz = DIArray . unsafeExtract sIx newSz . idArray
+  unsafeExtract sIx newSz = DIArray . unsafeExtract sIx newSz . diArray
   {-# INLINE unsafeExtract #-}
 
 
