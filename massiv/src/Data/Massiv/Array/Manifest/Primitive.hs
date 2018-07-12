@@ -58,8 +58,7 @@ data instance Array P ix e = PArray { pComp :: !Comp
                                     , pData :: {-# UNPACK #-} !ByteArray
                                     }
 
-
-instance (Index ix, NFData e) => NFData (Array P ix e) where
+instance Index ix => NFData (Array P ix e) where
   rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()
   {-# INLINE rnf #-}
 

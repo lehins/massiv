@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -36,6 +38,8 @@ module Data.Massiv.Array.Manifest.Internal
   , sequenceOnP
   , fromRaggedArray
   , fromRaggedArray'
+  , sizeofArray
+  , sizeofMutableArray
   ) where
 
 import           Control.Exception                   (try)
@@ -53,6 +57,27 @@ import           Data.Typeable
 import qualified Data.Vector                         as V
 import           GHC.Base                            (build)
 import           System.IO.Unsafe                    (unsafePerformIO)
+
+
+#if MIN_VERSION_primitive(0,6,2)
+import           Data.Primitive.Array                (sizeofArray,
+                                                      sizeofMutableArray)
+
+#else
+import qualified Data.Primitive.Array                as A (Array (..),
+                                                           MutableArray (..))
+import           GHC.Base                            (Int (..))
+import           GHC.Prim                            (sizeofArray#,
+                                                      sizeofMutableArray#)
+
+sizeofArray :: A.Array a -> Int
+sizeofArray (A.Array a) = I# (sizeofArray# a)
+{-# INLINE sizeofArray #-}
+
+sizeofMutableArray :: A.MutableArray s a -> Int
+sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
+{-# INLINE sizeofMutableArray #-}
+#endif
 
 
 -- | General Manifest representation
