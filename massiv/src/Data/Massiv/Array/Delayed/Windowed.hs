@@ -186,69 +186,56 @@ instance {-# OVERLAPPING #-} Load DW Ix1 e where
   {-# INLINE loadP #-}
 
 
+loadWithIx2 ::
+     (Monad m)
+  => (m () -> m ())
+  -> Array DW Ix2 t1
+  -> (Int -> t1 -> m a)
+  -> m (Ix2 -> m (), Ix2)
+loadWithIx2 with arr unsafeWrite = do
+  let DWArray (DArray _ (m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) stride indexW = arr
+  let ib :. jb = (wm + it) :. (wn + jt)
+      !blockHeight =
+        case mStencilSz of
+          Just (i :. _) -> min (max 1 i) 7
+          _ -> 1
+      is :. js = stride
+      strideStart ix = ix + (liftIndex2 mod (stride - liftIndex2 mod ix stride) stride)
+      {-# INLINE strideStart #-}
+      toLinearIndexStride ix = toLinearIndex (size arr) (liftIndex2 div ix stride)
+      {-# INLINE toLinearIndexStride #-}
+      writeB !ix = unsafeWrite (toLinearIndexStride ix) (indexB ix)
+      {-# INLINE writeB #-}
+      writeW !ix = unsafeWrite (toLinearIndexStride ix) (indexW ix)
+      {-# INLINE writeW #-}
+  with $ iterM_ (0 :. 0) (it :. n) stride (<) writeB
+  with $ iterM_ (strideStart (ib :. 0)) (m :. n) stride (<) writeB
+  with $ iterM_ (strideStart (it :. 0)) (ib :. jt) stride (<) writeB
+  with $ iterM_ (strideStart (it :. jb)) (ib :. n) stride (<) writeB
+  f <-
+    if is > 1 -- Turn off unrolling for vertical strides
+      then return $ \(it' :. ib') -> iterM_ (strideStart (it' :. jt)) (ib' :. jb) stride (<) writeW
+      else return $ \(it' :. ib') ->
+             unrollAndJam' blockHeight (strideStart (it' :. jt)) (ib' :. jb) js writeW
+  return (f, it :. ib)
+{-# INLINE loadWithIx2 #-}
+
 
 instance {-# OVERLAPPING #-} Load DW Ix2 e where
-  loadS arr _ unsafeWrite = do
-    let DWArray (DArray _ (m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) stride indexW = arr
-    let ib :. jb = (wm + it) :. (wn + jt)
-        !blockHeight =
-          case mStencilSz of
-            Just (i :. _) -> min (max 1 i) 7
-            _ -> 1
-        is :. js = stride
-        !strideSz = size arr
-        strideStart ix = ix + (liftIndex2 mod (stride - liftIndex2 mod ix stride) stride)
-        {-# INLINE strideStart #-}
-        toLinearIndexStride ix = toLinearIndex strideSz (liftIndex2 div ix stride)
-        {-# INLINE toLinearIndexStride #-}
-        --writeB !ix = unsafeWrite (toLinearIndexStride ix) (indexB ix)
-    -- iterM_ (0 :. 0) sz stride (<) $ \ !ix -> unsafeWrite (toLinearIndexStride ix) (indexB ix)
-    iterM_ (0 :. 0) (it :. n) stride (<) $ \ !ix -> unsafeWrite (toLinearIndexStride ix) (indexB ix)
-    iterM_ (strideStart (ib :. 0)) (m :. n) stride (<) $ \ !ix ->
-      unsafeWrite (toLinearIndexStride ix) (indexB ix)
-    iterM_ (strideStart (it :. 0)) (ib :. jt) stride (<) $ \ !ix ->
-      unsafeWrite (toLinearIndexStride ix) (indexB ix)
-    iterM_ (strideStart (it :. jb)) (ib :. n) stride (<) $ \ !ix ->
-      unsafeWrite (toLinearIndexStride ix) (indexB ix)
-    if is > 1 -- Turn off unrolling for vertical strides
-      then iterM_ (strideStart (it :. jt)) (ib :. jb) stride (<) $ \ !ix ->
-             unsafeWrite (toLinearIndexStride ix) (indexW ix)
-      else
-      unrollAndJam' blockHeight (strideStart (it :. jt)) (ib :. jb) js $ \ !ix ->
-             unsafeWrite (toLinearIndexStride ix) (indexW ix)
+  loadS arr _ unsafeWrite = loadWithIx2 id arr unsafeWrite >>= uncurry ($)
   {-# INLINE loadS #-}
   --
-  loadP wIds arr _ unsafeWrite = do
-    let DWArray (DArray _ sz@(m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) stride indexW = arr
+  loadP wIds arr _ unsafeWrite =
     withScheduler_ wIds $ \scheduler -> do
-      let ib :. jb = (wm + it) :. (wn + jt)
-          !blockHeight =
-            case mStencilSz of
-              Just (i :. _) -> i
-              _ -> 1
-          !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
-      let loadBlock !it' !ib' =
-            unrollAndJam blockHeight (it' :. ib') (jt :. jb) stride $ \ !ix ->
-              unsafeWrite (toLinearIndex sz ix) (indexW ix)
-          {-# INLINE loadBlock #-}
-      scheduleWork scheduler $
-        iterM_ (0 :. 0) (it :. n) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      scheduleWork scheduler $
-        iterM_ (ib :. 0) (m :. n) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      scheduleWork scheduler $
-        iterM_ (it :. 0) (ib :. jt) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      scheduleWork scheduler $
-        iterM_ (it :. jb) (ib :. n) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
+      let wm :. _ = dwWindowSize arr
+      let !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
+      (loadWindow, it :. _) <- loadWithIx2 (scheduleWork scheduler) arr unsafeWrite
+      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
         let !it' = wid * chunkHeight + it
-        scheduleWork scheduler $ loadBlock it' (it' + chunkHeight)
-      when (slackHeight > 0) $ do
-        let !itSlack = (numWorkers scheduler) * chunkHeight + it
-        scheduleWork scheduler $ loadBlock itSlack (itSlack + slackHeight)
+         in scheduleWork scheduler $ loadWindow (it' :. (it' + chunkHeight))
+      when (slackHeight > 0) $
+        let !itSlack = numWorkers scheduler * chunkHeight + it
+         in scheduleWork scheduler $ loadWindow (itSlack :. (itSlack + slackHeight))
   {-# INLINE loadP #-}
 
 
@@ -322,6 +309,7 @@ loadWindowedPRec wIds (DWArray darr mStencilSz tix wSz stride indexW) _unsafeRea
            (_unsafeRead)
            (unsafeWriteLower i)
 {-# INLINE loadWindowedPRec #-}
+
 
 
 unrollAndJam' :: Monad m =>
@@ -467,3 +455,50 @@ instance {-# OVERLAPPING #-} Load DW Ix2T e where
 --     loopM_ jt (< jb) (+ 1) $ \ !j ->
 --       f (i, j)
 -- {-# INLINE unrollAndJamT #-}
+
+
+
+
+
+-- ALternative separation of jamming the urolled
+-- unroll :: Monad m => Int -> (Ix2 -> m b) -> Ix2 -> m b
+-- unroll bH f =
+--   let f2 (i :. j) = f (i :. j) >> f ((i + 1) :. j)
+--       {-# INLINE f2 #-}
+--       f3 (i :. j) = f (i :. j) >> f2 ((i + 1) :. j)
+--       {-# INLINE f3 #-}
+--       f4 (i :. j) = f (i :. j) >> f3 ((i + 1) :. j)
+--       {-# INLINE f4 #-}
+--       f5 (i :. j) = f (i :. j) >> f4 ((i + 1) :. j)
+--       {-# INLINE f5 #-}
+--       f6 (i :. j) = f (i :. j) >> f5 ((i + 1) :. j)
+--       {-# INLINE f6 #-}
+--       f7 (i :. j) = f (i :. j) >> f6 ((i + 1) :. j)
+--       {-# INLINE f7 #-}
+--    in case bH of
+--         1 -> f
+--         2 -> f2
+--         3 -> f3
+--         4 -> f4
+--         5 -> f5
+--         6 -> f6
+--         _ -> f7
+-- {-# INLINE unroll #-}
+
+-- jam :: Monad m =>
+--        Int -- ^ Block height
+--     -> Ix2 -- ^ Top corner
+--     -> Ix2 -- ^ Bottom corner
+--     -> Int -- ^ Column Stride
+--     -> (Ix2 -> m a) -- ^ Unrolled writing function
+--     -> (Ix2 -> m a) -- ^ Writing function
+--     -> m ()
+-- jam !bH (it :. jt) (ib :. jb) js f' f = do
+--   let !ibS = ib - ((ib - it) `mod` bH)
+--   loopM_ it (< ibS) (+ bH) $ \ !i ->
+--     loopM_ jt (< jb) (+ js) $ \ !j ->
+--       f' (i :. j)
+--   loopM_ ibS (< ib) (+ 1) $ \ !i ->
+--     loopM_ jt (< jb) (+ js) $ \ !j ->
+--       f (i :. j)
+-- {-# INLINE jam #-}
