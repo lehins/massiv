@@ -22,7 +22,7 @@ module Data.Massiv.Array.Delayed.Windowed
 
 import           Control.Monad                          (when)
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Manifest.BoxedStrict
+import           Data.Massiv.Array.Manifest.Boxed
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common

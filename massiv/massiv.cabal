@@ -37,8 +37,7 @@ library
   other-modules:       Data.Massiv.Array.Delayed.Internal
                      , Data.Massiv.Array.Delayed.Interleaved
                      , Data.Massiv.Array.Delayed.Windowed
-                     , Data.Massiv.Array.Manifest.BoxedNF
-                     , Data.Massiv.Array.Manifest.BoxedStrict
+                     , Data.Massiv.Array.Manifest.Boxed
                      , Data.Massiv.Array.Manifest.Internal
                      , Data.Massiv.Array.Manifest.List
                      , Data.Massiv.Array.Manifest.Primitive
