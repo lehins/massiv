@@ -22,8 +22,7 @@ module Data.Massiv.Array.Manifest.Vector
   ) where
 
 import           Control.Monad                          (guard, join, msum)
-import           Data.Massiv.Array.Manifest.BoxedNF
-import           Data.Massiv.Array.Manifest.BoxedStrict
+import           Data.Massiv.Array.Manifest.Boxed
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.Primitive
 import           Data.Massiv.Array.Manifest.Storable
