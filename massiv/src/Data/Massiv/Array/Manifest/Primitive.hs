@@ -21,6 +21,10 @@ module Data.Massiv.Array.Manifest.Primitive
   , Array(..)
   , Prim
   , vectorToByteArray
+  , toByteArray
+  , fromByteArray
+  , toMutableByteArray
+  , fromMutableByteArray
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
@@ -54,6 +58,7 @@ data instance Array P ix e = PArray { pComp :: !Comp
                                     , pData :: {-# UNPACK #-} !ByteArray
                                     }
 
+
 instance (Index ix, NFData e) => NFData (Array P ix e) where
   rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()
   {-# INLINE rnf #-}
@@ -77,14 +82,14 @@ instance (Prim e, Index ix) => Construct P ix e where
   unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
   {-# INLINE unsafeMakeArray #-}
 
-_elemsByteArray :: Prim a => a -> ByteArray -> Int
-_elemsByteArray dummy a = sizeofByteArray a `div` sizeOf dummy
-{-# INLINE _elemsByteArray #-}
+elemsByteArray :: Prim a => a -> ByteArray -> Int
+elemsByteArray dummy a = sizeofByteArray a `div` sizeOf dummy
+{-# INLINE elemsByteArray #-}
 
 instance (Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex (PArray _ _ a) =
     INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
-                _elemsByteArray (undefined :: e), indexByteArray) a
+                elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -151,9 +156,9 @@ instance (Index ix, Prim e) => Manifest P ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-_elemsMutableByteArray :: Prim a => a -> MutableByteArray s -> Int
-_elemsMutableByteArray dummy a = sizeofMutableByteArray a `div` sizeOf dummy
-{-# INLINE _elemsMutableByteArray #-}
+elemsMutableByteArray :: Prim a => a -> MutableByteArray s -> Int
+elemsMutableByteArray dummy a = sizeofMutableByteArray a `div` sizeOf dummy
+{-# INLINE elemsMutableByteArray #-}
 
 instance (Index ix, Prim e) => Mutable P ix e where
   data MArray s P ix e = MPArray !ix !(MutableByteArray s)
@@ -240,3 +245,50 @@ vectorToByteArray (VP.Vector start len arr) =
            unsafeFreezeByteArray marr
 {-# INLINE vectorToByteArray #-}
 
+
+primArrayDummy :: arr P ix e -> e
+primArrayDummy = undefined
+{-# INLINE primArrayDummy #-}
+
+
+-- | /O(1) - Extract the internal `ByteArray`.
+--
+-- @since 0.2.1
+toByteArray :: Array P ix e -> ByteArray
+toByteArray = pData
+{-# INLINE toByteArray #-}
+
+
+-- | /O(1) - Construct a primitive array from the `ByteArray`. Will return `Nothing` if number of
+-- elements doesn't match.
+--
+-- @since 0.2.1
+fromByteArray :: (Index ix, Prim e) => Comp -> ix -> ByteArray -> Maybe (Array P ix e)
+fromByteArray comp sz ba
+  | totalElem sz /= elemsByteArray (primArrayDummy arr) ba = Nothing
+  | otherwise = Just arr
+  where
+    arr = PArray comp sz ba
+{-# INLINE fromByteArray #-}
+
+
+
+-- | /O(1) - Extract the internal `MutableByteArray`.
+--
+-- @since 0.2.1
+toMutableByteArray :: MArray s P ix e -> MutableByteArray s
+toMutableByteArray (MPArray _ mba) = mba
+{-# INLINE toMutableByteArray #-}
+
+
+-- | /O(1) - Construct a primitive mutable array from the `MutableByteArray`. Will return `Nothing`
+-- if number of elements doesn't match.
+--
+-- @since 0.2.1
+fromMutableByteArray :: (Index ix, Prim e) => ix -> MutableByteArray s -> Maybe (MArray s P ix e)
+fromMutableByteArray sz ba
+  | totalElem sz /= elemsMutableByteArray (primArrayDummy marr) ba = Nothing
+  | otherwise = Just marr
+  where
+    marr = MPArray sz ba
+{-# INLINE fromMutableByteArray #-}

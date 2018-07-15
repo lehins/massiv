@@ -57,10 +57,12 @@ data instance Array N ix e = NArray { nComp :: Comp
                                     }
 
 instance (Index ix, NFData e) => NFData (Array N ix e) where
-  rnf (NArray comp sz arr) = -- comp `deepseq` sz `deepseq` a `seq` ()
+  rnf (NArray comp sz arr) =
     case comp of
       Seq        -> deepseqArray sz arr ()
       ParOn wIds -> deepseqArrayP wIds sz arr ()
+
+
 
 
 instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
