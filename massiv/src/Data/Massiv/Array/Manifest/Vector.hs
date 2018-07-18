@@ -120,10 +120,10 @@ castToVector arr =
          return $ VP.Vector 0 (totalElem (size arr)) $ pData pArr
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
-         return $ vectorFromArray (size arr) $ bData bArr
+         return $ castBoxedArrayToVector $ bData bArr
     , do Refl <- eqT :: Maybe (r :~: N)
          bArr <- gcastArr arr
-         return $ vectorFromArray (size arr) $ nData bArr
+         return $ castBoxedArrayToVector $ bData $ bArray bArr
     ]
 {-# NOINLINE castToVector #-}
 
