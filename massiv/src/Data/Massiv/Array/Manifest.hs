@@ -21,9 +21,17 @@ module Data.Massiv.Array.Manifest
   -- * Boxed
   , B(..)
   , N(..)
+  , toBoxedArray
+  , fromBoxedArray
+  , toMutableBoxedArray
+  , fromMutableBoxedArray
   -- * Primitive
   , P(..)
   , Prim
+  , toByteArray
+  , fromByteArray
+  , toMutableByteArray
+  , fromMutableByteArray
   -- * Storable
   , S(..)
   , Storable

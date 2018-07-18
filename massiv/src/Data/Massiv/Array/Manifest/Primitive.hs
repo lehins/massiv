@@ -120,7 +120,7 @@ instance ( Prim e
   {-# INLINE unsafeSlice #-}
 
 instance {-# OVERLAPPING #-} Prim e => OuterSlice P Ix1 e where
-  unsafeOuterSlice  = unsafeLinearIndex
+  unsafeOuterSlice = unsafeLinearIndex
   {-# INLINE unsafeOuterSlice #-}
 
 instance ( Prim e
@@ -152,7 +152,7 @@ instance (Index ix, Prim e) => Manifest P ix e where
 
   unsafeLinearIndexM (PArray _ _ a) =
     INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
-                _elemsByteArray (undefined :: e), indexByteArray) a
+                elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -184,12 +184,12 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
   unsafeLinearRead (MPArray _ ma) =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
-                _elemsMutableByteArray (undefined :: e), readByteArray) ma
+                elemsMutableByteArray (undefined :: e), readByteArray) ma
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MPArray _ ma) =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
-                _elemsMutableByteArray (undefined :: e), writeByteArray) ma
+                elemsMutableByteArray (undefined :: e), writeByteArray) ma
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeNewA sz (State s#) =
