@@ -28,7 +28,7 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldrM_
   --Special folds
   , fold
-  , foldl
+  , foldlInternal
   , foldrFB
   , lazyFoldlS
   , lazyFoldrS
@@ -66,7 +66,7 @@ fold :: Source r ix e =>
           -- function.
      -> Array r ix e -- ^ Source array
      -> e
-fold f initAcc = foldl f initAcc f initAcc
+fold f initAcc = foldlInternal f initAcc f initAcc
 {-# INLINE fold #-}
 
 
@@ -343,10 +343,10 @@ ifoldrP = ifoldrOnP []
 
 -- | This folding function breaks referencial transparency on some functions
 -- @f@, therefore it is kept here for internal use only.
-foldl :: Source r ix e =>
+foldlInternal :: Source r ix e =>
          (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
-foldl g initAcc f resAcc = \ arr ->
+foldlInternal g initAcc f resAcc = \ arr ->
   case getComp arr of
     Seq        -> f resAcc (foldlS g initAcc arr)
     ParOn wIds -> unsafePerformIO $ foldlOnP wIds g initAcc f resAcc arr
-{-# INLINE foldl #-}
+{-# INLINE foldlInternal #-}

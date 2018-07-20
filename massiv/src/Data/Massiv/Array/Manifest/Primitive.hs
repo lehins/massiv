@@ -251,7 +251,7 @@ primArrayDummy = undefined
 {-# INLINE primArrayDummy #-}
 
 
--- | /O(1) - Extract the internal `ByteArray`.
+-- | /O(1)/ - Extract the internal `ByteArray`.
 --
 -- @since 0.2.1
 toByteArray :: Array P ix e -> ByteArray
@@ -259,7 +259,7 @@ toByteArray = pData
 {-# INLINE toByteArray #-}
 
 
--- | /O(1) - Construct a primitive array from the `ByteArray`. Will return `Nothing` if number of
+-- | /O(1)/ - Construct a primitive array from the `ByteArray`. Will return `Nothing` if number of
 -- elements doesn't match.
 --
 -- @since 0.2.1
@@ -273,7 +273,7 @@ fromByteArray comp sz ba
 
 
 
--- | /O(1) - Extract the internal `MutableByteArray`.
+-- | /O(1)/ - Extract the internal `MutableByteArray`.
 --
 -- @since 0.2.1
 toMutableByteArray :: MArray s P ix e -> MutableByteArray s
@@ -281,7 +281,7 @@ toMutableByteArray (MPArray _ mba) = mba
 {-# INLINE toMutableByteArray #-}
 
 
--- | /O(1) - Construct a primitive mutable array from the `MutableByteArray`. Will return `Nothing`
+-- | /O(1)/ - Construct a primitive mutable array from the `MutableByteArray`. Will return `Nothing`
 -- if number of elements doesn't match.
 --
 -- @since 0.2.1

@@ -86,7 +86,7 @@ foldMono ::
   => (e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
   -> Array r ix e -- ^ Source array
   -> m
-foldMono f = foldl mappend mempty mappend mempty . map f
+foldMono f = foldlInternal mappend mempty mappend mempty . map f
 {-# INLINE foldMono #-}
 
 
@@ -99,7 +99,7 @@ foldSemi ::
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
   -> m
-foldSemi f m = foldl (<>) m (<>) m . map f
+foldSemi f m = foldlInternal (<>) m (<>) m . map f
 {-# INLINE foldSemi #-}
 
 
@@ -154,13 +154,13 @@ or = fold (||) False
 -- | Determines whether all element of the array satisfy the predicate.
 all :: Source r ix e =>
        (e -> Bool) -> Array r ix e -> Bool
-all f = foldl (\acc el -> acc && f el) True (&&) True
+all f = foldlInternal (\acc el -> acc && f el) True (&&) True
 {-# INLINE all #-}
 
 -- | Determines whether any element of the array satisfies the predicate.
 any :: Source r ix e =>
        (e -> Bool) -> Array r ix e -> Bool
-any f = foldl (\acc el -> acc || f el) False (||) False
+any f = foldlInternal (\acc el -> acc || f el) False (||) False
 {-# INLINE any #-}
 
 

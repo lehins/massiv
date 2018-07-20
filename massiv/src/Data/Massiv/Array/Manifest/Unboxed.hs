@@ -18,6 +18,8 @@ module Data.Massiv.Array.Manifest.Unboxed
   ( U (..)
   , VU.Unbox
   , Array(..)
+  , toUnboxedVector
+  , toUnboxedMVector
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
@@ -178,3 +180,19 @@ instance ( VU.Unbox e
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
+
+
+-- | /O(1)/ - Unwrap unboxed array and pull out the underlying unboxed vector.
+--
+-- @since 0.2.1
+toUnboxedVector :: Array U ix e -> VU.Vector e
+toUnboxedVector = uData
+{-# INLINE toUnboxedVector #-}
+
+
+-- | /O(1)/ - Unwrap unboxed mutable array and pull out the underlying unboxed mutable vector.
+--
+-- @since 0.2.1
+toUnboxedMVector :: MArray s U ix e -> VU.MVector s e
+toUnboxedMVector (MUArray _ mv) = mv
+{-# INLINE toUnboxedMVector #-}

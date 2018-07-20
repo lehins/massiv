@@ -1,12 +1,12 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MagicHash             #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE BangPatterns              #-}
+{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MagicHash                 #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -17,20 +17,29 @@
 --
 module Data.Massiv.Array.Manifest.Boxed
   ( B(..)
-  , N (..)
+  , N(..)
   , Array(..)
-  , toBoxedArray
-  , fromBoxedArray
-  , toMutableBoxedArray
-  , fromMutableBoxedArray
-  , deepseqArray
-  , deepseqArrayP
-  , castBoxedArrayToVector
+  , Uninitialized(..)
+  , toArray
+  , fromArray
+  , toMutableArray
+  , fromMutableArray
+  , unwrapNormalFormArray
+  , unwrapNormalFormMutableArray
+  , fromNormalFormArray
+  , toNormalFormArray
+  , fromNormalFormMutableArray
+  , toNormalFormMutableArray
+  , castArrayToVector
   , vectorToArray
   , castVectorToArray
+  , seqArray
+  , deepseqArray
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
+import           Control.Exception
+import           Control.Monad.Primitive
 import           Control.Monad.ST                    (runST)
 import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
@@ -42,7 +51,6 @@ import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
                                                       unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
-import           Data.Massiv.Core.Scheduler
 import qualified Data.Primitive.Array                as A
 import qualified Data.Vector                         as VB
 import qualified Data.Vector.Mutable                 as VB
@@ -51,7 +59,6 @@ import           GHC.Exts                            as GHC (IsList (..))
 import           GHC.Prim
 import           GHC.Types
 import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -81,10 +88,7 @@ data instance Array B ix e = BArray { bComp :: !Comp
                                     }
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
-  rnf (BArray comp sz arr) =
-    case comp of
-      Seq        -> deepseqArray sz arr ()
-      ParOn wIds -> deepseqArrayP wIds sz arr ()
+  rnf = (`deepseqArray` ())
 
 instance (Index ix, Eq e) => Eq (Array B ix e) where
   (==) = eq (==)
@@ -225,12 +229,7 @@ type instance EltRepr N ix = M
 newtype instance Array N ix e = NArray { bArray :: Array B ix e }
 
 instance (Index ix, NFData e) => NFData (Array N ix e) where
-  rnf (NArray (BArray comp sz arr)) =
-    case comp of
-      Seq        -> deepseqArray sz arr ()
-      ParOn wIds -> deepseqArrayP wIds sz arr ()
-
-
+  rnf (NArray barr) = barr `deepseqArray` ()
 
 
 instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
@@ -343,62 +342,160 @@ instance ( NFData e
 -- Helper functions --
 ----------------------
 
+-- | An error that gets thrown when an unitialized element of a boxed array gets accessed. Can only
+-- happen when array was constructed with `unsafeNew`.
+data Uninitialized = Uninitialized
+
+instance Show Uninitialized where
+  show Uninitialized = "Array element is uninitialized"
+
+instance Exception Uninitialized
+
+
 uninitialized :: a
-uninitialized = error "Data.Array.Massiv.Manifest.Boxed: uninitialized element"
+uninitialized = throw Uninitialized
 
 
-toBoxedArray :: Array B ix e -> A.Array e
-toBoxedArray = bData
-{-# INLINE toBoxedArray #-}
+-- | /O(1)/ - Unwrap a fully evaluated boxed array.
+--
+-- @since 0.2.1
+unwrapNormalFormArray :: Array N ix e -> Array B ix e
+unwrapNormalFormArray = bArray
+{-# INLINE unwrapNormalFormArray #-}
+
+-- | /O(1)/ - Unwrap a fully evaluated mutable boxed array.
+--
+-- @since 0.2.1
+unwrapNormalFormMutableArray :: MArray s N ix e -> MArray s B ix e
+unwrapNormalFormMutableArray (MNArray marr) = marr
+{-# INLINE unwrapNormalFormMutableArray #-}
 
 
-fromBoxedArray :: Index ix => Comp -> ix -> A.Array e -> Maybe (Array B ix e)
-fromBoxedArray comp sz barr
-  | totalElem sz == sizeofArray barr = Just $ BArray comp sz barr
+-- | /O(1)/ - Unwrap a fully evaluated boxed array.
+--
+-- @since 0.2.1
+fromNormalFormArray :: Array N ix e -> A.Array e
+fromNormalFormArray = bData . bArray
+{-# INLINE fromNormalFormArray #-}
+
+
+-- | /O(n)/ - Wrap a boxed array and evaluate all elements to a Normal Form (NF). Will return
+-- `Nothing` if supplied size does not agree with the total number of elements in the array.
+--
+-- @since 0.2.1
+toNormalFormArray ::
+     (NFData e, Index ix)
+  => Comp -- ^ Computation strategy
+  -> ix -- ^ Size of the array
+  -> A.Array e -- ^ Lazy boxed array
+  -> Maybe (Array N ix e)
+toNormalFormArray comp sz barr = NArray <$> fromLazyArraySeq deepseqArray comp sz barr
+{-# INLINE toNormalFormArray #-}
+
+fromLazyArraySeq ::
+     Index ix
+  => (Array B ix e -> Maybe (Array B ix e) -> Maybe (Array B ix e))
+  -> Comp
+  -> ix
+  -> A.Array e
+  -> Maybe (Array B ix e)
+fromLazyArraySeq with comp sz barr
+  | totalElem sz == sizeofArray barr =
+    let arr = BArray comp sz barr
+     in arr `with` Just arr
   | otherwise = Nothing
-{-# INLINE fromBoxedArray #-}
+{-# INLINE fromLazyArraySeq #-}
 
--- | /O(1) - Unwrap mutable boxed array
-toMutableBoxedArray :: MArray s B ix e -> A.MutableArray s e
-toMutableBoxedArray (MBArray _ marr) = marr
-{-# INLINE toMutableBoxedArray #-}
+-- | /O(1)/ - Unwrap boxed array.
+--
+-- @since 0.2.1
+toArray :: Array B ix e -> A.Array e
+toArray = bData
+{-# INLINE toArray #-}
+
+-- | /O(n)/ - Wrap a boxed array and evaluate all elements to a WHNF. Will return `Nothing` if
+-- supplied size does not agree with the total number of elements in the array.
+--
+-- @since 0.2.1
+fromArray ::
+     Index ix
+  => Comp -- ^ Computation strategy
+  -> ix -- ^ Size of the array
+  -> A.Array e -- ^ Lazy boxed array
+  -> Maybe (Array B ix e)
+fromArray = fromLazyArraySeq seqArray
+{-# INLINE fromArray #-}
+
+-- | /O(1)/ - Unwrap mutable boxed array.
+--
+-- @since 0.2.1
+toMutableArray :: MArray s B ix e -> A.MutableArray s e
+toMutableArray (MBArray _ marr) = marr
+{-# INLINE toMutableArray #-}
 
 
--- | /O(1) - Wrap mutable boxed array
-fromMutableBoxedArray :: Index ix => ix -> A.MutableArray s e -> Maybe (MArray s B ix e)
-fromMutableBoxedArray sz barr
-  | totalElem sz == sizeofMutableArray barr = Just $ MBArray sz barr
-  | otherwise = Nothing
-{-# INLINE fromMutableBoxedArray #-}
+-- | /O(n)/ - Wrap mutable boxed array and evaluate all elements to WHNF.
+--
+-- @since 0.2.1
+fromMutableArray ::
+     (PrimMonad m, Index ix)
+  => ix -- ^ Size of the array
+  -> A.MutableArray (PrimState m) e -- ^ Mutable array that will get wrapped
+  -> m (Maybe (MArray (PrimState m) B ix e))
+fromMutableArray = fromMutableArraySeq seq
+{-# INLINE fromMutableArray #-}
+
+-- | /O(1)/ - Fully unwrap a fully evaluated boxed array.
+--
+-- @since 0.2.1
+fromNormalFormMutableArray :: MArray s N ix e -> MArray s B ix e
+fromNormalFormMutableArray (MNArray marr) = marr
+{-# INLINE fromNormalFormMutableArray #-}
+
+-- | /O(n)/ - Wrap mutable boxed array and evaluate all elements to NF.
+--
+-- @since 0.2.1
+toNormalFormMutableArray ::
+     (PrimMonad m, Index ix, NFData e)
+  => ix
+  -> A.MutableArray (PrimState m) e
+  -> m (Maybe (MArray (PrimState m) B ix e))
+toNormalFormMutableArray = fromMutableArraySeq deepseq
+{-# INLINE toNormalFormMutableArray #-}
 
 
-deepseqArray :: (Index ix, NFData e) => ix -> A.Array e -> b -> b
-deepseqArray sz arr b =
-  iter 0 (totalElem sz) 1 (<) b $ \ !i acc -> A.indexArray arr i `deepseq` acc
+fromMutableArraySeq ::
+     (Index ix, PrimMonad m)
+  => (e -> m () -> m a)
+  -> ix
+  -> A.MutableArray (PrimState m) e
+  -> m (Maybe (MArray (PrimState m) B ix e))
+fromMutableArraySeq with sz barr
+  | totalElem sz == sizeofMutableArray barr = do
+    let !marr = MBArray sz barr
+    loopM_ 0 (< totalElem sz) (+ 1) $ \i -> unsafeLinearRead marr i >>= (`with` return ())
+    return $ Just marr
+  | otherwise = return Nothing
+{-# INLINE fromMutableArraySeq #-}
+
+
+seqArray :: Index ix => Array B ix a -> t -> t
+seqArray !arr t = foldlInternal (flip seq) () (flip seq) () arr `seq` t
+{-# INLINE seqArray #-}
+
+
+deepseqArray :: (NFData a, Index ix) => Array B ix a -> t -> t
+deepseqArray !arr t = foldlInternal (flip deepseq) () (flip seq) () arr `seq` t
 {-# INLINE deepseqArray #-}
 
 
-deepseqArrayP :: (Index ix, NFData e) => [Int] -> ix -> A.Array e -> b -> b
-deepseqArrayP wIds sz arr b =
-  unsafePerformIO $ do
-    divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        scheduleWork scheduler $
-        loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
-          A.indexArray arr k `deepseq` return ()
-      scheduleWork scheduler $
-        loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
-          A.indexArray arr k `deepseq` return ()
-    return b
-{-# INLINE deepseqArrayP #-}
-
 -- | Helper function that converts a boxed `A.Array` into a `VB.Vector`. Supplied total number of
 -- elements is assumed to be the same in the array as provided by the size.
-castBoxedArrayToVector :: A.Array a -> VB.Vector a
-castBoxedArrayToVector arr = runST $ do
+castArrayToVector :: A.Array a -> VB.Vector a
+castArrayToVector arr = runST $ do
   marr <- A.unsafeThawArray arr
   VB.unsafeFreeze $ VB.MVector 0 (sizeofArray arr) marr
-{-# INLINE castBoxedArrayToVector #-}
+{-# INLINE castArrayToVector #-}
 
 -- | Covert boxed `VB.Vector` into an `A.Array`. Sliced vectors will indure copying.
 vectorToArray :: VB.Vector a -> A.Array a
