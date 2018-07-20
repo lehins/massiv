@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -14,6 +11,7 @@ module Data.Massiv.Array.Delayed
   , delay
   , DI(..)
   , toInterleaved
+  , fromInterleaved
   , DW(..)
   , makeWindowedArray
   , unsafeBackpermuteDW

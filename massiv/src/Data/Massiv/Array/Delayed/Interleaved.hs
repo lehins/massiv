@@ -15,6 +15,7 @@
 module Data.Massiv.Array.Delayed.Interleaved
   ( DI(..)
   , toInterleaved
+  , fromInterleaved
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal
@@ -71,3 +72,10 @@ instance Index ix => Load DI ix e where
 toInterleaved :: Source r ix e => Array r ix e -> Array DI ix e
 toInterleaved = DIArray . delay
 {-# INLINE toInterleaved #-}
+
+-- | /O(1)/ - Unwrap the interleved array.
+--
+-- @since 0.2.1
+fromInterleaved :: Array DI ix e -> Array D ix e
+fromInterleaved = diArray
+{-# INLINE fromInterleaved #-}
