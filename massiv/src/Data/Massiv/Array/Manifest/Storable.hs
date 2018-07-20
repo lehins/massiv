@@ -18,6 +18,8 @@ module Data.Massiv.Array.Manifest.Storable
   ( S (..)
   , Array(..)
   , VS.Storable
+  , toStorableVector
+  , toStorableMVector
   , withPtr
   , unsafeWithPtr
   ) where
@@ -48,6 +50,7 @@ data instance Array S ix e = SArray { sComp :: !Comp
                                     , sSize :: !ix
                                     , sData :: !(VS.Vector e)
                                     }
+
 
 instance (Index ix, NFData e) => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
@@ -158,8 +161,8 @@ instance ( VS.Storable e
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
--- | A pointer to the beginning of originally created array, i.e. various index manipulation
--- functions that do slicing, extracting, etc. have no affect on this pointer.
+-- | A pointer to the beginning of the storable array. It is unsafe since it can break referential
+-- transparency.
 --
 -- @since 0.1.3
 unsafeWithPtr :: VS.Storable a => Array S ix a -> (Ptr a -> IO b) -> IO b
@@ -172,3 +175,19 @@ unsafeWithPtr arr = VS.unsafeWith (sData arr)
 -- @since 0.1.3
 withPtr :: (Index ix, VS.Storable a) => MArray RealWorld S ix a -> (Ptr a -> IO b) -> IO b
 withPtr (MSArray _ mv) = MVS.unsafeWith mv
+
+
+-- | /O(1)/ - Unwrap storable array and pull out the underlying storable vector.
+--
+-- @since 0.2.1
+toStorableVector :: Array S ix e -> VS.Vector e
+toStorableVector = sData
+{-# INLINE toStorableVector #-}
+
+
+-- | /O(1)/ - Unwrap storable mutable array and pull out the underlying storable mutable vector.
+--
+-- @since 0.2.1
+toStorableMVector :: MArray s S ix e -> VS.MVector s e
+toStorableMVector (MSArray _ mv) = mv
+{-# INLINE toStorableMVector #-}

@@ -75,7 +75,8 @@ castFromVector comp sz vector = do
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
          bVector <- join $ gcast1 (Just vector)
          arr <- castVectorToArray bVector
-         return $ BArray {bComp = comp, bSize = sz, bData = arr}
+         let barr = BArray {bComp = comp, bSize = sz, bData = arr}
+         barr `seqArray` return barr
     ]
 {-# NOINLINE castFromVector #-}
 
@@ -120,10 +121,10 @@ castToVector arr =
          return $ VP.Vector 0 (totalElem (size arr)) $ pData pArr
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
-         return $ castBoxedArrayToVector $ bData bArr
+         return $ castArrayToVector $ bData bArr
     , do Refl <- eqT :: Maybe (r :~: N)
          bArr <- gcastArr arr
-         return $ castBoxedArrayToVector $ bData $ bArray bArr
+         return $ castArrayToVector $ bData $ bArray bArr
     ]
 {-# NOINLINE castToVector #-}
 
