@@ -57,13 +57,44 @@ module Data.Massiv.Array.Manifest
   -- ** Conversion
   , toUnboxedVector
   , toUnboxedMVector
+  -- * ByteString Conversion
+  , fromByteString
+  , toBuilder
   ) where
 
+import           Data.ByteString                      as S
+import           Data.ByteString.Unsafe               as SU
+import           Data.ByteString.Builder
 import           Data.Massiv.Array.Manifest.Boxed
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.Primitive
 import           Data.Massiv.Array.Manifest.Storable
 import           Data.Massiv.Array.Manifest.Unboxed
+import           Data.Massiv.Array.Ops.Fold
+import           Data.Massiv.Core.Common
+import           Data.Word                            (Word8)
+
+
+-- | /O(1)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
+-- doesn't match the total number of elements of new array.
+--
+-- @since 0.2.1
+fromByteString ::
+     Index ix
+  => Comp -- ^ Computation strategy
+  -> ix -- ^ Size of the new array
+  -> ByteString -- ^ Strict ByteString to use as a source.
+  -> Maybe (Array M ix Word8)
+fromByteString comp sz bs
+  | totalElem sz == S.length bs = Just $ MArray comp sz (SU.unsafeIndex bs)
+  | otherwise = Nothing
+
+
+-- | /O(n)/ - Conversion of array monoidally into a string Builder.
+--
+-- @since 0.2.1
+toBuilder :: Source r ix e => (e -> Builder) -> Array r ix e -> Builder
+toBuilder f = foldMono f
 
 
 -- $boxed_conversion_note
