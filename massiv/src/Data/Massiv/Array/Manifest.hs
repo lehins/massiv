@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -59,12 +60,13 @@ module Data.Massiv.Array.Manifest
   , toUnboxedMVector
   -- * ByteString Conversion
   , fromByteString
+  , toByteString
   , toBuilder
   ) where
 
 import           Data.ByteString                      as S
-import           Data.ByteString.Unsafe               as SU
 import           Data.ByteString.Builder
+import           Data.ByteString.Unsafe               as SU
 import           Data.Massiv.Array.Manifest.Boxed
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.Primitive
@@ -88,13 +90,25 @@ fromByteString ::
 fromByteString comp sz bs
   | totalElem sz == S.length bs = Just $ MArray comp sz (SU.unsafeIndex bs)
   | otherwise = Nothing
+{-# INLINE fromByteString #-}
 
+-- | /O(n)/ - For now only sequenctially convert an array into a strict ByteString
+--
+-- @since 0.2.1
+toByteString ::
+  Source r ix Word8
+  => Array r ix Word8 -- ^ Source array
+  -> ByteString
+toByteString arr =
+  fst $ unfoldrN (totalElem (size arr)) (\ !i -> Just (unsafeLinearIndex arr i, i + 1)) 0
+{-# INLINE toByteString #-}
 
 -- | /O(n)/ - Conversion of array monoidally into a string Builder.
 --
 -- @since 0.2.1
 toBuilder :: Source r ix e => (e -> Builder) -> Array r ix e -> Builder
 toBuilder f = foldMono f
+{-# INLINE toBuilder #-}
 
 
 -- $boxed_conversion_note
