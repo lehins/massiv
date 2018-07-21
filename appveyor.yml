@@ -37,8 +37,8 @@ before_test:
 
 test_script:
   - cd "%WORK_DIR%"
-  - stack --verbosity warn setup --no-reinstall > nul
-  - stack test massiv:tests
+  - stack --resolver lts-12.1 --verbosity warn setup --no-reinstall > nul
+  - stack --resolver lts-12.1 test massiv:tests
       -j 2
       --no-terminal
       --no-haddock-deps
