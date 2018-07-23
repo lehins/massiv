@@ -42,11 +42,15 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   DWArray
     (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
     (Just sSz)
-    sCenter
-    (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
+    (Just window)
     (pureIndex 1)
-    (unValue . stencilF (Value . unsafeIndex arr))
   where
+    !window =
+      Window
+        { wStartIndex = sCenter
+        , wSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
+        , wUnsafeIndex = unValue . stencilF (Value . unsafeIndex arr)
+        }
     !sz = size arr
 {-# INLINE mapStencil #-}
 

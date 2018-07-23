@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -21,30 +22,41 @@ instance (Show ix, Index ix, Show (Array D ix e), Show (Array DW ix e)) => Show 
     "Delayed: \n" ++
     show d ++
     "\nCorresponding Windowed: \n" ++
-    show dw ++
+    --show dw ++
+    windowInfo ++
     "\nStride: (" ++ show (getStride dw) ++ ")" ++ "\nComputed: (" ++ show (getComp dw) ++ ")"
+    where
+      windowInfo =
+        maybe
+          "\n No Window"
+          (\Window {..} ->
+             "\n With Window starting index (" ++
+             show wStartIndex ++ ") and size (" ++ show wSize ++ ")") $
+        getWindow dw
 
 instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
          Arbitrary (ArrDW ix e) where
   arbitrary = do
-    ArrTiny (arr :: Array D ix e) <- arbitrary
+    ArrTiny (arr' :: Array D ix e) <- arbitrary
+    let arr = setComp Par arr'
     let sz = size arr
-    (wix, wsz) <- if totalElem sz == 0
-      then pure (zeroIndex, zeroIndex)
-      else do
-        wix <- flip (liftIndex2 mod) sz <$> arbitrary
-        wsz <- flip (liftIndex2 mod) (liftIndex2 (-) sz wix) <$> arbitrary
-        pure (wix, wsz)
     stride <- liftIndex abs <$> arbitrary
-    return $ ArrDW arr (setStride stride $ makeWindowedArray arr wix wsz (unsafeIndex arr))
+    ArrDW arr <$>
+      if totalElem sz == 0
+        then return $ (setStride stride $ unsafeMakeArray (getComp arr) sz (unsafeIndex arr))
+        else do
+          wix <- flip (liftIndex2 mod) sz <$> arbitrary
+          wsz <- flip (liftIndex2 mod) (liftIndex2 (-) sz wix) <$> arbitrary
+          return $ setStride stride $ makeWindowedArray arr wix wsz (unsafeIndex arr)
+
 
 prop_EqDelayed ::
      (Ragged L ix Int, Load DW ix Int) => Proxy ix -> ArrDW ix Int -> Property
 prop_EqDelayed _ (ArrDW arrD arrDW) =
-  computeAs P arrDW === computeAs P (backpermute sz ixMap arrD)
+  computeAs P (backpermute sz ixMap arrD) === computeAs P arrDW
   where
     stride = getStride arrDW
-    sz = liftIndex2 div (size arrD) stride
+    sz = size arrDW
     ixMap = liftIndex2 (*) stride
 
 

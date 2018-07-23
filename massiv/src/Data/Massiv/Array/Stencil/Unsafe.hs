@@ -16,7 +16,7 @@ module Data.Massiv.Array.Stencil.Unsafe
   ) where
 
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Delayed.Windowed
+import           Data.Massiv.Array.Delayed.Windowed (Window(..), DW, Array(..))
 import           GHC.Exts                           (inline)
 
 
@@ -44,11 +44,15 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
   DWArray
     (DArray (getComp arr) sz (stencil (index arr)))
     (Just sSz)
-    sCenter
-    (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
+    (Just window)
     (pureIndex 1)
-    (stencil (Just . unsafeIndex arr))
   where
+    !window =
+      Window
+        { wStartIndex = sCenter
+        , wSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
+        , wUnsafeIndex = stencil (Just . unsafeIndex arr)
+        }
     stencil getVal !ix = (inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD))
     {-# INLINE stencil #-}
     !sz = size arr
