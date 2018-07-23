@@ -84,6 +84,7 @@ test-suite tests
   hs-source-dirs:     tests
   main-is:            Spec.hs
   other-modules:      Data.Massiv.Array.DelayedSpec
+                    , Data.Massiv.Array.Delayed.WindowedSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     --, Data.Massiv.Array.MutableSpec
                     , Data.Massiv.Array.Ops.ConstructSpec

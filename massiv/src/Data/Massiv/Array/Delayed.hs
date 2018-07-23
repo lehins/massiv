@@ -13,6 +13,8 @@ module Data.Massiv.Array.Delayed
   , toInterleaved
   , fromInterleaved
   , DW(..)
+  , getStride
+  , setStride
   , makeWindowedArray
   , unsafeBackpermuteDW
   ) where

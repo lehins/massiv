@@ -92,15 +92,17 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   -- | Zip together two indices with a function
   liftIndex2 :: (Int -> Int -> Int) -> ix -> ix -> ix
 
-  -- | Index with all zeros
-  zeroIndex :: ix
-  zeroIndex = pureIndex 0
-  {-# INLINE [1] zeroIndex #-}
-
   -- | Map a function over an index
   liftIndex :: (Int -> Int) -> ix -> ix
-  liftIndex f = liftIndex2 (\_ i -> f i) zeroIndex
+  liftIndex f = liftIndex2 (\_ i -> f i) (pureIndex 0)
   {-# INLINE [1] liftIndex #-}
+
+  foldlIndex :: (a -> Int -> a) -> a -> ix -> a
+  default foldlIndex :: Index (Lower ix) => (a -> Int -> a) -> a -> ix -> a
+  foldlIndex f !acc !ix = foldlIndex f (f acc i0) ixL
+    where
+      !(i0, ixL) = unconsDim ix
+  {-# INLINE [1] foldlIndex #-}
 
   -- | Check whether index is within the size.
   isSafeIndex :: ix -- ^ Size
@@ -250,6 +252,8 @@ instance Index Ix1T where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f = f
   {-# INLINE [1] liftIndex2 #-}
+  foldlIndex f acc ix = f acc ix
+  {-# INLINE [1] foldlIndex #-}
   iter k0 k1 inc cond = loop k0 (`cond` k1) (+inc)
   {-# INLINE iter #-}
   iterM k0 k1 inc cond = loopM k0 (`cond` k1) (+inc)

@@ -18,6 +18,7 @@ module Data.Massiv.Core.Index
   , Border(..)
   , handleBorderIndex
   , module Data.Massiv.Core.Index.Class
+  , zeroIndex
   , isSafeSize
   , isNonEmpty
   , headDim
@@ -105,7 +106,10 @@ handleBorderIndex border !sz getVal !ix =
                         (\ !k !i -> (-i - 2) `mod` k))
 {-# INLINE [1] handleBorderIndex #-}
 
-
+  -- | Index with all zeros
+zeroIndex :: Index ix => ix
+zeroIndex = pureIndex 0
+{-# INLINE [1] zeroIndex #-}
 
 -- | Checks whether the size is valid.
 isSafeSize :: Index ix => ix -> Bool

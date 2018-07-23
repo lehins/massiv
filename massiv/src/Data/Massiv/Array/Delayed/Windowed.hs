@@ -16,6 +16,8 @@
 module Data.Massiv.Array.Delayed.Windowed
   ( DW(..)
   , Array(..)
+  , getStride
+  , setStride
   , makeWindowedArray
   , unsafeBackpermuteDW
   ) where
@@ -36,8 +38,14 @@ data DW = DW
 
 type instance EltRepr DW ix = D
 
+-- data instance Array W ix e = WArray { wWindowStartIndex :: !ix
+--                                     , wWindowSize :: !ix
+--                                     , wWindowUnsafeIndex :: ix -> e
+--                                     }
+
+
 data instance Array DW ix e = DWArray { dwArray :: !(Array D ix e)
-                                      , dwStencilSize :: Maybe ix
+                                      , dwStencilSize :: !(Maybe ix)
                                         -- ^ Setting this value during stencil
                                         -- application improves cache utilization
                                         -- while computing an array
@@ -60,15 +68,16 @@ instance Index ix => Construct DW ix e where
   {-# INLINE setComp #-}
 
   unsafeMakeArray c sz f =
-    DWArray (unsafeMakeArray c sz f) Nothing zeroIndex zeroIndex (pureIndex 1) f
+    DWArray (unsafeMakeArray c sz f) Nothing zeroIndex sz (pureIndex 1) f
   {-# INLINE unsafeMakeArray #-}
 
 
 -- | Any resize or extract on Windowed Array will loose all of the optimizations, thus hurt the
 -- performance.
 instance Index ix => Size DW ix e where
-  size arr =
-    liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) (size (dwArray arr))) (dwStride arr)
+  size arr = liftIndex2 div (size (dwArray arr)) (dwStride arr)
+  -- size arr =
+  --   liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) (size (dwArray arr))) (dwStride arr)
   {-# INLINE size #-}
   unsafeResize _sz DWArray {..} = undefined -- TODO: drop strides and use the delayed
     -- let dArr = unsafeResize sz dwArray
@@ -107,23 +116,46 @@ makeWindowedArray
 makeWindowedArray !arr !wIx !wSz wUnsafeIndex
   | not (isSafeIndex sz wIx) =
     error $
-    "Incorrect window starting index: " ++ show wIx ++ " for: " ++ show (size arr)
-  | liftIndex2 (+) wIx wSz > sz =
+    "makeWindowedArray: Incorrect window starting index: (" ++
+    show wIx ++ ") for array size: (" ++ show (size arr) ++ ")"
+  | not (isSafeIndex (liftIndex (+1) sz) (liftIndex2 (+) wIx wSz)) =
     error $
-    "Incorrect window size: " ++
-    show wSz ++ " and/or placement: " ++ show wIx ++ " for: " ++ show (size arr)
+    "makeWindowedArray: Incorrect window size: (" ++
+    show wSz ++
+    ") and/or starting index: (" ++ show wIx ++ ") for array size: (" ++ show (size arr) ++ ")"
   | otherwise =
     DWArray
-    { dwArray = delay arr
-    , dwStencilSize = Nothing
-    , dwWindowStartIndex = wIx
-    , dwWindowSize = wSz
-    , dwStride = pureIndex 1
-    , dwWindowUnsafeIndex = wUnsafeIndex
-    }
-  where sz = size arr
+      { dwArray = delay arr
+      , dwStencilSize = Nothing
+      , dwWindowStartIndex = wIx
+      , dwWindowSize = wSz
+      , dwStride = pureIndex 1
+      , dwWindowUnsafeIndex = wUnsafeIndex
+      }
+  where
+    sz = size arr
 {-# INLINE makeWindowedArray #-}
 
+
+-- | Specify which elements should be computed and which ones are to be ignored. Eg. to keep all of
+-- the elements with even indices set the stride to @`pureIndex` 2@, but if all you want is to drop
+-- all rows divisible by 5, for instance, then you'd @`setStride` (5 :. 1)@.
+--
+-- @since 0.2.1
+setStride ::
+     Index ix
+  => ix -- ^ Stride
+  -> Array DW ix e
+  -> Array DW ix e
+setStride stride warr = warr { dwStride = liftIndex (max 1) stride }
+{-# INLINE setStride #-}
+
+-- | Get the stride from the Windowed array.
+--
+-- @since 0.2.1
+getStride :: Array DW ix e -> ix
+getStride = dwStride
+{-# INLINE getStride #-}
 
 -- | Backpermute a windowed array. If index mappings aren't correct reading memory out of bounds is
 -- very likely.
@@ -186,11 +218,16 @@ instance {-# OVERLAPPING #-} Load DW Ix1 e where
   {-# INLINE loadP #-}
 
 
+strideStart :: (Num ix, Index ix) => ix -> ix -> ix
+strideStart stride ix = ix + (liftIndex2 mod (stride - liftIndex2 mod ix stride) stride)
+{-# INLINE strideStart #-}
+
+
 loadWithIx2 ::
      (Monad m)
   => (m () -> m ())
   -> Array DW Ix2 t1
-  -> (Int -> t1 -> m a)
+  -> (Int -> t1 -> m ())
   -> m (Ix2 -> m (), Ix2)
 loadWithIx2 with arr unsafeWrite = do
   let DWArray (DArray _ (m :. n) indexB) mStencilSz (it :. jt) (wm :. wn) stride indexW = arr
@@ -200,8 +237,6 @@ loadWithIx2 with arr unsafeWrite = do
           Just (i :. _) -> min (max 1 i) 7
           _ -> 1
       is :. js = stride
-      strideStart ix = ix + (liftIndex2 mod (stride - liftIndex2 mod ix stride) stride)
-      {-# INLINE strideStart #-}
       toLinearIndexStride ix = toLinearIndex (size arr) (liftIndex2 div ix stride)
       {-# INLINE toLinearIndexStride #-}
       writeB !ix = unsafeWrite (toLinearIndexStride ix) (indexB ix)
@@ -209,14 +244,15 @@ loadWithIx2 with arr unsafeWrite = do
       writeW !ix = unsafeWrite (toLinearIndexStride ix) (indexW ix)
       {-# INLINE writeW #-}
   with $ iterM_ (0 :. 0) (it :. n) stride (<) writeB
-  with $ iterM_ (strideStart (ib :. 0)) (m :. n) stride (<) writeB
-  with $ iterM_ (strideStart (it :. 0)) (ib :. jt) stride (<) writeB
-  with $ iterM_ (strideStart (it :. jb)) (ib :. n) stride (<) writeB
+  with $ iterM_ (strideStart stride (ib :. 0)) (m :. n) stride (<) writeB
+  with $ iterM_ (strideStart stride (it :. 0)) (ib :. jt) stride (<) writeB
+  with $ iterM_ (strideStart stride (it :. jb)) (ib :. n) stride (<) writeB
   f <-
     if is > 1 -- Turn off unrolling for vertical strides
-      then return $ \(it' :. ib') -> iterM_ (strideStart (it' :. jt)) (ib' :. jb) stride (<) writeW
+      then return $ \(it' :. ib') ->
+             iterM_ (strideStart stride (it' :. jt)) (ib' :. jb) stride (<) writeW
       else return $ \(it' :. ib') ->
-             unrollAndJam' blockHeight (strideStart (it' :. jt)) (ib' :. jb) js writeW
+             unrollAndJam' blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
   return (f, it :. ib)
 {-# INLINE loadWithIx2 #-}
 
@@ -317,7 +353,7 @@ unrollAndJam' :: Monad m =>
               -> Ix2 -- ^ Top corner
               -> Ix2 -- ^ Bottom corner
               -> Int -- ^ Column Stride
-              -> (Ix2 -> m a) -- ^ Writing function
+              -> (Ix2 -> m ()) -- ^ Writing function
               -> m ()
 unrollAndJam' !bH (it :. jt) (ib :. jb) js f = do
   let f2 (i :. j) = f (i :. j) >> f  ((i + 1) :. j)
