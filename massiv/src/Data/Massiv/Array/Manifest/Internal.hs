@@ -6,6 +6,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -52,15 +54,17 @@ import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
 import           GHC.Base                            (build)
+import           GHC.Generics
 import           System.IO.Unsafe                    (unsafePerformIO)
 
 
 -- | General Manifest representation
-data M
+data M deriving Generic
 
 data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !ix
                                     , mUnsafeLinearIndex :: Int -> e }
+
 type instance EltRepr M ix = M
 
 instance Index ix => Construct M ix e where

@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE PatternSynonyms     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric       #-}
 -- |
 -- Module      : Data.Massiv.Core.Computation
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -18,6 +19,7 @@ import           Control.DeepSeq (NFData (..), deepseq)
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup
 #endif
+import           GHC.Generics
 
 
 -- | Computation type to use.
@@ -33,7 +35,7 @@ data Comp
   -- @+RTS -Nx@ or at compile time by GHC flag @-with-rtsopts=-Nx@,
   -- where @x@ is the number of capabilities. Ommiting @x@ in above flags
   -- defaults to number available cores.
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 -- | Parallel computation using all available cores.
 pattern Par :: Comp

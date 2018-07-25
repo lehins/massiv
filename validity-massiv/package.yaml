@@ -1,0 +1,40 @@
+name:                validity-massiv
+version:             0.1.0.0
+github:              "lehins/validity-massiv"
+license:             BSD3
+author:              "Nick Van den Broeck"
+maintainer:          "alexey@kuleshevi.ch"
+copyright:           "2018 Nick Van den Broeck"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+description:         Please see the README on GitHub at <https://github.com/lehins/validity-massiv#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- massiv
+- primitive
+- validity >= 0.7
+
+library:
+  source-dirs: src
+  ghc-options: -Wall
+  default-extensions:
+  - NoImplicitPrelude
+  exposed-modules:
+  - Data.Validity.Massiv
+  other-modules:
+  - Import
+
+tests:
+  validity-massiv-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - validity-massiv

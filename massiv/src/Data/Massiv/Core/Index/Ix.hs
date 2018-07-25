@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE DeriveGeneric          #-}
 
 #if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE TypeFamilyDependencies #-}
@@ -34,6 +35,7 @@ import qualified Data.Vector.Generic          as V
 import qualified Data.Vector.Generic.Mutable  as VM
 import qualified Data.Vector.Unboxed          as VU
 import           GHC.TypeLits
+import           GHC.Generics
 
 
 infixr 5 :>, :.
@@ -48,7 +50,7 @@ pattern Ix1 :: Int -> Ix1
 pattern Ix1 i = i
 
 -- | 2-dimensional index. This also a base index for higher dimensions.
-data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
+data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int deriving (Generic)
 
 -- | 2-dimensional index constructor. Useful when @TypeOperators@ extension isn't enabled, or simply
 -- infix notation is inconvenient. @(Ix2 i j) == (i :. j)@.
@@ -79,7 +81,7 @@ pattern Ix5 i j k l m = i :> j :> k :> l :. m
 #if __GLASGOW_HASKELL__ >= 800
 
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
-data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
+data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1)) deriving Generic
 
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 type family Ix (n :: Nat) = r | r -> n where

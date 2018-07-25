@@ -5,6 +5,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DeriveGeneric              #-}
 -- |
 -- Module      : Data.Massiv.Core.Index
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -33,6 +34,7 @@ import           Control.DeepSeq
 import           Data.Massiv.Core.Index.Class
 import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Iterator
+import           GHC.Generics
 
 
 -- | Approach to be used near the borders during various transformations.
@@ -75,7 +77,7 @@ data Border e =
               -- 'Continue' : 1 4 3 2 | 1 2 3 4 | 3 2 1 4
               -- @
               --
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance NFData e => NFData (Border e) where
   rnf b = case b of

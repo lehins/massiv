@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -6,6 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -37,19 +39,20 @@ import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           Foreign.Ptr
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Generics (Generic)
 import           Prelude                             hiding (mapM)
 
 #include "massiv.h"
 
 -- | Representation for `Storable` elements
-data S = S deriving Show
+data S = S deriving (Show, Generic)
 
 type instance EltRepr S ix = M
 
 data instance Array S ix e = SArray { sComp :: !Comp
                                     , sSize :: !ix
                                     , sData :: !(VS.Vector e)
-                                    }
+                                    } deriving (Generic)
 
 
 instance (Index ix, NFData e) => NFData (Array S ix e) where
