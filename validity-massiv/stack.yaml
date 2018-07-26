@@ -1,8 +1,8 @@
 resolver: lts-11.6
 packages:
 - .
-- ../massiv
+- '../massiv'
 nix:
-  packages: [zlib]
+  packages: [ zlib ]
 extra-deps:
 - validity-0.7.0.0

@@ -17,6 +17,7 @@ dependencies:
 - massiv
 - primitive
 - validity >= 0.7
+- vector
 
 library:
   source-dirs: src

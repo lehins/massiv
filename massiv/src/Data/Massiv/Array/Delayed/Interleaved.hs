@@ -32,7 +32,7 @@ data DI = DI deriving (Generic)
 
 type instance EltRepr DI ix = DI
 
-newtype instance Array DI ix e = DIArray { idArray :: (Array D ix e) } deriving (Generic)
+newtype instance Array DI ix e = DIArray { diArray :: (Array D ix e) } deriving (Generic)
 
 instance Index ix => Construct DI ix e where
   getComp = dComp . diArray

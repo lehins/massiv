@@ -2,10 +2,11 @@ resolver: lts-9.20
 packages:
 - '.'
 - '../massiv'
+- '../validity-massiv'
 extra-deps:
 - genvalidity-0.5.0.3
 - genvalidity-hspec-0.6.0.3
 - genvalidity-property-0.2.0.2
 - QuickCheck-2.11.1
-- validity-0.6.0.0
+- validity-0.7.0.0
 flags: {}

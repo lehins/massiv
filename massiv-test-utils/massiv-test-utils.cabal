@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9d28c80fa6eb0dfcb3a0185001be5547a63f37a684888872c445c28bbe35a4e2
+-- hash: b20fc0afde86ac49e752e18bdd58f17643f920ea7f010600d94dba9b8792186f
 
 name:           massiv-test-utils
 version:        0.1.0.0
@@ -39,4 +39,5 @@ library
     , genvalidity >=0.4.0.4
     , genvalidity-hspec >=0.5
     , massiv >=0.2
+    , validity-massiv
   default-language: Haskell2010

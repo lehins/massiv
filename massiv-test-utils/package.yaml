@@ -12,6 +12,7 @@ dependencies:
 - genvalidity-hspec >= 0.5
 - massiv >= 0.2
 - QuickCheck
+- validity-massiv
 
 library:
   source-dirs: src

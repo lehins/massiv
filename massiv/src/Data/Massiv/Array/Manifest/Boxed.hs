@@ -7,6 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE DeriveGeneric             #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -58,6 +59,7 @@ import           GHC.Base                            (build)
 import           GHC.Exts                            as GHC (IsList (..))
 import           GHC.Prim
 import           GHC.Types
+import           GHC.Generics
 import           Prelude                             hiding (mapM)
 
 #include "massiv.h"
@@ -78,7 +80,7 @@ sizeofMutableArray (A.MutableArray ma#) = I# (sizeofMutableArray# ma#)
 
 -- | Array representation for Boxed elements. This structure is element and
 -- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
-data B = B deriving Show
+data B = B deriving (Show, Generic)
 
 type instance EltRepr B ix = M
 
