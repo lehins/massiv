@@ -87,6 +87,20 @@ instance CoArbitrary Ix5 where
   coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
 
 
+-- instance Arbitrary Ix2 where
+--   arbitrary = (:.) <$> arbitrary <*> arbitrary
+
+-- instance (Arbitrary (Ix (n - 1))) => Arbitrary (IxN n) where
+--   arbitrary = (:>) <$> arbitrary <*> arbitrary
+
+-- instance CoArbitrary Ix2 where
+--   coarbitrary (i :. j) = coarbitrary i . coarbitrary j
+
+-- instance CoArbitrary (Ix (n - 1)) => CoArbitrary (IxN n) where
+--   coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
+
+
+
 prop_IsSafeIx :: Index ix => proxy ix -> SzIx ix -> Bool
 prop_IsSafeIx _ (SzIx (Sz sz) ix) = isSafeIndex sz ix
 

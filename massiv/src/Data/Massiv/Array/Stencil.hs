@@ -47,9 +47,9 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   where
     !window =
       Window
-        { wStartIndex = sCenter
-        , wSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
-        , wUnsafeIndex = unValue . stencilF (Value . unsafeIndex arr)
+        { windowStart = sCenter
+        , windowSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
+        , windowIndex = unValue . stencilF (Value . unsafeIndex arr)
         }
     !sz = size arr
 {-# INLINE mapStencil #-}
@@ -57,7 +57,7 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
 -- | Same as `mapStencil` except with ability to set the stride, i.e. an index that specifies which
 -- elements to keep around. See `setStride` for more info.
 --
--- @since 0.2.0
+-- @since 0.2.1
 mapStencilStride ::
      (Source r ix e, Manifest r ix e)
   => Border e -- ^ Border resolution technique

@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -29,16 +30,16 @@ instance (Show ix, Index ix, Show (Array D ix e), Show (Array DW ix e)) => Show 
       windowInfo =
         maybe
           "\n No Window"
-          (\Window {..} ->
+          (\Window {windowStart, windowSize} ->
              "\n With Window starting index (" ++
-             show wStartIndex ++ ") and size (" ++ show wSize ++ ")") $
+             show windowStart ++ ") and size (" ++ show windowSize ++ ")") $
         getWindow dw
 
 instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
          Arbitrary (ArrDW ix e) where
   arbitrary = do
     ArrTiny (arr' :: Array D ix e) <- arbitrary
-    let arr = setComp Par arr'
+    let arr = setComp Seq arr'
     let sz = size arr
     stride <- liftIndex abs <$> arbitrary
     ArrDW arr <$>
@@ -46,7 +47,7 @@ instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
         then return $ (setStride stride $ unsafeMakeArray (getComp arr) sz (unsafeIndex arr))
         else do
           wix <- flip (liftIndex2 mod) sz <$> arbitrary
-          wsz <- flip (liftIndex2 mod) (liftIndex2 (-) sz wix) <$> arbitrary
+          wsz <- liftIndex (+1) . flip (liftIndex2 mod) (liftIndex2 (-) sz wix) <$> arbitrary
           return $ setStride stride $ makeWindowedArray arr wix wsz (unsafeIndex arr)
 
 
@@ -65,88 +66,10 @@ spec = do
   describe "Equivalency with Delayed" $ do
     it "Ix1" $ property $ prop_EqDelayed (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_EqDelayed (Proxy :: Proxy Ix2)
---     it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
---     it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
---   describe "DangerousStencil" $ do
---     it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
---     it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
---     it "Ix3" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix3)
---     it "Ix4" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix4)
-
-
--- stencilDirection :: (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Array r Ix2 a -> Array U Ix2 a
--- stencilDirection ix = computeAs U . mapStencil (Fill def) (makeStencil (3 :. 3) (1 :. 1) $ \f -> f ix)
-
-
--- stencilCorners ::
---      (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Ix2 -> Array r Ix2 a -> Array U Ix2 a
--- stencilCorners ixC ix = computeAs U . mapStencil (Fill def) (makeStencil (3 :. 3) ixC $ \f -> f ix)
-
---   describe "Stencil" $ do
---     stencilSpec
---     let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
---     describe "Unit tests Ix2" $ do
---       it "Direction Left" $
---         stencilDirection (0 :. 1) arr `shouldBe` [[2, 3, 0], [5, 6, 0], [8, 9, 0]]
---       it "Direction Right" $
---         stencilDirection (0 :. -1) arr `shouldBe` [[0, 1, 2], [0, 4, 5], [0, 7, 8]]
---       it "Direction Down" $
---         stencilDirection (1 :. 0) arr `shouldBe` [[4, 5, 6], [7, 8, 9], [0, 0, 0]]
---       it "Direction Up" $
---         stencilDirection (-1 :. 0) arr `shouldBe` [[0, 0, 0], [1, 2, 3], [4, 5, 6]]
---       it "Direction Left/Top Corner" $
---         stencilCorners (0 :. 0) (2 :. 2) arr `shouldBe` [[9, 0, 0], [0, 0, 0], [0, 0, 0]]
---       it "Direction Right/Top Corner" $
---         stencilCorners (0 :. 2) (2 :. -2) arr `shouldBe` [[0, 0, 7], [0, 0, 0], [0, 0, 0]]
---       it "Direction Right/Bottom Corner" $
---         stencilCorners (2 :. 2) (-2 :. -2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [0, 0, 1]]
---       it "Direction Left/Bottom Corner" $
---         stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
---     describe "mapStencilStride" $ do
---       it "map stencil with stride on small array" $
---         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
---             stencil = makeConvolutionStencilFromKernel kernel
---             stride = 2
---             strideArr = mapStencilStride (Fill 0) stride stencil arr
---          in computeAs U strideArr `shouldBe` [[-4, 8],[2, 14]]
---       it "map stencil with stride on larger array" $
---         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
---             stencil = makeConvolutionStencilFromKernel kernel
---             stride = 2
---             largeArr = makeArrayR U Seq (5 :. 5) (succ . toLinearIndex (5 :. 5))
---             strideArr = mapStencilStride (Fill 0) stride stencil largeArr
---          in do computeAs U strideArr `shouldBe` [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
---     describe "reformDW" $ do
---       it "map stencil with stride on small array" $
---         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
---             stencil = makeConvolutionStencilFromKernel kernel
---             stride = 2
---             strideArr = mapStride stride (1 :. 1) $ mapStencil (Fill 0) stencil arr
---          in computeAs U strideArr `shouldBe` [[-4]]
---       it "map stencil with stride on larger array" $
---         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
---             stencil = makeConvolutionStencilFromKernel kernel
---             stride = 2
---             largeArr = makeArrayR U Seq (5 :. 5) (succ . toLinearIndex (5 :. 5))
---             stencilledArr = mapStencil (Fill 0) stencil largeArr
---             strideArr = mapStride stride (2 :. 2) stencilledArr
---          in do computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
---       it "resize DWArray resulting from mapStencil" $
---         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
---             stencil = makeConvolutionStencilFromKernel kernel
---             result = unsafeBackpermuteDW (+1) (subtract 1) (5 :. 5) $ mapStencil (Fill 0) stencil arr
---             expectation =
---                   [ [ -1, -2, -2,  2,  3]
---                   , [ -4, -4,  0,  8,  6]
---                   , [ -8, -6,  1, 16, 12]
---                   , [ -4,  2,  6, 14,  6]
---                   , [ -7, -8, -2,  8,  9]
---                   ]
---          in computeAs U result `shouldBe` expectation
-
--- mapStride :: Index ix => Int -> ix -> Array DW ix e -> Array DW ix e
--- mapStride stride sz =
---   let toOldIndex = liftIndex (* stride)
---       ceilingDivStride a = ceiling $ (fromIntegral a :: Double) / fromIntegral stride
---       toNewIndex = liftIndex ceilingDivStride
---    in unsafeBackpermuteDW toNewIndex toOldIndex sz
+    it "Ix3" $ property $ prop_EqDelayed (Proxy :: Proxy Ix3)
+    -- it "Ix4" $ property $ prop_EqDelayed (Proxy :: Proxy Ix4)
+    -- it "Ix5" $ property $ prop_EqDelayed (Proxy :: Proxy Ix5)
+    -- it "Ix2T" $ property $ prop_EqDelayed (Proxy :: Proxy Ix2T)
+    -- it "Ix3T" $ property $ prop_EqDelayed (Proxy :: Proxy Ix3T)
+    -- it "Ix4T" $ property $ prop_EqDelayed (Proxy :: Proxy Ix4T)
+    -- it "Ix5T" $ property $ prop_EqDelayed (Proxy :: Proxy Ix5T)
