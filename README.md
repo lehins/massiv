@@ -517,4 +517,4 @@ Benchmark fold-seq: FINISH
 ## Talk at [Monadic Warsaw](https://www.meetup.com/Monadic-Warsaw/events/249543097/)
 
 * [Slides](learning/slides/2018-MonadicWarsaw.pdf)
-* Video - coming soon.
+* [Video](https://www.youtube.com/watch?v=AAx2a0bUsxA)
