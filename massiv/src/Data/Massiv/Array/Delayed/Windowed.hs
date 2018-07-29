@@ -5,6 +5,7 @@
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Windowed
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -30,9 +31,10 @@ import           Data.Massiv.Core.List                  (showArray)
 import           Data.Massiv.Core.Scheduler
 import           Data.Proxy                             (Proxy (..))
 import           Data.Typeable                          (showsTypeRep, typeRep)
+import           GHC.Generics hiding (D)
 
 -- | Delayed Windowed Array representation.
-data DW = DW
+data DW = DW deriving Generic
 
 type instance EltRepr DW ix = D
 
@@ -43,8 +45,7 @@ data instance Array DW ix e = DWArray { wdArray :: !(Array D ix e)
                                         -- while computing an array
                                       , wdWindowStartIndex :: !ix
                                       , wdWindowSize :: !ix
-                                      , wdWindowUnsafeIndex :: ix -> e }
-
+                                      , wdWindowUnsafeIndex :: ix -> e } deriving Generic
 
 instance {-# OVERLAPPING #-} (Show e, Ragged L ix e, Load DW ix e) =>
   Show (Array DW ix e) where

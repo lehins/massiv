@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -5,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Unboxed
@@ -34,20 +36,20 @@ import           Data.Massiv.Core.List
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Generics (Generic)
 import           Prelude                             hiding (mapM)
 
 #include "massiv.h"
 
 -- | Representation for `Unbox`ed elements
-data U = U deriving Show
+data U = U deriving (Show, Generic)
 
 type instance EltRepr U ix = M
 
 data instance Array U ix e = UArray { uComp :: !Comp
                                     , uSize :: !ix
                                     , uData :: !(VU.Vector e)
-                                    }
-
+                                    } deriving (Generic)
 
 instance (Index ix, NFData e) => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()

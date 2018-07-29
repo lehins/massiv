@@ -1,0 +1,8 @@
+resolver: lts-11.6
+packages:
+- .
+- '../massiv'
+nix:
+  packages: [ zlib ]
+extra-deps:
+- validity-0.7.0.0

@@ -63,6 +63,7 @@ library
                      , deepseq
                      , ghc-prim
                      , primitive
+                     , validity >= 0.6
                      , vector
   include-dirs: include
   install-includes: massiv.h

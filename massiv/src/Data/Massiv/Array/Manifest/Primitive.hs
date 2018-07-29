@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UnboxedTuples         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE RecordWildCards       #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -43,13 +45,14 @@ import           Data.Primitive.Types
 import qualified Data.Vector.Primitive               as VP
 import           GHC.Base                            (Int (..))
 import           GHC.Exts                            as GHC (IsList (..))
+import           GHC.Generics (Generic)
 import           GHC.Prim
 import           Prelude                             hiding (mapM)
 
 #include "massiv.h"
 
 -- | Representation for `Prim`itive elements
-data P = P deriving Show
+data P = P deriving (Show, Generic)
 
 type instance EltRepr P ix = M
 

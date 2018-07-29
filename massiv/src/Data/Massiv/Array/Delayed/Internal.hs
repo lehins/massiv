@@ -6,6 +6,8 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -28,19 +30,20 @@ import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
-import           Data.Monoid                         ((<>))
-import           GHC.Base                            (build)
-import           Prelude                             hiding (zipWith)
-
 #include "massiv.h"
+import           Data.Monoid                ((<>))
+import           GHC.Base                   (build)
+import           GHC.Generics (Generic)
+import           Prelude                    hiding (zipWith)
 
 -- | Delayed representation.
-data D = D deriving Show
+data D = D deriving (Show, Generic)
 
 
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !ix
                                     , dUnsafeIndex :: ix -> e }
+
 type instance EltRepr D ix = D
 
 instance Index ix => Construct D ix e where

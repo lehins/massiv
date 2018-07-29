@@ -1,0 +1,29 @@
+name:                massiv-test-utils
+version:             0.1.0.0
+github:              "lehins/massiv-test-utils"
+license:             BSD3
+author:              "Nick Van den Broeck"
+maintainer:          "alexey@kuleshevi.ch"
+copyright:           "2018 Nick Van den Broeck"
+
+dependencies:
+- base >= 4.7 && < 5
+- genvalidity >= 0.4.0.4
+- genvalidity-hspec >= 0.5
+- massiv >= 0.2
+- QuickCheck
+- validity-massiv
+
+library:
+  source-dirs: src
+  ghc-options: -Wall
+  default-extensions:
+  - NoImplicitPrelude
+  exposed-modules:
+  - Test.Massiv
+  - Test.Massiv.Core
+  - Test.Massiv.Core.Computation
+  - Test.Massiv.Core.Index
+  - Test.Massiv.Core.Index.Ix
+  other-modules:
+  - Import

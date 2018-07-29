@@ -2,6 +2,9 @@ resolver: lts-9.20
 packages:
 - '.'
 - '../massiv/'
-extra-deps: []
+extra-deps:
+- validity-0.6.0.0
 flags: {}
 extra-package-dbs: []
+nix:
+  packages: [ zlib ]

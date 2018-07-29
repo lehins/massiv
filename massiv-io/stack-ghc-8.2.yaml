@@ -2,6 +2,7 @@ resolver: lts-10.0
 packages:
 - '.'
 - '../massiv/'
-extra-deps: []
+extra-deps:
+- validity-0.7.0.0
 flags: {}
 extra-package-dbs: []

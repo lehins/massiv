@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE DeriveGeneric         #-}
 -- |
 -- Module      : Data.Massiv.Core.List
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -37,9 +38,10 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Proxy
 import           Data.Typeable
 import           GHC.Exts
+import           GHC.Generics (Generic)
 import           System.IO.Unsafe           (unsafePerformIO)
 
-data LN
+data LN deriving Generic
 
 type instance EltRepr LN ix = LN
 
@@ -49,8 +51,7 @@ type family ListItem ix e :: * where
 
 type instance NestedStruct LN ix e = [ListItem ix e]
 
-newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
-
+newtype instance Array LN ix e = List { unList :: [Elt LN ix e] } deriving Generic
 
 instance {-# OVERLAPPING #-} Nested LN Ix1 e where
   fromNested = coerce
@@ -77,19 +78,17 @@ instance Nested LN ix e => IsList (Array LN ix e) where
   {-# INLINE toList #-}
 
 
-data L = L
+data L = L deriving Generic
 type instance EltRepr L ix = L
 
 type instance NestedStruct L ix e = Array LN ix e
 
 data instance Array L ix e = LArray { lComp :: Comp
-                                    , lData :: !(Array LN ix e) }
-
-
+                                    , lData :: !(Array LN ix e) } deriving Generic
 
 data ShapeError = RowTooShortError
                 | RowTooLongError
-                deriving Show
+                deriving (Show, Generic)
 
 instance Exception ShapeError
 
