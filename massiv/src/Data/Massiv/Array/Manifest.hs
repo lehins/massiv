@@ -77,19 +77,16 @@ import           Data.Massiv.Core.Common
 import           Data.Word                            (Word8)
 
 
+
 -- | /O(1)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
 -- doesn't match the total number of elements of new array.
 --
 -- @since 0.2.1
 fromByteString ::
-     Index ix
-  => Comp -- ^ Computation strategy
-  -> ix -- ^ Size of the new array
+     Comp -- ^ Computation strategy
   -> ByteString -- ^ Strict ByteString to use as a source.
-  -> Maybe (Array M ix Word8)
-fromByteString comp sz bs
-  | totalElem sz == S.length bs = Just $ MArray comp sz (SU.unsafeIndex bs)
-  | otherwise = Nothing
+  -> Array M Ix1 Word8
+fromByteString comp bs = MArray comp (S.length bs) (SU.unsafeIndex bs)
 {-# INLINE fromByteString #-}
 
 -- | /O(n)/ - For now only sequenctially convert an array into a strict ByteString

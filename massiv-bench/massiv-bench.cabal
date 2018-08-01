@@ -112,6 +112,7 @@ benchmark maximum
                      , massiv
                      , massiv-bench
                      , vector
+                     , repa
   default-language:    Haskell2010
 
 -- benchmark loops

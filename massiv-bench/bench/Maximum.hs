@@ -1,8 +1,13 @@
+{-# LANGUAGE BangPatterns #-}
 module Main where
 
 import           Criterion.Main
-import qualified Data.Bits                         as Bits
+import qualified Data.Array.Repa as Repa
+import qualified Data.Array.Repa.Repr.ByteString   as Repa
+import           Data.Bits                         as Bits
 import qualified Data.ByteString                   as Bytes
+import qualified Data.ByteString.Unsafe            as Bytes
+import           Data.Int
 import           Data.Massiv.Array                 as Massiv
 import           Data.Massiv.Array.Manifest.Vector
 import           Data.Massiv.Array.Unsafe          as Massiv
@@ -10,6 +15,48 @@ import qualified Data.Vector.Primitive             as Vector
 import           Data.Word
 import qualified Data.Word                         as Word
 import           Prelude                           as Prelude
+import           Data.Functor.Identity
+
+
+convertWords :: Int16 -> Int16 -> Int16
+convertWords !word1 !word2 = (word1 `shiftL` 8) .|. word2
+
+bytesToRepaOriginal :: Bytes.ByteString -> Repa.Array Repa.U Repa.DIM1 Int16
+bytesToRepaOriginal bs =
+  Repa.foldS
+    convertWords
+    0
+    (Repa.map fromIntegral $
+     Repa.fromByteString (Repa.Z Repa.:. (Bytes.length bs `div` 2) Repa.:. 2) bs)
+
+
+bytesToRepaP :: Monad m => Bytes.ByteString -> m (Repa.Array Repa.U Repa.DIM1 Int16)
+bytesToRepaP bs =
+  Repa.computeUnboxedP $
+  Repa.fromFunction
+    (Repa.Z Repa.:. (Bytes.length bs `div` 2))
+    (\(Repa.Z Repa.:. i) ->
+       let i' = i * 2
+           f = Bytes.unsafeIndex bs
+        in (fromIntegral (f i') `shiftL` 8) .|. fromIntegral (f (i' + 1)))
+
+bytesToRepa :: Bytes.ByteString -> Repa.Array Repa.U Repa.DIM1 Int16
+bytesToRepa bs =
+  Repa.computeUnboxedS $
+  Repa.fromFunction
+    (Repa.Z Repa.:. (Bytes.length bs `div` 2))
+    (\(Repa.Z Repa.:. i) ->
+       let i' = i * 2
+           f = Bytes.unsafeIndex bs
+        in (fromIntegral (f i') `shiftL` 8) .|. fromIntegral (f (i' + 1)))
+
+bytesToMassiv :: Comp -> Bytes.ByteString -> Massiv.Array Massiv.U Massiv.Ix1 Int16
+bytesToMassiv comp bs =
+  Massiv.makeArrayR U comp (Bytes.length bs `div` 2)
+    (\i ->
+       let i' = i * 2
+           f = Bytes.unsafeIndex bs
+        in (fromIntegral (f i') `shiftL` 8) .|. fromIntegral (f (i' + 1)))
 
 
 main :: Prelude.IO ()
@@ -39,6 +86,18 @@ main = do
           "crc32"
           [ bench "ByteString" (whnf crc32 bytes)
           , bench "Massiv Seq" (whnf crc32MassivSeq arr)
+          ]
+      -- , bgroup
+      --     "fromByteString Sequential"
+      --     [ bench "Massiv" (whnf (bytesToMassiv Seq) bytes)
+      --     , bench "Repa" (whnf bytesToRepa bytes)
+      --     , bench "Repa Original" (whnf bytesToRepaOriginal bytes)
+      --     ]
+      , bgroup
+          "fromByteString"
+          [ bench "Massiv Parallel" (whnf (bytesToMassiv Par) bytes)
+          , bench "Repa Parallel" (whnf (runIdentity . bytesToRepaP) bytes)
+          , bench "Repa Original" (whnf bytesToRepaOriginal bytes)
           ]
       ]
 
