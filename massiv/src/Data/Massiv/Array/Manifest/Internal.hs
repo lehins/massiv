@@ -85,7 +85,7 @@ data M
 
 data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !ix
-                                    , mUnsafeLinearIndex :: Int -> e }
+                                    , mLinearIndex :: Int -> e }
 type instance EltRepr M ix = M
 
 instance Index ix => Construct M ix e where
@@ -134,13 +134,13 @@ instance Index ix => Foldable (Array M ix) where
 
 
 instance Index ix => Source M ix e where
-  unsafeLinearIndex = mUnsafeLinearIndex
+  unsafeLinearIndex = mLinearIndex
   {-# INLINE unsafeLinearIndex #-}
 
 
 instance Index ix => Manifest M ix e where
 
-  unsafeLinearIndexM = mUnsafeLinearIndex
+  unsafeLinearIndexM = mLinearIndex
   {-# INLINE unsafeLinearIndexM #-}
 
 

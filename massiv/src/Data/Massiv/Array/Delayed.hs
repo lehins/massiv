@@ -18,7 +18,6 @@ module Data.Massiv.Array.Delayed
   , setStride
   , getWindow
   , makeWindowedArray
-  , unsafeBackpermuteDW
   ) where
 
 import           Data.Massiv.Array.Delayed.Interleaved

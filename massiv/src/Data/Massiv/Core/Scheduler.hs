@@ -63,7 +63,7 @@ data Workers = Workers { workerThreadIds :: ![ThreadId]
 scheduleWork :: Scheduler a -- ^ Scheduler to use
              -> IO a -- ^ Action to hand of to a worker
              -> IO ()
-scheduleWork Scheduler {..} jobAction = do
+scheduleWork Scheduler {..} jobAction =
   modifyMVar_ jobQueueMVar $ \jobs -> do
     jix <- atomicModifyIORef' jobsCountIORef $ \jc -> (jc + 1, jc)
     let job =
@@ -127,13 +127,13 @@ withScheduler wss submitJobs = do
         mGlobalWorkers <- maybe (return Nothing) deRefWeak mWeakWorkers
         let toWorkers w = return (mWeakWorkers, w)
         maybe (hireWorkers wss >>= toWorkers) toWorkers mGlobalWorkers)
-    (\(mWeakWorkers, workers) -> do
+    (\(mWeakWorkers, workers) ->
        case mWeakWorkers of
          Nothing ->
            putMVar (workerJobQueue workers) $
            replicate (length (workerThreadIds workers)) Retire
          Just weak -> putMVar globalWorkersMVar weak)
-    (\_ (mWeakWorkers, workers) -> do
+    (\_ (mWeakWorkers, workers) ->
        case mWeakWorkers of
          Nothing -> mapM_ killThread (workerThreadIds workers)
          Just weakWorkers -> do

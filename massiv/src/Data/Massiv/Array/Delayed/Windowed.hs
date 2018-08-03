@@ -22,7 +22,6 @@ module Data.Massiv.Array.Delayed.Windowed
   , setStride
   , getWindow
   , makeWindowedArray
-  , unsafeBackpermuteDW
   ) where
 
 import           Control.Monad                       (when)
@@ -42,7 +41,6 @@ data DW = DW
 
 type instance EltRepr DW ix = D
 
--- TODO: rename with prefix window
 data Window ix e = Window { windowStart :: !ix
                           -- ^ Index of where window will start at.
                           , windowSize  :: !ix
@@ -176,42 +174,6 @@ getWindow = dwWindow
 {-# INLINE getWindow #-}
 
 
--- | Backpermute a windowed array. If index mappings aren't correct reading memory out of bounds is
--- very likely.
---
--- __Note__: windowStartIndex is mapped to the new windowStartIndex using the "old to new index"
--- map.  This means that the order of the elements should be preserved, or performance will take a
--- major hit.
---
--- __Important__: This function is still experimental and can be removed in any future minor
--- release.
---
--- @since 0.2.0
-unsafeBackpermuteDW ::
-     Index ix
-  => (ix -> ix) -- ^ map from old to new index
-  -> (ix -> ix) -- ^ map from new to old index
-  -> ix -- ^ Size of resulting array
-  -> Array DW ix a
-  -> Array DW ix a
-unsafeBackpermuteDW toNewIndex toOldIndex sz DWArray {..} = undefined
---   DWArray
---     { dwArray =
---         DArray {dComp = dComp dwArray, dSize = sz, dUnsafeIndex = dUnsafeIndex dwArray . toOldIndex}
---     , dwStencilSize = dwStencilSize
---     , dwWindowStartIndex = newWindowStartIndex
---     , dwWindowSize =
---         liftIndex2
---           (-)
---           (toNewIndex (liftIndex2 (+) dwWindowStartIndex dwWindowSize))
---           newWindowStartIndex
---     , dwStride = dwStride
---     , dwWindowUnsafeIndex = dwWindowUnsafeIndex . toOldIndex
---     }
---   where
---     !newWindowStartIndex = toNewIndex dwWindowStartIndex
--- {-# INLINE unsafeBackpermuteDW #-}
-
 zeroWindow :: Index ix => Window ix e
 zeroWindow = Window zeroIndex zeroIndex windowError
 {-# INLINE zeroWindow #-}
@@ -220,9 +182,6 @@ windowError :: a
 windowError = error "Impossible: index of zeroWindow"
 {-# NOINLINE windowError #-}
 
-
--- strideStart :: (Index ix) => ix -> ix -> ix
--- strideStart stride ix = ix + (liftIndex2 mod (stride - liftIndex2 mod ix stride) stride)
 
 strideStart :: Index ix => ix -> ix -> ix
 strideStart stride ix =
@@ -307,7 +266,7 @@ loadWithIx2 with arr unsafeWrite = do
       then return $ \(it' :. ib') ->
              with $ iterM_ (strideStart stride (it' :. jt)) (ib' :. jb) stride (<) writeW
       else return $ \(it' :. ib') ->
-             with $ unrollAndJam' blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
+             with $ unrollAndJam blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
   return (f, it :. ib)
 {-# INLINE loadWithIx2 #-}
 
@@ -347,7 +306,7 @@ loadWithIxN ::
   -> m ()
 loadWithIxN with arr unsafeRead unsafeWrite = do
   let DWArray darr mStencilSz window stride = arr
-      DArray {dSize = sz, dUnsafeIndex = indexBorder} = darr
+      DArray {dSize = sz, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex = indexWindow} = fromMaybe zeroWindow window
       !szL = tailDim sz
       !windowEnd = liftIndex2 (+) windowStart windowSize
@@ -383,14 +342,14 @@ loadWithIxN with arr unsafeRead unsafeWrite = do
 
 
 
-unrollAndJam' :: Monad m =>
+unrollAndJam :: Monad m =>
                  Int -- ^ Block height
               -> Ix2 -- ^ Top corner
               -> Ix2 -- ^ Bottom corner
               -> Int -- ^ Column Stride
               -> (Ix2 -> m ()) -- ^ Writing function
               -> m ()
-unrollAndJam' !bH (it :. jt) (ib :. jb) js f = do
+unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
   let f2 (i :. j) = f (i :. j) >> f  ((i + 1) :. j)
   let f3 (i :. j) = f (i :. j) >> f2 ((i + 1) :. j)
   let f4 (i :. j) = f (i :. j) >> f3 ((i + 1) :. j)
@@ -412,93 +371,76 @@ unrollAndJam' !bH (it :. jt) (ib :. jb) js f = do
   loopM_ ibS (< ib) (+ 1) $ \ !i ->
     loopM_ jt (< jb) (+ js) $ \ !j ->
       f (i :. j)
-{-# INLINE unrollAndJam' #-}
-
-
-unrollAndJam :: Monad m =>
-                Int -> Ix2 -> Ix2 -> Ix2 -> (Ix2 -> m a) -> m ()
-unrollAndJam !bH (it :. ib) (jt :. jb) (is :. js) f = do
-  let !bH' = (min (max 1 bH) 7)
-      !bH'' = bH' * is
-  let f2 (i :. j) = f (i :. j) >> f  ((i + is) :. j)
-  let f3 (i :. j) = f (i :. j) >> f2 ((i + is) :. j)
-  let f4 (i :. j) = f (i :. j) >> f3 ((i + is) :. j)
-  let f5 (i :. j) = f (i :. j) >> f4 ((i + is) :. j)
-  let f6 (i :. j) = f (i :. j) >> f5 ((i + is) :. j)
-  let f7 (i :. j) = f (i :. j) >> f6 ((i + is) :. j)
-  let f' = case bH' of
-             1 -> f
-             2 -> f2
-             3 -> f3
-             4 -> f4
-             5 -> f5
-             6 -> f6
-             _ -> f7
-  let !ibS = ib - ((ib - it) `mod` bH'')
-  loopM_ it (< ibS) (+ bH'') $ \ !i ->
-    loopM_ jt (< jb) (+ js) $ \ !j ->
-      f' (i :. j)
-  loopM_ ibS (< ib) (+ is) $ \ !i ->
-    loopM_ jt (< jb) (+ js) $ \ !j ->
-      f (i :. j)
 {-# INLINE unrollAndJam #-}
+
 
 
 -- TODO: Implement Hilbert curve
 
+toIx2Window :: Window Ix2T e -> Window Ix2 e
+toIx2Window Window {..} =
+  Window
+    { windowStart = toIx2 windowStart
+    , windowSize = toIx2 windowSize
+    , windowIndex = windowIndex . fromIx2
+    }
+{-# INLINE toIx2Window #-}
+
+toIx2ArrayDW :: Array DW Ix2T e -> Array DW Ix2 e
+toIx2ArrayDW DWArray {dwArray, dwStencilSize, dwWindow, dwStride} =
+  DWArray
+    { dwArray = dwArray {dIndex = dIndex dwArray . fromIx2, dSize = toIx2 (dSize dwArray)}
+    , dwStencilSize = fmap toIx2 dwStencilSize
+    , dwWindow = fmap toIx2Window dwWindow
+    , dwStride = toIx2 dwStride
+    }
+{-# INLINE toIx2ArrayDW #-}
+
+
+-- toIxWindow :: (ix' -> ix) -> (ix -> ix') -> Window ix' e -> Window ix e
+-- toIxWindow toIx fromIx Window {..} =
+--   Window
+--     { windowStart = toIx windowStart
+--     , windowSize = toIx windowSize
+--     , windowIndex = windowIndex . fromIx
+--     }
+-- {-# INLINE toIxWindow #-}
+
+-- toIxArrayDW :: (ix' -> ix) -> (ix -> ix') -> Array DW ix' e -> Array DW ix e
+-- toIxArrayDW toIx fromIx DWArray {dwArray, dwStencilSize, dwWindow, dwStride} =
+--   DWArray
+--     { dwArray = dwArray {dIndex = dIndex dwArray . fromIx, dSize = toIx (dSize dwArray)}
+--     , dwStencilSize = fmap toIx dwStencilSize
+--     , dwWindow = fmap (toIxWindow toIx fromIx) dwWindow
+--     , dwStride = toIx dwStride
+--     }
+-- {-# INLINE toIxArrayDW #-}
+
+
 
 instance {-# OVERLAPPING #-} Load DW Ix2T e where
-  loadS arr _ unsafeWrite = do
-    let DWArray (DArray _ sz@(m, n) indexB) mStencilSz window stride = arr
-    let Window (it, jt) (wm, wn) indexW = fromMaybe zeroWindow window
-    let (ib, jb) = (wm + it, wn + jt)
-        blockHeight = case mStencilSz of
-                        Just (i, _) -> i
-                        _           -> 1
-    iterM_ (0, 0) (it, n) stride (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (ib, 0) (m, n) stride (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, 0) (ib, jt) stride (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    iterM_ (it, jb) (ib, n) stride (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (indexB ix)
-    unrollAndJam blockHeight (it :. ib) (jt :. jb) (toIx2 stride) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz (fromIx2 ix)) (indexW (fromIx2 ix))
+  loadS arr = loadS (toIx2ArrayDW arr)
   {-# INLINE loadS #-}
-  loadP wIds arr _ unsafeWrite = do
-    let DWArray (DArray _ sz@(m, n) indexB) mStencilSz window stride = arr
-    let Window (it, jt) (wm, wn) indexW = fromMaybe zeroWindow window
-    withScheduler_ wIds $ \ scheduler -> do
-      let (ib, jb) = (wm + it, wn + jt)
-          blockHeight = case mStencilSz of
-                          Just (i, _) -> i
-                          _           -> 1
-          !(chunkHeight, slackHeight) = wm `quotRem` numWorkers scheduler
-      let loadBlock !it' !ib' =
-            unrollAndJam blockHeight (it' :. ib') (jt :. jb) (toIx2 stride) $ \ !ix ->
-              unsafeWrite (toLinearIndex sz (fromIx2 ix)) (indexW (fromIx2 ix))
-          {-# INLINE loadBlock #-}
-      scheduleWork scheduler $
-        iterM_ (0, 0) (it, n) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      scheduleWork scheduler $
-        iterM_ (ib, 0) (m, n) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      scheduleWork scheduler $
-        iterM_ (it, 0) (ib, jt) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      scheduleWork scheduler $
-        iterM_ (it, jb) (ib, n) stride (<) $ \ !ix ->
-          unsafeWrite (toLinearIndex sz ix) (indexB ix)
-      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid -> do
-        let !it' = wid * chunkHeight + it
-        scheduleWork scheduler $ loadBlock it' (it' + chunkHeight)
-      when (slackHeight > 0) $ do
-        let !itSlack = (numWorkers scheduler) * chunkHeight + it
-        scheduleWork scheduler $ loadBlock itSlack (itSlack + slackHeight)
+  loadP wIds arr = loadP wIds (toIx2ArrayDW arr)
   {-# INLINE loadP #-}
 
+-- instance {-# OVERLAPPING #-} Load DW Ix2T e where
+--   loadS arr = loadS (toIxArrayDW toIx2 fromIx2 arr)
+--   {-# INLINE loadS #-}
+--   loadP wIds arr = loadP wIds (toIxArrayDW toIx2 fromIx2 arr)
+--   {-# INLINE loadP #-}
+
+-- instance {-# OVERLAPPING #-} Load DW Ix2T e where
+--   loadS arr = loadS (toIxArrayDW toIx2 fromIx2 arr)
+--   {-# INLINE loadS #-}
+--   loadP wIds arr = loadP wIds (toIxArrayDW toIx2 fromIx2 arr)
+--   {-# INLINE loadP #-}
+
+-- instance {-# OVERLAPPING #-} Load DW Ix5T e where
+--   loadS arr = loadS (toIxArrayDW toIx5 fromIx5 arr)
+--   {-# INLINE loadS #-}
+--   loadP wIds arr = loadP wIds (toIxArrayDW toIx5 fromIx5 arr)
+--   {-# INLINE loadP #-}
 
 
 -- unrollAndJamT :: Monad m =>

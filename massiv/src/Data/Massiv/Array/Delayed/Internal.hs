@@ -40,7 +40,7 @@ data D = D deriving Show
 
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !ix
-                                    , dUnsafeIndex :: ix -> e }
+                                    , dIndex :: ix -> e }
 type instance EltRepr D ix = D
 
 instance Index ix => Construct D ix e where
@@ -55,7 +55,7 @@ instance Index ix => Construct D ix e where
 
 
 instance Index ix => Source D ix e where
-  unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dUnsafeIndex)
+  unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
 
 instance Index ix => Size D ix e where

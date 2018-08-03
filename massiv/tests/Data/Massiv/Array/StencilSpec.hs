@@ -24,12 +24,12 @@ import           Data.Default              (Default(def))
 -- {-# INLINE sum3x3Stencil #-}
 
 
-singletonStencil :: (Num ix, Index ix) => (Int -> Int) -> Stencil ix Int Int
-singletonStencil f = makeStencil 1 0 $ \ get -> fmap f (get zeroIndex)
+singletonStencil :: (Index ix) => (Int -> Int) -> Stencil ix Int Int
+singletonStencil f = makeStencil (pureIndex 1) zeroIndex $ \ get -> fmap f (get zeroIndex)
 {-# INLINE singletonStencil #-}
 
 
-prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int, Num ix) =>
+prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int) =>
                             Proxy ix -> Fun Int Int -> Border Int -> ArrP U ix Int -> Bool
 prop_MapSingletonStencil _ f b (ArrP arr) =
   computeAs U (mapStencil b (singletonStencil (apply f)) arr) == computeAs U (A.map (apply f) arr)
@@ -54,6 +54,8 @@ stencilSpec = do
     it "Ix2" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2)
     it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
+    it "Ix2T" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2T)
+    it "Ix3T" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3T)
   describe "DangerousStencil" $ do
     it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
@@ -105,37 +107,23 @@ spec = do
             largeArr = makeArrayR U Seq (5 :. 5) (succ . toLinearIndex (5 :. 5))
             strideArr = mapStencilStride (Fill 0) stride stencil largeArr
          in do computeAs U strideArr `shouldBe` [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
-    describe "reformDW" $ do
-      it "map stencil with stride on small array" $
-        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
-            stencil = makeConvolutionStencilFromKernel kernel
-            stride = 2
-            strideArr = mapStride stride (1 :. 1) $ mapStencil (Fill 0) stencil arr
-         in computeAs U strideArr `shouldBe` [[-4]]
-      it "map stencil with stride on larger array" $
-        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
-            stencil = makeConvolutionStencilFromKernel kernel
-            stride = 2
-            largeArr = makeArrayR U Seq (5 :. 5) (succ . toLinearIndex (5 :. 5))
-            stencilledArr = mapStencil (Fill 0) stencil largeArr
-            strideArr = mapStride stride (2 :. 2) stencilledArr
-         in do computeAs U strideArr `shouldBe` [[-6, 1], [-13, 9]]
-      it "resize DWArray resulting from mapStencil" $
-        let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
-            stencil = makeConvolutionStencilFromKernel kernel
-            result = unsafeBackpermuteDW (+1) (subtract 1) (5 :. 5) $ mapStencil (Fill 0) stencil arr
-            expectation =
-                  [ [ -1, -2, -2,  2,  3]
-                  , [ -4, -4,  0,  8,  6]
-                  , [ -8, -6,  1, 16, 12]
-                  , [ -4,  2,  6, 14,  6]
-                  , [ -7, -8, -2,  8,  9]
-                  ]
-         in computeAs U result `shouldBe` expectation
+--     describe "reformDW" $ do
+--       it "resize DWArray resulting from mapStencil" $
+--         let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+--             stencil = makeConvolutionStencilFromKernel kernel
+--             result = unsafeBackpermuteDW (+1) (subtract 1) (5 :. 5) $ mapStencil (Fill 0) stencil arr
+--             expectation =
+--                   [ [ -1, -2, -2,  2,  3]
+--                   , [ -4, -4,  0,  8,  6]
+--                   , [ -8, -6,  1, 16, 12]
+--                   , [ -4,  2,  6, 14,  6]
+--                   , [ -7, -8, -2,  8,  9]
+--                   ]
+--          in computeAs U result `shouldBe` expectation
 
-mapStride :: Index ix => Int -> ix -> Array DW ix e -> Array DW ix e
-mapStride stride sz =
-  let toOldIndex = liftIndex (* stride)
-      ceilingDivStride a = ceiling $ (fromIntegral a :: Double) / fromIntegral stride
-      toNewIndex = liftIndex ceilingDivStride
-   in unsafeBackpermuteDW toNewIndex toOldIndex sz
+-- mapStride :: Index ix => Int -> ix -> Array DW ix e -> Array DW ix e
+-- mapStride stride sz =
+--   let toOldIndex = liftIndex (* stride)
+--       ceilingDivStride a = ceiling $ (fromIntegral a :: Double) / fromIntegral stride
+--       toNewIndex = liftIndex ceilingDivStride
+--    in unsafeBackpermuteDW toNewIndex toOldIndex sz
