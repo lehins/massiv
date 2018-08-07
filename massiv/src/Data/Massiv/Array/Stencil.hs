@@ -1,7 +1,6 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards       #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -16,7 +15,7 @@ module Data.Massiv.Array.Stencil
   , Value
   , makeStencil
   , mapStencil
-  , mapStencilStride
+  --, mapStencilStride
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
   ) where
@@ -54,20 +53,20 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
     !sz = size arr
 {-# INLINE mapStencil #-}
 
--- | Same as `mapStencil` except with ability to set the stride, i.e. an index that specifies which
--- elements to keep around. See `setStride` for more info.
---
--- @since 0.2.1
-mapStencilStride ::
-     (Source r ix e, Manifest r ix e)
-  => Border e -- ^ Border resolution technique
-  -> ix -- ^ Stride. Eg. `(2 :. 3)` means to keep every even row and every column divisible by
-        -- 3, while ignoring the rest.
-  -> Stencil ix e a -- ^ Stencil to map over the array
-  -> Array r ix e -- ^ Source array
-  -> Array DW ix a
-mapStencilStride b stride stencil = setStride stride . mapStencil b stencil
-{-# INLINE mapStencilStride #-}
+-- -- | Same as `mapStencil` except with ability to set the stride, i.e. an index that specifies which
+-- -- elements to keep around. See `setStride` for more info.
+-- --
+-- -- @since 0.2.1
+-- mapStencilStride ::
+--      (Source r ix e, Manifest r ix e)
+--   => Border e -- ^ Border resolution technique
+--   -> ix -- ^ Stride. Eg. `(2 :. 3)` means to keep every even row and every column divisible by
+--         -- 3, while ignoring the rest.
+--   -> Stencil ix e a -- ^ Stencil to map over the array
+--   -> Array r ix e -- ^ Source array
+--   -> Array DW ix a
+-- mapStencilStride b stride stencil = setStride stride . mapStencil b stencil
+-- {-# INLINE mapStencilStride #-}
 
 
 -- | Construct a stencil from a function, which describes how to calculate the

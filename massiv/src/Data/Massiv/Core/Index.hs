@@ -1,10 +1,4 @@
-{-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE DefaultSignatures          #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Data.Massiv.Core.Index
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -15,6 +9,12 @@
 --
 module Data.Massiv.Core.Index
   ( module Data.Massiv.Core.Index.Ix
+  , Stride(Stride)
+  , unStride
+  , toLinearIndexStride
+  , strideStart
+  , strideSize
+  , oneStride
   , Border(..)
   , handleBorderIndex
   , module Data.Massiv.Core.Index.Class
@@ -33,6 +33,7 @@ module Data.Massiv.Core.Index
 import           Control.DeepSeq
 import           Data.Massiv.Core.Index.Class
 import           Data.Massiv.Core.Index.Ix
+import           Data.Massiv.Core.Index.Stride
 import           Data.Massiv.Core.Iterator
 
 
@@ -165,4 +166,3 @@ iterLinearM_ :: (Index ix, Monad m) =>
 iterLinearM_ !sz !k0 !k1 !inc cond f =
   loopM_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
-

@@ -1,11 +1,8 @@
-{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UnboxedTuples         #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -51,20 +48,7 @@ import           Control.Monad.Primitive             (PrimMonad (..))
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
---import           GHC.Base                             (Int (..))
 import           GHC.Prim
-
--- errorSizeMismatch fName sz1 sz2 =
---   error $ fName ++ ": Size mismatch: " ++ show sz1 ++ " /= " ++ show sz2
--- -- TODO: make sure copy is done in parallel as well as sequentially
--- copy mTargetArr sourceArr = do
---   unless (msize mTargetArr == size sourceArr) $
---     errorSizeMismatch "Data.Massiv.Array.Mutable.copy" (msize mTargetArr) (size sourceArr)
---   mSourdceArray <- unsafeThaw sourceArray
---   -- comp from marr
---   -- TODO: use load
---   imapM_ (unsafeWrite)
-
 
 
 -- | Initialize a new mutable array. Negative size will result in an empty array.
@@ -79,7 +63,7 @@ thaw = unsafeThaw . clone
 
 -- | /O(n)/ - Yield an immutable copy of the mutable array
 freeze :: (Mutable r ix e, PrimMonad m) => Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
-freeze comp marr = unsafeFreeze comp marr >>= (return . clone)
+freeze comp marr = clone <$> unsafeFreeze comp marr
 {-# INLINE freeze #-}
 
 
@@ -174,7 +158,8 @@ swap' marr ix1 ix2 = do
       else ix1
 {-# INLINE swap' #-}
 
-{-
+{- Disabled until better times. See https://github.com/lehins/massiv/issues/24
+
 unsafeLinearFillM :: (Mutable r ix e, Monad m) =>
                      MArray RealWorld r ix e -> (Int -> m e) -> WorldState -> m WorldState
 unsafeLinearFillM ma f (State s_#) = go 0# s_#
@@ -281,7 +266,7 @@ Functions in this section has been removed until better times due to a known bug
 
 -}
 
-{-
+{- Disabled until better times
 
 Functions in this section can monadically generate manifest arrays using their associated mutable
 interface. Due to the sequential nature of monads generation is done also sequentially regardless of

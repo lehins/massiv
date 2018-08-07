@@ -120,6 +120,7 @@ class Size r ix e => Source r ix e where
 
 -- | Any array that can be computed
 class Size r ix e => Load r ix e where
+
   -- | Load an array into memory sequentially
   loadS
     :: Monad m =>
@@ -137,6 +138,30 @@ class Size r ix e => Load r ix e where
     -> (Int -> IO e) -- ^ Function that reads an element from target array
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
+
+  -- | Load an array into memory sequentially
+  loadArray
+    :: Monad m =>
+       Array r ix e -- ^ Array that is being loaded
+    -> Stride ix
+    -> ix -- ^ Size of the target array
+    -> (Int -> m e) -- ^ Function that reads an element from target array
+    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+    -> m ()
+  loadArray = loadArrayWithWorkers 1 id
+  {-# INLINE loadArray #-}
+
+  -- | Load an array into memory in parallel
+  loadArrayWithWorkers
+    :: Monad m =>
+       Int -- ^ Total number of workers
+    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers
+    -> Array r ix e -- ^ Array that is being loaded
+    -> Stride ix
+    -> ix -- ^ Size of the target array
+    -> (Int -> m e) -- ^ Function that reads an element from target array
+    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+    -> m ()
 
 class OuterSlice r ix e where
   -- | /O(1)/ - Take a slice out of an array from the outside
@@ -248,8 +273,6 @@ class Construct r ix e => Ragged r ix e where
   unsafeGenerateM :: Monad m => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
 
   edgeSize :: Array r ix e -> ix
-
-  --outerLength :: Array r ix e -> Int
 
   flatten :: Array r ix e -> Array r Ix1 e
 

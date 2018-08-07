@@ -56,7 +56,7 @@ instance Index ix => Size DI ix e where
 
 
 instance Index ix => Load DI ix e where
-  loadS (DIArray arr) unsafeRead unsafeWrite = loadS arr unsafeRead unsafeWrite
+  loadS (DIArray arr) = loadS arr
   {-# INLINE loadS #-}
   loadP wIds (DIArray (DArray _ sz f)) _ unsafeWrite =
     withScheduler_ wIds $ \ scheduler -> do

@@ -41,14 +41,13 @@ instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
     ArrTiny (arr' :: Array D ix e) <- arbitrary
     let arr = setComp Seq arr'
     let sz = size arr
-    stride <- liftIndex abs <$> arbitrary
     ArrDW arr <$>
       if totalElem sz == 0
-        then return $ (setStride stride $ unsafeMakeArray (getComp arr) sz (unsafeIndex arr))
+        then return (unsafeMakeArray (getComp arr) sz (unsafeIndex arr))
         else do
           wix <- flip (liftIndex2 mod) sz <$> arbitrary
           wsz <- liftIndex (+1) . flip (liftIndex2 mod) (liftIndex2 (-) sz wix) <$> arbitrary
-          return $ setStride stride $ makeWindowedArray arr wix wsz (unsafeIndex arr)
+          return $ makeWindowedArray arr wix wsz (unsafeIndex arr)
 
 
 prop_EqDelayed ::
@@ -62,7 +61,7 @@ prop_EqDelayed _ (ArrDW arrD arrDW) =
 
 
 spec :: Spec
-spec = do
+spec =
   describe "Equivalency with Delayed" $ do
     it "Ix1" $ property $ prop_EqDelayed (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_EqDelayed (Proxy :: Proxy Ix2)

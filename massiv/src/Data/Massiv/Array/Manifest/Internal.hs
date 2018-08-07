@@ -106,7 +106,7 @@ makeBoxedVector !sz f = V.generate (totalElem sz) (f . fromLinearIndex sz)
 
 -- | /O(1)/ - Conversion of `Manifest` arrays to `M` representation.
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
-toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr) where
+toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
 {-# INLINE toManifest #-}
 
 
@@ -188,7 +188,7 @@ instance {-# OVERLAPPING #-} InnerSlice M Ix1 e where
   {-# INLINE unsafeInnerSlice #-}
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
-  unsafeInnerSlice !arr !(szL, m) !i =
+  unsafeInnerSlice !arr (szL, m) !i =
     MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * m + kStart))
     where
       !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
@@ -200,7 +200,7 @@ instance Index ix => Load M ix e where
     iterM_ 0 (totalElem sz) 1 (<) $ \ !i ->
       uWrite i (f i)
   {-# INLINE loadS #-}
-  loadP wIds (MArray _ sz f) _ uWrite = do
+  loadP wIds (MArray _ sz f) _ uWrite =
     divideWork_ wIds (totalElem sz) $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
         scheduleWork scheduler $
@@ -228,6 +228,7 @@ loadMutableOnP wIds !arr = do
   loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
   unsafeFreeze (ParOn wIds) mArr
 {-# INLINE loadMutableOnP #-}
+
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
@@ -292,7 +293,7 @@ computeInto !mArr !arr = do
 computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr =
-  fromMaybe (compute $ delay arr) $ fmap (\Refl -> arr) (eqT :: Maybe (r' :~: r))
+  maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
 
 

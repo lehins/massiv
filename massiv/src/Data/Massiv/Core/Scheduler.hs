@@ -28,7 +28,7 @@ import           Control.DeepSeq
 import           Control.Exception            (SomeException, catch, mask,
                                                mask_, throwIO, try,
                                                uninterruptibleMask_)
-import           Control.Monad                (forM)
+import           Control.Monad                (void, forM)
 import           Control.Monad.Primitive      (RealWorld)
 import           Data.IORef                   (IORef, atomicModifyIORef',
                                                newIORef, readIORef)
@@ -44,13 +44,15 @@ data Job = Job (IO ())
          | Retire
 
 data Scheduler a = Scheduler
-  { jobsCountIORef :: !(IORef Int)
-  , jobQueueMVar   :: !(MVar [Job])
-  , resultsMVar    :: !(MVar (MutableArray RealWorld a))
-  , workers        :: !Workers
-  , numWorkers     :: {-# UNPACK #-} !Int
+  { jobsCountIORef  :: !(IORef Int)
+  , jobQueueMVar    :: !(MVar [Job])
+  , resultsMVar     :: !(MVar (MutableArray RealWorld a))
+  , workers         :: !Workers
+  , numCapabilities :: {-# UNPACK #-} !Int
   }
 
+numWorkers :: Scheduler a -> Int
+numWorkers = numCapabilities
 
 data Workers = Workers { workerThreadIds :: ![ThreadId]
                        , workerJobDone   :: !(MVar (Maybe SomeException))
@@ -142,7 +144,7 @@ withScheduler wss submitJobs = do
            putMVar globalWorkersMVar newWeakWorkers)
     (\(_, workers) -> do
        let scheduler =
-             Scheduler {numWorkers = length $ workerThreadIds workers, ..}
+             Scheduler {numCapabilities = length $ workerThreadIds workers, ..}
        _ <- submitJobs scheduler
        jobCount <- readIORef jobsCountIORef
        marr <- newArray jobCount uninitialized
@@ -165,13 +167,13 @@ withScheduler' wss submitJobs = do
 
 -- | Just like `withScheduler`, but discards the results.
 withScheduler_ :: [Int] -> (Scheduler a -> IO b) -> IO ()
-withScheduler_ wss submitJobs = withScheduler wss submitJobs >> return ()
+withScheduler_ wss submitJobs = void $ withScheduler wss submitJobs
 
 
 -- | Same as `divideWork`, but discard the result.
 divideWork_ :: Index ix
             => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
-divideWork_ wss sz submit = divideWork wss sz submit >> return ()
+divideWork_ wss sz submit = void $ divideWork wss sz submit
 
 
 -- | Linearly (row-major first) and equally divide work among available workers. Submit function
@@ -185,7 +187,7 @@ divideWork :: Index ix
            -> IO [a]
 divideWork wss sz submit
   | totalElem sz == 0 = return []
-  | otherwise = do
+  | otherwise =
     withScheduler' wss $ \scheduler -> do
       let !totalLength = totalElem sz
           !chunkLength = totalLength `quot` numWorkers scheduler
@@ -195,7 +197,7 @@ divideWork wss sz submit
 -- | Wait till workers finished with all submitted jobs, but raise an exception if either of them
 -- has died. Raised exception is the same one that was the cause of worker's death.
 waitTillDone :: Scheduler a -> IO ()
-waitTillDone (Scheduler {..}) = readIORef jobsCountIORef >>= waitTill 0
+waitTillDone Scheduler {..} = readIORef jobsCountIORef >>= waitTill 0
   where
     waitTill jobsDone jobsCount
       | jobsDone == jobsCount = return ()
