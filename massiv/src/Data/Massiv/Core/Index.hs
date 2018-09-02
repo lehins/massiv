@@ -107,7 +107,7 @@ handleBorderIndex border !sz getVal !ix =
                         (\ !k !i -> (-i - 2) `mod` k))
 {-# INLINE [1] handleBorderIndex #-}
 
-  -- | Index with all zeros
+-- | Index with all zeros
 zeroIndex :: Index ix => ix
 zeroIndex = pureIndex 0
 {-# INLINE [1] zeroIndex #-}
