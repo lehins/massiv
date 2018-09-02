@@ -1,5 +1,5 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}

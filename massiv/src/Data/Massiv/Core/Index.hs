@@ -1,4 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns    #-}
+{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Data.Massiv.Core.Index
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -9,7 +10,8 @@
 --
 module Data.Massiv.Core.Index
   ( module Data.Massiv.Core.Index.Ix
-  , Stride(Stride)
+  , Stride
+  , pattern Stride
   , unStride
   , toLinearIndexStride
   , strideStart

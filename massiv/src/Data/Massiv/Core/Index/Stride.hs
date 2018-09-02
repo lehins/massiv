@@ -1,5 +1,12 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE PatternSynonyms            #-}
+
+#if __GLASGOW_HASKELL__ >= 800
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+#else
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+#endif
 -- |
 -- Module      : Data.Massiv.Core.Index.Stride
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -9,7 +16,8 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core.Index.Stride
-  ( Stride(SafeStride, Stride)
+  ( Stride(SafeStride)
+  , pattern Stride
   , unStride
   , oneStride
   , toLinearIndexStride
@@ -45,17 +53,31 @@ import           Data.Massiv.Core.Index.Class
 -- * In case of two dimensions, if you want is to keep all rows divisible by 5, but keep every
 --   column intact then you'd use @Stride (5 :. 1)@.
 --
+
+#if __GLASGOW_HASKELL__ >= 800
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
+#else
+-- There is an issue in GHC 7.10 which prevents from placing `Index` constraint on a pattern.
+data Stride ix where
+  SafeStride :: Index ix => ix -> Stride ix
+
+deriving instance Eq ix => Eq (Stride ix)
+deriving instance Ord ix => Ord (Stride ix)
+instance NFData ix => NFData (Stride ix) where
+  rnf (SafeStride ix) = rnf ix
+#endif
+
 
 instance Index ix => Show (Stride ix) where
   show (SafeStride ix) = "Stride (" ++ show ix ++ ")"
 
 
--- | A safe pattern sysnonym for `Stride` construction that will make sure stride elements are
+-- | A safe pattern synonym for `Stride` construction that will make sure stride elements are
 -- positive.
 pattern Stride :: Index ix => ix -> Stride ix
 pattern Stride ix <- SafeStride ix where
         Stride ix = SafeStride (liftIndex (max 1) ix)
+
 
 unStride :: Stride ix -> ix
 unStride (SafeStride ix) = ix
