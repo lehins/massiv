@@ -78,6 +78,8 @@ module Data.Massiv.Array
   , computeAs
   , computeProxy
   , computeSource
+  , computeWithStride
+  , computeWithStrideAs
   , clone
   , convert
   , convertAs

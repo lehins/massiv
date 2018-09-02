@@ -141,7 +141,8 @@ initDim = fst . unsnocDim
 {-# INLINE [1] initDim #-}
 
 
--- | Iterate over N-dimensional space from start to end with accumulator
+-- | Iterate over N-dimensional space lenarly from start to end in row-major fashion with an
+-- accumulator
 iterLinearM :: (Index ix, Monad m)
             => ix -- ^ Size
             -> Int -- ^ Linear start
@@ -155,6 +156,7 @@ iterLinearM !sz !k0 !k1 !inc cond !acc f =
   loopM k0 (`cond` k1) (+ inc) acc $ \ !i !acc0 -> f i (fromLinearIndex sz i) acc0
 {-# INLINE iterLinearM #-}
 
+-- | Same as `iterLinearM`, except without an accumulator.
 iterLinearM_ :: (Index ix, Monad m) =>
                 ix -- ^ Size
              -> Int -- ^ Start

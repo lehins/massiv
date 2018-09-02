@@ -59,13 +59,27 @@ instance Index ix => Load DI ix e where
   loadS (DIArray arr) = loadS arr
   {-# INLINE loadS #-}
   loadP wIds (DIArray (DArray _ sz f)) _ unsafeWrite =
-    withScheduler_ wIds $ \ scheduler -> do
+    withScheduler_ wIds $ \scheduler -> do
       let !totalLength = totalElem sz
       loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
         scheduleWork scheduler $
         iterLinearM_ sz start totalLength (numWorkers scheduler) (<) $ \ !k !ix ->
           unsafeWrite k $ f ix
   {-# INLINE loadP #-}
+  loadArray (DIArray (DArray _ sz f)) numWorkers' scheduleWork' _ unsafeWrite =
+    loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
+      scheduleWork' $
+      iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> unsafeWrite k . f
+  {-# INLINE loadArray #-}
+  loadArrayWithStride stride resultSize arr numWorkers' scheduleWork' _ unsafeWrite =
+    let strideIx = unStride stride
+        DIArray (DArray _ _ f) = arr
+    in loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
+          scheduleWork' $
+          iterLinearM_ resultSize start (totalElem resultSize) numWorkers' (<) $
+            \ !i ix -> unsafeWrite i (f (liftIndex2 (*) strideIx ix))
+  --(DIArray darr) = loadArrayWithStride stride resultSize darr
+  {-# INLINE loadArrayWithStride #-}
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out
 -- of order (interleaved amoungs cores), hence making unbalanced computation better parallelizable.

@@ -45,7 +45,6 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
     (DArray (getComp arr) sz (stencil (index arr)))
     (Just sSz)
     (Just window)
-    (pureIndex 1)
   where
     !window =
       Window

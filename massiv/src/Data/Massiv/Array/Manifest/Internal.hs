@@ -27,6 +27,8 @@ module Data.Massiv.Array.Manifest.Internal
   , computeProxy
   , computeSource
   , computeInto
+  , computeWithStride
+  , computeWithStrideAs
   , clone
   , convert
   , convertAs
@@ -55,7 +57,7 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
-import           GHC.Base                            (build)
+import           GHC.Base
 import           System.IO.Unsafe                    (unsafePerformIO)
 
 
@@ -66,7 +68,6 @@ import           Data.Primitive.Array                (sizeofArray,
 #else
 import qualified Data.Primitive.Array                as A (Array (..),
                                                            MutableArray (..))
-import           GHC.Base                            (Int (..))
 import           GHC.Prim                            (sizeofArray#,
                                                       sizeofMutableArray#)
 
@@ -210,6 +211,9 @@ instance Index ix => Load M ix e where
         iterM_ slackStart totalLength 1 (<) $ \ !i ->
           uWrite i (f i)
   {-# INLINE loadP #-}
+  loadArray (MArray _ sz f) numWorkers' scheduleWork' _ =
+    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
+  {-# INLINE loadArray #-}
 
 
 loadMutableS :: (Load r' ix e, Mutable r ix e) =>
@@ -378,3 +382,35 @@ fromRaggedArray' arr =
     Left RowTooLongError  -> error "Too many elements in a row"
     Right resArr          -> resArr
 {-# INLINE fromRaggedArray' #-}
+
+
+
+
+-- | Same as `compute`, but with `Stride`.
+computeWithStride :: (Load r' ix e, Mutable r ix e) => Stride ix -> Array r' ix e -> Array r ix e
+computeWithStride stride !arr =
+  unsafePerformIO $ do
+    let sz = strideSize stride (size arr)
+        comp = getComp arr
+    mArr <- unsafeNew sz
+    case comp of
+      Seq -> loadArrayWithStride stride sz arr 1 id (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+      ParOn wIds ->
+        withScheduler_ wIds $ \scheduler ->
+          loadArrayWithStride
+            stride
+            sz
+            arr
+            (numWorkers scheduler)
+            (scheduleWork scheduler)
+            (unsafeLinearRead mArr)
+            (unsafeLinearWrite mArr)
+    unsafeFreeze comp mArr
+{-# INLINE computeWithStride #-}
+
+
+-- | Same as `computeWithStride`, but with ability to specify resulting array representation.
+computeWithStrideAs ::
+     (Load r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
+computeWithStrideAs _ = computeWithStride
+{-# INLINE computeWithStrideAs #-}

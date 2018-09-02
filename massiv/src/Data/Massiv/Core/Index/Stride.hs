@@ -20,9 +20,31 @@ module Data.Massiv.Core.Index.Stride
 import           Control.DeepSeq
 import           Data.Massiv.Core.Index.Class
 
--- | Stride provides a way to ignore elements of an array in multiplier fashion. Eg. if stride is 2,
--- then every 2nd (with index 1, 3, 5, ..) element will be skipped, i.e. only index divisible by 2
--- becomes relevant.
+-- | Stride provides a way to ignore elements of an array if an index is divisible by a
+-- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be
+-- kept around:
+--
+-- @@@
+-- ( 0 :. 0) ( 0 :. j) ( 0 :. 2j) ( 0 :. 3j) ...
+-- ( i :. 0) ( i :. j) ( i :. 2j) ( i :. 3j) ...
+-- (2i :. 0) (2i :. j) (2i :. 2j) (2i :. 3j) ...
+-- ...
+-- @@@
+--
+-- Only positive strides make sense, so `Stride` pattern synonym constructor will prevent a user
+-- from creating a stride with negative or zero values, thus promoting safety of the library.
+--
+-- ====__Examples:__
+--
+-- * Default and minimal stride of @Stride (`pureIndex` 1)@ will have no affect and all elements
+--   will kept.
+--
+-- * If stride is @Stride 2@, then every 2nd (with index 1, 3, 5, ..) element will be skipped,
+--   i.e. only index divisible by 2 becomes relevant.
+--
+-- * In case of two dimensions, if you want is to keep all rows divisible by 5, but keep every
+--   column intact then you'd use @Stride (5 :. 1)@.
+--
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
 
 instance Index ix => Show (Stride ix) where

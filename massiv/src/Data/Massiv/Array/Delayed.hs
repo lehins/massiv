@@ -14,8 +14,6 @@ module Data.Massiv.Array.Delayed
   , fromInterleaved
   , DW(..)
   , Window(..)
-  , getStride
-  , setStride
   , getWindow
   , makeWindowedArray
   ) where

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs            #-}
 module Main where
@@ -29,6 +30,10 @@ main = do
                 (bench "Convolve Array Ix2" .
                  whnf (computeAs U . A.mapStencil Edge average3x3FilterConv))
             , env
+                (return (computeAs U (arrDLightIx2 Seq (tupleToIx2 t2))))
+                (bench "Convolve with stride Array Ix2" .
+                 whnf (computeWithStrideAs U oneStride . A.mapStencil Edge average3x3FilterConv))
+            , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" .
                  whnf (computeUnboxedS . mapStencil2 BoundClamp averageStencil))
@@ -39,6 +44,10 @@ main = do
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Convolve Array Ix2" .
                  whnf (computeAs U . A.mapStencil Edge average3x3FilterConv))
+            , env
+                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+                (bench "Convolve with Stride Array Ix2" .
+                 whnf (computeWithStrideAs U oneStride . A.mapStencil Edge average3x3FilterConv))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" .
@@ -85,6 +94,10 @@ main = do
                 (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
                 (bench "Array Ix2 U" .
                  whnf (computeAs U . A.mapStencil Edge sobelOperator))
+            , env
+                (return (computeAs U (arrDLightIx2 Par (tupleToIx2 t2))))
+                (bench "Array with Stride Ix2 U" .
+                 whnf (computeWithStrideAs U oneStride . A.mapStencil Edge sobelOperator))
             , env
                 (return (computeUnboxedS (arrDLightSh2 (tupleToSh2 t2))))
                 (bench "Repa DIM2 U" .

@@ -139,29 +139,63 @@ class Size r ix e => Load r ix e where
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
 
-  -- | Load an array into memory sequentially
+  -- | Load an array into memory with stride. Default implementation can only handle the sequential
+  -- case and only if there is an instance of `Source`.
+  loadArrayWithStride
+    :: Monad m =>
+       Stride ix -- ^ Stride to use
+    -> ix -- ^ Size of the target array affected by the stride.
+    -> Array r ix e -- ^ Array that is being loaded
+    -> Int -- ^ Total number of workers (for `Seq` it's always 1)
+    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
+                      -- always `id`)
+    -> (Int -> m e) -- ^ Function that reads an element from target array
+    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+    -> m ()
+  default loadArrayWithStride
+    :: (Source r ix e, Monad m) =>
+       Stride ix
+    -> ix
+    -> Array r ix e
+    -> Int
+    -> (m () -> m ())
+    -> (Int -> m e)
+    -> (Int -> e -> m ())
+    -> m ()
+  loadArrayWithStride stride resultSize arr numWorkers' scheduleWork' _ =
+    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem resultSize) unsafeLinearWriteWithStride
+    where
+      strideIx = unStride stride
+      unsafeLinearWriteWithStride =
+        unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
+     -- iterM_ zeroIndex resultSize (unStride stride) (<) $ \ix ->
+     --    unsafeWrite (toLinearIndexStride stride (size arr) ix) (unsafeIndex arr ix)
+  {-# INLINE loadArrayWithStride #-}
+
+  -- TODO: this is the future replacement for loadS and loadP discussed in:
+  -- https://github.com/lehins/massiv/issues/41
+  -- | Load an array into memory. Default implementation will respect the scheduler and use `Source`
+  -- instance to do loading in row-major fashion in parallel as well as sequentially.
   loadArray
     :: Monad m =>
        Array r ix e -- ^ Array that is being loaded
-    -> Stride ix
-    -> ix -- ^ Size of the target array
+    -> Int -- ^ Total number of workers (for `Seq` it's always 1)
+    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
+                      -- always `id`)
     -> (Int -> m e) -- ^ Function that reads an element from target array
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
-  loadArray = loadArrayWithWorkers 1 id
+  default loadArray
+    :: (Source r ix e, Monad m) =>
+       Array r ix e
+    -> Int
+    -> (m () -> m ())
+    -> (Int -> m e)
+    -> (Int -> e -> m ())
+    -> m ()
+  loadArray arr numWorkers' scheduleWork' _ =
+    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem (size arr)) (unsafeLinearIndex arr)
   {-# INLINE loadArray #-}
-
-  -- | Load an array into memory in parallel
-  loadArrayWithWorkers
-    :: Monad m =>
-       Int -- ^ Total number of workers
-    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers
-    -> Array r ix e -- ^ Array that is being loaded
-    -> Stride ix
-    -> ix -- ^ Size of the target array
-    -> (Int -> m e) -- ^ Function that reads an element from target array
-    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
-    -> m ()
 
 class OuterSlice r ix e where
   -- | /O(1)/ - Take a slice out of an array from the outside

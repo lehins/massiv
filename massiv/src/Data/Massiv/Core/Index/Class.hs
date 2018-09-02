@@ -193,6 +193,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM #-}
 
+  -- TODO: Implement in terms of iterM, benchmark it and remove from `Index`
   -- | Same as `iterM`, but don't bother with accumulator and return value.
   iterM_ :: Monad m => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
   default iterM_ :: (Index (Lower ix), Monad m)
@@ -252,7 +253,7 @@ instance Index Ix1T where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f = f
   {-# INLINE [1] liftIndex2 #-}
-  foldlIndex f acc ix = f acc ix
+  foldlIndex f = f
   {-# INLINE [1] foldlIndex #-}
   iter k0 k1 inc cond = loop k0 (`cond` k1) (+inc)
   {-# INLINE iter #-}
@@ -266,9 +267,9 @@ instance Index Ix2T where
   type Dimensions Ix2T = 2
   dimensions _ = 2
   {-# INLINE [1] dimensions #-}
-  totalElem !(m, n) = m * n
+  totalElem (m, n) = m * n
   {-# INLINE [1] totalElem #-}
-  toLinearIndex !(_, n) !(i, j) = n * i + j
+  toLinearIndex (_, n) (i, j) = n * i + j
   {-# INLINE [1] toLinearIndex #-}
   fromLinearIndex (_, n) !k = k `quotRem` n
   {-# INLINE [1] fromLinearIndex #-}

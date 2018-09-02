@@ -40,13 +40,10 @@ makeConvolutionStencil
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
-makeConvolutionStencil !sSz !sCenter relStencil =
-  validateStencil 0 $ Stencil sSz sCenter stencil
+makeConvolutionStencil !sSz !sCenter relStencil = validateStencil 0 $ Stencil sSz sCenter stencil
   where
     stencil getVal !ix =
-        ((inline relStencil $ \ !ixD !kVal !acc ->
-            (getVal (liftIndex2 (-) ix ixD)) * kVal + acc)
-           0)
+      (inline relStencil $ \ !ixD !kVal !acc -> getVal (liftIndex2 (-) ix ixD) * kVal + acc) 0
     {-# INLINE stencil #-}
 {-# INLINE makeConvolutionStencil #-}
 
@@ -61,7 +58,7 @@ makeConvolutionStencilFromKernel
 makeConvolutionStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
-    !sCenter = (liftIndex (`div` 2) sz)
+    !sCenter = liftIndex (`div` 2) sz
     stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
         unValue (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
@@ -78,13 +75,10 @@ makeCorrelationStencil
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
-makeCorrelationStencil !sSz !sCenter relStencil =
-  validateStencil 0 $ Stencil sSz sCenter stencil
+makeCorrelationStencil !sSz !sCenter relStencil = validateStencil 0 $ Stencil sSz sCenter stencil
   where
     stencil getVal !ix =
-        ((inline relStencil $ \ !ixD !kVal !acc ->
-            (getVal (liftIndex2 (+) ix ixD)) * kVal + acc)
-           0)
+      (inline relStencil $ \ !ixD !kVal !acc -> getVal (liftIndex2 (+) ix ixD) * kVal + acc) 0
     {-# INLINE stencil #-}
 {-# INLINE makeCorrelationStencil #-}
 
@@ -99,7 +93,7 @@ makeCorrelationStencilFromKernel
 makeCorrelationStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
-    !sCenter = (liftIndex (`div` 2) sz)
+    !sCenter = liftIndex (`div` 2) sz
     stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
         unValue (getVal (liftIndex2 (+) ix (liftIndex2 (+) sCenter kIx))) * kVal + acc

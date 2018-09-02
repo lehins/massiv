@@ -227,10 +227,10 @@ ifoldlIO wIds f !initAcc g !tAcc !arr = do
   let !sz = size arr
   results <-
     divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start -> do
-          scheduleWork scheduler $
-            iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
-              f acc ix (unsafeLinearIndex arr i)
+      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        scheduleWork scheduler $
+          iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
+            f acc ix (unsafeLinearIndex arr i)
       when (slackStart < totalLength) $
         scheduleWork scheduler $
         iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->

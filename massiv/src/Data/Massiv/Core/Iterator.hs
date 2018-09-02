@@ -12,6 +12,8 @@ module Data.Massiv.Core.Iterator
   , loopM
   , loopM_
   , loopDeepM
+  , splitLinearly
+  , splitLinearlyWith_
   ) where
 
 
@@ -58,3 +60,21 @@ loopDeepM !init' condition increment !initAcc f = go init' initAcc
         False -> return acc
         True -> go (increment step) acc >>= f step
 {-# INLINE loopDeepM #-}
+
+
+
+splitLinearly :: Monad m => Int -> Int -> (Int -> Int -> m a) -> m a
+splitLinearly numChunks totalLength action = action chunkLength slackStart
+  where
+    !chunkLength = totalLength `quot` numChunks
+    !slackStart = chunkLength * numChunks
+{-# INLINE splitLinearly #-}
+
+
+splitLinearlyWith_ :: Monad m => Int -> (m () -> m a) -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m a
+splitLinearlyWith_ numChunks with totalLength index write =
+  splitLinearly numChunks totalLength  $ \chunkLength slackStart -> do
+    loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+      with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> write k (index k)
+    with $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> write k (index k)
+{-# INLINE splitLinearlyWith_ #-}
