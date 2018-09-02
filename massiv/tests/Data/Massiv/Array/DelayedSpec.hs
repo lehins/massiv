@@ -64,5 +64,5 @@ spec :: Spec
 spec = do
   delayedSpec "DIM1" (Proxy :: Proxy Ix1)
   delayedSpec "DIM2" (Proxy :: Proxy Ix2)
-  --delayedSpec "DIM3" (Proxy :: Proxy Ix3)
-  -- TODO ^ Fix windowed
+  delayedSpec "DIM3" (Proxy :: Proxy Ix3)
+  delayedSpec "DIM4" (Proxy :: Proxy Ix4)

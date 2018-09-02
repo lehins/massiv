@@ -333,16 +333,15 @@ loadArrayWithIxN ::
   -> (Int -> m e)
   -> (Int -> e -> m ())
   -> m ()
-loadArrayWithIxN stride sz arr numWorkers' scheduleWork' unsafeRead unsafeWrite = do
+loadArrayWithIxN stride szResult arr numWorkers' scheduleWork' unsafeRead unsafeWrite = do
   let DWArray darr mStencilSize window  = arr
       DArray {dSize = szSource, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex = indexWindow} = fromMaybe zeroWindow window
-      !lowerSize = tailDim sz
-      !(s, sIxL) = unconsDim $ unStride stride
-      !lowerStride = Stride sIxL
+      !lowerSize = tailDim szResult
+      !(s, lowerStrideIx) = unconsDim $ unStride stride
       !(curWindowStart, lowerWindowStart) = unconsDim windowStart
       !curWindowEnd = curWindowStart + headDim windowSize
-      !pageElements = totalElem $ strideSize lowerStride lowerSize
+      !pageElements = totalElem lowerSize
       -- can safely drop the dim, only last 2 matter anyways
       !mLowerStencilSize = fmap tailDim mStencilSize
       loadLower !i =
@@ -359,7 +358,7 @@ loadArrayWithIxN stride sz arr numWorkers' scheduleWork' unsafeRead unsafeWrite 
                 , dwWindow = Just lowerWindow
                 }
          in loadArrayWithStride
-              lowerStride
+              (Stride lowerStrideIx)
               lowerSize
               lowerArr
               numWorkers'
