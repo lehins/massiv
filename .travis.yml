@@ -69,7 +69,7 @@ matrix:
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
 
-  - env: BUILD=stack ARGS="--stack-yaml stack.lts-3.yaml"
+  - env: BUILD=stack ARGS="--stack-yaml stack.ghc-7.10.yaml"
     compiler: ": #stack GHC-7.10.2 (lts-3.22)"
     addons:
       apt:

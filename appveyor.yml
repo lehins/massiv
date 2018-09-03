@@ -10,10 +10,9 @@ environment:
     STACK_WORK: ".w"
     WORK_DIR: "c:\\w"
   matrix:
-  - ARGS: "--stack-yaml stack.lts-3.yaml"
-  - ARGS: "--stack-yaml stack.lts-3.yaml --resolver lts-4"
-  - ARGS: "--stack-yaml stack.lts-3.yaml --resolver lts-5"
-  - ARGS: "--stack-yaml stack.lts-3.yaml --resolver lts-6"
+  - ARGS: "--stack-yaml stack.ghc-7.10.yaml --resolver lts-4"
+  - ARGS: "--stack-yaml stack.ghc-7.10.yaml --resolver lts-5"
+  - ARGS: "--resolver lts-6"
   - ARGS: "--resolver lts-7"
   - ARGS: "--resolver lts-8"
   - ARGS: "--resolver lts-9"

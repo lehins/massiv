@@ -63,7 +63,7 @@ loopDeepM !init' condition increment !initAcc f = go init' initAcc
 
 
 
-splitLinearly :: Monad m => Int -> Int -> (Int -> Int -> m a) -> m a
+splitLinearly :: Int -> Int -> (Int -> Int -> a) -> a
 splitLinearly numChunks totalLength action = action chunkLength slackStart
   where
     !chunkLength = totalLength `quot` numChunks
