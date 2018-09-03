@@ -32,25 +32,25 @@ import           Data.Massiv.Core.Index.Class
 -- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be
 -- kept around:
 --
--- @@@
+-- @
 -- ( 0 :. 0) ( 0 :. j) ( 0 :. 2j) ( 0 :. 3j) ...
 -- ( i :. 0) ( i :. j) ( i :. 2j) ( i :. 3j) ...
 -- (2i :. 0) (2i :. j) (2i :. 2j) (2i :. 3j) ...
 -- ...
--- @@@
+-- @
 --
 -- Only positive strides make sense, so `Stride` pattern synonym constructor will prevent a user
 -- from creating a stride with negative or zero values, thus promoting safety of the library.
 --
 -- ====__Examples:__
 --
--- * Default and minimal stride of @Stride (`pureIndex` 1)@ will have no affect and all elements
+-- * Default and minimal stride of @`Stride` (`pureIndex` 1)@ will have no affect and all elements
 --   will kept.
 --
--- * If stride is @Stride 2@, then every 2nd (with index 1, 3, 5, ..) element will be skipped,
---   i.e. only index divisible by 2 becomes relevant.
+-- * If stride is @`Stride` 2@, then every 2nd element (i.e. with index 1, 3, 5, ..) will be skipped
+--   and only elemnts with indices divisible by 2 will be kept around.
 --
--- * In case of two dimensions, if you want is to keep all rows divisible by 5, but keep every
+-- * In case of two dimensions, if what you want is to keep all rows divisible by 5, but keep every
 --   column intact then you'd use @Stride (5 :. 1)@.
 --
 
@@ -78,7 +78,7 @@ pattern Stride :: Index ix => ix -> Stride ix
 pattern Stride ix <- SafeStride ix where
         Stride ix = SafeStride (liftIndex (max 1) ix)
 
-
+-- | Just a helper function for unwrapping `Stride`.
 unStride :: Stride ix -> ix
 unStride (SafeStride ix) = ix
 {-# INLINE unStride #-}
@@ -97,7 +97,7 @@ strideSize :: Index ix => Stride ix -> ix -> ix
 strideSize (SafeStride stride) sz = liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) sz) stride
 {-# INLINE strideSize #-}
 
-
+-- | Compute an index with stride using the original size and index
 toLinearIndexStride :: Index ix =>
   Stride ix -- ^ Stride
   -> ix -- ^ Size
@@ -107,7 +107,7 @@ toLinearIndexStride (SafeStride stride) sz ix = toLinearIndex sz (liftIndex2 div
 {-# INLINE toLinearIndexStride #-}
 
 
--- |  A default stride of 1, where nothing is ignored.
+-- | A default stride of @1@, where all elements are kept
 oneStride :: Index ix => Stride ix
 oneStride = SafeStride (pureIndex 1)
 {-# INLINE oneStride #-}

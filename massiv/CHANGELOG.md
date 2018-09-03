@@ -1,3 +1,11 @@
+# 0.2.1
+
+* Addition of `Stride` and related functions `computeWithStride` and `computeWithStrideAs`.
+* Addition of `loadArray` adn `loadArrayWithStride` with default implementations that will become
+  new loading functions in a subsequent release. `loadArray` will replace `loadS` and `loadP`, which
+  will be deprecated in the next release and removed in the next major release. Some of this is
+  discussed in [#41](https://github.com/lehins/massiv/issues/41)
+
 # 0.2.0
 
 * Fixed type signatures for `convertAs` and `convertProxy`

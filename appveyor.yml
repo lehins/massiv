@@ -9,6 +9,21 @@ environment:
     STACK_ROOT: "c:\\s"
     STACK_WORK: ".w"
     WORK_DIR: "c:\\w"
+  matrix:
+  - ARGS: "--stack-yaml stack.lts-3.yaml"
+  - ARGS: "--resolver lts-4"
+  - ARGS: "--resolver lts-5"
+  - ARGS: "--resolver lts-6"
+  - ARGS: "--resolver lts-7"
+  - ARGS: "--resolver lts-8"
+  - ARGS: "--resolver lts-9"
+  - ARGS: "--resolver lts-10"
+  - ARGS: "--resolver lts-11"
+  - ARGS: "--resolver lts-12"
+  - ARGS: "--resolver nightly"
+matrix:
+  allow_failures:
+    - ARGS: "--resolver nightly"
 
 init:
   - SET WORK_DIR_NO_PR=%WORK_DIR%\%APPVEYOR_REPO_BRANCH%
@@ -17,8 +32,9 @@ init:
   - SET STACK_ROOT=%STACK_ROOT%\%APPVEYOR_PULL_REQUEST_NUMBER%\%APPVEYOR_REPO_BRANCH%\
 
 cache:
-  - "%STACK_ROOT_NO_PR%"
-  - "%WORK_DIR_NO_PR%"
+- "%STACK_ROOT_NO_PR%"
+- "%WORK_DIR_NO_PR%"
+- "%LOCALAPPDATA%\\Programs\\stack"
 
 before_test:
 # Avoid long paths not to each MAX_PATH of 260 chars
@@ -37,9 +53,10 @@ before_test:
 
 test_script:
   - cd "%WORK_DIR%"
-  - stack --resolver lts-12.1 --verbosity warn setup --no-reinstall > nul
-  - stack --resolver lts-12.1 test massiv:tests
+  - stack %ARGS% --verbosity warn setup --no-reinstall > nul
+  - stack %ARGS% test massiv:tests
       -j 2
+      --flag massiv:unsafe-checks
       --no-terminal
       --no-haddock-deps
       --work-dir %STACK_WORK%
