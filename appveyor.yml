@@ -32,7 +32,7 @@ init:
 
 cache:
 - "%STACK_ROOT_NO_PR%"
-- "%WORK_DIR_NO_PR%"
+- "%WORK_DIR_NO_PR%\\%STACK_WORK%"
 - "%LOCALAPPDATA%\\Programs\\stack"
 
 before_test:
