@@ -159,6 +159,7 @@ before_install:
         travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
       fi
       cd $TRAVIS_BUILD_DIR/massiv
+      ls -laFR src # checkout git restored times
       ;;
     cabal)
       # Use the more reliable S3 mirror of Hackage

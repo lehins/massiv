@@ -304,7 +304,7 @@ instance {-# OVERLAPPING #-} Construct L Ix1 e where
   setComp c arr = arr { lComp = c }
   {-# INLINE setComp #-}
   unsafeMakeArray Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)
-  unsafeMakeArray (ParOn wss) sz f = LArray (ParOn wss) $ List $ unsafePerformIO $ do
+  unsafeMakeArray (ParOn wss) sz f = LArray (ParOn wss) $ List $ unsafePerformIO $
     withScheduler' wss $ \scheduler ->
       loopM_ 0 (< sz) (+ 1) (scheduleWork scheduler . return . f)
   {-# INLINE unsafeMakeArray #-}
@@ -320,7 +320,7 @@ instance ( Index ix
   {-# INLINE getComp #-}
   setComp c arr = arr {lComp = c}
   {-# INLINE setComp #-}
-  unsafeMakeArray comp sz f = unsafeGenerateN comp sz f
+  unsafeMakeArray = unsafeGenerateN
   {-# INLINE unsafeMakeArray #-}
 
  -- TODO: benchmark against using unsafeGenerateM directly
@@ -364,7 +364,7 @@ showN _     _        [] = "[  ]"
 showN fShow lnPrefix ls =
   L.concat
     (["[ "] ++
-     (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
+     L.intersperse (lnPrefix ++ ", ") (map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
 
 
 instance ( Ragged L ix e
@@ -372,7 +372,7 @@ instance ( Ragged L ix e
          , Show e
          ) =>
          Show (Array r ix e) where
-  show arr = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ") arr
+  show = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
 
 
 showArray ::
