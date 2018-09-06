@@ -150,13 +150,10 @@ before_install:
 - mkdir -p ~/.local/bin
 - |
   # restore file modification times, so only changed modules get rebuilt
-  ls -laFR massiv/src # checkout git restored times
-  echo "Updating modtime <<<<======================================<<<<"
-  git ls-tree -r --name-only HEAD | while read filename; do
+  git ls-tree -r --name-only $TRAVIS_COMMIT | while read filename; do
     TS="$(git log -1 --format="%ct" -- ${filename})"
     touch "${filename}" -mt "$(date --date="@$TS" "+%Y%m%d%H%M.%S")"
   done
-  ls -laFR massiv/src # checkout git restored times
 
   case "$BUILD" in
     stack)
