@@ -66,19 +66,18 @@ instance Index ix => Load DI ix e where
         iterLinearM_ sz start totalLength (numWorkers scheduler) (<) $ \ !k !ix ->
           unsafeWrite k $ f ix
   {-# INLINE loadP #-}
-  loadArray (DIArray (DArray _ sz f)) numWorkers' scheduleWork' _ unsafeWrite =
+  loadArray numWorkers' scheduleWork' (DIArray (DArray _ sz f)) _ unsafeWrite =
     loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
       scheduleWork' $
       iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> unsafeWrite k . f
   {-# INLINE loadArray #-}
-  loadArrayWithStride stride resultSize arr numWorkers' scheduleWork' _ unsafeWrite =
+  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr _ unsafeWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
     in loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
           scheduleWork' $
           iterLinearM_ resultSize start (totalElem resultSize) numWorkers' (<) $
             \ !i ix -> unsafeWrite i (f (liftIndex2 (*) strideIx ix))
-  --(DIArray darr) = loadArrayWithStride stride resultSize darr
   {-# INLINE loadArrayWithStride #-}
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out

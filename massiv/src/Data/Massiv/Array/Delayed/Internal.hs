@@ -142,61 +142,6 @@ instance Index ix => Foldable (Array D ix) where
   {-# INLINE toList #-}
 
 
--- divideRectangular numWorkers' scheduleWork' sz f = do
---   let k = headDim sz
---       (chunkHeight, slackHeight) = k `quotRem` numWorkers'
---     loopM_ 0 (< numWorkers') (+ 1) $ \ !wid ->
---       let !it' = wid * chunkHeight + it
---        in loadWindow (it' :. (it' + chunkHeight))
---     when (slackHeight > 0) $
---       let !itSlack = numWorkers' * chunkHeight + it
---        in loadWindow (itSlack :. (itSlack + slackHeight))
-
--- loadArrayWithStrideIx2 ::
---      Monad m
---   => Stride Ix2
---   -> Ix2
---   -> Array DW Ix2 e
---   -> (m () -> m ())
---   -> (Int -> e -> m ())
---   -> m (Ix2 -> m (), Ix2)
--- loadArrayWithStrideIx2 stride sz arr numWorkers' scheduleWork' unsafeWrite = do
---   let DArray _ (m :. n) indexB = arr
---       strideIx@(is :. js) = unStride stride
---       writeB !ix = unsafeWrite (toLinearIndexStride stride sz ix) (indexB ix)
---       {-# INLINE writeB #-}
---       load !(it :. ib) =
---         scheduleWork' $ iterM_ (strideStart stride (it :. 0)) (ib :. n) strideIx (<) writeB
---       {-# INLINE load #-}
---   let !(chunkHeight, slackHeight) = m `quotRem` numWorkers'
---   loopM_ 0 (< numWorkers') (+ 1) $ \ !wid ->
---     let !it' = wid * chunkHeight + it
---      in load (it' :. (it' + chunkHeight))
---   when (slackHeight > 0) $
---     let !itSlack = numWorkers' * chunkHeight + it
---      in load (itSlack :. (itSlack + slackHeight))
--- {-# INLINE loadArrayWithIx2 #-}
-
--- instance {-# OVERLAPPING #-} Load D Ix1 e where
---   loadS (DArray _ sz f) _ unsafeWrite =
---     iterM_ zeroIndex sz (pureIndex 1) (<) $ \ !ix -> unsafeWrite (toLinearIndex sz ix) (f ix)
---   {-# INLINE loadS #-}
---   loadP wIds (DArray _ sz f) _ unsafeWrite = do
---     divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---         scheduleWork scheduler $
---         iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
---       scheduleWork scheduler $
---         iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
---   {-# INLINE loadP #-}
---   loadArray (DArray _ sz f) numWorkers' scheduleWork' _ =
---     splitLinearlyWith_ numWorkers' scheduleWork' sz f
---   {-# INLINE loadArray #-}
---   -- loadArrayWithStride stride resultSize (DArray _ sz f) numWorkers' scheduleWork' _ =
---   --   splitLinearlyWith_ numWorkers' scheduleWork' sz f
---   -- {-# INLINE loadArrayWithStride #-}
-
-
 instance Index ix => Load D ix e where
   loadS (DArray _ sz f) _ unsafeWrite =
     iterM_ zeroIndex sz (pureIndex 1) (<) $ \ !ix -> unsafeWrite (toLinearIndex sz ix) (f ix)

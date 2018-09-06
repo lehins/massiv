@@ -54,6 +54,7 @@ module Data.Massiv.Core.Common
 import           Control.Monad.Primitive
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
+import           Data.Massiv.Core.Scheduler
 import           Data.Typeable
 import           GHC.Prim
 
@@ -128,6 +129,8 @@ class Size r ix e => Load r ix e where
     -> (Int -> m e) -- ^ Function that reads an element from target array
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
+  loadS = loadArray 1 id
+  {-# INLINE loadS #-}
 
   -- | Load an array into memory in parallel
   loadP
@@ -138,38 +141,41 @@ class Size r ix e => Load r ix e where
     -> (Int -> IO e) -- ^ Function that reads an element from target array
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
+  loadP wIds arr unsafeRead unsafeWrite =
+    withScheduler_ wIds $ \scheduler ->
+      loadArray (numWorkers scheduler) (scheduleWork scheduler) arr unsafeRead unsafeWrite
+  {-# INLINE loadP #-}
 
   -- | Load an array into memory with stride. Default implementation can only handle the sequential
   -- case and only if there is an instance of `Source`.
   loadArrayWithStride
     :: Monad m =>
-       Stride ix -- ^ Stride to use
-    -> ix -- ^ Size of the target array affected by the stride.
-    -> Array r ix e -- ^ Array that is being loaded
-    -> Int -- ^ Total number of workers (for `Seq` it's always 1)
+       Int -- ^ Total number of workers (for `Seq` it's always 1)
     -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
                       -- always `id`)
+    -> Stride ix -- ^ Stride to use
+    -> ix -- ^ Size of the target array affected by the stride.
+    -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> m e) -- ^ Function that reads an element from target array
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
   default loadArrayWithStride
     :: (Source r ix e, Monad m) =>
-       Stride ix
+       Int
+    -> (m () -> m ())
+    -> Stride ix
     -> ix
     -> Array r ix e
-    -> Int
-    -> (m () -> m ())
     -> (Int -> m e)
     -> (Int -> e -> m ())
     -> m ()
-  loadArrayWithStride stride resultSize arr numWorkers' scheduleWork' _ =
+  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr _ =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem resultSize) unsafeLinearWriteWithStride
     where
       strideIx = unStride stride
       unsafeLinearWriteWithStride =
         unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
-     -- iterM_ zeroIndex resultSize (unStride stride) (<) $ \ix ->
-     --    unsafeWrite (toLinearIndexStride stride (size arr) ix) (unsafeIndex arr ix)
+      {-# INLINE unsafeLinearWriteWithStride #-}
   {-# INLINE loadArrayWithStride #-}
 
   -- TODO: this is the future replacement for loadS and loadP discussed in:
@@ -178,22 +184,22 @@ class Size r ix e => Load r ix e where
   -- instance to do loading in row-major fashion in parallel as well as sequentially.
   loadArray
     :: Monad m =>
-       Array r ix e -- ^ Array that is being loaded
-    -> Int -- ^ Total number of workers (for `Seq` it's always 1)
+       Int -- ^ Total number of workers (for `Seq` it's always 1)
     -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
                       -- always `id`)
+    -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> m e) -- ^ Function that reads an element from target array
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
   default loadArray
     :: (Source r ix e, Monad m) =>
-       Array r ix e
-    -> Int
+       Int
     -> (m () -> m ())
+    -> Array r ix e
     -> (Int -> m e)
     -> (Int -> e -> m ())
     -> m ()
-  loadArray arr numWorkers' scheduleWork' _ =
+  loadArray numWorkers' scheduleWork' arr _ =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem (size arr)) (unsafeLinearIndex arr)
   {-# INLINE loadArray #-}
 

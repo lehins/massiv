@@ -1,6 +1,7 @@
 # 0.2.1
 
 * Addition of `Stride` and related functions `computeWithStride` and `computeWithStrideAs`.
+* Addition of `Window`
 * Addition of `loadArray` adn `loadArrayWithStride` with default implementations that will become
   new loading functions in a subsequent release. `loadArray` will replace `loadS` and `loadP`, which
   will be deprecated in the next release and removed in the next major release. Some of this is

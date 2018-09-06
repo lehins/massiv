@@ -211,7 +211,7 @@ instance Index ix => Load M ix e where
         iterM_ slackStart totalLength 1 (<) $ \ !i ->
           uWrite i (f i)
   {-# INLINE loadP #-}
-  loadArray (MArray _ sz f) numWorkers' scheduleWork' _ =
+  loadArray numWorkers' scheduleWork' (MArray _ sz f) _ =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
   {-# INLINE loadArray #-}
 
@@ -394,15 +394,15 @@ computeWithStride stride !arr =
         comp = getComp arr
     mArr <- unsafeNew sz
     case comp of
-      Seq -> loadArrayWithStride stride sz arr 1 id (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+      Seq -> loadArrayWithStride 1 id stride sz arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
       ParOn wIds ->
         withScheduler_ wIds $ \scheduler ->
           loadArrayWithStride
+            (numWorkers scheduler)
+            (scheduleWork scheduler)
             stride
             sz
             arr
-            (numWorkers scheduler)
-            (scheduleWork scheduler)
             (unsafeLinearRead mArr)
             (unsafeLinearWrite mArr)
     unsafeFreeze comp mArr
