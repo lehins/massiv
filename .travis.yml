@@ -51,12 +51,20 @@ matrix:
         sources: [hvr-ghc]
 
   # FIX: Turned off for now. Compiling with cabal runs out of memory on Travis
-  # - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
-  #   compiler: ": #GHC 8.2.2"
-  #   addons:
-  #     apt:
-  #       packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7]
-  #       sources: [hvr-ghc]
+  - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
+    compiler: ": #GHC 8.2.2"
+    addons:
+      apt:
+        packages: [cabal-install-2.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7]
+        sources: [hvr-ghc]
+
+  - env: BUILD=cabal GHCVER=8.4.3 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
+    compiler: ": #GHC 8.4.3"
+    addons:
+      apt:
+        packages: [cabal-install-2.0,ghc-8.4.3,happy-1.19.5,alex-3.1.7]
+        sources: [hvr-ghc]
+
 
   # Build with the newest GHC and cabal-install. This is an accepted failure, see below.
   - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
@@ -68,11 +76,8 @@ matrix:
 
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
-  - env: BUILD=stack ARGS=""
-    compiler: ": #stack default"
-    addons: {apt: {packages: [libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--stack-yaml stack.lts-3.yaml"
+  - env: BUILD=stack ARGS="--stack-yaml stack.ghc-7.10.yaml"
     compiler: ": #stack GHC-7.10.2 (lts-3.22)"
     addons:
       apt:
@@ -108,11 +113,11 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  # - env: BUILD=stack ARGS="--stack-yaml stack-ghc-8.4.yaml"
-  #   compiler: ": #stack GHC-8.4.1 (nightly)"
-  #   addons:
-  #     apt:
-  #       packages: [libgmp-dev]
+  - env: BUILD=stack ARGS="--resolver lts-12"
+    compiler: ": #stack GHC-8.4.3 (lts-12)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
   # Nightly builds are allowed to fail
   - env: BUILD=stack ARGS="--resolver nightly"
@@ -144,6 +149,11 @@ before_install:
 - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
 - mkdir -p ~/.local/bin
 - |
+  # restore file modification times, so only changed modules get rebuilt
+  git ls-tree -r --name-only $TRAVIS_COMMIT | while read filename; do
+    TS="$(git log -1 --format="%ct" -- ${filename})"
+    touch "${filename}" -mt "$(date --date="@$TS" "+%Y%m%d%H%M.%S")"
+  done
 
   case "$BUILD" in
     stack)
@@ -180,7 +190,7 @@ install:
       PACKAGES="$TRAVIS_BUILD_DIR/massiv"
       echo $PACKAGES
 
-      cabal install --only-dependencies --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+      cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
       ;;
   esac
   set +ex
@@ -190,7 +200,7 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack $ARGS test --haddock --no-haddock-deps
+      stack $ARGS test --haddock --no-haddock-deps --flag massiv:unsafe-checks
       ;;
     cabal)
       # cabal install --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES

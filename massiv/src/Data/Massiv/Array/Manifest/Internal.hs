@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -25,6 +27,8 @@ module Data.Massiv.Array.Manifest.Internal
   , computeProxy
   , computeSource
   , computeInto
+  , computeWithStride
+  , computeWithStrideAs
   , clone
   , convert
   , convertAs
@@ -36,6 +40,8 @@ module Data.Massiv.Array.Manifest.Internal
   , sequenceOnP
   , fromRaggedArray
   , fromRaggedArray'
+  , sizeofArray
+  , sizeofMutableArray
   ) where
 
 import           Control.Exception                   (try)
@@ -51,8 +57,28 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
-import           GHC.Base                            (build)
+import           GHC.Base
 import           System.IO.Unsafe                    (unsafePerformIO)
+
+
+#if MIN_VERSION_primitive(0,6,2)
+import           Data.Primitive.Array                (sizeofArray,
+                                                      sizeofMutableArray)
+
+#else
+import qualified Data.Primitive.Array                as A (Array (..),
+                                                           MutableArray (..))
+import           GHC.Prim                            (sizeofArray#,
+                                                      sizeofMutableArray#)
+
+sizeofArray :: A.Array a -> Int
+sizeofArray (A.Array a) = I# (sizeofArray# a)
+{-# INLINE sizeofArray #-}
+
+sizeofMutableArray :: A.MutableArray s a -> Int
+sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
+{-# INLINE sizeofMutableArray #-}
+#endif
 
 
 -- | General Manifest representation
@@ -60,7 +86,7 @@ data M
 
 data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !ix
-                                    , mUnsafeLinearIndex :: Int -> e }
+                                    , mLinearIndex :: Int -> e }
 type instance EltRepr M ix = M
 
 instance Index ix => Construct M ix e where
@@ -81,7 +107,7 @@ makeBoxedVector !sz f = V.generate (totalElem sz) (f . fromLinearIndex sz)
 
 -- | /O(1)/ - Conversion of `Manifest` arrays to `M` representation.
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
-toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr) where
+toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
 {-# INLINE toManifest #-}
 
 
@@ -109,13 +135,13 @@ instance Index ix => Foldable (Array M ix) where
 
 
 instance Index ix => Source M ix e where
-  unsafeLinearIndex = mUnsafeLinearIndex
+  unsafeLinearIndex = mLinearIndex
   {-# INLINE unsafeLinearIndex #-}
 
 
 instance Index ix => Manifest M ix e where
 
-  unsafeLinearIndexM = mUnsafeLinearIndex
+  unsafeLinearIndexM = mLinearIndex
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -163,7 +189,7 @@ instance {-# OVERLAPPING #-} InnerSlice M Ix1 e where
   {-# INLINE unsafeInnerSlice #-}
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
-  unsafeInnerSlice !arr !(szL, m) !i =
+  unsafeInnerSlice !arr (szL, m) !i =
     MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * m + kStart))
     where
       !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
@@ -175,7 +201,7 @@ instance Index ix => Load M ix e where
     iterM_ 0 (totalElem sz) 1 (<) $ \ !i ->
       uWrite i (f i)
   {-# INLINE loadS #-}
-  loadP wIds (MArray _ sz f) _ uWrite = do
+  loadP wIds (MArray _ sz f) _ uWrite =
     divideWork_ wIds (totalElem sz) $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
         scheduleWork scheduler $
@@ -185,6 +211,9 @@ instance Index ix => Load M ix e where
         iterM_ slackStart totalLength 1 (<) $ \ !i ->
           uWrite i (f i)
   {-# INLINE loadP #-}
+  loadArray numWorkers' scheduleWork' (MArray _ sz f) _ =
+    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
+  {-# INLINE loadArray #-}
 
 
 loadMutableS :: (Load r' ix e, Mutable r ix e) =>
@@ -203,6 +232,7 @@ loadMutableOnP wIds !arr = do
   loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
   unsafeFreeze (ParOn wIds) mArr
 {-# INLINE loadMutableOnP #-}
+
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
@@ -267,7 +297,7 @@ computeInto !mArr !arr = do
 computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr =
-  fromMaybe (compute $ delay arr) $ fmap (\Refl -> arr) (eqT :: Maybe (r' :~: r))
+  maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
 
 
@@ -352,3 +382,35 @@ fromRaggedArray' arr =
     Left RowTooLongError  -> error "Too many elements in a row"
     Right resArr          -> resArr
 {-# INLINE fromRaggedArray' #-}
+
+
+
+
+-- | Same as `compute`, but with `Stride`.
+computeWithStride :: (Load r' ix e, Mutable r ix e) => Stride ix -> Array r' ix e -> Array r ix e
+computeWithStride stride !arr =
+  unsafePerformIO $ do
+    let sz = strideSize stride (size arr)
+        comp = getComp arr
+    mArr <- unsafeNew sz
+    case comp of
+      Seq -> loadArrayWithStride 1 id stride sz arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+      ParOn wIds ->
+        withScheduler_ wIds $ \scheduler ->
+          loadArrayWithStride
+            (numWorkers scheduler)
+            (scheduleWork scheduler)
+            stride
+            sz
+            arr
+            (unsafeLinearRead mArr)
+            (unsafeLinearWrite mArr)
+    unsafeFreeze comp mArr
+{-# INLINE computeWithStride #-}
+
+
+-- | Same as `computeWithStride`, but with ability to specify resulting array representation.
+computeWithStrideAs ::
+     (Load r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
+computeWithStrideAs _ = computeWithStride
+{-# INLINE computeWithStrideAs #-}

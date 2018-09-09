@@ -177,17 +177,17 @@ instance Elevator Word where
 
 -- | Values between @[0, 127]@
 instance Elevator Int8 where
-  eToWord8 = fromIntegral . (max 0)
+  eToWord8 = fromIntegral . max 0
   {-# INLINE eToWord8 #-}
-  eToWord16 = raiseUp . (max 0)
+  eToWord16 = raiseUp . max 0
   {-# INLINE eToWord16 #-}
-  eToWord32 = raiseUp . (max 0)
+  eToWord32 = raiseUp . max 0
   {-# INLINE eToWord32 #-}
-  eToWord64 = raiseUp . (max 0)
+  eToWord64 = raiseUp . max 0
   {-# INLINE eToWord64 #-}
-  eToFloat = squashTo1 . (max 0)
+  eToFloat = squashTo1 . max 0
   {-# INLINE eToFloat #-}
-  eToDouble = squashTo1 . (max 0)
+  eToDouble = squashTo1 . max 0
   {-# INLINE eToDouble #-}
   eFromDouble = stretch . clamp01
   {-# INLINE eFromDouble #-}
@@ -195,17 +195,17 @@ instance Elevator Int8 where
 
 -- | Values between @[0, 32767]@
 instance Elevator Int16 where
-  eToWord8 = dropDown . (max 0)
+  eToWord8 = dropDown . max 0
   {-# INLINE eToWord8 #-}
-  eToWord16 = fromIntegral . (max 0)
+  eToWord16 = fromIntegral . max 0
   {-# INLINE eToWord16 #-}
-  eToWord32 = raiseUp . (max 0)
+  eToWord32 = raiseUp . max 0
   {-# INLINE eToWord32 #-}
-  eToWord64 = raiseUp . (max 0)
+  eToWord64 = raiseUp . max 0
   {-# INLINE eToWord64 #-}
-  eToFloat = squashTo1 . (max 0)
+  eToFloat = squashTo1 . max 0
   {-# INLINE eToFloat #-}
-  eToDouble = squashTo1 . (max 0)
+  eToDouble = squashTo1 . max 0
   {-# INLINE eToDouble #-}
   eFromDouble = stretch . clamp01
   {-# INLINE eFromDouble #-}
@@ -213,17 +213,17 @@ instance Elevator Int16 where
 
 -- | Values between @[0, 2147483647]@
 instance Elevator Int32 where
-  eToWord8 = dropDown . (max 0)
+  eToWord8 = dropDown . max 0
   {-# INLINE eToWord8 #-}
-  eToWord16 = dropDown . (max 0)
+  eToWord16 = dropDown . max 0
   {-# INLINE eToWord16 #-}
-  eToWord32 = fromIntegral . (max 0)
+  eToWord32 = fromIntegral . max 0
   {-# INLINE eToWord32 #-}
-  eToWord64 = raiseUp . (max 0)
+  eToWord64 = raiseUp . max 0
   {-# INLINE eToWord64 #-}
-  eToFloat = squashTo1 . (max 0)
+  eToFloat = squashTo1 . max 0
   {-# INLINE eToFloat #-}
-  eToDouble = squashTo1 . (max 0)
+  eToDouble = squashTo1 . max 0
   {-# INLINE eToDouble #-}
   eFromDouble = stretch . clamp01
   {-# INLINE eFromDouble #-}
@@ -231,17 +231,17 @@ instance Elevator Int32 where
 
 -- | Values between @[0, 9223372036854775807]@
 instance Elevator Int64 where
-  eToWord8 = dropDown . (max 0)
+  eToWord8 = dropDown . max 0
   {-# INLINE eToWord8 #-}
-  eToWord16 = dropDown . (max 0)
+  eToWord16 = dropDown . max 0
   {-# INLINE eToWord16 #-}
-  eToWord32 = dropDown . (max 0)
+  eToWord32 = dropDown . max 0
   {-# INLINE eToWord32 #-}
-  eToWord64 = fromIntegral . (max 0)
+  eToWord64 = fromIntegral . max 0
   {-# INLINE eToWord64 #-}
-  eToFloat = squashTo1 . (max 0)
+  eToFloat = squashTo1 . max 0
   {-# INLINE eToFloat #-}
-  eToDouble = squashTo1 . (max 0)
+  eToDouble = squashTo1 . max 0
   {-# INLINE eToDouble #-}
   eFromDouble = stretch . clamp01
   {-# INLINE eFromDouble #-}
@@ -249,17 +249,17 @@ instance Elevator Int64 where
 
 -- | Values between @[0, 9223372036854775807]@ on 64bit
 instance Elevator Int where
-  eToWord8 = dropDown . (max 0)
+  eToWord8 = dropDown . max 0
   {-# INLINE eToWord8 #-}
-  eToWord16 = dropDown . (max 0)
+  eToWord16 = dropDown . max 0
   {-# INLINE eToWord16 #-}
-  eToWord32 = dropDown . (max 0)
+  eToWord32 = dropDown . max 0
   {-# INLINE eToWord32 #-}
-  eToWord64 = fromIntegral . (max 0)
+  eToWord64 = fromIntegral . max 0
   {-# INLINE eToWord64 #-}
-  eToFloat = squashTo1 . (max 0)
+  eToFloat = squashTo1 . max 0
   {-# INLINE eToFloat #-}
-  eToDouble = squashTo1 . (max 0)
+  eToDouble = squashTo1 . max 0
   {-# INLINE eToDouble #-}
   eFromDouble = stretch . clamp01
   {-# INLINE eFromDouble #-}

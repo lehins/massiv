@@ -20,16 +20,14 @@ module Data.Massiv.Array.Manifest.Boxed
   , N(..)
   , Array(..)
   , Uninitialized(..)
-  , toArray
-  , fromArray
-  , toMutableArray
-  , fromMutableArray
+  , unwrapArray
+  , evalArray
+  , unwrapMutableArray
+  , evalMutableArray
   , unwrapNormalFormArray
+  , evalNormalFormArray
   , unwrapNormalFormMutableArray
-  , fromNormalFormArray
-  , toNormalFormArray
-  , fromNormalFormMutableArray
-  , toNormalFormMutableArray
+  , evalNormalFormMutableArray
   , castArrayToVector
   , vectorToArray
   , castVectorToArray
@@ -316,11 +314,11 @@ instance (Index ix, NFData e) => Mutable N ix e where
   {-# INLINE unsafeNewZero #-}
 
   unsafeLinearRead (MNArray ma) =
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", (totalElem . msize), unsafeLinearRead) ma
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", totalElem . msize, unsafeLinearRead) ma
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MNArray ma) i e = e `deepseq`
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", (totalElem . msize), unsafeLinearWrite) ma i e
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", totalElem . msize, unsafeLinearWrite) ma i e
   {-# INLINE unsafeLinearWrite #-}
 
 
@@ -356,127 +354,123 @@ uninitialized :: a
 uninitialized = throw Uninitialized
 
 
--- | /O(1)/ - Unwrap a fully evaluated boxed array.
---
--- @since 0.2.1
-unwrapNormalFormArray :: Array N ix e -> Array B ix e
-unwrapNormalFormArray = bArray
-{-# INLINE unwrapNormalFormArray #-}
+-- -- | /O(1)/ - Unwrap a fully evaluated boxed array.
+-- --
+-- -- @since 0.2.1
+-- unwrapNormalFormArray :: Array N ix e -> Array B ix e
+-- unwrapNormalFormArray = bArray
+-- {-# INLINE unwrapNormalFormArray #-}
 
--- | /O(1)/ - Unwrap a fully evaluated mutable boxed array.
---
--- @since 0.2.1
-unwrapNormalFormMutableArray :: MArray s N ix e -> MArray s B ix e
-unwrapNormalFormMutableArray (MNArray marr) = marr
-{-# INLINE unwrapNormalFormMutableArray #-}
+-- -- | /O(1)/ - Unwrap a fully evaluated mutable boxed array.
+-- --
+-- -- @since 0.2.1
+-- unwrapNormalFormMutableArray :: MArray s N ix e -> MArray s B ix e
+-- unwrapNormalFormMutableArray (MNArray marr) = marr
+-- {-# INLINE unwrapNormalFormMutableArray #-}
 
-
--- | /O(1)/ - Unwrap a fully evaluated boxed array.
---
--- @since 0.2.1
-fromNormalFormArray :: Array N ix e -> A.Array e
-fromNormalFormArray = bData . bArray
-{-# INLINE fromNormalFormArray #-}
-
-
--- | /O(n)/ - Wrap a boxed array and evaluate all elements to a Normal Form (NF). Will return
--- `Nothing` if supplied size does not agree with the total number of elements in the array.
---
--- @since 0.2.1
-toNormalFormArray ::
-     (NFData e, Index ix)
-  => Comp -- ^ Computation strategy
-  -> ix -- ^ Size of the array
-  -> A.Array e -- ^ Lazy boxed array
-  -> Maybe (Array N ix e)
-toNormalFormArray comp sz barr = NArray <$> fromLazyArraySeq deepseqArray comp sz barr
-{-# INLINE toNormalFormArray #-}
-
-fromLazyArraySeq ::
-     Index ix
-  => (Array B ix e -> Maybe (Array B ix e) -> Maybe (Array B ix e))
-  -> Comp
-  -> ix
-  -> A.Array e
-  -> Maybe (Array B ix e)
-fromLazyArraySeq with comp sz barr
-  | totalElem sz == sizeofArray barr =
-    let arr = BArray comp sz barr
-     in arr `with` Just arr
-  | otherwise = Nothing
-{-# INLINE fromLazyArraySeq #-}
+---------------------
+-- WHNF conversion --
+---------------------
 
 -- | /O(1)/ - Unwrap boxed array.
 --
 -- @since 0.2.1
-toArray :: Array B ix e -> A.Array e
-toArray = bData
-{-# INLINE toArray #-}
+unwrapArray :: Array B ix e -> A.Array e
+unwrapArray = bData
+{-# INLINE unwrapArray #-}
 
--- | /O(n)/ - Wrap a boxed array and evaluate all elements to a WHNF. Will return `Nothing` if
--- supplied size does not agree with the total number of elements in the array.
+-- | /O(n)/ - Wrap a boxed array and evaluate all elements to a WHNF.
 --
 -- @since 0.2.1
-fromArray ::
-     Index ix
-  => Comp -- ^ Computation strategy
-  -> ix -- ^ Size of the array
-  -> A.Array e -- ^ Lazy boxed array
-  -> Maybe (Array B ix e)
-fromArray = fromLazyArraySeq seqArray
-{-# INLINE fromArray #-}
+evalArray ::
+     Comp -- ^ Computation strategy
+  -> A.Array e -- ^ Lazy boxed array from @primitive@ package.
+  -> Array B Ix1 e
+evalArray = fromArraySeq (\a -> a `seqArray` a)
+{-# INLINE evalArray #-}
 
 -- | /O(1)/ - Unwrap mutable boxed array.
 --
 -- @since 0.2.1
-toMutableArray :: MArray s B ix e -> A.MutableArray s e
-toMutableArray (MBArray _ marr) = marr
-{-# INLINE toMutableArray #-}
+unwrapMutableArray :: MArray s B ix e -> A.MutableArray s e
+unwrapMutableArray (MBArray _ marr) = marr
+{-# INLINE unwrapMutableArray #-}
 
 
 -- | /O(n)/ - Wrap mutable boxed array and evaluate all elements to WHNF.
 --
 -- @since 0.2.1
-fromMutableArray ::
-     (PrimMonad m, Index ix)
-  => ix -- ^ Size of the array
-  -> A.MutableArray (PrimState m) e -- ^ Mutable array that will get wrapped
-  -> m (Maybe (MArray (PrimState m) B ix e))
-fromMutableArray = fromMutableArraySeq seq
-{-# INLINE fromMutableArray #-}
+evalMutableArray ::
+     PrimMonad m
+  => A.MutableArray (PrimState m) e -- ^ Mutable array that will get wrapped
+  -> m (MArray (PrimState m) B Ix1 e)
+evalMutableArray = fromMutableArraySeq seq
+{-# INLINE evalMutableArray #-}
 
--- | /O(1)/ - Fully unwrap a fully evaluated boxed array.
+-------------------
+-- NF conversion --
+-------------------
+
+-- | /O(1)/ - Unwrap a fully evaluated boxed array.
 --
 -- @since 0.2.1
-fromNormalFormMutableArray :: MArray s N ix e -> MArray s B ix e
-fromNormalFormMutableArray (MNArray marr) = marr
-{-# INLINE fromNormalFormMutableArray #-}
+unwrapNormalFormArray :: Array N ix e -> A.Array e
+unwrapNormalFormArray = bData . bArray
+{-# INLINE unwrapNormalFormArray #-}
+
+-- | /O(n)/ - Wrap a boxed array and evaluate all elements to a Normal Form (NF).
+--
+-- @since 0.2.1
+evalNormalFormArray ::
+     NFData e
+  => Comp -- ^ Computation strategy
+  -> A.Array e -- ^ Lazy boxed array
+  -> Array N Ix1 e
+evalNormalFormArray = fromArraySeq (\a -> a `deepseqArray` NArray a)
+{-# INLINE evalNormalFormArray #-}
+
+
+-- | /O(1)/ - Unwrap a fully evaluated mutable boxed array.
+--
+-- @since 0.2.1
+unwrapNormalFormMutableArray :: MArray s N ix e -> A.MutableArray s e
+unwrapNormalFormMutableArray (MNArray (MBArray _ marr)) = marr
+{-# INLINE unwrapNormalFormMutableArray #-}
+
 
 -- | /O(n)/ - Wrap mutable boxed array and evaluate all elements to NF.
 --
 -- @since 0.2.1
-toNormalFormMutableArray ::
-     (PrimMonad m, Index ix, NFData e)
-  => ix
-  -> A.MutableArray (PrimState m) e
-  -> m (Maybe (MArray (PrimState m) B ix e))
-toNormalFormMutableArray = fromMutableArraySeq deepseq
-{-# INLINE toNormalFormMutableArray #-}
+evalNormalFormMutableArray ::
+     (PrimMonad m, NFData e)
+  => A.MutableArray (PrimState m) e
+  -> m (MArray (PrimState m) N Ix1 e)
+evalNormalFormMutableArray marr = MNArray <$> fromMutableArraySeq deepseq marr
+{-# INLINE evalNormalFormMutableArray #-}
 
+
+----------------------
+-- Helper functions --
+----------------------
 
 fromMutableArraySeq ::
-     (Index ix, PrimMonad m)
+     PrimMonad m
   => (e -> m () -> m a)
-  -> ix
   -> A.MutableArray (PrimState m) e
-  -> m (Maybe (MArray (PrimState m) B ix e))
-fromMutableArraySeq with sz barr
-  | totalElem sz == sizeofMutableArray barr = do
-    let !marr = MBArray sz barr
-    loopM_ 0 (< totalElem sz) (+ 1) $ \i -> unsafeLinearRead marr i >>= (`with` return ())
-    return $ Just marr
-  | otherwise = return Nothing
+  -> m (MArray (PrimState m) B Ix1 e)
+fromMutableArraySeq with mbarr = do
+  let !sz = sizeofMutableArray mbarr
+  loopM_ 0 (< sz) (+ 1) $ \i -> A.readArray mbarr i >>= (`with` return ())
+  return $! MBArray sz mbarr
 {-# INLINE fromMutableArraySeq #-}
+
+fromArraySeq ::
+     (Array B Ix1 e -> a)
+  -> Comp
+  -> A.Array e
+  -> a
+fromArraySeq with comp barr = with (BArray comp (sizeofArray barr) barr)
+{-# INLINE fromArraySeq #-}
 
 
 seqArray :: Index ix => Array B ix a -> t -> t
@@ -514,8 +508,8 @@ vectorToArray v =
 castVectorToArray :: VB.Vector a -> Maybe (A.Array a)
 castVectorToArray v =
   runST $ do
-    VB.MVector start _ marr <- VB.unsafeThaw v
-    if start == 0
+    VB.MVector start end marr <- VB.unsafeThaw v
+    if start == 0 && end == sizeofMutableArray marr
       then Just <$> A.unsafeFreezeArray marr
       else return Nothing
 {-# INLINE castVectorToArray #-}

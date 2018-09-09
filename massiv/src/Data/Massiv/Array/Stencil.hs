@@ -1,7 +1,6 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards       #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -41,10 +40,14 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   DWArray
     (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
     (Just sSz)
-    sCenter
-    (liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1)))
-    (unValue . stencilF (Value . unsafeIndex arr))
+    (Just window)
   where
+    !window =
+      Window
+        { windowStart = sCenter
+        , windowSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
+        , windowIndex = unValue . stencilF (Value . unsafeIndex arr)
+        }
     !sz = size arr
 {-# INLINE mapStencil #-}
 
@@ -85,7 +88,7 @@ makeStencil !sSz !sCenter relStencil =
   validateStencil def $ Stencil sSz sCenter stencil
   where
     stencil getVal !ix =
-      (inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD))
+      inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
 {-# INLINE makeStencil #-}
 

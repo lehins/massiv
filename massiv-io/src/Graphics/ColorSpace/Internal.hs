@@ -34,7 +34,6 @@ import           Graphics.ColorSpace.Elevator
 -- | A Pixel family with a color space and a precision of elements.
 data family Pixel cs e :: *
 
-
 class (Eq cs, Enum cs, Show cs, Bounded cs, Typeable cs,
        Functor (Pixel cs), Applicative (Pixel cs), Foldable (Pixel cs),
        Eq (Pixel cs e), VU.Unbox (Components cs e), VS.Storable (Pixel cs e), Elevator e)

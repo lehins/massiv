@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -40,7 +42,7 @@ data D = D deriving Show
 
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !ix
-                                    , dUnsafeIndex :: ix -> e }
+                                    , dIndex :: ix -> e }
 type instance EltRepr D ix = D
 
 instance Index ix => Construct D ix e where
@@ -55,7 +57,7 @@ instance Index ix => Construct D ix e where
 
 
 instance Index ix => Source D ix e where
-  unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dUnsafeIndex)
+  unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
 
 instance Index ix => Size D ix e where
@@ -142,18 +144,15 @@ instance Index ix => Foldable (Array D ix) where
 
 instance Index ix => Load D ix e where
   loadS (DArray _ sz f) _ unsafeWrite =
-    iterM_ zeroIndex sz (pureIndex 1) (<) $ \ !ix ->
-      unsafeWrite (toLinearIndex sz ix) (f ix)
+    iterM_ zeroIndex sz (pureIndex 1) (<) $ \ !ix -> unsafeWrite (toLinearIndex sz ix) (f ix)
   {-# INLINE loadS #-}
-  loadP wIds (DArray _ sz f) _ unsafeWrite = do
+  loadP wIds (DArray _ sz f) _ unsafeWrite =
     divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
         scheduleWork scheduler $
-        iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> do
-          unsafeWrite k (f ix)
+        iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
       scheduleWork scheduler $
-        iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> do
-          unsafeWrite k (f ix)
+        iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
   {-# INLINE loadP #-}
 
 

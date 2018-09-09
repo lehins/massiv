@@ -54,6 +54,7 @@ module Data.Massiv.Core.Common
 import           Control.Monad.Primitive
 import           Data.Massiv.Core.Computation
 import           Data.Massiv.Core.Index
+import           Data.Massiv.Core.Scheduler
 import           Data.Typeable
 import           GHC.Prim
 
@@ -120,6 +121,7 @@ class Size r ix e => Source r ix e where
 
 -- | Any array that can be computed
 class Size r ix e => Load r ix e where
+
   -- | Load an array into memory sequentially
   loadS
     :: Monad m =>
@@ -127,6 +129,8 @@ class Size r ix e => Load r ix e where
     -> (Int -> m e) -- ^ Function that reads an element from target array
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
+  loadS = loadArray 1 id
+  {-# INLINE loadS #-}
 
   -- | Load an array into memory in parallel
   loadP
@@ -137,6 +141,67 @@ class Size r ix e => Load r ix e where
     -> (Int -> IO e) -- ^ Function that reads an element from target array
     -> (Int -> e -> IO ()) -- ^ Function that writes an element into target array
     -> IO ()
+  loadP wIds arr unsafeRead unsafeWrite =
+    withScheduler_ wIds $ \scheduler ->
+      loadArray (numWorkers scheduler) (scheduleWork scheduler) arr unsafeRead unsafeWrite
+  {-# INLINE loadP #-}
+
+  -- | Load an array into memory with stride. Default implementation can only handle the sequential
+  -- case and only if there is an instance of `Source`.
+  loadArrayWithStride
+    :: Monad m =>
+       Int -- ^ Total number of workers (for `Seq` it's always 1)
+    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
+                      -- always `id`)
+    -> Stride ix -- ^ Stride to use
+    -> ix -- ^ Size of the target array affected by the stride.
+    -> Array r ix e -- ^ Array that is being loaded
+    -> (Int -> m e) -- ^ Function that reads an element from target array
+    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+    -> m ()
+  default loadArrayWithStride
+    :: (Source r ix e, Monad m) =>
+       Int
+    -> (m () -> m ())
+    -> Stride ix
+    -> ix
+    -> Array r ix e
+    -> (Int -> m e)
+    -> (Int -> e -> m ())
+    -> m ()
+  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr _ =
+    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem resultSize) unsafeLinearWriteWithStride
+    where
+      strideIx = unStride stride
+      unsafeLinearWriteWithStride =
+        unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
+      {-# INLINE unsafeLinearWriteWithStride #-}
+  {-# INLINE loadArrayWithStride #-}
+
+  -- TODO: this is the future replacement for loadS and loadP discussed in:
+  -- https://github.com/lehins/massiv/issues/41
+  -- | Load an array into memory. Default implementation will respect the scheduler and use `Source`
+  -- instance to do loading in row-major fashion in parallel as well as sequentially.
+  loadArray
+    :: Monad m =>
+       Int -- ^ Total number of workers (for `Seq` it's always 1)
+    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
+                      -- always `id`)
+    -> Array r ix e -- ^ Array that is being loaded
+    -> (Int -> m e) -- ^ Function that reads an element from target array
+    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+    -> m ()
+  default loadArray
+    :: (Source r ix e, Monad m) =>
+       Int
+    -> (m () -> m ())
+    -> Array r ix e
+    -> (Int -> m e)
+    -> (Int -> e -> m ())
+    -> m ()
+  loadArray numWorkers' scheduleWork' arr _ =
+    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem (size arr)) (unsafeLinearIndex arr)
+  {-# INLINE loadArray #-}
 
 class OuterSlice r ix e where
   -- | /O(1)/ - Take a slice out of an array from the outside
@@ -248,8 +313,6 @@ class Construct r ix e => Ragged r ix e where
   unsafeGenerateM :: Monad m => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
 
   edgeSize :: Array r ix e -> ix
-
-  --outerLength :: Array r ix e -> Int
 
   flatten :: Array r ix e -> Array r Ix1 e
 

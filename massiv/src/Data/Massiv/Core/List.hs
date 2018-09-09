@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns          #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -146,7 +146,7 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
             Just (y, ys) -> uWrite i y >> return ys
       unless (isNull leftOver) $ throwIO RowTooLongError
   {-# INLINE loadRagged #-}
-  raggedFormat f _ arr = L.concat $ "[ " : (L.intersperse "," $ map f (coerce (lData arr))) ++ [" ]"]
+  raggedFormat f _ arr = L.concat $ "[ " : L.intersperse "," (map f (coerce (lData arr))) ++ [" ]"]
 
 
 instance ( Index ix
@@ -251,24 +251,23 @@ unsafeGenerateParM ::
 unsafeGenerateParM wws !sz f = do
   res <- sequence $ unsafePerformIO $ do
     let !(k, szL) = unconsDim sz
-    resLs <- divideWork wws k $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start -> do
-          scheduleWork scheduler $ do
-            -- res <- loopM (start + chunkLength - 1) (>= start) (subtract 1) [] $ \i acc -> do
-            --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-            -- return $! sequence res
-            res <- loopDeepM start (< (start + chunkLength)) (+ 1) [] $ \i acc -> do
-              return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-            return $! sequence res
-        when (slackStart < totalLength) $
-          scheduleWork scheduler $ do
-            -- res <- loopM (totalLength - 1) (>= slackStart) (subtract 1) [] $ \i acc -> do
-            --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-            -- return $! sequence res
-            res <- loopDeepM slackStart (< totalLength) (+ 1) [] $ \i acc -> do
-              return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-            return $! sequence res
-    return resLs
+    divideWork wws k $ \ !scheduler !chunkLength !totalLength !slackStart -> do
+      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        scheduleWork scheduler $ do
+          -- res <- loopM (start + chunkLength - 1) (>= start) (subtract 1) [] $ \i acc -> do
+          --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+          -- return $! sequence res
+          res <- loopDeepM start (< (start + chunkLength)) (+ 1) [] $ \i acc ->
+            return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+          return $! sequence res
+      when (slackStart < totalLength) $
+        scheduleWork scheduler $ do
+          -- res <- loopM (totalLength - 1) (>= slackStart) (subtract 1) [] $ \i acc -> do
+          --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+          -- return $! sequence res
+          res <- loopDeepM slackStart (< totalLength) (+ 1) [] $ \i acc ->
+            return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+          return $! sequence res
   return $ LArray (ParOn wws) $ List $ concat res
 {-# INLINE unsafeGenerateParM #-}
 
@@ -305,7 +304,7 @@ instance {-# OVERLAPPING #-} Construct L Ix1 e where
   setComp c arr = arr { lComp = c }
   {-# INLINE setComp #-}
   unsafeMakeArray Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)
-  unsafeMakeArray (ParOn wss) sz f = LArray (ParOn wss) $ List $ unsafePerformIO $ do
+  unsafeMakeArray (ParOn wss) sz f = LArray (ParOn wss) $ List $ unsafePerformIO $
     withScheduler' wss $ \scheduler ->
       loopM_ 0 (< sz) (+ 1) (scheduleWork scheduler . return . f)
   {-# INLINE unsafeMakeArray #-}
@@ -321,7 +320,7 @@ instance ( Index ix
   {-# INLINE getComp #-}
   setComp c arr = arr {lComp = c}
   {-# INLINE setComp #-}
-  unsafeMakeArray comp sz f = unsafeGenerateN comp sz f
+  unsafeMakeArray = unsafeGenerateN
   {-# INLINE unsafeMakeArray #-}
 
  -- TODO: benchmark against using unsafeGenerateM directly
@@ -336,8 +335,8 @@ unsafeGenerateN ::
 unsafeGenerateN Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)
 unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
   let !(m, szL) = unconsDim sz
-  xs <- withScheduler' wss $ \scheduler -> do
-    loopM_ 0 (< m) (+ 1) $ \i -> scheduleWork scheduler $ do
+  xs <- withScheduler' wss $ \scheduler ->
+    loopM_ 0 (< m) (+ 1) $ \i -> scheduleWork scheduler $
       unsafeGenerateM c szL $ \ix -> return $ f (consDim i ix)
   return $! foldr' cons (empty c) xs
 {-# INLINE unsafeGenerateN #-}
@@ -365,7 +364,7 @@ showN _     _        [] = "[  ]"
 showN fShow lnPrefix ls =
   L.concat
     (["[ "] ++
-     (L.intersperse (lnPrefix ++ ", ") $ map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
+     L.intersperse (lnPrefix ++ ", ") (map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
 
 
 instance ( Ragged L ix e
@@ -373,7 +372,7 @@ instance ( Ragged L ix e
          , Show e
          ) =>
          Show (Array r ix e) where
-  show arr = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ") arr
+  show = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
 
 
 showArray ::

@@ -25,16 +25,14 @@ module Data.Massiv.Array.Manifest
   , Uninitialized(..)
   -- ** Conversion
   -- $boxed_conversion_note
-  , toArray
-  , fromArray
-  , toMutableArray
-  , fromMutableArray
+  , unwrapArray
+  , evalArray
+  , unwrapMutableArray
+  , evalMutableArray
   , unwrapNormalFormArray
+  , evalNormalFormArray
   , unwrapNormalFormMutableArray
-  , fromNormalFormArray
-  , toNormalFormArray
-  , fromNormalFormMutableArray
-  , toNormalFormMutableArray
+  , evalNormalFormMutableArray
   -- * Primitive
   , P(..)
   , Prim
@@ -89,7 +87,7 @@ fromByteString ::
 fromByteString comp bs = MArray comp (S.length bs) (SU.unsafeIndex bs)
 {-# INLINE fromByteString #-}
 
--- | /O(n)/ - For now only sequenctially convert an array into a strict ByteString
+-- | /O(n)/ - For now only sequentially convert an array into a strict ByteString
 --
 -- @since 0.2.1
 toByteString ::
@@ -111,6 +109,6 @@ toBuilder f = foldMono f
 -- $boxed_conversion_note
 --
 -- Important part of all conversions in this section is that the actual boxed
--- `Data.Primitive.Array.Array` that hold the pointers to values isn't copied around, it is always
+-- `Data.Primitive.Array.Array`, which holds the pointers to values isn't copied around, it is always
 -- kept as the same array. Conversion to Massiv boxed array will undergo evaluation during which
--- computation strategies will respected
+-- computation strategies will be respected.

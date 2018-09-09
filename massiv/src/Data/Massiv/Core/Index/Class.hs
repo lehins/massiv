@@ -1,5 +1,5 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -92,15 +92,17 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   -- | Zip together two indices with a function
   liftIndex2 :: (Int -> Int -> Int) -> ix -> ix -> ix
 
-  -- | Index with all zeros
-  zeroIndex :: ix
-  zeroIndex = pureIndex 0
-  {-# INLINE [1] zeroIndex #-}
-
   -- | Map a function over an index
   liftIndex :: (Int -> Int) -> ix -> ix
-  liftIndex f = liftIndex2 (\_ i -> f i) zeroIndex
+  liftIndex f = liftIndex2 (\_ i -> f i) (pureIndex 0)
   {-# INLINE [1] liftIndex #-}
+
+  foldlIndex :: (a -> Int -> a) -> a -> ix -> a
+  default foldlIndex :: Index (Lower ix) => (a -> Int -> a) -> a -> ix -> a
+  foldlIndex f !acc !ix = foldlIndex f (f acc i0) ixL
+    where
+      !(i0, ixL) = unconsDim ix
+  {-# INLINE [1] foldlIndex #-}
 
   -- | Check whether index is within the size.
   isSafeIndex :: ix -- ^ Size
@@ -191,6 +193,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM #-}
 
+  -- TODO: Implement in terms of iterM, benchmark it and remove from `Index`
   -- | Same as `iterM`, but don't bother with accumulator and return value.
   iterM_ :: Monad m => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
   default iterM_ :: (Index (Lower ix), Monad m)
@@ -250,6 +253,8 @@ instance Index Ix1T where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f = f
   {-# INLINE [1] liftIndex2 #-}
+  foldlIndex f = f
+  {-# INLINE [1] foldlIndex #-}
   iter k0 k1 inc cond = loop k0 (`cond` k1) (+inc)
   {-# INLINE iter #-}
   iterM k0 k1 inc cond = loopM k0 (`cond` k1) (+inc)
@@ -262,9 +267,9 @@ instance Index Ix2T where
   type Dimensions Ix2T = 2
   dimensions _ = 2
   {-# INLINE [1] dimensions #-}
-  totalElem !(m, n) = m * n
+  totalElem (m, n) = m * n
   {-# INLINE [1] totalElem #-}
-  toLinearIndex !(_, n) !(i, j) = n * i + j
+  toLinearIndex (_, n) (i, j) = n * i + j
   {-# INLINE [1] toLinearIndex #-}
   fromLinearIndex (_, n) !k = k `quotRem` n
   {-# INLINE [1] fromLinearIndex #-}
