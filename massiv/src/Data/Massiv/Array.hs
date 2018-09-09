@@ -78,6 +78,8 @@ module Data.Massiv.Array
   , computeAs
   , computeProxy
   , computeSource
+  , computeWithStride
+  , computeWithStrideAs
   , clone
   , convert
   , convertAs
@@ -122,7 +124,7 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Numeric
   ) where
 
-import           Data.Massiv.Array.Delayed          hiding (unsafeBackpermuteDW)
+import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Manifest
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List

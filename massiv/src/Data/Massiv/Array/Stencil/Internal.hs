@@ -221,7 +221,7 @@ instance (Index ix, Default e, Floating a) => Floating (Stencil ix e a) where
 
 safeStencilIndex :: Index ix => Array D ix e -> ix -> e
 safeStencilIndex DArray {..} ix
-  | isSafeIndex dSize ix = dUnsafeIndex ix
+  | isSafeIndex dSize ix = dIndex ix
   | otherwise =
     error $
     "Index is out of bounds: " ++ show ix ++ " for stencil size: " ++ show dSize

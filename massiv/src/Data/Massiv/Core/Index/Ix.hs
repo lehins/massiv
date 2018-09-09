@@ -535,7 +535,7 @@ instance (3 <= n,
   {-# INLINE basicUnsafeThaw #-}
   basicLength (V_IxN (_, vec)) = V.basicLength vec
   {-# INLINE basicLength #-}
-  basicUnsafeSlice idx len (V_IxN (vec1, vec)) = do
+  basicUnsafeSlice idx len (V_IxN (vec1, vec)) =
     V_IxN (V.basicUnsafeSlice idx len vec1, V.basicUnsafeSlice idx len vec)
   {-# INLINE basicUnsafeSlice #-}
   basicUnsafeIndexM (V_IxN (vec1, vec)) idx = do

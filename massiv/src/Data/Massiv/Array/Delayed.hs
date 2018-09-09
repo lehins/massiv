@@ -13,8 +13,9 @@ module Data.Massiv.Array.Delayed
   , toInterleaved
   , fromInterleaved
   , DW(..)
+  , Window(..)
+  , getWindow
   , makeWindowedArray
-  , unsafeBackpermuteDW
   ) where
 
 import           Data.Massiv.Array.Delayed.Interleaved

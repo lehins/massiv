@@ -55,6 +55,7 @@ library
                      , Data.Massiv.Core.Computation
                      , Data.Massiv.Core.Index.Class
                      , Data.Massiv.Core.Index.Ix
+                     , Data.Massiv.Core.Index.Stride
                      , Data.Massiv.Core.Iterator
                      , Data.Massiv.Core.List
   build-depends:       base            >= 4.8 && < 5
@@ -84,6 +85,7 @@ test-suite tests
   hs-source-dirs:     tests
   main-is:            Spec.hs
   other-modules:      Data.Massiv.Array.DelayedSpec
+                    , Data.Massiv.Array.Delayed.WindowedSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     --, Data.Massiv.Array.MutableSpec
                     , Data.Massiv.Array.Ops.ConstructSpec

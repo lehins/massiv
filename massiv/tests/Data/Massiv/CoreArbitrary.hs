@@ -31,8 +31,10 @@ import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
 
+-- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
 newtype Arr r ix e = Arr {unArr :: Array r ix e}
 
+-- | Arbitrary small and possibly empty array. Computation strategy can be either `Seq` or `Par`.
 newtype ArrTiny r ix e = ArrTiny {unArrTiny :: Array r ix e}
 
 -- | Tiny but non-empty
@@ -42,10 +44,13 @@ newtype ArrS r ix e = ArrS {unArrS :: Array r ix e}
 
 newtype ArrP r ix e = ArrP {unArrP :: Array r ix e}
 
+-- | Arbitrary non-empty array with a valid index. Can be either `Seq` or `Par`
 data ArrIx r ix e = ArrIx (Array r ix e) ix
 
+-- | Arbitrary non-empty array with a valid index and `Seq` computation strategy
 data ArrIxS r ix e = ArrIxS (Array r ix e) ix
 
+-- | Arbitrary non-empty array with a valid index and `Par` computation strategy
 data ArrIxP r ix e = ArrIxP (Array r ix e) ix
 
 deriving instance (Show (Array r ix e)) => Show (Arr r ix e)
@@ -71,7 +76,6 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     return $ makeArray comp sz func
 
 
--- | Arbitrary small and possibly empty array. Computation strategy can be either `Seq` or `Par`.
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrTiny r ix e) where
   arbitrary = do
@@ -89,7 +93,6 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     comp <- oneof [pure Seq, pure Par]
     return $ ArrTiny1 $ makeArray comp (liftIndex (succ . (`mod` 10)) sz) func
 
--- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (Arr r ix e) where
   arbitrary = do
@@ -113,7 +116,6 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     Arr arr <- arbitrary
     return $ ArrP (setComp Par arr)
 
--- | Arbitrary non-empty array with a valid index
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrIx r ix e) where
   arbitrary = do
@@ -122,7 +124,6 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     comp <- arbitrary
     return $ ArrIx (makeArray comp sz func) ix
 
--- | Arbitrary non-empty array with a valid index
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrIxS r ix e) where
   arbitrary = do

@@ -316,11 +316,11 @@ instance (Index ix, NFData e) => Mutable N ix e where
   {-# INLINE unsafeNewZero #-}
 
   unsafeLinearRead (MNArray ma) =
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", (totalElem . msize), unsafeLinearRead) ma
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", totalElem . msize, unsafeLinearRead) ma
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MNArray ma) i e = e `deepseq`
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", (totalElem . msize), unsafeLinearWrite) ma i e
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", totalElem . msize, unsafeLinearWrite) ma i e
   {-# INLINE unsafeLinearWrite #-}
 
 
