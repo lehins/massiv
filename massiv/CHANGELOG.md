@@ -13,6 +13,7 @@
   * `unwrapNormalFormArray`, `evalNormalFormArray`, `unwrapNormalFormMutableArray`,
     `evalNormalFormMutableArray`
 
+* Fix: `Eq` instance for `Array M ix e`
 
 # 0.2.0
 

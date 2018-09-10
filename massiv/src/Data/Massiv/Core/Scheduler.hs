@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns              #-}
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RecordWildCards           #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 -- |

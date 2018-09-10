@@ -57,7 +57,7 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
-import           GHC.Base
+import           GHC.Base                            hiding (ord)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
 
@@ -88,6 +88,14 @@ data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !ix
                                     , mLinearIndex :: Int -> e }
 type instance EltRepr M ix = M
+
+instance (Eq e, Index ix) => Eq (Array M ix e) where
+  (==) = eq (==)
+  {-# INLINE (==) #-}
+
+instance (Ord e, Index ix) => Ord (Array M ix e) where
+  compare = ord compare
+  {-# INLINE compare #-}
 
 instance Index ix => Construct M ix e where
   getComp = mComp
@@ -364,12 +372,15 @@ fromRaggedArray arr =
     let loadWith using = loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) (tailDim sz) arr
     try $
       case getComp arr of
-        Seq -> do
+        c -> do
           loadWith id
-          unsafeFreeze Seq mArr
-        pComp@(ParOn ss) -> do
-          withScheduler_ ss (loadWith . scheduleWork)
-          unsafeFreeze pComp mArr
+          unsafeFreeze c mArr
+        -- Seq -> do
+        --   loadWith id
+        --   unsafeFreeze Seq mArr
+        -- pComp@(ParOn ss) -> do
+        --   withScheduler_ ss (loadWith . scheduleWork)
+        --   unsafeFreeze pComp mArr
 {-# INLINE fromRaggedArray #-}
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not

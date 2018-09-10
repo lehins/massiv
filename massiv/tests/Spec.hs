@@ -3,6 +3,7 @@ module Main where
 import           Data.Massiv.Array.Delayed.WindowedSpec as Windowed
 import           Data.Massiv.Array.DelayedSpec          as Delayed
 import           Data.Massiv.Array.Manifest.VectorSpec  as Vector
+import           Data.Massiv.Array.ManifestSpec         as Manifest
 --import           Data.Massiv.Array.MutableSpec         as Mutable
 import           Data.Massiv.Array.Ops.ConstructSpec    as Construct
 import           Data.Massiv.Array.Ops.FoldSpec         as Fold
@@ -31,6 +32,7 @@ main = do
       Transform.spec
     describe "Delayed" $ Delayed.spec
     describe "Windowed" $ Windowed.spec
+    describe "Manifest" $ Manifest.spec
     --describe "Mutable" $ Mutable.spec
     describe "Stencil" $ Stencil.spec
     describe "Vector" $ Vector.spec

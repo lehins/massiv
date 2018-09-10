@@ -56,18 +56,18 @@ prop_excFromToListIx2 comp ls2 =
     resultLs = toLists (fromLists' comp ls2 :: Array U Ix2 Int)
 
 
--- prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
--- prop_excFromToListIx3 comp ls3 =
---   if P.null lsL ||
---      (P.all (head lsL ==) lsL &&
---       (P.null (head lsLL) || P.and (P.map (P.all (head (head lsLL) ==)) lsLL)))
---     then classify True "Expected Success" $ resultLs === ls3
---     else classify True "Expected Failure" $
---          assertSomeException resultLs
---   where
---     resultLs = toList (fromList' comp ls3 :: Array U Ix3 Int)
---     lsL = P.map P.length ls3
---     lsLL = P.map (P.map P.length) ls3
+prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
+prop_excFromToListIx3 comp ls3 =
+  if P.null lsL ||
+     (P.all (head lsL ==) lsL &&
+      (P.null (head lsLL) || P.and (P.map (P.all (head (head lsLL) ==)) lsLL)))
+    then classify True "Expected Success" $ resultLs === ls3
+    else classify True "Expected Failure" $
+         assertSomeException resultLs
+  where
+    resultLs = toLists (fromLists' comp ls3 :: Array U Ix3 Int)
+    lsL = P.map P.length ls3
+    lsLL = P.map (P.map P.length) ls3
 
 
 specIx1 :: Spec
@@ -89,7 +89,7 @@ specIx3 :: Spec
 specIx3 = do
   it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix3))
   it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
-  --it "excFromToListIx3" $ property prop_excFromToListIx3
+  it "excFromToListIx3" $ property prop_excFromToListIx3
 
 
 spec :: Spec

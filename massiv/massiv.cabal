@@ -86,6 +86,7 @@ test-suite tests
   main-is:            Spec.hs
   other-modules:      Data.Massiv.Array.DelayedSpec
                     , Data.Massiv.Array.Delayed.WindowedSpec
+                    , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     --, Data.Massiv.Array.MutableSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
@@ -97,6 +98,7 @@ test-suite tests
                     , Data.Massiv.Core.IndexSpec
                     , Data.Massiv.Core.SchedulerSpec
   build-depends:      base            >= 4.8 && < 5
+                    , bytestring
                     , deepseq
                     , data-default
                     , safe-exceptions

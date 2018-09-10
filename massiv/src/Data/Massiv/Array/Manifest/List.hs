@@ -152,7 +152,7 @@ toList !arr = build (\ c n -> foldrFB c n arr)
 --   , [ [ (1,0,0),(1,0,1),(1,0,2) ]
 --     ]
 --   ])
--- >>> toList arr
+-- >>> toLists arr
 -- [[[(0,0,0),(0,0,1),(0,0,2)]],[[(1,0,0),(1,0,1),(1,0,2)]]]
 --
 toLists :: (Nested LN ix e, Nested L ix e, Construct L ix e, Source r ix e)

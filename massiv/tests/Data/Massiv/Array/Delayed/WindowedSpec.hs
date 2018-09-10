@@ -1,8 +1,9 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE UndecidableInstances  #-}
 module Data.Massiv.Array.Delayed.WindowedSpec (spec) where
@@ -10,7 +11,6 @@ module Data.Massiv.Array.Delayed.WindowedSpec (spec) where
 import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.CoreArbitrary as A
-import           Data.Proxy
 import           Data.Typeable
 import           Test.Hspec
 import           Test.QuickCheck
