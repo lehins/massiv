@@ -57,13 +57,12 @@ prop_excFromToListIx2 comp ls2 =
 
 
 prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
-prop_excFromToListIx3 comp ls3 =
-  if P.null (P.concat (P.concat ls3)) ||
-     (P.all (head lsL ==) lsL &&
-      (P.null (head lsLL) || P.and (P.map (P.all (head (head lsLL) ==)) lsLL)))
-    then classify True "Expected Success" $
-         counterexample (show arr) $ totalElem (size arr) === 0 .||. resultLs === ls3
-    else classify True "Expected Failure" $ assertSomeException resultLs
+prop_excFromToListIx3 comp ls3
+  | P.null (P.concat (P.concat ls3)) =
+    classify True "Expected Success" $ counterexample (show arr) $ totalElem (size arr) === 0
+  | P.all (head lsL ==) lsL && (P.and (P.map (P.all (head (head lsLL) ==)) lsLL)) =
+    classify True "Expected Success" $ counterexample (show arr) $ resultLs === ls3
+  | otherwise = classify True "Expected Failure" $ assertSomeException resultLs
   where
     arr = fromLists' comp ls3 :: Array U Ix3 Int
     resultLs = toLists arr
