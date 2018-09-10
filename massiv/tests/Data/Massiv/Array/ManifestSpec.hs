@@ -30,7 +30,7 @@ conversionSpec = do
   describe "ByteString" $ do
     it "to/from ByteString" $ property prop_toFromByteString
     it "from/to ByteString" $ property prop_fromToByteString
-    it "toBuilder" $ property prop_fromToByteString
+    it "toBuilder" $ property prop_toBuilder
 
 
 spec :: Spec
