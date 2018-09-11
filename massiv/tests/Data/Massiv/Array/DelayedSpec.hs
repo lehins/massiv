@@ -5,6 +5,7 @@ module Data.Massiv.Array.DelayedSpec (spec) where
 
 import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Unsafe
+import           Data.Massiv.Array
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
 import           Test.Hspec
@@ -13,9 +14,7 @@ import           Test.QuickCheck
 
 downsampleArr :: Source r ix e => Stride ix -> Array r ix e -> Array D ix e
 downsampleArr stride arr =
-  makeArrayR D Seq (strideSize stride (size arr)) (unsafeIndex arr . liftIndex2 (*) strideIx)
-  where
-    strideIx = unStride stride
+  unsafeBackpermute (strideSize stride (size arr)) (liftIndex2 (*) (unStride stride)) arr
 
 prop_computeWithStrideEqDownsample ::
      Ragged L ix Int
@@ -62,7 +61,7 @@ delayedSpec dimName proxy = do
 
 spec :: Spec
 spec = do
-  delayedSpec "DIM1" (Proxy :: Proxy Ix1)
-  delayedSpec "DIM2" (Proxy :: Proxy Ix2)
-  delayedSpec "DIM3" (Proxy :: Proxy Ix3)
-  delayedSpec "DIM4" (Proxy :: Proxy Ix4)
+  delayedSpec "Ix1" (Proxy :: Proxy Ix1)
+  delayedSpec "Ix2" (Proxy :: Proxy Ix2)
+  delayedSpec "Ix3" (Proxy :: Proxy Ix3)
+  delayedSpec "Ix4" (Proxy :: Proxy Ix4)

@@ -200,13 +200,13 @@ loadArrayWithIx1 ::
   -> Ix1
   -> (Ix1 -> e -> m a)
   -> m ((Ix1, Ix1) -> m (), (Ix1, Ix1))
-loadArrayWithIx1 with (DWArray (DArray _ _ indexB) _ window) stride sz unsafeWrite = do
+loadArrayWithIx1 with (DWArray (DArray _ arrSz indexB) _ window) stride _ unsafeWrite = do
   let Window it wk indexW = fromMaybe zeroWindow window
       wEnd = it + wk
       strideIx = unStride stride
   with $ iterM_ 0 it strideIx (<) $ \ !i -> unsafeWrite (i `div` strideIx) (indexB i)
   with $
-    iterM_ (strideStart stride wEnd) sz strideIx (<) $ \ !i ->
+    iterM_ (strideStart stride wEnd) arrSz strideIx (<) $ \ !i ->
       unsafeWrite (i `div` strideIx) (indexB i)
   return
     ( \(from, to) ->
@@ -340,6 +340,7 @@ loadArrayWithIxN numWorkers' scheduleWork' stride szResult arr unsafeRead unsafe
   let DWArray darr mStencilSize window  = arr
       DArray {dSize = szSource, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex = indexWindow} = fromMaybe zeroWindow window
+      !(headSourceSize, lowerSourceSize) = unconsDim szSource
       !lowerSize = tailDim szResult
       !(s, lowerStrideIx) = unconsDim $ unStride stride
       !(curWindowStart, lowerWindowStart) = unconsDim windowStart
@@ -356,7 +357,7 @@ loadArrayWithIxN numWorkers' scheduleWork' stride szResult arr unsafeRead unsafe
                 }
             !lowerArr =
               DWArray
-                { dwArray = DArray Seq lowerSize (indexBorder . consDim i)
+                { dwArray = DArray Seq lowerSourceSize (indexBorder . consDim i)
                 , dwStencilSize = mLowerStencilSize
                 , dwWindow = Just lowerWindow
                 }
@@ -371,7 +372,7 @@ loadArrayWithIxN numWorkers' scheduleWork' stride szResult arr unsafeRead unsafe
       {-# INLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ s) loadLower
   loopM_ (strideStart (Stride s) curWindowStart) (< curWindowEnd) (+ s) loadLower
-  loopM_ (strideStart (Stride s) curWindowEnd) (< headDim szSource) (+ s) loadLower
+  loopM_ (strideStart (Stride s) curWindowEnd) (< headSourceSize) (+ s) loadLower
 {-# INLINE loadArrayWithIxN #-}
 
 

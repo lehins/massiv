@@ -72,8 +72,8 @@ instance Index ix => Show (Stride ix) where
   show (SafeStride ix) = "Stride (" ++ show ix ++ ")"
 
 
--- | A safe pattern synonym for `Stride` construction that will make sure stride elements are
--- positive.
+-- | A safe bidirectional pattern synonym for `Stride` construction that will make sure stride
+-- elements are always positive.
 pattern Stride :: Index ix => ix -> Stride ix
 pattern Stride ix <- SafeStride ix where
         Stride ix = SafeStride (liftIndex (max 1) ix)

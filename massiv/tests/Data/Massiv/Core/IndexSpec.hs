@@ -36,7 +36,11 @@ instance (Index ix, Arbitrary ix) => Arbitrary (Sz ix) where
       else return $ Sz sz
 
 instance (Index ix, Arbitrary ix) => Arbitrary (SzZ ix) where
-  arbitrary = SzZ <$> liftIndex abs <$> arbitrary
+  arbitrary = do
+    sz <- liftIndex abs <$> arbitrary
+    if totalElem sz > 200000
+      then arbitrary
+      else return $ SzZ sz
 
 instance (Index ix, Arbitrary ix) => Arbitrary (Stride ix) where
   arbitrary = do
