@@ -416,6 +416,19 @@ computeWithStride stride !arr =
             arr
             (unsafeLinearRead mArr)
             (unsafeLinearWrite mArr)
+    -- -- Alternative way to run computation sequentially: decreaseas compile time
+    -- let wIds = case comp of
+    --              Seq -> [1]
+    --              ParOn caps -> caps
+    -- withScheduler_ wIds $ \scheduler ->
+    --       loadArrayWithStride
+    --         (numWorkers scheduler)
+    --         (scheduleWork scheduler)
+    --         stride
+    --         sz
+    --         arr
+    --         (unsafeLinearRead mArr)
+    --         (unsafeLinearWrite mArr)
     unsafeFreeze comp mArr
 {-# INLINE computeWithStride #-}
 
