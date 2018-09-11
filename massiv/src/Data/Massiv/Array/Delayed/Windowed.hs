@@ -369,7 +369,7 @@ loadArrayWithIxN numWorkers' scheduleWork' stride szResult arr unsafeRead unsafe
               lowerArr
               (\k -> unsafeRead (k + pageElements * (i `div` s)))
               (\k -> unsafeWrite (k + pageElements * (i `div` s)))
-      {-# INLINE loadLower #-}
+      {-# NOINLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ s) loadLower
   loopM_ (strideStart (Stride s) curWindowStart) (< curWindowEnd) (+ s) loadLower
   loopM_ (strideStart (Stride s) curWindowEnd) (< headSourceSize) (+ s) loadLower
@@ -412,7 +412,7 @@ loadWithIxN with arr unsafeRead unsafeWrite = do
               lowerArr
               (\k -> unsafeRead (k + pageElements * i))
               (\k -> unsafeWrite (k + pageElements * i))
-      {-# INLINE loadLower #-}
+      {-# NOINLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ 1) loadLower
   loopM_ t (< headDim windowEnd) (+ 1) loadLower
   loopM_ (headDim windowEnd) (< headDim sz) (+ 1) loadLower
