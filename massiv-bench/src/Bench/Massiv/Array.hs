@@ -101,30 +101,6 @@ sobelKernelStencilX =
 --            \f -> f (f (-1 :. -1) 1 2 :. 0) 4
 -- {-# INLINE sobelX' #-}
 
-sobelX :: Num e => Stencil Ix2 e e
-sobelX = makeConvolutionStencil (3 :. 3) (1 :. 1) accum where
-  accum f =
-     f (-1 :. -1)   1  .
-     f ( 0 :. -1)   2  .
-     f ( 1 :. -1)   1  .
-     f (-1 :.  1) (-1) .
-     f ( 0 :.  1) (-2) .
-     f ( 1 :.  1) (-1)
-  {-# INLINE accum #-}
-{-# INLINE sobelX #-}
-
-
-sobelY :: Num e => Stencil Ix2 e e
-sobelY = makeConvolutionStencil (3 :. 3) (1 :. 1) accum where
-  accum f =
-     f (-1 :. -1)   1  .
-     f (-1 :.  0)   2  .
-     f (-1 :.  1)   1  .
-     f ( 1 :. -1) (-1) .
-     f ( 1 :.  0) (-2) .
-     f ( 1 :.  1) (-1)
-  {-# INLINE accum #-}
-{-# INLINE sobelY #-}
 
 
 

@@ -2,5 +2,4 @@ resolver: lts-12.2
 packages:
 - '.'
 - '../massiv/'
-extra-deps:
-- repa-algorithms-3.4.1.2
+extra-deps: []
