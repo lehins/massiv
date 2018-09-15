@@ -1,6 +1,12 @@
-resolver: lts-12.2
+resolver: lts-10.0
 packages:
-- '.'
-- '../massiv/'
+  - '.'
+  - '../massiv/'
+  - '../massiv-io/'
+  - '../../yarr/yarr-benchmarking'
+  - '../../yarr/yarr-image-io'
+  - '../../yarr/yarr'
 extra-deps:
-- repa-algorithms-3.4.1.2
+  - repa-3.4.1.3
+  - repa-algorithms-3.4.1.2
+  - fixed-vector-0.8.1.0
