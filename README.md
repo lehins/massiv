@@ -12,9 +12,9 @@ means an Array.
 __Disclaimer__: The current status of this library is still under development, but it is already at
 a rather stable point, so no significant API changes should happen.
 
-| Language | `massiv` | `massiv-io` | Travis | AppVeyor
+| Language | `massiv` | `massiv-io` | Travis | AppVeyor | Gitter.im
 |:---:|:---:|:---:|:---:|:---:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv) | [![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)](https://hackage.haskell.org/package/massiv-io) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv/master.svg)](https://ci.appveyor.com/project/lehins/massiv) [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv) | [![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)](https://hackage.haskell.org/package/massiv-io) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv/master.svg)](https://ci.appveyor.com/project/lehins/massiv) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## Introduction
 
