@@ -121,6 +121,7 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Manifest
   -- * Stencil
   , module Data.Massiv.Array.Stencil
+  -- * Numeric Operations
   , module Data.Massiv.Array.Numeric
   ) where
 
