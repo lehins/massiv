@@ -25,6 +25,38 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall
 
+benchmark sum
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Sum.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+  default-language:    Haskell2010
+
+benchmark plus
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Plus.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+  default-language:    Haskell2010
+
+benchmark mult
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Mult.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+  default-language:    Haskell2010
 
 benchmark sobel
   type:                exitcode-stdio-1.0
@@ -36,6 +68,7 @@ benchmark sobel
                      , massiv
                      , massiv-bench
   default-language:    Haskell2010
+
 
 -- benchmark fuse-seq
 --   type:                exitcode-stdio-1.0
@@ -49,19 +82,6 @@ benchmark sobel
 --                      , vector
 --                      , repa
 --                      , repa-algorithms
---   default-language:    Haskell2010
-
--- benchmark fold-seq
---   type:                exitcode-stdio-1.0
---   hs-source-dirs:      bench
---   main-is:             FoldSeq.hs
---   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
---   build-depends:       base
---                      , criterion
---                      , massiv
---                      , massiv-bench
---                      , vector
---                      , repa
 --   default-language:    Haskell2010
 
 -- benchmark convolve-seq
