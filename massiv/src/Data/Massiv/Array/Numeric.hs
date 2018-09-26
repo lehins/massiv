@@ -65,7 +65,6 @@ import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Manifest.Internal (compute)
 import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A
-import           Data.Massiv.Array.Ops.Slice        as A
 import           Data.Massiv.Array.Ops.Transform    as A
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
@@ -135,13 +134,12 @@ multArrs arr1 arr2
     show (size arr1) ++ " and " ++ show (size arr2)
   | otherwise =
     DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
-      A.sum ((arr1' !> i) .* (arr2' !> j))
+      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2' j))
   where
     (m1 :. n1) = size arr1
     (m2 :. n2) = size arr2
-    arr1' = setComp Seq arr1
     arr2' :: Array r2 Ix2 e
-    arr2' = setComp Seq $ compute $ transpose arr2
+    arr2' = compute $ transpose arr2
 {-# INLINE multArrs #-}
 
 
