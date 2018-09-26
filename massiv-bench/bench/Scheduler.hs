@@ -1,7 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 module Main where
 
-import Control.Monad
 import           Criterion.Main
 import           Data.Massiv.Bench          as A
 import           Data.Massiv.Core.Index
@@ -10,8 +9,9 @@ import           Prelude                    as P
 
 
 mapConcurrently :: Foldable t => (a -> IO b) -> t a -> IO [b]
-mapConcurrently f ls = withScheduler' [] $ \s ->
-  mapM_ (scheduleWork s . f) ls
+mapConcurrently f ls = withScheduler' [] $ \s -> mapM_ (scheduleWork s . f) ls
+
+
 
 main :: IO ()
 main = do
