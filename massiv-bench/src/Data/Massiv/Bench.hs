@@ -22,6 +22,11 @@ lightFuncIx2T :: Ix2T -> Double
 lightFuncIx2T (i, j) = lightFunc i j
 {-# INLINE lightFuncIx2T #-}
 
+lightFuncIx1 :: Int -- ^ cols
+             -> Ix1 -- ^ linear index
+             -> Double
+lightFuncIx1 k i = lightFuncIx2T (divMod i k)
+{-# INLINE lightFuncIx1 #-}
 
 arrRLightIx2 :: Construct r Ix2 Double => r -> Comp -> Ix2 -> Array r Ix2 Double
 arrRLightIx2 _ comp arrSz = makeArray comp arrSz (\ (i :. j) -> lightFunc i j)
