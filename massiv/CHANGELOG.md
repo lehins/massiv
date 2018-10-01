@@ -1,3 +1,7 @@
+# 0.2.x
+
+* Improved preformance of matrix multiplication
+
 # 0.2.1
 
 * Addition of `Stride` and related functions `computeWithStride` and `computeWithStrideAs`.
