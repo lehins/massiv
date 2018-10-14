@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -18,6 +19,8 @@ module Data.Massiv.Array.Mutable
   , new
   , thaw
   , freeze
+  , withMArray
+  , withMArrayST
   , read
   , read'
   , write
@@ -45,11 +48,10 @@ import           Prelude                             hiding (mapM, read)
 
 import           Control.Monad                       (unless)
 import           Control.Monad.Primitive             (PrimMonad (..))
+import           Control.Monad.ST
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
-import           GHC.Prim
-
 
 -- | Initialize a new mutable array. Negative size will result in an empty array.
 new :: (Mutable r ix e, PrimMonad m) => ix -> m (MArray (PrimState m) r ix e)
@@ -66,6 +68,32 @@ freeze :: (Mutable r ix e, PrimMonad m) => Comp -> MArray (PrimState m) r ix e -
 freeze comp marr = clone <$> unsafeFreeze comp marr
 {-# INLINE freeze #-}
 
+
+-- | Create a copy of a pure array, mutate it in place and return its frozen version.
+--
+-- @since 0.2.2
+withMArray ::
+     (Mutable r ix e, PrimMonad m)
+  => Array r ix e
+  -> (MArray (PrimState m) r ix e -> m a)
+  -> m (Array r ix e)
+withMArray arr action = do
+  marr <- thaw arr
+  _ <- action marr
+  unsafeFreeze (getComp arr) marr
+{-# INLINE withMArray #-}
+
+
+-- | Same as `withMArray` but in `ST`.
+--
+-- @since 0.2.2
+withMArrayST ::
+     Mutable r ix e
+  => Array r ix e
+  -> (forall s . MArray s r ix e -> ST s a)
+  -> Array r ix e
+withMArrayST arr f = runST $ withMArray arr f
+{-# INLINE withMArrayST #-}
 
 -- | /O(1)/ - Lookup an element in the mutable array. Return `Nothing` when index is out of bounds.
 read :: (Mutable r ix e, PrimMonad m) =>

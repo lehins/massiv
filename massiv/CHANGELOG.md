@@ -1,5 +1,6 @@
-# 0.2.x
+# 0.2.2
 
+* Addition of `withMArray`, `withMArrayST`.
 * Improved preformance of matrix multiplication
 
 # 0.2.1
