@@ -70,17 +70,22 @@ instance Index ix => Arbitrary (DimIx ix) where
     n <- arbitrary
     return $ DimIx (1 + (Dim n `mod` (dimensions (undefined :: ix))))
 
+arbitraryIntIx :: Gen Int
+arbitraryIntIx = sized (\s -> resize (floor $ (sqrt :: Double -> Double) $ fromIntegral s) arbitrary)
+  -- Generators are quadratic in QuickCheck.
+
+
 instance Arbitrary Ix2 where
-  arbitrary = (:.) <$> arbitrary <*> arbitrary
+  arbitrary = (:.) <$> arbitraryIntIx <*> arbitraryIntIx
 
 instance Arbitrary Ix3 where
-  arbitrary = (:>) <$> arbitrary <*> ((:.) <$> arbitrary <*> arbitrary)
+  arbitrary = (:>) <$> arbitraryIntIx <*> ((:.) <$> arbitraryIntIx <*> arbitraryIntIx)
 
 instance Arbitrary Ix4 where
-  arbitrary = (:>) <$> arbitrary <*> arbitrary
+  arbitrary = (:>) <$> arbitraryIntIx <*> arbitrary
 
 instance Arbitrary Ix5 where
-  arbitrary = (:>) <$> arbitrary <*> arbitrary
+  arbitrary = (:>) <$> arbitraryIntIx <*> arbitrary
 
 instance CoArbitrary Ix2 where
   coarbitrary (i :. j) = coarbitrary i . coarbitrary j
