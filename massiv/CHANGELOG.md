@@ -1,3 +1,7 @@
+# 0.2.3
+
+* Addition of `Profunctor` functions for `Stencil`: `lmapStencil`, `rmapStencil` and `bimapStencil`
+
 # 0.2.2
 
 * Addition of `withMArray`, `withMArrayST`.

@@ -13,7 +13,14 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Stencil.Internal where
+module Data.Massiv.Array.Stencil.Internal
+  ( Stencil(..)
+  , Value(..)
+  , dimapStencil
+  , lmapStencil
+  , rmapStencil
+  , validateStencil
+  ) where
 
 import           Control.Applicative
 import           Control.DeepSeq
@@ -127,12 +134,31 @@ instance Floating e => Floating (Value e) where
 
 
 instance Functor (Stencil ix e) where
-  fmap f stencil@(Stencil {stencilFunc = g}) = stencil {stencilFunc = stF}
-    where
-      stF s = Value . f . unValue . g s
-      {-# INLINE stF #-}
+  fmap = rmapStencil
   {-# INLINE fmap #-}
+  --  f stencil@(Stencil {stencilFunc = g}) = stencil {stencilFunc = stF}
+  --   where
+  --     stF s = Value . f . unValue . g s
+  --     {-# INLINE stF #-}
 
+-- Profunctor
+
+
+dimapStencil :: (t -> e) -> (b -> a) -> Stencil ix e b -> Stencil ix t a
+dimapStencil f g stencil@(Stencil {stencilFunc = sf}) =
+  stencil {stencilFunc = \s -> Value . g . unValue . sf (Value . f . unValue . s)}
+{-# INLINE dimapStencil #-}
+
+
+lmapStencil :: (b -> e) -> Stencil ix e a -> Stencil ix b a
+lmapStencil f stencil@(Stencil {stencilFunc = sf}) =
+  stencil {stencilFunc = \s -> sf (Value . f . unValue . s)}
+{-# INLINE lmapStencil #-}
+
+rmapStencil :: (a -> b) -> Stencil ix e a -> Stencil ix e b
+rmapStencil g stencil@(Stencil {stencilFunc = sf}) =
+  stencil {stencilFunc = \s -> Value . g . unValue . sf s}
+{-# INLINE rmapStencil #-}
 
 -- TODO: Figure out interchange law (u <*> pure y = pure ($ y) <*> u) and issue
 -- with discarding size and center. Best idea so far is to increase stencil size to

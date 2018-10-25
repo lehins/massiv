@@ -15,6 +15,10 @@ module Data.Massiv.Array.Stencil
   , Value
   , makeStencil
   , mapStencil
+    -- ** Profunctor
+  , dimapStencil
+  , lmapStencil
+  , rmapStencil
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
   ) where
