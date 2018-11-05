@@ -24,7 +24,6 @@ module Data.Massiv.Array.Stencil.Internal
 
 import           Control.Applicative
 import           Control.DeepSeq
-import           Data.Default.Class                 (Default (def))
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core.Common
 #if !MIN_VERSION_base(4,11,0)
@@ -166,11 +165,10 @@ rmapStencil g stencil@(Stencil {stencilFunc = sf}) =
 -- up. This approach would also remove requirement to validate the result
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
-instance (Default e, Index ix) => Applicative (Stencil ix e) where
+instance Index ix => Applicative (Stencil ix e) where
   pure a = Stencil (pureIndex 1) zeroIndex (const (const (Value a)))
   {-# INLINE pure #-}
-  (<*>) (Stencil sSz1 sC1 f1) (Stencil sSz2 sC2 f2) =
-    validateStencil def (Stencil newSz maxCenter stF)
+  (<*>) (Stencil sSz1 sC1 f1) (Stencil sSz2 sC2 f2) = Stencil newSz maxCenter stF
     where
       stF gV !ix = Value ((unValue (f1 gV ix)) (unValue (f2 gV ix)))
       {-# INLINE stF #-}
@@ -182,7 +180,7 @@ instance (Default e, Index ix) => Applicative (Stencil ix e) where
       !maxCenter = liftIndex2 max sC1 sC2
   {-# INLINE (<*>) #-}
 
-instance (Index ix, Default e, Num a) => Num (Stencil ix e a) where
+instance (Index ix, Num a) => Num (Stencil ix e a) where
   (+) = liftA2 (+)
   {-# INLINE (+) #-}
   (-) = liftA2 (-)
@@ -198,7 +196,7 @@ instance (Index ix, Default e, Num a) => Num (Stencil ix e a) where
   fromInteger = pure . fromInteger
   {-# INLINE fromInteger #-}
 
-instance (Index ix, Default e, Fractional a) => Fractional (Stencil ix e a) where
+instance (Index ix, Fractional a) => Fractional (Stencil ix e a) where
   (/) = liftA2 (/)
   {-# INLINE (/) #-}
   recip = fmap recip
@@ -206,7 +204,7 @@ instance (Index ix, Default e, Fractional a) => Fractional (Stencil ix e a) wher
   fromRational = pure . fromRational
   {-# INLINE fromRational #-}
 
-instance (Index ix, Default e, Floating a) => Floating (Stencil ix e a) where
+instance (Index ix, Floating a) => Floating (Stencil ix e a) where
   pi = pure pi
   {-# INLINE pi #-}
   exp = fmap exp

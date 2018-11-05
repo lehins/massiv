@@ -1,10 +1,12 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Windowed
@@ -33,6 +35,7 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Proxy                          (Proxy (..))
 import           Data.Typeable                       (showsTypeRep, typeRep)
+import           GHC.TypeNats
 
 -- | Delayed Windowed Array representation.
 data DW = DW
@@ -164,7 +167,7 @@ loadWithIx1 with (DWArray (DArray _ sz indexB) _ window) unsafeWrite = do
 {-# INLINE loadWithIx1 #-}
 
 
-instance {-# OVERLAPPING #-} Load DW Ix1 e where
+instance Load DW Ix1 e where
   loadS arr _ unsafeWrite = loadWithIx1 id arr unsafeWrite >>= uncurry ($)
   {-# INLINE loadS #-}
   loadP wIds arr _ unsafeWrite =
@@ -231,7 +234,7 @@ loadWithIx2 with arr unsafeWrite = do
       !blockHeight =
         case mStencilSize of
           Just (i :. _) -> min (max 1 i) 7
-          _ -> 1
+          _             -> 1
       stride = oneStride
       !sz = strideSize stride $ size arr
       writeB !ix = unsafeWrite (toLinearIndex sz ix) (indexB ix)
@@ -248,7 +251,7 @@ loadWithIx2 with arr unsafeWrite = do
 {-# INLINE loadWithIx2 #-}
 
 
-instance {-# OVERLAPPING #-} Load DW Ix2 e where
+instance Load DW Ix2 e where
   loadS arr _ unsafeWrite = loadWithIx2 id arr unsafeWrite >>= uncurry ($)
   {-# INLINE loadS #-}
   --
@@ -313,7 +316,7 @@ loadArrayWithIx2 with arr stride sz unsafeWrite = do
 
 
 
-instance {-# OVERLAPPABLE #-} (Index ix, Load DW (Lower ix) e) => Load DW ix e where
+instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
   loadS = loadWithIxN id
   {-# INLINE loadS #-}
   loadP wIds arr unsafeRead unsafeWrite =
@@ -474,7 +477,7 @@ toIx2ArrayDW DWArray {dwArray, dwStencilSize, dwWindow} =
 {-# INLINE toIx2ArrayDW #-}
 
 
-instance {-# OVERLAPPING #-} Load DW Ix2T e where
+instance Load DW Ix2T e where
   loadS arr = loadS (toIx2ArrayDW arr)
   {-# INLINE loadS #-}
   loadP wIds arr = loadP wIds (toIx2ArrayDW arr)

@@ -27,6 +27,7 @@ library
                      , Data.Massiv.Array.Manifest.Vector
                      , Data.Massiv.Array.Mutable
                      , Data.Massiv.Array.Numeric
+                     , Data.Massiv.Array.Numeric.Integral
                      , Data.Massiv.Array.Stencil
                      , Data.Massiv.Array.Stencil.Unsafe
                      , Data.Massiv.Array.Unsafe

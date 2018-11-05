@@ -46,7 +46,7 @@ import           Prelude                            hiding (splitAt, traverse)
 -- fully encapsulated in a source array, otherwise `Nothing` is returned,
 extract :: Size r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size fo the resulting array
+        -> ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
@@ -62,7 +62,7 @@ extract !sIx !newSz !arr
 -- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
 extract' :: Size r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size fo the resulting array
+        -> ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Array (EltRepr r ix) ix e
 extract' !sIx !newSz !arr =
@@ -124,7 +124,11 @@ resize' !sz !arr =
 --
 transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
 transpose = transposeInner
-{-# INLINE transpose #-}
+{-# INLINE [1] transpose #-}
+
+{-# RULES
+"transpose . transpose" [~1] forall arr . transpose (transpose arr) = arr
+ #-}
 
 
 -- | Transpose inner two dimensions of at least rank-2 array.

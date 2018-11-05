@@ -27,6 +27,8 @@ module Data.Massiv.Core.Index
   , tailDim
   , lastDim
   , initDim
+  , getIndex'
+  , setIndex'
   , iterLinearM
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
@@ -141,6 +143,20 @@ lastDim = snd . unsnocDim
 initDim :: Index ix => ix -> Lower ix
 initDim = fst . unsnocDim
 {-# INLINE [1] initDim #-}
+
+
+setIndex' :: Index ix => ix -> Dim -> Int -> ix
+setIndex' ix dim i =
+  case setIndex ix dim i of
+    Just ix' -> ix'
+    Nothing -> error $ "setIndex': Dimension is out of reach: " ++ show dim
+
+getIndex' :: Index ix => ix -> Dim -> Int
+getIndex' ix dim =
+  case getIndex ix dim of
+    Just ix' -> ix'
+    Nothing -> error $ "getIndex': Dimension is out of reach: " ++ show dim
+
 
 
 -- | Iterate over N-dimensional space lenarly from start to end in row-major fashion with an

@@ -17,6 +17,7 @@ module Data.Massiv.Array.Numeric
   , (.*)
   , (.^)
   , (|*|)
+  , multiplyTransposed
   , negateA
   , absA
   , signumA
@@ -102,7 +103,7 @@ infixl 6  .+, .-
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
 (|*|) ::
-     ( Mutable r1 Ix2 e
+     ( Manifest r1 Ix2 e
      , Mutable r2 Ix2 e
      , OuterSlice r1 Ix2 e
      , OuterSlice r2 Ix2 e
@@ -112,13 +113,32 @@ infixl 6  .+, .-
      )
   => Array r1 Ix2 e
   -> Array r2 Ix2 e
-  -> Array D Ix2 e
-(|*|) = multArrs
-{-# INLINE (|*|) #-}
+  -> Array r2 Ix2 e
+(|*|) a1 = compute . multArrs a1
+{-# INLINE [1] (|*|) #-}
+
+{-# RULES
+"doubleTranspose" [~1] forall arr1 arr2 . arr1 |*| (transpose arr2) = multiplyTransposedFused arr1 arr2
+ #-}
+
+multiplyTransposedFused ::
+     ( Manifest r1 Ix2 e
+     , Mutable r2 Ix2 e
+     , OuterSlice r1 Ix2 e
+     , OuterSlice r2 Ix2 e
+     , Source (EltRepr r1 Ix2) Ix1 e
+     , Source (EltRepr r2 Ix2) Ix1 e
+     , Num e
+     )
+  => Array r1 Ix2 e
+  -> Array r2 Ix2 e
+  -> Array r2 Ix2 e
+multiplyTransposedFused arr1 arr2 = compute (multiplyTransposed arr1 arr2)
+{-# INLINE multiplyTransposedFused #-}
 
 
 multArrs :: forall r1 r2 e.
-            ( Mutable r1 Ix2 e
+            ( Manifest r1 Ix2 e
             , Mutable r2 Ix2 e
             , OuterSlice r1 Ix2 e
             , OuterSlice r2 Ix2 e
@@ -127,20 +147,47 @@ multArrs :: forall r1 r2 e.
             , Num e
             )
          => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e
-multArrs arr1 arr2
+multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
+  -- | n1 /= m2 =
+  --   error $
+  --   "(|*|): Inner array dimensions must agree, but received: " ++
+  --   show (size arr1) ++ " and " ++ show (size arr2)
+  -- | otherwise =
+  --   DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
+  --     A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2' j))
+  where
+  --   (m1 :. n1) = size arr1
+  --   (m2 :. n2) = size arr2
+    arr2' :: Array r2 Ix2 e
+    arr2' = compute $ transpose arr2
+{-# INLINE multArrs #-}
+
+-- | It is quite often that second matrix gets transposed before multiplication (eg. A * A'), but
+-- due to layout of data in memory it is more efficient to transpose the second array again.
+multiplyTransposed ::
+     ( Manifest r1 Ix2 e
+     , Manifest r2 Ix2 e
+     , OuterSlice r1 Ix2 e
+     , OuterSlice r2 Ix2 e
+     , Source (EltRepr r1 Ix2) Ix1 e
+     , Source (EltRepr r2 Ix2) Ix1 e
+     , Num e
+     )
+  => Array r1 Ix2 e
+  -> Array r2 Ix2 e
+  -> Array D Ix2 e
+multiplyTransposed arr1 arr2
   | n1 /= m2 =
     error $
     "(|*|): Inner array dimensions must agree, but received: " ++
     show (size arr1) ++ " and " ++ show (size arr2)
   | otherwise =
     DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
-      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2' j))
+      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
   where
     (m1 :. n1) = size arr1
-    (m2 :. n2) = size arr2
-    arr2' :: Array r2 Ix2 e
-    arr2' = compute $ transpose arr2
-{-# INLINE multArrs #-}
+    (n2 :. m2) = size arr2
+{-# INLINE multiplyTransposed #-}
 
 
 negateA
