@@ -63,6 +63,7 @@ module Data.Massiv.Array.Numeric
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Manifest (U)
 import           Data.Massiv.Array.Manifest.Internal (compute)
 import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A
@@ -148,16 +149,7 @@ multArrs :: forall r1 r2 e.
             )
          => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e
 multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
-  -- | n1 /= m2 =
-  --   error $
-  --   "(|*|): Inner array dimensions must agree, but received: " ++
-  --   show (size arr1) ++ " and " ++ show (size arr2)
-  -- | otherwise =
-  --   DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
-  --     A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2' j))
   where
-  --   (m1 :. n1) = size arr1
-  --   (m2 :. n2) = size arr2
     arr2' :: Array r2 Ix2 e
     arr2' = compute $ transpose arr2
 {-# INLINE multArrs #-}

@@ -35,7 +35,7 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Proxy                          (Proxy (..))
 import           Data.Typeable                       (showsTypeRep, typeRep)
-import           GHC.TypeNats
+import           GHC.TypeLits
 
 -- | Delayed Windowed Array representation.
 data DW = DW

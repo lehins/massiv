@@ -27,7 +27,7 @@ multArrs arr1 arr2
 
 main :: IO ()
 main = do
-  let !sz = 600 :. 200
+  let !sz = 200 :. 600
       arr = arrRLightIx2 U Seq sz
   defaultMain
     [ env (return (computeAs U (transpose arr))) $ \arr' ->
@@ -35,12 +35,14 @@ main = do
           "Mult"
           [ bgroup
               "Seq"
-              [ bench "(|*|)" $ whnf (A.computeAs U . (|*|) (setComp Seq arr)) arr'
+              [ bench "(|*|)" $ whnf (setComp Seq arr |*|) arr'
+              , bench "multTranspose" $ whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr
               , bench "mmultArrs" $ whnf (multArrs (setComp Seq arr)) arr'
               ]
           , bgroup
               "Par"
-              [ bench "(|*|)" $ whnf (A.computeAs U . (|*|) (setComp Par arr)) arr'
+              [ bench "(|*|)" $ whnf (setComp Par arr |*|) arr'
+              , bench "multTranspose" $ whnf (computeAs U . multiplyTransposed (setComp Par arr)) arr
               , bench "mmultArrs" $ whnf (multArrs (setComp Par arr)) arr'
               ]
           ]
