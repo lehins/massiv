@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
 module Data.Massiv.Array.Numeric.Integral where
 
 import           Data.Massiv.Core.Common

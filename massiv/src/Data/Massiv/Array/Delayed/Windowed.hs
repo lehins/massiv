@@ -493,3 +493,44 @@ instance Load DW Ix2T e where
       (toIx2 sz)
       (toIx2ArrayDW arr)
   {-# INLINE loadArrayWithStride #-}
+
+instance Load DW Ix3T e where
+  loadS = loadWithIxN id
+  {-# INLINE loadS #-}
+  loadP wIds arr unsafeRead unsafeWrite =
+    withScheduler_ wIds $ \scheduler ->
+      loadWithIxN (scheduleWork scheduler) arr unsafeRead unsafeWrite
+  {-# INLINE loadP #-}
+  loadArray numWorkers' scheduleWork' arr =
+    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  {-# INLINE loadArray #-}
+  loadArrayWithStride = loadArrayWithIxN
+  {-# INLINE loadArrayWithStride #-}
+
+
+instance Load DW Ix4T e where
+  loadS = loadWithIxN id
+  {-# INLINE loadS #-}
+  loadP wIds arr unsafeRead unsafeWrite =
+    withScheduler_ wIds $ \scheduler ->
+      loadWithIxN (scheduleWork scheduler) arr unsafeRead unsafeWrite
+  {-# INLINE loadP #-}
+  loadArray numWorkers' scheduleWork' arr =
+    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  {-# INLINE loadArray #-}
+  loadArrayWithStride = loadArrayWithIxN
+  {-# INLINE loadArrayWithStride #-}
+
+
+instance Load DW Ix5T e where
+  loadS = loadWithIxN id
+  {-# INLINE loadS #-}
+  loadP wIds arr unsafeRead unsafeWrite =
+    withScheduler_ wIds $ \scheduler ->
+      loadWithIxN (scheduleWork scheduler) arr unsafeRead unsafeWrite
+  {-# INLINE loadP #-}
+  loadArray numWorkers' scheduleWork' arr =
+    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  {-# INLINE loadArray #-}
+  loadArrayWithStride = loadArrayWithIxN
+  {-# INLINE loadArrayWithStride #-}
