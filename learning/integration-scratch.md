@@ -350,3 +350,111 @@ gaussianIx2 stdDev y x = exp (-(x ^ (2 :: Int) + y ^ (2 :: Int)) / var2) / (var2
 
 -- trapezoidStencil (\(i :> j :. k) p -> (i :> j :> p :. k)
 ```
+
+
+Later improvements
+
+```haskell
+
+integralApprox1 ::
+     (Fractional e, Mutable r Ix1 e)
+  => (e -> Dim -> Int -> Stencil Ix1 e e) -- ^ Integration Stencil
+  -> Ix1 -- ^ Result size of the matrix
+  -> e -- ^ Length of interval @d@
+  -> Array r Ix1 e
+  -> Array M Ix1 e
+integralApprox1 stencil sz d arr = extract' 0 sz $ toManifest $ applyStencil 1 (getIndex' n 1) arr
+  where
+    applyStencil = integrateWith (stencil dx)
+    {-# INLINE applyStencil #-}
+    n = liftIndex2 div (size arr) sz
+    nFrac = fromIntegral $ getIndex' n 1
+    dx = d / nFrac
+{-# INLINE integralApprox1 #-}
+
+integralApprox2 ::
+     (Fractional e, Mutable r Ix2 e)
+  => (e -> Dim -> Int -> Stencil Ix2 e e) -- ^ Integration Stencil
+  -> Ix2 -- ^ Result size of the matrix
+  -> Int
+  -> e -- ^ Length of interval @d@
+  -> Array r Ix2 e
+  -> Array M Ix2 e
+integralApprox2 stencil sz n d arr =
+  extract' 0 sz $ toManifest $ applyStencil 2 n $ applyStencil 1 n arr
+  where
+    applyStencil = integrateWith (stencil dx)
+    {-# INLINE applyStencil #-}
+    nFrac = fromIntegral $ getIndex' n 1
+    dx = d / nFrac
+{-# INLINE integralApprox2 #-}
+
+
+
+fromFunctionMidpoint2
+  :: Fractional a =>
+     (a -> a -> e) -> a -> a -> Ix2 -> Int -> Array D Ix2 e
+fromFunctionMidpoint2 f a d sz n = fromFunction2 f (a + dx2) d sz n
+  where
+    nFrac = fromIntegral n
+    dx2 = d / nFrac / 2
+
+
+
+
+-- trapezoidRule ::
+--      (Fractional e, Load DW ix e, Manifest r ix e, Mutable r' ix e)
+--   => r'
+--   -> Dim
+--   -> Int
+--   -> e
+--   -> Array r ix e
+--   -> Array r' ix e
+-- trapezoidRule _ dim n dx = integrateWith (trapezoidStencil dim (n + 1) dx) dim n
+
+
+-- simpsonsRule ::
+--      (Fractional e, Load DW ix e, Manifest r ix e, Mutable r' ix e)
+--   => r'
+--   -> Dim
+--   -> Int
+--   -> e
+--   -> Array r ix e
+--   -> Array r' ix e
+-- simpsonsRule _ dim n dx = integrateWith (simpsonStencil dim (n + 1) dx) dim n
+
+
+
+
+fromFunction1
+  :: Fractional a =>
+     Comp -> (a -> b) -> a -> a -> Ix1 -> Int -> Array D Ix1 b
+fromFunction1 comp f a d sz n =
+  fmap (\i -> f (scale i)) $ range' comp 0 (n * sz)
+  where
+    nFrac = fromIntegral n
+    scale i = a + d * fromIntegral i / nFrac
+    {-# INLINE scale #-}
+{-# INLINE fromFunction1 #-}
+
+
+fromFunctionMidpoint
+  :: (Integral a, Fractional t1) =>
+     (t2 -> t3 -> t1 -> t1 -> t4 -> a -> t5)
+     -> t2 -> t3 -> t1 -> t1 -> t4 -> a -> t5
+fromFunctionMidpoint fromFunction comp f a d sz n = fromFunction comp f (a + dx2) d sz n
+  where
+    nFrac = fromIntegral n
+    dx2 = d / nFrac / 2
+{-# INLINE fromFunctionMidpoint #-}
+
+
+fromFunctionMidpoint1
+  :: Fractional a =>
+     (a -> b) -> a -> a -> Ix1 -> Int -> Array D Ix1 b
+fromFunctionMidpoint1 f a d sz n = fromFunction1 f (a + dx2) d sz n
+  where
+    nFrac = fromIntegral n
+    dx2 = d / nFrac / 2
+
+```
