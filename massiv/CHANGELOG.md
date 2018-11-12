@@ -3,6 +3,8 @@
 * Addition of `Profunctor` functions for `Stencil`: `lmapStencil`, `rmapStencil` and `bimapStencil`
 * Addition of integration approximation: `Data.Massiv.Array.Numeric.Integral`
 * Removed overlapping instances for `DW` in favor of concrete instances.
+* Relaxed contraint restrictions on matrix multiplication `(|*|)` and slighly improved performance
+  with rewrite rules to avoid double transform.
 
 # 0.2.2
 
