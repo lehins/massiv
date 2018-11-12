@@ -59,7 +59,6 @@ stencilSpec = do
     it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
     it "Ix2T" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2T)
-    it "Ix3T" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3T)
   describe "MapSingletonStencilWithStride" $ do
     it "Ix1" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix2)

@@ -46,7 +46,7 @@ import           Prelude                            hiding (splitAt, traverse)
 -- fully encapsulated in a source array, otherwise `Nothing` is returned,
 extract :: Size r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size fo the resulting array
+        -> ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
@@ -62,7 +62,7 @@ extract !sIx !newSz !arr
 -- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
 extract' :: Size r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size fo the resulting array
+        -> ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Array (EltRepr r ix) ix e
 extract' !sIx !newSz !arr =
@@ -124,7 +124,13 @@ resize' !sz !arr =
 --
 transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
 transpose = transposeInner
-{-# INLINE transpose #-}
+{-# INLINE [1] transpose #-}
+
+{-# RULES
+"transpose . transpose" [~1] forall arr . transpose (transpose arr) = delay arr
+"transposeInner . transposeInner" [~1] forall arr . transposeInner (transposeInner arr) = delay arr
+"transposeOuter . transposeOuter" [~1] forall arr . transposeOuter (transposeOuter arr) = delay arr
+ #-}
 
 
 -- | Transpose inner two dimensions of at least rank-2 array.
@@ -169,7 +175,7 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
     {-# INLINE transInner #-}
     newVal = unsafeIndex arr . transInner
     {-# INLINE newVal #-}
-{-# INLINE transposeInner #-}
+{-# INLINE [1] transposeInner #-}
 
 -- | Transpose outer two dimensions of at least rank-2 array.
 --
@@ -214,7 +220,7 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
     {-# INLINE transOuter #-}
     newVal = unsafeIndex arr . transOuter
     {-# INLINE newVal #-}
-{-# INLINE transposeOuter #-}
+{-# INLINE [1] transposeOuter #-}
 
 
 -- | Rearrange elements of an array into a new one.

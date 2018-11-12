@@ -14,6 +14,7 @@ module Data.Massiv.Array.Stencil
     Stencil
   , Value
   , makeStencil
+  , makeStencilDef
   , mapStencil
     -- ** Profunctor
   , dimapStencil
@@ -88,12 +89,22 @@ makeStencil
   -- cannot go outside the boundaries of the stencil, otherwise an error will be
   -- raised during stencil creation.
   -> Stencil ix e a
-makeStencil !sSz !sCenter relStencil =
-  validateStencil def $ Stencil sSz sCenter stencil
+makeStencil = makeStencilDef def
+{-# INLINE makeStencil #-}
+
+-- | Same as `makeStencil`, but with ability to specify default value for stencil validation.
+makeStencilDef
+  :: Index ix
+  => e
+  -> ix -- ^ Size of the stencil
+  -> ix -- ^ Center of the stencil
+  -> ((ix -> Value e) -> Value a)
+  -- ^ Stencil function.
+  -> Stencil ix e a
+makeStencilDef defVal !sSz !sCenter relStencil =
+  validateStencil defVal $ Stencil sSz sCenter stencil
   where
     stencil getVal !ix =
       inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
-{-# INLINE makeStencil #-}
-
-
+{-# INLINE makeStencilDef #-}
