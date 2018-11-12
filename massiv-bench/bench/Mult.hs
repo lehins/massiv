@@ -9,8 +9,8 @@ import           Prelude           as P
 
 
 
-multArrs :: (Unbox e, Num e) => Array U Ix2 e -> Array U Ix2 e -> Array U Ix2 e
-multArrs arr1 arr2
+multArrs' :: Array U Ix2 Double -> Array U Ix2 Double -> Array U Ix2 Double
+multArrs' arr1 arr2
   | n1 /= m2 =
     error $
     "(|*|): Inner array dimensions must agree, but received: " ++
@@ -22,7 +22,7 @@ multArrs arr1 arr2
     (m1 :. n1) = size arr1
     (m2 :. n2) = size arr2
     arr2' = computeAs U $ transpose arr2
-{-# INLINE multArrs #-}
+{-# INLINE multArrs' #-}
 
 
 main :: IO ()
@@ -36,14 +36,17 @@ main = do
           [ bgroup
               "Seq"
               [ bench "(|*|)" $ whnf (setComp Seq arr |*|) arr'
-              , bench "multTranspose" $ whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr
-              , bench "mmultArrs" $ whnf (multArrs (setComp Seq arr)) arr'
+              , bench "multiplyTranspose" $
+                whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr
+              , bench "multArrs'" $ whnf (multArrs' (setComp Seq arr)) arr'
               ]
           , bgroup
               "Par"
               [ bench "(|*|)" $ whnf (setComp Par arr |*|) arr'
-              , bench "multTranspose" $ whnf (computeAs U . multiplyTransposed (setComp Par arr)) arr
-              , bench "mmultArrs" $ whnf (multArrs (setComp Par arr)) arr'
+              , bench "fused (|*|)" $ whnf ((setComp Par arr |*|) . transpose) arr
+              , bench "multiplyTranspose" $
+                whnf (computeAs U . multiplyTransposed (setComp Par arr)) arr
+              , bench "multArrs'" $ whnf (multArrs' (setComp Par arr)) arr'
               ]
           ]
     ]

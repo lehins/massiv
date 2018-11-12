@@ -127,7 +127,9 @@ transpose = transposeInner
 {-# INLINE [1] transpose #-}
 
 {-# RULES
-"transpose . transpose" [~1] forall arr . transpose (transpose arr) = arr
+"transpose . transpose" [~1] forall arr . transpose (transpose arr) = delay arr
+"transposeInner . transposeInner" [~1] forall arr . transposeInner (transposeInner arr) = delay arr
+"transposeOuter . transposeOuter" [~1] forall arr . transposeOuter (transposeOuter arr) = delay arr
  #-}
 
 
@@ -173,7 +175,7 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
     {-# INLINE transInner #-}
     newVal = unsafeIndex arr . transInner
     {-# INLINE newVal #-}
-{-# INLINE transposeInner #-}
+{-# INLINE [1] transposeInner #-}
 
 -- | Transpose outer two dimensions of at least rank-2 array.
 --
@@ -218,7 +220,7 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
     {-# INLINE transOuter #-}
     newVal = unsafeIndex arr . transOuter
     {-# INLINE newVal #-}
-{-# INLINE transposeOuter #-}
+{-# INLINE [1] transposeOuter #-}
 
 
 -- | Rearrange elements of an array into a new one.

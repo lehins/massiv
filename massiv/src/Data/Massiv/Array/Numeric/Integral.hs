@@ -180,9 +180,31 @@ simpsonsRule comp r f a d sz n =
 
 
 -- | Create an array from a function with sample points at the edges
-fromFunction
-  :: (Index ix, Fractional a) =>
-     Comp -> ((Int -> a) -> ix -> e) -> a -> a -> ix -> Int -> Array D ix e
+--
+-- >>> fromFunction Seq (\ scale (i :. j) -> scale i + scale j) (-2) 1 (4 :. 4) 2
+-- (Array D Seq (9 :. 9)
+--   [ [ -4.0,-3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0 ]
+--   , [ -3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5 ]
+--   , [ -3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0 ]
+--   , [ -2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5 ]
+--   , [ -2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0 ]
+--   , [ -1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5 ]
+--   , [ -1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0 ]
+--   , [ -0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5 ]
+--   , [ 0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0 ]
+--   ])
+--
+fromFunction ::
+     (Index ix, Fractional a)
+  => Comp -- ^ Computation strategy
+  -> ((Int -> a) -> ix -> e)
+  -- ^ A function that will produce elements of scaled up array. First argument is a scaling
+  -- function that should be applied to individual indicies.
+  -> a -- ^ @a@ - Starting point
+  -> a -- ^ @d@ - Distance per cell
+  -> ix -- ^ @sz@ - Size of the desired array
+  -> Int -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
+  -> Array D ix e
 fromFunction comp f a d sz n =
   fmap (\ix -> f scale ix) $ range' comp zeroIndex (liftIndex (n *) sz)
   where
@@ -192,7 +214,21 @@ fromFunction comp f a d sz n =
 {-# INLINE fromFunction #-}
 
 
--- | Create an array from a function with sample points in the middle of cells
+-- | Similar to `fromFunction`, but will create an array from a function with sample points in the
+-- middle of cells.
+--
+-- >>> fromFunctionMidpoint Seq (\ scale (i :. j) -> scale i + scale j) (-2) 1 (4 :. 4) 2
+-- (Array D Seq (8 :. 8)
+--   [ [ -3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0 ]
+--   , [ -3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5 ]
+--   , [ -2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0 ]
+--   , [ -2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5 ]
+--   , [ -1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0 ]
+--   , [ -1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5 ]
+--   , [ -0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0 ]
+--   , [ 0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5 ]
+--   ])
+--
 fromFunctionMidpoint
   :: (Index ix, Fractional a) =>
      Comp -> ((Int -> a) -> ix -> e) -> a -> a -> ix -> Int -> Array D ix e
@@ -226,7 +262,7 @@ range' comp ixFrom ixTo =
 -- Implementation-wise, integral approximation here relies heavily on stencils with stride, as such
 -- computation is fast and is automatically parallelizable.
 --
--- Here are some example of where this can be useful.
+-- Here are some example of where this can be useful:
 --
 -- === Integral of a function on a region
 --
@@ -241,7 +277,7 @@ range' comp ixFrom ixTo =
 --   [ 1.0,1.2840254166877414,2.718281828459045,9.487735836358526,54.598150033144236 ])
 --
 -- Once we have that array of sample points ready we could use `integralApprox` and one of the
--- stencils to compute an integral, but there already functions that will do both steps for you:
+-- stencils to compute an integral, but there are already functions that will do both steps for you:
 --
 -- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 1 4
 --   [ 17.353626450374566 ])
@@ -251,9 +287,9 @@ range' comp ixFrom ixTo =
 --
 -- === Accurate values of a function
 --
--- Another very useful place where integration approximation can be used is when a more accurate
+-- Another very useful place where integral approximation can be used is when a more accurate
 -- representation of a non-linear function is desired. Consider the same gaussian function applied
--- to equally spaced values, with center being in the middle of the vector:
+-- to equally spaced values, with zero being in the middle of the vector:
 --
 -- >>> xArr = makeArrayR D Seq (Ix1 4) $ \ i -> (fromIntegral i - 1.5 :: Float)
 -- >>> xArr
@@ -266,7 +302,7 @@ range' comp ixFrom ixTo =
 -- The problem with above example is that computed values do not accurately represent the total
 -- value contained within each vector cell. For that reason if your were to later use it for example
 -- as convolution stencil, approximation would be very poor. The way to solve it is to approximate
--- an integral across each cell of vector by blowing up the `xArr` dramatically and then reducing it
+-- an integral across each cell of vector by drastically blowing up the `xArr` and then reducing it
 -- to a smaller array by using one of the approximation rules:
 --
 -- >>> startValue = -2 :: Float
@@ -283,8 +319,9 @@ range' comp ixFrom ixTo =
 --   [ 16.074406,1.4906789,1.4906789,16.074408 ])
 --
 -- We can clearly see the difference is huge, but it doesn't mean it is much better than our
--- previous estimate. In order to get more accurate results we can use a better alogorithm Simpson's
--- rule and many more sample points. No need to create `xArr` and `yArr`.
+-- previous estimate. In order to get more accurate results we can use a better Simpson's rule for
+-- approximation and many more sample points. There is no need to create individual arrays `xArr`
+-- and `yArr`, there are functions like `simpsonRule` that will take care it for you:
 --
 -- >>> simpsonsRule Seq U (\ scale i -> f (scale i)) startValue distPerCell desiredSize 128
 -- (Array M Seq (4)

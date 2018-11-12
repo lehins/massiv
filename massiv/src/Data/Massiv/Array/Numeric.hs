@@ -63,7 +63,7 @@ module Data.Massiv.Array.Numeric
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Manifest.Internal (compute)
+import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A
 import           Data.Massiv.Array.Ops.Transform    as A
@@ -103,69 +103,55 @@ infixl 6  .+, .-
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
 (|*|) ::
-     ( Manifest r1 Ix2 e
-     , Mutable r2 Ix2 e
-     , OuterSlice r1 Ix2 e
-     , OuterSlice r2 Ix2 e
-     , Source (EltRepr r1 Ix2) Ix1 e
-     , Source (EltRepr r2 Ix2) Ix1 e
-     , Num e
-     )
-  => Array r1 Ix2 e
-  -> Array r2 Ix2 e
-  -> Array r2 Ix2 e
+     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (EltRepr r Ix2) Ix1 e, Num e)
+  => Array r Ix2 e
+  -> Array r' Ix2 e
+  -> Array r Ix2 e
 (|*|) a1 = compute . multArrs a1
 {-# INLINE [1] (|*|) #-}
 
 {-# RULES
-"doubleTranspose" [~1] forall arr1 arr2 . arr1 |*| (transpose arr2) = multiplyTransposedFused arr1 arr2
+"multDoubleTranspose" [~1] forall arr1 arr2 . arr1 |*| transpose arr2 =
+    multiplyTransposedFused arr1 (computeSource arr2)
  #-}
 
 multiplyTransposedFused ::
-     ( Manifest r1 Ix2 e
-     , Mutable r2 Ix2 e
-     , OuterSlice r1 Ix2 e
-     , OuterSlice r2 Ix2 e
-     , Source (EltRepr r1 Ix2) Ix1 e
-     , Source (EltRepr r2 Ix2) Ix1 e
+     ( Mutable r Ix2 e
+     , OuterSlice r Ix2 e
+     , Source (EltRepr r Ix2) Ix1 e
      , Num e
      )
-  => Array r1 Ix2 e
-  -> Array r2 Ix2 e
-  -> Array r2 Ix2 e
+  => Array r Ix2 e
+  -> Array r Ix2 e
+  -> Array r Ix2 e
 multiplyTransposedFused arr1 arr2 = compute (multiplyTransposed arr1 arr2)
 {-# INLINE multiplyTransposedFused #-}
 
 
-multArrs :: forall r1 r2 e.
-            ( Manifest r1 Ix2 e
-            , Mutable r2 Ix2 e
-            , OuterSlice r1 Ix2 e
-            , OuterSlice r2 Ix2 e
-            , Source (EltRepr r1 Ix2) Ix1 e
-            , Source (EltRepr r2 Ix2) Ix1 e
+multArrs :: forall r r' e.
+            ( Mutable r Ix2 e
+            , Source r' Ix2 e
+            , OuterSlice r Ix2 e
+            , Source (EltRepr r Ix2) Ix1 e
             , Num e
             )
-         => Array r1 Ix2 e -> Array r2 Ix2 e -> Array D Ix2 e
+         => Array r Ix2 e -> Array r' Ix2 e -> Array D Ix2 e
 multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
   where
-    arr2' :: Array r2 Ix2 e
+    arr2' :: Array r Ix2 e
     arr2' = compute $ transpose arr2
 {-# INLINE multArrs #-}
 
 -- | It is quite often that second matrix gets transposed before multiplication (eg. A * A'), but
 -- due to layout of data in memory it is more efficient to transpose the second array again.
 multiplyTransposed ::
-     ( Manifest r1 Ix2 e
-     , Manifest r2 Ix2 e
-     , OuterSlice r1 Ix2 e
-     , OuterSlice r2 Ix2 e
-     , Source (EltRepr r1 Ix2) Ix1 e
-     , Source (EltRepr r2 Ix2) Ix1 e
+     ( Manifest r Ix2 e
+     , OuterSlice r Ix2 e
+     , Source (EltRepr r Ix2) Ix1 e
      , Num e
      )
-  => Array r1 Ix2 e
-  -> Array r2 Ix2 e
+  => Array r Ix2 e
+  -> Array r Ix2 e
   -> Array D Ix2 e
 multiplyTransposed arr1 arr2
   | n1 /= m2 =

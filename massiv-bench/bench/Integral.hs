@@ -18,8 +18,6 @@ main :: IO ()
 main = do
   let f scale (i :. j) = gaussian2 (1 :: Double) (scale i) (scale j)
       {-# INLINE f #-}
-      fm scale (i :. j) = gaussian2 (1 :: Double) (scale i) (scale j)
-      {-# INLINE fm #-}
       !a = -3
       !d = 1
       !sz = 10 :. 10
@@ -29,13 +27,13 @@ main = do
         "Integral"
         [ bgroup
             "Seq"
-            [ bench "midpoint" $ whnf (midpointRule Seq P fm a d sz) n
+            [ bench "midpoint" $ whnf (midpointRule Seq P f a d sz) n
             , bench "trapezoid" $ whnf (trapezoidRule Seq P f a d sz) n
             , bench "simpsons" $ whnf (simpsonsRule Seq P f a d sz) n
             ]
         , bgroup
             "Par"
-            [ bench "midpoint" $ whnf (midpointRule Par P fm a d sz) n
+            [ bench "midpoint" $ whnf (midpointRule Par P f a d sz) n
             , bench "trapezoid" $ whnf (trapezoidRule Par P f a d sz) n
             , bench "simpsons" $ whnf (simpsonsRule Par P f a d sz) n
             ]
