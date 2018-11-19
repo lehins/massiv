@@ -1,11 +1,14 @@
 {-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeOperators              #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Class
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -21,8 +24,21 @@ import           Data.Functor.Identity     (runIdentity)
 import           Data.Massiv.Core.Iterator
 import           GHC.TypeLits
 
--- | A way to select Array dimension.
+-- | A way to select Array dimension at a value level.
 newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
+
+-- | A way to select Array dimension at a type level.
+data Dimension (n :: Nat) where
+  Dim1 :: Dimension 1
+  Dim2 :: Dimension 2
+  Dim3 :: Dimension 3
+  Dim4 :: Dimension 4
+  Dim5 :: Dimension 5
+  DimN :: Dimension n
+
+-- | A type level constraint that ensures index is indded valid and that supplied dimension can be
+-- safely used with it.
+type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
 
 -- | Zero-dimension, i.e. a scalar. Can't really be used directly as there are no instances of
 -- `Index` for it, and is included for completeness.
@@ -432,7 +448,7 @@ instance Index Ix5T where
   insertDim (i1, i2, i4, i5) 3 i3 = Just (i1, i2, i3, i4, i5)
   insertDim (i1, i2, i3, i5) 2 i4 = Just (i1, i2, i3, i4, i5)
   insertDim (i1, i2, i3, i4) 1 i5 = Just (i1, i2, i3, i4, i5)
-  insertDim _            _  _ = Nothing
+  insertDim _            _  _     = Nothing
   {-# INLINE [1] insertDim #-}
   pureIndex i = (i, i, i, i, i)
   {-# INLINE [1] pureIndex #-}

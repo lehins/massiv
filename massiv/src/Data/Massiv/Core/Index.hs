@@ -1,5 +1,8 @@
 {-# LANGUAGE BangPatterns    #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE GADTs           #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeOperators   #-}
 -- |
 -- Module      : Data.Massiv.Core.Index
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -31,6 +34,11 @@ module Data.Massiv.Core.Index
   , setIndex'
   , dropDim'
   , insertDim'
+  , fromDimension
+  , getDimension
+  , setDimension
+  , dropDimension
+  , insertDimension
   , iterLinearM
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
@@ -41,6 +49,7 @@ import           Data.Massiv.Core.Index.Class
 import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Index.Stride
 import           Data.Massiv.Core.Iterator
+import           GHC.TypeLits
 
 
 -- | Approach to be used near the borders during various transformations.
@@ -151,33 +160,68 @@ setIndex' :: Index ix => ix -> Dim -> Int -> ix
 setIndex' ix dim i =
   case setIndex ix dim i of
     Just ix' -> ix'
-    Nothing -> errorDim "setIndex'" dim
+    Nothing  -> errorDim "setIndex'" dim
 {-# INLINE [1] setIndex' #-}
 
 getIndex' :: Index ix => ix -> Dim -> Int
 getIndex' ix dim =
   case getIndex ix dim of
     Just ix' -> ix'
-    Nothing -> errorDim "getIndex'" dim
+    Nothing  -> errorDim "getIndex'" dim
 {-# INLINE [1] getIndex' #-}
 
 dropDim' :: Index ix => ix -> Dim -> Lower ix
 dropDim' ix dim =
   case dropDim ix dim of
     Just ix' -> ix'
-    Nothing -> errorDim "dropDim'" dim
+    Nothing  -> errorDim "dropDim'" dim
 {-# INLINE [1] dropDim' #-}
 
 insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
 insertDim' ix dim i =
   case insertDim ix dim i of
     Just ix' -> ix'
-    Nothing -> errorDim "insertDim'" dim
+    Nothing  -> errorDim "insertDim'" dim
 {-# INLINE [1] insertDim' #-}
 
 errorDim :: String -> Dim -> a
 errorDim funName dim = error $ funName ++ ": Dimension is out of reach: " ++ show dim
 {-# NOINLINE errorDim #-}
+
+fromDimension :: KnownNat n => Dimension n -> Dim
+fromDimension = fromIntegral . natVal
+{-# INLINE [1] fromDimension #-}
+
+-- | Type safe way to set value of index at a particular dimension.
+--
+-- @since 0.2.4
+setDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int -> ix
+setDimension ix d = setIndex' ix (fromDimension d)
+{-# INLINE [1] setDimension #-}
+
+-- | Type safe way to extract value of index at a particular dimension.
+--
+-- @since 0.2.4
+getDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int
+getDimension ix d = getIndex' ix (fromDimension d)
+{-# INLINE [1] getDimension #-}
+
+
+-- | Type safe way of dropping a particular dimension, thus lowering index
+-- dimensionality.
+--
+-- @since 0.2.4
+dropDimension :: IsIndexDimension ix n => ix -> Dimension n -> Lower ix
+dropDimension ix d = dropDim' ix (fromDimension d)
+{-# INLINE [1] dropDimension #-}
+
+
+-- | Type safe way of inserting a particular dimension, thus raising index dimensionality.
+--
+-- @since 0.2.4
+insertDimension :: IsIndexDimension ix n => ix -> Dimension n -> Lower ix
+insertDimension ix d = dropDim' ix (fromDimension d)
+{-# INLINE [1] insertDimension #-}
 
 
 -- | Iterate over N-dimensional space lenarly from start to end in row-major fashion with an

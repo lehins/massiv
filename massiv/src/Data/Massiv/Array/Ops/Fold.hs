@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE UndecidableInstances  #-}
@@ -29,6 +30,12 @@ module Data.Massiv.Array.Ops.Fold
   , any
 
   -- ** Single dimension folds
+  -- *** Type safe
+  , ifoldlInner
+  , foldlInner
+  , ifoldrInner
+  , foldrInner
+  -- *** Partial
   , ifoldlInner'
   , foldlInner'
   , ifoldrInner'
@@ -109,6 +116,30 @@ foldSemi ::
 foldSemi f m = foldlInternal (<>) m (<>) m . map f
 {-# INLINE foldSemi #-}
 
+
+
+ifoldlInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+  Dimension n -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldlInner dim = ifoldlInner' (fromDimension dim)
+{-# INLINE ifoldlInner #-}
+
+
+foldlInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+  Dimension n -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+foldlInner dim f = ifoldlInner dim (const f)
+{-# INLINE foldlInner #-}
+
+
+ifoldrInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+  Dimension n -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldrInner dim = ifoldrInner' (fromDimension dim)
+{-# INLINE ifoldrInner #-}
+
+
+foldrInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+  Dimension n -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+foldrInner dim f = ifoldrInner dim (const f)
+{-# INLINE foldrInner #-}
 
 
 ifoldlInner' :: (Index (Lower ix), Source r ix e) =>
