@@ -290,6 +290,9 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   dropDim (i :. _) 1 = Just i
   dropDim _      _   = Nothing
   {-# INLINE [1] dropDim #-}
+  insertDim i1 2 i2 = Just (i2 :. i1)
+  insertDim i2 1 i1 = Just (i2 :. i1)
+  insertDim _  _  _ = Nothing
   pureIndex i = i :. i
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i :. j) = f i :. f j
@@ -337,6 +340,11 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   dropDim (i :> j :. _) 1 = Just (i :. j)
   dropDim _             _ = Nothing
   {-# INLINE [1] dropDim #-}
+  insertDim (i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
+  insertDim (i3 :. i1) 2 i2 = Just (i3 :> i2 :. i1)
+  insertDim (i3 :. i2) 1 i1 = Just (i3 :> i2 :. i1)
+  insertDim _          _  _ = Nothing
+  {-# INLINE [1] insertDim #-}
   pureIndex i = i :> i :. i
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i :> j :. k) = f i :> f j :. f k
@@ -376,8 +384,11 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
                             | otherwise = (j :>) <$> setIndex jx k o
   {-# INLINE [1] setIndex #-}
   dropDim ix@(j :> jx) k | k == dimensions ix = Just jx
-                           | otherwise = (j :>) <$> dropDim jx k
+                         | otherwise = (j :>) <$> dropDim jx k
   {-# INLINE [1] dropDim #-}
+  insertDim ix@(i :> ixl) d ni | d == dimensions ix + 1 = Just (ni :> ix)
+                               | otherwise = (i :>) <$> insertDim ixl d ni
+  {-# INLINE [1] insertDim #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i :> ix) = f i :> liftIndex f ix

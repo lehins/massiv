@@ -28,6 +28,12 @@ module Data.Massiv.Array.Ops.Fold
   , all
   , any
 
+  -- ** Single dimension folds
+  , ifoldlInner'
+  , foldlInner'
+  , ifoldrInner'
+  , foldrInner'
+
   -- ** Sequential folds
 
   -- $seq_folds
@@ -68,6 +74,7 @@ module Data.Massiv.Array.Ops.Fold
   , ifoldrIO
   ) where
 
+import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Array.Ops.Map           (map)
 import           Data.Massiv.Core
@@ -101,6 +108,54 @@ foldSemi ::
   -> m
 foldSemi f m = foldlInternal (<>) m (<>) m . map f
 {-# INLINE foldSemi #-}
+
+
+
+ifoldlInner' :: (Index (Lower ix), Source r ix e) =>
+  Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldlInner' dim f acc0 arr =
+  unsafeMakeArray (getComp arr) (dropDim' sz dim) $ \ixl ->
+    iter
+      (insertDim' ixl dim 0)
+      (insertDim' ixl dim (k - 1))
+      (pureIndex 1)
+      (<=)
+      acc0
+      (\ix acc' -> f ix acc' (unsafeIndex arr ix))
+  where
+    sz = size arr
+    k = getIndex' sz dim
+{-# INLINE ifoldlInner' #-}
+
+
+foldlInner' :: (Index (Lower ix), Source r ix e) =>
+  Dim -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+foldlInner' dim f = ifoldlInner' dim (const f)
+{-# INLINE foldlInner' #-}
+
+
+ifoldrInner' :: (Index (Lower ix), Source r ix e) =>
+  Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldrInner' dim f acc0 arr =
+  unsafeMakeArray (getComp arr) (dropDim' sz dim) $ \ixl ->
+    iter
+      (insertDim' ixl dim (k - 1))
+      (insertDim' ixl dim 0)
+      (pureIndex (-1))
+      (>=)
+      acc0
+      (\ix acc' -> f ix (unsafeIndex arr ix) acc')
+  where
+    sz = size arr
+    k = getIndex' sz dim
+{-# INLINE ifoldrInner' #-}
+
+
+foldrInner' :: (Index (Lower ix), Source r ix e) =>
+  Dim -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+foldrInner' dim f = ifoldrInner' dim (const f)
+{-# INLINE foldrInner' #-}
+
 
 
 -- | /O(n)/ - Compute maximum of all elements.

@@ -216,16 +216,25 @@ prop_BorderRepairSafe _ border (Sz sz) ix =
   not (isSafeIndex sz ix) ==> isSafeIndex sz (handleBorderIndex border sz id ix)
 
 
-prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
+prop_GetDropInsert :: Index ix => proxy ix -> NonNegative Int -> ix -> Property
+prop_GetDropInsert _ (NonNegative d) ix =
+  expected === do
+    i <- getIndex ix dim
+    ixL <- dropDim ix dim
+    insertDim ixL dim i
+  where expected = if d >= 1 && dim <= dimensions ix then Just ix else Nothing
+        dim = Dim d
+
+prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Property
 prop_UnconsGetDrop _ ix =
-  Just (unconsDim ix) == do
+  Just (unconsDim ix) === do
     i <- getIndex ix (dimensions ix)
     ixL <- dropDim ix (dimensions ix)
     return (i, ixL)
 
-prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Bool
+prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Property
 prop_UnsnocGetDrop _ ix =
-  Just (unsnocDim ix) == do
+  Just (unsnocDim ix) === do
     i <- getIndex ix 1
     ixL <- dropDim ix 1
     return (ixL, i)
@@ -298,6 +307,7 @@ specDimN proxy = do
   describe "SetGetDrop" $ do
     it "SetAll" $ property $ prop_SetAll proxy
     it "SetGet" $ property $ prop_SetGet proxy
+    it "GetDropInsert" $ property $ prop_GetDropInsert proxy
 
 specDim2AndUp
   :: (Index ix, Index (Lower ix), Ord ix, CoArbitrary ix, Arbitrary ix)

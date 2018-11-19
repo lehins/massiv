@@ -29,6 +29,8 @@ module Data.Massiv.Core.Index
   , initDim
   , getIndex'
   , setIndex'
+  , dropDim'
+  , insertDim'
   , iterLinearM
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
@@ -149,14 +151,33 @@ setIndex' :: Index ix => ix -> Dim -> Int -> ix
 setIndex' ix dim i =
   case setIndex ix dim i of
     Just ix' -> ix'
-    Nothing -> error $ "setIndex': Dimension is out of reach: " ++ show dim
+    Nothing -> errorDim "setIndex'" dim
+{-# INLINE [1] setIndex' #-}
 
 getIndex' :: Index ix => ix -> Dim -> Int
 getIndex' ix dim =
   case getIndex ix dim of
     Just ix' -> ix'
-    Nothing -> error $ "getIndex': Dimension is out of reach: " ++ show dim
+    Nothing -> errorDim "getIndex'" dim
+{-# INLINE [1] getIndex' #-}
 
+dropDim' :: Index ix => ix -> Dim -> Lower ix
+dropDim' ix dim =
+  case dropDim ix dim of
+    Just ix' -> ix'
+    Nothing -> errorDim "dropDim'" dim
+{-# INLINE [1] dropDim' #-}
+
+insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
+insertDim' ix dim i =
+  case insertDim ix dim i of
+    Just ix' -> ix'
+    Nothing -> errorDim "insertDim'" dim
+{-# INLINE [1] insertDim' #-}
+
+errorDim :: String -> Dim -> a
+errorDim funName dim = error $ funName ++ ": Dimension is out of reach: " ++ show dim
+{-# NOINLINE errorDim #-}
 
 
 -- | Iterate over N-dimensional space lenarly from start to end in row-major fashion with an

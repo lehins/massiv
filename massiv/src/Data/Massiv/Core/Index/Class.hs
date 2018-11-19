@@ -80,6 +80,9 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   -- | Remove a dimension from the index
   dropDim :: ix -> Dim -> Maybe (Lower ix)
 
+  -- | Insert a dimension into the index
+  insertDim :: Lower ix -> Dim -> Int -> Maybe ix
+
   -- | Extract the value index has at specified dimension.
   getIndex :: ix -> Dim -> Maybe Int
 
@@ -247,6 +250,9 @@ instance Index Ix1T where
   dropDim _ 1 = Just Ix0
   dropDim _ _ = Nothing
   {-# INLINE [1] dropDim #-}
+  insertDim Ix0 1 i = Just i
+  insertDim _   _ _ = Nothing
+  {-# INLINE [1] insertDim #-}
   pureIndex i = i
   {-# INLINE [1] pureIndex #-}
   liftIndex f = f
@@ -293,6 +299,10 @@ instance Index Ix2T where
   dropDim (i, _) 1 = Just i
   dropDim _      _ = Nothing
   {-# INLINE [1] dropDim #-}
+  insertDim i1 2 i2 = Just (i2, i1)
+  insertDim i2 1 i1 = Just (i2, i1)
+  insertDim _  _  _ = Nothing
+  {-# INLINE [1] insertDim #-}
   pureIndex i = (i, i)
   {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, j0) (i1, j1) = (f i0 i1, f j0 j1)
@@ -303,7 +313,7 @@ instance Index Ix3T where
   type Dimensions Ix3T = 3
   dimensions _ = 3
   {-# INLINE [1] dimensions #-}
-  totalElem !(m, n, o) = m * n * o
+  totalElem  (m, n, o) = m * n * o
   {-# INLINE [1] totalElem #-}
   consDim i (j, k) = (i, j, k)
   {-# INLINE [1] consDim #-}
@@ -328,6 +338,10 @@ instance Index Ix3T where
   dropDim (i, j, _) 1 = Just (i, j)
   dropDim _      _    = Nothing
   {-# INLINE [1] dropDim #-}
+  insertDim (i, j) 3 k = Just (k, i, j)
+  insertDim (i, j) 2 k = Just (i, k, j)
+  insertDim (i, j) 1 k = Just (i, j, k)
+  insertDim _      _ _ = Nothing
   pureIndex i = (i, i, i)
   {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, j0, k0) (i1, j1, k1) = (f i0 i1, f j0 j1, f k0 k1)
@@ -364,8 +378,14 @@ instance Index Ix4T where
   dropDim (i1,  _, i3, i4) 3 = Just (i1, i3, i4)
   dropDim (i1, i2,  _, i4) 2 = Just (i1, i2, i4)
   dropDim (i1, i2, i3,  _) 1 = Just (i1, i2, i3)
-  dropDim _      _           = Nothing
+  dropDim _                _ = Nothing
   {-# INLINE [1] dropDim #-}
+  insertDim (i2, i3, i4) 4 i1 = Just (i1, i2, i3, i4)
+  insertDim (i1, i3, i4) 3 i2 = Just (i1, i2, i3, i4)
+  insertDim (i1, i2, i4) 2 i3 = Just (i1, i2, i3, i4)
+  insertDim (i1, i2, i3) 1 i4 = Just (i1, i2, i3, i4)
+  insertDim _            _  _ = Nothing
+  {-# INLINE [1] insertDim #-}
   pureIndex i = (i, i, i, i)
   {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, i1, i2, i3) (j0, j1, j2, j3) = (f i0 j0, f i1 j1, f i2 j2, f i3 j3)
@@ -407,6 +427,13 @@ instance Index Ix5T where
   dropDim (i1, i2, i3, i4,  _) 1 = Just (i1, i2, i3, i4)
   dropDim _                    _ = Nothing
   {-# INLINE [1] dropDim #-}
+  insertDim (i2, i3, i4, i5) 5 i1 = Just (i1, i2, i3, i4, i5)
+  insertDim (i1, i3, i4, i5) 4 i2 = Just (i1, i2, i3, i4, i5)
+  insertDim (i1, i2, i4, i5) 3 i3 = Just (i1, i2, i3, i4, i5)
+  insertDim (i1, i2, i3, i5) 2 i4 = Just (i1, i2, i3, i4, i5)
+  insertDim (i1, i2, i3, i4) 1 i5 = Just (i1, i2, i3, i4, i5)
+  insertDim _            _  _ = Nothing
+  {-# INLINE [1] insertDim #-}
   pureIndex i = (i, i, i, i, i)
   {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i0, i1, i2, i3, i4) (j0, j1, j2, j3, j4) =
