@@ -18,7 +18,9 @@ module Data.Massiv.Array.Ops.Fold
   -- $unstruct_folds
 
     fold
+  , ifoldMono
   , foldMono
+  , ifoldSemi
   , foldSemi
   , minimum
   , maximum
@@ -83,7 +85,7 @@ module Data.Massiv.Array.Ops.Fold
 
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Array.Ops.Map           (map)
+import           Data.Massiv.Array.Ops.Map           (imap, map)
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Semigroup
@@ -91,6 +93,18 @@ import           Prelude                             hiding (all, and, any,
                                                       foldl, foldr, map,
                                                       maximum, minimum, or,
                                                       product, sum)
+
+-- | /O(n)/ - Monoidal fold over an array with an index aware function. Also known as reduce.
+--
+-- @since 0.2.4
+ifoldMono ::
+     (Source r ix e, Monoid m)
+  => (ix -> e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
+  -> Array r ix e -- ^ Source array
+  -> m
+ifoldMono f = foldlInternal mappend mempty mappend mempty . imap f
+{-# INLINE ifoldMono #-}
+
 
 -- | /O(n)/ - Monoidal fold over an array. Also known as reduce.
 --
@@ -102,6 +116,19 @@ foldMono ::
   -> m
 foldMono f = foldlInternal mappend mempty mappend mempty . map f
 {-# INLINE foldMono #-}
+
+
+-- | /O(n)/ - Semigroup fold over an array with an index aware function.
+--
+-- @since 0.2.4
+ifoldSemi ::
+     (Source r ix e, Semigroup m)
+  => (ix -> e -> m) -- ^ Convert each element of an array to an appropriate `Semigroup`.
+  -> m -- ^ Initial element that must be neutral to the (`<>`) function.
+  -> Array r ix e -- ^ Source array
+  -> m
+ifoldSemi f m = foldlInternal (<>) m (<>) m . imap f
+{-# INLINE ifoldSemi #-}
 
 
 -- | /O(n)/ - Semigroup fold over an array.
@@ -118,30 +145,46 @@ foldSemi f m = foldlInternal (<>) m (<>) m . map f
 
 
 
+-- | Left fold along a specified dimension with an index aware function.
+--
+-- @since 0.2.4
 ifoldlInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlInner dim = ifoldlInner' (fromDimension dim)
 {-# INLINE ifoldlInner #-}
 
 
+-- | Left fold along a specified dimension.
+--
+-- @since 0.2.4
 foldlInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldlInner dim f = ifoldlInner dim (const f)
 {-# INLINE foldlInner #-}
 
 
+-- | Right fold along a specified dimension with an index aware function.
+--
+-- @since 0.2.4
 ifoldrInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrInner dim = ifoldrInner' (fromDimension dim)
 {-# INLINE ifoldrInner #-}
 
 
+-- | Right fold along a specified dimension.
+--
+-- @since 0.2.4
 foldrInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldrInner dim f = ifoldrInner dim (const f)
 {-# INLINE foldrInner #-}
 
 
+-- | Similar to `ifoldlInner`, except it works on value level dimension and it throws an error on an
+-- invalid dimension.
+--
+-- @since 0.2.4
 ifoldlInner' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlInner' dim f acc0 arr =
@@ -159,12 +202,21 @@ ifoldlInner' dim f acc0 arr =
 {-# INLINE ifoldlInner' #-}
 
 
+-- | Similar to `foldlInner`, except it works on value level dimension and it throws an error on an
+-- invalid dimension.
+--
+-- @since 0.2.4
 foldlInner' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldlInner' dim f = ifoldlInner' dim (const f)
 {-# INLINE foldlInner' #-}
 
 
+-- | Similar to `ifoldrInner`, except it works on value level dimension and it throws an error on an
+-- invalid dimension.
+--
+--
+-- @since 0.2.4
 ifoldrInner' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrInner' dim f acc0 arr =
@@ -181,7 +233,10 @@ ifoldrInner' dim f acc0 arr =
     k = getIndex' sz dim
 {-# INLINE ifoldrInner' #-}
 
-
+-- | Similar to `foldrInner`, except it works on value level dimension and it throws an error on an
+-- invalid dimension.
+--
+-- @since 0.2.4
 foldrInner' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldrInner' dim f = ifoldrInner' dim (const f)
