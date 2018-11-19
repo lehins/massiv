@@ -1,3 +1,6 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
@@ -14,62 +17,140 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Delayed.Push
-  ( DP(..)
+  ( DL(..)
   , Array(..)
   ) where
 
-import           Control.Monad.Primitive
-import           Data.Foldable                       (Foldable (..))
-import           Data.Massiv.Array.Ops.Fold.Internal as A
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
-import           Data.Monoid                         ((<>))
-import           GHC.Base                            (build)
-import           Prelude                             hiding (zipWith)
+import Control.Monad.Primitive
+import Data.Foldable (Foldable (..))
+import Data.Massiv.Array.Ops.Fold.Internal as A
+import Data.Massiv.Core.Common
+import Data.Monoid ((<>))
+import GHC.Base (build)
+import Prelude hiding (map, zipWith)
+
+import System.IO.Unsafe
+-- import Control.Monad (void)
+-- import Control.Monad.ST
+
+-- import               Data.List (foldl')
+import               Data.Massiv.Array as MA
+-- import               Prelude hiding (map)
+
 
 #include "massiv.h"
 
--- | Delayed representation.
-data DP = DP deriving Show
+-- | Delayed load representation. Also known as Push array.
+data DL = DL deriving Show
 
 
-data instance Array DP ix e = DPArray
-  { dpComp :: !Comp
-  , dpSize :: !ix
-  , dpLoad :: forall m . PrimMonad m => (ix -> m e) -> (ix -> e -> m ()) -> m () }
-type instance EltRepr DP ix = DP
+data instance Array DL ix e = DLArray
+  { dlComp :: !Comp
+  , dlSize :: !ix
+  , dlLoad :: forall m . Monad m
+           => Int
+           -> (m () -> m ())
+           -> (ix -> m e)
+           -> (ix -> e -> m ())
+           -> m ()
+  }
 
-instance Index ix => Construct DP ix e where
-  getComp = dpComp
+type instance EltRepr DL ix = DL
+
+instance Index ix => Construct DL ix e where
+  getComp = dlComp
   {-# INLINE getComp #-}
-
-  setComp c arr = arr { dpComp = c }
+  setComp c arr = arr {dlComp = c}
   {-# INLINE setComp #-}
-
-  unsafeMakeArray comp sz f = DPArray comp sz $ \ _dpRead dpWrite ->
-    iterM_ zeroIndex sz (pureIndex 1) (<) (\ix -> dpWrite ix (f ix))
+  unsafeMakeArray comp sz f =
+    DLArray comp sz $ \numWorkers scheduleWith _dlRead dlWrite ->
+      let dlWrite' ix e = do
+            --_ <- return $! unsafePerformIO $ print ix
+            dlWrite ix e
+      in
+      splitWith_ numWorkers scheduleWith sz f dlWrite'
   {-# INLINE unsafeMakeArray #-}
 
+instance {-# OVERLAPPING #-} (Show (Array B ix e), Index ix) => Show (Array DL ix e) where
+  show = show . computeAs B
 
--- instance Index ix => Source D ix e where
---   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
---   {-# INLINE unsafeIndex #-}
+instance Index ix => Source DL ix e where
 
-instance Index ix => Size DP ix e where
-  size = dpSize
+
+-- downsample
+--   :: Index ix => Stride ix -> Array DL ix e -> Array DL ix e
+-- downsample stride@(Stride str) arr@DLArray {dlSize, dlLoad} =
+--   arr
+--     { dlSize = strideSize stride dlSize
+--     , dlLoad =
+--         \numWorkers scheduleWith _dlRead dlWrite ->
+--           dlLoad numWorkers scheduleWith undefined (\ix -> dlWrite (applyStride ix))
+--     }
+--   where
+--     applyStride ix = liftIndex2 div ix str
+--     {-# INLINE applyStride #-}
+
+
+
+upsample
+  :: Index ix => e -> Stride ix -> Array DL ix e -> Array DL ix e
+upsample fillWith stride@(Stride str) arr@DLArray {dlSize, dlLoad} =
+  arr
+    { dlSize = applyStride dlSize
+    , dlLoad =
+        \numWorkers scheduleWith dlRead dlWrite -> do
+          dlLoad
+            numWorkers
+            scheduleWith
+            (dlRead . applyStride)
+            (\ix e -> do
+               let ix' = applyStride ix
+               -- TODO: remove duplicate writes with rewriting it using interleave
+               iterM_ ix' (liftIndex2 (+) ix' str) (pureIndex 1) (<) $ \ i -> dlWrite i fillWith
+               dlWrite ix' e)
+    }
+  where
+    applyStride ix = liftIndex2 (*) ix str
+    {-# INLINE applyStride #-}
+
+
+instance Index ix => Size DL ix e where
+  size = dlSize
   {-# INLINE size #-}
 
-  unsafeResize !sz DPArray {..} =
-    DPArray dpComp sz $ \ dpRead dpWrite ->
-      let toIx = fromLinearIndex sz . toLinearIndex dpSize
-      in dpLoad (\ ix -> dpRead (toIx ix)) (\ix e -> dpWrite (toIx ix) e)
-  {-# INLINE unsafeResize #-}
+  -- unsafeResize !sz DLArray {..} =
+  --   DLArray dlComp sz $ \ dlRead dlWrite ->
+  --     let toIx = fromLinearIndex sz . toLinearIndex dlSize
+  --     in dlLoad (\ ix -> dlRead (toIx ix)) (\ix e -> dlWrite (toIx ix) e)
+  -- {-# INLINE unsafeResize #-}
 
-  unsafeExtract !sIx !newSz DPArray {..} =
-    DPArray dpComp newSz $ \ dpRead dpWrite ->
-      let toIx ix = liftIndex2 (+) ix sIx
-      in dpLoad (dpRead . toIx) (\ix e -> dpWrite (toIx ix) e)
-  {-# INLINE unsafeExtract #-}
+  -- unsafeExtract !sIx !newSz DLArray {..} =
+  --   DLArray dlComp newSz $ \ dlRead dlWrite ->
+  --     let toIx ix = liftIndex2 (+) ix sIx
+  --     in dlLoad (dlRead . toIx) (\ix e -> dlWrite (toIx ix) e)
+  -- {-# INLINE unsafeExtract #-}
+
+
+toLoadArray :: Load r ix e => Array r ix e -> Array DL ix e
+toLoadArray arr =
+  let sz = (size arr)
+   in DLArray (getComp arr) sz $ \numWorkers scheduleWith dlRead dlWrite ->
+        loadArray
+          numWorkers
+          scheduleWith
+          arr
+          (dlRead . fromLinearIndex sz)
+          (\i -> dlWrite (fromLinearIndex sz i))
+{-# INLINE toLoadArray #-}
+
+instance (Index ix) => Load DL ix e where
+  loadArray numWorkers scheduleWith DLArray {dlSize, dlLoad} uRead uWrite =
+    dlLoad
+      numWorkers
+      scheduleWith
+      (uRead . toLinearIndex dlSize)
+      (\i -> uWrite (toLinearIndex dlSize i))
+
 
 -- instance ( Index ix
 --          , Index (Lower ix)
@@ -260,5 +341,3 @@ instance Index ix => Size DP ix e where
 --     sz1 = size arr1
 --     sz2 = size arr2
 -- {-# INLINE liftArray2 #-}
-
-

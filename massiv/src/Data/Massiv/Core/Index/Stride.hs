@@ -86,7 +86,7 @@ unStride :: Stride ix -> ix
 unStride (SafeStride ix) = ix
 {-# INLINE unStride #-}
 
--- | Adjust strating index according to the stride
+-- | Adjust starting index according to the stride
 strideStart :: Index ix => Stride ix -> ix -> ix
 strideStart (SafeStride stride) ix =
   liftIndex2

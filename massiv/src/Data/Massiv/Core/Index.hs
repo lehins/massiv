@@ -46,6 +46,7 @@ module Data.Massiv.Core.Index
   , iterLinearM
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
+  , splitWith_
   ) where
 
 import           Control.DeepSeq
@@ -288,3 +289,29 @@ iterLinearM_ :: (Index ix, Monad m) =>
 iterLinearM_ !sz !k0 !k1 !inc cond f =
   loopM_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
+
+
+
+splitWith_ :: (Index ix, Monad m) =>
+  Int -> (m () -> m a) -> ix -> (ix -> b) -> (ix -> b -> m ()) -> m a
+splitWith_ numChunks with sz index write =
+  let totalLength = totalElem sz
+  in splitLinearly numChunks totalLength $ \chunkLength slackStart -> do
+       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+         with $ iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ _i !ix -> write ix (index ix)
+       with $ iterLinearM_ sz slackStart totalLength 1 (<) $ \ _i !ix -> write ix (index ix)
+{-# INLINE splitWith_ #-}
+
+
+
+-- splitWith_ :: (Index ix, Monad m) =>
+--   Int -> (m () -> m a) -> ix -> (ix -> b) -> (ix -> b -> m ()) -> m a
+-- splitWith_ numChunks with sz index write =
+--   let totalLength = totalElem sz
+--   in splitLinearly numChunks totalLength $ \chunkLength slackStart -> do
+--        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+--          with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !i ->
+--            let ix = fromLinearIndex sz i in write ix (index ix)
+--        with $ loopM_ slackStart (< totalLength) (+ 1) $ \ !i ->
+--            let ix = fromLinearIndex sz i in write ix (index ix)
+-- {-# INLINE splitWith_ #-}
