@@ -8,6 +8,7 @@
   and functions like `getDimension`, `dropDimension`.
 * Addition of `insertDim` and type level `insertDimension` as well as `pullOutDim` and
   `pullOutDimension`
+* Add partial `extractFromTo'`
 
 # 0.2.3
 

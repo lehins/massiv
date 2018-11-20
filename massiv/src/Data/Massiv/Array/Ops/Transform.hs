@@ -24,6 +24,7 @@ module Data.Massiv.Array.Ops.Transform
   , extract
   , extract'
   , extractFromTo
+  , extractFromTo'
   -- ** Append/Split
   , append
   , append'
@@ -84,6 +85,18 @@ extractFromTo :: Size r ix e =>
               -> Maybe (Array (EltRepr r ix) ix e)
 extractFromTo sIx eIx = extract sIx $ liftIndex2 (-) eIx sIx
 {-# INLINE extractFromTo #-}
+
+-- | Same as `extractFromTo`, but throws an error on invalid indices.
+--
+-- @since 0.2.4
+extractFromTo' :: Size r ix e =>
+                 ix -- ^ Starting index
+              -> ix -- ^ Index up to which elmenets should be extracted.
+              -> Array r ix e -- ^ Source array.
+              -> Array (EltRepr r ix) ix e
+extractFromTo' sIx eIx = extract' sIx $ liftIndex2 (-) eIx sIx
+{-# INLINE extractFromTo' #-}
+
 
 -- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
 -- number of elements does not match the source array.

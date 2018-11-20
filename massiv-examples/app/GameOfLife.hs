@@ -4,7 +4,7 @@
 module Main where
 
 import           Control.Monad
-import           Data.Massiv.Array        as A
+import           Data.Massiv.Array        as A hiding (windowSize)
 import           Data.Massiv.Array.Unsafe as A
 import           Data.Word
 import           Graphics.UI.GLUT         as G
@@ -98,7 +98,7 @@ startGameOfLife sz s = do
   rowAlignment Unpack $= 1
   let iLife = initLife sz inf2
       wSz = size (pixelGrid s iLife)
-  windowSize $= sizeFromIx2 wSz
+  G.windowSize $= sizeFromIx2 wSz
   mArr <- new wSz
   displayCallback $= clear [ColorBuffer]
   drawLife s mArr iLife

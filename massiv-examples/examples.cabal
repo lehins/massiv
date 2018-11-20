@@ -57,3 +57,13 @@ executable life
               , vector
               , GLUT
   default-language: Haskell2010
+
+executable mkfilter
+  main-is: MakeFilter.hs
+  hs-source-dirs: app
+  ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+                base >=4.7 && <5
+              , examples
+              , massiv
+  default-language: Haskell2010
