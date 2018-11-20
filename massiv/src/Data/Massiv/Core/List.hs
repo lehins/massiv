@@ -126,11 +126,6 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   {-# INLINE uncons #-}
   flatten = id
   {-# INLINE flatten #-}
-  -- unsafeGenerateM !comp !k f = do
-  --   xs <- loopM (k - 1) (>= 0) (subtract 1) [] $ \i acc -> do
-  --     e <- f i
-  --     return (e:acc)
-  --   return $ LArray comp $ coerce xs
   unsafeGenerateM !comp !k f = do
     xs <- loopDeepM 0 (< k) (+ 1) [] $ \i acc -> do
       e <- f i
@@ -180,11 +175,6 @@ instance ( Index ix
             newX = LArray lComp x
         in Just (newX, newArr)
   {-# INLINE uncons #-}
-  -- unsafeGenerateM Seq !sz f = do
-  --   let !(k, szL) = unconsDim sz
-  --   loopM (k - 1) (>= 0) (subtract 1) (empty Seq) $ \i acc -> do
-  --     e <- unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))
-  --     return (cons e acc)
   unsafeGenerateM Seq !sz f = do
     let !(k, szL) = unconsDim sz
     loopDeepM 0 (< k) (+ 1) (empty Seq) $ \i acc -> do

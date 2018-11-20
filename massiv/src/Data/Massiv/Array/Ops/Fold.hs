@@ -181,8 +181,8 @@ foldrInner dim f = ifoldrInner dim (const f)
 {-# INLINE foldrInner #-}
 
 
--- | Similar to `ifoldlInner`, except it works on value level dimension and it throws an error on an
--- invalid dimension.
+-- | Similar to `ifoldlInner`, except dimension is specified at a value level, which means it will
+-- throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
 ifoldlInner' :: (Index (Lower ix), Source r ix e) =>
@@ -202,8 +202,8 @@ ifoldlInner' dim f acc0 arr =
 {-# INLINE ifoldlInner' #-}
 
 
--- | Similar to `foldlInner`, except it works on value level dimension and it throws an error on an
--- invalid dimension.
+-- | Similar to `foldlInner`, except dimension is specified at a value level, which means it will
+-- throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
 foldlInner' :: (Index (Lower ix), Source r ix e) =>
@@ -212,8 +212,8 @@ foldlInner' dim f = ifoldlInner' dim (const f)
 {-# INLINE foldlInner' #-}
 
 
--- | Similar to `ifoldrInner`, except it works on value level dimension and it throws an error on an
--- invalid dimension.
+-- | Similar to `ifoldrInner`, except dimension is specified at a value level, which means it will
+-- throw an exception on an invalid dimension.
 --
 --
 -- @since 0.2.4
@@ -233,8 +233,8 @@ ifoldrInner' dim f acc0 arr =
     k = getIndex' sz dim
 {-# INLINE ifoldrInner' #-}
 
--- | Similar to `foldrInner`, except it works on value level dimension and it throws an error on an
--- invalid dimension.
+-- | Similar to `foldrInner`, except dimension is specified at a value level, which means it will
+-- throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
 foldrInner' :: (Index (Lower ix), Source r ix e) =>
