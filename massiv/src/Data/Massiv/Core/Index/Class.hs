@@ -34,7 +34,7 @@ data Dimension (n :: Nat) where
   Dim3 :: Dimension 3
   Dim4 :: Dimension 4
   Dim5 :: Dimension 5
-  DimN :: (1 <= n, KnownNat n) => Dimension n
+  DimN :: (6 <= n, KnownNat n) => Dimension n
 
 -- | A type level constraint that ensures index is indeed valid and that supplied dimension can be
 -- safely used with it.

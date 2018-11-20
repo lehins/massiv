@@ -1,7 +1,4 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Slice
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -26,7 +23,7 @@ module Data.Massiv.Array.Ops.Slice
   , (<??>)
   ) where
 
-import           Control.Monad    (guard)
+import           Control.Monad           (guard)
 import           Data.Massiv.Core.Common
 
 
@@ -134,8 +131,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 
 
 -- | /O(1)/ - Same as (`<!>`), but fails gracefully with a `Nothing`, instead of an error
-(<!?>) :: (Slice r ix e)
-       => Array r ix e -> (Dim, Int) -> Maybe (Elt r ix e)
+(<!?>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Maybe (Elt r ix e)
 (<!?>) !arr !(dim, i) = do
   m <- getDim (size arr) dim
   guard $ isSafeIndex m i
