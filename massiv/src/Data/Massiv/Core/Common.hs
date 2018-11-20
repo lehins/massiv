@@ -35,6 +35,9 @@ module Data.Massiv.Core.Common
   , NestedStruct
   , makeArray
   , singleton
+  -- * Size
+  , elemsCount
+  , isEmpty
   -- * Indexing
   , (!?)
   , index
@@ -462,3 +465,14 @@ imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
 imapM_ f !arr =
   iterM_ zeroIndex (size arr) (pureIndex 1) (<) $ \ !ix -> f ix (unsafeIndex arr ix)
 {-# INLINE imapM_ #-}
+
+
+-- | /O(1)/ - Get the number of elements in the array
+elemsCount :: Size r ix e => Array r ix e -> Int
+elemsCount = totalElem . size
+{-# INLINE elemsCount #-}
+
+-- | /O(1)/ - Check if array has no elements.
+isEmpty :: Size r ix e => Array r ix e -> Bool
+isEmpty !arr = 0 == elemsCount arr
+{-# INLINE isEmpty #-}

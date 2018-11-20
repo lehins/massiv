@@ -45,21 +45,9 @@ module Data.Massiv.Core
   , pattern Par
 #endif
   , module Data.Massiv.Core.Index
-  , elemsCount
-  , isEmpty
   ) where
 
 import           Data.Massiv.Core.Common hiding (indexWith, unsafeGenerateM)
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Index
-
--- | /O(1)/ - Get the number of elements in the array
-elemsCount :: Size r ix e => Array r ix e -> Int
-elemsCount = totalElem . size
-{-# INLINE elemsCount #-}
-
--- | /O(1)/ - Check if array has no elements.
-isEmpty :: Size r ix e => Array r ix e -> Bool
-isEmpty !arr = 0 == elemsCount arr
-{-# INLINE isEmpty #-}
 

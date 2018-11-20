@@ -88,8 +88,8 @@ module Data.Massiv.Array
   , fromRaggedArray'
   -- * Size
   , size
-  , Core.elemsCount
-  , Core.isEmpty
+  , elemsCount
+  , isEmpty
   -- * Indexing
   , (!?)
   , (!)
@@ -138,8 +138,8 @@ import           Data.Massiv.Array.Ops.Slice
 import           Data.Massiv.Array.Ops.Transform
 import           Data.Massiv.Array.Stencil
 -- Slightly convoluted re-export of this functions is done for better haddock.
-import           Data.Massiv.Core                    hiding (elemsCount, isEmpty)
-import qualified Data.Massiv.Core                    as Core (elemsCount, isEmpty)
+import           Data.Massiv.Core                    --hiding (elemsCount, isEmpty)
+--import qualified Data.Massiv.Core                    as Core (elemsCount, isEmpty)
 import           Data.Massiv.Core.Common
 import Prelude as P hiding ( all
                            , and
