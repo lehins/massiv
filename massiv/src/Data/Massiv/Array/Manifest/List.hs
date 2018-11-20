@@ -27,7 +27,7 @@ module Data.Massiv.Array.Manifest.List
   ) where
 
 import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Ops.Fold          (foldrInner')
+import           Data.Massiv.Array.Ops.Fold          (foldrInner)
 import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
@@ -173,14 +173,14 @@ toLists = toNested . toNested . toListArray
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
 toLists2 :: (Source r ix e, Index (Lower ix)) => Array r ix e -> [[e]]
-toLists2 = toList . foldrInner' 1 (:) []
+toLists2 = toList . foldrInner (:) []
 {-# INLINE toLists2 #-}
 
 
 -- | Convert an array with at least 3 dimensions into a 3 deep nested list. Inner dimensions will
 -- get flattened.
 toLists3 :: (Index (Lower (Lower ix)), Index (Lower ix), Source r ix e) => Array r ix e -> [[[e]]]
-toLists3 = toList . foldrInner' 1 (:) [] . foldrInner' 1 (:) []
+toLists3 = toList . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists3 #-}
 
 -- | Convert an array with at least 4 dimensions into a 4 deep nested list. Inner dimensions will
@@ -193,5 +193,5 @@ toLists4 ::
      )
   => Array r ix e
   -> [[[[e]]]]
-toLists4 = toList . foldrInner' 1 (:) [] . foldrInner' 1 (:) [] . foldrInner' 1 (:) []
+toLists4 = toList . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists4 #-}

@@ -32,16 +32,25 @@ module Data.Massiv.Array.Ops.Fold
   , any
 
   -- ** Single dimension folds
-  -- *** Type safe
+  -- *** Safe inner most
+  --
+  -- Folding along the inner most dimension will always be faster when compared to doing the same
+  -- operation along any other dimension, this is due to the fact that inner most folds follow the
+  -- memory layout of data.
   , ifoldlInner
   , foldlInner
   , ifoldrInner
   , foldrInner
+  -- *** Type safe
+  , ifoldlWithin
+  , foldlWithin
+  , ifoldrWithin
+  , foldrWithin
   -- *** Partial
-  , ifoldlInner'
-  , foldlInner'
-  , ifoldrInner'
-  , foldrInner'
+  , ifoldlWithin'
+  , foldlWithin'
+  , ifoldrWithin'
+  , foldrWithin'
 
   -- ** Sequential folds
 
@@ -144,14 +153,13 @@ foldSemi f m = foldlInternal (<>) m (<>) m . map f
 {-# INLINE foldSemi #-}
 
 
-
 -- | Left fold along a specified dimension with an index aware function.
 --
 -- @since 0.2.4
-ifoldlInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+ifoldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-ifoldlInner dim = ifoldlInner' (fromDimension dim)
-{-# INLINE ifoldlInner #-}
+ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
+{-# INLINE ifoldlWithin #-}
 
 
 -- | Left fold along a specified dimension.
@@ -164,45 +172,45 @@ ifoldlInner dim = ifoldlInner' (fromDimension dim)
 --   [ [ 0,1,2,3,4 ]
 --   , [ 5,6,7,8,9 ]
 --   ])
--- >>> foldlInner Dim1 (flip (:)) [] arr
+-- >>> foldlWithin Dim1 (flip (:)) [] arr
 -- (Array D Seq (2)
 --   [ [4,3,2,1,0],[9,8,7,6,5] ])
--- >>> foldlInner Dim2 (flip (:)) [] arr
+-- >>> foldlWithin Dim2 (flip (:)) [] arr
 -- (Array D Seq (5)
 --   [ [5,0],[6,1],[7,2],[8,3],[9,4] ])
 --
 -- @since 0.2.4
-foldlInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+foldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-foldlInner dim f = ifoldlInner dim (const f)
-{-# INLINE foldlInner #-}
+foldlWithin dim f = ifoldlWithin dim (const f)
+{-# INLINE foldlWithin #-}
 
 
 -- | Right fold along a specified dimension with an index aware function.
 --
 -- @since 0.2.4
-ifoldrInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+ifoldrWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-ifoldrInner dim = ifoldrInner' (fromDimension dim)
-{-# INLINE ifoldrInner #-}
+ifoldrWithin dim = ifoldrWithin' (fromDimension dim)
+{-# INLINE ifoldrWithin #-}
 
 
 -- | Right fold along a specified dimension.
 --
 -- @since 0.2.4
-foldrInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+foldrWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-foldrInner dim f = ifoldrInner dim (const f)
-{-# INLINE foldrInner #-}
+foldrWithin dim f = ifoldrWithin dim (const f)
+{-# INLINE foldrWithin #-}
 
 
--- | Similar to `ifoldlInner`, except dimension is specified at a value level, which means it will
--- throw an exception on an invalid dimension.
+-- | Similar to `ifoldlWithin`, except that dimension is specified at a value level, which means it
+-- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-ifoldlInner' :: (Index (Lower ix), Source r ix e) =>
+ifoldlWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-ifoldlInner' dim f acc0 arr =
+ifoldlWithin' dim f acc0 arr =
   unsafeMakeArray (getComp arr) (dropDim' sz dim) $ \ixl ->
     iter
       (insertDim' ixl dim 0)
@@ -214,27 +222,27 @@ ifoldlInner' dim f acc0 arr =
   where
     sz = size arr
     k = getIndex' sz dim
-{-# INLINE ifoldlInner' #-}
+{-# INLINE ifoldlWithin' #-}
 
 
--- | Similar to `foldlInner`, except dimension is specified at a value level, which means it will
+-- | Similar to `foldlWithin`, except that dimension is specified at a value level, which means it will
 -- throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-foldlInner' :: (Index (Lower ix), Source r ix e) =>
+foldlWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-foldlInner' dim f = ifoldlInner' dim (const f)
-{-# INLINE foldlInner' #-}
+foldlWithin' dim f = ifoldlWithin' dim (const f)
+{-# INLINE foldlWithin' #-}
 
 
--- | Similar to `ifoldrInner`, except dimension is specified at a value level, which means it will
--- throw an exception on an invalid dimension.
+-- | Similar to `ifoldrWithin`, except that dimension is specified at a value level, which means it
+-- will throw an exception on an invalid dimension.
 --
 --
 -- @since 0.2.4
-ifoldrInner' :: (Index (Lower ix), Source r ix e) =>
+ifoldrWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-ifoldrInner' dim f acc0 arr =
+ifoldrWithin' dim f acc0 arr =
   unsafeMakeArray (getComp arr) (dropDim' sz dim) $ \ixl ->
     iter
       (insertDim' ixl dim (k - 1))
@@ -246,17 +254,49 @@ ifoldrInner' dim f acc0 arr =
   where
     sz = size arr
     k = getIndex' sz dim
-{-# INLINE ifoldrInner' #-}
+{-# INLINE ifoldrWithin' #-}
 
--- | Similar to `foldrInner`, except dimension is specified at a value level, which means it will
--- throw an exception on an invalid dimension.
+-- | Similar to `foldrWithin`, except that dimension is specified at a value level, which means it
+-- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-foldrInner' :: (Index (Lower ix), Source r ix e) =>
+foldrWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-foldrInner' dim f = ifoldrInner' dim (const f)
-{-# INLINE foldrInner' #-}
+foldrWithin' dim f = ifoldrWithin' dim (const f)
+{-# INLINE foldrWithin' #-}
 
+
+-- | Left fold over the inner most dimension with index aware function.
+--
+-- @since 0.2.4
+ifoldlInner :: (Index (Lower ix), Source r ix e) =>
+  (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldlInner = ifoldlWithin' 1
+{-# INLINE ifoldlInner #-}
+
+-- | Left fold over the inner most dimension.
+--
+-- @since 0.2.4
+foldlInner :: (Index (Lower ix), Source r ix e) =>
+  (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+foldlInner = foldlWithin' 1
+{-# INLINE foldlInner #-}
+
+-- | Right fold over the inner most dimension with index aware function.
+--
+-- @since 0.2.4
+ifoldrInner :: (Index (Lower ix), Source r ix e) =>
+  (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+ifoldrInner = ifoldrWithin' 1
+{-# INLINE ifoldrInner #-}
+
+-- | Right fold over the inner most dimension.
+--
+-- @since 0.2.4
+foldrInner :: (Index (Lower ix), Source r ix e) =>
+  (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
+foldrInner = foldrWithin' 1
+{-# INLINE foldrInner #-}
 
 
 -- | /O(n)/ - Compute maximum of all elements.
