@@ -261,46 +261,46 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   type Dimensions Ix2 = 2
   dimensions _ = 2
   {-# INLINE [1] dimensions #-}
-  totalElem (m :. n) = m * n
+  totalElem (k2 :. k1) = k2 * k1
   {-# INLINE [1] totalElem #-}
-  isSafeIndex (m :. n) (i :. j) = 0 <= i && 0 <= j && i < m && j < n
+  isSafeIndex (k2 :. k1) (i2 :. i1) = 0 <= i2 && 0 <= i1 && i2 < k2 && i1 < k1
   {-# INLINE [1] isSafeIndex #-}
-  toLinearIndex (_ :. n) (i :. j) = n * i + j
+  toLinearIndex (_ :. k1) (i2 :. i1) = k1 * i2 + i1
   {-# INLINE [1] toLinearIndex #-}
-  fromLinearIndex (_ :. n) k = case k `quotRem` n of
-                                 (i, j) -> i :. j
+  fromLinearIndex (_ :. k1) i = case i `quotRem` k1 of
+                                 (i2, i1) -> i2 :. i1
   {-# INLINE [1] fromLinearIndex #-}
   consDim = (:.)
   {-# INLINE [1] consDim #-}
-  unconsDim (i :. ix) = (i, ix)
+  unconsDim (i2 :. i1) = (i2, i1)
   {-# INLINE [1] unconsDim #-}
-  snocDim i j = i :. j
+  snocDim i2 i1 = i2 :. i1
   {-# INLINE [1] snocDim #-}
-  unsnocDim (i :. j) = (i, j)
+  unsnocDim (i2 :. i1) = (i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i :. _) 2 = Just i
-  getIndex (_ :. j) 1 = Just j
+  getIndex (i2 :.  _) 2 = Just i2
+  getIndex ( _ :. i1) 1 = Just i1
   getIndex _        _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_ :. j) 2 i = Just (i :. j)
-  setIndex (i :. _) 1 j = Just (i :. j)
+  setIndex ( _ :. i1) 2 i2 = Just (i2 :. i1)
+  setIndex (i2 :.  _) 1 i1 = Just (i2 :. i1)
   setIndex _        _ _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropDim (_ :. j) 2 = Just j
-  dropDim (i :. _) 1 = Just i
-  dropDim _      _   = Nothing
+  dropDim ( _ :. i1) 2 = Just i1
+  dropDim (i2 :.  _) 1 = Just i2
+  dropDim _          _ = Nothing
   {-# INLINE [1] dropDim #-}
   insertDim i1 2 i2 = Just (i2 :. i1)
   insertDim i2 1 i1 = Just (i2 :. i1)
   insertDim _  _  _ = Nothing
   pureIndex i = i :. i
   {-# INLINE [1] pureIndex #-}
-  liftIndex f (i :. j) = f i :. f j
+  liftIndex f (i2 :. i1) = f i2 :. f i1
   {-# INLINE [1] liftIndex #-}
-  liftIndex2 f (i0 :. j0) (i1 :. j1) = f i0 i1 :. f j0 j1
+  liftIndex2 f (i2 :. i1) (i2' :. i1') = f i2 i2' :. f i1 i1'
   {-# INLINE [1] liftIndex2 #-}
-  repairIndex (n :. szL) (i :. ixL) rBelow rOver =
-    repairIndex n i rBelow rOver :. repairIndex szL ixL rBelow rOver
+  repairIndex (k :. szL) (i :. ixL) rBelow rOver =
+    repairIndex k i rBelow rOver :. repairIndex szL ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
 
 
@@ -308,36 +308,36 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   type Dimensions Ix3 = 3
   dimensions _ = 3
   {-# INLINE [1] dimensions #-}
-  totalElem (m :> n :. o) = m * n * o
+  totalElem (k3 :> k2 :. k1) = k3 * k2 * k1
   {-# INLINE [1] totalElem #-}
-  isSafeIndex (m :> n :. o) (i :> j :. k) =
-    0 <= i && 0 <= j && 0 <= k && i < m && j < n && k < o
+  isSafeIndex (k3 :> k2 :. k1) (i3 :> i2 :. i1) =
+    0 <= i3 && 0 <= i2 && 0 <= i1 && i3 < k3 && i2 < k2 && i1 < k1
   {-# INLINE [1] isSafeIndex #-}
-  toLinearIndex (_ :> n :. o) (i :> j :. k) = (n * i + j) * o + k
+  toLinearIndex (_ :> k2 :. k1) (i3 :> i2 :. i1) = (k2 * i3 + i2) * k1 + i1
   {-# INLINE [1] toLinearIndex #-}
-  fromLinearIndex (_ :> ix) k = let !(q, ixL) = fromLinearIndexAcc ix k in q :> ixL
+  fromLinearIndex (_ :> ix) i = let !(q, ixL) = fromLinearIndexAcc ix i in q :> ixL
   {-# INLINE [1] fromLinearIndex #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
-  unconsDim (i :> ix) = (i, ix)
+  unconsDim (i3 :> ix) = (i3, ix)
   {-# INLINE [1] unconsDim #-}
-  snocDim (i :. j) k = i :> j :. k
+  snocDim (i3 :. i2) i1 = i3 :> i2 :. i1
   {-# INLINE [1] snocDim #-}
-  unsnocDim (i :> j :. k) = (i :. j, k)
+  unsnocDim (i3 :> i2 :. i1) = (i3 :. i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i :> _ :. _) 3 = Just i
-  getIndex (_ :> j :. _) 2 = Just j
-  getIndex (_ :> _ :. k) 1 = Just k
+  getIndex (i3 :>  _ :.  _) 3 = Just i3
+  getIndex ( _ :> i2 :.  _) 2 = Just i2
+  getIndex ( _ :>  _ :. i1) 1 = Just i1
   getIndex _             _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_ :> j :. k) 3 i = Just (i :> j :. k)
-  setIndex (i :> _ :. k) 2 j = Just (i :> j :. k)
-  setIndex (i :> j :. _) 1 k = Just (i :> j :. k)
+  setIndex ( _ :> i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
+  setIndex (i3 :>  _ :. i1) 2 i2 = Just (i3 :> i2 :. i1)
+  setIndex (i3 :> i2 :.  _) 1 i1 = Just (i3 :> i2 :. i1)
   setIndex _             _ _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropDim (_ :> j :. k) 3 = Just (j :. k)
-  dropDim (i :> _ :. k) 2 = Just (i :. k)
-  dropDim (i :> j :. _) 1 = Just (i :. j)
+  dropDim ( _ :> i2 :. i1) 3 = Just (i2 :. i1)
+  dropDim (i3 :>  _ :. i1) 2 = Just (i3 :. i1)
+  dropDim (i3 :> i2 :.  _) 1 = Just (i3 :. i2)
   dropDim _             _ = Nothing
   {-# INLINE [1] dropDim #-}
   insertDim (i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
@@ -347,9 +347,9 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] insertDim #-}
   pureIndex i = i :> i :. i
   {-# INLINE [1] pureIndex #-}
-  liftIndex f (i :> j :. k) = f i :> f j :. f k
+  liftIndex f (i3 :> i2 :. i1) = f i3 :> f i2 :. f i1
   {-# INLINE [1] liftIndex #-}
-  liftIndex2 f (i0 :> j0 :. k0) (i1 :> j1 :. k1) = f i0 i1 :> f j0 j1 :. f k0 k1
+  liftIndex2 f (i3 :> i2 :. i1) (i3' :> i2' :. i1') = f i3 i3' :> f i2 i2' :. f i1 i1'
   {-# INLINE [1] liftIndex2 #-}
   repairIndex (n :> szL) (i :> ixL) rBelow rOver =
     repairIndex n i rBelow rOver :> repairIndex szL ixL rBelow rOver
@@ -366,37 +366,37 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   type Dimensions (IxN n) = n
   dimensions _ = fromInteger $ natVal (Proxy :: Proxy n)
   {-# INLINE [1] dimensions #-}
-  totalElem (i :> ix) = i * totalElem ix
+  totalElem (i :> ixl) = i * totalElem ixl
   {-# INLINE [1] totalElem #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
-  unconsDim (i :> ix) = (i, ix)
+  unconsDim (i :> ixl) = (i, ixl)
   {-# INLINE [1] unconsDim #-}
-  snocDim (i :> ix) k = i :> snocDim ix k
+  snocDim (i :> ixl) i1 = i :> snocDim ixl i1
   {-# INLINE [1] snocDim #-}
-  unsnocDim (i :> ix) = case unsnocDim ix of
-                          (jx, j) -> (i :> jx, j)
+  unsnocDim (i :> ixl) = case unsnocDim ixl of
+                          (ix, i1) -> (i :> ix, i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex ix@(j :> jx) k | k == dimensions ix = Just j
-                          | otherwise = getIndex jx k
+  getIndex ix@(i :> ixl) d | d == dimensions ix = Just i
+                           | otherwise = getIndex ixl d
   {-# INLINE [1] getIndex #-}
-  setIndex ix@(j :> jx) k o | k == dimensions ix = Just (o :> jx)
-                            | otherwise = (j :>) <$> setIndex jx k o
+  setIndex ix@(i :> ixl) d di | d == dimensions ix = Just (di :> ixl)
+                              | otherwise = (i :>) <$> setIndex ixl d di
   {-# INLINE [1] setIndex #-}
-  dropDim ix@(j :> jx) k | k == dimensions ix = Just jx
-                         | otherwise = (j :>) <$> dropDim jx k
+  dropDim ix@(i :> ixl) d | d == dimensions ix = Just ixl
+                          | otherwise = (i :>) <$> dropDim ixl d
   {-# INLINE [1] dropDim #-}
-  insertDim ix@(i :> ixl) d ni | d == dimensions ix + 1 = Just (ni :> ix)
-                               | otherwise = (i :>) <$> insertDim ixl d ni
+  insertDim ix@(i :> ixl) d di | d == dimensions ix + 1 = Just (di :> ix)
+                               | otherwise = (i :>) <$> insertDim ixl d di
   {-# INLINE [1] insertDim #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i :> ix) = f i :> liftIndex f ix
   {-# INLINE [1] liftIndex #-}
-  liftIndex2 f (i1 :> ix1) (i2 :> ix2) = f i1 i2 :> liftIndex2 f ix1 ix2
+  liftIndex2 f (i :> ix) (i' :> ix') = f i i' :> liftIndex2 f ix ix'
   {-# INLINE [1] liftIndex2 #-}
-  repairIndex (n :> szL) (i :> ixL) rBelow rOver =
-    repairIndex n i rBelow rOver :> repairIndex szL ixL rBelow rOver
+  repairIndex (k :> szL) (i :> ixL) rBelow rOver =
+    repairIndex k i rBelow rOver :> repairIndex szL ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
 
 

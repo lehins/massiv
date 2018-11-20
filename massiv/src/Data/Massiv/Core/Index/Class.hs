@@ -289,11 +289,11 @@ instance Index Ix2T where
   type Dimensions Ix2T = 2
   dimensions _ = 2
   {-# INLINE [1] dimensions #-}
-  totalElem (m, n) = m * n
+  totalElem (k2, k1) = k2 * k1
   {-# INLINE [1] totalElem #-}
-  toLinearIndex (_, n) (i, j) = n * i + j
+  toLinearIndex (_, k1) (i2, i1) = k1 * i2 + i1
   {-# INLINE [1] toLinearIndex #-}
-  fromLinearIndex (_, n) !k = k `quotRem` n
+  fromLinearIndex (_, k1) !i = i `quotRem` k1
   {-# INLINE [1] fromLinearIndex #-}
   consDim = (,)
   {-# INLINE [1] consDim #-}
@@ -303,16 +303,16 @@ instance Index Ix2T where
   {-# INLINE [1] snocDim #-}
   unsnocDim = id
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i, _) 2 = Just i
-  getIndex (_, j) 1 = Just j
+  getIndex (i2,  _) 2 = Just i2
+  getIndex ( _, i1) 1 = Just i1
   getIndex _      _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_, j) 2 i = Just (i, j)
-  setIndex (i, _) 1 j = Just (i, j)
+  setIndex (_, i1) 2 i2 = Just (i2, i1)
+  setIndex (i2, _) 1 i1 = Just (i2, i1)
   setIndex _      _ _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropDim (_, j) 2 = Just j
-  dropDim (i, _) 1 = Just i
+  dropDim (_, i1) 2 = Just i1
+  dropDim (i2, _) 1 = Just i2
   dropDim _      _ = Nothing
   {-# INLINE [1] dropDim #-}
   insertDim i1 2 i2 = Just (i2, i1)
@@ -321,7 +321,7 @@ instance Index Ix2T where
   {-# INLINE [1] insertDim #-}
   pureIndex i = (i, i)
   {-# INLINE [1] pureIndex #-}
-  liftIndex2 f (i0, j0) (i1, j1) = (f i0 i1, f j0 j1)
+  liftIndex2 f (i2, i1) (i2', i1') = (f i2 i2', f i1 i1')
   {-# INLINE [1] liftIndex2 #-}
 
 
@@ -329,38 +329,38 @@ instance Index Ix3T where
   type Dimensions Ix3T = 3
   dimensions _ = 3
   {-# INLINE [1] dimensions #-}
-  totalElem  (m, n, o) = m * n * o
+  totalElem  (k3, k2, k1) = k3 * k2 * k1
   {-# INLINE [1] totalElem #-}
-  consDim i (j, k) = (i, j, k)
+  consDim i3 (i2, i1) = (i3, i2, i1)
   {-# INLINE [1] consDim #-}
-  unconsDim (i, j, k) = (i, (j, k))
+  unconsDim (i3, i2, i1) = (i3, (i2, i1))
   {-# INLINE [1] unconsDim #-}
-  snocDim (i, j) k = (i, j, k)
+  snocDim (i3, i2) i1 = (i3, i2, i1)
   {-# INLINE [1] snocDim #-}
-  unsnocDim (i, j, k) = ((i, j), k)
+  unsnocDim (i3, i2, i1) = ((i3, i2), i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i, _, _) 3 = Just i
-  getIndex (_, j, _) 2 = Just j
-  getIndex (_, _, k) 1 = Just k
-  getIndex _         _ = Nothing
+  getIndex (i3,  _,  _) 3 = Just i3
+  getIndex ( _, i2,  _) 2 = Just i2
+  getIndex ( _,  _, i1) 1 = Just i1
+  getIndex _            _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex (_, j, k) 3 i = Just (i, j, k)
-  setIndex (i, _, k) 2 j = Just (i, j, k)
-  setIndex (i, j, _) 1 k = Just (i, j, k)
+  setIndex ( _, i2, i1) 3 i3 = Just (i3, i2, i1)
+  setIndex (i3,  _, i1) 2 i2 = Just (i3, i2, i1)
+  setIndex (i3, i2,  _) 1 i1 = Just (i3, i2, i1)
   setIndex _      _ _    = Nothing
   {-# INLINE [1] setIndex #-}
-  dropDim (_, j, k) 3 = Just (j, k)
-  dropDim (i, _, k) 2 = Just (i, k)
-  dropDim (i, j, _) 1 = Just (i, j)
+  dropDim ( _, i2, i1) 3 = Just (i2, i1)
+  dropDim (i3,  _, i1) 2 = Just (i3, i1)
+  dropDim (i3, i2,  _) 1 = Just (i3, i2)
   dropDim _      _    = Nothing
   {-# INLINE [1] dropDim #-}
-  insertDim (i, j) 3 k = Just (k, i, j)
-  insertDim (i, j) 2 k = Just (i, k, j)
-  insertDim (i, j) 1 k = Just (i, j, k)
+  insertDim (i2, i1) 3 i3 = Just (i3, i2, i1)
+  insertDim (i3, i1) 2 i2 = Just (i3, i2, i1)
+  insertDim (i3, i2) 1 i1 = Just (i3, i2, i1)
   insertDim _      _ _ = Nothing
   pureIndex i = (i, i, i)
   {-# INLINE [1] pureIndex #-}
-  liftIndex2 f (i0, j0, k0) (i1, j1, k1) = (f i0 i1, f j0 j1, f k0 k1)
+  liftIndex2 f (i3, i2, i1) (i3', i2', i1') = (f i3 i3', f i2 i2', f i1 i1')
   {-# INLINE [1] liftIndex2 #-}
 
 
@@ -368,43 +368,43 @@ instance Index Ix4T where
   type Dimensions Ix4T = 4
   dimensions _ = 4
   {-# INLINE [1] dimensions #-}
-  totalElem !(n1, n2, n3, n4) = n1 * n2 * n3 * n4
+  totalElem !(k4, k3, k2, k1) = k4 * k3 * k2 * k1
   {-# INLINE [1] totalElem #-}
-  consDim i1 (i2, i3, i4) = (i1, i2, i3, i4)
+  consDim i4 (i3, i2, i1) = (i4, i3, i2, i1)
   {-# INLINE [1] consDim #-}
-  unconsDim (i1, i2, i3, i4) = (i1, (i2, i3, i4))
+  unconsDim (i4, i3, i2, i1) = (i4, (i3, i2, i1))
   {-# INLINE [1] unconsDim #-}
-  snocDim (i1, i2, i3) i4 = (i1, i2, i3, i4)
+  snocDim (i4, i3, i2) i1 = (i4, i3, i2, i1)
   {-# INLINE [1] snocDim #-}
-  unsnocDim (i1, i2, i3, i4) = ((i1, i2, i3), i4)
+  unsnocDim (i4, i3, i2, i1) = ((i4, i3, i2), i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i1,  _,  _,  _) 4 = Just i1
-  getIndex ( _, i2,  _,  _) 3 = Just i2
-  getIndex ( _,  _, i3,  _) 2 = Just i3
-  getIndex ( _,  _,  _, i4) 1 = Just i4
+  getIndex (i4,  _,  _,  _) 4 = Just i4
+  getIndex ( _, i3,  _,  _) 3 = Just i3
+  getIndex ( _,  _, i2,  _) 2 = Just i2
+  getIndex ( _,  _,  _, i1) 1 = Just i1
   getIndex _                _ = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex ( _, i2, i3, i4) 4 i1 = Just (i1, i2, i3, i4)
-  setIndex (i1,  _, i3, i4) 3 i2 = Just (i1, i2, i3, i4)
-  setIndex (i1, i2,  _, i4) 2 i3 = Just (i1, i2, i3, i4)
-  setIndex (i1, i2, i3,  _) 1 i4 = Just (i1, i2, i3, i4)
+  setIndex ( _, i3, i2, i1) 4 i4 = Just (i4, i3, i2, i1)
+  setIndex (i4,  _, i2, i1) 3 i3 = Just (i4, i3, i2, i1)
+  setIndex (i4, i3,  _, i1) 2 i2 = Just (i4, i3, i2, i1)
+  setIndex (i4, i3, i2,  _) 1 i1 = Just (i4, i3, i2, i1)
   setIndex _                _  _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropDim ( _, i2, i3, i4) 4 = Just (i2, i3, i4)
-  dropDim (i1,  _, i3, i4) 3 = Just (i1, i3, i4)
-  dropDim (i1, i2,  _, i4) 2 = Just (i1, i2, i4)
-  dropDim (i1, i2, i3,  _) 1 = Just (i1, i2, i3)
+  dropDim ( _, i3, i2, i1) 4 = Just (i3, i2, i1)
+  dropDim (i4,  _, i2, i1) 3 = Just (i4, i2, i1)
+  dropDim (i4, i3,  _, i1) 2 = Just (i4, i3, i1)
+  dropDim (i4, i3, i2,  _) 1 = Just (i4, i3, i2)
   dropDim _                _ = Nothing
   {-# INLINE [1] dropDim #-}
-  insertDim (i2, i3, i4) 4 i1 = Just (i1, i2, i3, i4)
-  insertDim (i1, i3, i4) 3 i2 = Just (i1, i2, i3, i4)
-  insertDim (i1, i2, i4) 2 i3 = Just (i1, i2, i3, i4)
-  insertDim (i1, i2, i3) 1 i4 = Just (i1, i2, i3, i4)
+  insertDim (i3, i2, i1) 4 i4 = Just (i4, i3, i2, i1)
+  insertDim (i4, i2, i1) 3 i3 = Just (i4, i3, i2, i1)
+  insertDim (i4, i3, i1) 2 i2 = Just (i4, i3, i2, i1)
+  insertDim (i4, i3, i2) 1 i1 = Just (i4, i3, i2, i1)
   insertDim _            _  _ = Nothing
   {-# INLINE [1] insertDim #-}
   pureIndex i = (i, i, i, i)
   {-# INLINE [1] pureIndex #-}
-  liftIndex2 f (i0, i1, i2, i3) (j0, j1, j2, j3) = (f i0 j0, f i1 j1, f i2 j2, f i3 j3)
+  liftIndex2 f (i4, i3, i2, i1) (i4', i3', i2', i1') = (f i4 i4', f i3 i3', f i2 i2', f i1 i1')
   {-# INLINE [1] liftIndex2 #-}
 
 
@@ -412,48 +412,48 @@ instance Index Ix5T where
   type Dimensions Ix5T = 5
   dimensions _ = 5
   {-# INLINE [1] dimensions #-}
-  totalElem !(n1, n2, n3, n4, n5) = n1 * n2 * n3 * n4 * n5
+  totalElem !(n5, n4, n3, n2, n1) = n5 * n4 * n3 * n2 * n1
   {-# INLINE [1] totalElem #-}
-  consDim i1 (i2, i3, i4, i5) = (i1, i2, i3, i4, i5)
+  consDim i5 (i4, i3, i2, i1) = (i5, i4, i3, i2, i1)
   {-# INLINE [1] consDim #-}
-  unconsDim (i1, i2, i3, i4, i5) = (i1, (i2, i3, i4, i5))
+  unconsDim (i5, i4, i3, i2, i1) = (i5, (i4, i3, i2, i1))
   {-# INLINE [1] unconsDim #-}
-  snocDim (i1, i2, i3, i4) i5 = (i1, i2, i3, i4, i5)
+  snocDim (i5, i4, i3, i2) i1 = (i5, i4, i3, i2, i1)
   {-# INLINE [1] snocDim #-}
-  unsnocDim (i1, i2, i3, i4, i5) = ((i1, i2, i3, i4), i5)
+  unsnocDim (i5, i4, i3, i2, i1) = ((i5, i4, i3, i2), i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i1,  _,  _,  _,  _) 5 = Just i1
-  getIndex ( _, i2,  _,  _,  _) 4 = Just i2
+  getIndex (i5,  _,  _,  _,  _) 5 = Just i5
+  getIndex ( _, i4,  _,  _,  _) 4 = Just i4
   getIndex ( _,  _, i3,  _,  _) 3 = Just i3
-  getIndex ( _,  _,  _, i4,  _) 2 = Just i4
-  getIndex ( _,  _,  _,  _, i5) 1 = Just i5
+  getIndex ( _,  _,  _, i2,  _) 2 = Just i2
+  getIndex ( _,  _,  _,  _, i1) 1 = Just i1
   getIndex _                _     = Nothing
   {-# INLINE [1] getIndex #-}
-  setIndex ( _, i2, i3, i4, i5) 5 i1 = Just (i1, i2, i3, i4, i5)
-  setIndex (i1,  _, i3, i4, i5) 4 i2 = Just (i1, i2, i3, i4, i5)
-  setIndex (i1, i2,  _, i4, i5) 3 i3 = Just (i1, i2, i3, i4, i5)
-  setIndex (i1, i2, i3,  _, i5) 2 i4 = Just (i1, i2, i3, i4, i5)
-  setIndex (i1, i2, i3, i4,  _) 1 i5 = Just (i1, i2, i3, i4, i5)
+  setIndex ( _, i4, i3, i2, i1) 5 i5 = Just (i5, i4, i3, i2, i1)
+  setIndex (i5,  _, i3, i2, i1) 4 i4 = Just (i5, i4, i3, i2, i1)
+  setIndex (i5, i4,  _, i2, i1) 3 i3 = Just (i5, i4, i3, i2, i1)
+  setIndex (i5, i4, i3,  _, i1) 2 i2 = Just (i5, i4, i3, i2, i1)
+  setIndex (i5, i4, i3, i2,  _) 1 i1 = Just (i5, i4, i3, i2, i1)
   setIndex _                    _  _ = Nothing
   {-# INLINE [1] setIndex #-}
-  dropDim ( _, i2, i3, i4, i5) 5 = Just (i2, i3, i4, i5)
-  dropDim (i1,  _, i3, i4, i5) 4 = Just (i1, i3, i4, i5)
-  dropDim (i1, i2,  _, i4, i5) 3 = Just (i1, i2, i4, i5)
-  dropDim (i1, i2, i3,  _, i5) 2 = Just (i1, i2, i3, i5)
-  dropDim (i1, i2, i3, i4,  _) 1 = Just (i1, i2, i3, i4)
+  dropDim ( _, i4, i3, i2, i1) 5 = Just (i4, i3, i2, i1)
+  dropDim (i5,  _, i3, i2, i1) 4 = Just (i5, i3, i2, i1)
+  dropDim (i5, i4,  _, i2, i1) 3 = Just (i5, i4, i2, i1)
+  dropDim (i5, i4, i3,  _, i1) 2 = Just (i5, i4, i3, i1)
+  dropDim (i5, i4, i3, i2,  _) 1 = Just (i5, i4, i3, i2)
   dropDim _                    _ = Nothing
   {-# INLINE [1] dropDim #-}
-  insertDim (i2, i3, i4, i5) 5 i1 = Just (i1, i2, i3, i4, i5)
-  insertDim (i1, i3, i4, i5) 4 i2 = Just (i1, i2, i3, i4, i5)
-  insertDim (i1, i2, i4, i5) 3 i3 = Just (i1, i2, i3, i4, i5)
-  insertDim (i1, i2, i3, i5) 2 i4 = Just (i1, i2, i3, i4, i5)
-  insertDim (i1, i2, i3, i4) 1 i5 = Just (i1, i2, i3, i4, i5)
+  insertDim (i4, i3, i2, i1) 5 i5 = Just (i5, i4, i3, i2, i1)
+  insertDim (i5, i3, i2, i1) 4 i4 = Just (i5, i4, i3, i2, i1)
+  insertDim (i5, i4, i2, i1) 3 i3 = Just (i5, i4, i3, i2, i1)
+  insertDim (i5, i4, i3, i1) 2 i2 = Just (i5, i4, i3, i2, i1)
+  insertDim (i5, i4, i3, i2) 1 i1 = Just (i5, i4, i3, i2, i1)
   insertDim _            _  _     = Nothing
   {-# INLINE [1] insertDim #-}
   pureIndex i = (i, i, i, i, i)
   {-# INLINE [1] pureIndex #-}
-  liftIndex2 f (i0, i1, i2, i3, i4) (j0, j1, j2, j3, j4) =
-    (f i0 j0, f i1 j1, f i2 j2, f i3 j3, f i4 j4)
+  liftIndex2 f (i5, i4, i3, i2, i1) (i5', i4', i3', i2', i1') =
+    (f i5 i5', f i4 i4', f i3 i3', f i2 i2', f i1 i1')
   {-# INLINE [1] liftIndex2 #-}
 
 -- | Helper function for throwing out of bounds errors
