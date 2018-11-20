@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -37,7 +36,7 @@ import           GHC.Base                            (build)
 -- | Convert a flat list into a vector
 fromList :: (Nested LN Ix1 e, Nested L Ix1 e, Ragged L Ix1 e, Mutable r Ix1 e)
          => Comp -- ^ Computation startegy to use
-         -> [e] -- ^ Nested list
+         -> [e] -- ^ Flat list
          -> Array r Ix1 e
 fromList = fromLists'
 {-# INLINE fromList #-}
@@ -48,10 +47,6 @@ fromList = fromLists'
 -- | /O(n)/ - Convert a nested list into an array. Nested list must be of a rectangular shape,
 -- otherwise a runtime error will occur. Also, nestedness must match the rank of resulting array,
 -- which should be specified through an explicit type signature.
---
--- __Note__: This function is almost the same (modulo customizable computation strategy) if you
--- would turn on @{-# LANGUAGE OverloadedLists #-}@. For that reason you can also use
--- `GHC.Exts.fromList`.
 --
 -- ==== __Examples__
 --
@@ -87,6 +82,10 @@ fromLists comp = either (const Nothing) Just . fromRaggedArray . setComp comp . 
 
 -- | Same as `fromLists`, but will throw an error on irregular shaped lists.
 --
+-- __Note__: This function is almost the same (modulo customizable computation strategy) if you
+-- would turn on @{-# LANGUAGE OverloadedLists #-}@. For that reason you can also use
+-- `GHC.Exts.fromList`.
+--
 -- ===__Examples__
 --
 -- Convert a list of lists into a 2D Array
@@ -106,7 +105,7 @@ fromLists comp = either (const Nothing) Just . fromRaggedArray . setComp comp . 
 --   , [ 3,4 ]
 --   ])
 --
--- Example of failure on ceonversion of an irregular nested list.
+-- Example of failure on conversion of an irregular nested list.
 --
 -- >>> fromLists' Seq [[1],[3,4]] :: Array U Ix2 Int
 -- (Array U *** Exception: Too many elements in a row

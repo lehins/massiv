@@ -20,8 +20,8 @@ main = do
               [ bench "foldlS" $ whnf (A.foldlS (+) 0) arr
               , bench "foldrS" $ whnf (A.foldrS (+) 0) arr
               , bench "sum" $ whnf A.sum arr
-              , bench "foldlS . foldlInner 2" $ whnf (A.foldlS (+) 0 . foldlInner Dim2 (+) 0) arr
-              , bench "foldlS . foldlInner 1" $ whnf (A.foldlS (+) 0 . foldlInner Dim1 (+) 0) arr
+              , bench "foldlS . foldlInner Dim2" $ whnf (A.foldlS (+) 0 . foldlInner Dim2 (+) 0) arr
+              , bench "foldlS . foldlInner Dim1" $ whnf (A.foldlS (+) 0 . foldlInner Dim1 (+) 0) arr
               ]
         , env (return (arrRLightIx2 U Par sz)) $ \arr ->
             bgroup
@@ -29,9 +29,9 @@ main = do
               [ bench "foldlP" $ whnfIO (A.foldlP (+) 0 (+) 0 arr)
               , bench "foldrP" $ whnfIO (A.foldrP (+) 0 (+) 0 arr)
               , bench "sum" $ whnf A.sum arr
-              , bench "foldlS . foldlInner 2" $
+              , bench "foldlS . foldlInner Dim2" $
                 whnfIO (A.foldlP (+) 0 (+) 0 $ foldlInner Dim2 (+) 0 arr)
-              , bench "foldlS . foldlInner 1" $
+              , bench "foldlS . foldlInner Dim1" $
                 whnfIO (A.foldlP (+) 0 (+) 0 $ foldlInner Dim1 (+) 0 arr)
               ]
         ]

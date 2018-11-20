@@ -156,6 +156,21 @@ ifoldlInner dim = ifoldlInner' (fromDimension dim)
 
 -- | Left fold along a specified dimension.
 --
+-- ====__Example__
+--
+-- >>> let arr = makeArrayR U Seq (2 :. 5) (toLinearIndex (2 :. 5))
+-- >>> arr
+-- (Array U Seq (2 :. 5)
+--   [ [ 0,1,2,3,4 ]
+--   , [ 5,6,7,8,9 ]
+--   ])
+-- >>> foldlInner Dim1 (flip (:)) [] arr
+-- (Array D Seq (2)
+--   [ [4,3,2,1,0],[9,8,7,6,5] ])
+-- >>> foldlInner Dim2 (flip (:)) [] arr
+-- (Array D Seq (5)
+--   [ [5,0],[6,1],[7,2],[8,3],[9,4] ])
+--
 -- @since 0.2.4
 foldlInner :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
   Dimension n -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
