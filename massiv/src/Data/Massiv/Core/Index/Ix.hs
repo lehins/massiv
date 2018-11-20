@@ -278,14 +278,14 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i2 :. i1) = (i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i2 :.  _) 2 = Just i2
-  getIndex ( _ :. i1) 1 = Just i1
-  getIndex _        _ = Nothing
-  {-# INLINE [1] getIndex #-}
-  setIndex ( _ :. i1) 2 i2 = Just (i2 :. i1)
-  setIndex (i2 :.  _) 1 i1 = Just (i2 :. i1)
-  setIndex _        _ _ = Nothing
-  {-# INLINE [1] setIndex #-}
+  getDim (i2 :.  _) 2 = Just i2
+  getDim ( _ :. i1) 1 = Just i1
+  getDim _        _ = Nothing
+  {-# INLINE [1] getDim #-}
+  setDim ( _ :. i1) 2 i2 = Just (i2 :. i1)
+  setDim (i2 :.  _) 1 i1 = Just (i2 :. i1)
+  setDim _        _ _ = Nothing
+  {-# INLINE [1] setDim #-}
   dropDim ( _ :. i1) 2 = Just i1
   dropDim (i2 :.  _) 1 = Just i2
   dropDim _          _ = Nothing
@@ -325,16 +325,16 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i3 :> i2 :. i1) = (i3 :. i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex (i3 :>  _ :.  _) 3 = Just i3
-  getIndex ( _ :> i2 :.  _) 2 = Just i2
-  getIndex ( _ :>  _ :. i1) 1 = Just i1
-  getIndex _             _ = Nothing
-  {-# INLINE [1] getIndex #-}
-  setIndex ( _ :> i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
-  setIndex (i3 :>  _ :. i1) 2 i2 = Just (i3 :> i2 :. i1)
-  setIndex (i3 :> i2 :.  _) 1 i1 = Just (i3 :> i2 :. i1)
-  setIndex _             _ _ = Nothing
-  {-# INLINE [1] setIndex #-}
+  getDim (i3 :>  _ :.  _) 3 = Just i3
+  getDim ( _ :> i2 :.  _) 2 = Just i2
+  getDim ( _ :>  _ :. i1) 1 = Just i1
+  getDim _             _ = Nothing
+  {-# INLINE [1] getDim #-}
+  setDim ( _ :> i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
+  setDim (i3 :>  _ :. i1) 2 i2 = Just (i3 :> i2 :. i1)
+  setDim (i3 :> i2 :.  _) 1 i1 = Just (i3 :> i2 :. i1)
+  setDim _             _ _ = Nothing
+  {-# INLINE [1] setDim #-}
   dropDim ( _ :> i2 :. i1) 3 = Just (i2 :. i1)
   dropDim (i3 :>  _ :. i1) 2 = Just (i3 :. i1)
   dropDim (i3 :> i2 :.  _) 1 = Just (i3 :. i2)
@@ -377,12 +377,12 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   unsnocDim (i :> ixl) = case unsnocDim ixl of
                           (ix, i1) -> (i :> ix, i1)
   {-# INLINE [1] unsnocDim #-}
-  getIndex ix@(i :> ixl) d | d == dimensions ix = Just i
-                           | otherwise = getIndex ixl d
-  {-# INLINE [1] getIndex #-}
-  setIndex ix@(i :> ixl) d di | d == dimensions ix = Just (di :> ixl)
-                              | otherwise = (i :>) <$> setIndex ixl d di
-  {-# INLINE [1] setIndex #-}
+  getDim ix@(i :> ixl) d | d == dimensions ix = Just i
+                           | otherwise = getDim ixl d
+  {-# INLINE [1] getDim #-}
+  setDim ix@(i :> ixl) d di | d == dimensions ix = Just (di :> ixl)
+                              | otherwise = (i :>) <$> setDim ixl d di
+  {-# INLINE [1] setDim #-}
   dropDim ix@(i :> ixl) d | d == dimensions ix = Just ixl
                           | otherwise = (i :>) <$> dropDim ixl d
   {-# INLINE [1] dropDim #-}

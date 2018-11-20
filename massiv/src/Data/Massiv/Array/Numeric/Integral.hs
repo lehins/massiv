@@ -46,8 +46,8 @@ midpointStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 midpointStencil dx dim k =
-  makeStencilDef 0 (setIndex' (pureIndex 1) dim k) zeroIndex $ \g ->
-    pure dx * loop 0 (< k) (+ 1) 0 (\i -> (+ g (setIndex' zeroIndex dim i)))
+  makeStencilDef 0 (setDim' (pureIndex 1) dim k) zeroIndex $ \g ->
+    pure dx * loop 0 (< k) (+ 1) 0 (\i -> (+ g (setDim' zeroIndex dim i)))
 {-# INLINE midpointStencil #-}
 
 
@@ -65,10 +65,10 @@ trapezoidStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 trapezoidStencil dx dim n =
-  makeStencilDef 0 (setIndex' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
+  makeStencilDef 0 (setDim' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
     pure dx / 2 *
-    (loop 1 (< n) (+ 1) (g zeroIndex) (\i -> (+ 2 * g (setIndex' zeroIndex dim i))) +
-     g (setIndex' zeroIndex dim n))
+    (loop 1 (< n) (+ 1) (g zeroIndex) (\i -> (+ 2 * g (setDim' zeroIndex dim i))) +
+     g (setDim' zeroIndex dim n))
 {-# INLINE trapezoidStencil #-}
 
 
@@ -90,10 +90,10 @@ simpsonsStencil dx dim n
     error $
     "Number of sample points for Simpson's rule stencil should be even, but received: " ++ show n
   | otherwise =
-    makeStencilDef 0 (setIndex' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
+    makeStencilDef 0 (setDim' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
       let simAcc i (prev, acc) =
-            let !fx3 = g (setIndex' zeroIndex dim (i + 2))
-                !newAcc = acc + prev + 4 * g (setIndex' zeroIndex dim (i + 1)) + fx3
+            let !fx3 = g (setDim' zeroIndex dim (i + 2))
+                !newAcc = acc + prev + 4 * g (setDim' zeroIndex dim (i + 1)) + fx3
              in (fx3, newAcc)
        in pure dx / 3 * snd (loop 2 (< n - 1) (+ 2) (simAcc 0 (g zeroIndex, 0)) simAcc)
 {-# INLINE simpsonsStencil #-}
@@ -109,7 +109,7 @@ integrateWith ::
 integrateWith stencil dim n arr =
   computeWithStride (Stride nsz) $ mapStencil (Fill 0) (stencil dim n) arr
   where
-    !nsz = setIndex' (pureIndex 1) dim n
+    !nsz = setDim' (pureIndex 1) dim n
 {-# INLINE integrateWith #-}
 
 

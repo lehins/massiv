@@ -100,10 +100,24 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   insertDim :: Lower ix -> Dim -> Int -> Maybe ix
 
   -- | Extract the value index has at specified dimension.
-  getIndex :: ix -> Dim -> Maybe Int
+  getDim :: ix -> Dim -> Maybe Int
+  getDim = getIndex
+  {-# INLINE [1] getDim #-}
 
   -- | Set the value for an index at specified dimension.
+  setDim :: ix -> Dim -> Int -> Maybe ix
+  setDim = setIndex
+  {-# INLINE [1] setDim #-}
+
+  -- | Extract the value index has at specified dimension. To be deprecated.
+  getIndex :: ix -> Dim -> Maybe Int
+  getIndex = getDim
+  {-# INLINE [1] getIndex #-}
+
+  -- | Set the value for an index at specified dimension. To be deprecated.
   setIndex :: ix -> Dim -> Int -> Maybe ix
+  setIndex = setDim
+  {-# INLINE [1] setIndex #-}
 
   -- | Lift an `Int` to any index by replicating the value as many times as there are dimensions.
   pureIndex :: Int -> ix

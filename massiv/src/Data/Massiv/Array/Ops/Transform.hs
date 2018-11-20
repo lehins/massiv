@@ -168,10 +168,10 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
   where
     transInner !ix =
       fromMaybe (errorImpossible "transposeInner" ix) $ do
-        n <- getIndex ix (dimensions ix)
-        m <- getIndex ix (dimensions ix - 1)
-        ix' <- setIndex ix (dimensions ix) m
-        setIndex ix' (dimensions ix - 1) n
+        n <- getDim ix (dimensions ix)
+        m <- getDim ix (dimensions ix - 1)
+        ix' <- setDim ix (dimensions ix) m
+        setDim ix' (dimensions ix - 1) n
     {-# INLINE transInner #-}
     newVal = unsafeIndex arr . transInner
     {-# INLINE newVal #-}
@@ -213,10 +213,10 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
   where
     transOuter !ix =
       fromMaybe (errorImpossible "transposeOuter" ix) $ do
-        n <- getIndex ix 1
-        m <- getIndex ix 2
-        ix' <- setIndex ix 1 m
-        setIndex ix' 2 n
+        n <- getDim ix 1
+        m <- getDim ix 2
+        ix' <- setDim ix 1 m
+        setDim ix' 2 n
     {-# INLINE transOuter #-}
     newVal = unsafeIndex arr . transOuter
     {-# INLINE newVal #-}
@@ -295,20 +295,20 @@ append :: (Source r1 ix e, Source r2 ix e) =>
 append n !arr1 !arr2 = do
   let sz1 = size arr1
       sz2 = size arr2
-  k1 <- getIndex sz1 n
-  k2 <- getIndex sz2 n
-  sz1' <- setIndex sz2 n k1
+  k1 <- getDim sz1 n
+  k2 <- getDim sz2 n
+  sz1' <- setDim sz2 n k1
   guard $ sz1 == sz1'
-  newSz <- setIndex sz1 n (k1 + k2)
+  newSz <- setDim sz1 n (k1 + k2)
   return $
     unsafeMakeArray (getComp arr1) newSz $ \ !ix ->
       fromMaybe (errorImpossible "append" ix) $ do
-        k' <- getIndex ix n
+        k' <- getDim ix n
         if k' < k1
           then Just (unsafeIndex arr1 ix)
           else do
-            i <- getIndex ix n
-            ix' <- setIndex ix n (i - k1)
+            i <- getDim ix n
+            ix' <- setDim ix n (i - k1)
             return $ unsafeIndex arr2 ix'
 {-# INLINE append #-}
 
@@ -334,8 +334,8 @@ splitAt ::
   -> Maybe (Array r' ix e, Array r' ix e)
 splitAt dim i arr = do
   let sz = size arr
-  eIx <- setIndex sz dim i
-  sIx <- setIndex zeroIndex dim i
+  eIx <- setDim sz dim i
+  sIx <- setDim zeroIndex dim i
   arr1 <- extractFromTo zeroIndex eIx arr
   arr2 <- extractFromTo sIx sz arr
   return (arr1, arr2)

@@ -137,10 +137,10 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 (<!?>) :: (Slice r ix e)
        => Array r ix e -> (Dim, Int) -> Maybe (Elt r ix e)
 (<!?>) !arr !(dim, i) = do
-  m <- getIndex (size arr) dim
+  m <- getDim (size arr) dim
   guard $ isSafeIndex m i
-  start <- setIndex zeroIndex dim i
-  cutSz <- setIndex (size arr) dim 1
+  start <- setDim zeroIndex dim i
+  cutSz <- setDim (size arr) dim 1
   unsafeSlice arr start cutSz dim
 {-# INLINE (<!?>) #-}
 

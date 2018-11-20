@@ -32,6 +32,8 @@ module Data.Massiv.Core.Index
   , initDim
   , getIndex'
   , setIndex'
+  , getDim'
+  , setDim'
   , dropDim'
   , insertDim'
   , fromDimension
@@ -156,6 +158,22 @@ initDim = fst . unsnocDim
 {-# INLINE [1] initDim #-}
 
 
+
+setDim' :: Index ix => ix -> Dim -> Int -> ix
+setDim' ix dim i =
+  case setDim ix dim i of
+    Just ix' -> ix'
+    Nothing  -> errorDim "setDim'" dim
+{-# INLINE [1] setDim' #-}
+
+getDim' :: Index ix => ix -> Dim -> Int
+getDim' ix dim =
+  case getDim ix dim of
+    Just ix' -> ix'
+    Nothing  -> errorDim "getDim'" dim
+{-# INLINE [1] getDim' #-}
+
+-- | To be deprecated in favor of `setDim'`.
 setIndex' :: Index ix => ix -> Dim -> Int -> ix
 setIndex' ix dim i =
   case setIndex ix dim i of
@@ -163,6 +181,7 @@ setIndex' ix dim i =
     Nothing  -> errorDim "setIndex'" dim
 {-# INLINE [1] setIndex' #-}
 
+-- | To be deprecated in favor of `getDim'`.
 getIndex' :: Index ix => ix -> Dim -> Int
 getIndex' ix dim =
   case getIndex ix dim of
@@ -196,14 +215,14 @@ fromDimension = fromIntegral . natVal
 --
 -- @since 0.2.4
 setDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int -> ix
-setDimension ix d = setIndex' ix (fromDimension d)
+setDimension ix d = setDim' ix (fromDimension d)
 {-# INLINE [1] setDimension #-}
 
 -- | Type safe way to extract value of index at a particular dimension.
 --
 -- @since 0.2.4
 getDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int
-getDimension ix d = getIndex' ix (fromDimension d)
+getDimension ix d = getDim' ix (fromDimension d)
 {-# INLINE [1] getDimension #-}
 
 
