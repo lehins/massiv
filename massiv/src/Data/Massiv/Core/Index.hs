@@ -35,11 +35,13 @@ module Data.Massiv.Core.Index
   , getDim'
   , setDim'
   , dropDim'
+  , pullOutDim'
   , insertDim'
   , fromDimension
   , getDimension
   , setDimension
   , dropDimension
+  , pullOutDimension
   , insertDimension
   , iterLinearM
   , iterLinearM_
@@ -192,9 +194,16 @@ getIndex' ix dim =
 dropDim' :: Index ix => ix -> Dim -> Lower ix
 dropDim' ix dim =
   case dropDim ix dim of
-    Just ix' -> ix'
+    Just ixl -> ixl
     Nothing  -> errorDim "dropDim'" dim
 {-# INLINE [1] dropDim' #-}
+
+pullOutDim' :: Index ix => ix -> Dim -> (Int, Lower ix)
+pullOutDim' ix dim =
+  case pullOutDim ix dim of
+    Just i_ixl -> i_ixl
+    Nothing  -> errorDim "pullOutDim'" dim
+{-# INLINE [1] pullOutDim' #-}
 
 insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
 insertDim' ix dim i =
@@ -234,6 +243,13 @@ dropDimension :: IsIndexDimension ix n => ix -> Dimension n -> Lower ix
 dropDimension ix d = dropDim' ix (fromDimension d)
 {-# INLINE [1] dropDimension #-}
 
+-- | Type safe way of pulling out a particular dimension, thus lowering index
+-- dimensionality and returning the value at specified dimension.
+--
+-- @since 0.2.4
+pullOutDimension :: IsIndexDimension ix n => ix -> Dimension n -> (Int, Lower ix)
+pullOutDimension ix d = pullOutDim' ix (fromDimension d)
+{-# INLINE [1] pullOutDimension #-}
 
 -- | Type safe way of inserting a particular dimension, thus raising index dimensionality.
 --

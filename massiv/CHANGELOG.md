@@ -1,11 +1,13 @@
 # 0.2.4
 
 * Addition of inner folds: `ifoldlInner`, `foldlInner`, `ifoldrInner` and `foldrInner`
-* Addition of functions that can fold over any dimension (`foldlWithin`, `foldlWithin', etc.)
-* Addition of `ifoldMono` and `ifoldSemi`, thus fixing: [#
+* Addition of functions that can fold over any dimension (`foldlWithin`, `foldlWithin'`, etc.)
+* Addition of `ifoldMono` and `ifoldSemi`, thus fixing:
+  [#54](https://github.com/lehins/massiv/issues/54)
 * Improvement over manipulating index dimensions with addition of type level `Dimension n` data type
   and functions like `getDimension`, `dropDimension`.
-* Addition of `insertDim` and type level `insertDimension`
+* Addition of `insertDim` and type level `insertDimension` as well as `pullOutDim` and
+  `pullOutDimension`
 
 # 0.2.3
 

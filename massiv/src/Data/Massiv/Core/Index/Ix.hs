@@ -290,6 +290,10 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   dropDim (i2 :.  _) 1 = Just i2
   dropDim _          _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pullOutDim (i2 :. i1) 2 = Just (i2, i1)
+  pullOutDim (i2 :. i1) 1 = Just (i1, i2)
+  pullOutDim _          _ = Nothing
+  {-# INLINE [1] pullOutDim #-}
   insertDim i1 2 i2 = Just (i2 :. i1)
   insertDim i2 1 i1 = Just (i2 :. i1)
   insertDim _  _  _ = Nothing
@@ -340,6 +344,11 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   dropDim (i3 :> i2 :.  _) 1 = Just (i3 :. i2)
   dropDim _             _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pullOutDim (i3 :> i2 :. i1) 3 = Just (i3, i2 :. i1)
+  pullOutDim (i3 :> i2 :. i1) 2 = Just (i2, i3 :. i1)
+  pullOutDim (i3 :> i2 :. i1) 1 = Just (i1, i3 :. i2)
+  pullOutDim _                _ = Nothing
+  {-# INLINE [1] pullOutDim #-}
   insertDim (i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
   insertDim (i3 :. i1) 2 i2 = Just (i3 :> i2 :. i1)
   insertDim (i3 :. i2) 1 i1 = Just (i3 :> i2 :. i1)
@@ -386,6 +395,9 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   dropDim ix@(i :> ixl) d | d == dimensions ix = Just ixl
                           | otherwise = (i :>) <$> dropDim ixl d
   {-# INLINE [1] dropDim #-}
+  pullOutDim ix@(i :> ixl) d | d == dimensions ix = Just (i, ixl)
+                             | otherwise = fmap (i :>) <$> pullOutDim ixl d
+  {-# INLINE [1] pullOutDim #-}
   insertDim ix@(i :> ixl) d di | d == dimensions ix + 1 = Just (di :> ix)
                                | otherwise = (i :>) <$> insertDim ixl d di
   {-# INLINE [1] insertDim #-}

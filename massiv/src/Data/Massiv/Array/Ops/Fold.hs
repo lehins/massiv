@@ -211,7 +211,7 @@ foldrWithin dim f = ifoldrWithin dim (const f)
 ifoldlWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlWithin' dim f acc0 arr =
-  unsafeMakeArray (getComp arr) (dropDim' sz dim) $ \ixl ->
+  unsafeMakeArray (getComp arr) szl $ \ixl ->
     iter
       (insertDim' ixl dim 0)
       (insertDim' ixl dim (k - 1))
@@ -221,7 +221,7 @@ ifoldlWithin' dim f acc0 arr =
       (\ix acc' -> f ix acc' (unsafeIndex arr ix))
   where
     sz = size arr
-    k = getIndex' sz dim
+    (k, szl) = pullOutDim' sz dim
 {-# INLINE ifoldlWithin' #-}
 
 
@@ -243,7 +243,7 @@ foldlWithin' dim f = ifoldlWithin' dim (const f)
 ifoldrWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrWithin' dim f acc0 arr =
-  unsafeMakeArray (getComp arr) (dropDim' sz dim) $ \ixl ->
+  unsafeMakeArray (getComp arr) szl $ \ixl ->
     iter
       (insertDim' ixl dim (k - 1))
       (insertDim' ixl dim 0)
@@ -253,7 +253,7 @@ ifoldrWithin' dim f acc0 arr =
       (\ix acc' -> f ix (unsafeIndex arr ix) acc')
   where
     sz = size arr
-    k = getIndex' sz dim
+    (k, szl) = pullOutDim' sz dim
 {-# INLINE ifoldrWithin' #-}
 
 -- | Similar to `foldrWithin`, except that dimension is specified at a value level, which means it

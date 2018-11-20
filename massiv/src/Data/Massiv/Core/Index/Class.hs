@@ -93,8 +93,14 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   -- | Take a dimension from the index from the inside
   unsnocDim :: ix -> (Lower ix, Int)
 
+  -- TODO: move out of the class
   -- | Remove a dimension from the index
   dropDim :: ix -> Dim -> Maybe (Lower ix)
+  dropDim ix = fmap snd . pullOutDim ix
+  {-# INLINE [1] dropDim #-}
+
+  -- | Pull out value at specified dimension from the index, thus also lowering it dimensionality.
+  pullOutDim :: ix -> Dim -> Maybe (Int, Lower ix)
 
   -- | Insert a dimension into the index
   insertDim :: Lower ix -> Dim -> Int -> Maybe ix
@@ -109,11 +115,13 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   setDim = setIndex
   {-# INLINE [1] setDim #-}
 
+  -- TODO: depricate
   -- | Extract the value index has at specified dimension. To be deprecated.
   getIndex :: ix -> Dim -> Maybe Int
   getIndex = getDim
   {-# INLINE [1] getIndex #-}
 
+  -- TODO: depricate
   -- | Set the value for an index at specified dimension. To be deprecated.
   setIndex :: ix -> Dim -> Int -> Maybe ix
   setIndex = setDim
@@ -280,6 +288,9 @@ instance Index Ix1T where
   dropDim _ 1 = Just Ix0
   dropDim _ _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pullOutDim i 1 = Just (i, Ix0)
+  pullOutDim _ _ = Nothing
+  {-# INLINE [1] pullOutDim #-}
   insertDim Ix0 1 i = Just i
   insertDim _   _ _ = Nothing
   {-# INLINE [1] insertDim #-}
@@ -329,6 +340,10 @@ instance Index Ix2T where
   dropDim (i2, _) 1 = Just i2
   dropDim _      _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pullOutDim (i2, i1) 2 = Just (i2, i1)
+  pullOutDim (i2, i1) 1 = Just (i1, i2)
+  pullOutDim _        _ = Nothing
+  {-# INLINE [1] pullOutDim #-}
   insertDim i1 2 i2 = Just (i2, i1)
   insertDim i2 1 i1 = Just (i2, i1)
   insertDim _  _  _ = Nothing
@@ -368,6 +383,11 @@ instance Index Ix3T where
   dropDim (i3, i2,  _) 1 = Just (i3, i2)
   dropDim _      _    = Nothing
   {-# INLINE [1] dropDim #-}
+  pullOutDim (i3, i2, i1) 3 = Just (i3, (i2, i1))
+  pullOutDim (i3, i2, i1) 2 = Just (i2, (i3, i1))
+  pullOutDim (i3, i2, i1) 1 = Just (i1, (i3, i2))
+  pullOutDim _      _    = Nothing
+  {-# INLINE [1] pullOutDim #-}
   insertDim (i2, i1) 3 i3 = Just (i3, i2, i1)
   insertDim (i3, i1) 2 i2 = Just (i3, i2, i1)
   insertDim (i3, i2) 1 i1 = Just (i3, i2, i1)
@@ -410,6 +430,12 @@ instance Index Ix4T where
   dropDim (i4, i3, i2,  _) 1 = Just (i4, i3, i2)
   dropDim _                _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pullOutDim (i4, i3, i2, i1) 4 = Just (i4, (i3, i2, i1))
+  pullOutDim (i4, i3, i2, i1) 3 = Just (i3, (i4, i2, i1))
+  pullOutDim (i4, i3, i2, i1) 2 = Just (i2, (i4, i3, i1))
+  pullOutDim (i4, i3, i2, i1) 1 = Just (i1, (i4, i3, i2))
+  pullOutDim _                _ = Nothing
+  {-# INLINE [1] pullOutDim #-}
   insertDim (i3, i2, i1) 4 i4 = Just (i4, i3, i2, i1)
   insertDim (i4, i2, i1) 3 i3 = Just (i4, i3, i2, i1)
   insertDim (i4, i3, i1) 2 i2 = Just (i4, i3, i2, i1)
@@ -457,6 +483,13 @@ instance Index Ix5T where
   dropDim (i5, i4, i3, i2,  _) 1 = Just (i5, i4, i3, i2)
   dropDim _                    _ = Nothing
   {-# INLINE [1] dropDim #-}
+  pullOutDim (i5, i4, i3, i2, i1) 5 = Just (i5, (i4, i3, i2, i1))
+  pullOutDim (i5, i4, i3, i2, i1) 4 = Just (i4, (i5, i3, i2, i1))
+  pullOutDim (i5, i4, i3, i2, i1) 3 = Just (i3, (i5, i4, i2, i1))
+  pullOutDim (i5, i4, i3, i2, i1) 2 = Just (i2, (i5, i4, i3, i1))
+  pullOutDim (i5, i4, i3, i2, i1) 1 = Just (i1, (i5, i4, i3, i2))
+  pullOutDim _                    _ = Nothing
+  {-# INLINE [1] pullOutDim #-}
   insertDim (i4, i3, i2, i1) 5 i5 = Just (i5, i4, i3, i2, i1)
   insertDim (i5, i3, i2, i1) 4 i4 = Just (i5, i4, i3, i2, i1)
   insertDim (i5, i4, i2, i1) 3 i3 = Just (i5, i4, i3, i2, i1)
