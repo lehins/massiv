@@ -317,7 +317,7 @@ class Construct r ix e => Ragged r ix e where
   flatten :: Array r ix e -> Array r Ix1 e
 
   loadRagged ::
-    (IO () -> IO ()) -> (Int -> e -> IO a) -> Int -> Int -> Lower ix -> Array r ix e -> IO ()
+    (IO () -> IO ()) -> (Int -> e -> IO a) -> Int -> Int -> ix -> Array r ix e -> IO ()
 
   -- TODO: test property:
   -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls

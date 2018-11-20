@@ -369,18 +369,18 @@ fromRaggedArray arr =
   unsafePerformIO $ do
     let sz = edgeSize arr
     mArr <- unsafeNew sz
-    let loadWith using = loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) (tailDim sz) arr
+    let loadWith using = loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) sz arr
     try $
       case getComp arr of
         c -> do
           loadWith id
           unsafeFreeze c mArr
-        -- Seq -> do
-        --   loadWith id
-        --   unsafeFreeze Seq mArr
-        -- pComp@(ParOn ss) -> do
-        --   withScheduler_ ss (loadWith . scheduleWork)
-        --   unsafeFreeze pComp mArr
+       -- Seq -> do
+       --   loadWith id
+       --   unsafeFreeze Seq mArr
+       -- pComp@(ParOn ss) -> do
+       --   withScheduler_ ss (loadWith . scheduleWork)
+       --   unsafeFreeze pComp mArr
 {-# INLINE fromRaggedArray #-}
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not

@@ -36,7 +36,7 @@ data Dimension (n :: Nat) where
   Dim5 :: Dimension 5
   DimN :: (1 <= n, KnownNat n) => Dimension n
 
--- | A type level constraint that ensures index is indded valid and that supplied dimension can be
+-- | A type level constraint that ensures index is indeed valid and that supplied dimension can be
 -- safely used with it.
 type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
 

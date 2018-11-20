@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -26,10 +27,9 @@ module Data.Massiv.Array.Manifest.List
   , toLists4
   ) where
 
-import           Data.Massiv.Array.Delayed.Internal  (D (..))
 import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Ops.Construct     (makeArrayR)
-import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB, foldrS)
+import           Data.Massiv.Array.Ops.Fold          (foldrInner')
+import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           GHC.Base                            (build)
@@ -174,14 +174,14 @@ toLists = toNested . toNested . toListArray
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
 toLists2 :: (Source r ix e, Index (Lower ix)) => Array r ix e -> [[e]]
-toLists2 = toList . foldrInner (:) []
+toLists2 = toList . foldrInner' 1 (:) []
 {-# INLINE toLists2 #-}
 
 
 -- | Convert an array with at least 3 dimensions into a 3 deep nested list. Inner dimensions will
 -- get flattened.
 toLists3 :: (Index (Lower (Lower ix)), Index (Lower ix), Source r ix e) => Array r ix e -> [[[e]]]
-toLists3 = toList . foldrInner (:) [] . foldrInner (:) []
+toLists3 = toList . foldrInner' 1 (:) [] . foldrInner' 1 (:) []
 {-# INLINE toLists3 #-}
 
 -- | Convert an array with at least 4 dimensions into a 4 deep nested list. Inner dimensions will
@@ -194,16 +194,5 @@ toLists4 ::
      )
   => Array r ix e
   -> [[[[e]]]]
-toLists4 = toList . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
+toLists4 = toList . foldrInner' 1 (:) [] . foldrInner' 1 (:) [] . foldrInner' 1 (:) []
 {-# INLINE toLists4 #-}
-
-
--- | Right fold with an index aware function of inner most dimension.
-foldrInner :: (Source r ix e, Index (Lower ix)) =>
-              (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
-foldrInner f !acc !arr =
-  unsafeMakeArray (getComp arr) szL $ \ !ix ->
-    foldrS f acc $ makeArrayR D Seq m (unsafeIndex arr . snocDim ix)
-  where
-    !(szL, m) = unsnocDim (size arr)
-{-# INLINE foldrInner #-}

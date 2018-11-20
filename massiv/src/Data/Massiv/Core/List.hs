@@ -190,16 +190,20 @@ instance ( Index ix
           (unList (lData arr))
   {-# INLINE flatten #-}
   loadRagged using uWrite start end sz xs = do
-    let step = totalElem sz
-        szL = tailDim sz
-    leftOver <-
-      loopM start (< end) (+ step) xs $ \i zs ->
-        case uncons zs of
-          Nothing -> throwIO RowTooShortError
-          Just (y, ys) -> do
-            _ <- loadRagged using uWrite i (i + step) szL y
-            return ys
-    unless (isNull (flatten leftOver)) $ throwIO RowTooLongError
+    let szL = tailDim sz
+        step = totalElem szL
+        isZero = totalElem sz == 0
+    when (isZero && not (isNull (flatten xs))) $
+      throwIO RowTooLongError
+    unless isZero $ do
+      leftOver <-
+        loopM start (< end) (+ step) xs $ \i zs ->
+          case uncons zs of
+            Nothing -> throwIO RowTooShortError
+            Just (y, ys) -> do
+              _ <- loadRagged using uWrite i (i + step) szL y
+              return ys
+      unless (isNull leftOver) $ throwIO RowTooLongError
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
     showN
