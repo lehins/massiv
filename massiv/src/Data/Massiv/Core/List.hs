@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -7,6 +8,7 @@
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Core.List
@@ -37,6 +39,7 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Proxy
 import           Data.Typeable
 import           GHC.Exts
+import           GHC.TypeLits
 import           System.IO.Unsafe           (unsafePerformIO)
 
 data LN
@@ -368,9 +371,53 @@ instance ( Ragged L ix e
          Show (Array r ix e) where
   show = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
 
+instance {-# OVERLAPPING #-} (Size r (IxM Ix1 c) e, Ragged L Ix2 e, Source r Ix2 e, Show e) =>
+                             Show (Array r (IxM Ix1 c) e) where
+  show =
+    showArrayAlt
+      (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
+      (\arr -> unsafeResize (fromIxM (size arr) :: Ix2) arr)
+
+
+instance {-# OVERLAPPING #-} (Size r (IxM Ix2 c) e, Ragged L Ix3 e, Source r Ix3 e, Show e) =>
+                             Show (Array r (IxM Ix2 c) e) where
+  show =
+    showArrayAlt
+      (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
+      (\arr -> unsafeResize (fromIxM (size arr) :: Ix3) arr)
+
+instance {-# OVERLAPPING #-} ( Size r (IxM (IxN n) c) e
+                             , Ragged L (IxN (n + 1)) e
+                             , Source r (IxN (n + 1)) e
+                             , Show e
+                             , Ix ((n + 1) - 1) ~ IxN n
+                             ) =>
+                             Show (Array r (IxM (IxN n) c) e) where
+  show =
+    showArrayAlt
+      (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
+      (\arr -> unsafeResize (fromIxM (size arr) :: (IxN (n + 1))) arr)
+
+
+showArrayAlt ::
+     forall r ix ix' e. (Show (Array L ix' e), Ragged L ix' e, Size r ix e, Source r ix' e, Show e)
+  => String
+  -> (Array r ix e -> Array r ix' e)
+  -> Array r ix e
+  -> String
+showArrayAlt tyStr f arr =
+    "(Array " ++ tyStr ++
+    showComp (getComp arr) ++ " (" ++
+    (show (size arr)) ++ ")\n" ++
+    show (makeArray (getComp arr') (size arr') (evaluateAt arr') :: Array L ix' e) ++ ")"
+    where showComp Seq = "Seq"
+          showComp Par = "Par"
+          showComp c   = "(" ++ show c ++ ")"
+          arr' = f arr
+
 
 showArray ::
-     forall r ix e. (Ragged L ix e, Source r ix e, Show e)
+     forall r ix e. (Show (Array L ix e), Ragged L ix e, Source r ix e, Show e)
   => String
   -> Array r ix e
   -> String

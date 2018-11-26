@@ -161,7 +161,6 @@ ifoldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
 ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 {-# INLINE ifoldlWithin #-}
 
-
 -- | Left fold along a specified dimension.
 --
 -- ====__Example__

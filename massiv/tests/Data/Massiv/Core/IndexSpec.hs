@@ -6,8 +6,10 @@
 module Data.Massiv.Core.IndexSpec (Sz(..), SzZ(..), SzIx(..), DimIx(..), spec) where
 
 import           Control.Monad
-import           Data.Massiv.Core.Index
 import           Data.Functor.Identity
+import           Data.Massiv.Core.Index
+import           Data.Proxy
+import           GHC.TypeLits
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -87,6 +89,11 @@ instance Arbitrary Ix4 where
 instance Arbitrary Ix5 where
   arbitrary = (:>) <$> arbitraryIntIx <*> arbitrary
 
+instance (Arbitrary ix, KnownNat c) => Arbitrary (IxM ix c) where
+  arbitrary =
+    (:-) <$> arbitrary <*> (fmap (`mod` fromIntegral (natVal (Proxy :: Proxy c))) arbitrary)
+
+
 instance CoArbitrary Ix2 where
   coarbitrary (i :. j) = coarbitrary i . coarbitrary j
 
@@ -98,6 +105,9 @@ instance CoArbitrary Ix4 where
 
 instance CoArbitrary Ix5 where
   coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
+
+instance CoArbitrary ix => CoArbitrary (IxM ix c) where
+  coarbitrary (ix :- c) = coarbitrary ix . coarbitrary c
 
 
 -- instance Arbitrary Ix2 where

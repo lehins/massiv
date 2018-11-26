@@ -28,6 +28,7 @@ module Data.Massiv.Core.Index.Ix where
 import           Control.DeepSeq
 import           Control.Monad                (liftM)
 import           Data.Massiv.Core.Index.Class
+import           Data.Massiv.Core.Iterator
 import           Data.Monoid                  ((<>))
 import           Data.Proxy
 import qualified Data.Vector.Generic          as V
@@ -297,6 +298,7 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   insertDim i1 2 i2 = Just (i2 :. i1)
   insertDim i2 1 i1 = Just (i2 :. i1)
   insertDim _  _  _ = Nothing
+  {-# INLINE [1] insertDim #-}
   pureIndex i = i :. i
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i2 :. i1) = f i2 :. f i1
@@ -332,17 +334,17 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   getDim (i3 :>  _ :.  _) 3 = Just i3
   getDim ( _ :> i2 :.  _) 2 = Just i2
   getDim ( _ :>  _ :. i1) 1 = Just i1
-  getDim _             _ = Nothing
+  getDim _                _ = Nothing
   {-# INLINE [1] getDim #-}
   setDim ( _ :> i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
   setDim (i3 :>  _ :. i1) 2 i2 = Just (i3 :> i2 :. i1)
   setDim (i3 :> i2 :.  _) 1 i1 = Just (i3 :> i2 :. i1)
-  setDim _             _ _ = Nothing
+  setDim _                 _ _ = Nothing
   {-# INLINE [1] setDim #-}
   dropDim ( _ :> i2 :. i1) 3 = Just (i2 :. i1)
   dropDim (i3 :>  _ :. i1) 2 = Just (i3 :. i1)
   dropDim (i3 :> i2 :.  _) 1 = Just (i3 :. i2)
-  dropDim _             _ = Nothing
+  dropDim _                _ = Nothing
   {-# INLINE [1] dropDim #-}
   pullOutDim (i3 :> i2 :. i1) 3 = Just (i3, i2 :. i1)
   pullOutDim (i3 :> i2 :. i1) 2 = Just (i2, i3 :. i1)
@@ -572,3 +574,196 @@ instance (3 <= n,
   elemseq _ = seq
   {-# INLINE elemseq #-}
 
+
+
+
+data IxM ix (channels :: Nat) = !ix :- {-# UNPACK #-} !Int
+
+instance NFData ix => NFData (IxM ix channels) where
+  rnf (ix :- c) = ix `deepseq` c `seq` ()
+
+infixl 4 :-
+
+type instance Lower (IxM Ix1 channels) = IxM Ix0 channels
+type instance Lower (IxM Ix2 channels) = IxM Ix1 channels
+type instance Lower (IxM (IxN n) channels) = IxM (Lower (IxN n)) channels
+
+instance Eq ix => Eq (IxM ix channels) where
+  (ix1 :- c1)  == (ix2 :- c2) = ix1 == ix2 && c1 == c2
+
+instance Ord ix => Ord (IxM ix channels) where
+  compare (ix1 :- c1) (ix2 :- c2) = compare ix1 ix2 <> compare c1 c2
+
+instance Show ix => Show (IxM ix channels) where
+  show (ix :- c) = show ix ++ " :- " ++ show c
+
+getChannels :: forall channels ix cs . (KnownNat channels, Integral cs) => IxM ix channels -> cs
+getChannels ix = fromIntegral (natVal ix)
+
+instance (Index (IxN n), KnownNat channels) =>
+  Index (IxM (IxN n) channels) where
+  type Dimensions (IxM (IxN n) channels) = n
+  dimensions (ix :- _) = dimensions ix
+  {-# INLINE [1] dimensions #-}
+  totalElem (ix :- c) = totalElem ix * c
+  {-# INLINE [1] totalElem #-}
+  isSafeIndex (sz :- _) ixm@(ix :- c) = 0 <= c && c < getChannels ixm && isSafeIndex sz ix
+  {-# INLINE [1] isSafeIndex #-}
+  toLinearIndex (sz :- _) ixm@(ix :- c) = toLinearIndex sz ix * getChannels ixm + c
+  {-# INLINE [1] toLinearIndex #-}
+  toLinearIndexAcc = error "Unimplemented"
+  fromLinearIndex szm@(sz :- _) i = case i `quotRem` getChannels szm of
+                                      (i', c) -> fromLinearIndex sz i' :- c
+  {-# INLINE [1] fromLinearIndex #-}
+  fromLinearIndexAcc = error "Unimplemented"
+  consDim i (ixl :- c) = consDim i ixl :- c
+  {-# INLINE [1] consDim #-}
+  unconsDim (ix :- c) = let !(i, ixl) = unconsDim ix in (i, ixl :- c)
+  {-# INLINE [1] unconsDim #-}
+  snocDim (ixl :- c) i = snocDim ixl i :- c
+  {-# INLINE [1] snocDim #-}
+  unsnocDim (ix :- c) = let !(ixl, i) = unsnocDim ix in (ixl :- c, i)
+  {-# INLINE [1] unsnocDim #-}
+  getDim (ix :- _) d = getDim ix d
+  {-# INLINE [1] getDim #-}
+  setDim (ix :- c) d i = (:- c) <$> setDim ix d i
+  {-# INLINE [1] setDim #-}
+  pullOutDim (ix :- c) d = fmap (:- c) <$> pullOutDim ix d
+  {-# INLINE [1] pullOutDim #-}
+  insertDim (ix :- c) d i = (:- c) <$> insertDim ix d i
+  {-# INLINE [1] insertDim #-}
+  pureIndex i = pureIndex i :- i
+  {-# INLINE [1] pureIndex #-}
+  liftIndex f (ix :- c) = liftIndex f ix :- f c
+  {-# INLINE [1] liftIndex #-}
+  liftIndex2 f (ix :- c) (ix' :- c') = liftIndex2 f ix ix' :- f c c'
+  {-# INLINE [1] liftIndex2 #-}
+  foldlIndex f !acc !(ix :- c) = f (foldlIndex f acc ix) c
+  {-# INLINE [1] foldlIndex #-}
+
+  repairIndex szm@(sz :- _) (ix :- c) rBelow rOver =
+    repairIndex sz ix rBelow rOver :- repairIndex (getChannels szm) c rBelow rOver
+  {-# INLINE [1] repairIndex #-}
+
+  iterM (sIx :- sc) (eIx :- ec) (incIx :- incc) cond !acc f =
+    iterM sIx eIx incIx cond acc $ \ !ix accI ->
+      loopM sc (`cond` ec) (+ incc) accI $ \ !c ->
+        f (ix :- c)
+  {-# INLINE iterM #-}
+
+  iterM_ !sIx !eIx !incIx cond f = iterM sIx eIx incIx cond () (\i () -> f i >> pure ())
+  {-# INLINE iterM_ #-}
+
+instance (KnownNat channels) => Index (IxM Ix1 channels) where
+  type Dimensions (IxM Ix1 channels) = 1
+  dimensions (ix :- _) = dimensions ix
+  {-# INLINE [1] dimensions #-}
+  totalElem (ix :- c) = totalElem ix * c
+  {-# INLINE [1] totalElem #-}
+  isSafeIndex (sz :- _) ixm@(ix :- c) = 0 <= c && c < getChannels ixm && isSafeIndex sz ix
+  {-# INLINE [1] isSafeIndex #-}
+  toLinearIndex (sz :- _) ixm@(ix :- c) = toLinearIndex sz ix * getChannels ixm + c
+  {-# INLINE [1] toLinearIndex #-}
+  toLinearIndexAcc = error "Unimplemented"
+  fromLinearIndex szm@(sz :- _) i = case i `quotRem` getChannels szm of
+                                      (i', c) -> fromLinearIndex sz i' :- c
+  {-# INLINE [1] fromLinearIndex #-}
+  fromLinearIndexAcc = error "Unimplemented"
+  consDim i (ixl :- c) = consDim i ixl :- c
+  {-# INLINE [1] consDim #-}
+  unconsDim (ix :- c) = let !(i, ixl) = unconsDim ix in (i, ixl :- c)
+  {-# INLINE [1] unconsDim #-}
+  snocDim (ixl :- c) i = snocDim ixl i :- c
+  {-# INLINE [1] snocDim #-}
+  unsnocDim (ix :- c) = let !(ixl, i) = unsnocDim ix in (ixl :- c, i)
+  {-# INLINE [1] unsnocDim #-}
+  getDim (ix :- _) d = getDim ix d
+  {-# INLINE [1] getDim #-}
+  setDim (ix :- c) d i = (:- c) <$> setDim ix d i
+  {-# INLINE [1] setDim #-}
+  pullOutDim (ix :- c) d = fmap (:- c) <$> pullOutDim ix d
+  {-# INLINE [1] pullOutDim #-}
+  insertDim (ix :- c) d i = (:- c) <$> insertDim ix d i
+  {-# INLINE [1] insertDim #-}
+  pureIndex i = pureIndex i :- i
+  {-# INLINE [1] pureIndex #-}
+  liftIndex f (ix :- c) = liftIndex f ix :- f c
+  {-# INLINE [1] liftIndex #-}
+  liftIndex2 f (ix :- c) (ix' :- c') = liftIndex2 f ix ix' :- f c c'
+  {-# INLINE [1] liftIndex2 #-}
+  foldlIndex f !acc !(ix :- c) = f (foldlIndex f acc ix) c
+  {-# INLINE [1] foldlIndex #-}
+
+  repairIndex szm@(sz :- _) (ix :- c) rBelow rOver =
+    repairIndex sz ix rBelow rOver :- repairIndex (getChannels szm) c rBelow rOver
+  {-# INLINE [1] repairIndex #-}
+
+  iterM (sIx :- sc) (eIx :- ec) (incIx :- incc) cond !acc f =
+    iterM sIx eIx incIx cond acc $ \ !ix accI ->
+      loopM sc (`cond` ec) (+ incc) accI $ \ !c ->
+        f (ix :- c)
+  {-# INLINE iterM #-}
+
+  iterM_ !sIx !eIx !incIx cond f = iterM sIx eIx incIx cond () (\i () -> f i >> pure ())
+  {-# INLINE iterM_ #-}
+
+instance (KnownNat channels) => Index (IxM Ix2 channels) where
+  type Dimensions (IxM Ix2 channels) = 2
+  dimensions (ix :- _) = dimensions ix
+  {-# INLINE [1] dimensions #-}
+  totalElem (ix :- c) = totalElem ix * c
+  {-# INLINE [1] totalElem #-}
+  isSafeIndex (sz :- _) ixm@(ix :- c) = 0 <= c && c < getChannels ixm && isSafeIndex sz ix
+  {-# INLINE [1] isSafeIndex #-}
+  toLinearIndex (sz :- _) ixm@(ix :- c) = toLinearIndex sz ix * getChannels ixm + c
+  {-# INLINE [1] toLinearIndex #-}
+  toLinearIndexAcc = error "Unimplemented"
+  fromLinearIndex szm@(sz :- _) i = case i `quotRem` getChannels szm of
+                                      (i', c) -> fromLinearIndex sz i' :- c
+  {-# INLINE [1] fromLinearIndex #-}
+  fromLinearIndexAcc = error "Unimplemented"
+  consDim i (ixl :- c) = consDim i ixl :- c
+  {-# INLINE [1] consDim #-}
+  unconsDim (ix :- c) = let !(i, ixl) = unconsDim ix in (i, ixl :- c)
+  {-# INLINE [1] unconsDim #-}
+  snocDim (ixl :- c) i = snocDim ixl i :- c
+  {-# INLINE [1] snocDim #-}
+  unsnocDim (ix :- c) = let !(ixl, i) = unsnocDim ix in (ixl :- c, i)
+  {-# INLINE [1] unsnocDim #-}
+  getDim (ix :- _) d = getDim ix d
+  {-# INLINE [1] getDim #-}
+  setDim (ix :- c) d i = (:- c) <$> setDim ix d i
+  {-# INLINE [1] setDim #-}
+  pullOutDim (ix :- c) d = fmap (:- c) <$> pullOutDim ix d
+  {-# INLINE [1] pullOutDim #-}
+  insertDim (ix :- c) d i = (:- c) <$> insertDim ix d i
+  {-# INLINE [1] insertDim #-}
+  pureIndex i = pureIndex i :- i
+  {-# INLINE [1] pureIndex #-}
+  liftIndex f (ix :- c) = liftIndex f ix :- f c
+  {-# INLINE [1] liftIndex #-}
+  liftIndex2 f (ix :- c) (ix' :- c') = liftIndex2 f ix ix' :- f c c'
+  {-# INLINE [1] liftIndex2 #-}
+  foldlIndex f !acc !(ix :- c) = f (foldlIndex f acc ix) c
+  {-# INLINE [1] foldlIndex #-}
+
+  repairIndex szm@(sz :- _) (ix :- c) rBelow rOver =
+    repairIndex sz ix rBelow rOver :- repairIndex (getChannels szm) c rBelow rOver
+  {-# INLINE [1] repairIndex #-}
+
+  iterM (sIx :- sc) (eIx :- ec) (incIx :- incc) cond !acc f =
+    iterM sIx eIx incIx cond acc $ \ !ix accI ->
+      loopM sc (`cond` ec) (+ incc) accI $ \ !c ->
+        f (ix :- c)
+  {-# INLINE iterM #-}
+
+  iterM_ !sIx !eIx !incIx cond f = iterM sIx eIx incIx cond () (\i () -> f i >> pure ())
+  {-# INLINE iterM_ #-}
+
+
+fromIxM :: Index ix => IxM (Lower ix) c -> ix
+fromIxM (ixl :- c) = snocDim ixl c
+
+
+toIxM :: Index ix => ix -> IxM (Lower ix) c
+toIxM ix = let (ixl, c) = unsnocDim ix in ixl :- c
