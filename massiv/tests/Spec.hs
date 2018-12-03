@@ -7,6 +7,7 @@ import           Data.Massiv.Array.ManifestSpec         as Manifest
 --import           Data.Massiv.Array.MutableSpec         as Mutable
 import           Data.Massiv.Array.Ops.ConstructSpec    as Construct
 import           Data.Massiv.Array.Ops.FoldSpec         as Fold
+import           Data.Massiv.Array.Ops.MapSpec          as Map
 import           Data.Massiv.Array.Ops.SliceSpec        as Slice
 import           Data.Massiv.Array.Ops.TransformSpec    as Transform
 import           Data.Massiv.Array.StencilSpec          as Stencil
@@ -30,6 +31,7 @@ main = do
       Fold.spec
       Slice.spec
       Transform.spec
+      Map.spec
     describe "Delayed" $ Delayed.spec
     describe "Windowed" $ Windowed.spec
     describe "Manifest" $ Manifest.spec

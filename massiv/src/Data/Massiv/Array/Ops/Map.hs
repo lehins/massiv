@@ -87,7 +87,7 @@ zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
 izipWith :: (Source r1 ix e1, Source r2 ix e2)
          => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
 izipWith f arr1 arr2 =
-  DArray (getComp arr1) (liftIndex2 min (size arr1) (size arr1)) $ \ !ix ->
+  DArray (getComp arr1 <> getComp arr2) (liftIndex2 min (size arr1) (size arr2)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
 {-# INLINE izipWith #-}
 
@@ -109,8 +109,8 @@ izipWith3
   -> Array D ix e
 izipWith3 f arr1 arr2 arr3 =
   DArray
-    (getComp arr1)
-    (liftIndex2 min (liftIndex2 min (size arr1) (size arr1)) (size arr3)) $ \ !ix ->
+    (getComp arr1 <> getComp arr2 <> getComp arr3)
+    (liftIndex2 min (liftIndex2 min (size arr1) (size arr2)) (size arr3)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
 
