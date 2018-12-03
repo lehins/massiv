@@ -258,7 +258,7 @@ fromIx5 (i :> j :> k :> l :. m) = (i, j, k, l, m)
 {-# INLINE fromIx5 #-}
 
 
-instance {-# OVERLAPPING #-} Index Ix2 where
+instance Index Ix2 where
   type Dimensions Ix2 = 2
   dimensions _ = 2
   {-# INLINE [1] dimensions #-}

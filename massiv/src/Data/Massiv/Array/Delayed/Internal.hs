@@ -1,10 +1,11 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
@@ -29,10 +30,13 @@ module Data.Massiv.Array.Delayed.Internal
 import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
+
+import GHC.TypeLits
 
 #include "massiv.h"
 
@@ -44,6 +48,40 @@ data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !ix
                                     , dIndex :: ix -> e }
 type instance EltRepr D ix = D
+
+
+instance Show e => Show (Array D Ix1 e) where; show = showSourceArray
+
+instance Show e => Show (Array D Ix2 e) where; show = showSourceArray
+
+instance (Ragged L (IxN n) e, Source D (IxN n) e, Show e) => Show (Array D (IxN n) e) where
+  show = showSourceArray
+
+instance Show e => Show (Array D Ix2T e) where; show = showSourceArray
+
+instance Show e => Show (Array D Ix3T e) where; show = showSourceArray
+
+instance Show e => Show (Array D Ix4T e) where; show = showSourceArray
+
+instance Show e => Show (Array D Ix5T e) where; show = showSourceArray
+
+instance (KnownNat c, Show e) => Show (Array D (IxM Ix1 c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: Ix2) arr)
+
+instance (KnownNat c, Show e) => Show (Array D (IxM Ix2 c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: Ix3) arr)
+
+instance ( Size D (IxM (IxN n) c) e
+         , Ragged L (IxN (n + 1)) e
+         , Source D (IxN (n + 1)) e
+         , Show e
+         , Ix ((n + 1) - 1) ~ IxN n
+         ) =>
+         Show (Array D (IxM (IxN n) c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: IxN (n + 1)) arr)
+
+
+
 
 instance Index ix => Construct D ix e where
   getComp = dComp

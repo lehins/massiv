@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -29,7 +31,7 @@ module Data.Massiv.Array.Manifest.Primitive
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Monad.ST                    (runST)
-import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
+import           Data.Massiv.Array.Delayed.Internal  (D, delay, eq, ord)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
@@ -46,6 +48,8 @@ import           GHC.Exts                            as GHC (IsList (..))
 import           GHC.Prim
 import           Prelude                             hiding (mapM)
 
+import GHC.TypeLits
+
 #include "massiv.h"
 
 -- | Representation for `Prim`itive elements
@@ -57,6 +61,39 @@ data instance Array P ix e = PArray { pComp :: !Comp
                                     , pSize :: !ix
                                     , pData :: {-# UNPACK #-} !ByteArray
                                     }
+
+instance (Show e, Prim e) => Show (Array P Ix1 e) where; show = showSourceArray
+
+instance (Show e, Prim e) => Show (Array P Ix2 e) where; show = showSourceArray
+
+instance (Ragged L (IxN n) e, Source P (IxN n) e, Show e, Prim e) => Show (Array P (IxN n) e) where
+  show = showSourceArray
+
+instance (Show e, Prim e) => Show (Array P Ix2T e) where; show = showSourceArray
+
+instance (Show e, Prim e) => Show (Array P Ix3T e) where; show = showSourceArray
+
+instance (Show e, Prim e) => Show (Array P Ix4T e) where; show = showSourceArray
+
+instance (Show e, Prim e) => Show (Array P Ix5T e) where; show = showSourceArray
+
+instance (KnownNat c, Show e, Prim e) => Show (Array P (IxM Ix1 c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: Ix2) arr)
+
+instance (KnownNat c, Show e, Prim e) => Show (Array P (IxM Ix2 c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: Ix3) arr)
+
+instance ( Size P (IxM (IxN n) c) e
+         , Ragged L (IxN (n + 1)) e
+         , Source D (IxN (n + 1)) e
+         , Ix ((n + 1) - 1) ~ IxN n
+         , Show e
+         , Prim e
+         ) =>
+         Show (Array P (IxM (IxN n) c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: (IxN (n + 1))) $ delay arr)
+
+
 
 instance Index ix => NFData (Array P ix e) where
   rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()

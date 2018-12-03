@@ -30,11 +30,9 @@ import           Data.Massiv.Array.Manifest.Boxed
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List               (showArray)
+import           Data.Massiv.Core.List               (showArrayGeneral)
 import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
-import           Data.Proxy                          (Proxy (..))
-import           Data.Typeable                       (showsTypeRep, typeRep)
 import           GHC.TypeLits
 
 -- | Delayed Windowed Array representation.
@@ -63,7 +61,7 @@ data instance Array DW ix e = DWArray { dwArray :: !(Array D ix e)
 
 instance {-# OVERLAPPING #-} (Show e, Ragged L ix e, Load DW ix e) =>
   Show (Array DW ix e) where
-  show arr = showArray (showsTypeRep (typeRep (Proxy :: Proxy DW)) " ") (computeAs B arr)
+  show = showArrayGeneral (computeAs B)
 
 
 instance Index ix => Construct DW ix e where

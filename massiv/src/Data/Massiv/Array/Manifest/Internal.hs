@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MagicHash             #-}
@@ -58,8 +59,8 @@ import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
 import           GHC.Base                            hiding (ord)
+import           GHC.TypeLits
 import           System.IO.Unsafe                    (unsafePerformIO)
-
 
 #if MIN_VERSION_primitive(0,6,2)
 import           Data.Primitive.Array                (sizeofArray,
@@ -88,6 +89,37 @@ data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !ix
                                     , mLinearIndex :: Int -> e }
 type instance EltRepr M ix = M
+
+instance Show e => Show (Array M Ix1 e) where; show = showSourceArray
+
+instance Show e => Show (Array M Ix2 e) where; show = showSourceArray
+
+instance (Ragged L (IxN n) e, Source M (IxN n) e, Show e) => Show (Array M (IxN n) e) where
+  show = showSourceArray
+
+instance Show e => Show (Array M Ix2T e) where; show = showSourceArray
+
+instance Show e => Show (Array M Ix3T e) where; show = showSourceArray
+
+instance Show e => Show (Array M Ix4T e) where; show = showSourceArray
+
+instance Show e => Show (Array M Ix5T e) where; show = showSourceArray
+
+instance (KnownNat c, Show e) => Show (Array M (IxM Ix1 c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: Ix2) arr)
+
+instance (KnownNat c, Show e) => Show (Array M (IxM Ix2 c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: Ix3) arr)
+
+instance ( Size M (IxM (IxN n) c) e
+         , Ragged L (IxN (n + 1)) e
+         , Source M (IxN (n + 1)) e
+         , Show e
+         , Ix ((n + 1) - 1) ~ IxN n
+         ) =>
+         Show (Array M (IxM (IxN n) c) e) where
+  show = showArrayGeneral (\arr -> unsafeResize (fromIxM (size arr) :: IxN (n + 1)) arr)
+
 
 instance (Eq e, Index ix) => Eq (Array M ix e) where
   (==) = eq (==)
