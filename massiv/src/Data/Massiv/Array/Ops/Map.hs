@@ -32,13 +32,14 @@ module Data.Massiv.Array.Ops.Map
   ) where
 
 
-import           Control.Monad                       (void, when)
+import           Control.Monad                      (void, when)
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
-import           Prelude                             hiding (map, mapM, mapM_,
-                                                      unzip, unzip3, zip, zip3,
-                                                      zipWith, zipWith3)
+import           Data.Monoid                        ((<>))
+import           Prelude                            hiding (map, mapM, mapM_,
+                                                     unzip, unzip3, zip, zip3,
+                                                     zipWith, zipWith3)
 
 -- | Map a function over an array
 map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
