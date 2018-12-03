@@ -3,7 +3,6 @@
 {-# LANGUAGE TypeFamilies        #-}
 module Examples.SortRows where
 
-
 import           Data.Massiv.Array                 as A
 import           Data.Massiv.Array.Manifest.Vector as A
 import           Data.Massiv.Core.Scheduler
@@ -12,7 +11,6 @@ import           Data.Vector.Algorithms.Merge
 import           Data.Vector.Generic               as VG
 import           Data.Vector.Generic.Mutable       as VGM
 import           System.IO.Unsafe
-
 
 sortRows ::
      forall r e v.
@@ -32,9 +30,3 @@ sortRows arr = unsafePerformIO $ do
           scheduleWork scheduler $ sort $ VGM.slice (toLinearIndex sz (i :. 0)) n mv
   v :: v e <- VG.unsafeFreeze mv
   return $ A.fromVector comp sz v
-
-
-
-main :: IO ()
-main = do
-  return ()

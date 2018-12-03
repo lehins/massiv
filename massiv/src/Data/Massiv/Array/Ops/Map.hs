@@ -183,4 +183,3 @@ imapP_ f arr = do
       iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i ix -> do
         void $ f ix (unsafeLinearIndex arr i)
 {-# INLINE imapP_ #-}
-
