@@ -94,6 +94,7 @@ test-suite tests
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec
                     , Data.Massiv.Array.Ops.TransformSpec
+                    , Data.Massiv.Array.Ops.MapSpec
                     , Data.Massiv.Array.StencilSpec
                     , Data.Massiv.CoreArbitrary
                     , Data.Massiv.Core.IndexSpec

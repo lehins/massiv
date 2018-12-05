@@ -1,3 +1,9 @@
+# 0.2.4.1
+
+* Fix a bug in `zip` functions, where resulting array size would not take into account the size of
+  one of the input arrays.
+
+
 # 0.2.4
 
 * Addition of inner folds: `ifoldlInner`, `foldlInner`, `ifoldrInner` and `foldrInner`

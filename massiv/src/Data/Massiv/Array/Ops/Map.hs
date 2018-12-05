@@ -32,13 +32,14 @@ module Data.Massiv.Array.Ops.Map
   ) where
 
 
-import           Control.Monad                       (void, when)
+import           Control.Monad                      (void, when)
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
-import           Prelude                             hiding (map, mapM, mapM_,
-                                                      unzip, unzip3, zip, zip3,
-                                                      zipWith, zipWith3)
+import           Data.Monoid                        ((<>))
+import           Prelude                            hiding (map, mapM, mapM_,
+                                                     unzip, unzip3, zip, zip3,
+                                                     zipWith, zipWith3)
 
 -- | Map a function over an array
 map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
@@ -87,7 +88,7 @@ zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
 izipWith :: (Source r1 ix e1, Source r2 ix e2)
          => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
 izipWith f arr1 arr2 =
-  DArray (getComp arr1) (liftIndex2 min (size arr1) (size arr1)) $ \ !ix ->
+  DArray (getComp arr1 <> getComp arr2) (liftIndex2 min (size arr1) (size arr2)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
 {-# INLINE izipWith #-}
 
@@ -109,8 +110,8 @@ izipWith3
   -> Array D ix e
 izipWith3 f arr1 arr2 arr3 =
   DArray
-    (getComp arr1)
-    (liftIndex2 min (liftIndex2 min (size arr1) (size arr1)) (size arr3)) $ \ !ix ->
+    (getComp arr1 <> getComp arr2 <> getComp arr3)
+    (liftIndex2 min (liftIndex2 min (size arr1) (size arr2)) (size arr3)) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
 
@@ -182,4 +183,3 @@ imapP_ f arr = do
       iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i ix -> do
         void $ f ix (unsafeLinearIndex arr i)
 {-# INLINE imapP_ #-}
-

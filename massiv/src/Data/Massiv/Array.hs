@@ -150,6 +150,7 @@ import           Prelude as P hiding ( all
                                      , product
                                      , splitAt
                                      , sum
+                                     , zip
                                      )
 {- $folding
 
