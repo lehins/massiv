@@ -1,3 +1,7 @@
+# 0.2.5
+
+* Fix for `insertDimension` [#62](https://github.com/lehins/massiv/pull/62)
+
 # 0.2.4.1
 
 * Fix a bug in `zip` functions, where resulting array size would not take into account the size of
