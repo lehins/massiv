@@ -3,14 +3,13 @@ name: Question
 about: Ask a question about massiv and related
 ---
 
-If you would like to ask a simple question about usage of the library it is better to do so on
-[gitter](https://gitter.im/haskell-massiv/Lobby) where people who are willing to answer such
-questions, including the author of the library, will be notified, rather than eveyone who is
-watching the repo for new features and bug reports.
+If you would like to ask a simple question about the usage of massiv, it is better to do so on
+https://gitter.im/haskell-massiv, where people who are more keen to answer such questions will
+be notified, instead of everyone who is watching the repository for new features and bug reports.
 
-In case when a question is more complicated and more people in the community could benefit from an
-answer, naturally [stackoverflow.com](https://stackoverflow.com/questions/tagged/massiv) would be a
-more suitable place. Make sure to tag a question with `massiv` and possibly paste a link on gitter.
+In case when a question is more complicated and/or more people in the community would benefit from
+an answer, naturally https://stackoverflow.com would be a more suitable place. Make sure to tag a
+question with `massiv` and possibly paste a link on gitter.
 
-If you still believe you will reach the right audience by asking a question here in github in form
-of an issue, please feel free to do so.
+If you still believe you will reach the right audience by asking a question here on github, please,
+feel free to do so.
