@@ -1,15 +1,15 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
--- Module      : Data.Massiv.Array.Delayed.Internal
+-- Module      : Data.Massiv.Array.Delayed.Push
 -- Copyright   : (c) Alexey Kuleshevich 2018
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
@@ -21,20 +21,20 @@ module Data.Massiv.Array.Delayed.Push
   , Array(..)
   ) where
 
-import Control.Monad.Primitive
-import Data.Foldable (Foldable (..))
-import Data.Massiv.Array.Ops.Fold.Internal as A
-import Data.Massiv.Core.Common
-import Data.Monoid ((<>))
-import GHC.Base (build)
-import Prelude hiding (map, zipWith)
+import           Control.Monad.Primitive
+import           Data.Foldable                       (Foldable (..))
+import           Data.Massiv.Array.Ops.Fold.Internal as A
+import           Data.Massiv.Core.Common
+import           Data.Monoid                         ((<>))
+import           GHC.Base                            (build)
+import           Prelude                             hiding (map, zipWith)
 
-import System.IO.Unsafe
+import           System.IO.Unsafe
 -- import Control.Monad (void)
 -- import Control.Monad.ST
 
 -- import               Data.List (foldl')
-import               Data.Massiv.Array as MA
+import           Data.Massiv.Array                   as MA
 -- import               Prelude hiding (map)
 
 
@@ -50,8 +50,8 @@ data instance Array DL ix e = DLArray
   , dlLoad :: forall m . Monad m
            => Int
            -> (m () -> m ())
-           -> (ix -> m e)
-           -> (ix -> e -> m ())
+           -> (Int -> m e)
+           -> (Int -> e -> m ())
            -> m ()
   }
 
@@ -64,11 +64,7 @@ instance Index ix => Construct DL ix e where
   {-# INLINE setComp #-}
   unsafeMakeArray comp sz f =
     DLArray comp sz $ \numWorkers scheduleWith _dlRead dlWrite ->
-      let dlWrite' ix e = do
-            --_ <- return $! unsafePerformIO $ print ix
-            dlWrite ix e
-      in
-      splitWith_ numWorkers scheduleWith sz f dlWrite'
+      splitWith_ numWorkers scheduleWith (totalElem sz) (f . fromLinearIndex sz) dlWrite
   {-# INLINE unsafeMakeArray #-}
 
 instance {-# OVERLAPPING #-} (Show (Array B ix e), Index ix) => Show (Array DL ix e) where
@@ -94,24 +90,26 @@ instance Index ix => Source DL ix e where
 
 upsample
   :: Index ix => e -> Stride ix -> Array DL ix e -> Array DL ix e
-upsample fillWith stride@(Stride str) arr@DLArray {dlSize, dlLoad} =
+upsample fillWith (Stride stride) arr@DLArray {dlSize, dlLoad} =
   arr
-    { dlSize = applyStride dlSize
+    { dlSize = sz
     , dlLoad =
         \numWorkers scheduleWith dlRead dlWrite -> do
           dlLoad
             numWorkers
             scheduleWith
-            (dlRead . applyStride)
-            (\ix e -> do
-               let ix' = applyStride ix
-               -- TODO: remove duplicate writes with rewriting it using interleave
-               iterM_ ix' (liftIndex2 (+) ix' str) (pureIndex 1) (<) $ \ i -> dlWrite i fillWith
-               dlWrite ix' e)
+            (dlRead . (* linearStride))
+            (\i e -> do
+                let i' = i * linearStride
+                dlWrite i' e
+                -- TODO: Benchmark against fast initialization with single value first
+                loopM_ (i' + 1) (< min (i' + linearStride) k) (+1) (`dlWrite` fillWith)
+            )
     }
   where
-    applyStride ix = liftIndex2 (*) ix str
-    {-# INLINE applyStride #-}
+    sz = liftIndex2 (*) dlSize stride
+    k = totalElem sz
+    linearStride = toLinearIndex dlSize stride
 
 
 instance Index ix => Size DL ix e where
@@ -133,23 +131,13 @@ instance Index ix => Size DL ix e where
 
 toLoadArray :: Load r ix e => Array r ix e -> Array DL ix e
 toLoadArray arr =
-  let sz = (size arr)
-   in DLArray (getComp arr) sz $ \numWorkers scheduleWith dlRead dlWrite ->
-        loadArray
-          numWorkers
-          scheduleWith
-          arr
-          (dlRead . fromLinearIndex sz)
-          (\i -> dlWrite (fromLinearIndex sz i))
+  DLArray (getComp arr) (size arr) $ \numWorkers scheduleWith dlRead dlWrite ->
+    loadArray numWorkers scheduleWith arr dlRead dlWrite
 {-# INLINE toLoadArray #-}
 
 instance (Index ix) => Load DL ix e where
-  loadArray numWorkers scheduleWith DLArray {dlSize, dlLoad} uRead uWrite =
-    dlLoad
-      numWorkers
-      scheduleWith
-      (uRead . toLinearIndex dlSize)
-      (\i -> uWrite (toLinearIndex dlSize i))
+  loadArray numWorkers scheduleWith DLArray {dlLoad} uRead uWrite =
+    dlLoad numWorkers scheduleWith uRead uWrite
 
 
 -- instance ( Index ix
