@@ -254,8 +254,8 @@ pullOutDimension ix d = pullOutDim' ix (fromDimension d)
 -- | Type safe way of inserting a particular dimension, thus raising index dimensionality.
 --
 -- @since 0.2.4
-insertDimension :: IsIndexDimension ix n => ix -> Dimension n -> Lower ix
-insertDimension ix d = dropDim' ix (fromDimension d)
+insertDimension :: IsIndexDimension ix n => Lower ix -> Dimension n -> Int -> ix
+insertDimension ix d = insertDim' ix (fromDimension d)
 {-# INLINE [1] insertDimension #-}
 
 
