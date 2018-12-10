@@ -19,23 +19,16 @@
 module Data.Massiv.Array.Delayed.Push
   ( DL(..)
   , Array(..)
+  , toLoadArray
+  , upsample
   ) where
 
-import           Control.Monad.Primitive
-import           Data.Foldable                       (Foldable (..))
-import           Data.Massiv.Array.Ops.Fold.Internal as A
+import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Manifest.Boxed
+import           Data.Massiv.Array.Manifest.Internal
+import           Data.Massiv.Array.Ops.Construct     (makeArrayR)
 import           Data.Massiv.Core.Common
-import           Data.Monoid                         ((<>))
-import           GHC.Base                            (build)
 import           Prelude                             hiding (map, zipWith)
-
-import           System.IO.Unsafe
--- import Control.Monad (void)
--- import Control.Monad.ST
-
--- import               Data.List (foldl')
-import           Data.Massiv.Array                   as MA
--- import               Prelude hiding (map)
 
 
 #include "massiv.h"
@@ -87,46 +80,50 @@ instance Index ix => Source DL ix e where
 --     {-# INLINE applyStride #-}
 
 
-
+-- TODO: Benchmark against fast initialization with single value first
 upsample
-  :: Index ix => e -> Stride ix -> Array DL ix e -> Array DL ix e
-upsample fillWith (Stride stride) arr@DLArray {dlSize, dlLoad} =
-  arr
-    { dlSize = sz
+  :: (Index (Lower ix), Load r ix e) => e -> Stride ix -> Array r ix e -> Array DL ix e
+upsample fillWith safeStride arr =
+  DLArray
+    { dlComp = getComp arr
+    , dlSize = newsz
     , dlLoad =
         \numWorkers scheduleWith dlRead dlWrite -> do
-          dlLoad
-            numWorkers
-            scheduleWith
-            (dlRead . (* linearStride))
-            (\i e -> do
-                let i' = i * linearStride
-                dlWrite i' e
-                -- TODO: Benchmark against fast initialization with single value first
-                loopM_ (i' + 1) (< min (i' + linearStride) k) (+1) (`dlWrite` fillWith)
-            )
+          loopM_ 0 (< totalElem newsz) (+ 1) $ \ i -> dlWrite i fillWith
+          loadArray numWorkers scheduleWith arr dlRead (\i -> dlWrite (adjustLinearStride i))
+          -- iterM_ zeroIndex stride (pureIndex 1) (<) $ \six ->
+          --   let load =
+          --         if six == zeroIndex
+          --           then loadArray numWorkers scheduleWith arr
+          --           else loadArray numWorkers scheduleWith fillerArr
+          --       {-# INLINE load #-}
+          --    in load ({- needs a second thought -} dlRead . adjustLinearStride six)
+          --            (\i -> dlWrite (adjustLinearStride six i))
     }
   where
-    sz = liftIndex2 (*) dlSize stride
-    k = totalElem sz
-    linearStride = toLinearIndex dlSize stride
+    -- adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
+    adjustLinearStride !six !i =
+      toLinearIndex newsz (liftIndex2 (+) six (timesStride (fromLinearIndex sz i)))
+    {-# INLINE adjustLinearStride #-}
+    timesStride !ix = liftIndex2 (*) stride ix
+    {-# INLINE timesStride #-}
+    !stride = unStride safeStride
+    !sz = size arr
+    !newsz = timesStride sz
+    -- !fillerArr = makeArrayR D (getComp arr) (totalElem sz) (const fillWith)
+{-# INLINE upsample #-}
+
 
 
 instance Index ix => Size DL ix e where
   size = dlSize
   {-# INLINE size #-}
 
-  -- unsafeResize !sz DLArray {..} =
-  --   DLArray dlComp sz $ \ dlRead dlWrite ->
-  --     let toIx = fromLinearIndex sz . toLinearIndex dlSize
-  --     in dlLoad (\ ix -> dlRead (toIx ix)) (\ix e -> dlWrite (toIx ix) e)
-  -- {-# INLINE unsafeResize #-}
+  unsafeResize !sz arr = arr { dlSize = sz }
+  {-# INLINE unsafeResize #-}
 
+  -- Will not work, massiv needs restructure
   -- unsafeExtract !sIx !newSz DLArray {..} =
-  --   DLArray dlComp newSz $ \ dlRead dlWrite ->
-  --     let toIx ix = liftIndex2 (+) ix sIx
-  --     in dlLoad (dlRead . toIx) (\ix e -> dlWrite (toIx ix) e)
-  -- {-# INLINE unsafeExtract #-}
 
 
 toLoadArray :: Load r ix e => Array r ix e -> Array DL ix e
@@ -138,6 +135,7 @@ toLoadArray arr =
 instance (Index ix) => Load DL ix e where
   loadArray numWorkers scheduleWith DLArray {dlLoad} uRead uWrite =
     dlLoad numWorkers scheduleWith uRead uWrite
+  {-# INLINE loadArray #-}
 
 
 -- instance ( Index ix

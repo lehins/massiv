@@ -9,6 +9,9 @@
 module Data.Massiv.Array.Delayed
   ( D(..)
   , delay
+  , DL(..)
+  , toLoadArray
+  , upsample
   , DI(..)
   , toInterleaved
   , fromInterleaved
@@ -20,5 +23,6 @@ module Data.Massiv.Array.Delayed
 
 import           Data.Massiv.Array.Delayed.Interleaved
 import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Delayed.Windowed
 

@@ -37,6 +37,7 @@ library
 
   other-modules:       Data.Massiv.Array.Delayed.Internal
                      , Data.Massiv.Array.Delayed.Interleaved
+                     , Data.Massiv.Array.Delayed.Push
                      , Data.Massiv.Array.Delayed.Windowed
                      , Data.Massiv.Array.Manifest.Boxed
                      , Data.Massiv.Array.Manifest.Internal
