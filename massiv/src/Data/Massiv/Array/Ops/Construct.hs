@@ -135,15 +135,13 @@ enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromInteg
 --
 -- >> makeArray :: Construct r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
 --
--- Runs a function `ix -> e` at every array index. This is inefficient if there
--- is a substantial amount of repeated computation that could be shared while
--- constructing elements on the same dimension, Also since there are no monadic
--- construction functions yet that use `ix -> m e`, this can't be accomplished
--- by using some kind of IORef approach. The expand family of functions make
--- this possible. First you construct an `Array r (Lower ix) a` of one fewer
--- dimensions where `a` is something like `Vector a` or `Array r Ix1 a`. Then
--- you use 'expandWithin`' and a creation function `a -> Int -> b) to create an
--- `Array D ix b`.
+-- ...runs a function @ix -> e@ at every array index. This is inefficient if
+-- there is a substantial amount of repeated computation that could be shared
+-- while constructing elements on the same dimension, The expand family of
+-- functions make this possible. First you construct an @Array r (Lower ix) a@
+-- of one fewer dimensions where @a@ is something like @Vector a@ or @Array r
+-- Ix1 a@. Then you use 'expandWithin'' and a creation function @a -> Int -> b@
+-- to create an @Array D ix b@.
 --
 -- @since 0.2.6
 expandWithin
@@ -217,4 +215,3 @@ expandInner k f arr =
     szl = size arr
     sz = snocDim szl k
 {-# INLINE expandInner #-}
-
