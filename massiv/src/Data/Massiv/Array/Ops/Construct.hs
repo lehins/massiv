@@ -184,11 +184,11 @@ expandWithin' dim k f arr =
 --
 -- @since 0.2.6
 expandOuter
-  :: (Index ix, Manifest r (Lower ix) t)
+  :: (Index ix, Manifest r (Lower ix) a)
   => Int
-  -> (t -> Int -> e)
-  -> Array r (Lower ix) t
-  -> Array D ix e
+  -> (a -> Int -> b)
+  -> Array r (Lower ix) a
+  -> Array D ix b
 expandOuter k f arr =
   makeArray (getComp arr) sz $ \ix ->
     let (i, ixl) = unconsDim ix
@@ -202,11 +202,11 @@ expandOuter k f arr =
 --
 -- @since 0.2.6
 expandInner
-  :: (Index ix, Manifest r (Lower ix) t)
+  :: (Index ix, Manifest r (Lower ix) a)
   => Int
-  -> (t -> Int -> e)
-  -> Array r (Lower ix) t
-  -> Array D ix e
+  -> (a -> Int -> b)
+  -> Array r (Lower ix) a
+  -> Array D ix b
 expandInner k f arr =
   makeArray (getComp arr) sz $ \ix ->
     let (ixl, i) = unsnocDim ix
