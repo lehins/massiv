@@ -1,3 +1,7 @@
+# 0.2.6
+
+* Add `expand` family of functions.
+
 # 0.2.5
 
 * Fix for `insertDimension` [#62](https://github.com/lehins/massiv/pull/62)
