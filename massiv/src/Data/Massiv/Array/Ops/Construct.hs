@@ -191,7 +191,13 @@ expandOuter
   -> (t -> Int -> e)
   -> Array r (Lower ix) t
   -> Array D ix e
-expandOuter k f arr = expandWithin' (pred $ dimensions $ size arr) k f arr
+expandOuter k f arr =
+  makeArray (getComp arr) sz $ \ix ->
+    let (i, ixl) = unconsDim ix
+     in f (unsafeIndex arr ixl) i
+  where
+    szl = size arr
+    sz = consDim k szl
 {-# INLINE expandOuter #-}
 
 -- | Similar to `expandWithin`, except it uses the innermost dimension.
@@ -203,5 +209,12 @@ expandInner
   -> (t -> Int -> e)
   -> Array r (Lower ix) t
   -> Array D ix e
-expandInner k f arr = expandWithin' 1 k f arr
+expandInner k f arr =
+  makeArray (getComp arr) sz $ \ix ->
+    let (ixl, i) = unsnocDim ix
+     in f (unsafeIndex arr ixl) i
+  where
+    szl = size arr
+    sz = snocDim szl k
 {-# INLINE expandInner #-}
+
