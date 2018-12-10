@@ -31,4 +31,6 @@ There are three common variations of functions dealing with dimensions:
 * fooInner
 
 The `Within` suffix signals that the function operates on a particular dimension
-and it allows you to pick any dimension you want.  The `Outer` suffix
+and it allows you to pick any dimension you want. Functions with the `Outer`
+suffix use dimension `n` in an n-dimensional index don't take a dimension
+argument. Functions with the `Inner` suffix use dimension `1`.
