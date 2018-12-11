@@ -1,7 +1,11 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE ExplicitForAll        #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Construct
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -14,6 +18,10 @@ module Data.Massiv.Array.Ops.Construct
   ( makeArray
   , makeArrayR
   , makeVectorR
+  , expandWithin
+  , expandWithin'
+  , expandOuter
+  , expandInner
   , singleton
   , range
   , rangeStep
@@ -120,3 +128,90 @@ enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromInteg
 {-# INLINE enumFromStepN #-}
 
 
+-- | Function that expands an array to one with a higher dimension.
+--
+-- This is useful for constructing arrays where there is shared computation
+-- between multiple cells.  The makeArray method of constructing arrays:
+--
+-- >> makeArray :: Construct r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
+--
+-- ...runs a function @ix -> e@ at every array index. This is inefficient if
+-- there is a substantial amount of repeated computation that could be shared
+-- while constructing elements on the same dimension, The expand functions make
+-- this possible. First you construct an @Array r (Lower ix) a@ of one fewer
+-- dimensions where @a@ is something like @Vector a@ or @Array r Ix1 a@. Then
+-- you use 'expandWithin'' and a creation function @a -> Int -> b@ to create an
+-- @Array D ix b@.
+--
+-- @since 0.2.6
+expandWithin
+  :: (IsIndexDimension ix n, Manifest r (Lower ix) a)
+  => Dimension n
+  -> Int
+  -> (a -> Int -> b)
+  -> Array r (Lower ix) a
+  -> Array D ix b
+expandWithin dim k f arr = do
+  makeArray (getComp arr) sz $ \ix ->
+    let (i, ixl) = pullOutDimension ix dim
+     in f (unsafeIndex arr ixl) i
+  where
+    szl = size arr
+    sz = insertDimension szl dim k
+{-# INLINE expandWithin #-}
+
+-- | Similar to `expandWithin`, except that dimension is specified at a value level, which means it
+-- will throw an exception on an invalid dimension.
+--
+-- @since 0.2.6
+expandWithin'
+  :: (Index ix, Manifest r (Lower ix) a)
+  => Dim
+  -> Int
+  -> (a -> Int -> b)
+  -> Array r (Lower ix) a
+  -> Array D ix b
+expandWithin' dim k f arr =
+  makeArray (getComp arr) sz $ \ix ->
+    let (i, ixl) = pullOutDim' ix dim
+     in f (unsafeIndex arr ixl) i
+  where
+    szl = size arr
+    sz = insertDim' szl dim k
+{-# INLINE expandWithin' #-}
+
+-- | Similar to `expandWithin`, except it uses the outermost dimension.
+--
+-- @since 0.2.6
+expandOuter
+  :: (Index ix, Manifest r (Lower ix) a)
+  => Int
+  -> (a -> Int -> b)
+  -> Array r (Lower ix) a
+  -> Array D ix b
+expandOuter k f arr =
+  makeArray (getComp arr) sz $ \ix ->
+    let (i, ixl) = unconsDim ix
+     in f (unsafeIndex arr ixl) i
+  where
+    szl = size arr
+    sz = consDim k szl
+{-# INLINE expandOuter #-}
+
+-- | Similar to `expandWithin`, except it uses the innermost dimension.
+--
+-- @since 0.2.6
+expandInner
+  :: (Index ix, Manifest r (Lower ix) a)
+  => Int
+  -> (a -> Int -> b)
+  -> Array r (Lower ix) a
+  -> Array D ix b
+expandInner k f arr =
+  makeArray (getComp arr) sz $ \ix ->
+    let (ixl, i) = unsnocDim ix
+     in f (unsafeIndex arr ixl) i
+  where
+    szl = size arr
+    sz = snocDim szl k
+{-# INLINE expandInner #-}

@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs            #-}
-module Data.Massiv.Array.Ops.ConstructSpec (spec) where
+module Data.Massiv.Array.Ops.ConstructSpec where
 
-import           Data.Massiv.CoreArbitrary as A
+import           Data.Massiv.Array                 as A
+import           Data.Massiv.CoreArbitrary         as A
 import           Data.Proxy
 import qualified GHC.Exts                   as GHC (IsList (..))
 import           Prelude                    as P
@@ -91,9 +92,29 @@ specIx3 = do
   it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
   it "excFromToListIx3" $ property prop_excFromToListIx3
 
+mkIntermediate :: Double -> Array U Ix1 Double
+mkIntermediate t = A.fromList Seq [t + 50, t + 75]
+
+initArr :: Array N Ix1 (Array U Ix1 Double)
+initArr = makeArray Seq 3 (\ x -> mkIntermediate $ fromIntegral x)
+
+initArr2 :: Array N Ix2 (Array U Ix1 Double)
+initArr2 = makeArray Seq (2 :. 2) (\ (x :. y) -> mkIntermediate $ fromIntegral (x+y))
+
+specExpand :: Spec
+specExpand = do
+  it "expandOuter" $ compute (expandOuter 2 A.index' initArr) `shouldBe`
+    resize' (2 :. 3) (fromList Seq [50, 51, 52, 75, 76, 77] :: Array U Ix1 Double)
+  it "expandInner" $ compute (expandInner 2 A.index' initArr) `shouldBe`
+    resize' (3 :. 2) (fromList Seq [50, 75, 51, 76, 52, 77] :: Array U Ix1 Double)
+  it "expandwithin" $ compute (expandWithin Dim1 2 A.index' initArr2) `shouldBe`
+    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Double)
+  it "expandwithin'" $ compute (expandWithin' 1 2 A.index' initArr2) `shouldBe`
+    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Double)
 
 spec :: Spec
 spec = do
   describe "Ix1" specIx1
   describe "Ix2" specIx2
   describe "Ix3" specIx3
+  describe "Expand" specExpand
