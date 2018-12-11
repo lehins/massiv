@@ -2,6 +2,7 @@
 {-# LANGUAGE PatternSynonyms            #-}
 
 #if __GLASGOW_HASKELL__ >= 800
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 #else
 {-# LANGUAGE GADTs                      #-}
@@ -56,6 +57,7 @@ import           Data.Massiv.Core.Index.Class
 
 #if __GLASGOW_HASKELL__ >= 800
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
+{-# COMPLETE Stride #-}
 #else
 -- There is an issue in GHC 7.10 which prevents from placing `Index` constraint on a pattern.
 data Stride ix where
@@ -68,18 +70,19 @@ instance NFData ix => NFData (Stride ix) where
 #endif
 
 
-instance Index ix => Show (Stride ix) where
-  show (SafeStride ix) = "Stride (" ++ show ix ++ ")"
-
-
 -- | A safe bidirectional pattern synonym for `Stride` construction that will make sure stride
 -- elements are always positive.
 pattern Stride :: Index ix => ix -> Stride ix
 pattern Stride ix <- SafeStride ix where
         Stride ix = SafeStride (liftIndex (max 1) ix)
 
+
+instance Index ix => Show (Stride ix) where
+  show (SafeStride ix) = "Stride (" ++ show ix ++ ")"
+
+
 -- | Just a helper function for unwrapping `Stride`.
-unStride :: Stride ix -> ix
+unStride :: Index ix => Stride ix -> ix
 unStride (SafeStride ix) = ix
 {-# INLINE unStride #-}
 
