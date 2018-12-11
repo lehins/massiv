@@ -82,7 +82,7 @@ instance Index ix => Show (Stride ix) where
 
 
 -- | Just a helper function for unwrapping `Stride`.
-unStride :: Index ix => Stride ix -> ix
+unStride :: Stride ix -> ix
 unStride (SafeStride ix) = ix
 {-# INLINE unStride #-}
 
