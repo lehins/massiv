@@ -92,25 +92,25 @@ specIx3 = do
   it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
   it "excFromToListIx3" $ property prop_excFromToListIx3
 
-mkIntermediate :: Double -> Array U Ix1 Double
+mkIntermediate :: Int -> Array U Ix1 Int
 mkIntermediate t = A.fromList Seq [t + 50, t + 75]
 
-initArr :: Array N Ix1 (Array U Ix1 Double)
-initArr = makeArray Seq 3 (\ x -> mkIntermediate $ fromIntegral x)
+initArr :: Array N Ix1 (Array U Ix1 Int)
+initArr = makeArray Seq 3 (\ x -> mkIntermediate x)
 
-initArr2 :: Array N Ix2 (Array U Ix1 Double)
-initArr2 = makeArray Seq (2 :. 2) (\ (x :. y) -> mkIntermediate $ fromIntegral (x+y))
+initArr2 :: Array N Ix2 (Array U Ix1 Int)
+initArr2 = makeArray Seq (2 :. 2) (\ (x :. y) -> mkIntermediate (x+y))
 
 specExpand :: Spec
 specExpand = do
-  it "expandOuter" $ compute (expandOuter 2 A.index' initArr) `shouldBe`
-    resize' (2 :. 3) (fromList Seq [50, 51, 52, 75, 76, 77] :: Array U Ix1 Double)
-  it "expandInner" $ compute (expandInner 2 A.index' initArr) `shouldBe`
-    resize' (3 :. 2) (fromList Seq [50, 75, 51, 76, 52, 77] :: Array U Ix1 Double)
-  it "expandwithin" $ compute (expandWithin Dim1 2 A.index' initArr2) `shouldBe`
-    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Double)
-  it "expandwithin'" $ compute (expandWithin' 1 2 A.index' initArr2) `shouldBe`
-    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Double)
+  it "expandOuter" $ compute (expandOuter 2 A.index' initArr :: Array D Ix2 Int) `shouldBe`
+    resize' (2 :. 3) (fromList Seq [50, 51, 52, 75, 76, 77] :: Array U Ix1 Int)
+  it "expandInner" $ compute (expandInner 2 A.index' initArr :: Array D Ix2 Int) `shouldBe`
+    resize' (3 :. 2) (fromList Seq [50, 75, 51, 76, 52, 77] :: Array U Ix1 Int)
+  it "expandwithin" $ compute (expandWithin Dim1 2 A.index' initArr2 :: Array D Ix3 Int) `shouldBe`
+    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Int)
+  it "expandwithin'" $ compute (expandWithin' 1 2 A.index' initArr2 :: Array D Ix3 Int) `shouldBe`
+    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Int)
 
 spec :: Spec
 spec = do
