@@ -15,18 +15,21 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Construct
-  ( makeArray
+  ( -- ** From a function
+    makeArray
   , makeArrayR
   , makeVectorR
-  , expandWithin
-  , expandWithin'
-  , expandOuter
-  , expandInner
   , singleton
+    -- ** Enumeration
   , range
   , rangeStep
   , enumFromN
   , enumFromStepN
+    -- ** Expansion
+  , expandWithin
+  , expandWithin'
+  , expandOuter
+  , expandInner
   ) where
 
 import           Data.Massiv.Array.Delayed.Internal
@@ -133,17 +136,42 @@ enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromInteg
 -- This is useful for constructing arrays where there is shared computation
 -- between multiple cells.  The makeArray method of constructing arrays:
 --
--- >> makeArray :: Construct r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
+-- > makeArray :: Construct r ix e => Comp -> ix -> (ix -> e) -> Array r ix e
 --
 -- ...runs a function @ix -> e@ at every array index. This is inefficient if
 -- there is a substantial amount of repeated computation that could be shared
--- while constructing elements on the same dimension, The expand functions make
+-- while constructing elements on the same dimension. The expand functions make
 -- this possible. First you construct an @Array r (Lower ix) a@ of one fewer
--- dimensions where @a@ is something like @Vector a@ or @Array r Ix1 a@. Then
--- you use 'expandWithin'' and a creation function @a -> Int -> b@ to create an
--- @Array D ix b@.
+-- dimensions where @a@ is something like @`Array` r `Ix1` a@ or @`Array` r `Ix2` a@. Then
+-- you use 'expandWithin' and a creation function @a -> Int -> b@ to create an
+-- @`Array` `D` `Ix2` b@ or @`Array` `D` `Ix3` b@ respectfully.
 --
 -- @since 0.2.6
+--
+-- ====__Examples__
+--
+-- >>> a = makeArrayR U Seq (Ix1 6) (+10) -- Imagine (+10) is some expensive function
+-- >>> a
+-- (Array U Seq (6)
+--   [ 10,11,12,13,14,15 ])
+-- >>> expandWithin Dim1 5 (\ e j -> (j + 1) * 100 + e) a :: Array D Ix2 Int
+-- (Array D Seq (6 :. 5)
+--   [ [ 110,210,310,410,510 ]
+--   , [ 111,211,311,411,511 ]
+--   , [ 112,212,312,412,512 ]
+--   , [ 113,213,313,413,513 ]
+--   , [ 114,214,314,414,514 ]
+--   , [ 115,215,315,415,515 ]
+--   ])
+-- >>> expandWithin Dim2 5 (\ e j -> (j + 1) * 100 + e) a :: Array D Ix2 Int
+-- (Array D Seq (5 :. 6)
+--   [ [ 110,111,112,113,114,115 ]
+--   , [ 210,211,212,213,214,215 ]
+--   , [ 310,311,312,313,314,315 ]
+--   , [ 410,411,412,413,414,415 ]
+--   , [ 510,511,512,513,514,515 ]
+--   ])
+--
 expandWithin
   :: (IsIndexDimension ix n, Manifest r (Lower ix) a)
   => Dimension n
