@@ -13,10 +13,20 @@ module Data.Massiv.Array.Ops.Map
   ( map
   , imap
   -- ** Monadic
+  -- *** Sequential
   , mapM_
   , forM_
   , imapM_
   , iforM_
+  -- *** Parallelizable
+  , mapIO
+  , mapIO_
+  , imapIO
+  , imapIO_
+  , forIO
+  , forIO_
+  , iforIO
+  , iforIO_
   , mapP_
   , imapP_
   -- ** Zipping
@@ -34,6 +44,7 @@ module Data.Massiv.Array.Ops.Map
 
 import           Control.Monad                      (void, when)
 import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                        ((<>))
@@ -157,11 +168,87 @@ iforM_ = flip imapM_
 {-# INLINE iforM_ #-}
 
 
+-- | Map an `IO` action over an `Array`. Underlying computation strategy is respected and will be
+-- parallelized when requested. Unfortunately no fusion is possible and new array will be create
+-- upon each call.
+--
+-- @since 0.2.6
+mapIO ::
+     (Source r' ix a, Mutable r ix b) => (a -> IO b) -> Array r' ix a -> IO (Array r ix b)
+mapIO action = imapIO (const action)
+{-# INLINE mapIO #-}
+
+-- | Similar to `mapIO`, but ignores the result of mapping action and does not create a resulting
+-- array, therefore it is faster. Use this instead of `mapIO` when result is irrelevant.
+--
+-- @since 0.2.6
+mapIO_ :: Source r b e => (e -> IO a) -> Array r b e -> IO ()
+mapIO_ action = imapIO_ (const action)
+{-# INLINE mapIO_ #-}
+
+-- | SAme as `mapIO_`, but map an index aware action instead.
+--
+-- @since 0.2.6
+imapIO_ :: Source r ix e => (ix -> e -> IO a) -> Array r ix e -> IO ()
+imapIO_ action arr =
+  case getComp arr of
+    Seq -> imapM_ action arr
+    ParOn wids -> do
+      let sz = size arr
+      withScheduler_ wids $ \scheduler ->
+        splitLinearlyWith_
+          (numWorkers scheduler)
+          (scheduleWork scheduler)
+          (totalElem sz)
+          (unsafeLinearIndex arr)
+          (\i -> void . action (fromLinearIndex sz i))
+{-# INLINE imapIO_ #-}
+
+
+-- | Same as `mapIO` but map an index aware action instead.
+--
+-- @since 0.2.6
+imapIO ::
+     (Source r' ix a, Mutable r ix b) => (ix -> a -> IO b) -> Array r' ix a -> IO (Array r ix b)
+imapIO action arr = generateArrayIO (getComp arr) (size arr) $ \ix -> action ix (unsafeIndex arr ix)
+{-# INLINE imapIO #-}
+
+-- | Same as `mapIO` but with arguments flipped.
+--
+-- @since 0.2.6
+forIO ::
+     (Source r' ix a, Mutable r ix b) => Array r' ix a -> (a -> IO b) -> IO (Array r ix b)
+forIO = flip mapIO
+{-# INLINE forIO #-}
+
+-- | Same as `mapIO_` but with arguments flipped.
+--
+-- @since 0.2.6
+forIO_ :: Source r ix e => Array r ix e -> (e -> IO a) -> IO ()
+forIO_ = flip mapIO_
+{-# INLINE forIO_ #-}
+
+-- | Same as `imapIO` but with arguments flipped.
+--
+-- @since 0.2.6
+iforIO ::
+     (Source r' ix a, Mutable r ix b) => Array r' ix a -> (ix -> a -> IO b) -> IO (Array r ix b)
+iforIO = flip imapIO
+{-# INLINE iforIO #-}
+
+-- | Same as `imapIO_` but with arguments flipped.
+--
+-- @since 0.2.6
+iforIO_ :: Source r ix a => Array r ix a -> (ix -> a -> IO b) -> IO ()
+iforIO_ = flip imapIO_
+{-# INLINE iforIO_ #-}
+
 
 -- | Map an IO action, over an array in parallel, while discarding the result.
 mapP_ :: Source r ix a => (a -> IO b) -> Array r ix a -> IO ()
 mapP_ f = imapP_ (const f)
 {-# INLINE mapP_ #-}
+{-# DEPRECATED mapP_ "In favor of 'mapIO_'" #-}
 
 
 -- | Map an index aware IO action, over an array in parallel, while
@@ -183,3 +270,4 @@ imapP_ f arr = do
       iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i ix -> do
         void $ f ix (unsafeLinearIndex arr i)
 {-# INLINE imapP_ #-}
+{-# DEPRECATED imapP_ "In favor of 'imapIO_'" #-}

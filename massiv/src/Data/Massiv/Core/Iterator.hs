@@ -14,6 +14,7 @@ module Data.Massiv.Core.Iterator
   , loopDeepM
   , splitLinearly
   , splitLinearlyWith_
+  , splitLinearlyWithM_
   ) where
 
 
@@ -72,9 +73,19 @@ splitLinearly numChunks totalLength action = action chunkLength slackStart
 
 
 splitLinearlyWith_ :: Monad m => Int -> (m () -> m a) -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m a
-splitLinearlyWith_ numChunks with totalLength index write =
+splitLinearlyWith_ numChunks with totalLength index =
+  splitLinearlyWithM_ numChunks with totalLength (pure . index)
+{-# INLINE splitLinearlyWith_ #-}
+
+
+-- | Interator tha can be used to split computation jobs
+--
+-- @since 0.2.6.0
+splitLinearlyWithM_ ::
+     Monad m => Int -> (m () -> m a) -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m a
+splitLinearlyWithM_ numChunks with totalLength make write =
   splitLinearly numChunks totalLength  $ \chunkLength slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> write k (index k)
-    with $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> write k (index k)
-{-# INLINE splitLinearlyWith_ #-}
+      with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
+    with $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
+{-# INLINE splitLinearlyWithM_ #-}

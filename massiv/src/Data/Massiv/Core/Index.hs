@@ -178,18 +178,20 @@ getDim' ix dim =
 -- | To be deprecated in favor of `setDim'`.
 setIndex' :: Index ix => ix -> Dim -> Int -> ix
 setIndex' ix dim i =
-  case setIndex ix dim i of
+  case setDim ix dim i of
     Just ix' -> ix'
     Nothing  -> errorDim "setIndex'" dim
 {-# INLINE [1] setIndex' #-}
+{-# DEPRECATED setIndex' "In favor of `setDim'`" #-}
 
 -- | To be deprecated in favor of `getDim'`.
 getIndex' :: Index ix => ix -> Dim -> Int
 getIndex' ix dim =
-  case getIndex ix dim of
+  case getDim ix dim of
     Just ix' -> ix'
     Nothing  -> errorDim "getIndex'" dim
 {-# INLINE [1] getIndex' #-}
+{-# DEPRECATED getIndex' "In favor of `getDim'`" #-}
 
 dropDim' :: Index ix => ix -> Dim -> Lower ix
 dropDim' ix dim =

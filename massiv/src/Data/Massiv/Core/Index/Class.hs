@@ -115,13 +115,11 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   setDim = setIndex
   {-# INLINE [1] setDim #-}
 
-  -- TODO: depricate
   -- | Extract the value index has at specified dimension. To be deprecated.
   getIndex :: ix -> Dim -> Maybe Int
   getIndex = getDim
   {-# INLINE [1] getIndex #-}
 
-  -- TODO: depricate
   -- | Set the value for an index at specified dimension. To be deprecated.
   setIndex :: ix -> Dim -> Int -> Maybe ix
   setIndex = setDim
@@ -249,6 +247,8 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM_ #-}
 
+{-# DEPRECATED getIndex "In favor of 'getDim'" #-}
+{-# DEPRECATED setIndex "In favor of 'setDim'" #-}
 
 instance Index Ix1T where
   type Dimensions Ix1T = 1
