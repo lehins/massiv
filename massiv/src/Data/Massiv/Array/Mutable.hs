@@ -19,13 +19,14 @@ module Data.Massiv.Array.Mutable
   , new
   , thaw
   , freeze
+  , createArray_
   , createArray
+  , createArrayST_
   , createArrayST
   , generateArray
-  , generateArrayST
   , generateArrayIO
+  , unfoldlPrim_
   , unfoldlPrim
-  , unfoldlST
   , withMArray
   , withMArrayST
   , read
@@ -77,13 +78,27 @@ freeze comp marr = clone <$> unsafeFreeze comp marr
 {-# INLINE freeze #-}
 
 
--- | Create a new array by using the mutatble interface.
+-- | Create a new array by supplying an action that will fill the new blank mutable array. Use
+-- `createArray` if you'd like to keep the result returned by the filling function.
 --
 -- ====__Examples__
 --
--- >>> createArray Seq (Ix1 2) (\ marr -> write marr 0 10 >> write marr 1 11) :: IO (Array P Ix1 Int)
+-- >>> createArray_ Seq (Ix1 2) (\ marr -> write marr 0 10 >> write marr 1 11) :: IO (Array P Ix1 Int)
 -- (Array P Seq (2)
 --   [ 10,11 ])
+--
+-- @since 0.2.6
+createArray_ ::
+     (Mutable r ix e, PrimMonad m)
+  => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
+  -> ix -- ^ Size of the newly created array
+  -> (MArray (PrimState m) r ix e -> m a)
+  -- ^ An action that should fill all elements of the brand new mutable array
+  -> m (Array r ix e)
+createArray_ comp sz action = fmap snd $ createArray comp sz action
+{-# INLINE createArray_ #-}
+
+-- | Just like `createArray_`, but together with `Array` it returns the result of filling action.
 --
 -- @since 0.2.6
 createArray ::
@@ -100,8 +115,16 @@ createArray comp sz action = do
   return (a, arr)
 {-# INLINE createArray #-}
 
+-- | Just like `createArray`, but restricted to `ST`.
+--
+-- @since 0.2.6
+createArrayST_ ::
+     Mutable r ix e => Comp -> ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
+createArrayST_ comp sz action = runST $ createArray_ comp sz action
+{-# INLINE createArrayST_ #-}
 
--- | Create a a new array by using the mutatble interface.
+
+-- | Just like `createArray`, but restricted to `ST`.
 --
 -- @since 0.2.6
 createArrayST ::
@@ -110,9 +133,11 @@ createArrayST comp sz action = runST $ createArray comp sz action
 {-# INLINE createArrayST #-}
 
 
--- | Generate sequentially a pure array by linearly generating elements of new array and writing
--- them into the mutable array that is also available to the generator and will get frozen in the
--- end.
+-- | Sequentially generate a pure array. Much like `makeArray` creates a pure array, byt this
+-- function will use `Mutable` interface to generate a pure array in the end. Also the element
+-- producing function is no longer a pure function but is a stateful action in `PrimMonad`, which
+-- allows for sharing the state between computation of each element, and even arbitrary effects if
+-- that monad is `IO`.
 --
 -- @since 0.2.6
 --
@@ -130,9 +155,9 @@ createArrayST comp sz action = runST $ createArray comp sz action
 --
 generateArray ::
      (Mutable r ix e, PrimMonad m)
-  => Comp
-  -> ix
-  -> (ix -> m e)
+  => Comp -- ^ Computation strategy (ingored during generation)
+  -> ix -- ^ Resulting size of the array
+  -> (ix -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
 generateArray comp sz gen =
   fmap snd $ createArray comp sz $ \marr ->
@@ -140,22 +165,8 @@ generateArray comp sz gen =
 {-# INLINE generateArray #-}
 
 
--- | Just like `generateArray`, except that generator is restricted to `ST` monad and is in itself a
--- pure function.
---
--- @since 0.2.6
-generateArrayST ::
-     Mutable r ix e => Comp -> ix -> (forall s . ix -> ST s e) -> Array r ix e
-generateArrayST comp sz gen = runST $ generateArray comp sz gen
-{-# INLINE generateArrayST #-}
-
-
-
--- | Much like `makeArray` creates a pure array this function will use `Mutable` interface to
--- generate a pure array in the end, except that the function element producing action is no longer
--- a pure function but is an `IO` action, which allows for arbitrary computation for each
--- element. Unlike `generateS` and `generateST`, this generator __will__ respect the supplied
--- computation strategy.
+-- | Just like `generateArray`, except this generator __will__ respect the supplied computation
+-- strategy, and for that reason it is restricted to `IO`.
 --
 -- @since 0.2.6
 generateArrayIO ::
@@ -189,7 +200,8 @@ generateArrayIO comp sz gen = do
 -- Create an array with Fibonacci numbers while performing and `IO` action on the accumulator for
 -- each element of the array.
 --
--- >>> snd <$> unfoldlPrim Seq  (Ix1 10) (\a@(p0, p1) _ -> let n = p0 + p1 in print a >> return ((p1, n), p0)) (1, 1) :: IO (Array U Ix1 Int)
+-- >>> unfoldlPrim_ Seq  (Ix1 10) (\a@(f0, f1) _ -> let fn = f0 + f1 in print a >> return ((f1, fn), f0)) (0, 1) :: IO (Array P Ix1 Int)
+-- (0,1)
 -- (1,1)
 -- (1,2)
 -- (2,3)
@@ -199,9 +211,23 @@ generateArrayIO comp sz gen = do
 -- (13,21)
 -- (21,34)
 -- (34,55)
--- (55,89)
--- (Array U Seq (10)
---   [ 1,1,2,3,5,8,13,21,34,55 ])
+-- (Array P Seq (10)
+--   [ 0,1,1,2,3,5,8,13,21,34 ])
+--
+unfoldlPrim_ ::
+     (Mutable r ix e, PrimMonad m)
+  => Comp
+  -> ix
+  -> (a -> ix -> m (a, e)) -- ^ Unfolding action
+  -> a -- ^ Initial accumulator
+  -> m (Array r ix e)
+unfoldlPrim_ comp sz gen acc0 = fmap snd $ unfoldlPrim comp sz gen acc0
+{-# INLINE unfoldlPrim_ #-}
+
+
+-- | Just like `unfoldlPrim`, but also returns the final value of the accumulator.
+--
+-- @since 0.2.6
 --
 unfoldlPrim ::
      (Mutable r ix e, PrimMonad m)
@@ -218,21 +244,6 @@ unfoldlPrim comp sz gen acc0 =
           unsafeLinearWrite marr i e
           return acc'
 {-# INLINE unfoldlPrim #-}
-
-
-
--- | Sequentially generate array
---
--- @since 0.2.6
-unfoldlST ::
-     Mutable r ix e
-  => Comp
-  -> ix
-  -> (forall s . a -> ix -> ST s (a, e)) -- ^ Unfolding action
-  -> a -- ^ Initial accumulator
-  -> (a, Array r ix e)
-unfoldlST comp sz gen acc0 = runST $ unfoldlPrim comp sz gen acc0
-{-# INLINE unfoldlST #-}
 
 
 -- | Create a copy of a pure array, mutate it in place and return its frozen version.
