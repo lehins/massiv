@@ -1,6 +1,7 @@
 # 0.2.6
 
 * Add `expand` family of functions.
+* Long awaited `mapM` implementation.
 
 # 0.2.5
 

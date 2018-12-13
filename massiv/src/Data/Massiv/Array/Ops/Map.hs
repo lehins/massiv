@@ -14,6 +14,7 @@ module Data.Massiv.Array.Ops.Map
   , imap
   -- ** Monadic
   -- *** Sequential
+  , mapM
   , mapM_
   , forM_
   , imapM_
@@ -42,15 +43,19 @@ module Data.Massiv.Array.Ops.Map
   ) where
 
 
-import           Control.Monad                      (void, when)
+import           Control.Monad                       (void, when)
+import           Control.Monad.ST                    (runST)
+import           Data.Foldable                       (foldlM)
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
-import           Data.Monoid                        ((<>))
-import           Prelude                            hiding (map, mapM, mapM_,
-                                                     unzip, unzip3, zip, zip3,
-                                                     zipWith, zipWith3)
+import           Data.Monoid                         ((<>))
+import           GHC.Base                            (build)
+import           Prelude                             hiding (map, mapM, mapM_,
+                                                      unzip, unzip3, zip, zip3,
+                                                      zipWith, zipWith3)
 
 -- | Map a function over an array
 map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
@@ -126,6 +131,21 @@ izipWith3 f arr1 arr2 arr3 =
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
 
+-- | Map a monadic action over an array sequentially.
+mapM ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+mapM f arr = fmap loadList $ traverse f $ build (\c n -> foldrFB c n arr)
+  where
+    loadList xs =
+      runST $ do
+        marr <- unsafeNew (size arr)
+        _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
+        unsafeFreeze (getComp arr) marr
+    {-# INLINE loadList #-}
+{-# INLINE mapM #-}
 
 
 -- | Map a monadic function over an array sequentially, while discarding the result.
