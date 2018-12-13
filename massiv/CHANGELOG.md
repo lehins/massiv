@@ -1,7 +1,7 @@
 # 0.2.6
 
 * Add `expand` family of functions.
-* Long awaited `mapM` implementation.
+* Long awaited `makeArrayM` and `mapM` implementations.
 
 # 0.2.5
 

@@ -131,6 +131,7 @@ izipWith3 f arr1 arr2 arr3 =
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
 
+
 -- | Map a monadic action over an array sequentially.
 mapM ::
      (Source r' ix a, Mutable r ix b, Monad m)
