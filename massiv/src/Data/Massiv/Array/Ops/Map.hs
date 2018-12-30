@@ -403,7 +403,7 @@ mapIO_ :: Source r b e => (e -> IO a) -> Array r b e -> IO ()
 mapIO_ action = imapIO_ (const action)
 {-# INLINE mapIO_ #-}
 
--- | SAme as `mapIO_`, but map an index aware action instead.
+-- | Same as `mapIO_`, but map an index aware action instead.
 --
 -- @since 0.2.6
 imapIO_ :: Source r ix e => (ix -> e -> IO a) -> Array r ix e -> IO ()

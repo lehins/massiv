@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE CPP                 #-}
 module Data.Massiv.Core.IndexSpec (Sz(..), SzZ(..), SzIx(..), DimIx(..), spec) where
 
 import           Control.Monad
@@ -10,7 +11,9 @@ import           Data.Massiv.Core.Index
 import           Data.Functor.Identity
 import           Test.Hspec
 import           Test.QuickCheck
+#if !MIN_VERSION_QuickCheck(2,10,0)
 import           Test.QuickCheck.Function
+#endif
 
 -- | Size that will result in a non-empty array
 newtype Sz ix = Sz ix deriving Show

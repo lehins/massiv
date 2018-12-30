@@ -347,13 +347,13 @@ or = fold (||) False
 {-# INLINE or #-}
 
 
--- | Determines whether all element of the array satisfy the predicate.
+-- | /O(n)/ - Determines whether all element of the array satisfy the predicate.
 all :: Source r ix e =>
        (e -> Bool) -> Array r ix e -> Bool
 all f = foldlInternal (\acc el -> acc && f el) True (&&) True
 {-# INLINE all #-}
 
--- | Determines whether any element of the array satisfies the predicate.
+-- | /O(n)/ - Determines whether any element of the array satisfies the predicate.
 any :: Source r ix e =>
        (e -> Bool) -> Array r ix e -> Bool
 any f = foldlInternal (\acc el -> acc || f el) False (||) False

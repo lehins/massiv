@@ -341,7 +341,7 @@ ifoldrP = ifoldrOnP []
 {-# INLINE ifoldrP #-}
 
 
--- | This folding function breaks referencial transparency on some functions
+-- | This folding function breaks referential transparency on some functions
 -- @f@, therefore it is kept here for internal use only.
 foldlInternal :: Source r ix e =>
          (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b

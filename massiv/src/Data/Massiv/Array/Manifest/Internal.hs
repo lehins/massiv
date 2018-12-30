@@ -46,7 +46,7 @@ module Data.Massiv.Array.Manifest.Internal
 
 import           Control.Exception                   (try)
 import           Control.Monad                       (unless)
-import           Control.Monad.ST                    (RealWorld, runST)
+import           Control.Monad.ST                    (runST)
 import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Array.Ops.Fold.Internal as M
@@ -59,7 +59,6 @@ import           Data.Typeable
 import qualified Data.Vector                         as V
 import           GHC.Base                            hiding (ord)
 import           System.IO.Unsafe                    (unsafePerformIO)
-
 
 #if MIN_VERSION_primitive(0,6,2)
 import           Data.Primitive.Array                (sizeofArray,
