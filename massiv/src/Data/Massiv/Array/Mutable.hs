@@ -13,23 +13,8 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Mutable
-  ( Mutable
-  , MArray
-  , msize
-  , new
-  , thaw
-  , freeze
-  , createArray_
-  , createArray
-  , createArrayST_
-  , createArrayST
-  , generateArray
-  , generateArrayIO
-  , unfoldlPrim_
-  , unfoldlPrim
-  , withMArray
-  , withMArrayST
-  , read
+  ( -- * Element-wise mutation
+    read
   , read'
   , write
   , write'
@@ -37,7 +22,29 @@ module Data.Massiv.Array.Mutable
   , modify'
   , swap
   , swap'
-  -- * Computation
+  -- ** Operate over `MArray`
+  , Mutable
+  , MArray
+  , msize
+  -- *** Convert
+  , new
+  , thaw
+  , freeze
+  -- *** Create
+  , createArray_
+  , createArray
+  , createArrayST_
+  , createArrayST
+  -- *** Generate
+  , generateArray
+  , generateArrayIO
+  -- *** Unfold
+  , unfoldlPrim_
+  , unfoldlPrim
+  -- *** Modify
+  , withMArray
+  , withMArrayST
+  -- ** Computation
   , RealWorld
   , computeInto
   ) where
@@ -107,7 +114,7 @@ createArray comp sz action = do
   return (a, arr)
 {-# INLINE createArray #-}
 
--- | Just like `createArray`, but restricted to `ST`.
+-- | Just like `createArray_`, but restricted to `ST`.
 --
 -- @since 0.2.6
 --
@@ -216,8 +223,8 @@ generateArrayIO comp sz' gen = do
 --
 unfoldlPrim_ ::
      (Mutable r ix e, PrimMonad m)
-  => Comp
-  -> ix
+  => Comp -- ^ Computation strategy (ignored during initial creation)
+  -> ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
@@ -231,8 +238,8 @@ unfoldlPrim_ comp sz gen acc0 = fmap snd $ unfoldlPrim comp sz gen acc0
 --
 unfoldlPrim ::
      (Mutable r ix e, PrimMonad m)
-  => Comp
-  -> ix
+  => Comp -- ^ Computation strategy (ignored during initial creation)
+  -> ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)
