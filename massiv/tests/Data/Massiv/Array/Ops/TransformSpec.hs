@@ -4,7 +4,6 @@
 module Data.Massiv.Array.Ops.TransformSpec (spec) where
 
 import           Data.Massiv.CoreArbitrary as A
-import           Data.Maybe                (fromJust)
 import           Data.Typeable             (Typeable)
 import           Test.Hspec
 import           Test.QuickCheck
@@ -15,7 +14,7 @@ prop_ExtractAppend
   => proxy (r, ix, e) -> DimIx ix -> ArrIx r ix e -> Bool
 prop_ExtractAppend _ (DimIx dim) (ArrIx arr ix) =
   maybe False ((delay arr ==) . uncurry (append' dim)) $
-  A.splitAt dim (fromJust (getIndex ix dim)) arr
+  A.splitAt dim (getDim' ix dim) arr
 
 
 prop_transposeOuterInner :: Arr D Ix2 Int -> Property

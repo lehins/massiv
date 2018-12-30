@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Map
 -- Copyright   : (c) Alexey Kuleshevich 2018
@@ -12,9 +13,15 @@
 module Data.Massiv.Array.Ops.Map
   ( map
   , imap
+  -- ** Traversing
+  , traverse
+  , itraverse
   -- ** Monadic
   -- *** Sequential
   , mapM
+  , mapMR
+  , imapM
+  , imapMR
   , mapM_
   , forM_
   , imapM_
@@ -54,8 +61,14 @@ import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
 import           Prelude                             hiding (map, mapM, mapM_,
-                                                      unzip, unzip3, zip, zip3,
-                                                      zipWith, zipWith3)
+                                                      traverse, unzip, unzip3,
+                                                      zip, zip3, zipWith,
+                                                      zipWith3)
+import qualified Prelude                             as Prelude (traverse)
+
+--------------------------------------------------------------------------------
+-- map -------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- | Map a function over an array
 map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
@@ -66,6 +79,10 @@ map f = imap (const f)
 imap :: Source r ix e' => (ix -> e' -> e) -> Array r ix e' -> Array D ix e
 imap f !arr = DArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE imap #-}
+
+--------------------------------------------------------------------------------
+-- zip -------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- | Zip two arrays
 zip :: (Source r1 ix e1, Source r2 ix e2)
@@ -90,7 +107,9 @@ unzip3 :: Source r ix (e1, e2, e3)
 unzip3 arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_, _, e) -> e) arr)
 {-# INLINE unzip3 #-}
 
-
+--------------------------------------------------------------------------------
+-- zipWith ---------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- | Zip two arrays with a function. Resulting array will be an intersection of
 -- source arrays in case their dimensions do not match.
@@ -131,14 +150,20 @@ izipWith3 f arr1 arr2 arr3 =
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
 
+--------------------------------------------------------------------------------
+-- traverse --------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- | Map a monadic action over an array sequentially.
-mapM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
-  => (a -> m b)
+--
+-- @since 0.3.0
+--
+traverse ::
+     (Source r' ix a, Mutable r ix b, Applicative f)
+  => (a -> f b)
   -> Array r' ix a
-  -> m (Array r ix b)
-mapM f arr = fmap loadList $ traverse f $ build (\c n -> foldrFB c n arr)
+  -> f (Array r ix b)
+traverse f arr = loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr))
   where
     loadList xs =
       runST $ do
@@ -146,8 +171,89 @@ mapM f arr = fmap loadList $ traverse f $ build (\c n -> foldrFB c n arr)
         _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
+{-# INLINE traverse #-}
+
+-- | Map a monadic action over an array sequentially.
+--
+-- @since 0.2.6
+--
+itraverse ::
+     (Source r' ix a, Mutable r ix b, Applicative f)
+  => (ix -> a -> f b)
+  -> Array r' ix a
+  -> f (Array r ix b)
+itraverse f arr =
+  fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
+  where
+    loadList xs =
+      runST $ do
+        marr <- unsafeNew (size arr)
+        _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
+        unsafeFreeze (getComp arr) marr
+    {-# INLINE loadList #-}
+{-# INLINE itraverse #-}
+
+zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
+zipWithIndex arr = zip (makeArray mempty (size arr) id :: Array D ix ix) arr
+{-# INLINE zipWithIndex #-}
+
+--------------------------------------------------------------------------------
+-- mapM ------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+-- | Map a monadic action over an array sequentially.
+--
+-- @since 0.2.6
+--
+mapM ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+mapM = traverse
 {-# INLINE mapM #-}
 
+
+-- | Same as `mapM`, except with ability to specify result representation.
+--
+-- @since 0.2.6
+--
+mapMR ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => r
+  -> (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+mapMR _ = traverse
+{-# INLINE mapMR #-}
+
+
+
+-- | Map a monadic action over an array sequentially.
+--
+-- @since 0.2.6
+--
+imapM ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+imapM = itraverse
+{-# INLINE imapM #-}
+
+
+-- | Same as `imapM`, except with ability to specify result representation.
+--
+-- @since 0.2.6
+--
+imapMR ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => r
+  -> (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+imapMR _ = itraverse
+{-# INLINE imapMR #-}
 
 -- | Map a monadic function over an array sequentially, while discarding the result.
 --

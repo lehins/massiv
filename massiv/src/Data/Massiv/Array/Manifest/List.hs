@@ -82,9 +82,10 @@ fromLists comp = either (const Nothing) Just . fromRaggedArray . setComp comp . 
 
 -- | Same as `fromLists`, but will throw an error on irregular shaped lists.
 --
--- __Note__: This function is almost the same (modulo customizable computation strategy) if you
--- would turn on @{-# LANGUAGE OverloadedLists #-}@. For that reason you can also use
--- `GHC.Exts.fromList`.
+-- __Note__: This function is the same as if you would turn on @{-\# LANGUAGE OverloadedLists #-}@
+-- extension. For that reason you can also use `GHC.Exts.fromList`.
+--
+-- prop> fromLists' Seq xs == fromList xs
 --
 -- ===__Examples__
 --

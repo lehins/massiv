@@ -69,8 +69,6 @@
 module Data.Massiv.Array
   ( -- * Construct
     module Data.Massiv.Array.Ops.Construct
-  , makeArrayM
-  , makeArrayMR
   -- * Compute
   , getComp
   , setComp
@@ -133,7 +131,7 @@ import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Numeric
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Array.Ops.Fold
-import           Data.Massiv.Array.Ops.Map
+import           Data.Massiv.Array.Ops.Map hiding (traverse) -- TODO: add in 0.3.0
 import           Data.Massiv.Array.Ops.Slice
 import           Data.Massiv.Array.Ops.Transform
 import           Data.Massiv.Array.Stencil
@@ -153,20 +151,8 @@ import           Prelude as P hiding ( all
                                      , splitAt
                                      , sum
                                      , zip
+                                     , traverse
                                      )
-
-
--- | Generate an array with a monadic action sequentially.
-makeArrayM :: (Mutable r ix e, Monad m) =>
-              Comp -> ix -> (ix -> m e) -> m (Array r ix e)
-makeArrayM comp sz f = mapM f (makeArrayR D comp sz id)
-{-# INLINE makeArrayM #-}
-
--- | Same as `makeArrayM`, but with ability to specify resulting array representation.
-makeArrayMR :: (Mutable r ix e, Monad m) =>
-               r -> Comp -> ix -> (ix -> m e) -> m (Array r ix e)
-makeArrayMR _ = makeArrayM
-{-# INLINE makeArrayMR #-}
 
 {- $folding
 

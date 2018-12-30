@@ -20,6 +20,9 @@ module Data.Massiv.Array.Ops.Construct
   , makeArrayR
   , makeVectorR
   , singleton
+    -- *** Applicative
+  , makeArrayA
+  , makeArrayAR
     -- ** Enumeration
   , range
   , rangeStep
@@ -34,6 +37,7 @@ module Data.Massiv.Array.Ops.Construct
 
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Array.Ops.Map          as A
 import           Prelude                            as P
 
 
@@ -62,6 +66,22 @@ makeVectorR :: Construct r Ix1 e => r -> Comp -> Ix1-> (Ix1 -> e) -> Array r Ix1
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
+-- | Similar to `makeArray`, but using an `Applicative`, construct the array sequentially,
+-- regardless of the supplied `Comp`.
+--
+-- @since 0.2.6
+--
+makeArrayA :: (Mutable r a b, Applicative f) => Comp -> a -> (a -> f b) -> f (Array r a b)
+makeArrayA comp sz f = A.traverse f $ makeArrayR D comp sz id
+{-# INLINE makeArrayA #-}
+
+-- | Same as `makeArrayA`, but with ability to supply result array representation.
+--
+-- @since 0.2.6
+--
+makeArrayAR :: (Mutable r a b, Applicative f) => r -> Comp -> a -> (a -> f b) -> f (Array r a b)
+makeArrayAR _ = makeArrayA
+{-# INLINE makeArrayAR #-}
 
 -- | Create a vector with a range of @Int@s incremented by 1.
 -- @range k0 k1 == rangeStep k0 k1 1@

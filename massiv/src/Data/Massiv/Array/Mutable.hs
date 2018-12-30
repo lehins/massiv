@@ -40,16 +40,6 @@ module Data.Massiv.Array.Mutable
   -- * Computation
   , RealWorld
   , computeInto
-  -- * Generate (experimental)
-
-  -- $generate
-  {-, generateM
-  , generateLinearM
-  , mapM
-  , imapM
-  , forM
-  , iforM
-  , sequenceM -}
   ) where
 
 import           Prelude                             hiding (mapM, read)
@@ -79,7 +69,7 @@ freeze comp marr = clone <$> unsafeFreeze comp marr
 
 
 -- | Create a new array by supplying an action that will fill the new blank mutable array. Use
--- `createArray` if you'd like to keep the result returned by the filling function.
+-- `createArray` if you'd like to keep the result of the filling function.
 --
 -- ====__Examples__
 --
@@ -88,6 +78,7 @@ freeze comp marr = clone <$> unsafeFreeze comp marr
 --   [ 10,11 ])
 --
 -- @since 0.2.6
+--
 createArray_ ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
@@ -98,9 +89,10 @@ createArray_ ::
 createArray_ comp sz action = fmap snd $ createArray comp sz action
 {-# INLINE createArray_ #-}
 
--- | Just like `createArray_`, but together with `Array` it returns the result of filling action.
+-- | Just like `createArray_`, but together with `Array` it returns the result of the filling action.
 --
 -- @since 0.2.6
+--
 createArray ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
@@ -118,6 +110,7 @@ createArray comp sz action = do
 -- | Just like `createArray`, but restricted to `ST`.
 --
 -- @since 0.2.6
+--
 createArrayST_ ::
      Mutable r ix e => Comp -> ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
 createArrayST_ comp sz action = runST $ createArray_ comp sz action
@@ -127,23 +120,26 @@ createArrayST_ comp sz action = runST $ createArray_ comp sz action
 -- | Just like `createArray`, but restricted to `ST`.
 --
 -- @since 0.2.6
+--
 createArrayST ::
      Mutable r ix e => Comp -> ix -> (forall s. MArray s r ix e -> ST s a) -> (a, Array r ix e)
 createArrayST comp sz action = runST $ createArray comp sz action
 {-# INLINE createArrayST #-}
 
 
--- | Sequentially generate a pure array. Much like `makeArray` creates a pure array, byt this
--- function will use `Mutable` interface to generate a pure array in the end. Also the element
--- producing function is no longer a pure function but is a stateful action in `PrimMonad`, which
--- allows for sharing the state between computation of each element, and even arbitrary effects if
--- that monad is `IO`.
+-- | Sequentially generate a pure array. Much like `makeArray` creates a pure array this function
+-- will use `Mutable` interface to generate a pure `Array` in the end, except that computation
+-- strategy is ignored. Element producing function no longer has to be pure but is a stateful
+-- action, since it is restricted to `PrimMonad` and allows for sharing the state between
+-- computation of each element, which could be arbitrary effects if that monad is `IO`.
 --
 -- @since 0.2.6
 --
 -- ====__Examples__
 --
--- >>> generateArray Seq (Ix1 6) (\ i -> print i >> pure i) :: IO (Array U Ix1 Int)
+-- >>> import Data.IORef
+-- >>> ref <- newIORef (0 :: Int)
+-- >>> generateArray Seq (Ix1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
 -- 0
 -- 1
 -- 2
@@ -152,6 +148,8 @@ createArrayST comp sz action = runST $ createArray comp sz action
 -- 5
 -- (Array U Seq (6)
 --   [ 0,1,2,3,4,5 ])
+-- >>> readIORef ref
+-- 15
 --
 generateArray ::
      (Mutable r ix e, PrimMonad m)
@@ -159,9 +157,11 @@ generateArray ::
   -> ix -- ^ Resulting size of the array
   -> (ix -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
-generateArray comp sz gen =
-  fmap snd $ createArray comp sz $ \marr ->
-    iterM_ zeroIndex (msize marr) (pureIndex 1) (<) $ \ix -> gen ix >>= write marr ix
+generateArray comp sz' gen = do
+  let sz = liftIndex (max 0) sz'
+  marr <- unsafeNew sz
+  iterM_ zeroIndex (msize marr) (pureIndex 1) (<) $ \ix -> gen ix >>= write marr ix
+  unsafeFreeze comp marr
 {-# INLINE generateArray #-}
 
 
@@ -175,18 +175,18 @@ generateArrayIO ::
   -> ix
   -> (ix -> IO e)
   -> IO (Array r ix e)
-generateArrayIO comp sz gen = do
+generateArrayIO comp sz' gen = do
   case comp of
-    Seq -> generateArray comp sz gen
+    Seq -> generateArray comp sz' gen
     ParOn wids -> do
-      let sz' = liftIndex (max 0) sz
-      marr <- unsafeNew sz'
+      let sz = liftIndex (max 0) sz'
+      marr <- unsafeNew sz
       withScheduler_ wids $ \scheduler ->
         splitLinearlyWithM_
           (numWorkers scheduler)
           (scheduleWork scheduler)
-          (totalElem sz')
-          (gen . fromLinearIndex sz')
+          (totalElem sz)
+          (gen . fromLinearIndex sz)
           (unsafeLinearWrite marr)
       unsafeFreeze comp marr
 {-# INLINE generateArrayIO #-}
@@ -363,140 +363,3 @@ swap' marr ix1 ix2 = do
       else ix1
 {-# INLINE swap' #-}
 
-{- Disabled until better times. See https://github.com/lehins/massiv/issues/24
-
-unsafeLinearFillM :: (Mutable r ix e, Monad m) =>
-                     MArray RealWorld r ix e -> (Int -> m e) -> WorldState -> m WorldState
-unsafeLinearFillM ma f (State s_#) = go 0# s_#
-  where
-    !(I# k#) = totalElem (msize ma)
-    go i# s# =
-      case i# <# k# of
-        0# -> return (State s#)
-        _ -> do
-          let i = I# i#
-          res <- f i
-          State s'# <- unsafeLinearWriteA ma i res (State s#)
-          go (i# +# 1#) s'#
-{-# INLINE unsafeLinearFillM #-}
-
-
--- | /O(n)/ - Same as `generateM` but using a flat index.
---
--- @since 0.1.1
-generateLinearM :: (Monad m, Mutable r ix e) => Comp -> ix -> (Int -> m e) -> m (Array r ix e)
-generateLinearM comp sz f = do
-  (s, mba) <- unsafeNewA (liftIndex (max 0) sz) (State (noDuplicate# realWorld#))
-  s' <- unsafeLinearFillM mba f s
-  (_, ba) <- unsafeFreezeA comp mba s'
-  return ba
-{-# INLINE generateLinearM #-}
-
--- | /O(n)/ - Generate an array monadically using it's mutable interface. Computation will be done
-  -- sequentially, regardless of `Comp` argument.
---
--- @since 0.1.1
-generateM :: (Monad m, Mutable r ix e) => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
-generateM comp sz f = generateLinearM comp sz (f . fromLinearIndex sz)
-{-# INLINE generateM #-}
-
-
--- | /O(n)/ - Map an index aware monadic action over an Array. This operation will force computation
--- sequentially and will result in a manifest Array.
---
--- @since 0.1.1
-imapM
-  :: (Monad m, Source r ix e, Mutable r' ix e') =>
-     r' -> (ix -> e -> m e') -> Array r ix e -> m (Array r' ix e')
-imapM _ f arr =
-  generateLinearM (getComp arr) sz (\ !i -> f (fromLinearIndex sz i) (unsafeLinearIndex arr i))
-  where
-    !sz = size arr
-{-# INLINE imapM #-}
-
--- | /O(n)/ - Map a monadic action over an Array. This operation will force computation sequentially
--- and will result in a manifest Array.
---
--- @since 0.1.1
---
--- ====__Examples__
---
--- >>> mapM P (\i -> Just (i*i)) $ range Seq 0 5
--- Just (Array P Seq (5)
---   [ 0,1,4,9,16 ])
---
-mapM
-  :: (Monad m, Source r ix e, Mutable r' ix e') =>
-     r' -> (e -> m e') -> Array r ix e -> m (Array r' ix e')
-mapM r f = imapM r (const f)
-{-# INLINE mapM #-}
-
-
--- | /O(n)/ - Same as `mapM`, but with its arguments flipped.
---
--- @since 0.1.1
-forM ::
-     (Monad m, Source r ix e, Mutable r' ix e')
-  => r'
-  -> Array r ix e
-  -> (e -> m e')
-  -> m (Array r' ix e')
-forM r = flip (mapM r)
-{-# INLINE forM #-}
-
-
--- | /O(n)/ - Same as `imapM`, but with its arguments flipped.
---
--- @since 0.1.1
-iforM :: (Monad m, Source r ix e, Mutable r' ix e') =>
-         r' -> Array r ix e -> (ix -> e -> m e') -> m (Array r' ix e')
-iforM r = flip (imapM r)
-{-# INLINE iforM #-}
-
-
--- | /O(n)/ - Sequence monadic actions in a source Array. This operation will force the computation
--- sequentially and will result in a manifest Array.
---
--- @since 0.1.1
-sequenceM
-  :: (Monad m, Source r ix (m e), Mutable r' ix e) =>
-     r' -> Array r ix (m e) -> m (Array r' ix e)
-sequenceM r = mapM r id
-{-# INLINE sequenceM #-}
--}
-
-{- $generate
-
-Functions in this section has been removed until better times due to a known bug https://github.com/lehins/massiv/issues/24
-
--}
-
-{- Disabled until better times
-
-Functions in this section can monadically generate manifest arrays using their associated mutable
-interface. Due to the sequential nature of monads generation is done also sequentially regardless of
-supplied computation strategy. All of functions here are very much experimental, so please
-<https://github.com/lehins/massiv/issues/new report an issue> if you see something not working
-properly.
-
-Here is a very imperative like for loop that creates an array while performing a side effect for
-each newly created element:
-
-@
-printSquare :: Int -> IO (Array P Ix1 Int)
-printSquare n = forM P (range Seq 0 n) $ \i -> do
-  let e = i*i
-  putStrLn $ "Element at index: " ++ show i ++ " = " ++ show e ++ ";"
-  return e
-@
-
->>> printSquare 5
-Element at index: 0 = 0;
-Element at index: 1 = 1;
-Element at index: 2 = 4;
-Element at index: 3 = 9;
-Element at index: 4 = 16;
-(Array P Seq (5)
-  [ 0,1,4,9,16 ])
-
--}

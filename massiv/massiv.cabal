@@ -89,7 +89,7 @@ test-suite tests
                     , Data.Massiv.Array.Delayed.WindowedSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
-                    --, Data.Massiv.Array.MutableSpec
+                    , Data.Massiv.Array.MutableSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec

@@ -99,6 +99,19 @@ instance CoArbitrary Ix4 where
 instance CoArbitrary Ix5 where
   coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
 
+instance Function Ix2 where
+  function = functionMap fromIx2 toIx2
+
+instance Function Ix3 where
+  function = functionMap fromIx3 toIx3
+
+instance Function Ix4 where
+  function = functionMap fromIx4 toIx4
+
+instance Function Ix5 where
+  function = functionMap fromIx5 toIx5
+
+
 
 -- instance Arbitrary Ix2 where
 --   arbitrary = (:.) <$> arbitrary <*> arbitrary

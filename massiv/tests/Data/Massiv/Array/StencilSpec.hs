@@ -47,8 +47,8 @@ prop_DangerousStencil _ (NonZero s) (DimIx r) (SzIx (Sz sz) ix) =
     ix' =
       liftIndex (* signum s) $
       fromJust $ do
-        i <- getIndex sz r
-        setIndex zeroIndex r i
+        i <- getDim sz r
+        setDim zeroIndex r i
 
 
 stencilSpec :: Spec
