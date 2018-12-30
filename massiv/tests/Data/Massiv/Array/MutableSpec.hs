@@ -10,6 +10,7 @@ import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
 import           Test.Hspec
 import           Test.QuickCheck
+import           Test.QuickCheck.Monadic
 import           Test.QuickCheck.Function
 
 prop_MapMapM :: (Show (Array r ix Int), Eq (Array r ix Int), Mutable r ix Int) =>
@@ -31,9 +32,9 @@ prop_generateMakeST _ _ (Arr arr) =
 
 prop_generateMakeIO :: (Show (Array r ix Int), Eq (Array r ix Int), Mutable r ix Int) =>
                              r -> Proxy ix -> Arr r ix Int -> Property
-prop_generateMakeIO _ _ (Arr arr) = do
-  arr <- generateArray (getComp arr) (size arr) (return . evaluateAt arr)
-  arr === arr'
+prop_generateMakeIO _ _ (Arr arr) = monadicIO $ do
+  arr' <- run $ generateArray (getComp arr) (size arr) (return . evaluateAt arr)
+  return (arr === arr')
 
 mutableSpec ::
      ( Show r
@@ -59,10 +60,14 @@ mutableSpec r = do
       it "Ix1" $ property $ prop_iMapiMapM r (Proxy :: Proxy Ix1)
       it "Ix2T" $ property $ prop_iMapiMapM r (Proxy :: Proxy Ix2)
       it "Ix3T" $ property $ prop_iMapiMapM r (Proxy :: Proxy Ix3)
-    describe "makeArray == generateArray" $ do
-      it "Ix1" $ property $ prop_generateMakeIdentity r (Proxy :: Proxy Ix1)
-      it "Ix2" $ property $ prop_generateMakeIdentity r (Proxy :: Proxy Ix2)
-      it "Ix3" $ property $ prop_generateMakeIdentity r (Proxy :: Proxy Ix3)
+    describe "makeArray == generateArrayST" $ do
+      it "Ix1" $ property $ prop_generateMakeST r (Proxy :: Proxy Ix1)
+      it "Ix2" $ property $ prop_generateMakeST r (Proxy :: Proxy Ix2)
+      it "Ix3" $ property $ prop_generateMakeST r (Proxy :: Proxy Ix3)
+    describe "makeArray == generateArrayIO" $ do
+      it "Ix1" $ property $ prop_generateMakeIO r (Proxy :: Proxy Ix1)
+      it "Ix2" $ property $ prop_generateMakeIO r (Proxy :: Proxy Ix2)
+      it "Ix3" $ property $ prop_generateMakeIO r (Proxy :: Proxy Ix3)
 
 
 generateSpec :: Spec
