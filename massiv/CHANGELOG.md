@@ -1,15 +1,16 @@
 # 0.2.6
 
 * Add `expand*` family of functions.
-* Long awaited `makeArrayM`/`makeArrayA` and `mapM`/`imapM`/`itraverse` implementations (`traverse`
-  is hidden for now, since it is a breaking change).
-* Deprecate `mapP` and `mapP_` in favor of `mapIO_` and `mapIO_`, while making latter respect the
-  `Comp`
+* Long awaited `makeArrayM`/`makeArrayA` and `mapM`/`forM`/`imapM`/`iforM`/`traverseA`/`itraverseA`
+  alnog with corresponding functions allowing for supplying representation.
+* Deprecate `mapP` and `mapP_` in favor of `mapIO` and `mapIO_`, while making latter respect the
+  `Comp`.
 * Addition of a whole collection of mutable operators:
   * `mapIO`/`mapIO_`/`imapIO`/`imapIO_`/`forIO`/`forIO_`/`iforIO`/`iforIO_`
   * `createArray`/`createArrayST`/`createArrayST_`
   * `generateArray`/`generateArrayIO`
   * `unfoldlPrim`/`unfoldlPrim_`
+  * `makeArrayA`, `makeArrayAR`
 
 # 0.2.5
 

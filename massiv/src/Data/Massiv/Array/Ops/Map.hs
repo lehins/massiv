@@ -14,14 +14,20 @@ module Data.Massiv.Array.Ops.Map
   ( map
   , imap
   -- ** Traversing
-  , traverse
-  , itraverse
+  , traverseA
+  , itraverseA
+  , traverseAR
+  , itraverseAR
   -- ** Monadic
   -- *** Sequential
   , mapM
   , mapMR
+  , forM
+  , forMR
   , imapM
   , imapMR
+  , iforM
+  , iforMR
   , mapM_
   , forM_
   , imapM_
@@ -158,12 +164,12 @@ izipWith3 f arr1 arr2 arr3 =
 --
 -- @since 0.3.0
 --
-traverse ::
+traverseA ::
      (Source r' ix a, Mutable r ix b, Applicative f)
   => (a -> f b)
   -> Array r' ix a
   -> f (Array r ix b)
-traverse f arr = loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr))
+traverseA f arr = loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr))
   where
     loadList xs =
       runST $ do
@@ -171,18 +177,18 @@ traverse f arr = loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr
         _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
-{-# INLINE traverse #-}
+{-# INLINE traverseA #-}
 
 -- | Map a monadic action over an array sequentially.
 --
 -- @since 0.2.6
 --
-itraverse ::
+itraverseA ::
      (Source r' ix a, Mutable r ix b, Applicative f)
   => (ix -> a -> f b)
   -> Array r' ix a
   -> f (Array r ix b)
-itraverse f arr =
+itraverseA f arr =
   fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
   where
     loadList xs =
@@ -191,7 +197,35 @@ itraverse f arr =
         _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
-{-# INLINE itraverse #-}
+{-# INLINE itraverseA #-}
+
+
+
+-- | Same as `traverseA`, except with ability to specify representation.
+--
+-- @since 0.3.0
+--
+traverseAR ::
+     (Source r' ix a, Mutable r ix b, Applicative f)
+  => r
+  -> (a -> f b)
+  -> Array r' ix a
+  -> f (Array r ix b)
+traverseAR _ = traverseA
+{-# INLINE traverseAR #-}
+
+-- | Same as `itraverseA`, except with ability to specify representation.
+--
+-- @since 0.2.6
+--
+itraverseAR ::
+     (Source r' ix a, Mutable r ix b, Applicative f)
+  => r
+  -> (ix -> a -> f b)
+  -> Array r' ix a
+  -> f (Array r ix b)
+itraverseAR _ = itraverseA
+{-# INLINE itraverseAR #-}
 
 zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
 zipWithIndex arr = zip (makeArray mempty (size arr) id :: Array D ix ix) arr
@@ -210,7 +244,7 @@ mapM ::
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-mapM = traverse
+mapM = traverseA
 {-# INLINE mapM #-}
 
 
@@ -224,8 +258,35 @@ mapMR ::
   -> (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-mapMR _ = traverse
+mapMR _ = traverseA
 {-# INLINE mapMR #-}
+
+
+-- | Same as `mapM` except with arguments flipped.
+--
+-- @since 0.2.6
+--
+forM ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => Array r' ix a
+  -> (a -> m b)
+  -> m (Array r ix b)
+forM = flip traverseA
+{-# INLINE forM #-}
+
+
+-- | Same as `forM`, except with ability to specify result representation.
+--
+-- @since 0.2.6
+--
+forMR ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => r
+  -> Array r' ix a
+  -> (a -> m b)
+  -> m (Array r ix b)
+forMR _ = flip traverseA
+{-# INLINE forMR #-}
 
 
 
@@ -238,7 +299,7 @@ imapM ::
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-imapM = itraverse
+imapM = itraverseA
 {-# INLINE imapM #-}
 
 
@@ -252,8 +313,37 @@ imapMR ::
   -> (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-imapMR _ = itraverse
+imapMR _ = itraverseA
 {-# INLINE imapMR #-}
+
+
+
+-- | Same as `forM`, except map an index aware action.
+--
+-- @since 0.2.6
+--
+iforM ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+iforM = itraverseA
+{-# INLINE iforM #-}
+
+
+-- | Same as `iforM`, except with ability to specify result representation.
+--
+-- @since 0.2.6
+--
+iforMR ::
+     (Source r' ix a, Mutable r ix b, Monad m)
+  => r
+  -> (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+iforMR _ = itraverseA
+{-# INLINE iforMR #-}
+
 
 -- | Map a monadic function over an array sequentially, while discarding the result.
 --

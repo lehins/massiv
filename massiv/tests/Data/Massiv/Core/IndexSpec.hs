@@ -10,6 +10,7 @@ import           Data.Massiv.Core.Index
 import           Data.Functor.Identity
 import           Test.Hspec
 import           Test.QuickCheck
+import           Test.QuickCheck.Function
 
 -- | Size that will result in a non-empty array
 newtype Sz ix = Sz ix deriving Show

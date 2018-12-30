@@ -66,13 +66,13 @@ makeVectorR :: Construct r Ix1 e => r -> Comp -> Ix1-> (Ix1 -> e) -> Array r Ix1
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
--- | Similar to `makeArray`, but using an `Applicative`, construct the array sequentially,
--- regardless of the supplied `Comp`.
+-- | Similar to `makeArray`, but construct the array sequentially using an `Applicative` interface
+-- disregarding the supplied `Comp`.
 --
 -- @since 0.2.6
 --
 makeArrayA :: (Mutable r a b, Applicative f) => Comp -> a -> (a -> f b) -> f (Array r a b)
-makeArrayA comp sz f = A.traverse f $ makeArrayR D comp sz id
+makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 {-# INLINE makeArrayA #-}
 
 -- | Same as `makeArrayA`, but with ability to supply result array representation.

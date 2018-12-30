@@ -131,7 +131,7 @@ import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Numeric
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Array.Ops.Fold
-import           Data.Massiv.Array.Ops.Map hiding (traverse) -- TODO: add in 0.3.0
+import           Data.Massiv.Array.Ops.Map
 import           Data.Massiv.Array.Ops.Slice
 import           Data.Massiv.Array.Ops.Transform
 import           Data.Massiv.Array.Stencil
@@ -151,7 +151,6 @@ import           Prelude as P hiding ( all
                                      , splitAt
                                      , sum
                                      , zip
-                                     , traverse
                                      )
 
 {- $folding
