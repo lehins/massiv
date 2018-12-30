@@ -160,9 +160,9 @@ izipWith3 f arr1 arr2 arr3 =
 -- traverse --------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
--- | Map a monadic action over an array sequentially.
+-- | Traverse with an `Applicative` action over an array sequentially.
 --
--- @since 0.3.0
+-- @since 0.2.6
 --
 traverseA ::
      (Source r' ix a, Mutable r ix b, Applicative f)
@@ -179,7 +179,7 @@ traverseA f arr = loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n ar
     {-# INLINE loadList #-}
 {-# INLINE traverseA #-}
 
--- | Map a monadic action over an array sequentially.
+-- | Traverse with an `Applicative` index aware action over an array sequentially.
 --
 -- @since 0.2.6
 --
@@ -203,7 +203,7 @@ itraverseA f arr =
 
 -- | Same as `traverseA`, except with ability to specify representation.
 --
--- @since 0.3.0
+-- @since 0.2.6
 --
 traverseAR ::
      (Source r' ix a, Mutable r ix b, Applicative f)
