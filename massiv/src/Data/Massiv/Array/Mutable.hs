@@ -232,7 +232,7 @@ unfoldlPrim_ comp sz gen acc0 = fmap snd $ unfoldlPrim comp sz gen acc0
 {-# INLINE unfoldlPrim_ #-}
 
 
--- | Just like `unfoldlPrim`, but also returns the final value of the accumulator.
+-- | Just like `unfoldlPrim_`, but also returns the final value of the accumulator.
 --
 -- @since 0.2.6
 --
