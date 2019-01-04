@@ -178,6 +178,7 @@ instance Index ix => Mutable B ix e where
     INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite", sizeofMutableArray, A.writeArray) ma i e
   {-# INLINE unsafeLinearWrite #-}
 
+instance Index ix => Load B ix e
 
 -- | Row-major sequential folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
@@ -320,6 +321,8 @@ instance (Index ix, NFData e) => Mutable N ix e where
   unsafeLinearWrite (MNArray ma) i e = e `deepseq`
     INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", totalElem . msize, unsafeLinearWrite) ma i e
   {-# INLINE unsafeLinearWrite #-}
+
+instance (Index ix, NFData e) => Load N ix e
 
 
 instance ( NFData e

@@ -191,6 +191,9 @@ instance (Index ix, Prim e) => Mutable P ix e where
                 elemsMutableByteArray (undefined :: e), writeByteArray) ma
   {-# INLINE unsafeLinearWrite #-}
 
+  unsafeLinearSet (MPArray _ ma) = setByteArray ma
+    --TODO implement CPP
+
   unsafeNewA sz (State s#) =
     let kb# = totalSize# sz (undefined :: e)
         !(# s'#, mba# #) = newByteArray# kb# s# in
@@ -210,6 +213,10 @@ instance (Index ix, Prim e) => Mutable P ix e where
     pure (State (writeByteArray# mba# i# val s#))
   {-# INLINE unsafeLinearWriteA #-}
 
+instance (Prim e, Index ix) => Load P ix e where
+  loadArray !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (totalElem (size arr)) (unsafeLinearIndex arr)
+  {-# INLINE loadArray #-}
 
 
 totalSize# :: (Index ix, Prim e) => ix -> e -> Int#

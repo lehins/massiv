@@ -30,13 +30,17 @@ module Data.Massiv.Array.Ops.Transform
   , append'
   , splitAt
   , splitAt'
+  -- ** Upsample/Downsample
+  , upsample
+  , downsample
   -- * Traverse
   , traverse
   , traverse2
   ) where
 
-import           Control.Monad                      (guard)
+import           Control.Monad                      (unless, guard)
 import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core.Common
 import           Data.Maybe                         (fromMaybe)
@@ -369,6 +373,61 @@ splitAt' dim i arr =
              show i ++ " for dimension: " ++ show dim ++ " and array with size: " ++ show (size arr)
         else "Invalid dimension: " ++ show dim ++ " for array with size: " ++ show (size arr)
 {-# INLINE splitAt' #-}
+
+
+-- | Discard elements from the source array according to the stride.
+--
+-- @since 0.3.0
+--
+downsample :: Source r ix e => Stride ix -> Array r ix e -> Array DL ix e
+downsample !stride arr =
+  DLArray
+    { dlComp = getComp arr
+    , dlSize = resultSize
+    , dlLoad =
+        \numWorkers scheduleWith dlWrite ->
+          splitLinearlyWith_
+            numWorkers
+            scheduleWith
+            (totalElem resultSize)
+            unsafeLinearWriteWithStride
+            dlWrite
+    }
+  where
+    resultSize = strideSize stride (size arr)
+    strideIx = unStride stride
+    unsafeLinearWriteWithStride =
+      unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
+    {-# INLINE unsafeLinearWriteWithStride #-}
+{-# INLINE downsample #-}
+
+
+-- | Insert the same element into a `Load`able array according to the stride.
+--
+-- @since 0.3.0
+upsample
+  :: (Index (Lower ix), Load r ix e) => e -> Stride ix -> Array r ix e -> Array DL ix e
+upsample !fillWith !safeStride arr =
+  DLArray
+    { dlComp = getComp arr
+    , dlSize = newsz
+    , dlLoad =
+        \numWorkers scheduleWith dlWrite -> do
+          unless (stride == pureIndex 1) $
+            loopM_ 0 (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
+          loadArray numWorkers scheduleWith arr (\i -> dlWrite (adjustLinearStride i))
+    }
+  where
+    adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
+    {-# INLINE adjustLinearStride #-}
+    timesStride !ix = liftIndex2 (*) stride ix
+    {-# INLINE timesStride #-}
+    !stride = unStride safeStride
+    !sz = size arr
+    !newsz = timesStride sz
+{-# INLINE upsample #-}
+
+
 
 -- | Create an array by traversing a source array.
 traverse

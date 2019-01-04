@@ -31,7 +31,6 @@ import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List               (showArray)
-import           Data.Massiv.Core.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Proxy                          (Proxy (..))
 import           Data.Typeable                       (showsTypeRep, typeRep)
@@ -168,30 +167,26 @@ loadWithIx1 with (DWArray (DArray _ sz indexB) _ window) unsafeWrite = do
 
 
 instance Load DW Ix1 e where
-  loadS arr _ unsafeWrite = loadWithIx1 id arr unsafeWrite >>= uncurry ($)
-  {-# INLINE loadS #-}
-  loadP wIds arr _ unsafeWrite =
-    withScheduler_ wIds $ \scheduler -> do
-      (loadWindow, (wStart, wEnd)) <- loadWithIx1 (scheduleWork scheduler) arr unsafeWrite
-      let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers scheduler
-      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
-        let !it' = wid * chunkHeight + wStart
-         in loadWindow (it', it' + chunkHeight)
-      when (slackHeight > 0) $
-        let !itSlack = numWorkers scheduler * chunkHeight + wStart
-         in loadWindow (itSlack, itSlack + slackHeight)
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' arr =
-    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  loadArray numWorkers scheduleWork arr unsafeWrite = do
+    (loadWindow, (wStart, wEnd)) <- loadWithIx1 scheduleWork arr unsafeWrite
+    let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers
+    loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
+      let !it' = wid * chunkHeight + wStart
+       in loadWindow (it', it' + chunkHeight)
+    when (slackHeight > 0) $
+      let !itSlack = numWorkers * chunkHeight + wStart
+       in loadWindow (itSlack, itSlack + slackHeight)
   {-# INLINE loadArray #-}
-  loadArrayWithStride numWorkers' scheduleWork' stride sz arr _ unsafeWrite = do
-      (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 scheduleWork' arr stride sz unsafeWrite
-      let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers'
-      loopM_ 0 (< numWorkers') (+ 1) $ \ !wid ->
+
+instance StrideLoad DW Ix1 e where
+  loadArrayWithStride numWorkers scheduleWork stride sz arr unsafeWrite = do
+      (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 scheduleWork arr stride sz unsafeWrite
+      let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers
+      loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
         let !it' = wid * chunkHeight + wStart
          in loadWindow (it', it' + chunkHeight)
       when (slackHeight > 0) $
-        let !itSlack = numWorkers' * chunkHeight + wStart
+        let !itSlack = numWorkers * chunkHeight + wStart
          in loadWindow (itSlack, itSlack + slackHeight)
   {-# INLINE loadArrayWithStride #-}
 
@@ -252,31 +247,26 @@ loadWithIx2 with arr unsafeWrite = do
 
 
 instance Load DW Ix2 e where
-  loadS arr _ unsafeWrite = loadWithIx2 id arr unsafeWrite >>= uncurry ($)
-  {-# INLINE loadS #-}
-  --
-  loadP wIds arr _ unsafeWrite =
-    withScheduler_ wIds $ \scheduler -> do
-      (loadWindow, it :. ib) <- loadWithIx2 (scheduleWork scheduler) arr unsafeWrite
-      let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers scheduler
-      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
-        let !it' = wid * chunkHeight + it
-         in loadWindow (it' :. (it' + chunkHeight))
-      when (slackHeight > 0) $
-        let !itSlack = numWorkers scheduler * chunkHeight + it
-         in loadWindow (itSlack :. (itSlack + slackHeight))
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' arr =
-    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
-  {-# INLINE loadArray #-}
-  loadArrayWithStride numWorkers' scheduleWork' stride sz arr _ unsafeWrite = do
-    (loadWindow, it :. ib) <- loadArrayWithIx2 scheduleWork' arr stride sz unsafeWrite
-    let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers'
-    loopM_ 0 (< numWorkers') (+ 1) $ \ !wid ->
+  loadArray numWorkers scheduleWork arr unsafeWrite = do
+    (loadWindow, it :. ib) <- loadWithIx2 scheduleWork arr unsafeWrite
+    let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers
+    loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
       let !it' = wid * chunkHeight + it
        in loadWindow (it' :. (it' + chunkHeight))
     when (slackHeight > 0) $
-      let !itSlack = numWorkers' * chunkHeight + it
+      let !itSlack = numWorkers * chunkHeight + it
+       in loadWindow (itSlack :. (itSlack + slackHeight))
+  {-# INLINE loadArray #-}
+
+instance StrideLoad DW Ix2 e where
+  loadArrayWithStride numWorkers scheduleWork stride sz arr unsafeWrite = do
+    (loadWindow, it :. ib) <- loadArrayWithIx2 scheduleWork arr stride sz unsafeWrite
+    let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers
+    loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
+      let !it' = wid * chunkHeight + it
+       in loadWindow (it' :. (it' + chunkHeight))
+    when (slackHeight > 0) $
+      let !itSlack = numWorkers * chunkHeight + it
        in loadWindow (itSlack :. (itSlack + slackHeight))
   {-# INLINE loadArrayWithStride #-}
 
@@ -317,29 +307,22 @@ loadArrayWithIx2 with arr stride sz unsafeWrite = do
 
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
-  loadS = loadWithIxN id
-  {-# INLINE loadS #-}
-  loadP wIds arr unsafeRead unsafeWrite =
-    withScheduler_ wIds $ \scheduler ->
-      loadWithIxN (scheduleWork scheduler) arr unsafeRead unsafeWrite
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' arr =
-    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  loadArray _numWorkers = loadWithIxN
   {-# INLINE loadArray #-}
+instance (Index (IxN n), StrideLoad DW (Ix (n - 1)) e) => StrideLoad DW (IxN n) e where
   loadArrayWithStride = loadArrayWithIxN
   {-# INLINE loadArrayWithStride #-}
 
 loadArrayWithIxN ::
-     (Index ix, Monad m, Load DW (Lower ix) e)
+     (Index ix, Monad m, StrideLoad DW (Lower ix) e)
   => Int
   -> (m () -> m ())
   -> Stride ix
   -> ix
   -> Array DW ix e
-  -> (Int -> m e)
   -> (Int -> e -> m ())
   -> m ()
-loadArrayWithIxN numWorkers' scheduleWork' stride szResult arr unsafeRead unsafeWrite = do
+loadArrayWithIxN numWorkers scheduleWork stride szResult arr unsafeWrite = do
   let DWArray darr mStencilSize window  = arr
       DArray {dSize = szSource, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex = indexWindow} = fromMaybe zeroWindow window
@@ -365,12 +348,11 @@ loadArrayWithIxN numWorkers' scheduleWork' stride szResult arr unsafeRead unsafe
                 , dwWindow = Just lowerWindow
                 }
          in loadArrayWithStride
-              numWorkers'
-              scheduleWork'
+              numWorkers
+              scheduleWork
               (Stride lowerStrideIx)
               lowerSize
               lowerArr
-              (\k -> unsafeRead (k + pageElements * (i `div` s)))
               (\k -> unsafeWrite (k + pageElements * (i `div` s)))
       {-# NOINLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ s) loadLower
@@ -384,10 +366,9 @@ loadWithIxN ::
      (Index ix, Monad m, Load DW (Lower ix) e)
   => (m () -> m ())
   -> Array DW ix e
-  -> (Int -> m e)
   -> (Int -> e -> m ())
   -> m ()
-loadWithIxN with arr unsafeRead unsafeWrite = do
+loadWithIxN with arr unsafeWrite = do
   let DWArray darr mStencilSize window = arr
       DArray {dSize = sz, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex = indexWindow} = fromMaybe zeroWindow window
@@ -411,9 +392,10 @@ loadWithIxN with arr unsafeRead unsafeWrite = do
                 , dwWindow = Just lowerWindow
                 }
          in with $
-            loadS
+            loadArray
+              1
+              id
               lowerArr
-              (\k -> unsafeRead (k + pageElements * i))
               (\k -> unsafeWrite (k + pageElements * i))
       {-# NOINLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ 1) loadLower
@@ -478,59 +460,41 @@ toIx2ArrayDW DWArray {dwArray, dwStencilSize, dwWindow} =
 
 
 instance Load DW Ix2T e where
-  loadS arr = loadS (toIx2ArrayDW arr)
-  {-# INLINE loadS #-}
-  loadP wIds arr = loadP wIds (toIx2ArrayDW arr)
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' arr =
-    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  loadArray numWorkers scheduleWork arr =
+    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}
-  loadArrayWithStride numWorkers' scheduleWork' stride sz arr =
+instance StrideLoad DW Ix2T e where
+  loadArrayWithStride numWorkers scheduleWork stride sz arr =
     loadArrayWithStride
-      numWorkers'
-      scheduleWork'
+      numWorkers
+      scheduleWork
       (Stride $ toIx2 $ unStride stride)
       (toIx2 sz)
       (toIx2ArrayDW arr)
   {-# INLINE loadArrayWithStride #-}
 
 instance Load DW Ix3T e where
-  loadS = loadWithIxN id
-  {-# INLINE loadS #-}
-  loadP wIds arr unsafeRead unsafeWrite =
-    withScheduler_ wIds $ \scheduler ->
-      loadWithIxN (scheduleWork scheduler) arr unsafeRead unsafeWrite
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' arr =
-    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  loadArray numWorkers scheduleWork arr =
+    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}
+instance StrideLoad DW Ix3T e where
   loadArrayWithStride = loadArrayWithIxN
   {-# INLINE loadArrayWithStride #-}
 
 
 instance Load DW Ix4T e where
-  loadS = loadWithIxN id
-  {-# INLINE loadS #-}
-  loadP wIds arr unsafeRead unsafeWrite =
-    withScheduler_ wIds $ \scheduler ->
-      loadWithIxN (scheduleWork scheduler) arr unsafeRead unsafeWrite
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' arr =
-    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  loadArray numWorkers scheduleWork arr =
+    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}
+instance StrideLoad DW Ix4T e where
   loadArrayWithStride = loadArrayWithIxN
   {-# INLINE loadArrayWithStride #-}
 
 
 instance Load DW Ix5T e where
-  loadS = loadWithIxN id
-  {-# INLINE loadS #-}
-  loadP wIds arr unsafeRead unsafeWrite =
-    withScheduler_ wIds $ \scheduler ->
-      loadWithIxN (scheduleWork scheduler) arr unsafeRead unsafeWrite
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' arr =
-    loadArrayWithStride numWorkers' scheduleWork' oneStride (size arr) arr
+  loadArray numWorkers scheduleWork arr =
+    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}
+instance StrideLoad DW Ix5T e where
   loadArrayWithStride = loadArrayWithIxN
   {-# INLINE loadArrayWithStride #-}

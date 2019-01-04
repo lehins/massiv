@@ -28,6 +28,7 @@ module Data.Massiv.Core.Index.Ix where
 import           Control.DeepSeq
 import           Control.Monad                (liftM)
 import           Data.Massiv.Core.Index.Class
+import           Data.Massiv.Core.Iterator
 import           Data.Monoid                  ((<>))
 import           Data.Proxy
 import qualified Data.Vector.Generic          as V
@@ -306,6 +307,11 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   repairIndex (k :. szL) (i :. ixL) rBelow rOver =
     repairIndex k i rBelow rOver :. repairIndex szL ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
+  iterExcludeM_ (s :. sIxL) (e :. eIxL) (inc :. incIxL) cond f = do
+    iterExcludeM_ sIxL eIxL incIxL cond (f . (s :.))
+    loopM_ (s + 1) (`cond` e) (+ inc) $ \ !i ->
+      loopM_ sIxL (`cond` eIxL) (+ incIxL) $ \ !ix -> f (i :. ix)
+  {-# INLINE iterExcludeM_ #-}
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where

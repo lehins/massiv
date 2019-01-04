@@ -25,6 +25,7 @@ module Data.Massiv.Core
   , Construct
   , Source
   , Load(..)
+  , StrideLoad(..)
   , Size
   , Slice
   , OuterSlice(outerLength)

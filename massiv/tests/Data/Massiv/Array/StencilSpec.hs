@@ -32,7 +32,7 @@ prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int) =>
 prop_MapSingletonStencil _ f b (ArrP arr) =
   computeAs U (mapStencil b (singletonStencil (apply f)) arr) == computeAs U (A.map (apply f) arr)
 
-prop_MapSingletonStencilWithStride :: (Load DW ix Int, Manifest U ix Int) =>
+prop_MapSingletonStencilWithStride :: (StrideLoad DW ix Int, Manifest U ix Int) =>
                                       Proxy ix -> Fun Int Int -> Border Int -> ArrP U ix Int -> Bool
 prop_MapSingletonStencilWithStride _ f b (ArrP arr) =
   computeWithStride oneStride (mapStencil b (singletonStencil (apply f)) arr) ==

@@ -28,7 +28,6 @@ module Data.Massiv.Array.Delayed.Internal
 import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
@@ -142,18 +141,11 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix e where
-  loadS (DArray _ sz f) _ unsafeWrite =
-    iterM_ zeroIndex sz (pureIndex 1) (<) $ \ !ix -> unsafeWrite (toLinearIndex sz ix) (f ix)
-  {-# INLINE loadS #-}
-  loadP wIds (DArray _ sz f) _ unsafeWrite =
-    divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        scheduleWork scheduler $
-        iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
-      scheduleWork scheduler $
-        iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
-  {-# INLINE loadP #-}
+  loadArray !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (totalElem (size arr)) (unsafeLinearIndex arr)
+  {-# INLINE loadArray #-}
 
+instance Index ix => StrideLoad D ix e
 
 instance (Index ix, Num e) => Num (Array D ix e) where
   (+)         = liftArray2 (+)

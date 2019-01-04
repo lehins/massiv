@@ -204,23 +204,10 @@ instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => Inne
 
 
 instance Index ix => Load M ix e where
-  loadS (MArray _ sz f) _ uWrite =
-    iterM_ 0 (totalElem sz) 1 (<) $ \ !i ->
-      uWrite i (f i)
-  {-# INLINE loadS #-}
-  loadP wIds (MArray _ sz f) _ uWrite =
-    divideWork_ wIds (totalElem sz) $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        scheduleWork scheduler $
-        iterM_ start (start + chunkLength) 1 (<) $ \ !i ->
-          uWrite i (f i)
-      scheduleWork scheduler $
-        iterM_ slackStart totalLength 1 (<) $ \ !i ->
-          uWrite i (f i)
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' (MArray _ sz f) _ =
+  loadArray numWorkers' scheduleWork' (MArray _ sz f) =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
   {-# INLINE loadArray #-}
+instance Index ix => StrideLoad M ix e
 
 
 loadMutableS :: (Load r' ix e, Mutable r ix e) =>
@@ -228,16 +215,17 @@ loadMutableS :: (Load r' ix e, Mutable r ix e) =>
 loadMutableS !arr =
   runST $ do
     mArr <- unsafeNew (size arr)
-    loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+    loadArray 1 id arr (unsafeLinearWrite mArr)
     unsafeFreeze Seq mArr
 {-# INLINE loadMutableS #-}
 
 loadMutableOnP :: (Load r' ix e, Mutable r ix e) =>
                  [Int] -> Array r' ix e -> IO (Array r ix e)
-loadMutableOnP wIds !arr = do
+loadMutableOnP wids !arr = do
   mArr <- unsafeNew (size arr)
-  loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-  unsafeFreeze (ParOn wIds) mArr
+  withScheduler_ wids $ \scheduler ->
+    loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+  unsafeFreeze (ParOn wids) mArr
 {-# INLINE loadMutableOnP #-}
 
 
@@ -245,10 +233,18 @@ loadMutableOnP wIds !arr = do
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
 compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
-compute !arr =
-  case getComp arr of
-    Seq        -> loadMutableS arr
-    ParOn wIds -> unsafePerformIO $ loadMutableOnP wIds arr
+compute !arr = unsafePerformIO $ do
+  mArr <- unsafeNew (size arr)
+  let !comp = getComp arr
+      !wIds = case comp of
+               Seq -> [1]
+               ParOn caps -> caps
+  withScheduler_ wIds $ \scheduler ->
+    -- case getComp arr of
+    -- Seq        -> loadArray 1 id arr (unsafeLinearWrite mArr)
+    -- ParOn wids -> withScheduler_ wids $ \scheduler ->
+      loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+  unsafeFreeze comp mArr
 {-# INLINE compute #-}
 
 -- | Just as `compute`, but let's you supply resulting representation type as an argument.
@@ -294,8 +290,10 @@ computeInto ::
 computeInto !mArr !arr = do
   unless (msize mArr == size arr) $ errorSizeMismatch "computeInto" (msize mArr) (size arr)
   case getComp arr of
-    Seq        -> loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-    ParOn wIds -> loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+    Seq -> loadArray 1 id arr (unsafeLinearWrite mArr)
+    ParOn wids ->
+      withScheduler_ wids $ \scheduler ->
+        loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
 
 
@@ -397,14 +395,15 @@ fromRaggedArray' arr =
 
 
 -- | Same as `compute`, but with `Stride`.
-computeWithStride :: (Load r' ix e, Mutable r ix e) => Stride ix -> Array r' ix e -> Array r ix e
+computeWithStride ::
+     (StrideLoad r' ix e, Mutable r ix e) => Stride ix -> Array r' ix e -> Array r ix e
 computeWithStride stride !arr =
   unsafePerformIO $ do
     let sz = strideSize stride (size arr)
         comp = getComp arr
     mArr <- unsafeNew sz
     case comp of
-      Seq -> loadArrayWithStride 1 id stride sz arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
+      Seq -> loadArrayWithStride 1 id stride sz arr (unsafeLinearWrite mArr)
       ParOn wIds ->
         withScheduler_ wIds $ \scheduler ->
           loadArrayWithStride
@@ -413,7 +412,6 @@ computeWithStride stride !arr =
             stride
             sz
             arr
-            (unsafeLinearRead mArr)
             (unsafeLinearWrite mArr)
     -- -- Alternative way to run computation sequentially: decreaseas compile time
     -- let wIds = case comp of
@@ -434,6 +432,6 @@ computeWithStride stride !arr =
 
 -- | Same as `computeWithStride`, but with ability to specify resulting array representation.
 computeWithStrideAs ::
-     (Load r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
+     (StrideLoad r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
 computeWithStrideAs _ = computeWithStride
 {-# INLINE computeWithStrideAs #-}

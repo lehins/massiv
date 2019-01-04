@@ -54,7 +54,7 @@ prop_EqDelayed _ (ArrDW arrD arrDW) =
   computeAs P arrD === computeAs P arrDW
 
 prop_EqDelayedStride ::
-     (Ragged L ix Int, Load DW ix Int) => Proxy ix -> Stride ix -> ArrDW ix Int -> Property
+     (Ragged L ix Int, StrideLoad DW ix Int) => Proxy ix -> Stride ix -> ArrDW ix Int -> Property
 prop_EqDelayedStride _ stride (ArrDW arrD arrDW) =
   computeWithStrideAs P stride arrD === computeWithStrideAs P stride arrDW
 

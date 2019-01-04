@@ -147,6 +147,9 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
+instance (Index ix, VS.Storable e) => Load S ix e
+
+
 instance ( VS.Storable e
          , IsList (Array L ix e)
          , Nested LN ix e

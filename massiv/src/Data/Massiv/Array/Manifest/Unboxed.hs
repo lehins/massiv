@@ -91,10 +91,7 @@ instance (VU.Unbox e, Index ix) => Size U ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
-instance (VU.Unbox e, Index ix) => Load U ix e where
-  loadArray numWorkers scheduleWith UArray {uSize, uData} _uRead =
-    splitLinearlyWith_ numWorkers scheduleWith (totalElem uSize) (VU.unsafeIndex uData)
-  {-# INLINE loadArray #-}
+instance (VU.Unbox e, Index ix) => Load U ix e
 
 
 instance {-# OVERLAPPING #-} VU.Unbox e => Slice U Ix1 e where

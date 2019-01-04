@@ -247,6 +247,21 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM_ #-}
 
+  -- | Experimental
+  iterExcludeM_ :: Monad m => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
+  default iterExcludeM_ :: (Index (Lower ix), Monad m)
+    => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
+  iterExcludeM_ !sIx !eIx !incIx cond f = do
+    iterExcludeM_ sIxL eIxL incIxL cond (f . consDim s)
+    loopM_ (s + 1) (`cond` e) (+ inc) $ \ !i ->
+      iterM_ sIxL eIxL incIxL cond $ \ !ix ->
+        f (consDim i ix)
+    where
+      !(s, sIxL) = unconsDim sIx
+      !(e, eIxL) = unconsDim eIx
+      !(inc, incIxL) = unconsDim incIx
+  {-# INLINE iterExcludeM_ #-}
+
 {-# DEPRECATED getIndex "In favor of 'getDim'" #-}
 {-# DEPRECATED setIndex "In favor of 'setDim'" #-}
 
@@ -308,6 +323,8 @@ instance Index Ix1T where
   {-# INLINE iterM #-}
   iterM_ k0 k1 inc cond = loopM_ k0 (`cond` k1) (+inc)
   {-# INLINE iterM_ #-}
+  iterExcludeM_ k0 k1 inc cond = loopM_ (k0 + 1) (`cond` k1) (+inc)
+  {-# INLINE iterExcludeM_ #-}
 
 
 instance Index Ix2T where

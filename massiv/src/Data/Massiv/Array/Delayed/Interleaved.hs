@@ -20,7 +20,6 @@ module Data.Massiv.Array.Delayed.Interleaved
 
 import           Data.Massiv.Array.Delayed.Internal
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
 
 
 -- | Delayed array that will be loaded in an interleaved fasion during parallel
@@ -56,22 +55,14 @@ instance Index ix => Size DI ix e where
 
 
 instance Index ix => Load DI ix e where
-  loadS (DIArray arr) = loadS arr
-  {-# INLINE loadS #-}
-  loadP wIds (DIArray (DArray _ sz f)) _ unsafeWrite =
-    withScheduler_ wIds $ \scheduler -> do
-      let !totalLength = totalElem sz
-      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
-        scheduleWork scheduler $
-        iterLinearM_ sz start totalLength (numWorkers scheduler) (<) $ \ !k !ix ->
-          unsafeWrite k $ f ix
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' (DIArray (DArray _ sz f)) _ unsafeWrite =
+  loadArray numWorkers' scheduleWork' (DIArray (DArray _ sz f)) unsafeWrite =
     loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
       scheduleWork' $
       iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> unsafeWrite k . f
   {-# INLINE loadArray #-}
-  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr _ unsafeWrite =
+
+instance Index ix => StrideLoad DI ix e where
+  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr unsafeWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
     in loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->

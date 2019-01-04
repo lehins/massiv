@@ -11,7 +11,7 @@ module Data.Massiv.Array.Delayed
   , delay
   , DL(..)
   , toLoadArray
-  , upsample
+  , makeLoadArray
   , DI(..)
   , toInterleaved
   , fromInterleaved
