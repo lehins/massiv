@@ -6,7 +6,7 @@
 #endif
 -- |
 -- Module      : Graphics.ColorSpace.Complex
--- Copyright   : (c) Alexey Kuleshevich 2016-2018
+-- Copyright   : (c) Alexey Kuleshevich 2016-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
