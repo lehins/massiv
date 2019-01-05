@@ -15,7 +15,7 @@ mapConcurrently f ls = withScheduler' [] $ \s -> mapM_ (scheduleWork s . f) ls
 
 main :: IO ()
 main = do
-  let !sz@(_ :. k) = 600 :. 200
+  let !sz@(Sz2 _ k) = Sz2 600 200
   defaultMain
     [ env (return (totalElem sz)) $ \n ->
         bgroup

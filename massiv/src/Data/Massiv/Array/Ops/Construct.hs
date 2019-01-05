@@ -56,13 +56,13 @@ import           Prelude                        as P
 --     ]
 --   ])
 --
-makeArrayR :: Construct r ix e => r -> Comp -> ix -> (ix -> e) -> Array r ix e
+makeArrayR :: Construct r ix e => r -> Comp -> Sz ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
 {-# INLINE makeArrayR #-}
 
 
 -- | Same as `makeArrayR`, but restricted to 1-dimensional arrays.
-makeVectorR :: Construct r Ix1 e => r -> Comp -> Ix1-> (Ix1 -> e) -> Array r Ix1 e
+makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix1 e
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
@@ -71,7 +71,7 @@ makeVectorR _ = makeArray
 --
 -- @since 0.2.6
 --
-makeArrayA :: (Mutable r a b, Applicative f) => Comp -> a -> (a -> f b) -> f (Array r a b)
+makeArrayA :: (Mutable r ix b, Applicative f) => Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
 makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 {-# INLINE makeArrayA #-}
 
@@ -79,7 +79,7 @@ makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 --
 -- @since 0.2.6
 --
-makeArrayAR :: (Mutable r a b, Applicative f) => r -> Comp -> a -> (a -> f b) -> f (Array r a b)
+makeArrayAR :: (Mutable r ix b, Applicative f) => r -> Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
 makeArrayAR _ = makeArrayA
 {-# INLINE makeArrayAR #-}
 
@@ -93,8 +93,8 @@ makeArrayAR _ = makeArrayA
 -- (Array D Seq (5)
 --   [ -2,-1,0,1,2 ])
 --
-range :: Comp -> Int -> Int -> Array D Ix1 Int
-range comp !from !to = makeArray comp (max 0 (to - from)) (+ from)
+range :: Comp -> Ix1 -> Ix1 -> Array D Ix1 Int
+range comp !from !to = makeArray comp (Sz (to - from)) (+ from)
 {-# INLINE range #-}
 
 
@@ -113,7 +113,7 @@ rangeStep comp !from !step !to
   | step == 0 = error "rangeStep: Step can't be zero"
   | otherwise =
     let (sz, r) = (to - from) `divMod` step
-    in makeArray comp (sz + signum r) (\i -> from + i * step)
+    in makeArray comp (Sz (sz + signum r)) (\i -> from + i * step)
 {-# INLINE rangeStep #-}
 
 
@@ -128,7 +128,7 @@ enumFromN :: Num e =>
           -> e -- ^ @x@ - start value
           -> Int -- ^ @n@ - length of resulting vector.
           -> Array D Ix1 e
-enumFromN comp !from !sz = makeArray comp sz $ \ i -> fromIntegral i + from
+enumFromN comp !from !sz = makeArray comp (Sz sz) $ \ i -> fromIntegral i + from
 {-# INLINE enumFromN #-}
 
 
@@ -147,7 +147,7 @@ enumFromStepN :: Num e =>
               -> e -- ^ @delta@ - step value
               -> Int -- ^ @n@ - length of resulting vector
               -> Array D Ix1 e
-enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromIntegral i * step
+enumFromStepN comp !from !step !sz = makeArray comp (Sz sz) $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}
 
 
@@ -204,8 +204,8 @@ expandWithin dim k f arr = do
     let (i, ixl) = pullOutDimension ix dim
      in f (unsafeIndex arr ixl) i
   where
-    szl = size arr
-    sz = insertDimension szl dim k
+    szl = unSz (size arr)
+    sz = Sz (insertDimension szl dim k)
 {-# INLINE expandWithin #-}
 
 -- | Similar to `expandWithin`, except that dimension is specified at a value level, which means it
@@ -224,8 +224,8 @@ expandWithin' dim k f arr =
     let (i, ixl) = pullOutDim' ix dim
      in f (unsafeIndex arr ixl) i
   where
-    szl = size arr
-    sz = insertDim' szl dim k
+    szl = unSz (size arr)
+    sz = Sz (insertDim' szl dim k)
 {-# INLINE expandWithin' #-}
 
 -- | Similar to `expandWithin`, except it uses the outermost dimension.
@@ -243,7 +243,7 @@ expandOuter k f arr =
      in f (unsafeIndex arr ixl) i
   where
     szl = size arr
-    sz = consDim k szl
+    sz = consSz (Sz k) szl
 {-# INLINE expandOuter #-}
 
 -- | Similar to `expandWithin`, except it uses the innermost dimension.
@@ -261,5 +261,5 @@ expandInner k f arr =
      in f (unsafeIndex arr ixl) i
   where
     szl = size arr
-    sz = snocDim szl k
+    sz = snocSz szl (Sz k)
 {-# INLINE expandInner #-}

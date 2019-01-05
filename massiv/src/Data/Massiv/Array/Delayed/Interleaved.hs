@@ -34,8 +34,8 @@ instance Index ix => Construct DI ix e where
   setComp c arr = arr { diArray = (diArray arr) { dComp = c } }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c sz = DIArray . unsafeMakeArray c sz
-  {-# INLINE unsafeMakeArray #-}
+  makeArray c sz = DIArray . makeArray c sz
+  {-# INLINE makeArray #-}
 
 instance Functor (Array DI ix) where
   fmap f (DIArray arr) = DIArray (fmap f arr)
@@ -51,8 +51,8 @@ instance Index ix => Extract DI ix e where
 
 
 instance Index ix => Load DI ix e where
-  unsafeSize (DIArray arr) = unsafeSize arr
-  {-# INLINE unsafeSize #-}
+  size (DIArray arr) = size arr
+  {-# INLINE size #-}
   getComp = dComp . diArray
   {-# INLINE getComp #-}
   loadArray numWorkers' scheduleWork' (DIArray (DArray _ sz f)) unsafeWrite =

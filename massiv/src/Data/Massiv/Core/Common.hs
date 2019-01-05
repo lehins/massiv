@@ -35,10 +35,8 @@ module Data.Massiv.Core.Common
   , Ragged(..)
   , Nested(..)
   , NestedStruct
-  , makeArray
   , singleton
   -- * Size
-  , size
   , elemsCount
   , isEmpty
   -- * Indexing
@@ -81,34 +79,51 @@ type family NestedStruct r ix e :: *
 
 -- | Array types that can be constructed.
 class (Typeable r, Index ix) => Construct r ix e where
+  {-# MINIMAL setComp,(makeArray|makeArrayLinear) #-}
 
   -- | Set computation strategy for this array
   setComp :: Comp -> Array r ix e -> Array r ix e
 
-  -- | Construct an array. No size validation is performed.
-  unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
+  -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
+  -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
+  -- specify representation as an argument.
+  --
+  -- >>> makeArray Seq (3 :. 4) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
+  -- (Array D Seq (3 :. 4)
+  -- [ [ 0,0,0,0 ]
+  -- , [ 0,1,0,0 ]
+  -- , [ 0,0,2,0 ]
+  -- ])
+  --
+  makeArray :: Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
+            -> Sz ix -- ^ Size of the result array.
+            -> (ix -> e) -- ^ Function to generate elements at a particular index
+            -> Array r ix e
+  makeArray comp sz f = makeArrayLinear comp sz (f . fromLinearIndex sz)
+  {-# INLINE makeArray #-}
 
--- | Get size of an immutable `Array`
---
--- @since 0.1.0
-size :: Load r ix e => Array r ix e -> ix
-size = unsafeSize
-{-# INLINE size #-}
+  -- | Same as `makeArray`, but produce elements using linear row-major index.
+  makeArrayLinear :: Comp -> Sz ix -> (Int -> e) -> Array r ix e
+  makeArrayLinear comp sz f = makeArray comp sz (f . toLinearIndex sz)
+  {-# INLINE makeArrayLinear #-}
+
 
 
 class Index ix => Resize array r ix where
-  -- | /O(1)/ - Change the size of an array. New size is not validated.
-  unsafeResize :: Index ix' => ix' -> array r ix e -> array r ix' e
+  -- | /O(1)/ - Change the size of an array. Total number of elements should be the same, but it is
+  -- not validated.
+  unsafeResize :: Index ix' => Sz ix' -> array r ix e -> array r ix' e
 
 
 class Load r ix e => Extract r ix e where
   -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
   -- not validated.
-  unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
+  unsafeExtract :: ix -> Sz ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 
 -- | Arrays that can be used as source to practically any manipulation function.
 class Load r ix e => Source r ix e where
+  {-# MINIMAL (unsafeIndex|unsafeLinearIndex) #-}
 
   -- | Lookup element in the array. No bounds check is performed and access of
   -- arbitrary memory is possible when invalid index is supplied.
@@ -130,8 +145,8 @@ class (Typeable r, Index ix) => Load r ix e where
   -- | Get computation strategy of this array
   getComp :: Array r ix e -> Comp
 
-  -- | /O(1)/ - Get the size of an array
-  unsafeSize :: Array r ix e -> ix
+  -- | Get the size of an immutabe array
+  size :: Array r ix e -> Sz ix
 
   -- | Load an array into memory. Default implementation will respect the scheduler and use `Source`
   -- instance to do loading in row-major fashion in parallel as well as sequentially.
@@ -163,7 +178,7 @@ class Load r ix e => StrideLoad r ix e where
     -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
                       -- always `id`)
     -> Stride ix -- ^ Stride to use
-    -> ix -- ^ Size of the target array affected by the stride.
+    -> Sz ix -- ^ Size of the target array affected by the stride.
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
@@ -172,7 +187,7 @@ class Load r ix e => StrideLoad r ix e where
        Int
     -> (m () -> m ())
     -> Stride ix
-    -> ix
+    -> Sz ix
     -> Array r ix e
     -> (Int -> e -> m ())
     -> m ()
@@ -191,10 +206,10 @@ class Load r ix e => OuterSlice r ix e where
   unsafeOuterSlice :: Array r ix e -> Int -> Elt r ix e
 
 class Load r ix e => InnerSlice r ix e where
-  unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
+  unsafeInnerSlice :: Array r ix e -> (Sz (Lower ix), Sz Int) -> Int -> Elt r ix e
 
 class Load r ix e => Slice r ix e where
-  unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
+  unsafeSlice :: Array r ix e -> ix -> Sz ix -> Dim -> Maybe (Elt r ix e)
 
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
@@ -216,29 +231,57 @@ class Manifest r ix e => Mutable r ix e where
   -- | Get the size of a mutable array.
   --
   -- @since 0.1.0
-  msize :: MArray s r ix e -> ix
+  msize :: MArray s r ix e -> Sz ix
 
+  -- | Convert immutable array into a mutable array without copy.
+  --
+  -- @since 0.1.0
   unsafeThaw :: PrimMonad m =>
                 Array r ix e -> m (MArray (PrimState m) r ix e)
 
+  -- | Convert mutable array into an immutable array without copy.
+  --
+  -- @since 0.1.0
   unsafeFreeze :: PrimMonad m =>
                   Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
 
   -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
   -- either.
+  --
+  -- @since 0.1.0
   unsafeNew :: PrimMonad m =>
-               ix -> m (MArray (PrimState m) r ix e)
+               Sz ix -> m (MArray (PrimState m) r ix e)
 
-  -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
-  -- either.
-  unsafeNewZero :: PrimMonad m =>
-                   ix -> m (MArray (PrimState m) r ix e)
-
+  -- | Read an element at linear row-major index
+  --
+  -- @since 0.1.0
   unsafeLinearRead :: PrimMonad m =>
                       MArray (PrimState m) r ix e -> Int -> m e
 
+  -- | Write an element into mutable array with linear row-major index
+  --
+  -- @since 0.1.0
   unsafeLinearWrite :: PrimMonad m =>
                        MArray (PrimState m) r ix e -> Int -> e -> m ()
+
+  -- | Initialize mutable array to some default value.
+  --
+  -- @since 0.3.0
+  initialize :: PrimMonad m => MArray (PrimState m) r ix e -> m ()
+
+  -- | Create new mutable array while initializing all elements to some default value.
+  --
+  -- @since 0.3.0
+  initializeNew :: PrimMonad m =>
+                   Maybe e -> Sz ix -> m (MArray (PrimState m) r ix e)
+  initializeNew mdef sz = do
+    marr <- unsafeNew sz
+    case mdef of
+      Just val -> unsafeLinearSet marr 0 (totalElem sz) val
+      Nothing -> initialize marr
+    return marr
+  {-# INLINE initializeNew #-}
+
 
   unsafeLinearSet :: PrimMonad m =>
                      MArray (PrimState m) r ix e -> Int -> Int -> e -> m ()
@@ -248,7 +291,7 @@ class Manifest r ix e => Mutable r ix e where
 
   -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
   -- either.
-  unsafeNewA :: Applicative f => ix -> WorldState -> f (WorldState, MArray RealWorld r ix e)
+  unsafeNewA :: Applicative f => Sz ix -> WorldState -> f (WorldState, MArray RealWorld r ix e)
   unsafeNewA sz (State s#) =
     case internal (unsafeNew sz :: IO (MArray RealWorld r ix e)) s# of
       (# s'#, ma #) -> pure (State s'#, ma)
@@ -293,14 +336,14 @@ class Construct r ix e => Ragged r ix e where
 
   uncons :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
 
-  unsafeGenerateM :: Monad m => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
+  generateRaggedM :: Monad m => Comp -> Sz ix -> (ix -> m e) -> m (Array r ix e)
 
-  edgeSize :: Array r ix e -> ix
+  edgeSize :: Array r ix e -> Sz ix
 
   flatten :: Array r ix e -> Array r Ix1 e
 
   loadRagged ::
-    Monad m => (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> ix -> Array r ix e -> m ()
+    Monad m => (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Sz ix -> Array r ix e -> m ()
 
   -- TODO: test property:
   -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls
@@ -308,31 +351,12 @@ class Construct r ix e => Ragged r ix e where
 
 
 
--- | Create an Array. Resulting type either has to be unambiguously inferred or restricted manually,
--- like in the example below.
---
--- >>> makeArray Seq (3 :. 4) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
--- (Array D Seq (3 :. 4)
--- [ [ 0,0,0,0 ]
--- , [ 0,1,0,0 ]
--- , [ 0,0,2,0 ]
--- ])
---
-makeArray :: Construct r ix e =>
-             Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
-          -> ix -- ^ Size of the result array. Negative values will result in an empty array.
-          -> (ix -> e) -- ^ Function to generate elements at a particular index
-          -> Array r ix e
-makeArray !c = unsafeMakeArray c . liftIndex (max 0)
-{-# INLINE makeArray #-}
-
-
 -- | Create an Array with a single element.
 singleton :: Construct r ix e =>
              Comp -- ^ Computation strategy
           -> e -- ^ The element
           -> Array r ix e
-singleton !c = unsafeMakeArray c (pureIndex 1) . const
+singleton !c = makeArray c oneSz . const
 {-# INLINE singleton #-}
 
 
@@ -406,7 +430,7 @@ indexWith ::
   => String -- ^ Source file name, eg. __FILE__
   -> Int -- ^ Line number in th source file, eg. __LINE__
   -> String
-  -> (arr -> ix) -- ^ Get size of the array
+  -> (arr -> Sz ix) -- ^ Get size of the array
   -> (arr -> ix -> e) -- ^ Indexing function
   -> arr -- ^ Array
   -> ix -- ^ Index
@@ -443,13 +467,13 @@ indexWith fileName lineNo funName getSize' f arr ix
 --
 imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
 imapM_ f !arr =
-  iterM_ zeroIndex (size arr) (pureIndex 1) (<) $ \ !ix -> f ix (unsafeIndex arr ix)
+  iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ !ix -> f ix (unsafeIndex arr ix)
 {-# INLINE imapM_ #-}
 
 
 -- | /O(1)/ - Get the number of elements in the array
 elemsCount :: Load r ix e => Array r ix e -> Int
-elemsCount = totalElem . unsafeSize
+elemsCount = totalElem . size
 {-# INLINE elemsCount #-}
 
 -- | /O(1)/ - Check if array has no elements.

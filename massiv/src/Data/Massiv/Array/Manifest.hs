@@ -72,6 +72,7 @@ import           Data.Massiv.Array.Manifest.Storable
 import           Data.Massiv.Array.Manifest.Unboxed
 import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Index.Internal      (Sz (..))
 import           Data.Word                            (Word8)
 
 
@@ -84,14 +85,14 @@ fromByteString ::
      Comp -- ^ Computation strategy
   -> ByteString -- ^ Strict ByteString to use as a source.
   -> Array M Ix1 Word8
-fromByteString comp bs = MArray comp (S.length bs) (SU.unsafeIndex bs)
+fromByteString comp bs = MArray comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
 {-# INLINE fromByteString #-}
 
 -- | /O(n)/ - For now only sequentially convert an array into a strict ByteString
 --
 -- @since 0.2.1
 toByteString ::
-  Source r ix Word8
+     Source r ix Word8
   => Array r ix Word8 -- ^ Source array
   -> ByteString
 toByteString arr =

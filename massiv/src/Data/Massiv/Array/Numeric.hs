@@ -68,6 +68,7 @@ import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A
 import           Data.Massiv.Array.Ops.Transform    as A
 import           Data.Massiv.Core
+import           Data.Massiv.Core.Index.Internal    (Sz (SafeSz))
 import           Data.Massiv.Core.Common
 import           Data.Monoid                        ((<>))
 import           Prelude                            as P
@@ -159,11 +160,11 @@ multiplyTransposed arr1 arr2
     "(|*|): Inner array dimensions must agree, but received: " ++
     show (size arr1) ++ " and " ++ show (size arr2)
   | otherwise =
-    DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
+    DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
       A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
   where
-    (m1 :. n1) = size arr1
-    (n2 :. m2) = size arr2
+    SafeSz (m1 :. n1) = size arr1
+    SafeSz (n2 :. m2) = size arr2
 {-# INLINE multiplyTransposed #-}
 
 

@@ -96,6 +96,7 @@ import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Array.Ops.Map           (imap, map)
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Index.Internal     (Sz (..))
 import           Data.Semigroup
 import           Prelude                             hiding (all, and, any,
                                                       foldl, foldr, map,
@@ -210,7 +211,7 @@ foldrWithin dim f = ifoldrWithin dim (const f)
 ifoldlWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlWithin' dim f acc0 arr =
-  unsafeMakeArray (getComp arr) szl $ \ixl ->
+  makeArray (getComp arr) (SafeSz szl) $ \ixl ->
     iter
       (insertDim' ixl dim 0)
       (insertDim' ixl dim (k - 1))
@@ -219,7 +220,7 @@ ifoldlWithin' dim f acc0 arr =
       acc0
       (\ix acc' -> f ix acc' (unsafeIndex arr ix))
   where
-    sz = size arr
+    SafeSz sz = size arr
     (k, szl) = pullOutDim' sz dim
 {-# INLINE ifoldlWithin' #-}
 
@@ -242,7 +243,7 @@ foldlWithin' dim f = ifoldlWithin' dim (const f)
 ifoldrWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrWithin' dim f acc0 arr =
-  unsafeMakeArray (getComp arr) szl $ \ixl ->
+  makeArray (getComp arr) (SafeSz szl) $ \ixl ->
     iter
       (insertDim' ixl dim (k - 1))
       (insertDim' ixl dim 0)
@@ -251,7 +252,7 @@ ifoldrWithin' dim f acc0 arr =
       acc0
       (\ix acc' -> f ix (unsafeIndex arr ix) acc')
   where
-    sz = size arr
+    SafeSz sz = size arr
     (k, szl) = pullOutDim' sz dim
 {-# INLINE ifoldrWithin' #-}
 

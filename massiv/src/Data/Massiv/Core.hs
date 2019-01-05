@@ -48,7 +48,7 @@ module Data.Massiv.Core
   , module Data.Massiv.Core.Index
   ) where
 
-import           Data.Massiv.Core.Common hiding (indexWith, unsafeGenerateM)
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Index
 

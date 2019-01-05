@@ -27,17 +27,18 @@ module Data.Massiv.Core.List
   ) where
 
 import           Control.Exception
-import           Control.Monad              (unless, when)
+import           Control.Monad                   (unless, when)
 import           Data.Coerce
-import           Data.Foldable              (foldr')
+import           Data.Foldable                   (foldr')
 import           Data.Functor.Identity
-import qualified Data.List                  as L
+import qualified Data.List                       as L
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Scheduler
 import           Data.Proxy
 import           Data.Typeable
 import           GHC.Exts
-import           System.IO.Unsafe           (unsafePerformIO)
+import           System.IO.Unsafe                (unsafePerformIO)
 
 data LN
 
@@ -113,7 +114,7 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   {-# INLINE isNull #-}
   empty comp = LArray comp (List [])
   {-# INLINE empty #-}
-  edgeSize = length . unList . lData
+  edgeSize = SafeSz . length . unList . lData
   {-# INLINE edgeSize #-}
   cons x arr = arr { lData = coerce (x : coerce (lData arr)) }
   {-# INLINE cons #-}
@@ -124,12 +125,12 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   {-# INLINE uncons #-}
   flatten = id
   {-# INLINE flatten #-}
-  unsafeGenerateM !comp !k f = do
-    xs <- loopDeepM 0 (< k) (+ 1) [] $ \i acc -> do
+  generateRaggedM !comp !k f = do
+    xs <- loopDeepM 0 (< coerce k) (+ 1) [] $ \i acc -> do
       e <- f i
       return (e:acc)
     return $ LArray comp $ coerce xs
-  {-# INLINE unsafeGenerateM #-}
+  {-# INLINE generateRaggedM #-}
   loadRagged using uWrite start end _ xs =
     using $ do
       leftOver <-
@@ -143,8 +144,8 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
 
 
 instance (Index ix, Ragged L ix e) => Load L ix e where
-  unsafeSize = edgeSize
-  {-# INLINE unsafeSize #-}
+  size = coerce . edgeSize
+  {-# INLINE size #-}
   getComp = lComp
   {-# INLINE getComp #-}
   loadArray _numWorkers using arr uWrite = loadRagged using uWrite 0 (totalElem sz) sz arr
@@ -166,15 +167,15 @@ instance ( Index ix
   empty comp = LArray comp (List [])
   {-# INLINE empty #-}
   edgeSize arr =
-    consDim (length (unList (lData arr))) $
-    case uncons arr of
-      Nothing     -> zeroIndex
-      Just (x, _) -> edgeSize x
+    SafeSz
+      (consDim (length (unList (lData arr))) $
+       case uncons arr of
+         Nothing     -> zeroIndex
+         Just (x, _) -> coerce (edgeSize x))
   {-# INLINE edgeSize #-}
   cons (LArray _ x) arr = newArr
     where
-      newArr =
-        arr {lData = coerce (x : coerce (lData arr))}
+      newArr = arr {lData = coerce (x : coerce (lData arr))}
   {-# INLINE cons #-}
   uncons LArray {..} =
     case L.uncons (coerce lData) of
@@ -182,24 +183,21 @@ instance ( Index ix
       Just (x, xs) ->
         let newArr = LArray lComp (coerce xs)
             newX = LArray lComp x
-        in Just (newX, newArr)
+         in Just (newX, newArr)
   {-# INLINE uncons #-}
-  unsafeGenerateM Seq !sz f = do
-    let !(k, szL) = unconsDim sz
-    loopDeepM 0 (< k) (+ 1) (empty Seq) $ \i acc -> do
-      e <- unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))
+  generateRaggedM Seq !sz f = do
+    let !(k, szL) = unconsSz sz
+    loopDeepM 0 (< coerce k) (+ 1) (empty Seq) $ \i acc -> do
+      e <- generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))
       return (cons e acc)
-  unsafeGenerateM (ParOn wss) sz f = unsafeGenerateParM wss sz f
-  {-# INLINE unsafeGenerateM #-}
+  generateRaggedM (ParOn wss) sz f = unsafeGenerateParM wss sz f
+  {-# INLINE generateRaggedM #-}
   flatten arr = LArray {lComp = lComp arr, lData = coerce xs}
     where
-      xs =
-        concatMap
-          (unList . lData . flatten . LArray (lComp arr))
-          (unList (lData arr))
+      xs = concatMap (unList . lData . flatten . LArray (lComp arr)) (unList (lData arr))
   {-# INLINE flatten #-}
   loadRagged using uWrite start end sz xs = do
-    let szL = tailDim sz
+    let (_, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
     when (isZero && not (isNull (flatten xs))) (return $! throw RowTooLongError)
@@ -214,10 +212,7 @@ instance ( Index ix
       unless (isNull leftOver) (return $! throw RowTooLongError)
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
-    showN
-      (\s y -> raggedFormat f s (LArray comp y :: Array L (Lower ix) e))
-      sep
-      (coerce xs)
+    showN (\s y -> raggedFormat f s (LArray comp y :: Array L (Lower ix) e)) sep (coerce xs)
 
 
 -- unsafeGenerateParM ::
@@ -247,12 +242,12 @@ instance ( Index ix
 unsafeGenerateParM ::
      (Elt LN ix e ~ Array LN (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
   => [Int]
-  -> ix
+  -> Sz ix
   -> (ix -> m e)
   -> m (Array L ix e)
 unsafeGenerateParM wws !sz f = do
   res <- sequence $ unsafePerformIO $ do
-    let !(k, szL) = unconsDim sz
+    let !(k, szL) = unconsSz sz
     divideWork wws k $ \ !scheduler !chunkLength !totalLength !slackStart -> do
       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
         scheduleWork scheduler $ do
@@ -260,7 +255,7 @@ unsafeGenerateParM wws !sz f = do
           --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
           -- return $! sequence res
           res <- loopDeepM start (< (start + chunkLength)) (+ 1) [] $ \i acc ->
-            return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+            return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
           return $! sequence res
       when (slackStart < totalLength) $
         scheduleWork scheduler $ do
@@ -268,7 +263,7 @@ unsafeGenerateParM wws !sz f = do
           --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
           -- return $! sequence res
           res <- loopDeepM slackStart (< totalLength) (+ 1) [] $ \i acc ->
-            return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+            return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
           return $! sequence res
   return $ LArray (ParOn wws) $ List $ concat res
 {-# INLINE unsafeGenerateParM #-}
@@ -303,11 +298,11 @@ unsafeGenerateParM wws !sz f = do
 instance {-# OVERLAPPING #-} Construct L Ix1 e where
   setComp c arr = arr { lComp = c }
   {-# INLINE setComp #-}
-  unsafeMakeArray Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)
-  unsafeMakeArray (ParOn wss) sz f = LArray (ParOn wss) $ List $ unsafePerformIO $
+  makeArray Seq sz f = runIdentity $ generateRaggedM Seq sz (return . f)
+  makeArray (ParOn wss) sz f = LArray (ParOn wss) $ List $ unsafePerformIO $
     withScheduler' wss $ \scheduler ->
-      loopM_ 0 (< sz) (+ 1) (scheduleWork scheduler . return . f)
-  {-# INLINE unsafeMakeArray #-}
+      loopM_ 0 (< coerce sz) (+ 1) (scheduleWork scheduler . return . f)
+  {-# INLINE makeArray #-}
 
 
 instance ( Index ix
@@ -318,8 +313,8 @@ instance ( Index ix
          Construct L ix e where
   setComp c arr = arr {lComp = c}
   {-# INLINE setComp #-}
-  unsafeMakeArray = unsafeGenerateN
-  {-# INLINE unsafeMakeArray #-}
+  makeArray = unsafeGenerateN
+  {-# INLINE makeArray #-}
 
  -- TODO: benchmark against using unsafeGenerateM directly
 unsafeGenerateN ::
@@ -327,15 +322,15 @@ unsafeGenerateN ::
   , Ragged r (Lower ix) e
   , Elt r ix e ~ Array r (Lower ix) e )
   => Comp
-  -> ix
+  -> Sz ix
   -> (ix -> e)
   -> Array r ix e
-unsafeGenerateN Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)
+unsafeGenerateN Seq sz f = runIdentity $ generateRaggedM Seq sz (return . f)
 unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
-  let !(m, szL) = unconsDim sz
+  let !(m, szL) = unconsSz sz
   xs <- withScheduler' wss $ \scheduler ->
-    loopM_ 0 (< m) (+ 1) $ \i -> scheduleWork scheduler $
-      unsafeGenerateM c szL $ \ix -> return $ f (consDim i ix)
+    loopM_ 0 (< coerce m) (+ 1) $ \i -> scheduleWork scheduler $
+      generateRaggedM c szL $ \ix -> return $ f (consDim i ix)
   return $! foldr' cons (empty c) xs
 {-# INLINE unsafeGenerateN #-}
 
@@ -343,8 +338,7 @@ unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
 toListArray :: (Construct L ix e, Load r ix e, Source r ix e)
             => Array r ix e
             -> Array L ix e
-toListArray !arr =
-  unsafeMakeArray (getComp arr) (size arr) (unsafeIndex arr)
+toListArray !arr = makeArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE toListArray #-}
 
 
@@ -401,7 +395,7 @@ instance Ragged L ix e => OuterSlice L ix e where
     where
       go n arr =
         case uncons arr of
-          Nothing -> errorIx "Data.Massiv.Core.List.unsafeOuterSlice" (headDim (size arr')) i
+          Nothing -> errorIx "Data.Massiv.Core.List.unsafeOuterSlice" (headDim (unSz (size arr'))) i
           Just (x, _) | n == i -> x
           Just (_, xs) -> go (n + 1) xs
   {-# INLINE unsafeOuterSlice #-}

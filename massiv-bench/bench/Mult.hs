@@ -16,18 +16,18 @@ multArrsAlt arr1 arr2
     "(|*|): Inner array dimensions must agree, but received: " ++
     show (size arr1) ++ " and " ++ show (size arr2)
   | otherwise = compute $
-    makeArrayR D (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
+    makeArrayR D (getComp arr1 <> getComp arr2) (Sz (m1 :. n2)) $ \(i :. j) ->
       A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2' j))
   where
-    (m1 :. n1) = size arr1
-    (m2 :. n2) = size arr2
+    (Sz2 m1 n1) = size arr1
+    (Sz2 m2 n2) = size arr2
     arr2' = computeAs U $ transpose arr2
 {-# INLINE multArrsAlt #-}
 
 
 main :: IO ()
 main = do
-  let !sz = 200 :. 600
+  let !sz = Sz2 200 600
       arr = arrRLightIx2 U Seq sz
   defaultMain
     [ env (return (computeAs U (transpose arr))) $ \arr' ->

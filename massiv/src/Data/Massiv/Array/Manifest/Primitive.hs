@@ -33,8 +33,6 @@ import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
-                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
@@ -45,6 +43,7 @@ import           GHC.Base                            (Int (..))
 import           GHC.Exts                            as GHC (IsList (..))
 import           GHC.Prim
 import           Prelude                             hiding (mapM)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -54,7 +53,7 @@ data P = P deriving Show
 type instance EltRepr P ix = M
 
 data instance Array P ix e = PArray { pComp :: !Comp
-                                    , pSize :: !ix
+                                    , pSize :: !(Sz ix)
                                     , pData :: {-# UNPACK #-} !ByteArray
                                     }
 
@@ -74,9 +73,8 @@ instance (Prim e, Index ix) => Construct P ix e where
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (return . f)
+  {-# INLINE makeArray #-}
 
 elemsByteArray :: Prim a => a -> ByteArray -> Int
 elemsByteArray dummy a = sizeofByteArray a `div` sizeOf dummy
@@ -155,7 +153,7 @@ elemsMutableByteArray dummy a = sizeofMutableByteArray a `div` sizeOf dummy
 {-# INLINE elemsMutableByteArray #-}
 
 instance (Index ix, Prim e) => Mutable P ix e where
-  data MArray s P ix e = MPArray !ix !(MutableByteArray s)
+  data MArray s P ix e = MPArray !(Sz ix) !(MutableByteArray s)
 
   msize (MPArray sz _) = sz
   {-# INLINE msize #-}
@@ -166,15 +164,13 @@ instance (Index ix, Prim e) => Mutable P ix e where
   unsafeFreeze comp (MPArray sz a) = PArray comp sz <$> unsafeFreezeByteArray a
   {-# INLINE unsafeFreeze #-}
 
+  -- TODO: guard against integer overflow
   unsafeNew sz = MPArray sz <$> newByteArray (I# (totalSize# sz (undefined :: e)))
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero sz = do
-    let !szBytes = I# (totalSize# sz (undefined :: e))
-    barr <- newByteArray szBytes
-    fillByteArray barr 0 szBytes 0
-    return $ MPArray sz barr
-  {-# INLINE unsafeNewZero #-}
+  initialize (MPArray sz mba) = do
+    fillByteArray mba 0 (I# (totalSize# sz (undefined :: e))) 0
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MPArray _ ma) =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
@@ -187,7 +183,7 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearSet (MPArray _ ma) = setByteArray ma
-    --TODO implement CPP
+  {-# INLINE unsafeLinearSet #-}
 
   unsafeNewA sz (State s#) =
     let kb# = totalSize# sz (undefined :: e)
@@ -209,8 +205,8 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearWriteA #-}
 
 instance (Prim e, Index ix) => Load P ix e where
-  unsafeSize = pSize
-  {-# INLINE unsafeSize #-}
+  size = pSize
+  {-# INLINE size #-}
   getComp = pComp
   {-# INLINE getComp #-}
   loadArray !numWorkers scheduleWork !arr =
@@ -218,7 +214,7 @@ instance (Prim e, Index ix) => Load P ix e where
   {-# INLINE loadArray #-}
 
 
-totalSize# :: (Index ix, Prim e) => ix -> e -> Int#
+totalSize# :: (Index ix, Prim e) => Sz ix -> e -> Int#
 totalSize# sz dummy = k# *# sizeOf# dummy
   where
     !(I# k#) = totalElem sz
@@ -268,7 +264,7 @@ toByteArray = pData
 -- elements doesn't match.
 --
 -- @since 0.2.1
-fromByteArray :: (Index ix, Prim e) => Comp -> ix -> ByteArray -> Maybe (Array P ix e)
+fromByteArray :: (Index ix, Prim e) => Comp -> Sz ix -> ByteArray -> Maybe (Array P ix e)
 fromByteArray comp sz ba
   | totalElem sz /= elemsByteArray (primArrayDummy arr) ba = Nothing
   | otherwise = Just arr
@@ -290,7 +286,7 @@ toMutableByteArray (MPArray _ mba) = mba
 -- if number of elements doesn't match.
 --
 -- @since 0.2.1
-fromMutableByteArray :: (Index ix, Prim e) => ix -> MutableByteArray s -> Maybe (MArray s P ix e)
+fromMutableByteArray :: (Index ix, Prim e) => Sz ix -> MutableByteArray s -> Maybe (MArray s P ix e)
 fromMutableByteArray sz ba
   | totalElem sz /= elemsMutableByteArray (primArrayDummy marr) ba = Nothing
   | otherwise = Just marr

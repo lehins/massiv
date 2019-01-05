@@ -43,6 +43,7 @@ import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Maybe                      (fromMaybe)
 import           Prelude                         hiding (splitAt, traverse)
 
@@ -51,7 +52,7 @@ import           Prelude                         hiding (splitAt, traverse)
 -- fully encapsulated in a source array, otherwise `Nothing` is returned,
 extract :: Extract r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size of the resulting array
+        -> Sz ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
@@ -59,15 +60,15 @@ extract !sIx !newSz !arr
     Just $ unsafeExtract sIx newSz arr
   | otherwise = Nothing
   where
-    sz1 = liftIndex (+1) (size arr)
-    eIx1 = liftIndex (+1) eIx
-    eIx = liftIndex2 (+) sIx newSz
+    sz1 = Sz (liftIndex (+1) (unSz (size arr)))
+    eIx1 = Sz (liftIndex (+1) eIx)
+    eIx = liftIndex2 (+) sIx $ unSz newSz
 {-# INLINE extract #-}
 
 -- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
 extract' :: Extract r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size of the resulting array
+        -> Sz ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Array (EltRepr r ix) ix e
 extract' !sIx !newSz !arr =
@@ -87,7 +88,7 @@ extractFromTo :: Extract r ix e =>
               -> ix -- ^ Index up to which elmenets should be extracted.
               -> Array r ix e -- ^ Source array.
               -> Maybe (Array (EltRepr r ix) ix e)
-extractFromTo sIx eIx = extract sIx $ liftIndex2 (-) eIx sIx
+extractFromTo sIx eIx = extract sIx $ Sz (liftIndex2 (-) eIx sIx)
 {-# INLINE extractFromTo #-}
 
 -- | Same as `extractFromTo`, but throws an error on invalid indices.
@@ -98,21 +99,21 @@ extractFromTo' :: Extract r ix e =>
               -> ix -- ^ Index up to which elmenets should be extracted.
               -> Array r ix e -- ^ Source array.
               -> Array (EltRepr r ix) ix e
-extractFromTo' sIx eIx = extract' sIx $ liftIndex2 (-) eIx sIx
+extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 {-# INLINE extractFromTo' #-}
 
 
 -- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
 -- number of elements does not match the source array.
 resize ::
-     (Index ix', Load r ix e, Resize Array r ix) => ix' -> Array r ix e -> Maybe (Array r ix' e)
+     (Index ix', Load r ix e, Resize Array r ix) => Sz ix' -> Array r ix e -> Maybe (Array r ix' e)
 resize !sz !arr
   | totalElem sz == totalElem (size arr) = Just $ unsafeResize sz arr
   | otherwise = Nothing
 {-# INLINE resize #-}
 
 -- | Same as `resize`, but will throw an error if supplied dimensions are incorrect.
-resize' :: (Index ix', Load r ix e, Resize Array r ix) => ix' -> Array r ix e -> Array r ix' e
+resize' :: (Index ix', Load r ix e, Resize Array r ix) => Sz ix' -> Array r ix e -> Array r ix' e
 resize' !sz !arr =
   maybe
     (error $
@@ -182,17 +183,19 @@ transpose = transposeInner
 --
 transposeInner :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
-transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newVal
+transposeInner !arr = makeArray (getComp arr) newsz newVal
   where
     transInner !ix =
       fromMaybe (errorImpossible "transposeInner" ix) $ do
-        n <- getDim ix (dimensions ix)
-        m <- getDim ix (dimensions ix - 1)
-        ix' <- setDim ix (dimensions ix) m
-        setDim ix' (dimensions ix - 1) n
+        n <- getDim ix dix
+        m <- getDim ix (dix - 1)
+        ix' <- setDim ix dix m
+        setDim ix' (dix - 1) n
     {-# INLINE transInner #-}
     newVal = unsafeIndex arr . transInner
     {-# INLINE newVal #-}
+    !newsz = Sz (transInner (unSz (size arr)))
+    !dix = dimensions newsz
 {-# INLINE [1] transposeInner #-}
 
 -- | Transpose outer two dimensions of at least rank-2 array.
@@ -227,7 +230,7 @@ transposeInner !arr = unsafeMakeArray (getComp arr) (transInner (size arr)) newV
 --
 transposeOuter :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
-transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newVal
+transposeOuter !arr = makeArray (getComp arr) newsz newVal
   where
     transOuter !ix =
       fromMaybe (errorImpossible "transposeOuter" ix) $ do
@@ -238,6 +241,7 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
     {-# INLINE transOuter #-}
     newVal = unsafeIndex arr . transOuter
     {-# INLINE newVal #-}
+    !newsz = Sz (transOuter (unSz (size arr)))
 {-# INLINE [1] transposeOuter #-}
 
 
@@ -266,7 +270,7 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
 --   ])
 --
 backpermute :: (Source r' ix' e, Index ix) =>
-               ix -- ^ Size of the result array
+               Sz ix -- ^ Size of the result array
             -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
             -> Array r' ix' e -- ^ Source array.
             -> Array D ix e
@@ -313,20 +317,20 @@ append :: (Source r1 ix e, Source r2 ix e) =>
 append n !arr1 !arr2 = do
   let sz1 = size arr1
       sz2 = size arr2
-  k1 <- getDim sz1 n
-  k2 <- getDim sz2 n
-  sz1' <- setDim sz2 n k1
+  (k1, _) <- pullOutSz sz1 n
+  (k2, _) <- pullOutSz sz2 n
+  sz1' <- setSz sz2 n k1
   guard $ sz1 == sz1'
-  newSz <- setDim sz1 n (k1 + k2)
+  newSz <- setSz sz1 n (SafeSz (unSz k1 + unSz k2))
   return $
-    unsafeMakeArray (getComp arr1) newSz $ \ !ix ->
+    makeArray (getComp arr1) newSz $ \ !ix ->
       fromMaybe (errorImpossible "append" ix) $ do
         k' <- getDim ix n
-        if k' < k1
+        if k' < unSz k1
           then Just (unsafeIndex arr1 ix)
           else do
             i <- getDim ix n
-            ix' <- setDim ix n (i - k1)
+            ix' <- setDim ix n (i - unSz k1)
             return $ unsafeIndex arr2 ix'
 {-# INLINE append #-}
 
@@ -351,7 +355,7 @@ splitAt ::
   -> Array r ix e -- ^ Source array
   -> Maybe (Array r' ix e, Array r' ix e)
 splitAt dim i arr = do
-  let sz = size arr
+  let Sz sz = size arr
   eIx <- setDim sz dim i
   sIx <- setDim zeroIndex dim i
   arr1 <- extractFromTo zeroIndex eIx arr
@@ -425,7 +429,7 @@ upsample !fillWith !safeStride arr =
     {-# INLINE timesStride #-}
     !stride = unStride safeStride
     !sz = size arr
-    !newsz = timesStride sz
+    !newsz = SafeSz (timesStride $ unSz sz)
 {-# INLINE upsample #-}
 
 
@@ -433,7 +437,7 @@ upsample !fillWith !safeStride arr =
 -- | Create an array by traversing a source array.
 traverse
   :: (Source r1 ix1 e1, Index ix)
-  => ix -- ^ Size of the result array
+  => Sz ix -- ^ Size of the result array
   -> ((ix1 -> e1) -> ix -> e) -- ^ Function that will receive a source array safe index function and
                               -- an index for an element it should return a value of.
   -> Array r1 ix1 e1 -- ^ Source array
@@ -445,7 +449,7 @@ traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluateAt arr1))
 -- | Create an array by traversing two source arrays.
 traverse2
   :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
-  => ix
+  => Sz ix
   -> ((ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1
   -> Array r2 ix2 e2

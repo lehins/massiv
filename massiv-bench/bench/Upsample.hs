@@ -10,7 +10,7 @@ import           Prelude                  as P
 
 pullUpsample :: Source r ix e => e -> Stride ix -> Array r ix e -> Array D ix e
 pullUpsample fillWith safeStride arr =
-  makeArrayR D (getComp arr) (liftIndex2 (*) stride (size arr)) $ \ix ->
+  makeArrayR D (getComp arr) (Sz (liftIndex2 (*) stride (unSz (size arr)))) $ \ix ->
     if liftIndex2 mod ix stride == zeroIndex
       then unsafeIndex arr (liftIndex2 div ix stride)
       else fillWith
@@ -37,28 +37,33 @@ upsampleAlt fillWith safeStride arr =
     {-# INLINE timesStride #-}
     !stride = unStride safeStride
     !sz = size arr
-    !newsz = timesStride sz
+    !newsz = Sz (timesStride (unSz sz))
 {-# INLINE upsampleAlt #-}
 
 
 main :: IO ()
 main = do
-  let !sz = 1600 :. 1200
-      !str = Stride 3
-  defaultMain
-    [ bgroup
-        "Upsample"
-        [ env (return (arrRLightIx2 P Seq sz)) $ \arr ->
-            bgroup "Seq"
-              [ bench "upsample" $ whnf (A.computeAs P . upsample 0 str) arr
-              , bench "upsampleAlt" $ whnf (A.computeAs P . upsampleAlt 0 str) arr
-              , bench "pullUpsample" $ whnf (A.computeAs P . pullUpsample 0 str) arr
-              ]
-        , env (return (arrRLightIx2 P Par sz)) $ \arr ->
-            bgroup "Par"
-              [ bench "upsample" $ whnf (A.computeAs P . upsample 0 str) arr
-              , bench "upsampleAlt" $ whnf (A.computeAs P . upsampleAlt 0 str) arr
-              , bench "pullUpsample" $ whnf (A.computeAs P . pullUpsample 0 str) arr
-              ]
-        ]
+  let !sz = Sz (1600 :. 1200)
+      !strOdd = Stride (3 :. 6)
+      !strPowerOf2 = Stride (2 :. 4)
+  defaultMain [mkUpsampleBenchGroup "Odd" sz strOdd, mkUpsampleBenchGroup "PowerOf2" sz strPowerOf2]
+
+mkUpsampleBenchGroup :: String -> Sz2 -> Stride Ix2 -> Benchmark
+mkUpsampleBenchGroup gname sz str =
+  bgroup
+    ("Upsample " ++ gname)
+    [ env (return (arrRLightIx2 P Seq sz)) $ \arr ->
+        bgroup
+          "Seq"
+          [ bench "upsample" $ whnf (A.computeAs P . upsample 0 str) arr
+          , bench "upsampleAlt" $ whnf (A.computeAs P . upsampleAlt 0 str) arr
+          , bench "pullUpsample" $ whnf (A.computeAs P . pullUpsample 0 str) arr
+          ]
+    , env (return (arrRLightIx2 P Par sz)) $ \arr ->
+        bgroup
+          "Par"
+          [ bench "upsample" $ whnf (A.computeAs P . upsample 0 str) arr
+          , bench "upsampleAlt" $ whnf (A.computeAs P . upsampleAlt 0 str) arr
+          , bench "pullUpsample" $ whnf (A.computeAs P . pullUpsample 0 str) arr
+          ]
     ]

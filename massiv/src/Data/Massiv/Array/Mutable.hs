@@ -44,6 +44,9 @@ module Data.Massiv.Array.Mutable
   -- *** Modify
   , withMArray
   , withMArrayST
+  -- *** Initialize
+  , initialize
+  , initializeNew
   -- ** Computation
   , RealWorld
   , computeInto
@@ -59,9 +62,9 @@ import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 
--- | Initialize a new mutable array. Negative size will result in an empty array.
-new :: (Mutable r ix e, PrimMonad m) => ix -> m (MArray (PrimState m) r ix e)
-new sz = unsafeNewZero (liftIndex (max 0) sz)
+-- | Initialize a new mutable array.
+new :: (Mutable r ix e, PrimMonad m) => Sz ix -> m (MArray (PrimState m) r ix e)
+new = initializeNew Nothing
 {-# INLINE new #-}
 
 -- | /O(n)/ - Yield a mutable copy of the immutable array
@@ -89,7 +92,7 @@ freeze comp marr = clone <$> unsafeFreeze comp marr
 createArray_ ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
-  -> ix -- ^ Size of the newly created array
+  -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
@@ -103,7 +106,7 @@ createArray_ comp sz action = fmap snd $ createArray comp sz action
 createArray ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
-  -> ix -- ^ Size of the newly created array
+  -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (a, Array r ix e)
@@ -119,7 +122,7 @@ createArray comp sz action = do
 -- @since 0.2.6
 --
 createArrayST_ ::
-     Mutable r ix e => Comp -> ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
+     Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
 createArrayST_ comp sz action = runST $ createArray_ comp sz action
 {-# INLINE createArrayST_ #-}
 
@@ -129,7 +132,7 @@ createArrayST_ comp sz action = runST $ createArray_ comp sz action
 -- @since 0.2.6
 --
 createArrayST ::
-     Mutable r ix e => Comp -> ix -> (forall s. MArray s r ix e -> ST s a) -> (a, Array r ix e)
+     Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> (a, Array r ix e)
 createArrayST comp sz action = runST $ createArray comp sz action
 {-# INLINE createArrayST #-}
 
@@ -161,13 +164,12 @@ createArrayST comp sz action = runST $ createArray comp sz action
 generateArray ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ingored during generation)
-  -> ix -- ^ Resulting size of the array
+  -> Sz ix -- ^ Resulting size of the array
   -> (ix -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
-generateArray comp sz' gen = do
-  let sz = liftIndex (max 0) sz'
+generateArray comp sz gen = do
   marr <- unsafeNew sz
-  iterM_ zeroIndex (msize marr) (pureIndex 1) (<) $ \ix -> gen ix >>= write marr ix
+  iterM_ zeroIndex (unSz (msize marr)) (pureIndex 1) (<) $ \ix -> gen ix >>= write marr ix
   unsafeFreeze comp marr
 {-# INLINE generateArray #-}
 
@@ -179,23 +181,22 @@ generateArray comp sz' gen = do
 generateArrayIO ::
      (Mutable r ix e)
   => Comp
-  -> ix
+  -> Sz ix
   -> (ix -> IO e)
   -> IO (Array r ix e)
-generateArrayIO comp sz' gen = do
-  case comp of
-    Seq -> generateArray comp sz' gen
-    ParOn wids -> do
-      let sz = liftIndex (max 0) sz'
-      marr <- unsafeNew sz
-      withScheduler_ wids $ \scheduler ->
-        splitLinearlyWithM_
-          (numWorkers scheduler)
-          (scheduleWork scheduler)
-          (totalElem sz)
-          (gen . fromLinearIndex sz)
-          (unsafeLinearWrite marr)
-      unsafeFreeze comp marr
+generateArrayIO comp sz gen = do
+  let !wids = case comp of
+                Seq -> [1]
+                ParOn caps -> caps
+  marr <- unsafeNew sz
+  withScheduler_ wids $ \scheduler ->
+    splitLinearlyWithM_
+      (numWorkers scheduler)
+      (scheduleWork scheduler)
+      (totalElem sz)
+      (gen . fromLinearIndex sz)
+      (unsafeLinearWrite marr)
+  unsafeFreeze comp marr
 {-# INLINE generateArrayIO #-}
 
 -- | Sequentially unfold an array from the left.
@@ -224,7 +225,7 @@ generateArrayIO comp sz' gen = do
 unfoldlPrim_ ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
-  -> ix -- ^ Size of the desired array
+  -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
@@ -239,7 +240,7 @@ unfoldlPrim_ comp sz gen acc0 = fmap snd $ unfoldlPrim comp sz gen acc0
 unfoldlPrim ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
-  -> ix -- ^ Size of the desired array
+  -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)

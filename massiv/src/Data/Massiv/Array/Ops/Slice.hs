@@ -72,7 +72,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 (!>) !arr !ix =
   case arr !?> ix of
     Just res -> res
-    Nothing  -> errorIx "(!>)" (headDim (size arr)) ix
+    Nothing  -> errorIx "(!>)" (fst $ unconsSz (size arr)) ix
 {-# INLINE (!>) #-}
 
 
@@ -80,7 +80,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- `Nothing` when index is out of bounds.
 (!?>) :: OuterSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
 (!?>) !arr !i
-  | isSafeIndex (headDim (size arr)) i = Just $ unsafeOuterSlice arr i
+  | isSafeIndex (fst (unconsSz (size arr))) i = Just $ unsafeOuterSlice arr i
   | otherwise = Nothing
 {-# INLINE (!?>) #-}
 
@@ -110,7 +110,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
   | isSafeIndex m i = Just $ unsafeInnerSlice arr sz i
   | otherwise = Nothing
   where
-    !sz@(_, m) = unsnocDim (size arr)
+    !sz@(_, m) = unsnocSz (size arr)
 {-# INLINE (<!?) #-}
 
 
@@ -133,10 +133,10 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- | /O(1)/ - Same as (`<!>`), but fails gracefully with a `Nothing`, instead of an error
 (<!?>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Maybe (Elt r ix e)
 (<!?>) !arr !(dim, i) = do
-  m <- getDim (size arr) dim
+  (m, szl) <- pullOutSz (size arr) dim
   guard $ isSafeIndex m i
   start <- setDim zeroIndex dim i
-  cutSz <- setDim (size arr) dim 1
+  cutSz <- insertSz szl dim oneSz
   unsafeSlice arr start cutSz dim
 {-# INLINE (<!?>) #-}
 

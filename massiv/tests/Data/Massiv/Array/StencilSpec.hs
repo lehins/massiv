@@ -7,7 +7,6 @@ module Data.Massiv.Array.StencilSpec (spec) where
 
 import           Control.DeepSeq           (deepseq)
 import           Data.Massiv.CoreArbitrary as A
-import           Data.Maybe                (fromJust)
 import           Data.Proxy
 import           Test.Hspec
 import           Test.QuickCheck
@@ -23,7 +22,7 @@ import           Data.Default              (Default(def))
 
 
 singletonStencil :: (Index ix) => (Int -> Int) -> Stencil ix Int Int
-singletonStencil f = makeStencil (pureIndex 1) zeroIndex $ \ get -> fmap f (get zeroIndex)
+singletonStencil f = makeStencil oneSz zeroIndex $ \ get -> fmap f (get zeroIndex)
 {-# INLINE singletonStencil #-}
 
 
@@ -41,14 +40,10 @@ prop_MapSingletonStencilWithStride _ f b (ArrP arr) =
 -- Tests out of bounds stencil indexing
 prop_DangerousStencil ::
      Index ix => Proxy ix -> NonZero Int -> DimIx ix -> SzIx ix -> Property
-prop_DangerousStencil _ (NonZero s) (DimIx r) (SzIx (Sz sz) ix) =
+prop_DangerousStencil _ (NonZero s) (DimIx r) (SzIx sz ix) =
   ix' `deepseq` assertSomeException $ makeStencil sz ix $ \get -> (get ix' :: Value Int)
   where
-    ix' =
-      liftIndex (* signum s) $
-      fromJust $ do
-        i <- getDim sz r
-        setDim zeroIndex r i
+    ix' = liftIndex (* signum s) (setDim' zeroIndex r (getDim' (unSz sz) r))
 
 
 stencilSpec :: Spec
@@ -71,12 +66,13 @@ stencilSpec = do
 
 
 stencilDirection :: (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Array r Ix2 a -> Array U Ix2 a
-stencilDirection ix = computeAs U . mapStencil (Fill def) (makeStencil (3 :. 3) (1 :. 1) $ \f -> f ix)
+stencilDirection ix =
+  computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
 
 
 stencilCorners ::
      (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Ix2 -> Array r Ix2 a -> Array U Ix2 a
-stencilCorners ixC ix = computeAs U . mapStencil (Fill def) (makeStencil (3 :. 3) ixC $ \f -> f ix)
+stencilCorners ixC ix = computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) ixC $ \f -> f ix)
 
 spec :: Spec
 spec =
@@ -108,6 +104,6 @@ spec =
         let strideArr = mapStencil (Fill 0) stencil arr
          in computeWithStrideAs U stride strideArr `shouldBe` [[-4, 8],[2, 14]]
       it "map stencil with stride on larger array" $
-        let largeArr = makeArrayR U Seq (5 :. 5) (succ . toLinearIndex (5 :. 5))
+        let largeArr = makeArrayR U Seq (Sz 5) (succ . toLinearIndex (Sz 5))
             strideArr = mapStencil (Fill 0) stencil largeArr
          in computeWithStrideAs U stride strideArr `shouldBe` [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]

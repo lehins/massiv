@@ -13,6 +13,8 @@
 --
 module Data.Massiv.Core.Index
   ( module Data.Massiv.Core.Index.Ix
+  , module Data.Massiv.Core.Index.Tuple
+  , module Data.Massiv.Core.Index.Internal
   , Stride
   , pattern Stride
   , unStride
@@ -22,18 +24,15 @@ module Data.Massiv.Core.Index
   , oneStride
   , Border(..)
   , handleBorderIndex
-  , module Data.Massiv.Core.Index.Class
   , zeroIndex
-  , isSafeSize
   , isNonEmpty
   , headDim
   , tailDim
   , lastDim
   , initDim
-  , getIndex'
-  , setIndex'
   , getDim'
   , setDim'
+  , dropDim
   , dropDim'
   , pullOutDim'
   , insertDim'
@@ -43,14 +42,20 @@ module Data.Massiv.Core.Index
   , dropDimension
   , pullOutDimension
   , insertDimension
+  , iter
   , iterLinearM
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
   , splitWith_
+  , errorIx
+  , errorSizeMismatch
   ) where
 
 import           Control.DeepSeq
-import           Data.Massiv.Core.Index.Class
+import           Data.Functor.Identity         (runIdentity)
+import           Data.Massiv.Core.Index.Internal hiding (SafeSz, type Sz1, pattern Sz1)
+import qualified Data.Massiv.Core.Index.Internal as I (Sz(SafeSz))
+import           Data.Massiv.Core.Index.Tuple
 import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Index.Stride
 import           Data.Massiv.Core.Iterator
@@ -112,19 +117,22 @@ instance NFData e => NFData (Border e) where
 handleBorderIndex ::
      Index ix
   => Border e -- ^ Broder resolution technique
-  -> ix -- ^ Size
+  -> Sz ix -- ^ Size
   -> (ix -> e) -- ^ Index function that produces an element
   -> ix -- ^ Index
   -> e
 handleBorderIndex border !sz getVal !ix =
   case border of
     Fill val -> if isSafeIndex sz ix then getVal ix else val
-    Wrap     -> getVal (repairIndex sz ix (flip mod) (flip mod))
-    Edge     -> getVal (repairIndex sz ix (const (const 0)) (\ !k _ -> k - 1))
-    Reflect  -> getVal (repairIndex sz ix (\ !k !i -> (abs i - 1) `mod` k)
-                        (\ !k !i -> (-i - 1) `mod` k))
-    Continue -> getVal (repairIndex sz ix (\ !k !i -> abs i `mod` k)
-                        (\ !k !i -> (-i - 2) `mod` k))
+    Wrap     -> getVal (repairIndex sz ix wrap wrap)
+    Edge     -> getVal (repairIndex sz ix (const (const 0)) (\ (I.SafeSz k) _ -> k - 1))
+    Reflect  -> getVal (repairIndex sz ix (\ (I.SafeSz k) !i -> (abs i - 1) `mod` k)
+                        (\ (I.SafeSz k) !i -> (-i - 1) `mod` k))
+    Continue -> getVal (repairIndex sz ix (\ (I.SafeSz k) !i -> abs i `mod` k)
+                        (\ (I.SafeSz k) !i -> (-i - 2) `mod` k))
+
+  where wrap (I.SafeSz k) i = i `mod` k
+        {-# INLINE [1] wrap #-}
 {-# INLINE [1] handleBorderIndex #-}
 
 -- | Index with all zeros
@@ -132,16 +140,14 @@ zeroIndex :: Index ix => ix
 zeroIndex = pureIndex 0
 {-# INLINE [1] zeroIndex #-}
 
--- | Checks whether the size is valid.
-isSafeSize :: Index ix => ix -> Bool
-isSafeSize = (zeroIndex >=)
-{-# INLINE [1] isSafeSize #-}
-
-
 -- | Checks whether array with this size can hold at least one element.
-isNonEmpty :: Index ix => ix -> Bool
+isNonEmpty :: Index ix => Sz ix -> Bool
 isNonEmpty !sz = isSafeIndex sz zeroIndex
 {-# INLINE [1] isNonEmpty #-}
+-- TODO: benchmark against (also adjust `isEmpty` with fastest):
+-- - foldlIndex (*) 1 (unSz sz) /= 0
+-- - foldlIndex ((&&) . (==0)) True (unSz sz)
+-- - totalElem sz == 0
 
 
 headDim :: Index ix => ix -> Int
@@ -160,8 +166,6 @@ initDim :: Index ix => ix -> Lower ix
 initDim = fst . unsnocDim
 {-# INLINE [1] initDim #-}
 
-
-
 setDim' :: Index ix => ix -> Dim -> Int -> ix
 setDim' ix dim i =
   case setDim ix dim i of
@@ -176,23 +180,11 @@ getDim' ix dim =
     Nothing  -> errorDim "getDim'" dim
 {-# INLINE [1] getDim' #-}
 
--- | To be deprecated in favor of `setDim'`.
-setIndex' :: Index ix => ix -> Dim -> Int -> ix
-setIndex' ix dim i =
-  case setDim ix dim i of
-    Just ix' -> ix'
-    Nothing  -> errorDim "setIndex'" dim
-{-# INLINE [1] setIndex' #-}
-{-# DEPRECATED setIndex' "In favor of `setDim'`" #-}
+-- | Remove a dimension from the index
+dropDim :: Index ix => ix -> Dim -> Maybe (Lower ix)
+dropDim ix = fmap snd . pullOutDim ix
+{-# INLINE [1] dropDim #-}
 
--- | To be deprecated in favor of `getDim'`.
-getIndex' :: Index ix => ix -> Dim -> Int
-getIndex' ix dim =
-  case getDim ix dim of
-    Just ix' -> ix'
-    Nothing  -> errorDim "getIndex'" dim
-{-# INLINE [1] getIndex' #-}
-{-# DEPRECATED getIndex' "In favor of `getDim'`" #-}
 
 dropDim' :: Index ix => ix -> Dim -> Lower ix
 dropDim' ix dim =
@@ -205,7 +197,7 @@ pullOutDim' :: Index ix => ix -> Dim -> (Int, Lower ix)
 pullOutDim' ix dim =
   case pullOutDim ix dim of
     Just i_ixl -> i_ixl
-    Nothing  -> errorDim "pullOutDim'" dim
+    Nothing    -> errorDim "pullOutDim'" dim
 {-# INLINE [1] pullOutDim' #-}
 
 insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
@@ -261,11 +253,17 @@ insertDimension :: IsIndexDimension ix n => Lower ix -> Dimension n -> Int -> ix
 insertDimension ix d = insertDim' ix (fromDimension d)
 {-# INLINE [1] insertDimension #-}
 
+-- | Iterator for the index. Same as `iterM`, but pure.
+iter :: Index ix => ix -> ix -> ix -> (Int -> Int -> Bool) -> a -> (ix -> a -> a) -> a
+iter sIx eIx incIx cond acc f =
+  runIdentity $ iterM sIx eIx incIx cond acc (\ix -> return . f ix)
+{-# INLINE iter #-}
+
 
 -- | Iterate over N-dimensional space lenarly from start to end in row-major fashion with an
 -- accumulator
 iterLinearM :: (Index ix, Monad m)
-            => ix -- ^ Size
+            => Sz ix -- ^ Size
             -> Int -- ^ Linear start
             -> Int -- ^ Linear end
             -> Int -- ^ Increment
@@ -279,21 +277,21 @@ iterLinearM !sz !k0 !k1 !inc cond !acc f =
 
 -- | Same as `iterLinearM`, except without an accumulator.
 iterLinearM_ :: (Index ix, Monad m) =>
-                ix -- ^ Size
+                Sz ix -- ^ Size
              -> Int -- ^ Start
              -> Int -- ^ End
              -> Int -- ^ Increment
              -> (Int -> Int -> Bool) -- ^ Continuation condition
              -> (Int -> ix -> m ()) -- ^ Monadic action that takes index in both forms
              -> m ()
-iterLinearM_ !sz !k0 !k1 !inc cond f =
+iterLinearM_ sz !k0 !k1 !inc cond f =
   loopM_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
 
 
 
 splitWith_ :: (Index ix, Monad m) =>
-  Int -> (m () -> m a) -> ix -> (ix -> b) -> (ix -> b -> m ()) -> m a
+  Int -> (m () -> m a) -> Sz ix -> (ix -> b) -> (ix -> b -> m ()) -> m a
 splitWith_ numChunks with sz index write =
   let totalLength = totalElem sz
   in splitLinearly numChunks totalLength $ \chunkLength slackStart -> do
@@ -303,6 +301,21 @@ splitWith_ numChunks with sz index write =
 {-# INLINE splitWith_ #-}
 
 
+
+-- | Helper function for throwing out of bounds errors
+errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
+errorIx fName sz ix =
+  error $
+  fName ++
+  ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
+{-# NOINLINE errorIx #-}
+
+
+-- | Helper function for throwing error when sizes do not match
+errorSizeMismatch :: (Show ix, Show ix') => String -> ix -> ix' -> a
+errorSizeMismatch fName sz sz' =
+  error $ fName ++ ": Mismatch in size of arrays " ++ show sz ++ " vs " ++ show sz'
+{-# NOINLINE errorSizeMismatch #-}
 
 -- splitWith_ :: (Index ix, Monad m) =>
 --   Int -> (m () -> m a) -> ix -> (ix -> b) -> (ix -> b -> m ()) -> m a

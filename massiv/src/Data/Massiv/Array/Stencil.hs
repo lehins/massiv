@@ -50,10 +50,11 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
     !window =
       Window
         { windowStart = sCenter
-        , windowSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
+        , windowSize = windowSz
         , windowIndex = unValue . stencilF (Value . unsafeIndex arr)
         }
     !sz = size arr
+    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex2 (-) (unSz sSz) (pureIndex 1)))
 {-# INLINE mapStencil #-}
 
 
@@ -79,7 +80,7 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
 --
 makeStencil
   :: (Index ix, Default e)
-  => ix -- ^ Size of the stencil
+  => Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
   -> ((ix -> Value e) -> Value a)
   -- ^ Stencil function that receives a "get" function as it's argument that can
@@ -96,7 +97,7 @@ makeStencil = makeStencilDef def
 makeStencilDef
   :: Index ix
   => e
-  -> ix -- ^ Size of the stencil
+  -> Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
   -> ((ix -> Value e) -> Value a)
   -- ^ Stencil function.

@@ -26,6 +26,7 @@ import           Control.Applicative
 import           Control.DeepSeq
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Index.Internal
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup
 #endif
@@ -34,7 +35,7 @@ import           Data.Semigroup
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
 -- `Data.Array.makeConvolutionStencil` in order to create a stencil.
 data Stencil ix e a = Stencil
-  { stencilSize   :: !ix
+  { stencilSize   :: !(Sz ix)
   , stencilCenter :: !ix
   , stencilFunc   :: (ix -> Value e) -> ix -> Value a
   }
@@ -166,17 +167,18 @@ rmapStencil g stencil@(Stencil {stencilFunc = sf}) =
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance Index ix => Applicative (Stencil ix e) where
-  pure a = Stencil (pureIndex 1) zeroIndex (const (const (Value a)))
+  pure a = Stencil oneSz zeroIndex (const (const (Value a)))
   {-# INLINE pure #-}
-  (<*>) (Stencil sSz1 sC1 f1) (Stencil sSz2 sC2 f2) = Stencil newSz maxCenter stF
+  (<*>) (Stencil (SafeSz sSz1) sC1 f1) (Stencil (SafeSz sSz2) sC2 f2) = Stencil newSz maxCenter stF
     where
       stF gV !ix = Value ((unValue (f1 gV ix)) (unValue (f2 gV ix)))
       {-# INLINE stF #-}
       !newSz =
-        liftIndex2
-          (+)
-          maxCenter
-          (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2))
+        Sz
+          (liftIndex2
+             (+)
+             maxCenter
+             (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2)))
       !maxCenter = liftIndex2 max sC1 sC2
   {-# INLINE (<*>) #-}
 

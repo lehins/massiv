@@ -55,15 +55,17 @@ library
                      , Data.Massiv.Array.Stencil.Internal
                      , Data.Massiv.Core.Common
                      , Data.Massiv.Core.Computation
-                     , Data.Massiv.Core.Index.Class
+                     , Data.Massiv.Core.Index.Internal
                      , Data.Massiv.Core.Index.Ix
                      , Data.Massiv.Core.Index.Stride
+                     , Data.Massiv.Core.Index.Tuple
                      , Data.Massiv.Core.Iterator
                      , Data.Massiv.Core.List
   build-depends:       base            >= 4.8 && < 5
                      , bytestring
                      , data-default-class
                      , deepseq
+                     , exceptions
                      , ghc-prim
                      , primitive
                      , vector

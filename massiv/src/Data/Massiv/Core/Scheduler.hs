@@ -1,6 +1,6 @@
-{-# LANGUAGE BangPatterns              #-}
-{-# LANGUAGE RecordWildCards           #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Core.Scheduler
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -20,23 +20,21 @@ module Data.Massiv.Core.Scheduler
   , divideWork_
   ) where
 
-import           Control.Concurrent           (ThreadId, forkOnWithUnmask,
-                                               getNumCapabilities, killThread)
+import           Control.Concurrent        (ThreadId, forkOnWithUnmask,
+                                            getNumCapabilities, killThread)
 import           Control.Concurrent.MVar
 import           Control.DeepSeq
-import           Control.Exception            (SomeException, catch, mask,
-                                               mask_, throwIO, try,
-                                               uninterruptibleMask_)
-import           Control.Monad                (void, forM)
-import           Control.Monad.Primitive      (RealWorld)
-import           Data.IORef                   (IORef, atomicModifyIORef',
-                                               newIORef, readIORef)
-import           Data.Massiv.Core.Index.Class (Index (totalElem))
-import           Data.Massiv.Core.Iterator    (loop)
-import           Data.Primitive.Array         (Array, MutableArray, indexArray,
-                                               newArray, unsafeFreezeArray,
-                                               writeArray)
-import           System.IO.Unsafe             (unsafePerformIO)
+import           Control.Exception         (SomeException, catch, mask, mask_,
+                                            throwIO, try, uninterruptibleMask_)
+import           Control.Monad             (forM, void)
+import           Control.Monad.Primitive   (RealWorld)
+import           Data.IORef                (IORef, atomicModifyIORef', newIORef,
+                                            readIORef)
+import           Data.Massiv.Core.Index    (Sz, Index (totalElem), loop)
+import           Data.Primitive.Array      (Array, MutableArray, indexArray,
+                                            newArray, unsafeFreezeArray,
+                                            writeArray)
+import           System.IO.Unsafe          (unsafePerformIO)
 import           System.Mem.Weak
 
 data Job = Job (IO ())
@@ -171,7 +169,7 @@ withScheduler_ wss submitJobs = void $ withScheduler wss submitJobs
 
 -- | Same as `divideWork`, but discard the result.
 divideWork_ :: Index ix
-            => [Int] -> ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
+            => [Int] -> Sz ix -> (Scheduler a -> Int -> Int -> Int -> IO b) -> IO ()
 divideWork_ wss sz submit = void $ divideWork wss sz submit
 
 
@@ -181,7 +179,7 @@ divideWork_ wss sz submit = void $ divideWork wss sz submit
 -- working on his chunk. Returns list with results in the same order that work was submitted
 divideWork :: Index ix
            => [Int] -- ^ Worker Stations (capabilities)
-           -> ix -- ^ Size
+           -> Sz ix -- ^ Size
            -> (Scheduler a -> Int -> Int -> Int -> IO b) -- ^ Submit function
            -> IO [a]
 divideWork wss sz submit

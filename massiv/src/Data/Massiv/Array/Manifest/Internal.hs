@@ -82,7 +82,7 @@ sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
 data M
 
 data instance Array M ix e = MArray { mComp :: !Comp
-                                    , mSize :: !ix
+                                    , mSize :: !(Sz ix)
                                     , mLinearIndex :: Int -> e }
 type instance EltRepr M ix = M
 
@@ -98,11 +98,14 @@ instance Index ix => Construct M ix e where
   setComp c arr = arr { mComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray !c !sz f = MArray c sz (V.unsafeIndex (makeBoxedVector sz f))
-  {-# INLINE unsafeMakeArray #-}
+  -- makeArray !c !sz f = MArray c sz (V.unsafeIndex (makeBoxedVector sz f))
+  -- {-# INLINE makeArray #-}
+  -- TODO: make it respect comp strategy
+  makeArrayLinear c !sz f = MArray c sz (V.unsafeIndex (V.generate (totalElem sz) f))
+  {-# INLINE makeArrayLinear #-}
 
 -- | Create a boxed from usual size and index to element function
-makeBoxedVector :: Index ix => ix -> (ix -> a) -> V.Vector a
+makeBoxedVector :: Index ix => Sz ix -> (ix -> a) -> V.Vector a
 makeBoxedVector !sz f = V.generate (totalElem sz) (f . fromLinearIndex sz)
 {-# INLINE makeBoxedVector #-}
 
@@ -169,7 +172,7 @@ instance ( Index ix
          ) =>
          Slice M ix e where
   unsafeSlice arr start cutSz dim = do
-    newSz <- dropDim cutSz dim
+    (_, newSz) <- pullOutSz cutSz dim
     return $ unsafeResize newSz (unsafeExtract start cutSz arr)
   {-# INLINE unsafeSlice #-}
 
@@ -179,7 +182,7 @@ instance {-# OVERLAPPING #-} OuterSlice M Ix1 e where
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => OuterSlice M ix e where
   unsafeOuterSlice !arr !i =
-    MArray (getComp arr) (tailDim (size arr)) (unsafeLinearIndex arr . (+ kStart))
+    MArray (getComp arr) (snd (unconsSz (size arr))) (unsafeLinearIndex arr . (+ kStart))
     where
       !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
   {-# INLINE unsafeOuterSlice #-}
@@ -190,15 +193,15 @@ instance {-# OVERLAPPING #-} InnerSlice M Ix1 e where
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
   unsafeInnerSlice !arr (szL, m) !i =
-    MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * m + kStart))
+    MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * unSz m + kStart))
     where
       !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
   {-# INLINE unsafeInnerSlice #-}
 
 
 instance Index ix => Load M ix e where
-  unsafeSize = mSize
-  {-# INLINE unsafeSize #-}
+  size = mSize
+  {-# INLINE size #-}
   getComp = mComp
   {-# INLINE getComp #-}
   loadArray numWorkers' scheduleWork' (MArray _ sz f) =
@@ -231,18 +234,17 @@ loadMutableOnP wids !arr = do
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
 compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
-compute !arr = unsafePerformIO $ do
-  mArr <- unsafeNew (size arr)
-  let !comp = getComp arr
-      !wIds = case comp of
-               Seq -> [1]
-               ParOn caps -> caps
-  withScheduler_ wIds $ \scheduler ->
-    -- case getComp arr of
-    -- Seq        -> loadArray 1 id arr (unsafeLinearWrite mArr)
-    -- ParOn wids -> withScheduler_ wids $ \scheduler ->
+compute !arr =
+  unsafePerformIO $ do
+    mArr <- unsafeNew (size arr)
+    let !comp = getComp arr
+        !wIds =
+          case comp of
+            Seq -> [1]
+            ParOn caps -> caps
+    withScheduler_ wIds $ \scheduler ->
       loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
-  unsafeFreeze comp mArr
+    unsafeFreeze comp mArr
 {-# INLINE compute #-}
 
 -- | Just as `compute`, but let's you supply resulting representation type as an argument.

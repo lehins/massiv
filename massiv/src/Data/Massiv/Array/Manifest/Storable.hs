@@ -29,15 +29,15 @@ import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
-                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
+import qualified Data.Vector.Generic.Mutable         as VGM
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           Foreign.Ptr
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -47,7 +47,7 @@ data S = S deriving Show
 type instance EltRepr S ix = M
 
 data instance Array S ix e = SArray { sComp :: !Comp
-                                    , sSize :: !ix
+                                    , sSize :: !(Sz ix)
                                     , sData :: !(VS.Vector e)
                                     }
 
@@ -66,9 +66,8 @@ instance (VS.Storable e, Index ix) => Construct S ix e where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (return . f)
+  {-# INLINE makeArray #-}
 
 
 instance (VS.Storable e, Index ix) => Source S ix e where
@@ -115,7 +114,7 @@ instance (Index ix, VS.Storable e) => Manifest S ix e where
 
 
 instance (Index ix, VS.Storable e) => Mutable S ix e where
-  data MArray s S ix e = MSArray !ix !(VS.MVector s e)
+  data MArray s S ix e = MSArray !(Sz ix) !(VS.MVector s e)
 
   msize (MSArray sz _) = sz
   {-# INLINE msize #-}
@@ -129,8 +128,8 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   unsafeNew sz = MSArray sz <$> MVS.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero sz = MSArray sz <$> MVS.new (totalElem sz)
-  {-# INLINE unsafeNewZero #-}
+  initialize (MSArray _ marr) = VGM.basicInitialize marr
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MSArray _ mv) =
     INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", MVS.length, MVS.unsafeRead) mv
@@ -142,8 +141,8 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
 
 
 instance (Index ix, VS.Storable e) => Load S ix e where
-  unsafeSize = sSize
-  {-# INLINE unsafeSize #-}
+  size = sSize
+  {-# INLINE size #-}
   getComp = sComp
   {-# INLINE getComp #-}
 

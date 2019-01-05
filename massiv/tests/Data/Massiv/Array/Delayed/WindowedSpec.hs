@@ -41,11 +41,11 @@ instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
     let sz = size arr
     ArrDW arr <$>
       if totalElem sz == 0
-        then return (unsafeMakeArray (getComp arr) sz (unsafeIndex arr))
+        then return (makeArray (getComp arr) sz (unsafeIndex arr))
         else do
-          wix <- flip (liftIndex2 mod) sz <$> arbitrary
-          wsz <- liftIndex (+1) . flip (liftIndex2 mod) (liftIndex2 (-) sz wix) <$> arbitrary
-          return $ makeWindowedArray arr wix wsz (unsafeIndex arr)
+          wix <- flip (liftIndex2 mod) (unSz sz) <$> arbitrary
+          wsz <- liftIndex (+1) . flip (liftIndex2 mod) (liftIndex2 (-) (unSz sz) wix) <$> arbitrary
+          return $ makeWindowedArray arr wix (Sz wsz) (unsafeIndex arr)
 
 
 prop_EqDelayed ::

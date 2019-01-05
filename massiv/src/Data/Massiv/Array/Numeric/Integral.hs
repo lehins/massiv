@@ -55,7 +55,7 @@ midpointStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 midpointStencil dx dim k =
-  makeStencilDef 0 (setDim' (pureIndex 1) dim k) zeroIndex $ \g ->
+  makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim k)) zeroIndex $ \g ->
     pure dx * loop 0 (< k) (+ 1) 0 (\i -> (+ g (setDim' zeroIndex dim i)))
 {-# INLINE midpointStencil #-}
 
@@ -74,7 +74,7 @@ trapezoidStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 trapezoidStencil dx dim n =
-  makeStencilDef 0 (setDim' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
+  makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \g ->
     pure dx / 2 *
     (loop 1 (< n) (+ 1) (g zeroIndex) (\i -> (+ 2 * g (setDim' zeroIndex dim i))) +
      g (setDim' zeroIndex dim n))
@@ -99,7 +99,7 @@ simpsonsStencil dx dim n
     error $
     "Number of sample points for Simpson's rule stencil should be even, but received: " ++ show n
   | otherwise =
-    makeStencilDef 0 (setDim' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
+    makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \g ->
       let simAcc i (prev, acc) =
             let !fx3 = g (setDim' zeroIndex dim (i + 2))
                 !newAcc = acc + prev + 4 * g (setDim' zeroIndex dim (i + 1)) + fx3
@@ -127,7 +127,7 @@ integralApprox ::
      (Fractional e, StrideLoad DW ix e, Mutable r ix e)
   => (e -> Dim -> Int -> Stencil ix e e) -- ^ Integration Stencil
   -> e -- ^ @d@ - Length of interval per cell
-  -> ix -- ^ @sz@ - Result size of the matrix
+  -> Sz ix -- ^ @sz@ - Result size of the matrix
   -> Int -- ^ @n@ - Number of samples
   -> Array r ix e -- ^ Array with values of @f(x,y,..)@ that will be used as source for integration.
   -> Array M ix e
@@ -148,7 +148,7 @@ midpointRule ::
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
   -> e -- ^ @a@ - Starting value point.
   -> e -- ^ @d@ - Distance per matrix cell.
-  -> ix -- ^ @sz@ - Result matrix size.
+  -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction.
   -> Array M ix e
 midpointRule comp r f a d sz n =
@@ -162,10 +162,10 @@ trapezoidRule ::
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
-  -> e -- ^ @a@ - starting point
-  -> e -- ^ @d@ - distance per matrix cell
-  -> ix -- ^ @sz@ - end matrix size
-  -> Int -- ^ @n@ - number of sample points per cell in each direction
+  -> e -- ^ @a@ - Starting value point.
+  -> e -- ^ @d@ - Distance per matrix cell.
+  -> Sz ix -- ^ @sz@ - Result matrix size.
+  -> Int -- ^ @n@ - Number of sample points per cell in each direction.
   -> Array M ix e
 trapezoidRule comp r f a d sz n =
   integralApprox trapezoidStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
@@ -176,11 +176,11 @@ simpsonsRule ::
      (Fractional e, StrideLoad DW ix e, Mutable r ix e)
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
-  -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
-  -> e -- ^ @a@ - starting point
-  -> e -- ^ @d@ - distance per matrix cell
-  -> ix -- ^ @sz@ - end matrix size
-  -> Int -- ^ @n@ - number of sample points per cell in each direction. This value must be even,
+  -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
+  -> e -- ^ @a@ - Starting value point.
+  -> e -- ^ @d@ - Distance per matrix cell.
+  -> Sz ix -- ^ @sz@ - Result matrix size.
+  -> Int -- ^ @n@ - Number of sample points per cell in each direction. This value must be even,
          -- otherwise error..
   -> Array M ix e
 simpsonsRule comp r f a d sz n =
@@ -211,10 +211,10 @@ fromFunction ::
   -- function that should be applied to individual indicies.
   -> a -- ^ @a@ - Starting point
   -> a -- ^ @d@ - Distance per cell
-  -> ix -- ^ @sz@ - Size of the desired array
+  -> Sz ix -- ^ @sz@ - Size of the desired array
   -> Int -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
   -> Array D ix e
-fromFunction comp f a d sz n =
+fromFunction comp f a d (Sz sz) n =
   fmap (\ix -> f scale ix) $ range' comp zeroIndex (liftIndex (n *) sz)
   where
     nFrac = fromIntegral n
@@ -240,8 +240,8 @@ fromFunction comp f a d sz n =
 --
 fromFunctionMidpoint
   :: (Index ix, Fractional a) =>
-     Comp -> ((Int -> a) -> ix -> e) -> a -> a -> ix -> Int -> Array D ix e
-fromFunctionMidpoint comp f a d sz n =
+     Comp -> ((Int -> a) -> ix -> e) -> a -> a -> Sz ix -> Int -> Array D ix e
+fromFunctionMidpoint comp f a d (Sz sz) n =
   fmap (\ix -> f scale ix) $ range' comp zeroIndex (liftIndex (\i -> n * i - 1) sz)
   where
     nFrac = fromIntegral n
@@ -257,7 +257,7 @@ range' :: Index ix => Comp -> ix -> ix -> Array D ix ix
 range' comp ixFrom ixTo =
   makeArray comp sz (\ix -> liftIndex2 (+) ixFrom ix)
   where
-    sz = liftIndex2 (-) (liftIndex (+ 1) ixTo) ixFrom
+    sz = Sz (liftIndex2 (-) (liftIndex (+ 1) ixTo) ixFrom)
 {-# INLINE range' #-}
 
 

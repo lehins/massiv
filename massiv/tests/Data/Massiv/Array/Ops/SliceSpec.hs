@@ -20,7 +20,7 @@ prop_ExtractEqualsExtractFromTo
   :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Extract r ix e)
   => proxy (r, ix, e) -> SzIx ix -> Array r ix e -> Bool
 prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
-  extractFromTo sIx eIx arr == extract sIx (liftIndex2 (-) eIx sIx) arr
+  extractFromTo sIx eIx arr == extract sIx (Sz (liftIndex2 (-) eIx sIx)) arr
 
 
 

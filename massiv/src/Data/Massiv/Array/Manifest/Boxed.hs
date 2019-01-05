@@ -45,8 +45,6 @@ import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as L
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
-                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Primitive.Array                as A
@@ -57,6 +55,7 @@ import           GHC.Exts                            as GHC (IsList (..))
 import           GHC.Prim
 import           GHC.Types
 import           Prelude                             hiding (mapM)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -81,12 +80,13 @@ data B = B deriving Show
 type instance EltRepr B ix = M
 
 data instance Array B ix e = BArray { bComp :: !Comp
-                                    , bSize :: !ix
+                                    , bSize :: !(Sz ix)
                                     , bData :: {-# UNPACK #-} !(A.Array e)
                                     }
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
   rnf = (`deepseqArray` ())
+  {-# INLINE rnf #-}
 
 instance (Index ix, Eq e) => Eq (Array B ix e) where
   (==) = eq (==)
@@ -100,9 +100,8 @@ instance Index ix => Construct B ix e where
   setComp c arr = arr { bComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (\ !ix -> return $! f ix)
+  {-# INLINE makeArray #-}
 
 instance Index ix => Source B ix e where
   unsafeLinearIndex (BArray _ _ a) =
@@ -148,7 +147,7 @@ instance Index ix => Manifest B ix e where
 
 
 instance Index ix => Mutable B ix e where
-  data MArray s B ix e = MBArray !ix {-# UNPACK #-} !(A.MutableArray s e)
+  data MArray s B ix e = MBArray !(Sz ix) {-# UNPACK #-} !(A.MutableArray s e)
 
   msize (MBArray sz _) = sz
   {-# INLINE msize #-}
@@ -162,8 +161,8 @@ instance Index ix => Mutable B ix e where
   unsafeNew sz = MBArray sz <$> A.newArray (totalElem sz) uninitialized
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero = unsafeNew
-  {-# INLINE unsafeNewZero #-}
+  initialize _ = return ()
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MBArray _ ma) =
     INDEX_CHECK("(Mutable B ix e).unsafeLinearRead", sizeofMutableArray, A.readArray) ma
@@ -174,8 +173,8 @@ instance Index ix => Mutable B ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where
-  unsafeSize = bSize
-  {-# INLINE unsafeSize #-}
+  size = bSize
+  {-# INLINE size #-}
   getComp = bComp
   {-# INLINE getComp #-}
 
@@ -241,12 +240,17 @@ instance (Index ix, NFData e, Ord e) => Ord (Array N ix e) where
 
 
 instance (Index ix, NFData e) => Construct N ix e where
-  setComp c (NArray arr) = NArray (arr { bComp = c })
+  setComp c (NArray arr) = NArray (arr {bComp = c})
   {-# INLINE setComp #-}
-
-  unsafeMakeArray Seq          !sz f = NArray $ unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = NArray $ unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f =
+    unsafePerformIO $
+    generateArrayIO
+      comp
+      sz
+      (\ !ix ->
+         let res = f ix
+          in res `deepseq` return res)
+  {-# INLINE makeArray #-}
 
 instance (Index ix, NFData e) => Source N ix e where
   unsafeLinearIndex (NArray arr) =
@@ -306,8 +310,8 @@ instance (Index ix, NFData e) => Mutable N ix e where
   unsafeNew sz = MNArray <$> unsafeNew sz
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero = unsafeNew
-  {-# INLINE unsafeNewZero #-}
+  initialize _ = return ()
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MNArray ma) =
     INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", totalElem . msize, unsafeLinearRead) ma
@@ -318,8 +322,8 @@ instance (Index ix, NFData e) => Mutable N ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance (Index ix, NFData e) => Load N ix e where
-  unsafeSize = bSize . bArray
-  {-# INLINE unsafeSize #-}
+  size = bSize . bArray
+  {-# INLINE size #-}
   getComp = bComp . bArray
   {-# INLINE getComp #-}
 
@@ -464,7 +468,7 @@ fromMutableArraySeq ::
 fromMutableArraySeq with mbarr = do
   let !sz = sizeofMutableArray mbarr
   loopM_ 0 (< sz) (+ 1) $ \i -> A.readArray mbarr i >>= (`with` return ())
-  return $! MBArray sz mbarr
+  return $! MBArray (Sz sz) mbarr
 {-# INLINE fromMutableArraySeq #-}
 
 fromArraySeq ::
@@ -472,7 +476,7 @@ fromArraySeq ::
   -> Comp
   -> A.Array e
   -> a
-fromArraySeq with comp barr = with (BArray comp (sizeofArray barr) barr)
+fromArraySeq with comp barr = with (BArray comp (Sz (sizeofArray barr)) barr)
 {-# INLINE fromArraySeq #-}
 
 

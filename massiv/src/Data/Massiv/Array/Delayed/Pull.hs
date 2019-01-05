@@ -27,6 +27,7 @@ module Data.Massiv.Array.Delayed.Pull
 
 import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
+import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Common
 import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
@@ -39,7 +40,7 @@ data D = D deriving Show
 
 
 data instance Array D ix e = DArray { dComp :: !Comp
-                                    , dSize :: !ix
+                                    , dSize :: !(Sz ix)
                                     , dIndex :: ix -> e }
 type instance EltRepr D ix = D
 
@@ -60,8 +61,8 @@ instance Index ix => Construct D ix e where
   setComp c arr = arr { dComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray = DArray
-  {-# INLINE unsafeMakeArray #-}
+  makeArray = DArray
+  {-# INLINE makeArray #-}
 
 
 instance Index ix => Source D ix e where
@@ -74,16 +75,16 @@ instance ( Index ix
          , Elt D ix e ~ Array D (Lower ix) e
          ) =>
          Slice D ix e where
-  unsafeSlice arr start cutSz dim = do
+  unsafeSlice arr start cut@(SafeSz cutSz) dim = do
     newSz <- dropDim cutSz dim
-    return $ unsafeResize newSz (unsafeExtract start cutSz arr)
+    return $ unsafeResize (SafeSz newSz) (unsafeExtract start cut arr)
   {-# INLINE unsafeSlice #-}
 
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e where
 
   unsafeOuterSlice !arr !i =
-    DArray (dComp arr) (tailDim (size arr)) (\ !ix -> unsafeIndex arr (consDim i ix))
+    DArray (dComp arr) (snd (unconsSz (size arr))) (\ !ix -> unsafeIndex arr (consDim i ix))
   {-# INLINE unsafeOuterSlice #-}
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e where
@@ -107,10 +108,10 @@ instance Functor (Array D ix) where
 
 
 instance Index ix => Applicative (Array D ix) where
-  pure a = DArray Seq (liftIndex (+ 1) zeroIndex) (const a)
+  pure = singleton Seq
   {-# INLINE pure #-}
-  (<*>) (DArray c1 sz1 uIndex1) (DArray c2 sz2 uIndex2) =
-    DArray (c1 <> c2) (liftIndex2 min sz1 sz2) $ \ !ix ->
+  (<*>) (DArray c1 (SafeSz sz1) uIndex1) (DArray c2 (SafeSz sz2) uIndex2) =
+    DArray (c1 <> c2) (SafeSz (liftIndex2 min sz1 sz2)) $ \ !ix ->
       (uIndex1 ix) (uIndex2 ix)
   {-# INLINE (<*>) #-}
 
@@ -138,8 +139,8 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix e where
-  unsafeSize = dSize
-  {-# INLINE unsafeSize #-}
+  size = dSize
+  {-# INLINE size #-}
   getComp = dComp
   {-# INLINE getComp #-}
   loadArray !numWorkers scheduleWork !arr =
@@ -246,13 +247,12 @@ liftArray2
   :: (Source r1 ix a, Source r2 ix b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2 f !arr1 !arr2
-  | sz1 == oneIndex = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
-  | sz2 == oneIndex = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
+  | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
+  | sz2 == oneSz = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
   | sz1 == sz2 =
     DArray (getComp arr1) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
   | otherwise = errorSizeMismatch "liftArray2" (size arr1) (size arr2)
   where
-    oneIndex = pureIndex 1
     sz1 = size arr1
     sz2 = size arr2
 {-# INLINE liftArray2 #-}

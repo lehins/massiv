@@ -16,7 +16,7 @@ prop_zipUnzip ::
   -> Property
 prop_zipUnzip _ arr1 arr2 =
   (extract' zeroIndex sz arr1, extract' zeroIndex sz arr2) === A.unzip (A.zip arr1 arr2)
-  where sz = liftIndex2 min (size arr1) (size arr2)
+  where sz = Sz (liftIndex2 min (unSz (size arr1)) (unSz (size arr2)))
 
 prop_zipFlip ::
      (Arbitrary ix, CoArbitrary ix, Index ix, Show (Array D ix Int), Show (Array D ix (Int, Int)))
@@ -39,7 +39,8 @@ prop_zipUnzip3 _ arr1 arr2 arr3 =
   (extract' zeroIndex sz arr1, extract' zeroIndex sz arr2, extract' zeroIndex sz arr3) ===
   A.unzip3 (A.zip3 arr1 arr2 arr3)
   where
-    sz = liftIndex2 min (liftIndex2 min (size arr1) (size arr2)) (size arr3)
+    sz =
+      Sz (liftIndex2 min (liftIndex2 min (unSz (size arr1)) (unSz (size arr2))) (unSz (size arr3)))
 
 prop_zipFlip3 ::
      ( Arbitrary ix

@@ -23,30 +23,46 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Core.Index.Ix where
+module Data.Massiv.Core.Index.Ix
+  ( Ix
+  , IxN(..)
+  , type Sz
+  , pattern Sz
+  , type Ix1
+  , pattern Ix1
+  , type Sz1
+  , pattern Sz1
+  , type Ix2(..)
+  , pattern Ix2
+  , type Sz2
+  , pattern Sz2
+  , type Ix3
+  , pattern Ix3
+  , type Sz3
+  , pattern Sz3
+  , type Ix4
+  , pattern Ix4
+  , type Sz4
+  , pattern Sz4
+  , type Ix5
+  , pattern Ix5
+  , type Sz5
+  , pattern Sz5
+  ) where
 
 import           Control.DeepSeq
-import           Control.Monad                (liftM)
-import           Data.Massiv.Core.Index.Class
-import           Data.Massiv.Core.Iterator
-import           Data.Monoid                  ((<>))
+import           Control.Monad                   (liftM)
+import           Data.Massiv.Core.Index.Internal
+import           Data.Monoid                     ((<>))
 import           Data.Proxy
-import qualified Data.Vector.Generic          as V
-import qualified Data.Vector.Generic.Mutable  as VM
-import qualified Data.Vector.Unboxed          as VU
+import qualified Data.Vector.Generic             as V
+import qualified Data.Vector.Generic.Mutable     as VM
+import qualified Data.Vector.Unboxed             as VU
 import           GHC.TypeLits
 
 
 infixr 5 :>, :.
 
--- | Another type synonym for 1-dimensional index, i.e. `Int` and `Ix1T`. Provided here purely for
--- consistency.
-type Ix1 = Int
-
--- | This is a very handy pattern synonym to indicate that any arbitrary whole number is an `Int`,
--- i.e. a 1-dimensional index: @(Ix1 i) == (i :: Int)@
-pattern Ix1 :: Int -> Ix1
-pattern Ix1 i = i
 
 -- | 2-dimensional index. This also a base index for higher dimensions.
 data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
@@ -54,7 +70,11 @@ data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
 -- | 2-dimensional index constructor. Useful when @TypeOperators@ extension isn't enabled, or simply
 -- infix notation is inconvenient. @(Ix2 i j) == (i :. j)@.
 pattern Ix2 :: Int -> Int -> Ix2
-pattern Ix2 i j = i :. j
+pattern Ix2 i2 i1 = i2 :. i1
+
+type Sz2 = Sz Ix2
+pattern Sz2 :: Int -> Int -> Sz2
+pattern Sz2 i2 i1 = Sz (i2 :. i1)
 
 -- | 3-dimensional type synonym. Useful as a alternative to enabling @DataKinds@ and using type
 -- level Nats.
@@ -62,20 +82,31 @@ type Ix3 = IxN 3
 
 -- | 3-dimensional index constructor. @(Ix3 i j k) == (i :> j :. k)@.
 pattern Ix3 :: Int -> Int -> Int -> Ix3
-pattern Ix3 i j k = i :> j :. k
+pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
+
+type Sz3 = Sz Ix3
+pattern Sz3 :: Int -> Int -> Int -> Sz3
+pattern Sz3 i3 i2 i1 = Sz (i3 :> i2 :. i1)
 
 -- | 4-dimensional type synonym.
 type Ix4 = IxN 4
 -- | 4-dimensional index constructor. @(Ix4 i j k l) == (i :> j :> k :. l)@.
 pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
-pattern Ix4 i j k l = i :> j :> k :. l
+pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
+
+type Sz4 = Sz Ix4
+pattern Sz4 :: Int -> Int -> Int -> Int -> Sz4
+pattern Sz4 i4 i3 i2 i1 = Sz (i4 :> i3 :> i2 :. i1)
 
 -- | 5-dimensional type synonym.
 type Ix5 = IxN 5
 -- | 5-dimensional index constructor.  @(Ix5 i j k l m) = (i :> j :> k :> l :. m)@.
 pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
-pattern Ix5 i j k l m = i :> j :> k :> l :. m
+pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
 
+type Sz5 = Sz Ix5
+pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz5
+pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 
 #if __GLASGOW_HASKELL__ >= 800
 
@@ -217,59 +248,19 @@ instance Ord Ix2 where
 instance Ord (Ix (n - 1)) => Ord (IxN n) where
   compare (i1 :> ix1) (i2 :> ix2) = compare i1 i2 <> compare ix1 ix2
 
--- | Convert a `Int` tuple to `Ix2`
-toIx2 :: Ix2T -> Ix2
-toIx2 (i, j) = i :. j
-{-# INLINE toIx2 #-}
 
--- | Convert an `Ix2` to `Int` tuple
-fromIx2 :: Ix2 -> Ix2T
-fromIx2 (i :. j) = (i, j)
-{-# INLINE fromIx2 #-}
-
--- | Convert a `Int` 3-tuple to `Ix3`
-toIx3 :: Ix3T -> Ix3
-toIx3 (i, j, k) = i :> j :. k
-{-# INLINE toIx3 #-}
-
--- | Convert an `Ix3` to `Int` 3-tuple
-fromIx3 :: Ix3 -> Ix3T
-fromIx3 (i :> j :. k) = (i, j, k)
-{-# INLINE fromIx3 #-}
-
--- | Convert a `Int` 4-tuple to `Ix4`
-toIx4 :: Ix4T -> Ix4
-toIx4 (i, j, k, l) = i :> j :> k :. l
-{-# INLINE toIx4 #-}
-
--- | Convert an `Ix4` to `Int` 4-tuple
-fromIx4 :: Ix4 -> Ix4T
-fromIx4 (i :> j :> k :. l) = (i, j, k, l)
-{-# INLINE fromIx4 #-}
-
--- | Convert a `Int` 5-tuple to `Ix5`
-toIx5 :: Ix5T -> Ix5
-toIx5 (i, j, k, l, m) = i :> j :> k :> l :. m
-{-# INLINE toIx5 #-}
-
--- | Convert an `Ix5` to `Int` 5-tuple
-fromIx5 :: Ix5 -> Ix5T
-fromIx5 (i :> j :> k :> l :. m) = (i, j, k, l, m)
-{-# INLINE fromIx5 #-}
-
-
-instance {-# OVERLAPPING #-} Index Ix2 where
+instance Index Ix2 where
   type Dimensions Ix2 = 2
   dimensions _ = 2
   {-# INLINE [1] dimensions #-}
-  totalElem (k2 :. k1) = k2 * k1
+  totalElem (SafeSz (k2 :. k1)) = k2 * k1
   {-# INLINE [1] totalElem #-}
-  isSafeIndex (k2 :. k1) (i2 :. i1) = 0 <= i2 && 0 <= i1 && i2 < k2 && i1 < k1
+  isSafeIndex (SafeSz (k2 :. k1)) (i2 :. i1) = 0 <= i2 && 0 <= i1 && i2 < k2 && i1 < k1
   {-# INLINE [1] isSafeIndex #-}
-  toLinearIndex (_ :. k1) (i2 :. i1) = k1 * i2 + i1
+  toLinearIndex (SafeSz (_ :. k1)) (i2 :. i1) = k1 * i2 + i1
   {-# INLINE [1] toLinearIndex #-}
-  fromLinearIndex (_ :. k1) i = case i `quotRem` k1 of
-                                 (i2, i1) -> i2 :. i1
+  fromLinearIndex (SafeSz (_ :. k1)) i = case i `quotRem` k1 of
+                                           (i2, i1) -> i2 :. i1
   {-# INLINE [1] fromLinearIndex #-}
   consDim = (:.)
   {-# INLINE [1] consDim #-}
@@ -281,16 +272,12 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   {-# INLINE [1] unsnocDim #-}
   getDim (i2 :.  _) 2 = Just i2
   getDim ( _ :. i1) 1 = Just i1
-  getDim _        _ = Nothing
+  getDim _        _   = Nothing
   {-# INLINE [1] getDim #-}
   setDim ( _ :. i1) 2 i2 = Just (i2 :. i1)
   setDim (i2 :.  _) 1 i1 = Just (i2 :. i1)
-  setDim _        _ _ = Nothing
+  setDim _        _ _    = Nothing
   {-# INLINE [1] setDim #-}
-  dropDim ( _ :. i1) 2 = Just i1
-  dropDim (i2 :.  _) 1 = Just i2
-  dropDim _          _ = Nothing
-  {-# INLINE [1] dropDim #-}
   pullOutDim (i2 :. i1) 2 = Just (i2, i1)
   pullOutDim (i2 :. i1) 1 = Just (i1, i2)
   pullOutDim _          _ = Nothing
@@ -304,28 +291,23 @@ instance {-# OVERLAPPING #-} Index Ix2 where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i2 :. i1) (i2' :. i1') = f i2 i2' :. f i1 i1'
   {-# INLINE [1] liftIndex2 #-}
-  repairIndex (k :. szL) (i :. ixL) rBelow rOver =
-    repairIndex k i rBelow rOver :. repairIndex szL ixL rBelow rOver
+  repairIndex (SafeSz (k :. szL)) (i :. ixL) rBelow rOver =
+    repairIndex (SafeSz k) i rBelow rOver :. repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
-  iterExcludeM_ (s :. sIxL) (e :. eIxL) (inc :. incIxL) cond f = do
-    iterExcludeM_ sIxL eIxL incIxL cond (f . (s :.))
-    loopM_ (s + 1) (`cond` e) (+ inc) $ \ !i ->
-      loopM_ sIxL (`cond` eIxL) (+ incIxL) $ \ !ix -> f (i :. ix)
-  {-# INLINE iterExcludeM_ #-}
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
   type Dimensions Ix3 = 3
   dimensions _ = 3
   {-# INLINE [1] dimensions #-}
-  totalElem (k3 :> k2 :. k1) = k3 * k2 * k1
+  totalElem (SafeSz (k3 :> k2 :. k1)) = k3 * k2 * k1
   {-# INLINE [1] totalElem #-}
-  isSafeIndex (k3 :> k2 :. k1) (i3 :> i2 :. i1) =
+  isSafeIndex (SafeSz (k3 :> k2 :. k1)) (i3 :> i2 :. i1) =
     0 <= i3 && 0 <= i2 && 0 <= i1 && i3 < k3 && i2 < k2 && i1 < k1
   {-# INLINE [1] isSafeIndex #-}
-  toLinearIndex (_ :> k2 :. k1) (i3 :> i2 :. i1) = (k2 * i3 + i2) * k1 + i1
+  toLinearIndex (SafeSz (_ :> k2 :. k1)) (i3 :> i2 :. i1) = (k2 * i3 + i2) * k1 + i1
   {-# INLINE [1] toLinearIndex #-}
-  fromLinearIndex (_ :> ix) i = let !(q, ixL) = fromLinearIndexAcc ix i in q :> ixL
+  fromLinearIndex (SafeSz (_ :> ix)) i = let !(q, ixL) = fromLinearIndexAcc ix i in q :> ixL
   {-# INLINE [1] fromLinearIndex #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
@@ -338,18 +320,13 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   getDim (i3 :>  _ :.  _) 3 = Just i3
   getDim ( _ :> i2 :.  _) 2 = Just i2
   getDim ( _ :>  _ :. i1) 1 = Just i1
-  getDim _             _ = Nothing
+  getDim _             _    = Nothing
   {-# INLINE [1] getDim #-}
   setDim ( _ :> i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
   setDim (i3 :>  _ :. i1) 2 i2 = Just (i3 :> i2 :. i1)
   setDim (i3 :> i2 :.  _) 1 i1 = Just (i3 :> i2 :. i1)
-  setDim _             _ _ = Nothing
+  setDim _             _ _     = Nothing
   {-# INLINE [1] setDim #-}
-  dropDim ( _ :> i2 :. i1) 3 = Just (i2 :. i1)
-  dropDim (i3 :>  _ :. i1) 2 = Just (i3 :. i1)
-  dropDim (i3 :> i2 :.  _) 1 = Just (i3 :. i2)
-  dropDim _             _ = Nothing
-  {-# INLINE [1] dropDim #-}
   pullOutDim (i3 :> i2 :. i1) 3 = Just (i3, i2 :. i1)
   pullOutDim (i3 :> i2 :. i1) 2 = Just (i2, i3 :. i1)
   pullOutDim (i3 :> i2 :. i1) 1 = Just (i1, i3 :. i2)
@@ -366,8 +343,8 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i3 :> i2 :. i1) (i3' :> i2' :. i1') = f i3 i3' :> f i2 i2' :. f i1 i1'
   {-# INLINE [1] liftIndex2 #-}
-  repairIndex (n :> szL) (i :> ixL) rBelow rOver =
-    repairIndex n i rBelow rOver :> repairIndex szL ixL rBelow rOver
+  repairIndex (SafeSz (n :> szL)) (i :> ixL) rBelow rOver =
+    repairIndex (SafeSz n) i rBelow rOver :> repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
 
 instance {-# OVERLAPPABLE #-} (4 <= n,
@@ -381,7 +358,7 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   type Dimensions (IxN n) = n
   dimensions _ = fromInteger $ natVal (Proxy :: Proxy n)
   {-# INLINE [1] dimensions #-}
-  totalElem (i :> ixl) = i * totalElem ixl
+  totalElem (SafeSz (i :> ixl)) = foldlIndex (*) i ixl
   {-# INLINE [1] totalElem #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
@@ -392,19 +369,16 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   unsnocDim (i :> ixl) = case unsnocDim ixl of
                           (ix, i1) -> (i :> ix, i1)
   {-# INLINE [1] unsnocDim #-}
-  getDim ix@(i :> ixl) d | d == dimensions ix = Just i
-                           | otherwise = getDim ixl d
+  getDim ix@(i :> ixl) d | d == dimensions (Just ix) = Just i
+                         | otherwise = getDim ixl d
   {-# INLINE [1] getDim #-}
-  setDim ix@(i :> ixl) d di | d == dimensions ix = Just (di :> ixl)
-                              | otherwise = (i :>) <$> setDim ixl d di
+  setDim ix@(i :> ixl) d di | d == dimensions (Just ix) = Just (di :> ixl)
+                            | otherwise = (i :>) <$> setDim ixl d di
   {-# INLINE [1] setDim #-}
-  dropDim ix@(i :> ixl) d | d == dimensions ix = Just ixl
-                          | otherwise = (i :>) <$> dropDim ixl d
-  {-# INLINE [1] dropDim #-}
-  pullOutDim ix@(i :> ixl) d | d == dimensions ix = Just (i, ixl)
+  pullOutDim ix@(i :> ixl) d | d == dimensions (Just ix) = Just (i, ixl)
                              | otherwise = fmap (i :>) <$> pullOutDim ixl d
   {-# INLINE [1] pullOutDim #-}
-  insertDim ix@(i :> ixl) d di | d == dimensions ix + 1 = Just (di :> ix)
+  insertDim ix@(i :> ixl) d di | d == dimensions (Just ix) + 1 = Just (di :> ix)
                                | otherwise = (i :>) <$> insertDim ixl d di
   {-# INLINE [1] insertDim #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
@@ -413,8 +387,8 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   {-# INLINE [1] liftIndex #-}
   liftIndex2 f (i :> ix) (i' :> ix') = f i i' :> liftIndex2 f ix ix'
   {-# INLINE [1] liftIndex2 #-}
-  repairIndex (k :> szL) (i :> ixL) rBelow rOver =
-    repairIndex k i rBelow rOver :> repairIndex szL ixL rBelow rOver
+  repairIndex (SafeSz (n :> szL)) (i :> ixL) rBelow rOver =
+    repairIndex (SafeSz n) i rBelow rOver :> repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
 
 
@@ -424,7 +398,7 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
 -- | Unboxing of a `Ix2`.
 instance VU.Unbox Ix2
 
-newtype instance VU.MVector s Ix2 = MV_Ix2 (VU.MVector s Ix2T)
+newtype instance VU.MVector s Ix2 = MV_Ix2 (VU.MVector s (Int, Int))
 
 instance VM.MVector VU.MVector Ix2 where
   basicLength (MV_Ix2 mvec) = VM.basicLength mvec
@@ -435,15 +409,15 @@ instance VM.MVector VU.MVector Ix2 where
   {-# INLINE basicOverlaps #-}
   basicUnsafeNew len = MV_Ix2 `liftM` VM.basicUnsafeNew len
   {-# INLINE basicUnsafeNew #-}
-  basicUnsafeReplicate len val = MV_Ix2 `liftM` VM.basicUnsafeReplicate len (fromIx2 val)
+  basicUnsafeReplicate len (i :. j) = MV_Ix2 `liftM` VM.basicUnsafeReplicate len (i, j)
   {-# INLINE basicUnsafeReplicate #-}
-  basicUnsafeRead (MV_Ix2 mvec) idx = toIx2 `liftM` VM.basicUnsafeRead mvec idx
+  basicUnsafeRead (MV_Ix2 mvec) idx = uncurry (:.) `liftM` VM.basicUnsafeRead mvec idx
   {-# INLINE basicUnsafeRead #-}
-  basicUnsafeWrite (MV_Ix2 mvec) idx val = VM.basicUnsafeWrite mvec idx (fromIx2 val)
+  basicUnsafeWrite (MV_Ix2 mvec) idx (i :. j) = VM.basicUnsafeWrite mvec idx (i, j)
   {-# INLINE basicUnsafeWrite #-}
   basicClear (MV_Ix2 mvec) = VM.basicClear mvec
   {-# INLINE basicClear #-}
-  basicSet (MV_Ix2 mvec) val = VM.basicSet mvec (fromIx2 val)
+  basicSet (MV_Ix2 mvec) (i :. j) = VM.basicSet mvec (i, j)
   {-# INLINE basicSet #-}
   basicUnsafeCopy (MV_Ix2 mvec) (MV_Ix2 mvec') = VM.basicUnsafeCopy mvec mvec'
   {-# INLINE basicUnsafeCopy #-}
@@ -457,7 +431,7 @@ instance VM.MVector VU.MVector Ix2 where
 #endif
 
 
-newtype instance VU.Vector Ix2 = V_Ix2 (VU.Vector Ix2T)
+newtype instance VU.Vector Ix2 = V_Ix2 (VU.Vector (Int, Int))
 
 instance V.Vector VU.Vector Ix2 where
   basicUnsafeFreeze (MV_Ix2 mvec) = V_Ix2 `liftM` V.basicUnsafeFreeze mvec
@@ -468,7 +442,7 @@ instance V.Vector VU.Vector Ix2 where
   {-# INLINE basicLength #-}
   basicUnsafeSlice idx len (V_Ix2 vec) = V_Ix2 (V.basicUnsafeSlice idx len vec)
   {-# INLINE basicUnsafeSlice #-}
-  basicUnsafeIndexM (V_Ix2 vec) idx = toIx2 `liftM` V.basicUnsafeIndexM vec idx
+  basicUnsafeIndexM (V_Ix2 vec) idx = uncurry (:.) `liftM` V.basicUnsafeIndexM vec idx
   {-# INLINE basicUnsafeIndexM #-}
   basicUnsafeCopy (MV_Ix2 mvec) (V_Ix2 vec) = V.basicUnsafeCopy mvec vec
   {-# INLINE basicUnsafeCopy #-}

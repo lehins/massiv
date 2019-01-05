@@ -55,11 +55,13 @@ module Data.Massiv.Array.Ops.Map
 
 import           Control.Monad                       (void)
 import           Control.Monad.ST                    (runST)
+import           Data.Coerce
 import           Data.Foldable                       (foldlM)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Index.Internal     (Sz (..))
 import           Data.Massiv.Core.Scheduler
 import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
@@ -126,7 +128,9 @@ zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
 izipWith :: (Source r1 ix e1, Source r2 ix e2)
          => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
 izipWith f arr1 arr2 =
-  DArray (getComp arr1 <> getComp arr2) (liftIndex2 min (size arr1) (size arr2)) $ \ !ix ->
+  DArray
+    (getComp arr1 <> getComp arr2)
+    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
 {-# INLINE izipWith #-}
 
@@ -149,7 +153,11 @@ izipWith3
 izipWith3 f arr1 arr2 arr3 =
   DArray
     (getComp arr1 <> getComp arr2 <> getComp arr3)
-    (liftIndex2 min (liftIndex2 min (size arr1) (size arr2)) (size arr3)) $ \ !ix ->
+    (SafeSz
+       (liftIndex2
+          min
+          (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))
+          (coerce (size arr3)))) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
 
@@ -354,7 +362,7 @@ iforMR _ = itraverseA
 -- 58
 --
 mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
-mapM_ f !arr = iterM_ zeroIndex (size arr) (pureIndex 1) (<) (f . unsafeIndex arr)
+mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeIndex arr)
 {-# INLINE mapM_ #-}
 
 

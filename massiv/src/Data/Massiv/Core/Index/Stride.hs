@@ -27,7 +27,7 @@ module Data.Massiv.Core.Index.Stride
   ) where
 
 import           Control.DeepSeq
-import           Data.Massiv.Core.Index.Class
+import           Data.Massiv.Core.Index.Internal
 
 -- | Stride provides a way to ignore elements of an array if an index is divisible by a
 -- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be
@@ -96,14 +96,15 @@ strideStart (SafeStride stride) ix =
 {-# INLINE strideStart #-}
 
 -- | Adjust size according to the stride.
-strideSize :: Index ix => Stride ix -> ix -> ix
-strideSize (SafeStride stride) sz = liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) sz) stride
+strideSize :: Index ix => Stride ix -> Sz ix -> Sz ix
+strideSize (SafeStride stride) (SafeSz sz) =
+  SafeSz (liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) sz) stride)
 {-# INLINE strideSize #-}
 
 -- | Compute an index with stride using the original size and index
 toLinearIndexStride :: Index ix =>
   Stride ix -- ^ Stride
-  -> ix -- ^ Size
+  -> Sz ix -- ^ Size
   -> ix -- ^ Index
   -> Int
 toLinearIndexStride (SafeStride stride) sz ix = toLinearIndex sz (liftIndex2 div ix stride)

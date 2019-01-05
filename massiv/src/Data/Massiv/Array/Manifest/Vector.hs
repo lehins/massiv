@@ -57,7 +57,7 @@ type instance VRepr N = VB.Vector
 -- been sliced before or if some non-standard vector type is supplied.
 castFromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Mutable r ix e, ARepr v ~ r)
                => Comp
-               -> ix -- ^ Size of the result Array
+               -> Sz ix -- ^ Size of the result Array
                -> v e -- ^ Source Vector
                -> Maybe (Array r ix e)
 castFromVector comp sz vector = do
@@ -88,7 +88,7 @@ castFromVector comp sz vector = do
 fromVector ::
      (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
   => Comp
-  -> ix -- ^ Resulting size of the array
+  -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
   -> Array r ix a
 fromVector comp sz v =

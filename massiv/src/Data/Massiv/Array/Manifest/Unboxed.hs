@@ -28,14 +28,14 @@ import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
-                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
+import qualified Data.Vector.Generic.Mutable         as VGM
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -45,7 +45,7 @@ data U = U deriving Show
 type instance EltRepr U ix = M
 
 data instance Array U ix e = UArray { uComp :: !Comp
-                                    , uSize :: !ix
+                                    , uSize :: !(Sz ix)
                                     , uData :: !(VU.Vector e)
                                     }
 
@@ -58,9 +58,8 @@ instance (VU.Unbox e, Index ix) => Construct U ix e where
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (return . f)
+  {-# INLINE makeArray #-}
 
 
 instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
@@ -87,8 +86,8 @@ instance (VU.Unbox e, Index ix) => Extract U ix e where
   {-# INLINE unsafeExtract #-}
 
 instance (VU.Unbox e, Index ix) => Load U ix e where
-  unsafeSize = uSize
-  {-# INLINE unsafeSize #-}
+  size = uSize
+  {-# INLINE size #-}
   getComp = uComp
   {-# INLINE getComp #-}
 
@@ -145,7 +144,7 @@ instance (VU.Unbox e, Index ix) => Manifest U ix e where
 
 
 instance (VU.Unbox e, Index ix) => Mutable U ix e where
-  data MArray s U ix e = MUArray ix (VU.MVector s e)
+  data MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
   msize (MUArray sz _) = sz
   {-# INLINE msize #-}
@@ -159,8 +158,8 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero sz = MUArray sz <$> MVU.new (totalElem sz)
-  {-# INLINE unsafeNewZero #-}
+  initialize (MUArray _ marr) = VGM.basicInitialize marr
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MUArray _ mv) =
     INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", MVU.length, MVU.unsafeRead) mv

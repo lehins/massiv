@@ -36,7 +36,7 @@ import           GHC.Exts                           (inline)
 --
 makeConvolutionStencil
   :: (Index ix, Num e)
-  => ix
+  => Sz ix
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
@@ -58,7 +58,7 @@ makeConvolutionStencilFromKernel
 makeConvolutionStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
-    !sCenter = liftIndex (`div` 2) sz
+    !sCenter = liftIndex (`div` 2) $ unSz sz
     stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
         unValue (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
@@ -71,7 +71,7 @@ makeConvolutionStencilFromKernel kArr = Stencil sz sCenter stencil
 -- | Make a <https://en.wikipedia.org/wiki/Cross-correlation cross-correlation> stencil.
 makeCorrelationStencil
   :: (Index ix, Num e)
-  => ix
+  => Sz ix
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
@@ -93,7 +93,7 @@ makeCorrelationStencilFromKernel
 makeCorrelationStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
-    !sCenter = liftIndex (`div` 2) sz
+    !sCenter = liftIndex (`div` 2) $ unSz sz
     stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
         unValue (getVal (liftIndex2 (+) ix (liftIndex2 (+) sCenter kIx))) * kVal + acc

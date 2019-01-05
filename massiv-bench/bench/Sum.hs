@@ -10,7 +10,7 @@ import           Prelude           as P
 
 main :: IO ()
 main = do
-  let !sz = 1600 :. 1200
+  let !sz = Sz2 1600 1200
   defaultMain
     [ bgroup
         "Sum"
