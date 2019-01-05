@@ -1,12 +1,9 @@
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE PatternSynonyms            #-}
-
-#if __GLASGOW_HASKELL__ >= 800
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-#else
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE StandaloneDeriving         #-}
+
+#if __GLASGOW_HASKELL__ < 820
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 #endif
 -- |
 -- Module      : Data.Massiv.Core.Index.Stride
@@ -55,19 +52,8 @@ import           Data.Massiv.Core.Index.Internal
 --   column intact then you'd use @Stride (5 :. 1)@.
 --
 
-#if __GLASGOW_HASKELL__ >= 800
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
 {-# COMPLETE Stride #-}
-#else
--- There is an issue in GHC 7.10 which prevents from placing `Index` constraint on a pattern.
-data Stride ix where
-  SafeStride :: Index ix => ix -> Stride ix
-
-deriving instance Eq ix => Eq (Stride ix)
-deriving instance Ord ix => Ord (Stride ix)
-instance NFData ix => NFData (Stride ix) where
-  rnf (SafeStride ix) = rnf ix
-#endif
 
 
 -- | A safe bidirectional pattern synonym for `Stride` construction that will make sure stride

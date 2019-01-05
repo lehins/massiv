@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
@@ -186,7 +187,7 @@ generateArrayIO ::
   -> IO (Array r ix e)
 generateArrayIO comp sz gen = do
   let !wids = case comp of
-                Seq -> [1]
+                Seq        -> [1]
                 ParOn caps -> caps
   marr <- unsafeNew sz
   withScheduler_ wids $ \scheduler ->

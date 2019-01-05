@@ -65,6 +65,12 @@ matrix:
         packages: [cabal-install-2.0,ghc-8.4.3,happy-1.19.5,alex-3.1.7]
         sources: [hvr-ghc]
 
+  - env: BUILD=cabal GHCVER=8.6.3 CABALVER=2.0 HAPPYVER=1.19.5 ALEXVER=3.1.7
+    compiler: ": #GHC 8.6.3"
+    addons:
+      apt:
+        packages: [cabal-install-2.0,ghc-8.6.3,happy-1.19.5,alex-3.1.7]
+        sources: [hvr-ghc]
 
   # Build with the newest GHC and cabal-install. This is an accepted failure, see below.
   - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
@@ -76,18 +82,6 @@ matrix:
 
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
-
-  - env: BUILD=stack ARGS="--stack-yaml stack.ghc-7.10.yaml"
-    compiler: ": #stack GHC-7.10.2 (lts-3.22)"
-    addons:
-      apt:
-        packages: [libgmp-dev]
-
-  - env: BUILD=stack ARGS="--resolver lts-6"
-    compiler: ": #stack GHC-7.10.3 (lts-6.30)"
-    addons:
-      apt:
-        packages: [libgmp-dev]
 
   - env: BUILD=stack ARGS="--resolver lts-7"
     compiler: ": #stack GHC-8.0.1 (lts-7.24)"
@@ -107,14 +101,20 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-11"
-    compiler: ": #stack GHC-8.2.2 (lts-11)"
+  - env: BUILD=stack ARGS="--resolver lts-11.22"
+    compiler: ": #stack GHC-8.2.2 (lts-11.22)"
     addons:
       apt:
         packages: [libgmp-dev]
 
   - env: BUILD=stack ARGS="--resolver lts-12"
     compiler: ": #stack GHC-8.4.3 (lts-12)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
+
+  - env: BUILD=stack ARGS="--resolver lts-13"
+    compiler: ": #stack GHC-8.6.3 (lts-13)"
     addons:
       apt:
         packages: [libgmp-dev]
@@ -131,8 +131,16 @@ matrix:
     compiler: ": #stack GHC-8.0.2 (lts-9.21)"
     os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-11"
-    compiler: ": #stack GHC-8.2.2 (lts-11)"
+  - env: BUILD=stack ARGS="--resolver lts-11.22"
+    compiler: ": #stack GHC-8.2.2 (lts-11.22)"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-12"
+    compiler: ": #stack GHC-8.4.3 (lts-12)"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-13"
+    compiler: ": #stack GHC-8.6.3 (lts-13)"
     os: osx
 
   allow_failures:

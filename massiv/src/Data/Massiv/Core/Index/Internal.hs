@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE CPP                        #-}
@@ -10,13 +10,10 @@
 {-# LANGUAGE PatternSynonyms            #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
-
-#if __GLASGOW_HASKELL__ >= 800
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-#else
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE StandaloneDeriving         #-}
+
+#if __GLASGOW_HASKELL__ < 820
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 #endif
 -- |
 -- Module      : Data.Massiv.Core.Index.Internal
@@ -56,8 +53,8 @@ module Data.Massiv.Core.Index.Internal
   , pattern Ix1
   ) where
 
-import Data.Coerce
 import           Control.DeepSeq
+import           Data.Coerce
 import           Data.Massiv.Core.Iterator
 import           GHC.TypeLits
 
@@ -66,20 +63,9 @@ import           GHC.TypeLits
 -- dimension. Moreover the @Sz@ constructor will prevent creation of invalid sizes with negative
 -- numbers
 --
-#if __GLASGOW_HASKELL__ >= 800
+-- @since 0.3.0
 newtype Sz ix = SafeSz ix deriving (Eq, Ord, NFData)
 {-# COMPLETE Sz #-}
-#else
--- There is an issue in GHC 7.10 which prevents from placing `Index` constraint on a pattern.
-data Sz ix where
-  SafeSz :: Index ix => ix -> Sz ix
-
-deriving instance Eq ix => Eq (Sz ix)
-deriving instance Ord ix => Ord (Sz ix)
-instance NFData ix => NFData (Sz ix) where
-  rnf (SafeSz ix) = rnf ix
-#endif
-
 
 -- | A safe bidirectional pattern synonym for `Sz` construction that will make sure that none of
 -- the size elements are negative.
@@ -98,48 +84,77 @@ instance Index ix => Show (Sz ix) where
 
 
 -- | Just a helper function for unwrapping `Sz`.
+--
+-- @since 0.3.0
 unSz :: Sz ix -> ix
 unSz (SafeSz ix) = ix
 {-# INLINE unSz #-}
 
 -- | An empty size with all elements in size equal to @0@.
+--
+-- @since 0.3.0
 zeroSz :: Index ix => Sz ix
 zeroSz = SafeSz (pureIndex 0)
 {-# INLINE zeroSz #-}
 
 -- | A singleton size with all elements in size equal to @1@.
+--
+-- @since 0.3.0
 oneSz :: Index ix => Sz ix
 oneSz = SafeSz (pureIndex 1)
 {-# INLINE oneSz #-}
 
 
+-- | Same as `consDim`, but for `Sz`
+--
+-- @since 0.3.0
 consSz :: Index ix => Sz1 -> Sz (Lower ix) -> Sz ix
 consSz (SafeSz i) (SafeSz ix) = SafeSz (consDim i ix)
 {-# INLINE consSz #-}
 
-unconsSz :: Index ix => Sz ix -> (Sz1, Sz (Lower ix))
-unconsSz (SafeSz sz) = coerce (unconsDim sz)
-{-# INLINE unconsSz #-}
 
+-- | Same as `snocDim`, but for `Sz`
+--
+-- @since 0.3.0
 snocSz :: Index ix => Sz (Lower ix) -> Sz1 -> Sz ix
 snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 {-# INLINE snocSz #-}
 
-unsnocSz :: Index ix => Sz ix -> (Sz (Lower ix), Sz1)
-unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
-{-# INLINE unsnocSz #-}
-
+-- | Same as `setDim`, but for `Sz`
+--
+-- @since 0.3.0
 setSz :: Index ix => Sz ix -> Dim -> Sz Int -> Maybe (Sz ix)
 setSz (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDim sz dim sz1
 {-# INLINE setSz #-}
 
+-- | Same as `insertDim`, but for `Sz`
+--
+-- @since 0.3.0
 insertSz :: Index ix => Sz (Lower ix) -> Dim -> Sz Int -> Maybe (Sz ix)
 insertSz (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDim sz dim sz1
 {-# INLINE insertSz #-}
 
+-- | Same as `unconsDim`, but for `Sz`
+--
+-- @since 0.3.0
+unconsSz :: Index ix => Sz ix -> (Sz1, Sz (Lower ix))
+unconsSz (SafeSz sz) = coerce (unconsDim sz)
+{-# INLINE unconsSz #-}
+
+-- | Same as `unsnocDim`, but for `Sz`
+--
+-- @since 0.3.0
+unsnocSz :: Index ix => Sz ix -> (Sz (Lower ix), Sz1)
+unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
+{-# INLINE unsnocSz #-}
+
+-- | Same as `pullOutDim`, but for `Sz`
+--
+-- @since 0.3.0
 pullOutSz :: Index ix => Sz ix -> Dim -> Maybe (Sz Ix1, Sz (Lower ix))
 pullOutSz (SafeSz sz) = coerce . pullOutDim sz
 {-# INLINE pullOutSz #-}
+
 
 -- | A way to select Array dimension at a value level.
 newtype Dim = Dim { unDim :: Int } deriving (Show, Eq, Ord, Num, Real, Integral, Enum)

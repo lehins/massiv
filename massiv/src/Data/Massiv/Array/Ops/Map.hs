@@ -63,7 +63,6 @@ import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
 import           Data.Massiv.Core.Scheduler
-import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
 import           Prelude                             hiding (map, mapM, mapM_,
                                                       traverse, unzip, unzip3,

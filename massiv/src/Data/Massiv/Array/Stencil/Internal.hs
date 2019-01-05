@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -27,9 +26,6 @@ import           Control.DeepSeq
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal
-#if !MIN_VERSION_base(4,11,0)
-import           Data.Semigroup
-#endif
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and

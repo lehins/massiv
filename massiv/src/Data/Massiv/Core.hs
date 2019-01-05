@@ -7,8 +7,8 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-#if __GLASGOW_HASKELL__ >= 800
-  {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
+#if __GLASGOW_HASKELL__ > 820
+{-# OPTIONS_GHC -Wno-deplicate-exports #-}
 #endif
 -- |
 -- Module      : Data.Massiv.Core
@@ -38,13 +38,8 @@ module Data.Massiv.Core
   , L(..)
   , LN
   , ListItem
-#if __GLASGOW_HASKELL__ >= 800
   , Comp(Seq, Par, ParOn)
   , pattern Par -- already exported above and only needed for Haddock
-#else
-  , Comp(..)
-  , pattern Par
-#endif
   , module Data.Massiv.Core.Index
   ) where
 

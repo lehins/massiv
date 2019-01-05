@@ -9,12 +9,7 @@
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UndecidableInstances   #-}
-
-#if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE TypeFamilyDependencies #-}
-#else
-{-# LANGUAGE GADTs                  #-}
-#endif
 -- |
 -- Module      : Data.Massiv.Core.Index.Ix
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -108,8 +103,6 @@ type Sz5 = Sz Ix5
 pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz5
 pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 
-#if __GLASGOW_HASKELL__ >= 800
-
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
 data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
 
@@ -119,19 +112,6 @@ type family Ix (n :: Nat) = r | r -> n where
   Ix 1 = Ix1
   Ix 2 = Ix2
   Ix n = IxN n
-
-#else
-
-data IxN (n :: Nat) where
-  (:>) :: Dimensions (Ix (n - 1)) ~ (n - 1) => {-# UNPACK #-} !Int -> !(Ix (n - 1)) -> IxN n
-
-type family Ix (n :: Nat) where
-  Ix 0 = Ix0
-  Ix 1 = Ix1
-  Ix 2 = Ix2
-  Ix n = IxN n
-
-#endif
 
 
 type instance Lower Ix2 = Ix1
@@ -181,9 +161,6 @@ instance Num Ix3 where
 instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
-#if __GLASGOW_HASKELL__ < 800
-          Dimensions (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
-#endif
           IxN (n - 1) ~ Ix (n - 1)
           ) => Num (IxN n) where
   (+) = liftIndex2 (+)
@@ -218,9 +195,6 @@ instance Bounded Ix3 where
 instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
-#if __GLASGOW_HASKELL__ < 800
-          Dimensions (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
-#endif
           IxN (n - 1) ~ Ix (n - 1)
           ) => Bounded (IxN n) where
   minBound = pureIndex minBound
@@ -350,9 +324,6 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
 instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
           Index (Ix (n - 1)),
-#if __GLASGOW_HASKELL__ < 800
-          Dimensions (Ix ((n - 1) - 1)) ~ ((n - 1) - 1),
-#endif
           IxN (n - 1) ~ Ix (n - 1)
           ) => Index (IxN n) where
   type Dimensions (IxN n) = n
@@ -456,20 +427,11 @@ instance V.Vector VU.Vector Ix2 where
 
 
 -- | Unboxing of a `IxN`.
-instance (3 <= n,
-#if __GLASGOW_HASKELL__ < 800
-          Dimensions (Ix (n - 1)) ~ (n - 1),
-#endif
-          VU.Unbox (Ix (n-1))) => VU.Unbox (IxN n)
+instance (3 <= n, VU.Unbox (Ix (n - 1))) => VU.Unbox (IxN n)
 
 newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (Ix (n-1)))
 
-instance (3 <= n,
-#if __GLASGOW_HASKELL__ < 800
-          Dimensions (Ix (n - 1)) ~ (n - 1),
-#endif
-          VU.Unbox (Ix (n - 1))) =>
-         VM.MVector VU.MVector (IxN n) where
+instance (3 <= n, VU.Unbox (Ix (n - 1))) => VM.MVector VU.MVector (IxN n) where
   basicLength (MV_IxN (_, mvec)) = VM.basicLength mvec
   {-# INLINE basicLength #-}
   basicUnsafeSlice idx len (MV_IxN (mvec1, mvec)) =
@@ -521,11 +483,7 @@ instance (3 <= n,
 
 newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n-1)))
 
-instance (3 <= n,
-#if __GLASGOW_HASKELL__ < 800
-          Dimensions (Ix (n - 1)) ~ (n - 1),
-#endif
-          VU.Unbox (Ix (n-1))) => V.Vector VU.Vector (IxN n) where
+instance (3 <= n, VU.Unbox (Ix (n - 1))) => V.Vector VU.Vector (IxN n) where
   basicUnsafeFreeze (MV_IxN (mvec1, mvec)) = do
     iv <- V.basicUnsafeFreeze mvec1
     ivs <- V.basicUnsafeFreeze mvec
@@ -551,4 +509,3 @@ instance (3 <= n,
   {-# INLINE basicUnsafeCopy #-}
   elemseq _ = seq
   {-# INLINE elemseq #-}
-

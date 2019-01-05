@@ -70,7 +70,6 @@ import           Data.Massiv.Array.Ops.Transform    as A
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Index.Internal    (Sz (SafeSz))
 import           Data.Massiv.Core.Common
-import           Data.Monoid                        ((<>))
 import           Prelude                            as P
 
 

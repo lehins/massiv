@@ -1,7 +1,0 @@
-resolver: lts-3.22
-packages:
-- '.'
-extra-deps:
-- safe-exceptions-0.1.6.0
-flags: {}
-extra-package-dbs: []

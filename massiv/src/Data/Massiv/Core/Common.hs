@@ -53,7 +53,12 @@ module Data.Massiv.Core.Common
   -- * Common Operations
   , imapM_
   , module Data.Massiv.Core.Computation
+  , Semigroup((<>))
   ) where
+
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Semigroup
+#endif
 
 import           Control.Monad.Primitive
 import           Data.Massiv.Core.Computation

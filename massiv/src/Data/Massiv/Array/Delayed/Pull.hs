@@ -29,7 +29,6 @@ import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Common
-import           Data.Monoid                         ((<>))
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
 
