@@ -23,7 +23,8 @@ module Data.Massiv.Core.Common
   , Source(..)
   , Load(..)
   , StrideLoad(..)
-  , Size(..)
+  , Resize(..)
+  , Extract(..)
   , Slice(..)
   , OuterSlice(..)
   , InnerSlice(..)
@@ -37,6 +38,7 @@ module Data.Massiv.Core.Common
   , makeArray
   , singleton
   -- * Size
+  , size
   , elemsCount
   , isEmpty
   -- * Indexing
@@ -80,33 +82,33 @@ type family NestedStruct r ix e :: *
 -- | Array types that can be constructed.
 class (Typeable r, Index ix) => Construct r ix e where
 
-  -- | Get computation strategy of this array
-  getComp :: Array r ix e -> Comp
-
   -- | Set computation strategy for this array
   setComp :: Comp -> Array r ix e -> Array r ix e
 
   -- | Construct an array. No size validation is performed.
   unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
 
+-- | Get size of an immutable `Array`
+--
+-- @since 0.1.0
+size :: Load r ix e => Array r ix e -> ix
+size = unsafeSize
+{-# INLINE size #-}
 
--- | An array that contains size information. They can be resized and new arrays extracted from it
--- in constant time.
-class Construct r ix e => Size r ix e where
 
-  -- | /O(1)/ - Get the size of an array
-  size :: Array r ix e -> ix
-
+class Index ix => Resize array r ix where
   -- | /O(1)/ - Change the size of an array. New size is not validated.
-  unsafeResize :: Index ix' => ix' -> Array r ix e -> Array r ix' e
+  unsafeResize :: Index ix' => ix' -> array r ix e -> array r ix' e
 
+
+class Load r ix e => Extract r ix e where
   -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
   -- not validated.
   unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 
 -- | Arrays that can be used as source to practically any manipulation function.
-class Size r ix e => Source r ix e where
+class Load r ix e => Source r ix e where
 
   -- | Lookup element in the array. No bounds check is performed and access of
   -- arbitrary memory is possible when invalid index is supplied.
@@ -123,9 +125,15 @@ class Size r ix e => Source r ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 -- | Any array that can be computed and loaded into memory
-class Size r ix e => Load r ix e where
+class (Typeable r, Index ix) => Load r ix e where
 
-    -- | Load an array into memory. Default implementation will respect the scheduler and use `Source`
+  -- | Get computation strategy of this array
+  getComp :: Array r ix e -> Comp
+
+  -- | /O(1)/ - Get the size of an array
+  unsafeSize :: Array r ix e -> ix
+
+  -- | Load an array into memory. Default implementation will respect the scheduler and use `Source`
   -- instance to do loading in row-major fashion in parallel as well as sequentially.
   loadArray
     :: Monad m =>
@@ -143,10 +151,10 @@ class Size r ix e => Load r ix e where
     -> (Int -> e -> m ())
     -> m ()
   loadArray numWorkers scheduleWork arr =
-    splitLinearlyWith_ numWorkers scheduleWork (totalElem (size arr)) (unsafeLinearIndex arr)
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArray #-}
 
-class Size r ix e => StrideLoad r ix e where
+class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation can only handle the sequential
   -- case and only if there is an instance of `Source`.
   loadArrayWithStride
@@ -178,25 +186,21 @@ class Size r ix e => StrideLoad r ix e where
   {-# INLINE loadArrayWithStride #-}
 
 
-class OuterSlice r ix e where
+class Load r ix e => OuterSlice r ix e where
   -- | /O(1)/ - Take a slice out of an array from the outside
   unsafeOuterSlice :: Array r ix e -> Int -> Elt r ix e
 
-  outerLength :: Array r ix e -> Int
-  default outerLength :: Size r ix e => Array r ix e -> Int
-  outerLength = headDim . size
-
-class Size r ix e => InnerSlice r ix e where
+class Load r ix e => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
 
-class Size r ix e => Slice r ix e where
+class Load r ix e => Slice r ix e where
   unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
 
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
 -- @(`!`)@, @(`!?`)@, etc. are constrained to manifest arrays only.
-class Source r ix e => Manifest r ix e where
+class (Load r ix e, Source r ix e) => Manifest r ix e where
 
   unsafeLinearIndexM :: Array r ix e -> Int -> e
 
@@ -210,6 +214,8 @@ class Manifest r ix e => Mutable r ix e where
   data MArray s r ix e :: *
 
   -- | Get the size of a mutable array.
+  --
+  -- @since 0.1.0
   msize :: MArray s r ix e -> ix
 
   unsafeThaw :: PrimMonad m =>
@@ -236,6 +242,9 @@ class Manifest r ix e => Mutable r ix e where
 
   unsafeLinearSet :: PrimMonad m =>
                      MArray (PrimState m) r ix e -> Int -> Int -> e -> m ()
+  unsafeLinearSet marr offset len e =
+    loopM_ offset (< (offset + len)) (+1) (\i -> unsafeLinearWrite marr i e)
+  {-# INLINE unsafeLinearSet #-}
 
   -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
   -- either.
@@ -284,10 +293,6 @@ class Construct r ix e => Ragged r ix e where
 
   uncons :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
 
-  -- head :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
-
-  -- tail :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
-
   unsafeGenerateM :: Monad m => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
 
   edgeSize :: Array r ix e -> ix
@@ -295,7 +300,7 @@ class Construct r ix e => Ragged r ix e where
   flatten :: Array r ix e -> Array r Ix1 e
 
   loadRagged ::
-    (IO () -> IO ()) -> (Int -> e -> IO a) -> Int -> Int -> ix -> Array r ix e -> IO ()
+    Monad m => (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> ix -> Array r ix e -> m ()
 
   -- TODO: test property:
   -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls
@@ -406,9 +411,9 @@ indexWith ::
   -> arr -- ^ Array
   -> ix -- ^ Index
   -> e
-indexWith fileName lineNo funName getSize f arr ix
-  | isSafeIndex (getSize arr) ix = f arr ix
-  | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) (getSize arr) ix
+indexWith fileName lineNo funName getSize' f arr ix
+  | isSafeIndex (getSize' arr) ix = f arr ix
+  | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) (getSize' arr) ix
 {-# INLINE indexWith #-}
 
 
@@ -443,11 +448,11 @@ imapM_ f !arr =
 
 
 -- | /O(1)/ - Get the number of elements in the array
-elemsCount :: Size r ix e => Array r ix e -> Int
-elemsCount = totalElem . size
+elemsCount :: Load r ix e => Array r ix e -> Int
+elemsCount = totalElem . unsafeSize
 {-# INLINE elemsCount #-}
 
 -- | /O(1)/ - Check if array has no elements.
-isEmpty :: Size r ix e => Array r ix e -> Bool
+isEmpty :: Load r ix e => Array r ix e -> Bool
 isEmpty !arr = 0 == elemsCount arr
 {-# INLINE isEmpty #-}

@@ -1,3 +1,15 @@
+# 0.3.0
+
+* Class hierarchy an associated methods:
+  * `getComp` moved from `Construct` to `Load`
+  * `Size` class lost array value parameter `e`. `unsafeResize` and `unsafeExtract` became their own
+    classes
+* New classes:
+  * `Resize` with `unsafeResize` from old `Size`, except with `array` type parameter for
+    applicability to mutable `MArray`s
+  * `Extract` with `unsafeExtract` from old `Size`
+  * `StrideLoad`, child of `Load`
+
 # 0.2.6
 
 * Add `expand*` family of functions.

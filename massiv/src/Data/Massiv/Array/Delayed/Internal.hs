@@ -43,10 +43,20 @@ data instance Array D ix e = DArray { dComp :: !Comp
                                     , dIndex :: ix -> e }
 type instance EltRepr D ix = D
 
-instance Index ix => Construct D ix e where
-  getComp = dComp
-  {-# INLINE getComp #-}
+instance Index ix => Resize Array D ix where
+  unsafeResize !sz !arr =
+    DArray (dComp arr) sz $ \ !ix ->
+      unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
+  {-# INLINE unsafeResize #-}
 
+instance Index ix => Extract D ix e where
+  unsafeExtract !sIx !newSz !arr =
+    DArray (dComp arr) newSz $ \ !ix ->
+      unsafeIndex arr (liftIndex2 (+) ix sIx)
+  {-# INLINE unsafeExtract #-}
+
+
+instance Index ix => Construct D ix e where
   setComp c arr = arr { dComp = c }
   {-# INLINE setComp #-}
 
@@ -58,19 +68,6 @@ instance Index ix => Source D ix e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
 
-instance Index ix => Size D ix e where
-  size = dSize
-  {-# INLINE size #-}
-
-  unsafeResize !sz !arr =
-    DArray (getComp arr) sz $ \ !ix ->
-      unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
-  {-# INLINE unsafeResize #-}
-
-  unsafeExtract !sIx !newSz !arr =
-    DArray (getComp arr) newSz $ \ !ix ->
-      unsafeIndex arr (liftIndex2 (+) ix sIx)
-  {-# INLINE unsafeExtract #-}
 
 instance ( Index ix
          , Index (Lower ix)
@@ -86,13 +83,13 @@ instance ( Index ix
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e where
 
   unsafeOuterSlice !arr !i =
-    DArray (getComp arr) (tailDim (size arr)) (\ !ix -> unsafeIndex arr (consDim i ix))
+    DArray (dComp arr) (tailDim (size arr)) (\ !ix -> unsafeIndex arr (consDim i ix))
   {-# INLINE unsafeOuterSlice #-}
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e where
 
   unsafeInnerSlice !arr !(szL, _) !i =
-    DArray (getComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i))
+    DArray (dComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i))
   {-# INLINE unsafeInnerSlice #-}
 
 
@@ -141,6 +138,10 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix e where
+  unsafeSize = dSize
+  {-# INLINE unsafeSize #-}
+  getComp = dComp
+  {-# INLINE getComp #-}
   loadArray !numWorkers scheduleWork !arr =
     splitLinearlyWith_ numWorkers scheduleWork (totalElem (size arr)) (unsafeLinearIndex arr)
   {-# INLINE loadArray #-}
@@ -199,13 +200,14 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 
 
 -- | /O(1)/ Conversion from a source array to `D` representation.
-delay :: Source r ix e => Array r ix e -> Array D ix e
+delay :: (Load r ix e, Source r ix e) => Array r ix e -> Array D ix e
 delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE delay #-}
 
 
+-- TODO: switch to zipWith
 -- | /O(n1 + n2)/ - Compute array equality by applying a comparing function to each element.
-eq :: (Source r1 ix e1, Source r2 ix e2) =>
+eq :: (Load r1 ix e1, Load r2 ix e2, Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
@@ -219,7 +221,7 @@ eq f arr1 arr2 =
 -- | /O(n1 + n2)/ - Compute array ordering by applying a comparing function to each element.
 -- The exact ordering is unspecified so this is only intended for use in maps and the like where
 -- you need an ordering but do not care about which one is used.
-ord :: (Source r1 ix e1, Source r2 ix e2) =>
+ord :: (Load r1 ix e1, Load r2 ix e2, Source r1 ix e1, Source r2 ix e2) =>
        (e1 -> e2 -> Ordering) -> Array r1 ix e1 -> Array r2 ix e2 -> Ordering
 ord f arr1 arr2 =
   (compare (size arr1) (size arr2)) <>
@@ -231,7 +233,7 @@ ord f arr1 arr2 =
 {-# INLINE ord #-}
 
 -- | The usual map.
-liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
+liftArray :: (Load r ix b, Source r ix b) => (b -> e) -> Array r ix b -> Array D ix e
 liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE liftArray #-}
 
@@ -241,7 +243,7 @@ liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
 --
 -- @since 0.1.4
 liftArray2
-  :: (Source r1 ix a, Source r2 ix b)
+  :: (Load r1 ix a, Load r2 ix b, Source r1 ix a, Source r2 ix b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2 f !arr1 !arr2
   | sz1 == oneIndex = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2

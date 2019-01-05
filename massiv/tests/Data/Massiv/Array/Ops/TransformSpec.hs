@@ -10,7 +10,7 @@ import           Test.QuickCheck
 
 
 prop_ExtractAppend
-  :: (Eq e, Size r ix e, Source r ix e, Source (EltRepr r ix) ix e, Arbitrary (ArrIx r ix e))
+  :: (Eq e, Source r ix e, Extract r ix e, Source (EltRepr r ix) ix e, Arbitrary (ArrIx r ix e))
   => proxy (r, ix, e) -> DimIx ix -> ArrIx r ix e -> Bool
 prop_ExtractAppend _ (DimIx dim) (ArrIx arr ix) =
   maybe False ((delay arr ==) . uncurry (append' dim)) $
@@ -23,7 +23,7 @@ prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
 
 specN ::
      ( Eq e
-     , Size r ix e
+     , Extract r ix e
      , Source r ix e
      , Source (EltRepr r ix) ix e
      , Typeable e

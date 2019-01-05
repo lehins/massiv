@@ -23,12 +23,12 @@ module Data.Massiv.Core
   , Elt
   , EltRepr
   , Construct
+  , Load(loadArray)
   , Source
-  , Load(..)
+  , Extract
   , StrideLoad(..)
-  , Size
   , Slice
-  , OuterSlice(outerLength)
+  , OuterSlice
   , InnerSlice
   , Manifest
   , Mutable

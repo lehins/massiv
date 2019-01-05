@@ -49,7 +49,7 @@ import           Prelude                            hiding (splitAt, traverse)
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
 -- fully encapsulated in a source array, otherwise `Nothing` is returned,
-extract :: Size r ix e
+extract :: Extract r ix e
         => ix -- ^ Starting index
         -> ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
@@ -65,7 +65,7 @@ extract !sIx !newSz !arr
 {-# INLINE extract #-}
 
 -- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
-extract' :: Size r ix e
+extract' :: Extract r ix e
         => ix -- ^ Starting index
         -> ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
@@ -82,7 +82,7 @@ extract' !sIx !newSz !arr =
 
 -- | Similar to `extract`, except it takes starting and ending index. Result array will not include
 -- the ending index.
-extractFromTo :: Size r ix e =>
+extractFromTo :: Extract r ix e =>
                  ix -- ^ Starting index
               -> ix -- ^ Index up to which elmenets should be extracted.
               -> Array r ix e -- ^ Source array.
@@ -93,7 +93,7 @@ extractFromTo sIx eIx = extract sIx $ liftIndex2 (-) eIx sIx
 -- | Same as `extractFromTo`, but throws an error on invalid indices.
 --
 -- @since 0.2.4
-extractFromTo' :: Size r ix e =>
+extractFromTo' :: Extract r ix e =>
                  ix -- ^ Starting index
               -> ix -- ^ Index up to which elmenets should be extracted.
               -> Array r ix e -- ^ Source array.
@@ -104,14 +104,15 @@ extractFromTo' sIx eIx = extract' sIx $ liftIndex2 (-) eIx sIx
 
 -- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
 -- number of elements does not match the source array.
-resize :: (Index ix', Size r ix e) => ix' -> Array r ix e -> Maybe (Array r ix' e)
+resize ::
+     (Index ix', Load r ix e, Resize Array r ix) => ix' -> Array r ix e -> Maybe (Array r ix' e)
 resize !sz !arr
   | totalElem sz == totalElem (size arr) = Just $ unsafeResize sz arr
   | otherwise = Nothing
 {-# INLINE resize #-}
 
 -- | Same as `resize`, but will throw an error if supplied dimensions are incorrect.
-resize' :: (Index ix', Size r ix e) => ix' -> Array r ix e -> Array r ix' e
+resize' :: (Index ix', Load r ix e, Resize Array r ix) => ix' -> Array r ix e -> Array r ix' e
 resize' !sz !arr =
   maybe
     (error $
@@ -344,7 +345,7 @@ append' dim arr1 arr2 =
 
 -- | /O(1)/ - Split an array at an index along a specified dimension.
 splitAt ::
-     (Size r ix e, r' ~ EltRepr r ix)
+     (Extract r ix e, r' ~ EltRepr r ix)
   => Dim -- ^ Dimension along which to split
   -> Int -- ^ Index along the dimension to split at
   -> Array r ix e -- ^ Source array
@@ -360,7 +361,7 @@ splitAt dim i arr = do
 
 -- | Same as `splitAt`, but will throw an error instead of returning `Nothing` on wrong dimension
 -- and index out of bounds.
-splitAt' :: (Size r ix e, r' ~ EltRepr r ix) =>
+splitAt' :: (Extract r ix e, r' ~ EltRepr r ix) =>
            Dim -> Int -> Array r ix e -> (Array r' ix e, Array r' ix e)
 splitAt' dim i arr =
   case splitAt dim i arr of

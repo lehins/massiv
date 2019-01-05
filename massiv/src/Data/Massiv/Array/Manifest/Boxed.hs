@@ -97,9 +97,6 @@ instance (Index ix, Ord e) => Ord (Array B ix e) where
   {-# INLINE compare #-}
 
 instance Index ix => Construct B ix e where
-  getComp = bComp
-  {-# INLINE getComp #-}
-
   setComp c arr = arr { bComp = c }
   {-# INLINE setComp #-}
 
@@ -113,13 +110,11 @@ instance Index ix => Source B ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Size B ix e where
-  size = bSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array B ix where
   unsafeResize !sz !arr = arr { bSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance Index ix => Extract B ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
@@ -178,7 +173,12 @@ instance Index ix => Mutable B ix e where
     INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite", sizeofMutableArray, A.writeArray) ma i e
   {-# INLINE unsafeLinearWrite #-}
 
-instance Index ix => Load B ix e
+instance Index ix => Load B ix e where
+  unsafeSize = bSize
+  {-# INLINE unsafeSize #-}
+  getComp = bComp
+  {-# INLINE getComp #-}
+
 
 -- | Row-major sequential folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
@@ -241,9 +241,6 @@ instance (Index ix, NFData e, Ord e) => Ord (Array N ix e) where
 
 
 instance (Index ix, NFData e) => Construct N ix e where
-  getComp = bComp . bArray
-  {-# INLINE getComp #-}
-
   setComp c (NArray arr) = NArray (arr { bComp = c })
   {-# INLINE setComp #-}
 
@@ -257,13 +254,11 @@ instance (Index ix, NFData e) => Source N ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (Index ix, NFData e) => Size N ix e where
-  size = bSize . bArray
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array N ix where
   unsafeResize !sz = NArray . unsafeResize sz . bArray
   {-# INLINE unsafeResize #-}
 
+instance (Index ix, NFData e) => Extract N ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
@@ -322,7 +317,12 @@ instance (Index ix, NFData e) => Mutable N ix e where
     INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", totalElem . msize, unsafeLinearWrite) ma i e
   {-# INLINE unsafeLinearWrite #-}
 
-instance (Index ix, NFData e) => Load N ix e
+instance (Index ix, NFData e) => Load N ix e where
+  unsafeSize = bSize . bArray
+  {-# INLINE unsafeSize #-}
+  getComp = bComp . bArray
+  {-# INLINE getComp #-}
+
 
 
 instance ( NFData e

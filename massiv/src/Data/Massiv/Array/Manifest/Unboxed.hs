@@ -55,9 +55,6 @@ instance (Index ix, NFData e) => NFData (Array U ix e) where
 
 
 instance (VU.Unbox e, Index ix) => Construct U ix e where
-  getComp = uComp
-  {-# INLINE getComp #-}
-
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
@@ -81,17 +78,19 @@ instance (VU.Unbox e, Index ix) => Source U ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (VU.Unbox e, Index ix) => Size U ix e where
-  size = uSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array U ix where
   unsafeResize !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance (VU.Unbox e, Index ix) => Extract U ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
-instance (VU.Unbox e, Index ix) => Load U ix e
+instance (VU.Unbox e, Index ix) => Load U ix e where
+  unsafeSize = uSize
+  {-# INLINE unsafeSize #-}
+  getComp = uComp
+  {-# INLINE getComp #-}
 
 
 instance {-# OVERLAPPING #-} VU.Unbox e => Slice U Ix1 e where
@@ -143,6 +142,7 @@ instance (VU.Unbox e, Index ix) => Manifest U ix e where
   unsafeLinearIndexM (UArray _ _ v) =
     INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
+
 
 instance (VU.Unbox e, Index ix) => Mutable U ix e where
   data MArray s U ix e = MUArray ix (VU.MVector s e)

@@ -49,7 +49,7 @@ import           Data.Massiv.Core.Scheduler
 import           System.IO.Unsafe                   (unsafePerformIO)
 
 
-unsafeBackpermute :: (Source r' ix' e, Index ix) =>
+unsafeBackpermute :: (Load r' ix' e, Source r' ix' e, Index ix) =>
                      ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
 unsafeBackpermute !sz ixF !arr =
   unsafeMakeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
@@ -57,10 +57,10 @@ unsafeBackpermute !sz ixF !arr =
 
 
 unsafeTraverse
-  :: (Source r1 ix1 e1, Index ix)
+  :: (Load r ix' e', Source r ix' e', Index ix)
   => ix
-  -> ((ix1 -> e1) -> ix -> e)
-  -> Array r1 ix1 e1
+  -> ((ix' -> e') -> ix -> e)
+  -> Array r ix' e'
   -> Array D ix e
 unsafeTraverse sz f arr1 =
   unsafeMakeArray (getComp arr1) sz (f (unsafeIndex arr1))
@@ -68,14 +68,14 @@ unsafeTraverse sz f arr1 =
 
 
 unsafeTraverse2
-  :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
+  :: (Load r1 ix1 e1, Load r2 ix2 e2, Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
   => ix
   -> ((ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1
   -> Array r2 ix2 e2
   -> Array D ix e
 unsafeTraverse2 sz f arr1 arr2 =
-  unsafeMakeArray (getComp arr1) sz (f (unsafeIndex arr1) (unsafeIndex arr2))
+  unsafeMakeArray (getComp arr1 <> getComp arr2) sz (f (unsafeIndex arr1) (unsafeIndex arr2))
 {-# INLINE unsafeTraverse2 #-}
 
 

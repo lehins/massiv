@@ -17,8 +17,7 @@ module Data.Massiv.Array.Ops.Fold
 
   -- $unstruct_folds
 
-    fold
-  , ifoldMono
+    ifoldMono
   , foldMono
   , ifoldSemi
   , foldSemi
@@ -111,7 +110,7 @@ ifoldMono ::
   => (ix -> e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
   -> Array r ix e -- ^ Source array
   -> m
-ifoldMono f = foldlInternal mappend mempty mappend mempty . imap f
+ifoldMono f = fold mappend mempty . imap f
 {-# INLINE ifoldMono #-}
 
 
@@ -123,7 +122,7 @@ foldMono ::
   => (e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
   -> Array r ix e -- ^ Source array
   -> m
-foldMono f = foldlInternal mappend mempty mappend mempty . map f
+foldMono f = fold mappend mempty . map f
 {-# INLINE foldMono #-}
 
 
@@ -136,7 +135,7 @@ ifoldSemi ::
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
   -> m
-ifoldSemi f m = foldlInternal (<>) m (<>) m . imap f
+ifoldSemi f m = fold (<>) m . imap f
 {-# INLINE ifoldSemi #-}
 
 
@@ -149,7 +148,7 @@ foldSemi ::
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
   -> m
-foldSemi f m = foldlInternal (<>) m (<>) m . map f
+foldSemi f m = fold (<>) m . map f
 {-# INLINE foldSemi #-}
 
 
@@ -300,8 +299,7 @@ foldrInner = foldrWithin' 1
 
 
 -- | /O(n)/ - Compute maximum of all elements.
-maximum :: (Source r ix e, Ord e) =>
-           Array r ix e -> e
+maximum :: (Source r ix e, Ord e) => Array r ix e -> e
 maximum = \arr ->
   if isEmpty arr
     then error "Data.Massiv.Array.maximum - empty"
@@ -310,8 +308,7 @@ maximum = \arr ->
 
 
 -- | /O(n)/ - Compute minimum of all elements.
-minimum :: (Source r ix e, Ord e) =>
-           Array r ix e -> e
+minimum :: (Source r ix e, Ord e) => Array r ix e -> e
 minimum = \arr ->
   if isEmpty arr
     then error "Data.Massiv.Array.minimum - empty"
@@ -320,42 +317,36 @@ minimum = \arr ->
 
 
 -- | /O(n)/ - Compute sum of all elements.
-sum :: (Source r ix e, Num e) =>
-        Array r ix e -> e
+sum :: (Source r ix e, Num e) => Array r ix e -> e
 sum = fold (+) 0
 {-# INLINE sum #-}
 
 
 -- | /O(n)/ - Compute product of all elements.
-product :: (Source r ix e, Num e) =>
-            Array r ix e -> e
+product :: (Source r ix e, Num e) => Array r ix e -> e
 product = fold (*) 1
 {-# INLINE product #-}
 
 
 -- | /O(n)/ - Compute conjunction of all elements.
-and :: (Source r ix Bool) =>
-       Array r ix Bool -> Bool
+and :: Source r ix Bool => Array r ix Bool -> Bool
 and = fold (&&) True
 {-# INLINE and #-}
 
 
 -- | /O(n)/ - Compute disjunction of all elements.
-or :: Source r ix Bool =>
-      Array r ix Bool -> Bool
+or :: Source r ix Bool => Array r ix Bool -> Bool
 or = fold (||) False
 {-# INLINE or #-}
 
 
 -- | /O(n)/ - Determines whether all element of the array satisfy the predicate.
-all :: Source r ix e =>
-       (e -> Bool) -> Array r ix e -> Bool
+all :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
 all f = foldlInternal (\acc el -> acc && f el) True (&&) True
 {-# INLINE all #-}
 
 -- | /O(n)/ - Determines whether any element of the array satisfies the predicate.
-any :: Source r ix e =>
-       (e -> Bool) -> Array r ix e -> Bool
+any :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
 any f = foldlInternal (\acc el -> acc || f el) False (||) False
 {-# INLINE any #-}
 

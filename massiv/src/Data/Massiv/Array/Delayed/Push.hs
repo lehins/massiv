@@ -50,8 +50,6 @@ data instance Array DL ix e = DLArray
 type instance EltRepr DL ix = DL
 
 instance Index ix => Construct DL ix e where
-  getComp = dlComp
-  {-# INLINE getComp #-}
   setComp c arr = arr {dlComp = c}
   {-# INLINE setComp #-}
   unsafeMakeArray comp sz f =
@@ -77,15 +75,10 @@ makeLoadArray ::
 makeLoadArray comp sz f = DLArray comp sz f
 {-# INLINE makeLoadArray #-}
 
-instance Index ix => Size DL ix e where
-  size = dlSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array DL ix where
   unsafeResize !sz arr = arr { dlSize = sz }
   {-# INLINE unsafeResize #-}
 
-  -- Will not work, massiv needs restructure
-  -- unsafeExtract !sIx !newSz DLArray {..} =
 
 -- | Convert any `Load`able array into `DL` representation.
 --
@@ -97,22 +90,21 @@ toLoadArray arr =
 {-# INLINE toLoadArray #-}
 
 instance Index ix => Load DL ix e where
-  loadArray numWorkers scheduleWith DLArray {dlLoad} uWrite =
-    dlLoad numWorkers scheduleWith uWrite
+  unsafeSize = dlSize
+  {-# INLINE unsafeSize #-}
+  getComp = dlComp
+  {-# INLINE getComp #-}
+  loadArray numWorkers scheduleWith DLArray {dlLoad} = dlLoad numWorkers scheduleWith
   {-# INLINE loadArray #-}
 
-
--- instance (Eq e, Index ix) => Eq (Array D ix e) where
---   (==) = eq (==)
---   {-# INLINE (==) #-}
-
--- instance (Ord e, Index ix) => Ord (Array D ix e) where
---   compare = ord compare
---   {-# INLINE compare #-}
-
--- instance Functor (Array D ix) where
---   fmap f (DArray c sz g) = DArray c sz (f . g)
---   {-# INLINE fmap #-}
+instance Functor (Array DL ix) where
+  fmap f arr =
+    arr
+      { dlLoad =
+          \numWorkers scheduleWork uWrite ->
+            (dlLoad arr) numWorkers scheduleWork (\i e -> uWrite i (f e))
+      }
+  {-# INLINE fmap #-}
 
 
 -- instance Index ix => Applicative (Array D ix) where

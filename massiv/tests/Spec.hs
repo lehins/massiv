@@ -4,7 +4,7 @@ import           Data.Massiv.Array.Delayed.WindowedSpec as Windowed
 import           Data.Massiv.Array.DelayedSpec          as Delayed
 import           Data.Massiv.Array.Manifest.VectorSpec  as Vector
 import           Data.Massiv.Array.ManifestSpec         as Manifest
-import           Data.Massiv.Array.MutableSpec         as Mutable
+import           Data.Massiv.Array.MutableSpec          as Mutable
 import           Data.Massiv.Array.Ops.ConstructSpec    as Construct
 import           Data.Massiv.Array.Ops.FoldSpec         as Fold
 import           Data.Massiv.Array.Ops.MapSpec          as Map

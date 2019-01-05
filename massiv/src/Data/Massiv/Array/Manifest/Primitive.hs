@@ -71,9 +71,6 @@ instance (Prim e, Ord e, Index ix) => Ord (Array P ix e) where
   {-# INLINE compare #-}
 
 instance (Prim e, Index ix) => Construct P ix e where
-  getComp = pComp
-  {-# INLINE getComp #-}
-
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
@@ -92,13 +89,11 @@ instance (Prim e, Index ix) => Source P ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (Prim e, Index ix) => Size P ix e where
-  size = pSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array P ix where
   unsafeResize !sz !arr = arr { pSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance (Prim e, Index ix) => Extract P ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
@@ -205,8 +200,8 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeThawA #-}
 
   unsafeFreezeA comp (MPArray sz (MutableByteArray mba#)) (State s#) =
-    let !(# s'#, ba# #) = unsafeFreezeByteArray# mba# s# in
-      pure (State s'#, PArray comp sz (ByteArray ba#))
+    case unsafeFreezeByteArray# mba# s# of
+      (# s'#, ba# #) -> pure (State s'#, PArray comp sz (ByteArray ba#))
   {-# INLINE unsafeFreezeA #-}
 
   unsafeLinearWriteA (MPArray _ (MutableByteArray mba#)) (I# i#) val (State s#) =
@@ -214,6 +209,10 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearWriteA #-}
 
 instance (Prim e, Index ix) => Load P ix e where
+  unsafeSize = pSize
+  {-# INLINE unsafeSize #-}
+  getComp = pComp
+  {-# INLINE getComp #-}
   loadArray !numWorkers scheduleWork !arr =
     splitLinearlyWith_ numWorkers scheduleWork (totalElem (size arr)) (unsafeLinearIndex arr)
   {-# INLINE loadArray #-}

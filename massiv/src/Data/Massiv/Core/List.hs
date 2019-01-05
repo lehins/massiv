@@ -108,8 +108,6 @@ instance Nested LN ix e => IsList (Array L ix e) where
   toList = toNested . lData
   {-# INLINE toList #-}
 
-
-
 instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   isNull = null . unList . lData
   {-# INLINE isNull #-}
@@ -137,11 +135,22 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
       leftOver <-
         loopM start (< end) (+ 1) xs $ \i xs' ->
           case uncons xs' of
-            Nothing      -> throwIO RowTooShortError
+            Nothing      -> return $! throw RowTooShortError
             Just (y, ys) -> uWrite i y >> return ys
-      unless (isNull leftOver) $ throwIO RowTooLongError
+      unless (isNull leftOver) (return $! throw RowTooLongError)
   {-# INLINE loadRagged #-}
   raggedFormat f _ arr = L.concat $ "[ " : L.intersperse "," (map f (coerce (lData arr))) ++ [" ]"]
+
+
+instance (Index ix, Ragged L ix e) => Load L ix e where
+  unsafeSize = edgeSize
+  {-# INLINE unsafeSize #-}
+  getComp = lComp
+  {-# INLINE getComp #-}
+  loadArray _numWorkers using arr uWrite = loadRagged using uWrite 0 (totalElem sz) sz arr
+    where !sz = edgeSize arr
+  {-# INLINE loadArray #-}
+
 
 
 instance ( Index ix
@@ -193,17 +202,16 @@ instance ( Index ix
     let szL = tailDim sz
         step = totalElem szL
         isZero = totalElem sz == 0
-    when (isZero && not (isNull (flatten xs))) $
-      throwIO RowTooLongError
+    when (isZero && not (isNull (flatten xs))) (return $! throw RowTooLongError)
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
           case uncons zs of
-            Nothing -> throwIO RowTooShortError
+            Nothing -> return $! throw RowTooShortError
             Just (y, ys) -> do
               _ <- loadRagged using uWrite i (i + step) szL y
               return ys
-      unless (isNull leftOver) $ throwIO RowTooLongError
+      unless (isNull leftOver) (return $! throw RowTooLongError)
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
     showN
@@ -293,8 +301,6 @@ unsafeGenerateParM wws !sz f = do
 -- {-# INLINE unsafeGenerateParM #-}
 
 instance {-# OVERLAPPING #-} Construct L Ix1 e where
-  getComp = lComp
-  {-# INLINE getComp #-}
   setComp c arr = arr { lComp = c }
   {-# INLINE setComp #-}
   unsafeMakeArray Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)
@@ -310,8 +316,6 @@ instance ( Index ix
          , Elt L ix e ~ Array L (Lower ix) e
          ) =>
          Construct L ix e where
-  getComp = lComp
-  {-# INLINE getComp #-}
   setComp c arr = arr {lComp = c}
   {-# INLINE setComp #-}
   unsafeMakeArray = unsafeGenerateN
@@ -336,7 +340,7 @@ unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
 {-# INLINE unsafeGenerateN #-}
 
 
-toListArray :: (Construct L ix e, Source r ix e)
+toListArray :: (Construct L ix e, Load r ix e, Source r ix e)
             => Array r ix e
             -> Array L ix e
 toListArray !arr =
@@ -364,13 +368,14 @@ showN fShow lnPrefix ls =
 instance ( Ragged L ix e
          , Source r ix e
          , Show e
+         , Typeable r
          ) =>
          Show (Array r ix e) where
   show = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
 
 
 showArray ::
-     forall r ix e. (Ragged L ix e, Source r ix e, Show e)
+     forall r ix e. (Ragged L ix e, Load r ix e, Source r ix e, Show e)
   => String
   -> Array r ix e
   -> String
@@ -389,8 +394,6 @@ showArray tyStr arr =
 instance {-# OVERLAPPING #-} OuterSlice L Ix1 e where
   unsafeOuterSlice (LArray _ xs) = (coerce xs !!)
   {-# INLINE unsafeOuterSlice #-}
-  outerLength = length . (coerce :: Array LN Ix1 e -> [e]). lData
-  {-# INLINE outerLength #-}
 
 
 instance Ragged L ix e => OuterSlice L ix e where
@@ -398,9 +401,7 @@ instance Ragged L ix e => OuterSlice L ix e where
     where
       go n arr =
         case uncons arr of
-          Nothing -> errorIx "Data.Massiv.Core.List.unsafeOuterSlice" (outerLength arr') i
+          Nothing -> errorIx "Data.Massiv.Core.List.unsafeOuterSlice" (headDim (size arr')) i
           Just (x, _) | n == i -> x
           Just (_, xs) -> go (n + 1) xs
   {-# INLINE unsafeOuterSlice #-}
-  outerLength = length . (coerce :: Array LN ix e -> [Elt LN ix e]) . lData
-  {-# INLINE outerLength #-}

@@ -36,8 +36,6 @@ module Data.Massiv.Array.Manifest.Internal
   , gcastArr
   , loadMutableS
   , loadMutableOnP
-  , sequenceP
-  , sequenceOnP
   , fromRaggedArray
   , fromRaggedArray'
   , sizeofArray
@@ -97,9 +95,6 @@ instance (Ord e, Index ix) => Ord (Array M ix e) where
   {-# INLINE compare #-}
 
 instance Index ix => Construct M ix e where
-  getComp = mComp
-  {-# INLINE getComp #-}
-
   setComp c arr = arr { mComp = c }
   {-# INLINE setComp #-}
 
@@ -152,13 +147,11 @@ instance Index ix => Manifest M ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance Index ix => Size M ix e where
-  size = mSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array M ix where
   unsafeResize !sz !arr = arr { mSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance Index ix => Extract M ix e where
   unsafeExtract !sIx !newSz !arr =
     MArray (getComp arr) newSz $ \ i ->
       unsafeIndex arr (liftIndex2 (+) (fromLinearIndex newSz i) sIx)
@@ -204,9 +197,14 @@ instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => Inne
 
 
 instance Index ix => Load M ix e where
+  unsafeSize = mSize
+  {-# INLINE unsafeSize #-}
+  getComp = mComp
+  {-# INLINE getComp #-}
   loadArray numWorkers' scheduleWork' (MArray _ sz f) =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
   {-# INLINE loadArray #-}
+
 instance Index ix => StrideLoad M ix e
 
 
@@ -299,7 +297,7 @@ computeInto !mArr !arr = do
 
 -- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if
 -- resulting type is the same as the input.
-computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
+computeSource :: forall r' r ix e . (Load r' ix e, Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr =
   maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
@@ -343,24 +341,27 @@ convertProxy :: (Manifest r' ix e, Mutable r ix e)
 convertProxy _ = convert
 {-# INLINE convertProxy #-}
 
-sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
-               [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
-sequenceOnP wIds !arr = do
-  resArrM <- unsafeNew (size arr)
-  withScheduler_ wIds $ \scheduler ->
-    flip imapM_ arr $ \ !ix action ->
-      scheduleWork scheduler $ action >>= unsafeWrite resArrM ix
-  unsafeFreeze (getComp arr) resArrM
-{-# INLINE sequenceOnP #-}
+-- sequenceOnP :: (Load r1 ix (IO e), Source r1 ix (IO e), Mutable r ix e) =>
+--                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
+-- sequenceOnP wIds !arr = do
+--   resArrM <- unsafeNew (size arr)
+--   withScheduler_ wIds $ \scheduler ->
+--     flip imapM_ arr $ \ !ix action ->
+--       scheduleWork scheduler $ action >>= unsafeWrite resArrM ix
+--   unsafeFreeze (getComp arr) resArrM
+-- {-# INLINE sequenceOnP #-}
 
 
-sequenceP :: (Source r1 ix (IO e), Mutable r ix e) => Array r1 ix (IO e) -> IO (Array r ix e)
-sequenceP = sequenceOnP []
-{-# INLINE sequenceP #-}
+-- sequenceP ::
+--      (Load r1 ix (IO e), Source r1 ix (IO e), Mutable r ix e)
+--   => Array r1 ix (IO e)
+--   -> IO (Array r ix e)
+-- sequenceP = sequenceOnP []
+-- {-# INLINE sequenceP #-}
 
 
 -- | Convert a ragged array into a usual rectangular shaped one.
-fromRaggedArray :: (Ragged r' ix e, Mutable r ix e) =>
+fromRaggedArray :: (Ragged r' ix e, Load r' ix e, Mutable r ix e) =>
                    Array r' ix e -> Either ShapeError (Array r ix e)
 fromRaggedArray arr =
   unsafePerformIO $ do
@@ -382,7 +383,7 @@ fromRaggedArray arr =
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not
 -- rectangular.
-fromRaggedArray' :: (Ragged r' ix e, Mutable r ix e) =>
+fromRaggedArray' :: (Load r' ix e, Ragged r' ix e, Mutable r ix e) =>
                     Array r' ix e -> Array r ix e
 fromRaggedArray' arr =
   case fromRaggedArray arr of
@@ -396,7 +397,10 @@ fromRaggedArray' arr =
 
 -- | Same as `compute`, but with `Stride`.
 computeWithStride ::
-     (StrideLoad r' ix e, Mutable r ix e) => Stride ix -> Array r' ix e -> Array r ix e
+     (StrideLoad r' ix e, Mutable r ix e)
+  => Stride ix
+  -> Array r' ix e
+  -> Array r ix e
 computeWithStride stride !arr =
   unsafePerformIO $ do
     let sz = strideSize stride (size arr)

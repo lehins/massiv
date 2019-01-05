@@ -25,8 +25,12 @@ prop_iMapiMapM r _ f (ArrTiny arr) =
   runIdentity (A.imapMR r (\ix e -> return $ apply f (ix, e)) arr)
 
 
-prop_generateMakeST :: (Show (Array r ix Int), Eq (Array r ix Int), Mutable r ix Int) =>
-                             r -> Proxy ix -> Arr r ix Int -> Property
+prop_generateMakeST ::
+     (Show (Array r ix Int), Eq (Array r ix Int), Construct r ix Int, Mutable r ix Int)
+  => r
+  -> Proxy ix
+  -> Arr r ix Int
+  -> Property
 prop_generateMakeST _ _ (Arr arr) =
   arr === runST (generateArray (getComp arr) (size arr) (return . evaluateAt arr))
 
@@ -47,6 +51,9 @@ mutableSpec ::
      , Mutable r Ix3 Int
      , Mutable r Ix1 Int
      , Mutable r Ix2 Int
+     , Construct r Ix3 Int
+     , Construct r Ix1 Int
+     , Construct r Ix2 Int
      )
   => r
   -> SpecWith ()

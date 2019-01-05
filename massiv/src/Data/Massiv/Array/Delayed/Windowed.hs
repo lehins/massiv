@@ -66,8 +66,6 @@ instance {-# OVERLAPPING #-} (Show e, Ragged L ix e, Load DW ix e) =>
 
 
 instance Index ix => Construct DW ix e where
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
 
   setComp c arr = arr { dwArray = (dwArray arr) { dComp = c } }
   {-# INLINE setComp #-}
@@ -77,15 +75,10 @@ instance Index ix => Construct DW ix e where
   {-# INLINE unsafeMakeArray #-}
 
 
--- | Any resize or extract on Windowed Array will loose the interior window and all other
--- optimizations, thus hurting the performance a lot.
-instance Index ix => Size DW ix e where
-  size = dSize . dwArray
-  {-# INLINE size #-}
-  unsafeResize sz arr = arr { dwArray = unsafeResize sz (dwArray arr)
-                            , dwWindow = Nothing
-                            , dwStencilSize = Nothing }
-  unsafeExtract sIx newSz = unsafeExtract sIx newSz . dwArray
+-- TODO: adjust in response to Window
+-- instance Index ix => Extract DW ix e where
+--   unsafeExtract sIx newSz = unsafeExtract sIx newSz . dwArray
+--   {-# INLINE unsafeExtract #-}
 
 
 instance Functor (Array DW ix) where
@@ -167,6 +160,10 @@ loadWithIx1 with (DWArray (DArray _ sz indexB) _ window) unsafeWrite = do
 
 
 instance Load DW Ix1 e where
+  unsafeSize = dSize . dwArray
+  {-# INLINE unsafeSize #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
   loadArray numWorkers scheduleWork arr unsafeWrite = do
     (loadWindow, (wStart, wEnd)) <- loadWithIx1 scheduleWork arr unsafeWrite
     let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers
@@ -247,6 +244,10 @@ loadWithIx2 with arr unsafeWrite = do
 
 
 instance Load DW Ix2 e where
+  unsafeSize = dSize . dwArray
+  {-# INLINE unsafeSize #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
   loadArray numWorkers scheduleWork arr unsafeWrite = do
     (loadWindow, it :. ib) <- loadWithIx2 scheduleWork arr unsafeWrite
     let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers
@@ -307,6 +308,10 @@ loadArrayWithIx2 with arr stride sz unsafeWrite = do
 
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
+  unsafeSize = dSize . dwArray
+  {-# INLINE unsafeSize #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
   loadArray _numWorkers = loadWithIxN
   {-# INLINE loadArray #-}
 instance (Index (IxN n), StrideLoad DW (Ix (n - 1)) e) => StrideLoad DW (IxN n) e where
@@ -460,9 +465,14 @@ toIx2ArrayDW DWArray {dwArray, dwStencilSize, dwWindow} =
 
 
 instance Load DW Ix2T e where
+  unsafeSize = dSize . dwArray
+  {-# INLINE unsafeSize #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
   loadArray numWorkers scheduleWork arr =
     loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}
+
 instance StrideLoad DW Ix2T e where
   loadArrayWithStride numWorkers scheduleWork stride sz arr =
     loadArrayWithStride
@@ -474,24 +484,38 @@ instance StrideLoad DW Ix2T e where
   {-# INLINE loadArrayWithStride #-}
 
 instance Load DW Ix3T e where
+  unsafeSize = dSize . dwArray
+  {-# INLINE unsafeSize #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
   loadArray numWorkers scheduleWork arr =
     loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}
+
 instance StrideLoad DW Ix3T e where
   loadArrayWithStride = loadArrayWithIxN
   {-# INLINE loadArrayWithStride #-}
 
 
 instance Load DW Ix4T e where
+  unsafeSize = dSize . dwArray
+  {-# INLINE unsafeSize #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
   loadArray numWorkers scheduleWork arr =
     loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}
+
 instance StrideLoad DW Ix4T e where
   loadArrayWithStride = loadArrayWithIxN
   {-# INLINE loadArrayWithStride #-}
 
 
 instance Load DW Ix5T e where
+  unsafeSize = dSize . dwArray
+  {-# INLINE unsafeSize #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
   loadArray numWorkers scheduleWork arr =
     loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
   {-# INLINE loadArray #-}

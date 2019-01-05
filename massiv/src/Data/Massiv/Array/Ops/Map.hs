@@ -41,8 +41,6 @@ module Data.Massiv.Array.Ops.Map
   , forIO_
   , iforIO
   , iforIO_
-  , mapP_
-  , imapP_
   -- ** Zipping
   , zip
   , zip3
@@ -55,8 +53,7 @@ module Data.Massiv.Array.Ops.Map
   , liftArray2
   ) where
 
-
-import           Control.Monad                       (void, when)
+import           Control.Monad                       (void)
 import           Control.Monad.ST                    (runST)
 import           Data.Foldable                       (foldlM)
 import           Data.Massiv.Array.Delayed.Internal
@@ -459,32 +456,3 @@ iforIO = flip imapIO
 iforIO_ :: Source r ix a => Array r ix a -> (ix -> a -> IO b) -> IO ()
 iforIO_ = flip imapIO_
 {-# INLINE iforIO_ #-}
-
-
--- | Map an IO action, over an array in parallel, while discarding the result.
-mapP_ :: Source r ix a => (a -> IO b) -> Array r ix a -> IO ()
-mapP_ f = imapP_ (const f)
-{-# INLINE mapP_ #-}
-{-# DEPRECATED mapP_ "In favor of 'mapIO_'" #-}
-
-
--- | Map an index aware IO action, over an array in parallel, while
--- discarding the result.
-imapP_ :: Source r ix a => (ix -> a -> IO b) -> Array r ix a -> IO ()
-imapP_ f arr = do
-  let sz = size arr
-      wIds =
-        case getComp arr of
-          ParOn ids -> ids
-          _         -> []
-  divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-    loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      scheduleWork scheduler $
-      iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !i ix -> do
-        void $ f ix (unsafeLinearIndex arr i)
-    when (slackStart < totalLength) $
-      scheduleWork scheduler $
-      iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i ix -> do
-        void $ f ix (unsafeLinearIndex arr i)
-{-# INLINE imapP_ #-}
-{-# DEPRECATED imapP_ "In favor of 'imapIO_'" #-}

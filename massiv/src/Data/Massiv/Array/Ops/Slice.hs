@@ -72,7 +72,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 (!>) !arr !ix =
   case arr !?> ix of
     Just res -> res
-    Nothing  -> errorIx "(!>)" (outerLength arr) ix
+    Nothing  -> errorIx "(!>)" (headDim (size arr)) ix
 {-# INLINE (!>) #-}
 
 
@@ -80,7 +80,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- `Nothing` when index is out of bounds.
 (!?>) :: OuterSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
 (!?>) !arr !i
-  | isSafeIndex (outerLength arr) i = Just $ unsafeOuterSlice arr i
+  | isSafeIndex (headDim (size arr)) i = Just $ unsafeOuterSlice arr i
   | otherwise = Nothing
 {-# INLINE (!?>) #-}
 

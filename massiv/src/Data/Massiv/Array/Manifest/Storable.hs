@@ -63,9 +63,6 @@ instance (VS.Storable e, Ord e, Index ix) => Ord (Array S ix e) where
   {-# INLINE compare #-}
 
 instance (VS.Storable e, Index ix) => Construct S ix e where
-  getComp = sComp
-  {-# INLINE getComp #-}
-
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
@@ -79,14 +76,11 @@ instance (VS.Storable e, Index ix) => Source S ix e where
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
 
-
-instance (VS.Storable e, Index ix) => Size S ix e where
-  size = sSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array S ix where
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance (VS.Storable e, Index ix) => Extract S ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
@@ -147,7 +141,12 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 
-instance (Index ix, VS.Storable e) => Load S ix e
+instance (Index ix, VS.Storable e) => Load S ix e where
+  unsafeSize = sSize
+  {-# INLINE unsafeSize #-}
+  getComp = sComp
+  {-# INLINE getComp #-}
+
 
 
 instance ( VS.Storable e
@@ -169,7 +168,6 @@ instance ( VS.Storable e
 -- @since 0.1.3
 unsafeWithPtr :: VS.Storable a => Array S ix a -> (Ptr a -> IO b) -> IO b
 unsafeWithPtr arr = VS.unsafeWith (sData arr)
-
 
 
 -- | A pointer to the beginning of the mutable array.

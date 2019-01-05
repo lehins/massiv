@@ -86,7 +86,7 @@ castFromVector comp sz vector = do
 -- will be copied into a new array. Will throw an error if length of resulting
 -- array doesn't match the source vector length.
 fromVector ::
-     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Mutable r ix a)
+     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
   => Comp
   -> ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
