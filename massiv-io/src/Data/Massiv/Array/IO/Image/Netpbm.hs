@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeSynonymInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image.Netpbm
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -166,7 +166,7 @@ fromNetpbmImageUnsafe
   => Int -> Int -> V.Vector a -> Maybe (Image S cs e)
 fromNetpbmImageUnsafe m n v = do
   guard (n * m == V.length v)
-  return $ fromVector Seq (m :. n) $ V.unsafeCast v
+  return $ fromVector Par (m :. n) $ V.unsafeCast v
 
 
 

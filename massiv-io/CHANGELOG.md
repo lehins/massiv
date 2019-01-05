@@ -1,3 +1,7 @@
+# 0.1.5
+
+* All decoded images will be read in sequentially, but will have default computation set to `Par`.
+
 # 0.1.4
 
 * Fixed wrongful export of `Bit` constructor.

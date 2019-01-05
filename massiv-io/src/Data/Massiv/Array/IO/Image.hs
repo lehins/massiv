@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeSynonymInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

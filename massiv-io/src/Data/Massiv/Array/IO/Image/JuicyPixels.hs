@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image.JuicyPixels
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -969,6 +969,6 @@ fromJPImageUnsafe :: forall jpx cs e . (Storable (Pixel cs e), JP.Pixel jpx) =>
                      JP.Image jpx -> Maybe (Image S cs e)
 fromJPImageUnsafe (JP.Image n m !v) = do
   guard (n * m * sizeOf (undefined :: Pixel cs e) == V.length v)
-  return $ fromVector Seq (m :. n) $ V.unsafeCast v
+  return $ fromVector Par (m :. n) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 
