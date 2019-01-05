@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Construct
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -35,10 +35,10 @@ module Data.Massiv.Array.Ops.Construct
   , expandInner
   ) where
 
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
+import           Data.Massiv.Array.Ops.Map      as A
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Ops.Map          as A
-import           Prelude                            as P
+import           Prelude                        as P
 
 
 -- | Just like `makeArray` but with ability to specify the result representation as an

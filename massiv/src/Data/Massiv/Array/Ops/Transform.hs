@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Transform
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -38,13 +38,13 @@ module Data.Massiv.Array.Ops.Transform
   , traverse2
   ) where
 
-import           Control.Monad                      (unless, guard)
-import           Data.Massiv.Array.Delayed.Internal
+import           Control.Monad                   (guard, unless)
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core.Common
-import           Data.Maybe                         (fromMaybe)
-import           Prelude                            hiding (splitAt, traverse)
+import           Data.Maybe                      (fromMaybe)
+import           Prelude                         hiding (splitAt, traverse)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be

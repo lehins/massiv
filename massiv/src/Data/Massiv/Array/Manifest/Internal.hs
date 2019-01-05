@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -46,7 +46,7 @@ import           Control.Exception                   (try)
 import           Control.Monad                       (unless)
 import           Control.Monad.ST                    (runST)
 import           Data.Foldable                       (Foldable (..))
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Fold.Internal as M
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common

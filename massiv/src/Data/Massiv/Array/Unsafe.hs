@@ -4,7 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -17,6 +17,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeGenerateArrayP
   , unsafeGenerateM
   -- * Indexing
+  , unsafeSize
   , unsafeIndex
   , unsafeLinearIndex
   , unsafeLinearIndexM
@@ -41,12 +42,12 @@ module Data.Massiv.Array.Unsafe
   , unsafeLinearWrite
   ) where
 
-import           Control.Monad.Primitive            (PrimMonad (..))
-import           Control.Monad.ST                   (runST)
-import           Data.Massiv.Array.Delayed.Internal (D)
+import           Control.Monad.Primitive        (PrimMonad (..))
+import           Control.Monad.ST               (runST)
+import           Data.Massiv.Array.Delayed.Pull (D)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
-import           System.IO.Unsafe                   (unsafePerformIO)
+import           System.IO.Unsafe               (unsafePerformIO)
 
 
 unsafeBackpermute :: (Load r' ix' e, Source r' ix' e, Index ix) =>

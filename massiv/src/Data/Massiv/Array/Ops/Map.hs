@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Map
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -56,7 +56,7 @@ module Data.Massiv.Array.Ops.Map
 import           Control.Monad                       (void)
 import           Control.Monad.ST                    (runST)
 import           Data.Foldable                       (foldlM)
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import           Data.Massiv.Core.Common

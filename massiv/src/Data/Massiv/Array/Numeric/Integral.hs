@@ -1,5 +1,13 @@
 {-# LANGUAGE BangPatterns     #-}
 {-# LANGUAGE FlexibleContexts #-}
+-- |
+-- Module      : Data.Massiv.Array
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- License     : BSD3
+-- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
+-- Stability   : experimental
+-- Portability : non-portable
+--
 module Data.Massiv.Array.Numeric.Integral
   (
   -- $integral_intro
@@ -25,7 +33,8 @@ module Data.Massiv.Array.Numeric.Integral
   ) where
 
 import           Data.Coerce
-import           Data.Massiv.Array.Delayed
+import           Data.Massiv.Array.Delayed.Pull (D)
+import           Data.Massiv.Array.Delayed.Windowed (DW)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Ops.Transform     (extract')
 import           Data.Massiv.Array.Stencil

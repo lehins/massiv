@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeOperators              #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Class
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

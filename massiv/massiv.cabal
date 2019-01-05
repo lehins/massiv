@@ -1,5 +1,5 @@
 name:                massiv
-version:             0.2.6.0
+version:             0.3.0.0
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018 Alexey Kuleshevich
+copyright:           2018-2019 Alexey Kuleshevich
 category:            Data, Data Structures
 build-type:          Simple
 extra-source-files:  README.md
@@ -35,8 +35,8 @@ library
                      , Data.Massiv.Core.Scheduler
                      , Data.Massiv.Core.Index
 
-  other-modules:       Data.Massiv.Array.Delayed.Internal
-                     , Data.Massiv.Array.Delayed.Interleaved
+  other-modules:       Data.Massiv.Array.Delayed.Interleaved
+                     , Data.Massiv.Array.Delayed.Pull
                      , Data.Massiv.Array.Delayed.Push
                      , Data.Massiv.Array.Delayed.Windowed
                      , Data.Massiv.Array.Manifest.Boxed

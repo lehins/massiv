@@ -1,7 +1,7 @@
-{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Data.Massiv.Core.Iterator
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -25,7 +25,7 @@ loop !init' condition increment !initAcc f = go init' initAcc
     go !step !acc =
       case condition step of
         False -> acc
-        True -> go (increment step) (f step acc)
+        True  -> go (increment step) (f step acc)
 {-# INLINE loop #-}
 
 
@@ -36,7 +36,7 @@ loopM !init' condition increment !initAcc f = go init' initAcc
     go !step !acc =
       case condition step of
         False -> return acc
-        True -> f step acc >>= go (increment step)
+        True  -> f step acc >>= go (increment step)
 {-# INLINE loopM #-}
 
 
@@ -47,7 +47,7 @@ loopM_ !init' condition increment f = go init'
     go !step =
       case condition step of
         False -> return ()
-        True -> f step >> go (increment step)
+        True  -> f step >> go (increment step)
 {-# INLINE loopM_ #-}
 
 
@@ -59,7 +59,7 @@ loopDeepM !init' condition increment !initAcc f = go init' initAcc
     go !step !acc =
       case condition step of
         False -> return acc
-        True -> go (increment step) acc >>= f step
+        True  -> go (increment step) acc >>= f step
 {-# INLINE loopDeepM #-}
 
 

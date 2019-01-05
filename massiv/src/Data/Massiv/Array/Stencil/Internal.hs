@@ -7,7 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -24,7 +24,7 @@ module Data.Massiv.Array.Stencil.Internal
 
 import           Control.Applicative
 import           Control.DeepSeq
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Core.Common
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup

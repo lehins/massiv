@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -62,7 +62,7 @@ module Data.Massiv.Array.Numeric
   , atan2A
   ) where
 
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A

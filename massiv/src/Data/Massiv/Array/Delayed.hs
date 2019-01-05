@@ -1,6 +1,6 @@
 -- |
 -- Module      : Data.Massiv.Array.Delayed
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -22,7 +22,7 @@ module Data.Massiv.Array.Delayed
   ) where
 
 import           Data.Massiv.Array.Delayed.Interleaved
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Delayed.Windowed
 

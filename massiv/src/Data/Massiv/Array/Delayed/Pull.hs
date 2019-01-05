@@ -8,14 +8,14 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
--- Module      : Data.Massiv.Array.Delayed.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Module      : Data.Massiv.Array.Delayed.Pull
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Delayed.Internal
+module Data.Massiv.Array.Delayed.Pull
   ( D(..)
   , Array(..)
   , delay
@@ -200,14 +200,14 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 
 
 -- | /O(1)/ Conversion from a source array to `D` representation.
-delay :: (Load r ix e, Source r ix e) => Array r ix e -> Array D ix e
+delay :: Source r ix e => Array r ix e -> Array D ix e
 delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE delay #-}
 
 
 -- TODO: switch to zipWith
 -- | /O(n1 + n2)/ - Compute array equality by applying a comparing function to each element.
-eq :: (Load r1 ix e1, Load r2 ix e2, Source r1 ix e1, Source r2 ix e2) =>
+eq :: (Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
@@ -221,7 +221,7 @@ eq f arr1 arr2 =
 -- | /O(n1 + n2)/ - Compute array ordering by applying a comparing function to each element.
 -- The exact ordering is unspecified so this is only intended for use in maps and the like where
 -- you need an ordering but do not care about which one is used.
-ord :: (Load r1 ix e1, Load r2 ix e2, Source r1 ix e1, Source r2 ix e2) =>
+ord :: (Source r1 ix e1, Source r2 ix e2) =>
        (e1 -> e2 -> Ordering) -> Array r1 ix e1 -> Array r2 ix e2 -> Ordering
 ord f arr1 arr2 =
   (compare (size arr1) (size arr2)) <>
@@ -233,7 +233,7 @@ ord f arr1 arr2 =
 {-# INLINE ord #-}
 
 -- | The usual map.
-liftArray :: (Load r ix b, Source r ix b) => (b -> e) -> Array r ix b -> Array D ix e
+liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
 liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE liftArray #-}
 
@@ -243,7 +243,7 @@ liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
 --
 -- @since 0.1.4
 liftArray2
-  :: (Load r1 ix a, Load r2 ix b, Source r1 ix a, Source r2 ix b)
+  :: (Source r1 ix a, Source r2 ix b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2 f !arr1 !arr2
   | sz1 == oneIndex = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
