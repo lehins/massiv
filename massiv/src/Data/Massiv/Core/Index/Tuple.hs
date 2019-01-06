@@ -19,16 +19,22 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core.Index.Tuple
-  ( Ix1T
+  ( -- * Tuple based indices
+    -- ** 1-dimensional
+    Ix1T
+    -- ** 2-dimensional
   , Ix2T
   , toIx2
   , fromIx2
+    -- *** 3-dimensional
   , Ix3T
   , toIx3
   , fromIx3
+    -- ** 4-dimensional
   , Ix4T
   , toIx4
   , fromIx4
+    -- ** 5-dimensional
   , Ix5T
   , toIx5
   , fromIx5
@@ -37,7 +43,8 @@ module Data.Massiv.Core.Index.Tuple
 import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Index.Internal (Index (..), Lower, Sz(..))
 
--- | Another 1-dimensional index type synonym for `Int`, same `Ix1` and is here just for consistency
+-- | Another 1-dimensional index type synonym for `Int`, same as `Ix1` and is here just for
+-- consistency.
 type Ix1T = Int
 
 -- | 2-dimensional index as tuple of `Int`s.
@@ -59,47 +66,88 @@ type instance Lower Ix5T = Ix4T
 
 
 
--- | Convert a `Int` tuple to `Ix2`
+-- | Convert an `Int` tuple to `Ix2`
+--
+-- >>> toIx2 (2, 3)
+-- 2 :. 3
+--
+-- @since 0.1.0
 toIx2 :: Ix2T -> Ix2
 toIx2 (i, j) = i :. j
 {-# INLINE toIx2 #-}
 
 -- | Convert an `Ix2` to `Int` tuple
+--
+-- >>> fromIx2 (2 :. 3)
+-- (2,3)
+--
+-- @since 0.1.0
 fromIx2 :: Ix2 -> Ix2T
 fromIx2 (i :. j) = (i, j)
 {-# INLINE fromIx2 #-}
 
 -- | Convert a `Int` 3-tuple to `Ix3`
+--
+-- >>> toIx3 (1, 2, 3)
+-- 1 :> 2 :. 3
+--
+-- @since 0.1.0
 toIx3 :: Ix3T -> Ix3
 toIx3 (i, j, k) = i :> j :. k
 {-# INLINE toIx3 #-}
 
 -- | Convert an `Ix3` to `Int` 3-tuple
+--
+-- >>> fromIx3 (1 :>  2 :. 3)
+-- (1,2,3)
+--
+-- @since 0.1.0
 fromIx3 :: Ix3 -> Ix3T
 fromIx3 (i :> j :. k) = (i, j, k)
 {-# INLINE fromIx3 #-}
 
 -- | Convert a `Int` 4-tuple to `Ix4`
+--
+-- >>> toIx4 (1, 2, 3, 4)
+-- 1 :> 2 :> 3 :. 4
+--
+-- @since 0.1.0
 toIx4 :: Ix4T -> Ix4
 toIx4 (i, j, k, l) = i :> j :> k :. l
 {-# INLINE toIx4 #-}
 
 -- | Convert an `Ix4` to `Int` 4-tuple
+--
+-- >>> fromIx4 (1 :> 2 :> 3 :. 4)
+-- (1,2,3,4)
+--
+-- @since 0.1.0
 fromIx4 :: Ix4 -> Ix4T
 fromIx4 (i :> j :> k :. l) = (i, j, k, l)
 {-# INLINE fromIx4 #-}
 
 -- | Convert a `Int` 5-tuple to `Ix5`
+--
+-- >>> toIx5 (1, 2, 3, 4, 5)
+-- 1 :> 2 :> 3 :> 4 :. 5
+--
+-- @since 0.1.0
 toIx5 :: Ix5T -> Ix5
 toIx5 (i, j, k, l, m) = i :> j :> k :> l :. m
 {-# INLINE toIx5 #-}
 
 -- | Convert an `Ix5` to `Int` 5-tuple
+--
+-- >>> fromIx5 (1 :> 2 :> 3 :> 4 :. 5)
+-- fromIx5 (1 :> 2 :> 3 :> 4 :. 5)
+--
+-- @since 0.1.0
 fromIx5 :: Ix5 -> Ix5T
 fromIx5 (i :> j :> k :> l :. m) = (i, j, k, l, m)
 {-# INLINE fromIx5 #-}
 
-
+-- |
+-- @since 0.1.0
 instance Index Ix2T where
   type Dimensions Ix2T = 2
   dimensions _ = 2
@@ -140,6 +188,8 @@ instance Index Ix2T where
   {-# INLINE [1] liftIndex2 #-}
 
 
+-- |
+-- @since 0.1.0
 instance Index Ix3T where
   type Dimensions Ix3T = 3
   dimensions _ = 3

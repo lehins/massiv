@@ -26,8 +26,8 @@
 module Data.Massiv.Core.Index.Internal
   ( Sz(SafeSz)
   , pattern Sz
-  , type Sz1
   , pattern Sz1
+  , type Sz1
   , unSz
   , zeroSz
   , oneSz
@@ -39,13 +39,13 @@ module Data.Massiv.Core.Index.Internal
   , insertSz
   , pullOutSz
   , Dim(..)
-  , Dimension(..)
-  , IsIndexDimension
+  , Dimension(DimN)
   , pattern Dim1
   , pattern Dim2
   , pattern Dim3
   , pattern Dim4
   , pattern Dim5
+  , IsIndexDimension
   , Lower
   , Index(..)
   , Ix0(..)
@@ -73,7 +73,10 @@ pattern Sz :: Index ix => ix -> Sz ix
 pattern Sz ix <- SafeSz ix where
         Sz ix = SafeSz (liftIndex (max 0) ix)
 
+-- | 1-dimensional type synonym for size.
 type Sz1 = Sz Ix1
+
+-- | 1-dimensional size constructor. Especially useful with literals: @(Sz1 5) == Sz (5 :: Int)@.
 pattern Sz1 :: Ix1 -> Sz1
 pattern Sz1 ix  <- SafeSz ix where
         Sz1 ix = SafeSz (max 0 ix)
@@ -85,6 +88,9 @@ instance Index ix => Show (Sz ix) where
 
 -- | Just a helper function for unwrapping `Sz`.
 --
+-- >>> unSz $ Sz3 1 2 3
+-- 1 :> 2 :. 3
+--
 -- @since 0.3.0
 unSz :: Sz ix -> ix
 unSz (SafeSz ix) = ix
@@ -92,12 +98,18 @@ unSz (SafeSz ix) = ix
 
 -- | An empty size with all elements in size equal to @0@.
 --
+-- >>> zeroSz :: Sz5
+-- Sz5 (0 :> 0 :> 0 :> 0 :. 0)
+--
 -- @since 0.3.0
 zeroSz :: Index ix => Sz ix
 zeroSz = SafeSz (pureIndex 0)
 {-# INLINE zeroSz #-}
 
 -- | A singleton size with all elements in size equal to @1@.
+--
+-- >>> oneSz :: Sz3
+-- Sz3 (1 :> 1 :. 1)
 --
 -- @since 0.3.0
 oneSz :: Index ix => Sz ix
@@ -135,6 +147,11 @@ insertSz (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDim sz dim sz1
 {-# INLINE insertSz #-}
 
 -- | Same as `unconsDim`, but for `Sz`
+--
+-- >>> unconsSz $ Sz3 1 2 3
+-- (Sz1 (1),Sz2 (2 :. 3))
+--
+-- prop> uncurry consSz (unconsSz sz) == sz
 --
 -- @since 0.3.0
 unconsSz :: Index ix => Sz ix -> (Sz1, Sz (Lower ix))

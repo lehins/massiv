@@ -30,6 +30,11 @@ loop !init' condition increment !initAcc f = go init' initAcc
 
 
 -- | Very efficient monadic loop with an accumulator
+--
+-- >>> loopM 1 (< 20) (+ 2) [] (\i a -> Just (i:a))
+-- Just [19,17,15,13,11,9,7,5,3,1]
+--
+-- @since 0.1.0
 loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
 loopM !init' condition increment !initAcc f = go init' initAcc
   where
@@ -51,8 +56,18 @@ loopM_ !init' condition increment f = go init'
 {-# INLINE loopM_ #-}
 
 
--- | Less efficient monadic loop with an accumulator that reverses the direction of action
--- application
+-- | Similar to `loopM`, but slightly less efficient monadic loop with an accumulator that reverses
+-- the direction of action application. eg:
+--
+-- >>> loopDeepM 1 (< 20) (+ 2) [] (\i a -> Just (i:a))
+-- Just [1,3,5,7,9,11,13,15,17,19]
+--
+-- Equivalent to:
+--
+-- >>> loopM 19 (>= 1) (subtract 2) [] (\i a -> Just (i:a))
+-- Just [1,3,5,7,9,11,13,15,17,19]
+--
+-- @since 0.1.0
 loopDeepM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
 loopDeepM !init' condition increment !initAcc f = go init' initAcc
   where
@@ -63,8 +78,13 @@ loopDeepM !init' condition increment !initAcc f = go init' initAcc
 {-# INLINE loopDeepM #-}
 
 
-
-splitLinearly :: Int -> Int -> (Int -> Int -> a) -> a
+-- | Divide length in chunks and apply a function to the computed results
+--
+-- @since 0.2.1
+splitLinearly :: Int -- ^ Number of chunks
+              -> Int -- ^ Total length
+              -> (Int -> Int -> a) -- ^ Function that accepts a chunk length and slack start index
+              -> a
 splitLinearly numChunks totalLength action = action chunkLength slackStart
   where
     !chunkLength = totalLength `quot` numChunks
@@ -72,13 +92,17 @@ splitLinearly numChunks totalLength action = action chunkLength slackStart
 {-# INLINE splitLinearly #-}
 
 
+-- | Interator that can be used to split computation amongst different workers. For monadic
+-- generator see `splitLinearlyWithM_`.
+--
+-- @since 0.2.1
 splitLinearlyWith_ :: Monad m => Int -> (m () -> m a) -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m a
 splitLinearlyWith_ numChunks with totalLength index =
   splitLinearlyWithM_ numChunks with totalLength (pure . index)
 {-# INLINE splitLinearlyWith_ #-}
 
 
--- | Interator tha can be used to split computation jobs
+-- | Interator that can be used to split computation jobs
 --
 -- @since 0.2.6.0
 splitLinearlyWithM_ ::

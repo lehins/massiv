@@ -39,7 +39,6 @@ module Data.Massiv.Core
   , LN
   , ListItem
   , Comp(Seq, Par, ParOn)
-  , pattern Par -- already exported above and only needed for Haddock
   , module Data.Massiv.Core.Index
   ) where
 

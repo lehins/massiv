@@ -97,7 +97,6 @@ import           Data.Massiv.Array.Ops.Map           (imap, map)
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Data.Semigroup
 import           Prelude                             hiding (all, and, any,
                                                       foldl, foldr, map,
                                                       maximum, minimum, or,

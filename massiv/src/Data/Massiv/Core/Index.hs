@@ -12,11 +12,38 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core.Index
-  ( module Data.Massiv.Core.Index.Ix
-  , module Data.Massiv.Core.Index.Tuple
-  , module Data.Massiv.Core.Index.Internal
-  , Stride
-  , pattern Stride
+  ( Ix0(..)
+  , type Ix1
+  , pattern Ix1
+  , type Ix2(Ix2, (:.))
+  , IxN((:>), Ix3, Ix4, Ix5)
+  , type Ix3
+  , type Ix4
+  , type Ix5
+  , Ix
+  -- ** Size
+  , type Sz1
+  , type Sz2
+  , type Sz3
+  , type Sz4
+  , type Sz5
+  , Sz(Sz, Sz1, Sz2, Sz3, Sz4, Sz5)
+  , unSz
+  , zeroSz
+  , oneSz
+  , consSz
+  , unconsSz
+  , snocSz
+  , unsnocSz
+  , setSz
+  , insertSz
+  , pullOutSz
+  , Dim(..)
+  , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)
+  , IsIndexDimension
+  , Lower
+  , Index(..)
+  , Stride(Stride)
   , unStride
   , toLinearIndexStride
   , strideStart
@@ -42,19 +69,21 @@ module Data.Massiv.Core.Index
   , dropDimension
   , pullOutDimension
   , insertDimension
+  -- * Iterators
   , iter
   , iterLinearM
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
   , splitWith_
+  , module Data.Massiv.Core.Index.Tuple
+  -- * Error functions
   , errorIx
   , errorSizeMismatch
   ) where
 
 import           Control.DeepSeq
 import           Data.Functor.Identity         (runIdentity)
-import           Data.Massiv.Core.Index.Internal hiding (SafeSz, type Sz1, pattern Sz1)
-import qualified Data.Massiv.Core.Index.Internal as I (Sz(SafeSz))
+import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Index.Tuple
 import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Index.Stride
@@ -125,13 +154,13 @@ handleBorderIndex border !sz getVal !ix =
   case border of
     Fill val -> if isSafeIndex sz ix then getVal ix else val
     Wrap     -> getVal (repairIndex sz ix wrap wrap)
-    Edge     -> getVal (repairIndex sz ix (const (const 0)) (\ (I.SafeSz k) _ -> k - 1))
-    Reflect  -> getVal (repairIndex sz ix (\ (I.SafeSz k) !i -> (abs i - 1) `mod` k)
-                        (\ (I.SafeSz k) !i -> (-i - 1) `mod` k))
-    Continue -> getVal (repairIndex sz ix (\ (I.SafeSz k) !i -> abs i `mod` k)
-                        (\ (I.SafeSz k) !i -> (-i - 2) `mod` k))
+    Edge     -> getVal (repairIndex sz ix (const (const 0)) (\ (SafeSz k) _ -> k - 1))
+    Reflect  -> getVal (repairIndex sz ix (\ (SafeSz k) !i -> (abs i - 1) `mod` k)
+                        (\ (SafeSz k) !i -> (-i - 1) `mod` k))
+    Continue -> getVal (repairIndex sz ix (\ (SafeSz k) !i -> abs i `mod` k)
+                        (\ (SafeSz k) !i -> (-i - 2) `mod` k))
 
-  where wrap (I.SafeSz k) i = i `mod` k
+  where wrap (SafeSz k) i = i `mod` k
         {-# INLINE [1] wrap #-}
 {-# INLINE [1] handleBorderIndex #-}
 

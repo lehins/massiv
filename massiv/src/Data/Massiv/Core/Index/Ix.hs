@@ -20,15 +20,14 @@
 --
 module Data.Massiv.Core.Index.Ix
   ( Ix
-  , IxN(..)
+  , IxN((:>))
   , type Sz
   , pattern Sz
   , type Ix1
   , pattern Ix1
   , type Sz1
   , pattern Sz1
-  , type Ix2(..)
-  , pattern Ix2
+  , type Ix2(Ix2, (:.))
   , type Sz2
   , pattern Sz2
   , type Ix3
@@ -67,7 +66,9 @@ data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
 pattern Ix2 :: Int -> Int -> Ix2
 pattern Ix2 i2 i1 = i2 :. i1
 
+-- | 2-dimensional size type synonym.
 type Sz2 = Sz Ix2
+-- | 2-dimensional size constructor. @(Sz2 i j) == Sz (i :. j)@.
 pattern Sz2 :: Int -> Int -> Sz2
 pattern Sz2 i2 i1 = Sz (i2 :. i1)
 
@@ -79,7 +80,9 @@ type Ix3 = IxN 3
 pattern Ix3 :: Int -> Int -> Int -> Ix3
 pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
 
+-- | 3-dimensional size type synonym.
 type Sz3 = Sz Ix3
+-- | 3-dimensional size constructor. @(Sz3 i j k) == Sz (i :> j :. k)@.
 pattern Sz3 :: Int -> Int -> Int -> Sz3
 pattern Sz3 i3 i2 i1 = Sz (i3 :> i2 :. i1)
 
@@ -89,21 +92,33 @@ type Ix4 = IxN 4
 pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
 pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
 
+-- | 4-dimensional size type synonym.
 type Sz4 = Sz Ix4
+-- | 4-dimensional size constructor. @(Sz4 i j k l) == Sz (i :> j :> k :. l)@.
 pattern Sz4 :: Int -> Int -> Int -> Int -> Sz4
 pattern Sz4 i4 i3 i2 i1 = Sz (i4 :> i3 :> i2 :. i1)
 
 -- | 5-dimensional type synonym.
 type Ix5 = IxN 5
--- | 5-dimensional index constructor.  @(Ix5 i j k l m) = (i :> j :> k :> l :. m)@.
+-- | 5-dimensional index constructor.  @(Ix5 i j k l m) == (i :> j :> k :> l :. m)@.
 pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
 pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
 
+-- | 5-dimensional size type synonym.
 type Sz5 = Sz Ix5
+-- | 5-dimensional size constructor.  @(Sz5 i j k l m) == Sz (i :> j :> k :> l :. m)@.
 pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz5
 pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
+--
+-- ====__Examples__
+--
+-- >>> :t (1 :> 2 :> 3 :> 4 :. 5)
+-- (1 :> 2 :> 3 :> 4 :. 5) :: IxN 5
+-- >>> 3 :> 4 :. 5 :: Ix3
+-- 3 :> 4 :. 5
+--
 data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
 
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
