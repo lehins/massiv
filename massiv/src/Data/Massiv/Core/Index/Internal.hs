@@ -65,13 +65,13 @@ import           GHC.TypeLits
 --
 -- @since 0.3.0
 newtype Sz ix = SafeSz ix deriving (Eq, Ord, NFData)
-{-# COMPLETE Sz #-}
 
 -- | A safe bidirectional pattern synonym for `Sz` construction that will make sure that none of
 -- the size elements are negative.
 pattern Sz :: Index ix => ix -> Sz ix
 pattern Sz ix <- SafeSz ix where
         Sz ix = SafeSz (liftIndex (max 0) ix)
+{-# COMPLETE Sz #-}
 
 -- | 1-dimensional type synonym for size.
 type Sz1 = Sz Ix1
