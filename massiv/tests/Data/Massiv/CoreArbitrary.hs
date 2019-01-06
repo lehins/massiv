@@ -78,7 +78,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrTiny r ix e) where
   arbitrary = do
-    Sz sz <- arbitrary
+    sz <- unSz <$> arbitrary
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
     return $ ArrTiny $ makeArray comp (Sz (liftIndex (`mod` 10) sz)) func
@@ -87,7 +87,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrTiny1 r ix e) where
   arbitrary = do
-    Sz sz <- arbitrary
+    sz <- unSz <$> arbitrary
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
     return $ ArrTiny1 $ makeArray comp (Sz (liftIndex (succ . (`mod` 10)) sz)) func
