@@ -14,11 +14,17 @@ module Data.Massiv.Array.Ops.Map
   ( map
   , imap
   -- ** Traversing
+  -- *** Applicative
   , traverseA
   , itraverseA
   , traverseAR
   , itraverseAR
-  -- ** Monadic
+  -- *** PrimMonad
+  , traverseP
+  , itraverseP
+  , traversePR
+  , itraversePR
+  -- ** Monadic mapping
   -- *** Sequential
   , mapM
   , mapMR
@@ -54,6 +60,7 @@ module Data.Massiv.Array.Ops.Map
   ) where
 
 import           Control.Monad                       (void)
+import           Control.Monad.Primitive             (PrimMonad)
 import           Control.Monad.ST                    (runST)
 import           Data.Coerce
 import           Data.Foldable                       (foldlM)
@@ -202,6 +209,59 @@ itraverseA f arr =
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
 {-# INLINE itraverseA #-}
+
+
+
+-- | Traverse with an `PrimMonad` action over an array sequentially.
+--
+-- @since 0.3.0
+--
+traverseP ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+traverseP f arr = generateArray (getComp arr) (size arr) (f . unsafeIndex arr)
+{-# INLINE traverseP #-}
+
+-- | Same as `traverseP`, but traverse with index aware action.
+--
+-- @since 0.3.0
+--
+itraverseP ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+itraverseP f arr = generateArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+{-# INLINE itraverseP #-}
+
+
+-- | Same as `traverseP`, but with ability to specify the desired representation.
+--
+-- @since 0.3.0
+--
+traversePR ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => r
+  -> (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+traversePR _ = traverseP
+{-# INLINE traversePR #-}
+
+-- | Same as `itraverseP`, but with ability to specify the desired representation.
+--
+-- @since 0.3.0
+--
+itraversePR ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => r
+  -> (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+itraversePR _ = itraverseP
+{-# INLINE itraversePR #-}
 
 
 
