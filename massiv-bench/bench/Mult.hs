@@ -19,8 +19,8 @@ multArrsAlt arr1 arr2
     makeArrayR D (getComp arr1 <> getComp arr2) (Sz (m1 :. n2)) $ \(i :. j) ->
       A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2' j))
   where
-    (Sz2 m1 n1) = size arr1
-    (Sz2 m2 n2) = size arr2
+    Sz2 m1 n1 = size arr1
+    Sz2 m2 n2 = size arr2
     arr2' = computeAs U $ transpose arr2
 {-# INLINE multArrsAlt #-}
 
