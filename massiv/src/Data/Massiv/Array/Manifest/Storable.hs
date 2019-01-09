@@ -72,7 +72,7 @@ instance (VS.Storable e, Index ix) => Construct S ix e where
 
 instance (VS.Storable e, Index ix) => Source S ix e where
   unsafeLinearIndex (SArray _ _ v) =
-    INDEX_CHECK("(Source S ix e).unsafeLinearIndex", VS.length, VS.unsafeIndex) v
+    INDEX_CHECK("(Source S ix e).unsafeLinearIndex", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
 
 instance Index ix => Resize Array S ix where
@@ -109,7 +109,7 @@ instance ( VS.Storable e
 instance (Index ix, VS.Storable e) => Manifest S ix e where
 
   unsafeLinearIndexM (SArray _ _ v) =
-    INDEX_CHECK("(Manifest S ix e).unsafeLinearIndexM", VS.length, VS.unsafeIndex) v
+    INDEX_CHECK("(Manifest S ix e).unsafeLinearIndexM", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -132,11 +132,11 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   {-# INLINE initialize #-}
 
   unsafeLinearRead (MSArray _ mv) =
-    INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", MVS.length, MVS.unsafeRead) mv
+    INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", Sz . MVS.length, MVS.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MSArray _ mv) =
-    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", MVS.length, MVS.unsafeWrite) mv
+    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", Sz . MVS.length, MVS.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
 

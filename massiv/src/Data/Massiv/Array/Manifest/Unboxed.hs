@@ -73,7 +73,7 @@ instance (VU.Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
 
 instance (VU.Unbox e, Index ix) => Source U ix e where
   unsafeLinearIndex (UArray _ _ v) =
-    INDEX_CHECK("(Source U ix e).unsafeLinearIndex", VU.length, VU.unsafeIndex) v
+    INDEX_CHECK("(Source U ix e).unsafeLinearIndex", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -139,7 +139,7 @@ instance ( VU.Unbox e
 instance (VU.Unbox e, Index ix) => Manifest U ix e where
 
   unsafeLinearIndexM (UArray _ _ v) =
-    INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", VU.length, VU.unsafeIndex) v
+    INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -162,11 +162,11 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   {-# INLINE initialize #-}
 
   unsafeLinearRead (MUArray _ mv) =
-    INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", MVU.length, MVU.unsafeRead) mv
+    INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", Sz . MVU.length, MVU.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MUArray _ mv) =
-    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", MVU.length, MVU.unsafeWrite) mv
+    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
 

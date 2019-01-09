@@ -83,7 +83,7 @@ elemsByteArray dummy a = sizeofByteArray a `div` sizeOf dummy
 instance (Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex (PArray _ _ a) =
     INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
-                elemsByteArray (undefined :: e), indexByteArray) a
+                Sz . elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndex #-}
 
 
@@ -144,7 +144,7 @@ instance (Index ix, Prim e) => Manifest P ix e where
 
   unsafeLinearIndexM (PArray _ _ a) =
     INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
-                elemsByteArray (undefined :: e), indexByteArray) a
+                Sz . elemsByteArray (undefined :: e), indexByteArray) a
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -174,12 +174,12 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
   unsafeLinearRead (MPArray _ ma) =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
-                elemsMutableByteArray (undefined :: e), readByteArray) ma
+                Sz . elemsMutableByteArray (undefined :: e), readByteArray) ma
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MPArray _ ma) =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
-                elemsMutableByteArray (undefined :: e), writeByteArray) ma
+                Sz . elemsMutableByteArray (undefined :: e), writeByteArray) ma
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearSet (MPArray _ ma) = setByteArray ma
