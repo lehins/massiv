@@ -51,6 +51,7 @@ test-suite tests
   other-modules:      Spec
                     , Data.Massiv.SchedulerSpec
   build-depends:      base            >= 4.8 && < 5
+                    , deepseq
                     , massiv-scheduler
                     , hspec
                     , QuickCheck

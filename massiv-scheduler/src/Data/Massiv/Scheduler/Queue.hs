@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns   #-}
 {-# LANGUAGE NamedFieldPuns #-}
 -- |
 -- Module      : Data.Massiv.Scheduler.Queue
@@ -28,10 +28,9 @@ module Data.Massiv.Scheduler.Queue
   ) where
 
 import           Control.Concurrent.MVar
-import           Control.Monad           (void, join)
+import           Control.Monad           (join, void)
 import           Data.Atomics            (atomicModifyIORefCAS)
 import           Data.IORef
-
 
 -- import Control.Concurrent
 -- import Say
@@ -63,8 +62,8 @@ import           Data.IORef
 
 
 -- | Pure functional Okasaki queue with total length
-data Queue a = Queue { qQueue  :: ![a]
-                     , qStack  :: ![a]
+data Queue a = Queue { qQueue :: ![a]
+                     , qStack :: ![a]
                      }
 
 emptyQueue :: Queue a
@@ -79,7 +78,7 @@ popQueue queue@Queue {qQueue, qStack} =
     x:xs -> Just (x, queue {qQueue = xs})
     [] ->
       case reverse qStack of
-        [] -> Nothing
+        []   -> Nothing
         y:ys -> Just (y, Queue {qQueue = ys, qStack = []})
 
 data Job a
@@ -92,7 +91,7 @@ data Job a
 mkJob :: IO a -> IO (Job a)
 mkJob action = do
   resRef <- newIORef $ error "mkJob: result is uncomputed"
-  return $
+  return $!
     Job resRef $ do
       res <- action
       writeIORef resRef res
@@ -120,7 +119,7 @@ pushJQueue (JQueue jQueueRef) job = do
          ( ( pushQueue queue job
            , case job of
                Job resRef _ -> resRef : resRefs
-               _ -> resRefs
+               _            -> resRefs
            , newBaton)
          , putMVar baton ()))
 
@@ -138,7 +137,7 @@ popJQueue (JQueue jQueueRef) = inner
             , case job of
                 Job _ action -> return $ Just (void action)
                 Job_ action_ -> return $ Just action_
-                Retire -> return Nothing)
+                Retire       -> return Nothing)
 
 flushResults :: JQueue a -> IO [a]
 flushResults (JQueue jQueueRef) = do

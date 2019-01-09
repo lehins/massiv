@@ -1,10 +1,18 @@
 module Data.Massiv.SchedulerSpec (spec) where
 
-import Test.Hspec
-import Test.QuickCheck
-import Test.QuickCheck.Monadic
-import Data.Massiv.Scheduler
 
+import           Control.DeepSeq
+import           Control.Exception       hiding (assert)
+import           Control.Exception.Base  (ArithException (DivideByZero))
+import           Data.List               (sort)
+import           Data.Massiv.Scheduler
+import           Test.Hspec
+import           Test.QuickCheck
+import           Test.QuickCheck.Monadic
+
+
+instance Arbitrary Comp where
+  arbitrary = frequency [(20, pure Seq), (5, pure Par), (75, ParOn <$> arbitrary)]
 
 prop_SameList :: Comp -> [Int] -> Property
 prop_SameList comp xs =
@@ -12,18 +20,121 @@ prop_SameList comp xs =
     xs' <- withScheduler comp $ \scheduler -> mapM_ (scheduleWork scheduler . return) xs
     return (xs === xs')
 
+prop_Recursive :: Comp -> [Int] -> Property
+prop_Recursive comp xs =
+  monadicIO $
+  run $ do
+    xs' <- withScheduler comp (schedule xs)
+    return (sort xs === sort xs')
+  where
+    schedule [] _ = return ()
+    schedule (y:ys) scheduler = scheduleWork scheduler (schedule ys scheduler >> return y)
+
+
+prop_Serially :: Comp -> [Int] -> Property
+prop_Serially comp xs =
+  monadicIO $
+  run $ do
+    xs' <- schedule xs
+    return (xs === concat xs')
+  where
+    schedule [] = return []
+    schedule (y:ys) = do
+      y' <- withScheduler comp (\s -> scheduleWork s (return y))
+      ys' <- schedule ys
+      return (y':ys')
+
+prop_Nested :: Comp -> [Int] -> Property
+prop_Nested comp xs =
+  monadicIO $
+  run $ do
+    xs' <- schedule xs
+    return (sort xs === sort (concat xs'))
+  where
+    schedule [] = return []
+    schedule (y:ys) =
+      withScheduler comp (\s -> scheduleWork s (schedule ys >>= \ys' -> return (y : concat ys')))
+
+prop_ArbitraryCompNested :: [(Comp, Int)] -> Property
+prop_ArbitraryCompNested xs =
+  monadicIO $
+  run $ do
+    xs' <- schedule xs
+    return (sort (map snd xs) === sort (concat xs'))
+  where
+    schedule [] = return []
+    schedule ((c, y):ys) =
+      withScheduler c (\s -> scheduleWork s (schedule ys >>= \ys' -> return (y : concat ys')))
+
+-- | Ensure proper exception handling.
+prop_CatchDivideByZero :: Comp -> Int -> [Positive Int] -> Property
+prop_CatchDivideByZero comp k xs =
+  assertExceptionIO
+    (== DivideByZero)
+    (mapConcurrently
+       comp
+       (\i -> return (k `div` i))
+       (map getPositive xs ++ [0] ++ map getPositive xs))
+
+-- | Ensure proper exception handling.
+prop_CatchDivideByZeroNested :: Comp -> Int -> Positive Int -> Property
+prop_CatchDivideByZeroNested comp a (Positive k) =
+  assertExceptionIO
+    (== DivideByZero)
+    (schedule k)
+  where
+    schedule i =
+      withScheduler comp (\s -> scheduleWork s (schedule (i-1) >> return (a `div` k)))
+
+
 spec :: Spec
 spec = do
   describe "Seq" $ do
     it "SameList" $ property $ prop_SameList Seq
+    it "Recursive" $ property $ prop_Recursive Seq
+    it "Nested" $ property $ prop_Nested Seq
+    it "Serially" $ property $ prop_Serially Seq
   describe "ParOn" $ do
     it "SameList" $ property $ \ cs -> prop_SameList (ParOn cs)
+    it "Recursive" $ property $ \ cs -> prop_Recursive (ParOn cs)
+    it "Nested" $ property $ \ cs -> prop_Nested (ParOn cs)
+    it "Serially" $ property $ \ cs -> prop_Serially (ParOn cs)
+  describe "Arbitrary Comp" $ do
+    it "ArbitraryNested" $ property prop_ArbitraryCompNested
+    it "CatchDivideByZero" $ property prop_CatchDivideByZero
+    it "CatchDivideByZeroNested" $ property prop_CatchDivideByZeroNested
 
 
 
 
 
+assertException :: (NFData a, Exception exc) =>
+                   (exc -> Bool) -- ^ Return True if that is the exception that was expected
+                -> a -- ^ Value that should throw an exception, when fully evaluated
+                -> Property
+assertException isExc action = assertExceptionIO isExc (return action)
 
+
+assertSomeException :: NFData a => a -> Property
+assertSomeException = assertSomeExceptionIO . return
+
+
+assertExceptionIO :: (NFData a, Exception exc) =>
+                     (exc -> Bool) -- ^ Return True if that is the exception that was expected
+                  -> IO a -- ^ IO Action that should throw an exception
+                  -> Property
+assertExceptionIO isExc action =
+  monadicIO $ do
+    hasFailed <-
+      run
+        (catch
+           (do res <- action
+               res `deepseq` return False) $ \exc ->
+           show exc `deepseq` return (isExc exc))
+    assert hasFailed
+
+assertSomeExceptionIO :: NFData a => IO a -> Property
+assertSomeExceptionIO = assertExceptionIO (\exc -> const True (exc :: SomeException))
 
 
 

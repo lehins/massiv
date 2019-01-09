@@ -25,12 +25,14 @@ module Data.Massiv.Scheduler
   -- , withScheduler_
   -- , divideWork
   -- , divideWork_
+  , traverse_
   ) where
 
 import           Control.Concurrent
 import           Control.Monad
 import           Data.Atomics                      (atomicModifyIORefCAS,
                                                     atomicModifyIORefCAS_)
+import           Data.Foldable                     as F (foldl')
 import           Data.IORef
 import           Data.Massiv.Scheduler.Computation
 import           Data.Massiv.Scheduler.Queue
@@ -46,10 +48,15 @@ numWorkers :: Scheduler a -> Int
 numWorkers = sNumWorkers
 
 
+-- | This is a faster traverse than if `mapM_` is used.
+traverse_ :: (Foldable t, Applicative f) => (a -> f ()) -> t a -> f ()
+traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
+
 mapConcurrently :: Foldable t => Comp -> (a -> IO b) -> t a -> IO [b]
-mapConcurrently comp f ls = withScheduler comp $ \s -> mapM_ (scheduleWork s . f) ls
+mapConcurrently comp f ls = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) ls
 
-
+-- | Nested scheduling is absolutely fins as long as there is no other concurrent delayed
+-- submissions going on
 scheduleWork :: Scheduler a -> IO a -> IO ()
 scheduleWork = scheduleWorkInternal mkJob
 
@@ -62,7 +69,8 @@ scheduleWorkInternal mkJob' Scheduler {sJQueue, sJobsCountRef, sNumWorkers} acti
   job <-
     mkJob' $ do
       res <- action
-      dropCounterOnZero sJobsCountRef $ mapM_ (pushJQueue sJQueue) $ replicate sNumWorkers Retire
+      dropCounterOnZero sJobsCountRef $
+        traverse_ (pushJQueue sJQueue) $ replicate sNumWorkers Retire
       return res
   pushJQueue sJQueue job
 
@@ -71,8 +79,8 @@ dropCounterOnZero counterRef onZero = do
   jc <-
     atomicModifyIORefCAS
       counterRef
-      (\i' ->
-         let i = i' - 1
+      (\ !i' ->
+         let !i = i' - 1
           in (i, i))
   when (jc == 0) onZero
 
@@ -96,8 +104,8 @@ withScheduler :: Comp -- ^ Computation strategy
 withScheduler comp submitWork = do
   sNumWorkers <-
     case comp of
-      Seq -> return 1
-      Par -> getNumCapabilities
+      Seq       -> return 1
+      Par       -> getNumCapabilities
       ParOn wss -> return $ length wss
   sWorkersCounterRef <- newIORef sNumWorkers
   sJQueue <- newJQueue
@@ -116,6 +124,7 @@ withScheduler comp submitWork = do
             if null ws'
               then [1 .. sNumWorkers]
               else ws'
-      forM_ ws $ \w -> forkOn w $ runWorker sJQueue onRetire
+      _tids <- forM ws $ \w -> forkOn w $ runWorker sJQueue onRetire
+      return ()
   readMVar workDoneMVar
   flushResults sJQueue
