@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Data.Massiv.Bench.Sobel
   ( sobelX
   , sobelY
