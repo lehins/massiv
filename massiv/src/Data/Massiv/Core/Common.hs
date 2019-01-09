@@ -446,18 +446,6 @@ indexWith fileName lineNo funName getSize' f arr ix
 {-# INLINE indexWith #-}
 
 
--- indexWith :: Size r ix e => String -> Int -> (Array r ix e -> ix -> e) -> Array r ix e -> ix -> e
--- indexWith fileName lineNo f arr ix
---   | isSafeIndex (size arr) ix = f arr ix
---   | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> indexWith") (size arr) ix
--- {-# INLINE indexWith #-}
-
--- errorImpossible :: String -> a
--- errorImpossible loc =
---   error $ "Please report this error. Impossible happend at: " ++ loc
--- {-# NOINLINE errorImpossible #-}
-
-
 
 -- | Map a monadic index aware function over an array sequentially, while discarding the result.
 --
