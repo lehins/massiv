@@ -104,7 +104,8 @@ bracketWithException before afterSuccess afterError thing = mask $ \restore -> d
 -- will be the same as the order of the resuts of those computations, stored withing the resulting
 -- array. Size of the array, which is also the first element in the returned tuple, will match the
 -- number of times `scheduleWork` has been invoked. This function blocks until all of the submitted
--- jobs has finished or one of them resulted in an exception, which will be re-thrown here.
+-- jobs have finished or at least one of them resulted in an exception, which will be re-thrown
+-- here.
 --
 -- __Important__: In order to get work done truly in parallel, program needs to be compiled with
 -- @-threaded@ GHC flag and executed with @+RTS -N@.

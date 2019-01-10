@@ -1,6 +1,7 @@
 module Data.Massiv.SchedulerSpec (spec) where
 
 
+import           Control.Concurrent.MVar
 import           Control.DeepSeq
 import           Control.Exception       hiding (assert)
 import           Control.Exception.Base  (ArithException (DivideByZero))
@@ -78,13 +79,26 @@ prop_CatchDivideByZero comp k xs =
 
 -- | Ensure proper exception handling.
 prop_CatchDivideByZeroNested :: Comp -> Int -> Positive Int -> Property
-prop_CatchDivideByZeroNested comp a (Positive k) =
+prop_CatchDivideByZeroNested comp a (Positive k) = assertExceptionIO (== DivideByZero) (schedule k)
+  where
+    schedule i
+      | i < 0 = return []
+      | otherwise =
+        withScheduler comp (\s -> scheduleWork s (schedule (i - 1) >> return (a `div` i)))
+
+
+-- | Make sure one co-worker can kill another one, of there are at least two of them of course.
+prop_KillTheCoworker :: Comp -> Property
+prop_KillTheCoworker comp =
   assertExceptionIO
     (== DivideByZero)
-    (schedule k)
-  where
-    schedule i =
-      withScheduler comp (\s -> scheduleWork s (schedule (i-1) >> return (a `div` k)))
+    (withScheduler comp $ \scheduler -> do
+       if numWorkers scheduler < 2
+         then scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int))
+         else do
+           mv <- newEmptyMVar
+           scheduleWork scheduler $ readMVar mv
+           scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int)))
 
 
 spec :: Spec
@@ -103,20 +117,7 @@ spec = do
     it "ArbitraryNested" $ property prop_ArbitraryCompNested
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchDivideByZeroNested" $ property prop_CatchDivideByZeroNested
-
-
-
-
-
-assertException :: (NFData a, Exception exc) =>
-                   (exc -> Bool) -- ^ Return True if that is the exception that was expected
-                -> a -- ^ Value that should throw an exception, when fully evaluated
-                -> Property
-assertException isExc action = assertExceptionIO isExc (return action)
-
-
-assertSomeException :: NFData a => a -> Property
-assertSomeException = assertSomeExceptionIO . return
+    it "KillTheCoworker" $ property $ prop_KillTheCoworker
 
 
 assertExceptionIO :: (NFData a, Exception exc) =>
@@ -132,9 +133,6 @@ assertExceptionIO isExc action =
                res `deepseq` return False) $ \exc ->
            show exc `deepseq` return (isExc exc))
     assert hasFailed
-
-assertSomeExceptionIO :: NFData a => IO a -> Property
-assertSomeExceptionIO = assertExceptionIO (\exc -> const True (exc :: SomeException))
 
 
 

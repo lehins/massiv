@@ -13,21 +13,24 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Scheduler
-  ( Scheduler
+  ( -- * Scheduler and strategies
+    Scheduler
   , Comp(..)
   , pattern Par
   , numWorkers
+  -- * Initialize Scheduler
+  , withScheduler
+  , withScheduler_
+  -- * Schedule work
   , scheduleWork
   , scheduleWork_
-  , withScheduler
-  , mapConcurrently
-  -- , withScheduler'
-  -- , withScheduler_
-  -- , divideWork
-  -- , divideWork_
+  , WorkerException(..)
+  -- * Helper functions
   , traverse_
+  , mapConcurrently
   ) where
 
+import           Control.Exception
 import           Control.Concurrent
 import           Control.Monad
 import           Data.Atomics                      (atomicModifyIORefCAS,
@@ -37,6 +40,11 @@ import           Data.IORef
 import           Data.Massiv.Scheduler.Computation
 import           Data.Massiv.Scheduler.Queue
 
+
+-- | Main type for scheduling work. See `withScheduler` for the only way to get access to such data
+-- type.
+--
+-- @since 0.1.0
 data Scheduler a = Scheduler
   { sNumWorkers        :: {-# UNPACK #-} !Int
   , sWorkersCounterRef :: !(IORef Int)
@@ -44,22 +52,38 @@ data Scheduler a = Scheduler
   , sJobsCountRef      :: !(IORef Int)
   }
 
+-- | Get number of workers from the scheduler
+--
+-- @since 0.1.0
 numWorkers :: Scheduler a -> Int
 numWorkers = sNumWorkers
 
 
--- | This is a faster traverse than if `mapM_` is used.
+-- | This is generally a faster way traverse while ignoring result than using `mapM_`.
+--
+-- @since 0.1.0
 traverse_ :: (Foldable t, Applicative f) => (a -> f ()) -> t a -> f ()
 traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
 
+
+-- | Map an action over each element of the `Foldable` @t@ acccording to the supplied computation
+-- strategy.
+--
+-- @since 0.1.0
 mapConcurrently :: Foldable t => Comp -> (a -> IO b) -> t a -> IO [b]
 mapConcurrently comp f ls = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) ls
 
--- | Nested scheduling is absolutely fins as long as there is no other concurrent delayed
--- submissions going on
+-- | Schedule an action to be picked up and computed by a worker from a pool. See `withScheduler` to
+-- initialize a scheduler. Use `scheduleWork_` if you do not intend to keep the result of the
+-- computation, as it will result in faster code.
+--
+-- @since 0.1.0
 scheduleWork :: Scheduler a -> IO a -> IO ()
 scheduleWork = scheduleWorkInternal mkJob
 
+-- | Similarly to `scheduleWork`, but ignores the result of computation, thus having less overhead.
+--
+-- @since 0.1.0
 scheduleWork_ :: Scheduler a -> IO () -> IO ()
 scheduleWork_ = scheduleWorkInternal (return . Job_)
 
@@ -69,11 +93,15 @@ scheduleWorkInternal mkJob' Scheduler {sJQueue, sJobsCountRef, sNumWorkers} acti
   job <-
     mkJob' $ do
       res <- action
-      dropCounterOnZero sJobsCountRef $
-        traverse_ (pushJQueue sJQueue) $ replicate sNumWorkers Retire
+      res `seq` dropCounterOnZero sJobsCountRef $ retireWorkersN sJQueue sNumWorkers
       return res
   pushJQueue sJQueue job
 
+-- | Helper function to place `Retire` instructions on the job queue.
+retireWorkersN :: JQueue a -> Int -> IO ()
+retireWorkersN sJQueue n = traverse_ (pushJQueue sJQueue) $ replicate n Retire
+
+-- | Decrease a counter by one and perform an action ahen it drops down to zero.
 dropCounterOnZero :: IORef Int -> IO () -> IO ()
 dropCounterOnZero counterRef onZero = do
   jc <-
@@ -85,7 +113,8 @@ dropCounterOnZero counterRef onZero = do
   when (jc == 0) onZero
 
 
-
+-- | Runs the worker until the job queue is exhausted, at which point it will exhecute the final task
+-- of retirement and return
 runWorker :: JQueue a
           -> IO () -- ^ Action to run upon retirement
           -> IO ()
@@ -97,6 +126,33 @@ runWorker jQueue onRetire = go
         Nothing -> onRetire
 
 
+-- | Initialize a scheduler and submit jobs that will be computed sequentially or in parallelel,
+-- which is determined by the `Comp`utation strategy.
+--
+-- Here are some cool properties about the `withScheduler`:
+--
+-- * This function will block until all of the submitted jobs have finished or at least one of them
+--   resulted in an exception, which will be re-thrown here.
+--
+-- * It is totally fine for nested jobs to submit more jobs for the same scheduler
+--
+-- * It is ok to initialize new schedulers, although tht will likely result in suboptimal computation
+--   time, unless they do not share the same capabilities.
+--
+-- * __Warning__ It is very dangerous to schedule jobs that do blocking `IO`, since it can lead to a
+--   deadlock very quickly, if you are not careful. Consider this example. First execution works fine,
+--   since there are two scheduled workers, and one can unblock another one, but the second scenario
+--   immediately results in a deadlock.
+--
+-- >>> withScheduler (ParOn [1,2]) $ \s -> newEmptyMVar >>= (\ mv -> scheduleWork s (readMVar mv) >> scheduleWork s (putMVar mv ()))
+-- [(),()]
+-- >>> withScheduler (ParOn [1]) $ \s -> newEmptyMVar >>= (\ mv -> scheduleWork s (readMVar mv) >> scheduleWork s (putMVar mv ()))
+-- Interrupted.
+--
+-- __Important__: In order to get work done truly in parallel, program needs to be compiled with
+-- @-threaded@ GHC flag and executed with @+RTS -N -RTS@ to use all available cores.
+--
+-- @since 0.1.0
 withScheduler :: Comp -- ^ Computation strategy
               -> (Scheduler a -> IO b)
               -- ^ Action that will be scheduling all the work.
@@ -104,27 +160,110 @@ withScheduler :: Comp -- ^ Computation strategy
 withScheduler comp submitWork = do
   sNumWorkers <-
     case comp of
-      Seq       -> return 1
-      Par       -> getNumCapabilities
+      Seq -> return 1
+      Par -> getNumCapabilities
       ParOn wss -> return $ length wss
   sWorkersCounterRef <- newIORef sNumWorkers
   sJQueue <- newJQueue
   sJobsCountRef <- newIORef 0
   workDoneMVar <- newEmptyMVar
   let scheduler = Scheduler {..}
-      onRetire = dropCounterOnZero sWorkersCounterRef $ putMVar workDoneMVar ()
+      onRetire = dropCounterOnZero sWorkersCounterRef $ putMVar workDoneMVar Nothing
+  -- / Wait for the initial jobs to get scheduled before spawining off the workers, otherwise it is
+  -- trickier to identify beginning and end of the job pool.
   _ <- submitWork scheduler
-  -- Ensure that at least something gets scheduled
+  -- / Ensure at least something gets scheduled, so retirement can be triggered
   jc <- readIORef sJobsCountRef
   when (jc == 0) $ scheduleWork_ scheduler (pure ())
   case comp of
-    Seq -> runWorker sJQueue onRetire
+    Seq -- / no need to fork threads for a sequential computation
+     -> runWorker sJQueue onRetire
     ParOn ws' -> do
       let ws =
             if null ws'
+            -- / default to all capabilities, when list is empty
               then [1 .. sNumWorkers]
               else ws'
-      _tids <- forM ws $ \w -> forkOn w $ runWorker sJQueue onRetire
-      return ()
-  readMVar workDoneMVar
-  flushResults sJQueue
+      tidsMVar <- newEmptyMVar
+      tids <-
+        forM ws $ \w ->
+          mask_ $
+          forkOnWithUnmask w $ \unmask ->
+            catch
+              (unmask $ runWorker sJQueue onRetire)
+              (unmask . handleWorkerException sJQueue workDoneMVar tidsMVar)
+      putMVar tidsMVar tids
+  -- / wait for all worker to finish. If either of them had a problem this MVar will contain an
+  -- exception
+  mExc <- readMVar workDoneMVar
+  case mExc of
+    Nothing
+     -- / Now we are sure all workers have done their job we can safely read all of the IORefs eith
+     -- results
+     -> flushResults sJQueue
+    Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the main thread
+             -- will think like it's his own
+      | Just (WorkerException wexc) <- fromException exc -> throwIO wexc
+    Just exc -> throwIO exc -- Somethig funky is happening, propagate it.
+
+
+-- | Same as `withScheduler`, but ignore the result. Make sure tu use `scheduleWork_` to get optimal
+-- performance.
+--
+-- @since 0.1.0
+withScheduler_ :: Comp -- ^ Computation strategy
+              -> (Scheduler a -> IO ())
+              -- ^ Action that will be scheduling all the work.
+              -> IO ()
+withScheduler_ comp = void . withScheduler comp
+
+
+-- | Specialized exception handler for the work scheduler.
+handleWorkerException ::
+     JQueue a -> MVar (Maybe SomeException) -> MVar [ThreadId] -> SomeException -> IO ()
+handleWorkerException jQueue workDoneMVar tidsMVar exc = do
+  case fromException exc of
+    Just wexc | WorkerTerminateException <- wexc -> return ()
+      -- \ some co-worker died, we can just move on with our death.
+    _ ->
+      case fromException exc of
+        Just asyncExc -> do
+          putMVar workDoneMVar $ Just $ toException $ WorkerAsyncException asyncExc
+          -- \ Let the main thread know about this terrible async exception.
+          -- / Do the co-worker cleanup
+          terminateAllButMe
+          throwIO asyncExc
+          -- \ do not recover from an async exception
+        Nothing -> do
+          putMVar workDoneMVar $ Just exc
+          -- \ Main thread must know how we died
+          -- / Do the co-worker cleanup
+          terminateAllButMe
+          -- / As to one self, gracefully leave off into the outer world
+  where
+    terminateAllButMe = do
+      tids <- takeMVar tidsMVar
+      -- \ First try to retire suspended workers gracefully
+      retireWorkersN jQueue (length tids - 1)
+      -- / Terminate all the other workers.
+      tid <- myThreadId
+      traverse_ (`throwTo` WorkerTerminateException) $ filter (/= tid) tids
+
+
+-- | This exception should normally be not seen in the wild. The only one that could possibly pop up
+-- is the `WorkerAsyncException`.
+data WorkerException
+  = WorkerException !SomeException
+  -- ^ One of workers experienced an exception, main thread will receive the same `SomeException`.
+  | WorkerAsyncException !SomeAsyncException
+  -- ^ If a worker recieves an async exception, something is utterly wrong. This exception in
+  -- particular would mean that one of the workers have died of an asyncronous exception. We don't
+  -- want to raise that async exception synchronously in the main thread, therefore it will receive
+  -- this wrapper exception instead.
+  | WorkerTerminateException
+  -- ^ When a brother worker dies of some exception, all the other ones will be terminated
+  -- asynchronously with this one.
+  deriving Show
+
+instance Exception WorkerException
+
