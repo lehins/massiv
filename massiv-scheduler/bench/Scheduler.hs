@@ -35,6 +35,7 @@ mkBench name f n =
     , bgroup
         "Massiv Scheduler"
         [ bench "Par" $ nfIO (S.mapConcurrently S.Par f [0 .. n])
+        , bench "ParN" $ nfIO (S.mapConcurrently (S.ParN 0) f [0 .. n])
         , bench "Seq" $ nfIO (S.mapConcurrently S.Seq f [0 .. n])
         ]
     , bgroup

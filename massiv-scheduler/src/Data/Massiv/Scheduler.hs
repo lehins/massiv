@@ -162,37 +162,38 @@ withScheduler comp submitWork = do
     case comp of
       Seq -> return 1
       Par -> getNumCapabilities
-      ParOn wss -> return $ length wss
+      ParOn ws -> return $ length ws
+      ParN 0 -> getNumCapabilities
+      ParN n -> return $ fromIntegral n
   sWorkersCounterRef <- newIORef sNumWorkers
   sJQueue <- newJQueue
   sJobsCountRef <- newIORef 0
   workDoneMVar <- newEmptyMVar
   let scheduler = Scheduler {..}
       onRetire = dropCounterOnZero sWorkersCounterRef $ putMVar workDoneMVar Nothing
-  -- / Wait for the initial jobs to get scheduled before spawining off the workers, otherwise it is
-  -- trickier to identify beginning and end of the job pool.
+  -- / Wait for the initial jobs to get scheduled before spawining off the workers, otherwise it would
+  -- be trickier to identify the beginning and the end of a job pool.
   _ <- submitWork scheduler
   -- / Ensure at least something gets scheduled, so retirement can be triggered
   jc <- readIORef sJobsCountRef
   when (jc == 0) $ scheduleWork_ scheduler (pure ())
+  let spawnWorkersWith fork ws = do
+          tidsMVar <- newEmptyMVar
+          tids <-
+            forM ws $ \w ->
+              mask_ $
+              fork w $ \unmask ->
+                catch
+                  (unmask $ runWorker sJQueue onRetire)
+                  (unmask . handleWorkerException sJQueue workDoneMVar tidsMVar)
+          putMVar tidsMVar tids
+      {-# INLINE spawnWorkersWith #-}
   case comp of
     Seq -- / no need to fork threads for a sequential computation
      -> runWorker sJQueue onRetire
-    ParOn ws' -> do
-      let ws =
-            if null ws'
-            -- / default to all capabilities, when list is empty
-              then [1 .. sNumWorkers]
-              else ws'
-      tidsMVar <- newEmptyMVar
-      tids <-
-        forM ws $ \w ->
-          mask_ $
-          forkOnWithUnmask w $ \unmask ->
-            catch
-              (unmask $ runWorker sJQueue onRetire)
-              (unmask . handleWorkerException sJQueue workDoneMVar tidsMVar)
-      putMVar tidsMVar tids
+    Par -> spawnWorkersWith forkOnWithUnmask [1 .. sNumWorkers]
+    ParOn ws -> spawnWorkersWith forkOnWithUnmask ws
+    ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. sNumWorkers]
   -- / wait for all worker to finish. If either of them had a problem this MVar will contain an
   -- exception
   mExc <- readMVar workDoneMVar

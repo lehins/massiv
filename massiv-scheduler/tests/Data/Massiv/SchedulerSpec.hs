@@ -13,7 +13,8 @@ import           Test.QuickCheck.Monadic
 
 
 instance Arbitrary Comp where
-  arbitrary = frequency [(20, pure Seq), (5, pure Par), (75, ParOn <$> arbitrary)]
+  arbitrary =
+    frequency [(20, pure Seq), (10, pure Par), (35, ParOn <$> arbitrary), (35, ParN <$> arbitrary)]
 
 prop_SameList :: Comp -> [Int] -> Property
 prop_SameList comp xs =
@@ -87,7 +88,7 @@ prop_CatchDivideByZeroNested comp a (Positive k) = assertExceptionIO (== DivideB
         withScheduler comp (\s -> scheduleWork s (schedule (i - 1) >> return (a `div` i)))
 
 
--- | Make sure one co-worker can kill another one, of there are at least two of them of course.
+-- | Make sure one co-worker can kill another one, of course when there are at least two of.
 prop_KillTheCoworker :: Comp -> Property
 prop_KillTheCoworker comp =
   assertExceptionIO
