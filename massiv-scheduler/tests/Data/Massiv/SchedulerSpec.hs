@@ -14,7 +14,12 @@ import           Test.QuickCheck.Monadic
 
 instance Arbitrary Comp where
   arbitrary =
-    frequency [(20, pure Seq), (10, pure Par), (35, ParOn <$> arbitrary), (35, ParN <$> arbitrary)]
+    frequency
+      [ (20, pure Seq)
+      , (10, pure Par)
+      , (35, ParOn <$> arbitrary)
+      , (35, ParN . getSmall <$> arbitrary)
+      ]
 
 prop_SameList :: Comp -> [Int] -> Property
 prop_SameList comp xs =

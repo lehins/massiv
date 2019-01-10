@@ -51,6 +51,10 @@ data Scheduler a = Scheduler
   , sJQueue            :: !(JQueue a)
   , sJobsCountRef      :: !(IORef Int)
   }
+  -- TODO: Make Scheduler a sum type with: ?
+                       -- ParScheduler
+                       -- SeqScheduler
+  --                     sSeqResRef :: !(Maybe (IORef [a]))
 
 -- | Get number of workers from the scheduler
 --
