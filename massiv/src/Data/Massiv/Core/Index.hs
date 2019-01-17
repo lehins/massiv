@@ -15,10 +15,6 @@ module Data.Massiv.Core.Index
   ( module Data.Massiv.Core.Index.Ix
   , Stride
   , pattern Stride
-  , Sz
-  , pattern Sz
-  , Sz1
-  , pattern Sz1
   , unStride
   , toLinearIndexStride
   , strideStart
