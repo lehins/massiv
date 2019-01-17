@@ -32,6 +32,7 @@ benchmark scheduler
   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
+                     , deepseq
                      , massiv
                      , massiv-bench
                      , massiv-scheduler

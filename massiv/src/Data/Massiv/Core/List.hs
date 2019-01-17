@@ -34,7 +34,7 @@ import           Data.Functor.Identity
 import qualified Data.List                       as L
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Scheduler
 import           Data.Proxy
 import           Data.Typeable
 import           GHC.Exts
@@ -185,12 +185,12 @@ instance ( Index ix
             newX = LArray lComp x
          in Just (newX, newArr)
   {-# INLINE uncons #-}
-  generateRaggedM Seq !sz f = do
-    let !(k, szL) = unconsSz sz
-    loopDeepM 0 (< coerce k) (+ 1) (empty Seq) $ \i acc -> do
-      e <- generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))
-      return (cons e acc)
-  generateRaggedM (ParOn wss) sz f = unsafeGenerateParM wss sz f
+  -- generateRaggedM Seq !sz f = do
+  --   let !(k, szL) = unconsSz sz
+  --   loopDeepM 0 (< coerce k) (+ 1) (empty Seq) $ \i acc -> do
+  --     e <- generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))
+  --     return (cons e acc)
+  generateRaggedM = unsafeGenerateParM
   {-# INLINE generateRaggedM #-}
   flatten arr = LArray {lComp = lComp arr, lData = coerce xs}
     where
@@ -241,31 +241,27 @@ instance ( Index ix
 
 unsafeGenerateParM ::
      (Elt LN ix e ~ Array LN (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
-  => [Int]
+  => Comp
   -> Sz ix
   -> (ix -> m e)
   -> m (Array L ix e)
-unsafeGenerateParM wws !sz f = do
+unsafeGenerateParM comp !sz f = do
   res <- sequence $ unsafePerformIO $ do
     let !(k, szL) = unconsSz sz
-    divideWork wws k $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        scheduleWork scheduler $ do
-          -- res <- loopM (start + chunkLength - 1) (>= start) (subtract 1) [] $ \i acc -> do
-          --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-          -- return $! sequence res
-          res <- loopDeepM start (< (start + chunkLength)) (+ 1) [] $ \i acc ->
-            return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-          return $! sequence res
-      when (slackStart < totalLength) $
-        scheduleWork scheduler $ do
-          -- res <- loopM (totalLength - 1) (>= slackStart) (subtract 1) [] $ \i acc -> do
-          --   return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-          -- return $! sequence res
-          res <- loopDeepM slackStart (< totalLength) (+ 1) [] $ \i acc ->
-            return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
-          return $! sequence res
-  return $ LArray (ParOn wws) $ List $ concat res
+        totalLength = totalElem sz
+    withScheduler comp $ \ scheduler ->
+      splitLinearly (numWorkers scheduler) (unSz k) $ \ chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $ do
+            res <- loopDeepM start (< (start + chunkLength)) (+ 1) [] $ \i acc ->
+              return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+            return $! sequence res
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $ do
+            res <- loopDeepM slackStart (< totalLength) (+ 1) [] $ \i acc ->
+              return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
+            return $! sequence res
+  return $ LArray comp $ List $ concat res
 {-# INLINE unsafeGenerateParM #-}
 
 
@@ -298,9 +294,9 @@ unsafeGenerateParM wws !sz f = do
 instance {-# OVERLAPPING #-} Construct L Ix1 e where
   setComp c arr = arr { lComp = c }
   {-# INLINE setComp #-}
-  makeArray Seq sz f = runIdentity $ generateRaggedM Seq sz (return . f)
-  makeArray (ParOn wss) sz f = LArray (ParOn wss) $ List $ unsafePerformIO $
-    withScheduler' wss $ \scheduler ->
+  -- makeArray Seq sz f = runIdentity $ generateRaggedM Seq sz (return . f)
+  makeArray comp sz f = LArray comp $ List $ unsafePerformIO $
+    withScheduler comp $ \scheduler ->
       loopM_ 0 (< coerce sz) (+ 1) (scheduleWork scheduler . return . f)
   {-# INLINE makeArray #-}
 
@@ -328,7 +324,7 @@ unsafeGenerateN ::
 unsafeGenerateN Seq sz f = runIdentity $ generateRaggedM Seq sz (return . f)
 unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
   let !(m, szL) = unconsSz sz
-  xs <- withScheduler' wss $ \scheduler ->
+  xs <- withScheduler c $ \scheduler ->
     loopM_ 0 (< coerce m) (+ 1) $ \i -> scheduleWork scheduler $
       generateRaggedM c szL $ \ix -> return $ f (consDim i ix)
   return $! foldr' cons (empty c) xs

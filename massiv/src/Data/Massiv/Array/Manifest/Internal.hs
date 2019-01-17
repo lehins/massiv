@@ -34,8 +34,6 @@ module Data.Massiv.Array.Manifest.Internal
   , convertAs
   , convertProxy
   , gcastArr
-  , loadMutableS
-  , loadMutableOnP
   , fromRaggedArray
   , fromRaggedArray'
   , sizeofArray
@@ -51,8 +49,7 @@ import           Data.Massiv.Array.Ops.Fold.Internal as M
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
-import           Data.Massiv.Core.Scheduler
-import qualified Data.Massiv.Scheduler as S
+import           Data.Massiv.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
@@ -212,25 +209,6 @@ instance Index ix => Load M ix e where
 instance Index ix => StrideLoad M ix e
 
 
-loadMutableS :: (Load r' ix e, Mutable r ix e) =>
-                Array r' ix e -> Array r ix e
-loadMutableS !arr =
-  runST $ do
-    mArr <- unsafeNew (size arr)
-    loadArray 1 id arr (unsafeLinearWrite mArr)
-    unsafeFreeze Seq mArr
-{-# INLINE loadMutableS #-}
-
-loadMutableOnP :: (Load r' ix e, Mutable r ix e) =>
-                 [Int] -> Array r' ix e -> IO (Array r ix e)
-loadMutableOnP wids !arr = do
-  mArr <- unsafeNew (size arr)
-  withScheduler_ wids $ \scheduler ->
-    loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
-  unsafeFreeze (ParOn wids) mArr
-{-# INLINE loadMutableOnP #-}
-
-
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
@@ -239,15 +217,8 @@ compute !arr =
   unsafePerformIO $ do
     mArr <- unsafeNew (size arr)
     let !comp = getComp arr
-        nc = case comp of
-               Seq -> S.Seq
-               ParOn ws -> S.ParOn ws
-        -- !wIds =
-        --   case comp of
-        --     Seq -> [1]
-        --     ParOn caps -> caps
-    S.withScheduler_ nc $ \scheduler ->
-      loadArray (S.numWorkers scheduler) (S.scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+    withScheduler_ comp $ \scheduler ->
+      loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
     unsafeFreeze comp mArr
 {-# INLINE compute #-}
 
@@ -293,11 +264,8 @@ computeInto ::
   -> IO ()
 computeInto !mArr !arr = do
   unless (msize mArr == size arr) $ errorSizeMismatch "computeInto" (msize mArr) (size arr)
-  case getComp arr of
-    Seq -> loadArray 1 id arr (unsafeLinearWrite mArr)
-    ParOn wids ->
-      withScheduler_ wids $ \scheduler ->
-        loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+  withScheduler_ (getComp arr) $ \scheduler ->
+    loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
 
 
@@ -347,44 +315,19 @@ convertProxy :: (Manifest r' ix e, Mutable r ix e)
 convertProxy _ = convert
 {-# INLINE convertProxy #-}
 
--- sequenceOnP :: (Load r1 ix (IO e), Source r1 ix (IO e), Mutable r ix e) =>
---                [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
--- sequenceOnP wIds !arr = do
---   resArrM <- unsafeNew (size arr)
---   withScheduler_ wIds $ \scheduler ->
---     flip imapM_ arr $ \ !ix action ->
---       scheduleWork scheduler $ action >>= unsafeWrite resArrM ix
---   unsafeFreeze (getComp arr) resArrM
--- {-# INLINE sequenceOnP #-}
-
-
--- sequenceP ::
---      (Load r1 ix (IO e), Source r1 ix (IO e), Mutable r ix e)
---   => Array r1 ix (IO e)
---   -> IO (Array r ix e)
--- sequenceP = sequenceOnP []
--- {-# INLINE sequenceP #-}
-
 
 -- | Convert a ragged array into a usual rectangular shaped one.
 fromRaggedArray :: (Ragged r' ix e, Load r' ix e, Mutable r ix e) =>
                    Array r' ix e -> Either ShapeError (Array r ix e)
 fromRaggedArray arr =
   unsafePerformIO $ do
-    let sz = edgeSize arr
+    let !sz = edgeSize arr
+        !comp = getComp arr
     mArr <- unsafeNew sz
-    let loadWith using = loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) sz arr
-    try $
-      case getComp arr of
-        c -> do
-          loadWith id
-          unsafeFreeze c mArr
-       -- Seq -> do
-       --   loadWith id
-       --   unsafeFreeze Seq mArr
-       -- pComp@(ParOn ss) -> do
-       --   withScheduler_ ss (loadWith . scheduleWork)
-       --   unsafeFreeze pComp mArr
+    try $ do
+      withScheduler_ comp $ \scheduler ->
+        loadRagged (scheduleWork scheduler) (unsafeLinearWrite mArr) 0 (totalElem sz) sz arr
+      unsafeFreeze comp mArr
 {-# INLINE fromRaggedArray #-}
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not
@@ -412,30 +355,14 @@ computeWithStride stride !arr =
     let sz = strideSize stride (size arr)
         comp = getComp arr
     mArr <- unsafeNew sz
-    case comp of
-      Seq -> loadArrayWithStride 1 id stride sz arr (unsafeLinearWrite mArr)
-      ParOn wIds ->
-        withScheduler_ wIds $ \scheduler ->
-          loadArrayWithStride
-            (numWorkers scheduler)
-            (scheduleWork scheduler)
-            stride
-            sz
-            arr
-            (unsafeLinearWrite mArr)
-    -- -- Alternative way to run computation sequentially: decreaseas compile time
-    -- let wIds = case comp of
-    --              Seq -> [1]
-    --              ParOn caps -> caps
-    -- withScheduler_ wIds $ \scheduler ->
-    --       loadArrayWithStride
-    --         (numWorkers scheduler)
-    --         (scheduleWork scheduler)
-    --         stride
-    --         sz
-    --         arr
-    --         (unsafeLinearRead mArr)
-    --         (unsafeLinearWrite mArr)
+    withScheduler_ comp $ \scheduler ->
+      loadArrayWithStride
+        (numWorkers scheduler)
+        (scheduleWork scheduler)
+        stride
+        sz
+        arr
+        (unsafeLinearWrite mArr)
     unsafeFreeze comp mArr
 {-# INLINE computeWithStride #-}
 

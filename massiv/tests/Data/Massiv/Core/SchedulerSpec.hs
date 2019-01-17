@@ -6,7 +6,7 @@ module Data.Massiv.Core.SchedulerSpec (spec) where
 import           Control.Concurrent
 import           Control.Exception.Base     (ArithException (DivideByZero),
                                              AsyncException (ThreadKilled))
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Scheduler
 import           Data.Massiv.CoreArbitrary  as A
 import           Prelude                    as P
 import           Test.Hspec
@@ -51,10 +51,10 @@ prop_AllWorkersDied :: [Int] -> (Int, [Int]) -> Property
 prop_AllWorkersDied wIds (hId, ids) =
   assertExceptionIO
     (== ThreadKilled)
-    (withScheduler_ [] $ \scheduler1 ->
+    (withScheduler_ Par $ \scheduler1 ->
        scheduleWork
          scheduler1
-         (withScheduler_ wIds $ \scheduler ->
+         (withScheduler_ (ParOn wIds) $ \scheduler ->
             P.mapM_
               (\_ -> scheduleWork scheduler (myThreadId >>= killThread))
               (hId : ids)))
@@ -64,7 +64,7 @@ prop_AllWorkersDied wIds (hId, ids) =
 prop_SchedulerAllJobsProcessed :: [Int] -> OrderedList Int -> Property
 prop_SchedulerAllJobsProcessed wIds (Ordered jobs) =
   monadicIO $ do
-    res <- (run $ withScheduler' wIds $ \scheduler ->
+    res <- (run $ withScheduler (ParOn wIds) $ \scheduler ->
                P.mapM_ (scheduleWork scheduler . return) jobs)
     return (res === jobs)
 

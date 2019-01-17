@@ -52,7 +52,7 @@ module Data.Massiv.Core.Common
   , module Data.Massiv.Core.Index
   -- * Common Operations
   , imapM_
-  , module Data.Massiv.Core.Computation
+  , module Data.Massiv.Scheduler.Computation
   , Semigroup((<>))
   ) where
 
@@ -61,7 +61,7 @@ import           Data.Semigroup
 #endif
 
 import           Control.Monad.Primitive
-import           Data.Massiv.Core.Computation
+import           Data.Massiv.Scheduler.Computation
 import           Data.Massiv.Core.Index
 import           Data.Typeable
 import           GHC.Prim

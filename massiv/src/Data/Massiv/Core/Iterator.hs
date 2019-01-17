@@ -96,7 +96,8 @@ splitLinearly numChunks totalLength action = action chunkLength slackStart
 -- generator see `splitLinearlyWithM_`.
 --
 -- @since 0.2.1
-splitLinearlyWith_ :: Monad m => Int -> (m () -> m a) -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m a
+splitLinearlyWith_ ::
+     Monad m => Int -> (m () -> m ()) -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m ()
 splitLinearlyWith_ numChunks with totalLength index =
   splitLinearlyWithM_ numChunks with totalLength (pure . index)
 {-# INLINE splitLinearlyWith_ #-}
@@ -106,10 +107,14 @@ splitLinearlyWith_ numChunks with totalLength index =
 --
 -- @since 0.2.6.0
 splitLinearlyWithM_ ::
-     Monad m => Int -> (m () -> m a) -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m a
+     Monad m => Int -> (m () -> m ()) -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
 splitLinearlyWithM_ numChunks with totalLength make write =
   splitLinearly numChunks totalLength  $ \chunkLength slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
       with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
     with $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithM_ #-}
+
+
+
+

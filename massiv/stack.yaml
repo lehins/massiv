@@ -1,7 +1,1 @@
-resolver: lts-13.1
-packages:
-- '.'
-- '../massiv-scheduler/'
-extra-deps: []
-flags: {}
-extra-package-dbs: []
+stack-ghc-8.4.yaml

@@ -50,7 +50,7 @@ import qualified Data.Foldable              as F
 import           Data.Functor.Identity      (runIdentity)
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Scheduler
 import           Prelude                    hiding (all, and, any, foldl, foldr,
                                              maximum, minimum, or, product, sum)
 import           System.IO.Unsafe           (unsafePerformIO)
@@ -225,16 +225,18 @@ ifoldlIO :: Source r ix e =>
          -> Array r ix e -> IO b
 ifoldlIO wIds f !initAcc g !tAcc !arr = do
   let !sz = size arr
+      !totalLength = totalElem sz
   results <-
-    divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        scheduleWork scheduler $
+    withScheduler (ParOn wIds) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $
           iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
             f acc ix (unsafeLinearIndex arr i)
-      when (slackStart < totalLength) $
-        scheduleWork scheduler $
-        iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
-          f acc ix (unsafeLinearIndex arr i)
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
+            f acc ix (unsafeLinearIndex arr i)
   F.foldlM g tAcc results
 {-# INLINE ifoldlIO #-}
 
@@ -310,16 +312,18 @@ ifoldrIO :: Source r ix e =>
            [Int] -> (ix -> e -> a -> IO a) -> a -> (a -> b -> IO b) -> b -> Array r ix e -> IO b
 ifoldrIO wIds f !initAcc g !tAcc !arr = do
   let !sz = size arr
+      !totalLength = totalElem sz
   results <-
-    divideWork wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      when (slackStart < totalLength) $
-        scheduleWork scheduler $
-        iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
-          f ix (unsafeLinearIndex arr i) acc
-      loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
-        scheduleWork scheduler $
-          iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
+    withScheduler (ParOn wIds) $ \ scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \ chunkLength slackStart -> do
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
             f ix (unsafeLinearIndex arr i) acc
+        loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
+          scheduleWork scheduler $
+            iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
+              f ix (unsafeLinearIndex arr i) acc
   F.foldlM (flip g) tAcc results
 {-# INLINE ifoldrIO #-}
 

@@ -4,4 +4,3 @@ packages:
 - '../massiv/'
 - '../massiv-scheduler/'
 extra-deps: []
-allow-newer: true

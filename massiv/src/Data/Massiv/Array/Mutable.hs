@@ -61,7 +61,7 @@ import           Control.Monad.ST
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Scheduler
 
 -- | Initialize a new mutable array.
 new :: (Mutable r ix e, PrimMonad m) => Sz ix -> m (MArray (PrimState m) r ix e)
@@ -97,7 +97,7 @@ createArray_ ::
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
-createArray_ comp sz action = fmap snd $ createArray comp sz action
+createArray_ comp sz action = snd <$> createArray comp sz action
 {-# INLINE createArray_ #-}
 
 -- | Just like `createArray_`, but together with `Array` it returns the result of the filling action.
@@ -186,11 +186,8 @@ generateArrayIO ::
   -> (ix -> IO e)
   -> IO (Array r ix e)
 generateArrayIO comp sz gen = do
-  let !wids = case comp of
-                Seq        -> [1]
-                ParOn caps -> caps
   marr <- unsafeNew sz
-  withScheduler_ wids $ \scheduler ->
+  withScheduler_ comp $ \scheduler ->
     splitLinearlyWithM_
       (numWorkers scheduler)
       (scheduleWork scheduler)

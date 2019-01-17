@@ -2,6 +2,7 @@
 module Main where
 
 import           Criterion.Main
+import           Control.DeepSeq
 import           Data.Massiv.Bench          as A
 import           Data.Massiv.Core.Index
 import           Data.Massiv.Core.Scheduler as A

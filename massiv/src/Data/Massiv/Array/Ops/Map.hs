@@ -69,7 +69,7 @@ import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Scheduler
 import           GHC.Base                            (build)
 import           Prelude                             hiding (map, mapM, mapM_,
                                                       traverse, unzip, unzip3,
@@ -471,18 +471,15 @@ mapIO_ action = imapIO_ (const action)
 --
 -- @since 0.2.6
 imapIO_ :: Source r ix e => (ix -> e -> IO a) -> Array r ix e -> IO ()
-imapIO_ action arr =
-  case getComp arr of
-    Seq -> imapM_ action arr
-    ParOn wids -> do
-      let sz = size arr
-      withScheduler_ wids $ \scheduler ->
-        splitLinearlyWith_
-          (numWorkers scheduler)
-          (scheduleWork scheduler)
-          (totalElem sz)
-          (unsafeLinearIndex arr)
-          (\i -> void . action (fromLinearIndex sz i))
+imapIO_ action arr = do
+  let sz = size arr
+  withScheduler_ (getComp arr) $ \scheduler ->
+    splitLinearlyWith_
+      (numWorkers scheduler)
+      (scheduleWork scheduler)
+      (totalElem sz)
+      (unsafeLinearIndex arr)
+      (\i -> void . action (fromLinearIndex sz i))
 {-# INLINE imapIO_ #-}
 
 
