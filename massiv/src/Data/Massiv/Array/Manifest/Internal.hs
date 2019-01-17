@@ -52,6 +52,7 @@ import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Scheduler
+import qualified Data.Massiv.Scheduler as S
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
@@ -238,12 +239,15 @@ compute !arr =
   unsafePerformIO $ do
     mArr <- unsafeNew (size arr)
     let !comp = getComp arr
-        !wIds =
-          case comp of
-            Seq -> [1]
-            ParOn caps -> caps
-    withScheduler_ wIds $ \scheduler ->
-      loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+        nc = case comp of
+               Seq -> S.Seq
+               ParOn ws -> S.ParOn ws
+        -- !wIds =
+        --   case comp of
+        --     Seq -> [1]
+        --     ParOn caps -> caps
+    S.withScheduler_ nc $ \scheduler ->
+      loadArray (S.numWorkers scheduler) (S.scheduleWork scheduler) arr (unsafeLinearWrite mArr)
     unsafeFreeze comp mArr
 {-# INLINE compute #-}
 

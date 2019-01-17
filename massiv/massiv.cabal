@@ -67,6 +67,7 @@ library
                      , deepseq
                      , exceptions
                      , ghc-prim
+                     , massiv-scheduler
                      , primitive
                      , vector
   include-dirs: include

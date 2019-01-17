@@ -132,29 +132,34 @@ instance Floating e => Floating (Value e) where
 instance Functor (Stencil ix e) where
   fmap = rmapStencil
   {-# INLINE fmap #-}
-  --  f stencil@(Stencil {stencilFunc = g}) = stencil {stencilFunc = stF}
-  --   where
-  --     stF s = Value . f . unValue . g s
-  --     {-# INLINE stF #-}
+
 
 -- Profunctor
 
 
-dimapStencil :: (t -> e) -> (b -> a) -> Stencil ix e b -> Stencil ix t a
-dimapStencil f g stencil@(Stencil {stencilFunc = sf}) =
-  stencil {stencilFunc = \s -> Value . g . unValue . sf (Value . f . unValue . s)}
+dimapStencil :: (c -> d) -> (a -> b) -> Stencil ix d a -> Stencil ix c b
+dimapStencil f g stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+  where
+    sf' s = Value . g . unValue . sf (Value . f . unValue . s)
+    {-# INLINE sf' #-}
 {-# INLINE dimapStencil #-}
 
 
-lmapStencil :: (b -> e) -> Stencil ix e a -> Stencil ix b a
-lmapStencil f stencil@(Stencil {stencilFunc = sf}) =
-  stencil {stencilFunc = \s -> sf (Value . f . unValue . s)}
+lmapStencil :: (c -> d) -> Stencil ix d a -> Stencil ix c a
+lmapStencil f stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+  where
+    sf' s = sf (Value . f . unValue . s)
+    {-# INLINE sf' #-}
 {-# INLINE lmapStencil #-}
 
 rmapStencil :: (a -> b) -> Stencil ix e a -> Stencil ix e b
-rmapStencil g stencil@(Stencil {stencilFunc = sf}) =
-  stencil {stencilFunc = \s -> Value . g . unValue . sf s}
+rmapStencil f stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+  where
+    sf' s = Value . f . unValue . sf s
+    {-# INLINE sf' #-}
 {-# INLINE rmapStencil #-}
+
+
 
 -- TODO: Figure out interchange law (u <*> pure y = pure ($ y) <*> u) and issue
 -- with discarding size and center. Best idea so far is to increase stencil size to
