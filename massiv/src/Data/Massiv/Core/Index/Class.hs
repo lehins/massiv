@@ -7,6 +7,7 @@
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE PatternSynonyms            #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
 -- |
@@ -23,6 +24,19 @@ import           Control.DeepSeq           (NFData (..))
 import           Data.Functor.Identity     (runIdentity)
 import           Data.Massiv.Core.Iterator
 import           GHC.TypeLits
+
+
+-- | Helpful type synonym for migrating to newer version @0.3@
+type Sz ix = ix
+
+-- | Helpful pattern synonym for migrating to newer version @0.3@
+pattern Sz :: ix -> Sz ix
+pattern Sz ix = ix
+
+type Sz1 = Sz Int
+pattern Sz1 :: Int -> Int
+pattern Sz1 ix = ix
+
 
 -- | A way to select Array dimension at a value level.
 newtype Dim = Dim Int deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
@@ -144,7 +158,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   {-# INLINE [1] foldlIndex #-}
 
   -- | Check whether index is within the size.
-  isSafeIndex :: ix -- ^ Size
+  isSafeIndex :: Sz ix -- ^ Size
               -> ix -- ^ Index
               -> Bool
   default isSafeIndex :: Index (Lower ix) => ix -> ix -> Bool
@@ -155,7 +169,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   {-# INLINE [1] isSafeIndex #-}
 
   -- | Convert linear index from size and index
-  toLinearIndex :: ix -- ^ Size
+  toLinearIndex :: Sz ix -- ^ Size
                 -> ix -- ^ Index
                 -> Int
   default toLinearIndex :: Index (Lower ix) => ix -> ix -> Int
@@ -174,16 +188,16 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   {-# INLINE [1] toLinearIndexAcc #-}
 
   -- | Compute an index from size and linear index
-  fromLinearIndex :: ix -> Int -> ix
-  default fromLinearIndex :: Index (Lower ix) => ix -> Int -> ix
+  fromLinearIndex :: Sz ix -> Int -> ix
+  default fromLinearIndex :: Index (Lower ix) => Sz ix -> Int -> ix
   fromLinearIndex sz k = consDim q ixL
     where !(q, ixL) = fromLinearIndexAcc (snd (unconsDim sz)) k
   {-# INLINE [1] fromLinearIndex #-}
 
   -- | Compute an index from size and linear index using an accumulator, thus trying to optimize for
   -- tail recursion while getting the index computed.
-  fromLinearIndexAcc :: ix -> Int -> (Int, ix)
-  default fromLinearIndexAcc :: Index (Lower ix) => ix -> Int -> (Int, ix)
+  fromLinearIndexAcc ::Sz  ix -> Int -> (Int, ix)
+  default fromLinearIndexAcc :: Index (Lower ix) => Sz ix -> Int -> (Int, ix)
   fromLinearIndexAcc ix' !k = (q, consDim r ixL)
     where !(m, ix) = unconsDim ix'
           !(kL, ixL) = fromLinearIndexAcc ix k
@@ -192,13 +206,13 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
 
   -- | A way to make sure index is withing the bounds for the supplied size. Takes two functions
   -- that will be invoked whenever index (2nd arg) is outsize the supplied size (1st arg)
-  repairIndex :: ix -- ^ Size
+  repairIndex :: Sz ix -- ^ Size
               -> ix -- ^ Index
               -> (Int -> Int -> Int) -- ^ Repair when below zero
               -> (Int -> Int -> Int) -- ^ Repair when higher than size
               -> ix
   default repairIndex :: Index (Lower ix)
-    => ix -> ix -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> ix
+    => Sz ix -> ix -> (Int -> Int -> Int) -> (Int -> Int -> Int) -> ix
   repairIndex !sz !ix rBelow rOver =
     consDim (repairIndex n i rBelow rOver) (repairIndex szL ixL rBelow rOver)
     where !(n, szL) = unconsDim sz
@@ -330,15 +344,15 @@ instance Index Ix2T where
   {-# INLINE [1] unsnocDim #-}
   getIndex (i2,  _) 2 = Just i2
   getIndex ( _, i1) 1 = Just i1
-  getIndex _      _ = Nothing
+  getIndex _      _   = Nothing
   {-# INLINE [1] getIndex #-}
   setIndex (_, i1) 2 i2 = Just (i2, i1)
   setIndex (i2, _) 1 i1 = Just (i2, i1)
-  setIndex _      _ _ = Nothing
+  setIndex _      _ _   = Nothing
   {-# INLINE [1] setIndex #-}
   dropDim (_, i1) 2 = Just i1
   dropDim (i2, _) 1 = Just i2
-  dropDim _      _ = Nothing
+  dropDim _      _  = Nothing
   {-# INLINE [1] dropDim #-}
   pullOutDim (i2, i1) 2 = Just (i2, i1)
   pullOutDim (i2, i1) 1 = Just (i1, i2)
@@ -376,22 +390,22 @@ instance Index Ix3T where
   setIndex ( _, i2, i1) 3 i3 = Just (i3, i2, i1)
   setIndex (i3,  _, i1) 2 i2 = Just (i3, i2, i1)
   setIndex (i3, i2,  _) 1 i1 = Just (i3, i2, i1)
-  setIndex _      _ _    = Nothing
+  setIndex _      _ _        = Nothing
   {-# INLINE [1] setIndex #-}
   dropDim ( _, i2, i1) 3 = Just (i2, i1)
   dropDim (i3,  _, i1) 2 = Just (i3, i1)
   dropDim (i3, i2,  _) 1 = Just (i3, i2)
-  dropDim _      _    = Nothing
+  dropDim _      _       = Nothing
   {-# INLINE [1] dropDim #-}
   pullOutDim (i3, i2, i1) 3 = Just (i3, (i2, i1))
   pullOutDim (i3, i2, i1) 2 = Just (i2, (i3, i1))
   pullOutDim (i3, i2, i1) 1 = Just (i1, (i3, i2))
-  pullOutDim _      _    = Nothing
+  pullOutDim _      _       = Nothing
   {-# INLINE [1] pullOutDim #-}
   insertDim (i2, i1) 3 i3 = Just (i3, i2, i1)
   insertDim (i3, i1) 2 i2 = Just (i3, i2, i1)
   insertDim (i3, i2) 1 i1 = Just (i3, i2, i1)
-  insertDim _      _ _ = Nothing
+  insertDim _      _ _    = Nothing
   pureIndex i = (i, i, i)
   {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i3, i2, i1) (i3', i2', i1') = (f i3 i3', f i2 i2', f i1 i1')
@@ -504,7 +518,7 @@ instance Index Ix5T where
   {-# INLINE [1] liftIndex2 #-}
 
 -- | Helper function for throwing out of bounds errors
-errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
+errorIx :: (Show ix, Show ix') => String -> Sz ix -> ix' -> a
 errorIx fName sz ix =
   error $
   fName ++
@@ -513,7 +527,7 @@ errorIx fName sz ix =
 
 
 -- | Helper function for throwing error when sizes do not match
-errorSizeMismatch :: (Show ix, Show ix') => String -> ix -> ix' -> a
+errorSizeMismatch :: (Show ix, Show ix') => String -> Sz ix -> ix' -> a
 errorSizeMismatch fName sz sz' =
   error $ fName ++ ": Mismatch in size of arrays " ++ show sz ++ " vs " ++ show sz'
 {-# NOINLINE errorSizeMismatch #-}

@@ -44,7 +44,7 @@ import           Prelude                            as P
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
 --
--- >>> makeArrayR U Par (2 :> 3 :. 4) (\ (i :> j :. k) -> i * i + j * j == k * k)
+-- >>> makeArrayR U Par (Sz (2 :> 3 :. 4)) (\ (i :> j :. k) -> i * i + j * j == k * k)
 -- (Array U Par (2 :> 3 :. 4)
 --   [ [ [ True,False,False,False ]
 --     , [ False,True,False,False ]
@@ -56,13 +56,13 @@ import           Prelude                            as P
 --     ]
 --   ])
 --
-makeArrayR :: Construct r ix e => r -> Comp -> ix -> (ix -> e) -> Array r ix e
+makeArrayR :: Construct r ix e => r -> Comp -> Sz ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
 {-# INLINE makeArrayR #-}
 
 
 -- | Same as `makeArrayR`, but restricted to 1-dimensional arrays.
-makeVectorR :: Construct r Ix1 e => r -> Comp -> Ix1-> (Ix1 -> e) -> Array r Ix1 e
+makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix1 e
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
@@ -71,7 +71,7 @@ makeVectorR _ = makeArray
 --
 -- @since 0.2.6
 --
-makeArrayA :: (Mutable r a b, Applicative f) => Comp -> a -> (a -> f b) -> f (Array r a b)
+makeArrayA :: (Mutable r ix b, Applicative f) => Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
 makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 {-# INLINE makeArrayA #-}
 
@@ -79,7 +79,7 @@ makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 --
 -- @since 0.2.6
 --
-makeArrayAR :: (Mutable r a b, Applicative f) => r -> Comp -> a -> (a -> f b) -> f (Array r a b)
+makeArrayAR :: (Mutable r ix b, Applicative f) => r -> Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
 makeArrayAR _ = makeArrayA
 {-# INLINE makeArrayAR #-}
 

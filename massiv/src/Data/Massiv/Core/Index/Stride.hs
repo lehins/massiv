@@ -96,7 +96,7 @@ strideStart (SafeStride stride) ix =
 {-# INLINE strideStart #-}
 
 -- | Adjust size according to the stride.
-strideSize :: Index ix => Stride ix -> ix -> ix
+strideSize :: Index ix => Stride ix -> Sz ix -> ix
 strideSize (SafeStride stride) sz = liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) sz) stride
 {-# INLINE strideSize #-}
 

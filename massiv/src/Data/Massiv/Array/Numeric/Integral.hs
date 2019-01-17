@@ -118,7 +118,7 @@ integralApprox ::
      (Fractional e, Load DW ix e, Mutable r ix e)
   => (e -> Dim -> Int -> Stencil ix e e) -- ^ Integration Stencil
   -> e -- ^ @d@ - Length of interval per cell
-  -> ix -- ^ @sz@ - Result size of the matrix
+  -> Sz ix -- ^ @sz@ - Result size of the matrix
   -> Int -- ^ @n@ - Number of samples
   -> Array r ix e -- ^ Array with values of @f(x,y,..)@ that will be used as source for integration.
   -> Array M ix e
@@ -139,7 +139,7 @@ midpointRule ::
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
   -> e -- ^ @a@ - Starting value point.
   -> e -- ^ @d@ - Distance per matrix cell.
-  -> ix -- ^ @sz@ - Result matrix size.
+  -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction.
   -> Array M ix e
 midpointRule comp r f a d sz n =
@@ -155,7 +155,7 @@ trapezoidRule ::
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
   -> e -- ^ @a@ - starting point
   -> e -- ^ @d@ - distance per matrix cell
-  -> ix -- ^ @sz@ - end matrix size
+  -> Sz ix -- ^ @sz@ - end matrix size
   -> Int -- ^ @n@ - number of sample points per cell in each direction
   -> Array M ix e
 trapezoidRule comp r f a d sz n =
@@ -170,7 +170,7 @@ simpsonsRule ::
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
   -> e -- ^ @a@ - starting point
   -> e -- ^ @d@ - distance per matrix cell
-  -> ix -- ^ @sz@ - end matrix size
+  -> Sz ix -- ^ @sz@ - end matrix size
   -> Int -- ^ @n@ - number of sample points per cell in each direction. This value must be even,
          -- otherwise error..
   -> Array M ix e
@@ -202,7 +202,7 @@ fromFunction ::
   -- function that should be applied to individual indicies.
   -> a -- ^ @a@ - Starting point
   -> a -- ^ @d@ - Distance per cell
-  -> ix -- ^ @sz@ - Size of the desired array
+  -> Sz ix -- ^ @sz@ - Size of the desired array
   -> Int -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
   -> Array D ix e
 fromFunction comp f a d sz n =

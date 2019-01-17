@@ -95,14 +95,14 @@ class (Typeable r, Index ix) => Construct r ix e where
 class Construct r ix e => Size r ix e where
 
   -- | /O(1)/ - Get the size of an array
-  size :: Array r ix e -> ix
+  size :: Array r ix e -> Sz ix
 
   -- | /O(1)/ - Change the size of an array. New size is not validated.
-  unsafeResize :: Index ix' => ix' -> Array r ix e -> Array r ix' e
+  unsafeResize :: Index ix' => Sz ix' -> Array r ix e -> Array r ix' e
 
   -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
   -- not validated.
-  unsafeExtract :: ix -> ix -> Array r ix e -> Array (EltRepr r ix) ix e
+  unsafeExtract :: ix -> Sz ix -> Array r ix e -> Array (EltRepr r ix) ix e
 
 
 -- | Arrays that can be used as source to practically any manipulation function.
@@ -157,7 +157,7 @@ class Size r ix e => Load r ix e where
     -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
                       -- always `id`)
     -> Stride ix -- ^ Stride to use
-    -> ix -- ^ Size of the target array affected by the stride.
+    -> Sz ix -- ^ Size of the target array affected by the stride.
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> m e) -- ^ Function that reads an element from target array
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
@@ -167,7 +167,7 @@ class Size r ix e => Load r ix e where
        Int
     -> (m () -> m ())
     -> Stride ix
-    -> ix
+    -> Sz ix
     -> Array r ix e
     -> (Int -> m e)
     -> (Int -> e -> m ())
@@ -215,10 +215,10 @@ class OuterSlice r ix e where
   outerLength = headDim . size
 
 class Size r ix e => InnerSlice r ix e where
-  unsafeInnerSlice :: Array r ix e -> (Lower ix, Int) -> Int -> Elt r ix e
+  unsafeInnerSlice :: Array r ix e -> (Sz (Lower ix), Sz1) -> Int -> Elt r ix e
 
 class Size r ix e => Slice r ix e where
-  unsafeSlice :: Array r ix e -> ix -> ix -> Dim -> Maybe (Elt r ix e)
+  unsafeSlice :: Array r ix e -> ix -> Sz ix -> Dim -> Maybe (Elt r ix e)
 
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
@@ -238,7 +238,7 @@ class Manifest r ix e => Mutable r ix e where
   data MArray s r ix e :: *
 
   -- | Get the size of a mutable array.
-  msize :: MArray s r ix e -> ix
+  msize :: MArray s r ix e -> Sz ix
 
   unsafeThaw :: PrimMonad m =>
                 Array r ix e -> m (MArray (PrimState m) r ix e)
@@ -249,12 +249,12 @@ class Manifest r ix e => Mutable r ix e where
   -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
   -- either.
   unsafeNew :: PrimMonad m =>
-               ix -> m (MArray (PrimState m) r ix e)
+               Sz ix -> m (MArray (PrimState m) r ix e)
 
   -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
   -- either.
   unsafeNewZero :: PrimMonad m =>
-                   ix -> m (MArray (PrimState m) r ix e)
+                   Sz ix -> m (MArray (PrimState m) r ix e)
 
   unsafeLinearRead :: PrimMonad m =>
                       MArray (PrimState m) r ix e -> Int -> m e
@@ -313,9 +313,9 @@ class Construct r ix e => Ragged r ix e where
 
   -- tail :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
 
-  unsafeGenerateM :: Monad m => Comp -> ix -> (ix -> m e) -> m (Array r ix e)
+  unsafeGenerateM :: Monad m => Comp -> Sz ix -> (ix -> m e) -> m (Array r ix e)
 
-  edgeSize :: Array r ix e -> ix
+  edgeSize :: Array r ix e -> Sz ix
 
   flatten :: Array r ix e -> Array r Ix1 e
 
@@ -340,7 +340,7 @@ class Construct r ix e => Ragged r ix e where
 --
 makeArray :: Construct r ix e =>
              Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
-          -> ix -- ^ Size of the result array. Negative values will result in an empty array.
+          -> Sz ix -- ^ Size of the result array. Negative values will result in an empty array.
           -> (ix -> e) -- ^ Function to generate elements at a particular index
           -> Array r ix e
 makeArray !c = unsafeMakeArray c . liftIndex (max 0)

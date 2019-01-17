@@ -96,7 +96,7 @@ makeStencil = makeStencilDef def
 makeStencilDef
   :: Index ix
   => e
-  -> ix -- ^ Size of the stencil
+  -> Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
   -> ((ix -> Value e) -> Value a)
   -- ^ Stencil function.

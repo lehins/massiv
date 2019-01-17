@@ -1,3 +1,5 @@
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -25,7 +27,7 @@ module Data.Massiv.CoreArbitrary
 
 import           Control.DeepSeq            (NFData, deepseq)
 import           Control.Exception          (Exception, SomeException, catch)
-import           Data.Massiv.Array
+import           Data.Massiv.Array          hiding (type Sz, pattern Sz)
 import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
 import           Test.QuickCheck

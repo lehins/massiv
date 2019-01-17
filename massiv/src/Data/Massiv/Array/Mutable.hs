@@ -60,7 +60,7 @@ import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Scheduler
 
 -- | Initialize a new mutable array. Negative size will result in an empty array.
-new :: (Mutable r ix e, PrimMonad m) => ix -> m (MArray (PrimState m) r ix e)
+new :: (Mutable r ix e, PrimMonad m) => Sz ix -> m (MArray (PrimState m) r ix e)
 new sz = unsafeNewZero (liftIndex (max 0) sz)
 {-# INLINE new #-}
 
@@ -80,7 +80,7 @@ freeze comp marr = clone <$> unsafeFreeze comp marr
 --
 -- ====__Examples__
 --
--- >>> createArray_ Seq (Ix1 2) (\ marr -> write marr 0 10 >> write marr 1 11) :: IO (Array P Ix1 Int)
+-- >>> createArray_ Seq (Sz1 2) (\ marr -> write marr 0 10 >> write marr 1 11) :: IO (Array P Ix1 Int)
 -- (Array P Seq (2)
 --   [ 10,11 ])
 --
@@ -89,7 +89,7 @@ freeze comp marr = clone <$> unsafeFreeze comp marr
 createArray_ ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
-  -> ix -- ^ Size of the newly created array
+  -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
@@ -103,7 +103,7 @@ createArray_ comp sz action = fmap snd $ createArray comp sz action
 createArray ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
-  -> ix -- ^ Size of the newly created array
+  -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (a, Array r ix e)
@@ -119,7 +119,7 @@ createArray comp sz action = do
 -- @since 0.2.6
 --
 createArrayST_ ::
-     Mutable r ix e => Comp -> ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
+     Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
 createArrayST_ comp sz action = runST $ createArray_ comp sz action
 {-# INLINE createArrayST_ #-}
 
@@ -129,7 +129,7 @@ createArrayST_ comp sz action = runST $ createArray_ comp sz action
 -- @since 0.2.6
 --
 createArrayST ::
-     Mutable r ix e => Comp -> ix -> (forall s. MArray s r ix e -> ST s a) -> (a, Array r ix e)
+     Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> (a, Array r ix e)
 createArrayST comp sz action = runST $ createArray comp sz action
 {-# INLINE createArrayST #-}
 
@@ -146,7 +146,7 @@ createArrayST comp sz action = runST $ createArray comp sz action
 --
 -- >>> import Data.IORef
 -- >>> ref <- newIORef (0 :: Int)
--- >>> generateArray Seq (Ix1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
+-- >>> generateArray Seq (Sz1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
 -- 0
 -- 1
 -- 2
@@ -161,7 +161,7 @@ createArrayST comp sz action = runST $ createArray comp sz action
 generateArray ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ingored during generation)
-  -> ix -- ^ Resulting size of the array
+  -> Sz ix -- ^ Resulting size of the array
   -> (ix -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
 generateArray comp sz' gen = do
@@ -179,7 +179,7 @@ generateArray comp sz' gen = do
 generateArrayIO ::
      (Mutable r ix e)
   => Comp
-  -> ix
+  -> Sz ix
   -> (ix -> IO e)
   -> IO (Array r ix e)
 generateArrayIO comp sz' gen = do
@@ -224,7 +224,7 @@ generateArrayIO comp sz' gen = do
 unfoldlPrim_ ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
-  -> ix -- ^ Size of the desired array
+  -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
@@ -239,7 +239,7 @@ unfoldlPrim_ comp sz gen acc0 = fmap snd $ unfoldlPrim comp sz gen acc0
 unfoldlPrim ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
-  -> ix -- ^ Size of the desired array
+  -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)

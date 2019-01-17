@@ -107,7 +107,7 @@ instance Index ix => Construct M ix e where
   {-# INLINE unsafeMakeArray #-}
 
 -- | Create a boxed from usual size and index to element function
-makeBoxedVector :: Index ix => ix -> (ix -> a) -> V.Vector a
+makeBoxedVector :: Index ix => Sz ix -> (ix -> a) -> V.Vector a
 makeBoxedVector !sz f = V.generate (totalElem sz) (f . fromLinearIndex sz)
 {-# INLINE makeBoxedVector #-}
 

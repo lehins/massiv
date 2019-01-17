@@ -107,7 +107,7 @@ makeWindowedArray
   :: Source r ix e
   => Array r ix e -- ^ Source array that will have a window inserted into it
   -> ix -- ^ Start index for the window
-  -> ix -- ^ Size of the window
+  -> Sz ix -- ^ Size of the window
   -> (ix -> e) -- ^ Inside window indexing function
   -> Array DW ix e
 makeWindowedArray !arr !windowStart !windowSize windowIndex

@@ -47,7 +47,7 @@ import           Prelude                            hiding (splitAt, traverse)
 -- fully encapsulated in a source array, otherwise `Nothing` is returned,
 extract :: Size r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size of the resulting array
+        -> Sz ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Maybe (Array (EltRepr r ix) ix e)
 extract !sIx !newSz !arr
@@ -63,7 +63,7 @@ extract !sIx !newSz !arr
 -- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
 extract' :: Size r ix e
         => ix -- ^ Starting index
-        -> ix -- ^ Size of the resulting array
+        -> Sz ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
         -> Array (EltRepr r ix) ix e
 extract' !sIx !newSz !arr =
@@ -100,14 +100,14 @@ extractFromTo' sIx eIx = extract' sIx $ liftIndex2 (-) eIx sIx
 
 -- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
 -- number of elements does not match the source array.
-resize :: (Index ix', Size r ix e) => ix' -> Array r ix e -> Maybe (Array r ix' e)
+resize :: (Index ix', Size r ix e) => Sz ix' -> Array r ix e -> Maybe (Array r ix' e)
 resize !sz !arr
   | totalElem sz == totalElem (size arr) = Just $ unsafeResize sz arr
   | otherwise = Nothing
 {-# INLINE resize #-}
 
 -- | Same as `resize`, but will throw an error if supplied dimensions are incorrect.
-resize' :: (Index ix', Size r ix e) => ix' -> Array r ix e -> Array r ix' e
+resize' :: (Index ix', Size r ix e) => Sz ix' -> Array r ix e -> Array r ix' e
 resize' !sz !arr =
   maybe
     (error $
@@ -261,7 +261,7 @@ transposeOuter !arr = unsafeMakeArray (getComp arr) (transOuter (size arr)) newV
 --   ])
 --
 backpermute :: (Source r' ix' e, Index ix) =>
-               ix -- ^ Size of the result array
+               Sz ix -- ^ Size of the result array
             -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
             -> Array r' ix' e -- ^ Source array.
             -> Array D ix e
@@ -373,7 +373,7 @@ splitAt' dim i arr =
 -- | Create an array by traversing a source array.
 traverse
   :: (Source r1 ix1 e1, Index ix)
-  => ix -- ^ Size of the result array
+  => Sz ix -- ^ Size of the result array
   -> ((ix1 -> e1) -> ix -> e) -- ^ Function that will receive a source array safe index function and
                               -- an index for an element it should return a value of.
   -> Array r1 ix1 e1 -- ^ Source array
@@ -385,7 +385,7 @@ traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluateAt arr1))
 -- | Create an array by traversing two source arrays.
 traverse2
   :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
-  => ix
+  => Sz ix
   -> ((ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1
   -> Array r2 ix2 e2

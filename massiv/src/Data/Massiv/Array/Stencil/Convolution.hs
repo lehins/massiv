@@ -36,7 +36,7 @@ import           GHC.Exts                           (inline)
 --
 makeConvolutionStencil
   :: (Index ix, Num e)
-  => ix
+  => Sz ix
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
@@ -71,7 +71,7 @@ makeConvolutionStencilFromKernel kArr = Stencil sz sCenter stencil
 -- | Make a <https://en.wikipedia.org/wiki/Cross-correlation cross-correlation> stencil.
 makeCorrelationStencil
   :: (Index ix, Num e)
-  => ix
+  => Sz ix
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e

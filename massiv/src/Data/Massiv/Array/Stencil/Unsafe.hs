@@ -30,7 +30,7 @@ import           GHC.Exts                           (inline)
 forStencilUnsafe ::
      (Source r ix e, Manifest r ix e)
   => Array r ix e
-  -> ix -- ^ Size of the stencil
+  -> Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
   -> ((ix -> Maybe e) -> a)
   -- ^ Stencil function that receives a "get" function as it's argument that can

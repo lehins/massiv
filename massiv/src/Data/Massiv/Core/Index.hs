@@ -15,6 +15,10 @@ module Data.Massiv.Core.Index
   ( module Data.Massiv.Core.Index.Ix
   , Stride
   , pattern Stride
+  , Sz
+  , pattern Sz
+  , Sz1
+  , pattern Sz1
   , unStride
   , toLinearIndexStride
   , strideStart
@@ -54,7 +58,6 @@ import           Data.Massiv.Core.Index.Ix
 import           Data.Massiv.Core.Index.Stride
 import           Data.Massiv.Core.Iterator
 import           GHC.TypeLits
-
 
 -- | Approach to be used near the borders during various transformations.
 -- Whenever a function needs information not only about an element of interest, but
@@ -111,7 +114,7 @@ instance NFData e => NFData (Border e) where
 handleBorderIndex ::
      Index ix
   => Border e -- ^ Broder resolution technique
-  -> ix -- ^ Size
+  -> Sz ix -- ^ Size
   -> (ix -> e) -- ^ Index function that produces an element
   -> ix -- ^ Index
   -> e
@@ -132,13 +135,15 @@ zeroIndex = pureIndex 0
 {-# INLINE [1] zeroIndex #-}
 
 -- | Checks whether the size is valid.
-isSafeSize :: Index ix => ix -> Bool
+--
+-- __Note__ Will be removed in /massiv-0.3.0/
+isSafeSize :: Index ix => Sz ix -> Bool
 isSafeSize = (zeroIndex >=)
 {-# INLINE [1] isSafeSize #-}
 
 
 -- | Checks whether array with this size can hold at least one element.
-isNonEmpty :: Index ix => ix -> Bool
+isNonEmpty :: Index ix => Sz ix -> Bool
 isNonEmpty !sz = isSafeIndex sz zeroIndex
 {-# INLINE [1] isNonEmpty #-}
 
@@ -264,7 +269,7 @@ insertDimension ix d = insertDim' ix (fromDimension d)
 -- | Iterate over N-dimensional space lenarly from start to end in row-major fashion with an
 -- accumulator
 iterLinearM :: (Index ix, Monad m)
-            => ix -- ^ Size
+            => Sz ix -- ^ Size
             -> Int -- ^ Linear start
             -> Int -- ^ Linear end
             -> Int -- ^ Increment
@@ -278,7 +283,7 @@ iterLinearM !sz !k0 !k1 !inc cond !acc f =
 
 -- | Same as `iterLinearM`, except without an accumulator.
 iterLinearM_ :: (Index ix, Monad m) =>
-                ix -- ^ Size
+                Sz ix -- ^ Size
              -> Int -- ^ Start
              -> Int -- ^ End
              -> Int -- ^ Increment

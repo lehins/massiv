@@ -239,7 +239,7 @@ instance ( Index ix
 unsafeGenerateParM ::
      (Elt LN ix e ~ Array LN (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
   => [Int]
-  -> ix
+  -> Sz ix
   -> (ix -> m e)
   -> m (Array L ix e)
 unsafeGenerateParM wws !sz f = do
@@ -323,7 +323,7 @@ unsafeGenerateN ::
   , Ragged r (Lower ix) e
   , Elt r ix e ~ Array r (Lower ix) e )
   => Comp
-  -> ix
+  -> Sz ix
   -> (ix -> e)
   -> Array r ix e
 unsafeGenerateN Seq sz f = runIdentity $ unsafeGenerateM Seq sz (return . f)

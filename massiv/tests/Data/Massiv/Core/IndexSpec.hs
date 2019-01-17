@@ -1,3 +1,5 @@
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE GADTs               #-}
@@ -7,7 +9,7 @@
 module Data.Massiv.Core.IndexSpec (Sz(..), SzZ(..), SzIx(..), DimIx(..), spec) where
 
 import           Control.Monad
-import           Data.Massiv.Core.Index
+import           Data.Massiv.Core.Index          hiding (type Sz, pattern Sz)
 import           Data.Functor.Identity
 import           Test.Hspec
 import           Test.QuickCheck

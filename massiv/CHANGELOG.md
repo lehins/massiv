@@ -1,5 +1,12 @@
 # 0.2.6
 
+* Fixed a serious performance regression in `Stencil`'s `Functor` instance, which was introduced in
+  version `0.2.3`
+* Added type and pattern synonyms `Sz` for future compatibility with version `0.3`. Could be useful
+  for migration.
+
+# 0.2.6
+
 * Add `expand*` family of functions.
 * Long awaited `makeArrayM`/`makeArrayA` and `mapM`/`forM`/`imapM`/`iforM`/`traverseA`/`itraverseA`
   alnog with corresponding functions allowing for supplying representation.

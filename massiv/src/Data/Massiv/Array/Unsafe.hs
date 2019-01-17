@@ -50,7 +50,7 @@ import           System.IO.Unsafe                   (unsafePerformIO)
 
 
 unsafeBackpermute :: (Source r' ix' e, Index ix) =>
-                     ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
+                     Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
 unsafeBackpermute !sz ixF !arr =
   unsafeMakeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
 {-# INLINE unsafeBackpermute #-}
@@ -58,7 +58,7 @@ unsafeBackpermute !sz ixF !arr =
 
 unsafeTraverse
   :: (Source r1 ix1 e1, Index ix)
-  => ix
+  => Sz ix
   -> ((ix1 -> e1) -> ix -> e)
   -> Array r1 ix1 e1
   -> Array D ix e
@@ -69,7 +69,7 @@ unsafeTraverse sz f arr1 =
 
 unsafeTraverse2
   :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
-  => ix
+  => Sz ix
   -> ((ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1
   -> Array r2 ix2 e2
@@ -93,19 +93,19 @@ unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 
 
 -- | Create an array sequentially using mutable interface
-unsafeGenerateArray :: Mutable r ix e => ix -> (ix -> e) -> Array r ix e
+unsafeGenerateArray :: Mutable r ix e => Sz ix -> (ix -> e) -> Array r ix e
 unsafeGenerateArray !sz f = runST $ do
   marr <- unsafeNew sz
   iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !k !ix ->
     unsafeLinearWrite marr k (f ix)
   unsafeFreeze Seq marr
 {-# INLINE unsafeGenerateArray #-}
-
+{-# DEPRECATED unsafeGenerateArray #-}
 
 -- | Create an array in parallel using mutable interface
 --
 -- @since 0.1.5
-unsafeGenerateArrayP :: Mutable r ix e => [Int] -> ix -> (ix -> e) -> Array r ix e
+unsafeGenerateArrayP :: Mutable r ix e => [Int] -> Sz ix -> (ix -> e) -> Array r ix e
 unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
   marr <- unsafeNew sz
   divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
@@ -118,3 +118,4 @@ unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
         unsafeLinearWrite marr k (f ix)
   unsafeFreeze (ParOn wIds) marr
 {-# INLINE unsafeGenerateArrayP #-}
+{-# DEPRECATED unsafeGenerateArrayP #-}
