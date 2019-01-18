@@ -195,10 +195,8 @@ install:
       cabal --version
       travis_retry cabal update
 
-      PACKAGES="$TRAVIS_BUILD_DIR/massiv-scheduler $TRAVIS_BUILD_DIR/massiv"
-      echo $PACKAGES
-
-      cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+      MASSIV_SCHEDULER="$TRAVIS_BUILD_DIR/massiv-scheduler"
+      MASSIV="$TRAVIS_BUILD_DIR/massiv"
       ;;
   esac
   set +ex
@@ -211,23 +209,37 @@ script:
       stack $ARGS test --haddock --no-haddock-deps --flag massiv:unsafe-checks
       ;;
     cabal)
-      # cabal install --enable-tests --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
 
       ORIGDIR=$(pwd)
-      for dir in $PACKAGES
-      do
-        cd $dir
-        cabal check || [ "$CABALVER" == "1.16" ]
-        cabal sdist
-        PKGVER=$(cabal info . | awk '{print $2;exit}')
-        SRC_TGZ=$PKGVER.tar.gz
-        cd dist
-        tar zxfv "$SRC_TGZ"
-        cd "$PKGVER"
-        cabal configure --enable-tests
-        cabal test --show-details=streaming --log=/dev/stdout
-        cd $ORIGDIR
-      done
+
+      cd "$MASSIV_SCHEDULER"
+      cabal check || [ "$CABALVER" == "1.16" ]
+      cabal sdist
+      PKGVER=$(cabal info . | awk '{print $2;exit}')
+      SRC_TGZ=$PKGVER.tar.gz
+      cd dist
+      tar zxfv "$SRC_TGZ"
+      cd "$PKGVER"
+      cabal sandbox init
+      cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS
+      cabal configure --enable-tests
+      cabal test --show-details=streaming --log=/dev/stdout
+
+      cd "$MASSIV"
+      cabal check || [ "$CABALVER" == "1.16" ]
+      cabal sdist
+      PKGVER=$(cabal info . | awk '{print $2;exit}')
+      SRC_TGZ=$PKGVER.tar.gz
+      cd dist
+      tar zxfv "$SRC_TGZ"
+      cd "$PKGVER"
+      cabal sandbox init
+      cabal sandbox add-source "$MASSIV_SCHEDULER"
+      cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS
+      cabal configure --enable-tests
+      cabal test --show-details=streaming --log=/dev/stdout
+
+      cd $ORIGDIR
       ;;
   esac
   set +ex
