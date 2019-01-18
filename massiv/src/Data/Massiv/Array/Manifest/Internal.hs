@@ -42,7 +42,6 @@ module Data.Massiv.Array.Manifest.Internal
 
 import           Control.Exception                   (try)
 import           Control.Monad                       (unless)
-import           Control.Monad.ST                    (runST)
 import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Fold.Internal as M

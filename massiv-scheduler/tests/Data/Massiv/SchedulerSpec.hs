@@ -1,6 +1,6 @@
 module Data.Massiv.SchedulerSpec (spec) where
 
-import           Control.Concurrent      (killThread, myThreadId)
+import           Control.Concurrent      (killThread, myThreadId, threadDelay)
 import           Control.Concurrent.MVar
 import           Control.DeepSeq
 import           Control.Exception       hiding (assert)
@@ -94,8 +94,8 @@ prop_CatchDivideByZeroNested comp a (Positive k) = assertExceptionIO (== DivideB
 
 
 -- | Make sure one co-worker can kill another one, of course when there are at least two of.
-prop_KillTheCoworker :: Comp -> Property
-prop_KillTheCoworker comp =
+prop_KillBlockedCoworker :: Comp -> Property
+prop_KillBlockedCoworker comp =
   assertExceptionIO
     (== DivideByZero)
     (withScheduler comp $ \scheduler -> do
@@ -105,6 +105,17 @@ prop_KillTheCoworker comp =
            mv <- newEmptyMVar
            scheduleWork scheduler $ readMVar mv
            scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int)))
+
+-- | Make sure one co-worker can kill another one, of course when there are at least two of.
+prop_KillSleepingCoworker :: Comp -> Property
+prop_KillSleepingCoworker comp =
+  assertExceptionIO
+    (== DivideByZero)
+    (withScheduler comp $ \scheduler -> do
+       scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int))
+       scheduleWork scheduler $ do
+         threadDelay 500000
+         error "This should never happen! Thread should have been killed by now.")
 
 
 prop_ExpectAsyncException :: Comp -> Property
@@ -137,9 +148,9 @@ spec = do
     it "ArbitraryNested" $ property prop_ArbitraryCompNested
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchDivideByZeroNested" $ property prop_CatchDivideByZeroNested
-    it "KillTheCoworker" $ property $ prop_KillTheCoworker
+    it "KillBlockedCoworker" $ property $ prop_KillBlockedCoworker
+    it "KillSleepingCoworker" $ property $ prop_KillSleepingCoworker
     it "ExpectAsyncException" $ property $ prop_ExpectAsyncException
-
 
 assertExceptionIO :: (NFData a, Exception exc) =>
                      (exc -> Bool) -- ^ Return True if that is the exception that was expected

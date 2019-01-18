@@ -96,7 +96,7 @@ test-suite tests
                     , Data.Massiv.CoreArbitrary
                     , Data.Massiv.Core.IndexSpec
                     , Data.Massiv.Core.SchedulerSpec
-  build-depends:      base            >= 4.8 && < 5
+  build-depends:      base             >= 4.8 && < 5
                     , bytestring
                     , deepseq
                     , data-default

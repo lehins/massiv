@@ -182,23 +182,21 @@ withScheduler comp submitWork = do
   jc <- readIORef sJobsCountRef
   when (jc == 0) $ scheduleWork_ scheduler (pure ())
   let spawnWorkersWith fork ws = do
-          tidsMVar <- newEmptyMVar
-          tids <-
-            forM ws $ \w ->
-              mask_ $
-              fork w $ \unmask ->
-                catch
-                  (unmask $ runWorker sJQueue onRetire)
-                  (unmask . handleWorkerException sJQueue workDoneMVar tidsMVar)
-          putMVar tidsMVar tids
+        forM ws $ \w ->
+          mask_ $
+          fork w $ \unmask ->
+            catch
+              (unmask $ runWorker sJQueue onRetire)
+              (unmask . handleWorkerException sJQueue workDoneMVar sNumWorkers)
       {-# INLINE spawnWorkersWith #-}
-  case comp of
-    Seq -- / no need to fork threads for a sequential computation
-     -> runWorker sJQueue onRetire
-    Par -> spawnWorkersWith forkOnWithUnmask [1 .. sNumWorkers]
-    ParOn ws -> spawnWorkersWith forkOnWithUnmask ws
-    ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. sNumWorkers]
-  -- / wait for all worker to finish. If either of them had a problem this MVar will contain an
+  tids <-
+    case comp of
+      Seq -- / no need to fork threads for a sequential computation
+       -> runWorker sJQueue onRetire >> return []
+      Par -> spawnWorkersWith forkOnWithUnmask [1 .. sNumWorkers]
+      ParOn ws -> spawnWorkersWith forkOnWithUnmask ws
+      ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. sNumWorkers]
+  -- / wait for all worker to finish. If any one of them had a problem this MVar will contain an
   -- exception
   mExc <- readMVar workDoneMVar
   case mExc of
@@ -208,7 +206,9 @@ withScheduler comp submitWork = do
      -> flushResults sJQueue
     Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the main thread
              -- will think like it's his own
-      | Just (WorkerException wexc) <- fromException exc -> throwIO wexc
+      | Just (WorkerException wexc) <- fromException exc -> do
+        traverse_ (`throwTo` WorkerTerminateException) tids
+        throwIO wexc
     Just exc -> throwIO exc -- Somethig funky is happening, propagate it.
 
 
@@ -225,10 +225,10 @@ withScheduler_ comp = void . withScheduler comp
 
 -- | Specialized exception handler for the work scheduler.
 handleWorkerException ::
-     JQueue a -> MVar (Maybe SomeException) -> MVar [ThreadId] -> SomeException -> IO ()
-handleWorkerException jQueue workDoneMVar tidsMVar exc = do
+     JQueue a -> MVar (Maybe SomeException) -> Int -> SomeException -> IO ()
+handleWorkerException jQueue workDoneMVar nWorkers exc = do
   case fromException exc of
-    Just wexc | WorkerTerminateException <- wexc -> return ()
+    Just wexc | WorkerTerminateException <- wexc -> print "die" >> return ()
       -- \ some co-worker died, we can just move on with our death.
     _ ->
       case fromException exc of
@@ -236,23 +236,15 @@ handleWorkerException jQueue workDoneMVar tidsMVar exc = do
           putMVar workDoneMVar $ Just $ toException $ WorkerAsyncException asyncExc
           -- \ Let the main thread know about this terrible async exception.
           -- / Do the co-worker cleanup
-          terminateAllButMe
+          retireWorkersN jQueue (nWorkers - 1)
           throwIO asyncExc
           -- \ do not recover from an async exception
         Nothing -> do
           putMVar workDoneMVar $ Just exc
           -- \ Main thread must know how we died
           -- / Do the co-worker cleanup
-          terminateAllButMe
+          retireWorkersN jQueue (nWorkers - 1)
           -- / As to one self, gracefully leave off into the outer world
-  where
-    terminateAllButMe = do
-      tids <- takeMVar tidsMVar
-      -- \ First try to retire suspended workers gracefully
-      retireWorkersN jQueue (length tids - 1)
-      -- / Terminate all the other workers.
-      tid <- myThreadId
-      traverse_ (`throwTo` WorkerTerminateException) $ filter (/= tid) tids
 
 
 -- | This exception should normally be not seen in the wild. The only one that could possibly pop up
