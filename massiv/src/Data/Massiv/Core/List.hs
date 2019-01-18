@@ -30,7 +30,6 @@ import           Control.Exception
 import           Control.Monad                   (unless, when)
 import           Data.Coerce
 import           Data.Foldable                   (foldr')
-import           Data.Functor.Identity
 import qualified Data.List                       as L
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal
@@ -214,31 +213,6 @@ instance ( Index ix
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L (Lower ix) e)) sep (coerce xs)
 
-
--- unsafeGenerateParM ::
---      (Elt LN ix e ~ Array LN (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
---   => [Int]
---   -> ix
---   -> (ix -> m e)
---   -> m (Array L ix e)
--- unsafeGenerateParM wws !sz f = do
---   res <- sequence $ unsafePerformIO $ do
---     let !(k, szL) = unconsDim sz
---     resLs <- divideWork wws k $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start -> do
---           scheduleWork scheduler $ do
---             res <- loopM start (< (start + chunkLength)) (+ 1) [] $ \i acc -> do
---               return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
---             return $! sequence res
---         when (slackStart < totalLength) $
---           scheduleWork scheduler $ do
---             res <- loopM (slackStart) (< totalLength) (+ 1) [] $ \i acc -> do
---               return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
---             return $! sequence res
---     return resLs
---   return $ LArray (ParOn wws) $ List $ concat res
--- {-# INLINE unsafeGenerateParM #-}
-
 unsafeGenerateParM ::
      (Elt LN ix e ~ Array LN (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
   => Comp
@@ -247,54 +221,27 @@ unsafeGenerateParM ::
   -> m (Array L ix e)
 unsafeGenerateParM comp !sz f = do
   res <- sequence $ unsafePerformIO $ do
-    let !(k, szL) = unconsSz sz
-        totalLength = totalElem sz
+    let !(ksz, szL) = unconsSz sz
+        !k = unSz ksz
     withScheduler comp $ \ scheduler ->
-      splitLinearly (numWorkers scheduler) (unSz k) $ \ chunkLength slackStart -> do
+      splitLinearly (numWorkers scheduler) k $ \ chunkLength slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $ do
             res <- loopDeepM start (< (start + chunkLength)) (+ 1) [] $ \i acc ->
               return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
             return $! sequence res
-        when (slackStart < totalLength) $
+        when (slackStart < k) $
           scheduleWork scheduler $ do
-            res <- loopDeepM slackStart (< totalLength) (+ 1) [] $ \i acc ->
+            res <- loopDeepM slackStart (< k) (+ 1) [] $ \i acc ->
               return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
             return $! sequence res
   return $ LArray comp $ List $ concat res
 {-# INLINE unsafeGenerateParM #-}
 
 
-
--- unsafeGenerateParM ::
---      (Elt LN ix e ~ Array LN (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
---   => [Int]
---   -> ix
---   -> (ix -> m e)
---   -> m (Array L ix e)
--- unsafeGenerateParM wws !sz f = do
---   res <- sequence $ unsafePerformIO $ do
---     let !(k, szL) = unconsDim sz
---     resLs <- divideWork wws k $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---         when (slackStart < totalLength) $
---           scheduleWork scheduler $ do
---             res <- loopM (totalLength - 1) (>= slackStart) (subtract 1) [] $ \i acc -> do
---               return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
---             return $! sequence res
---         loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start -> do
---           let !end = start - chunkLength
---           scheduleWork scheduler $ do
---             res <- loopM (start - 1) (>= end) (subtract 1) [] $ \i acc -> do
---               return (fmap lData (unsafeGenerateM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
---             return $! sequence res
---     return resLs
---   return $ LArray (ParOn wws) $ List $ concat res
--- {-# INLINE unsafeGenerateParM #-}
-
 instance {-# OVERLAPPING #-} Construct L Ix1 e where
   setComp c arr = arr { lComp = c }
   {-# INLINE setComp #-}
-  -- makeArray Seq sz f = runIdentity $ generateRaggedM Seq sz (return . f)
   makeArray comp sz f = LArray comp $ List $ unsafePerformIO $
     withScheduler comp $ \scheduler ->
       loopM_ 0 (< coerce sz) (+ 1) (scheduleWork scheduler . return . f)
@@ -321,13 +268,12 @@ unsafeGenerateN ::
   -> Sz ix
   -> (ix -> e)
   -> Array r ix e
-unsafeGenerateN Seq sz f = runIdentity $ generateRaggedM Seq sz (return . f)
-unsafeGenerateN c@(ParOn wss) sz f = unsafePerformIO $ do
+unsafeGenerateN comp sz f = unsafePerformIO $ do
   let !(m, szL) = unconsSz sz
-  xs <- withScheduler c $ \scheduler ->
+  xs <- withScheduler comp $ \scheduler ->
     loopM_ 0 (< coerce m) (+ 1) $ \i -> scheduleWork scheduler $
-      generateRaggedM c szL $ \ix -> return $ f (consDim i ix)
-  return $! foldr' cons (empty c) xs
+      generateRaggedM comp szL $ \ix -> return $ f (consDim i ix)
+  return $! foldr' cons (empty comp) xs
 {-# INLINE unsafeGenerateN #-}
 
 

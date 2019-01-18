@@ -24,7 +24,7 @@ module Data.Massiv.Scheduler
   -- * Schedule work
   , scheduleWork
   , scheduleWork_
-  , WorkerException(..)
+  , fromWorkerAsyncException
   -- * Helper functions
   , traverse_
   , mapConcurrently
@@ -88,8 +88,8 @@ scheduleWork = scheduleWorkInternal mkJob
 -- | Similarly to `scheduleWork`, but ignores the result of computation, thus having less overhead.
 --
 -- @since 0.1.0
-scheduleWork_ :: Scheduler a -> IO () -> IO ()
-scheduleWork_ = scheduleWorkInternal (return . Job_)
+scheduleWork_ :: Scheduler a -> IO b -> IO ()
+scheduleWork_ = scheduleWorkInternal (return . Job_ . void)
 
 scheduleWorkInternal :: (IO b -> IO (Job a)) -> Scheduler a -> IO b -> IO ()
 scheduleWorkInternal mkJob' Scheduler {sJQueue, sJobsCountRef, sNumWorkers} action = do
@@ -212,12 +212,12 @@ withScheduler comp submitWork = do
     Just exc -> throwIO exc -- Somethig funky is happening, propagate it.
 
 
--- | Same as `withScheduler`, but ignore the result. Make sure tu use `scheduleWork_` to get optimal
--- performance.
+-- | Same as `withScheduler`, but discards results of submitted jobs. Make sure to use
+-- `scheduleWork_` to get optimal performance.
 --
 -- @since 0.1.0
 withScheduler_ :: Comp -- ^ Computation strategy
-              -> (Scheduler a -> IO ())
+              -> (Scheduler a -> IO b)
               -- ^ Action that will be scheduling all the work.
               -> IO ()
 withScheduler_ comp = void . withScheduler comp
@@ -270,5 +270,28 @@ data WorkerException
   -- asynchronously with this one.
   deriving Show
 
-instance Exception WorkerException
+instance Exception WorkerException where
+  displayException workerExc =
+    case workerExc of
+      WorkerException exc ->
+        "A worker handled a job that ended with exception: " ++ displayException exc
+      WorkerAsyncException exc ->
+        "A worker was killed with an async exception: " ++ displayException exc
+      WorkerTerminateException -> "A worker was terminated by the scheduler"
 
+
+-- | If any one of the workers dies with an async exception, it is possible to recover it in the
+-- main thread with this function.
+--
+-- >>> let didAWorkerDie = handleJust fromWorkerAsyncException (return . (== ThreadKilled)) . fmap or
+-- >>> didAWorkerDie $ withScheduler Par $ \ s -> scheduleWork s $ pure False
+-- False
+-- >>> didAWorkerDie $ withScheduler Par $ \ s -> scheduleWork s $ myThreadId >>= killThread >> pure False
+-- True
+--
+-- @since 0.1.0
+fromWorkerAsyncException :: Exception e => SomeException -> Maybe e
+fromWorkerAsyncException exc =
+  case fromException exc of
+    Just (WorkerAsyncException asyncExc) -> asyncExceptionFromException (toException asyncExc)
+    _                                    -> Nothing

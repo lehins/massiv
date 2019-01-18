@@ -1,14 +1,16 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
 import           Control.Concurrent
-import           Control.Exception.Base     (ArithException (DivideByZero),
-                                             AsyncException (ThreadKilled))
+import           Control.Exception.Base    (ArithException (DivideByZero),
+                                            AsyncException (ThreadKilled),
+                                            displayException)
+import           Data.Massiv.CoreArbitrary as A
 import           Data.Massiv.Scheduler
-import           Data.Massiv.CoreArbitrary  as A
-import           Prelude                    as P
+import           Prelude                   as P
 import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
@@ -28,8 +30,8 @@ prop_CatchDivideByZero (ArrIx arr ix) caps =
        (setComp (ParOn caps) arr))
 
 -- | Ensure proper exception handling in nested parallel computation
-_prop_CatchNested :: ArrIx D Ix1 (ArrIxP D Ix1 Int) -> [Int] -> Property
-_prop_CatchNested (ArrIx arr ix) caps =
+prop_CatchNested :: ArrIx D Ix1 (ArrIxP D Ix1 Int) -> [Int] -> Property
+prop_CatchNested (ArrIx arr ix) caps =
   assertException
     (== DivideByZero)
     (computeAs U $
@@ -50,14 +52,15 @@ _prop_CatchNested (ArrIx arr ix) caps =
 prop_AllWorkersDied :: [Int] -> (Int, [Int]) -> Property
 prop_AllWorkersDied wIds (hId, ids) =
   assertExceptionIO
-    (== ThreadKilled)
+    (\exc ->
+       case fromWorkerAsyncException exc of
+         Just ThreadKilled -> True
+         _ -> error $ "Received unexpected exception: " ++ displayException exc)
     (withScheduler_ Par $ \scheduler1 ->
        scheduleWork
          scheduler1
          (withScheduler_ (ParOn wIds) $ \scheduler ->
-            P.mapM_
-              (\_ -> scheduleWork scheduler (myThreadId >>= killThread))
-              (hId : ids)))
+            P.mapM_ (\_ -> scheduleWork scheduler (myThreadId >>= killThread)) (hId : ids)))
 
 
 -- | Check weather all jobs have been completed and returned order is correct
@@ -73,8 +76,6 @@ spec :: Spec
 spec = do
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
-    it "CatchNested" $ do
-      pendingWith "Behaves weirdly with GHC 7.10 and whenever executed with --coverage"
-      --property prop_CatchNested
+    it "CatchNested" $ property prop_CatchNested
     it "AllWorkersDied" $ property prop_AllWorkersDied
     it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed
