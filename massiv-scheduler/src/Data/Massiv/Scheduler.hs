@@ -280,8 +280,10 @@ instance Exception WorkerException where
       WorkerTerminateException -> "A worker was terminated by the scheduler"
 
 
--- | If any one of the workers dies with an async exception, it is possible to recover it in the
--- main thread with this function.
+-- | If any one of the workers dies with an async exception, it is possible to recover that
+-- exception in the main thread with this function. This does not apply to `Seq`uential computation,
+-- since no workers are created in such case and async exception will be received by the main thread
+-- directly.
 --
 -- >>> let didAWorkerDie = handleJust fromWorkerAsyncException (return . (== ThreadKilled)) . fmap or
 -- >>> didAWorkerDie $ withScheduler Par $ \ s -> scheduleWork s $ pure False

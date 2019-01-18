@@ -195,7 +195,7 @@ install:
       cabal --version
       travis_retry cabal update
 
-      PACKAGES="$TRAVIS_BUILD_DIR/massiv"
+      PACKAGES="$TRAVIS_BUILD_DIR/massiv-scheduler $TRAVIS_BUILD_DIR/massiv"
       echo $PACKAGES
 
       cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES

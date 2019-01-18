@@ -25,7 +25,6 @@ library
                      , exceptions
                      , ghc-prim
                      , unliftio-core
-                     , say
 
   default-language:    Haskell2010
   ghc-options:         -Wall

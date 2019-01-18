@@ -1,6 +1,6 @@
 module Data.Massiv.SchedulerSpec (spec) where
 
-
+import           Control.Concurrent      (killThread, myThreadId)
 import           Control.Concurrent.MVar
 import           Control.DeepSeq
 import           Control.Exception       hiding (assert)
@@ -107,6 +107,20 @@ prop_KillTheCoworker comp =
            scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int)))
 
 
+prop_ExpectAsyncException :: Comp -> Property
+prop_ExpectAsyncException comp =
+  let didAWorkerDie = handleJust fromWorkerAsyncException' (return . (== ThreadKilled)) . fmap or
+      fromWorkerAsyncException' =
+        case comp of
+          Seq -> asyncExceptionFromException
+          _ -> fromWorkerAsyncException
+   in (monadicIO $
+       run $
+       didAWorkerDie $
+       withScheduler comp $ \s -> scheduleWork s (myThreadId >>= killThread >> pure False)) .&&.
+      (monadicIO $
+       run $ fmap not $ didAWorkerDie $ withScheduler Par $ \s -> scheduleWork s $ pure False)
+
 spec :: Spec
 spec = do
   describe "Seq" $ do
@@ -124,6 +138,7 @@ spec = do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchDivideByZeroNested" $ property prop_CatchDivideByZeroNested
     it "KillTheCoworker" $ property $ prop_KillTheCoworker
+    it "ExpectAsyncException" $ property $ prop_ExpectAsyncException
 
 
 assertExceptionIO :: (NFData a, Exception exc) =>
