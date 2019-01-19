@@ -176,7 +176,7 @@ before_install:
     cabal)
       # Use the more reliable S3 mirror of Hackage
       mkdir -p $HOME/.cabal
-      echo 'remote-repo: hackage.haskell.org:http://hackage.fpcomplete.com/' > $HOME/.cabal/config
+      # echo 'remote-repo: hackage.haskell.org:http://hackage.fpcomplete.com/' > $HOME/.cabal/config
       echo 'remote-repo-cache: $HOME/.cabal/packages' >> $HOME/.cabal/config
       ;;
   esac
