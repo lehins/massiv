@@ -17,7 +17,7 @@ language: generic
 cache:
   directories:
   - $HOME/.ghc
-  - $HOME/.cabal
+  #- $HOME/.cabal
   - $HOME/.stack
   - $TRAVIS_BUILD_DIR/massiv/.stack-work
 
