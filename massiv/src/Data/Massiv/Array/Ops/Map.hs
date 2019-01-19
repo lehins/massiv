@@ -63,10 +63,10 @@ import           Control.Monad                       (void)
 import           Control.Monad.Primitive             (PrimMonad)
 import           Control.Monad.ST                    (runST)
 import           Data.Coerce
-import           Data.Foldable                       (foldlM)
+import qualified Data.Foldable                       as F (foldlM)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
+import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
 import           Data.Massiv.Scheduler
@@ -176,36 +176,39 @@ izipWith3 f arr1 arr2 arr3 =
 -- @since 0.2.6
 --
 traverseA ::
-     (Source r' ix a, Mutable r ix b, Applicative f)
+     (Source r' ix a, Mutable r ix b, Monad f)
   => (a -> f b)
   -> Array r' ix a
   -> f (Array r ix b)
-traverseA f arr = loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr))
+traverseA f arr = loadList <$> foldrM g [] arr
+  -- loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr))
   where
+    g e acc = (:acc) <$> f e
     loadList xs =
       runST $ do
         marr <- unsafeNew (size arr)
-        _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
+        _ <- F.foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
 {-# INLINE traverseA #-}
 
--- | Traverse with an `Applicative` index aware action over an array sequentially.
+-- | Traverse with an `Monad` index aware action over an array sequentially.
 --
 -- @since 0.2.6
 --
 itraverseA ::
-     (Source r' ix a, Mutable r ix b, Applicative f)
+     (Source r' ix a, Mutable r ix b, Monad f)
   => (ix -> a -> f b)
   -> Array r' ix a
   -> f (Array r ix b)
-itraverseA f arr =
-  fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
+itraverseA f arr = loadList <$> ifoldrM g [] arr
+  -- fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
   where
+    g ix e acc = (:acc) <$> f ix e
     loadList xs =
       runST $ do
         marr <- unsafeNew (size arr)
-        _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
+        _ <- F.foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
 {-# INLINE itraverseA #-}
@@ -270,7 +273,7 @@ itraversePR _ = itraverseP
 -- @since 0.2.6
 --
 traverseAR ::
-     (Source r' ix a, Mutable r ix b, Applicative f)
+     (Source r' ix a, Mutable r ix b, Monad f)
   => r
   -> (a -> f b)
   -> Array r' ix a
@@ -283,7 +286,7 @@ traverseAR _ = traverseA
 -- @since 0.2.6
 --
 itraverseAR ::
-     (Source r' ix a, Mutable r ix b, Applicative f)
+     (Source r' ix a, Mutable r ix b, Monad f)
   => r
   -> (ix -> a -> f b)
   -> Array r' ix a

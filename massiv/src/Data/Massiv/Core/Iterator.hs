@@ -9,6 +9,7 @@
 --
 module Data.Massiv.Core.Iterator
   ( loop
+  , loopA_
   , loopM
   , loopM_
   , loopDeepM
@@ -19,6 +20,8 @@ module Data.Massiv.Core.Iterator
 
 
 -- | Efficient loop with an accumulator
+--
+-- @since 0.1.0
 loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
 loop !init' condition increment !initAcc f = go init' initAcc
   where
@@ -46,6 +49,8 @@ loopM !init' condition increment !initAcc f = go init' initAcc
 
 
 -- | Efficient monadic loop. Result of each iteration is discarded.
+--
+-- @since 0.1.0
 loopM_ :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> m a) -> m ()
 loopM_ !init' condition increment f = go init'
   where
@@ -54,6 +59,19 @@ loopM_ !init' condition increment f = go init'
         False -> return ()
         True  -> f step >> go (increment step)
 {-# INLINE loopM_ #-}
+
+
+-- | Efficient monadic loop. Result of each iteration is discarded.
+--
+-- @since 0.3.0
+loopA_ :: Applicative f => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> f a) -> f ()
+loopA_ !init' condition increment f = go init'
+  where
+    go !step =
+      case condition step of
+        False -> pure ()
+        True  -> f step *> go (increment step)
+{-# INLINE loopA_ #-}
 
 
 -- | Similar to `loopM`, but slightly less efficient monadic loop with an accumulator that reverses

@@ -214,12 +214,6 @@ script:
 
       cd "$MASSIV_SCHEDULER"
       cabal check || [ "$CABALVER" == "1.16" ]
-      cabal sdist
-      PKGVER=$(cabal info . | awk '{print $2;exit}')
-      SRC_TGZ=$PKGVER.tar.gz
-      cd dist
-      tar zxfv "$SRC_TGZ"
-      cd "$PKGVER"
       cabal sandbox init
       cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS
       cabal configure --enable-tests
@@ -227,12 +221,6 @@ script:
 
       cd "$MASSIV"
       cabal check || [ "$CABALVER" == "1.16" ]
-      cabal sdist
-      PKGVER=$(cabal info . | awk '{print $2;exit}')
-      SRC_TGZ=$PKGVER.tar.gz
-      cd dist
-      tar zxfv "$SRC_TGZ"
-      cd "$PKGVER"
       cabal sandbox init
       cabal sandbox add-source "$MASSIV_SCHEDULER"
       cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS

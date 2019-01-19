@@ -71,7 +71,7 @@ makeVectorR _ = makeArray
 --
 -- @since 0.2.6
 --
-makeArrayA :: (Mutable r ix b, Applicative f) => Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
+makeArrayA :: (Mutable r ix b, Monad f) => Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
 makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 {-# INLINE makeArrayA #-}
 
@@ -79,7 +79,7 @@ makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 --
 -- @since 0.2.6
 --
-makeArrayAR :: (Mutable r ix b, Applicative f) => r -> Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
+makeArrayAR :: (Mutable r ix b, Monad f) => r -> Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
 makeArrayAR _ = makeArrayA
 {-# INLINE makeArrayAR #-}
 
