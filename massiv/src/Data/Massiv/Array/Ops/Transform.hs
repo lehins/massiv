@@ -28,6 +28,8 @@ module Data.Massiv.Array.Ops.Transform
   -- ** Append/Split
   , append
   , append'
+  , concat
+  , concat'
   , splitAt
   , splitAt'
   -- ** Upsample/Downsample
@@ -38,14 +40,16 @@ module Data.Massiv.Array.Ops.Transform
   , traverse2
   ) where
 
-import           Control.Monad                   (guard, unless)
+import           Control.Monad                   as M (foldM_, guard, unless)
+import           Data.Foldable                   as F (foldl', foldrM)
+import           Data.Bifunctor                  (bimap)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Maybe                      (fromMaybe)
-import           Prelude                         hiding (splitAt, traverse)
+import           Prelude                         as P hiding (splitAt, traverse, concat)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
@@ -313,30 +317,69 @@ backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
 -- Nothing
 --
 append :: (Source r1 ix e, Source r2 ix e) =>
-          Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array D ix e)
+          Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array DL ix e)
 append n !arr1 !arr2 = do
   let sz1 = size arr1
       sz2 = size arr2
-  (k1, _) <- pullOutSz sz1 n
-  (k2, _) <- pullOutSz sz2 n
-  sz1' <- setSz sz2 n k1
-  guard $ sz1 == sz1'
-  newSz <- setSz sz1 n (SafeSz (unSz k1 + unSz k2))
+  (k1, szl1) <- pullOutSz sz1 n
+  (k2, szl2) <- pullOutSz sz2 n
+  guard $ szl1 == szl2
+  let k1' = unSz k1
+  newSz <- insertSz szl1 n (SafeSz (k1' + unSz k2))
   return $
-    makeArray (getComp arr1) newSz $ \ !ix ->
-      fromMaybe (errorImpossible "append" ix) $ do
-        k' <- getDim ix n
-        if k' < unSz k1
-          then Just (unsafeIndex arr1 ix)
-          else do
-            i <- getDim ix n
-            ix' <- setDim ix n (i - unSz k1)
-            return $ unsafeIndex arr2 ix'
+    DLArray
+      { dlComp = getComp arr1 <> getComp arr2
+      , dlSize = newSz
+      , dlLoad =
+          \_numWorkers scheduleWith dlWrite -> do
+            scheduleWith $
+              iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
+                dlWrite (toLinearIndex newSz ix) (unsafeIndex arr1 ix)
+            scheduleWith $
+              iterM_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
+                let i = getDim' ix n
+                    ix' = setDim' ix n (i + k1')
+                 in dlWrite (toLinearIndex newSz ix') (unsafeIndex arr2 ix)
+      }
 {-# INLINE append #-}
+
+concat' :: Source r ix e => Dim -> [Array r ix e] -> Array DL ix e
+concat' n arrs =
+  case concat n arrs of
+    Nothing -> error $ "Data.Massiv.Array.concat': size mismatch "
+    Just resArr -> resArr
+
+
+concat :: Source r ix e => Dim -> [Array r ix e] -> Maybe (Array DL ix e)
+concat n !arrs = do
+  guard $ not $ null arrs
+  let szs = P.map (unSz . size) arrs
+  (ks, (szl:szls)) <-
+    F.foldrM (\ !sz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDim sz n) ([], []) szs
+  guard $ all (== szl) szls
+  let kTotal = SafeSz $ F.foldl' (+) 0 ks
+  newSz <- insertSz (SafeSz szl) n kTotal
+  return $
+    DLArray
+      { dlComp = mconcat $ P.map getComp arrs
+      , dlSize = newSz
+      , dlLoad =
+          \_numWorkers scheduleWith dlWrite ->
+            let arrayLoader !kAcc (k, arr) = do
+                  scheduleWith $
+                    iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
+                      let i = getDim' ix n
+                          ix' = setDim' ix n (i + kAcc)
+                       in dlWrite (toLinearIndex newSz ix') (unsafeIndex arr ix)
+                  pure (kAcc + k)
+             in M.foldM_ arrayLoader 0 $ P.zip ks arrs
+      }
+{-# INLINE concat #-}
+
 
 -- | Same as `append`, but will throw an error instead of returning `Nothing` on mismatched sizes.
 append' :: (Source r1 ix e, Source r2 ix e) =>
-           Dim -> Array r1 ix e -> Array r2 ix e -> Array D ix e
+           Dim -> Array r1 ix e -> Array r2 ix e -> Array DL ix e
 append' dim arr1 arr2 =
   case append dim arr1 arr2 of
     Just arr -> arr
@@ -411,7 +454,7 @@ downsample !stride arr =
 --
 -- @since 0.3.0
 upsample
-  :: (Index (Lower ix), Load r ix e) => e -> Stride ix -> Array r ix e -> Array DL ix e
+  :: Load r ix e => e -> Stride ix -> Array r ix e -> Array DL ix e
 upsample !fillWith !safeStride arr =
   DLArray
     { dlComp = getComp arr
@@ -420,6 +463,11 @@ upsample !fillWith !safeStride arr =
         \numWorkers scheduleWith dlWrite -> do
           unless (stride == pureIndex 1) $
             loopM_ 0 (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
+          -- TODO: experiment a bit more. So far the fastest solution is to prefill the whole array
+          -- with default value and override non-stride elements afterwards.  This approach seems a
+          -- bit wasteful, nevertheless it is fastest
+          --
+          -- TODO: Is it possible to use fast fill operation that is available for MutableByteArray?
           loadArray numWorkers scheduleWith arr (\i -> dlWrite (adjustLinearStride i))
     }
   where
@@ -431,6 +479,16 @@ upsample !fillWith !safeStride arr =
     !sz = size arr
     !newsz = SafeSz (timesStride $ unSz sz)
 {-# INLINE upsample #-}
+
+  -- This was a sample optimization, that turned out to be significantly (~ x9) slower
+  -- makeLoadArray (getComp arr) newsz $ \numWorkers scheduleWith dlWrite -> do
+  --   iterM_ zeroIndex stride (pureIndex 1) (<) $ \ixs ->
+  --     if ixs == zeroIndex
+  --       then loadArray numWorkers scheduleWith arr $ \ !i -> dlWrite (adjustLinearStride i)
+  --       else let !is = toLinearIndex newsz ixs
+  --             in scheduleWith $
+  --                loopM_ 0 (< totalElem sz) (+ 1) $ \ !i ->
+  --                  dlWrite (is + adjustLinearStride i) fillWith
 
 
 

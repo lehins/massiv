@@ -1,51 +1,56 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
 module Data.Massiv.Array.Ops.TransformSpec (spec) where
 
 import           Data.Massiv.CoreArbitrary as A
-import           Data.Typeable             (Typeable)
+import           Prelude                   as P
 import           Test.Hspec
 import           Test.QuickCheck
-
-
-prop_ExtractAppend
-  :: (Eq e, Source r ix e, Extract r ix e, Source (EltRepr r ix) ix e, Arbitrary (ArrIx r ix e))
-  => proxy (r, ix, e) -> DimIx ix -> ArrIx r ix e -> Bool
-prop_ExtractAppend _ (DimIx dim) (ArrIx arr ix) =
-  maybe False ((delay arr ==) . uncurry (append' dim)) $
-  A.splitAt dim (getDim' ix dim) arr
+import           Test.QuickCheck.Function
 
 
 prop_transposeOuterInner :: Arr D Ix2 Int -> Property
 prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
 
 
-specN ::
-     ( Eq e
-     , Extract r ix e
-     , Source r ix e
-     , Source (EltRepr r ix) ix e
-     , Typeable e
-     , Show (Array r ix e)
-     , Arbitrary (ArrIx r ix e)
-     )
-  => proxy (r, ix, e)
-  -> Spec
-specN r = do
-  it "ExtractAppend" $ property $ prop_ExtractAppend r
+prop_upsampleDownsample ::
+     (Show (Array P ix Int), Index ix) => ArrTiny P ix Int -> Stride ix -> Int -> Property
+prop_upsampleDownsample (ArrTiny arr) stride fill =
+  arr === compute (downsample stride (computeAs P (upsample fill stride arr)))
+
+prop_ExtractAppend
+  :: (Show (Array P ix Int), Index ix)
+  => DimIx ix -> ArrIx P ix Int -> Property
+prop_ExtractAppend (DimIx dim) (ArrIx arr ix) =
+  arr === compute (uncurry (append' dim) $ A.splitAt' dim (getDim' ix dim) arr)
+
+prop_ConcatAppend
+  :: (Show (Array P ix Int), Index ix)
+  => DimIx ix -> Comp -> Sz ix -> NonEmptyList (Fun ix Int) -> Property
+prop_ConcatAppend (DimIx dim) comp sz (NonEmpty fns) =
+  foldl (\arr -> computeAs P . append' dim arr) (head arrs) (tail arrs) ===
+  computeAs P (concat' dim arrs)
+  where
+    arrs = P.map (makeArrayR P comp sz . apply) fns
 
 
 spec :: Spec
 spec = do
   it "transposeOuterInner" $ property prop_transposeOuterInner
-  describe "Delayed" $ do
-    describe "Ix1" $ specN (Nothing :: Maybe (D, Ix1, Int))
-    describe "Ix2" $ specN (Nothing :: Maybe (D, Ix2, Int))
-    describe "Ix3" $ specN (Nothing :: Maybe (D, Ix3, Int))
-    describe "Ix4" $ specN (Nothing :: Maybe (D, Ix4, Int))
-  describe "Unboxed" $ do
-    describe "Ix1" $ specN (Nothing :: Maybe (U, Ix1, Int))
-    describe "Ix2" $ specN (Nothing :: Maybe (U, Ix2, Int))
-    describe "Ix3" $ specN (Nothing :: Maybe (U, Ix3, Int))
-    describe "Ix4" $ specN (Nothing :: Maybe (U, Ix4, Int))
+  describe "upsampleDownsample" $ do
+    it "Ix1" $ property (prop_upsampleDownsample @Ix1)
+    it "Ix2" $ property (prop_upsampleDownsample @Ix2)
+    it "Ix3" $ property (prop_upsampleDownsample @Ix3)
+    it "Ix4" $ property (prop_upsampleDownsample @Ix4)
+  describe "ExtractAppend" $ do
+    it "Ix1" $ property (prop_ExtractAppend @Ix1)
+    it "Ix2" $ property (prop_ExtractAppend @Ix2)
+    it "Ix3" $ property (prop_ExtractAppend @Ix3)
+    it "Ix4" $ property (prop_ExtractAppend @Ix4)
+  describe "ConcatAppend" $ do
+    it "Ix1" $ property (prop_ConcatAppend @Ix1)
+    it "Ix2" $ property (prop_ConcatAppend @Ix2)
+    it "Ix3" $ property (prop_ConcatAppend @Ix3)
+    it "Ix4" $ property (prop_ConcatAppend @Ix4)

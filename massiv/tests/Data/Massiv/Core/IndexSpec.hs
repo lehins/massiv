@@ -35,7 +35,7 @@ instance (Index ix, Arbitrary ix) => Arbitrary (SzNE ix) where
 instance (Index ix, Arbitrary ix) => Arbitrary (Stride ix) where
   arbitrary = do
     Positive (Small x) <- arbitrary
-    Stride <$> liftIndex ((+1) . (`mod` x)) <$> arbitrary
+    Stride <$> liftIndex ((+1) . (`mod` (min 6 x))) <$> arbitrary
 
 instance (Index ix, Arbitrary ix) => Arbitrary (SzIx ix) where
   arbitrary = do
