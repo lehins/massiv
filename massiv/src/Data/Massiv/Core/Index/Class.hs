@@ -93,7 +93,7 @@ class (Eq ix, Ord ix, Show ix, NFData ix) => Index ix where
   dimensions :: ix -> Dim
 
   -- | Total number of elements in an array of this size.
-  totalElem :: ix -> Int
+  totalElem :: Sz ix -> Int
 
   -- | Prepend a dimension to the index
   consDim :: Int -> Lower ix -> ix

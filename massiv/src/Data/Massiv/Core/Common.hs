@@ -87,7 +87,7 @@ class (Typeable r, Index ix) => Construct r ix e where
   setComp :: Comp -> Array r ix e -> Array r ix e
 
   -- | Construct an array. No size validation is performed.
-  unsafeMakeArray :: Comp -> ix -> (ix -> e) -> Array r ix e
+  unsafeMakeArray :: Comp -> Sz ix -> (ix -> e) -> Array r ix e
 
 
 -- | An array that contains size information. They can be resized and new arrays extracted from it
@@ -331,7 +331,7 @@ class Construct r ix e => Ragged r ix e where
 -- | Create an Array. Resulting type either has to be unambiguously inferred or restricted manually,
 -- like in the example below.
 --
--- >>> makeArray Seq (3 :. 4) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
+-- >>> makeArray Seq (Sz (3 :. 4)) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
 -- (Array D Seq (3 :. 4)
 -- [ [ 0,0,0,0 ]
 -- , [ 0,1,0,0 ]

@@ -100,7 +100,6 @@ unsafeGenerateArray !sz f = runST $ do
     unsafeLinearWrite marr k (f ix)
   unsafeFreeze Seq marr
 {-# INLINE unsafeGenerateArray #-}
-{-# DEPRECATED unsafeGenerateArray "In favor of `makeArray`. Will be removed in massiv-0.3.0" #-}
 
 -- | Create an array in parallel using mutable interface
 --
@@ -118,4 +117,3 @@ unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
         unsafeLinearWrite marr k (f ix)
   unsafeFreeze (ParOn wIds) marr
 {-# INLINE unsafeGenerateArrayP #-}
-{-# DEPRECATED unsafeGenerateArrayP "In favor of `makeArray`. Will be removed in massiv-0.3.0" #-}

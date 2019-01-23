@@ -1,4 +1,4 @@
-# 0.2.6
+# 0.2.7
 
 * Fixed a serious performance regression in `Stencil`'s `Functor` instance, which was introduced in
   version `0.2.3`
