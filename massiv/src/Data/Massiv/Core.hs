@@ -32,7 +32,7 @@ module Data.Massiv.Core
   , InnerSlice
   , Manifest
   , Mutable
-  , Ragged(..)
+  , Ragged
   , Nested(..)
   , NestedStruct
   , L(..)

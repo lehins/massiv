@@ -23,6 +23,7 @@ module Data.Massiv.Array.Manifest.Internal
   , makeBoxedVector
   , toManifest
   , compute
+  , computeS
   , computeAs
   , computeProxy
   , computeSource
@@ -42,6 +43,7 @@ module Data.Massiv.Array.Manifest.Internal
 
 import           Control.Exception                   (try)
 import           Control.Monad                       (unless)
+import           Control.Monad.ST
 import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Fold.Internal as M
@@ -220,6 +222,15 @@ compute !arr =
       loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
     unsafeFreeze comp mArr
 {-# INLINE compute #-}
+
+computeS :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
+computeS !arr =
+  runST $ do
+    mArr <- unsafeNew (size arr)
+    let !comp = getComp arr
+    loadArray 1 id arr (unsafeLinearWrite mArr)
+    unsafeFreeze comp mArr
+{-# INLINE computeS #-}
 
 -- | Just as `compute`, but let's you supply resulting representation type as an argument.
 --

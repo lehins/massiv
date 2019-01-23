@@ -115,13 +115,13 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   {-# INLINE empty #-}
   edgeSize = SafeSz . length . unList . lData
   {-# INLINE edgeSize #-}
-  cons x arr = arr { lData = coerce (x : coerce (lData arr)) }
-  {-# INLINE cons #-}
-  uncons LArray {..} =
+  consR x arr = arr { lData = coerce (x : coerce (lData arr)) }
+  {-# INLINE consR #-}
+  unconsR LArray {..} =
     case L.uncons $ coerce lData of
       Nothing      -> Nothing
       Just (x, xs) -> Just (x, LArray lComp (coerce xs))
-  {-# INLINE uncons #-}
+  {-# INLINE unconsR #-}
   flatten = id
   {-# INLINE flatten #-}
   generateRaggedM !comp !k f = do
@@ -134,7 +134,7 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
     using $ do
       leftOver <-
         loopM start (< end) (+ 1) xs $ \i xs' ->
-          case uncons xs' of
+          case unconsR xs' of
             Nothing      -> return $! throw RowTooShortError
             Just (y, ys) -> uWrite i y >> return ys
       unless (isNull leftOver) (return $! throw RowTooLongError)
@@ -168,22 +168,22 @@ instance ( Index ix
   edgeSize arr =
     SafeSz
       (consDim (length (unList (lData arr))) $
-       case uncons arr of
+       case unconsR arr of
          Nothing     -> zeroIndex
          Just (x, _) -> coerce (edgeSize x))
   {-# INLINE edgeSize #-}
-  cons (LArray _ x) arr = newArr
+  consR (LArray _ x) arr = newArr
     where
       newArr = arr {lData = coerce (x : coerce (lData arr))}
-  {-# INLINE cons #-}
-  uncons LArray {..} =
+  {-# INLINE consR #-}
+  unconsR LArray {..} =
     case L.uncons (coerce lData) of
       Nothing -> Nothing
       Just (x, xs) ->
         let newArr = LArray lComp (coerce xs)
             newX = LArray lComp x
          in Just (newX, newArr)
-  {-# INLINE uncons #-}
+  {-# INLINE unconsR #-}
   -- generateRaggedM Seq !sz f = do
   --   let !(k, szL) = unconsSz sz
   --   loopDeepM 0 (< coerce k) (+ 1) (empty Seq) $ \i acc -> do
@@ -203,7 +203,7 @@ instance ( Index ix
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
-          case uncons zs of
+          case unconsR zs of
             Nothing -> return $! throw RowTooShortError
             Just (y, ys) -> do
               _ <- loadRagged using uWrite i (i + step) szL y
@@ -273,7 +273,7 @@ unsafeGenerateN comp sz f = unsafePerformIO $ do
   xs <- withScheduler comp $ \scheduler ->
     loopM_ 0 (< coerce m) (+ 1) $ \i -> scheduleWork scheduler $
       generateRaggedM comp szL $ \ix -> return $ f (consDim i ix)
-  return $! foldr' cons (empty comp) xs
+  return $! foldr' consR (empty comp) xs
 {-# INLINE unsafeGenerateN #-}
 
 
@@ -336,7 +336,7 @@ instance Ragged L ix e => OuterSlice L ix e where
   unsafeOuterSlice arr' i = go 0 arr'
     where
       go n arr =
-        case uncons arr of
+        case unconsR arr of
           Nothing -> errorIx "Data.Massiv.Core.List.unsafeOuterSlice" (headDim (unSz (size arr'))) i
           Just (x, _) | n == i -> x
           Just (_, xs) -> go (n + 1) xs

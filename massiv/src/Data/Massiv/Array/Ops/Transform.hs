@@ -26,6 +26,10 @@ module Data.Massiv.Array.Ops.Transform
   , extractFromTo
   , extractFromTo'
   -- ** Append/Split
+  , cons
+  , uncons
+  , snoc
+  , unsnoc
   , append
   , append'
   , concat
@@ -41,15 +45,16 @@ module Data.Massiv.Array.Ops.Transform
   ) where
 
 import           Control.Monad                   as M (foldM_, guard, unless)
-import           Data.Foldable                   as F (foldl', foldrM)
 import           Data.Bifunctor                  (bimap)
+import           Data.Foldable                   as F (foldl', foldrM, toList)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Maybe                      (fromMaybe)
-import           Prelude                         as P hiding (splitAt, traverse, concat)
+import           Prelude                         as P hiding (concat, splitAt,
+                                                       traverse)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
@@ -343,17 +348,49 @@ append n !arr1 !arr2 = do
       }
 {-# INLINE append #-}
 
-concat' :: Source r ix e => Dim -> [Array r ix e] -> Array DL ix e
+cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
+cons e arr = DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \ numWorkers scheduleWith uWrite ->
+  uWrite 0 e >> loadArray numWorkers scheduleWith arr (\ i -> uWrite (i + 1))
+
+uncons :: Source r Ix1 e => Array r Ix1 e -> Maybe (e, Array D Ix1 e)
+uncons arr
+  | 0 == totalElem sz = Nothing
+  | otherwise =
+    Just
+      ( unsafeLinearIndex arr 0
+      , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\i -> unsafeLinearIndex arr (i + 1)))
+  where
+    sz = size arr
+
+snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
+snoc arr e =
+  DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
+    loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
+  where
+    k = unSz (size arr)
+
+
+unsnoc :: Source r Ix1 e => Array r Ix1 e -> Maybe (Array D Ix1 e, e)
+unsnoc arr
+  | 0 == totalElem sz = Nothing
+  | otherwise =
+    Just (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
+  where
+    sz = size arr
+    k = unSz sz - 1
+
+concat' :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Array DL ix e
 concat' n arrs =
   case concat n arrs of
-    Nothing -> error $ "Data.Massiv.Array.concat': size mismatch "
+    Nothing     -> error $ "Data.Massiv.Array.concat': size mismatch "
     Just resArr -> resArr
 
 
-concat :: Source r ix e => Dim -> [Array r ix e] -> Maybe (Array DL ix e)
-concat n !arrs = do
-  guard $ not $ null arrs
-  let szs = P.map (unSz . size) arrs
+concat :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Maybe (Array DL ix e)
+concat n !arrsF = do
+  guard $ not $ null arrsF
+  let arrs = F.toList arrsF
+      szs = P.map (unSz . size) arrs
   (ks, (szl:szls)) <-
     F.foldrM (\ !sz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDim sz n) ([], []) szs
   guard $ all (== szl) szls

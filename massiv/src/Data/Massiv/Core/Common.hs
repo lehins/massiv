@@ -337,9 +337,9 @@ class Construct r ix e => Ragged r ix e where
 
   isNull :: Array r ix e -> Bool
 
-  cons :: Elt r ix e -> Array r ix e -> Array r ix e
+  consR :: Elt r ix e -> Array r ix e -> Array r ix e
 
-  uncons :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
+  unconsR :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
 
   generateRaggedM :: Monad m => Comp -> Sz ix -> (ix -> m e) -> m (Array r ix e)
 

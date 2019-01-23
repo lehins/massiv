@@ -79,6 +79,7 @@ module Data.Massiv.Array
   , getComp
   , setComp
   , compute
+  , computeS
   , computeAs
   , computeProxy
   , computeSource
@@ -157,6 +158,7 @@ import           Prelude as P hiding ( all
                                      , splitAt
                                      , sum
                                      , zip
+                                     , replicate
                                      )
 
 {- $folding

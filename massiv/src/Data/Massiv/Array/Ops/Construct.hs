@@ -20,6 +20,8 @@ module Data.Massiv.Array.Ops.Construct
   , makeArrayR
   , makeVectorR
   , singleton
+  , replicate
+  , replicateR
     -- *** Applicative
   , makeArrayA
   , makeArrayAR
@@ -38,7 +40,7 @@ module Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Map      as A
 import           Data.Massiv.Core.Common
-import           Prelude                        as P
+import           Prelude                        as P hiding (replicate)
 
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
@@ -82,6 +84,26 @@ makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
 makeArrayAR :: (Mutable r ix b, Monad f) => r -> Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
 makeArrayAR _ = makeArrayA
 {-# INLINE makeArrayAR #-}
+
+-- |
+--
+-- @since 0.3.0
+replicate :: Construct r ix e => Comp -> Sz ix -> e -> Array r ix e
+replicate comp sz e = makeArray comp sz (const e)
+{-# INLINE replicate #-}
+
+
+-- |
+--
+-- @since 0.3.0
+replicateR :: Construct r ix e => r -> Comp -> Sz ix -> e -> Array r ix e
+replicateR _ comp sz e = makeArray comp sz (const e)
+{-# INLINE replicateR #-}
+
+
+
+
+
 
 -- | Create a vector with a range of @Int@s incremented by 1.
 -- @range k0 k1 == rangeStep k0 k1 1@
