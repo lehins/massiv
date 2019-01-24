@@ -20,10 +20,10 @@ module Data.Massiv.Array.Ops.Map
   , traverseAR
   , itraverseAR
   -- *** PrimMonad
-  , traverseP
-  , itraverseP
-  , traversePR
-  , itraversePR
+  , traversePrim
+  , itraversePrim
+  , traversePrimR
+  , itraversePrimR
   -- ** Monadic mapping
   -- *** Sequential
   , mapM
@@ -61,21 +61,17 @@ module Data.Massiv.Array.Ops.Map
 
 import           Control.Monad                       (void)
 import           Control.Monad.Primitive             (PrimMonad)
-import           Control.Monad.ST                    (runST)
 import           Data.Coerce
-import qualified Data.Foldable                       as F (foldlM)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Fold.Internal
+import           Data.Massiv.Array.Ops.Construct     (makeArrayA)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
 import           Data.Massiv.Scheduler
-import           GHC.Base                            (build)
 import           Prelude                             hiding (map, mapM, mapM_,
                                                       traverse, unzip, unzip3,
                                                       zip, zip3, zipWith,
                                                       zipWith3)
-import qualified Prelude                             as Prelude (traverse)
 
 --------------------------------------------------------------------------------
 -- map -------------------------------------------------------------------------
@@ -173,23 +169,16 @@ izipWith3 f arr1 arr2 arr3 =
 
 -- | Traverse with an `Applicative` action over an array sequentially.
 --
+-- /Note/ - using `traversePrim` will always be faster, althought not always possible.
+--
 -- @since 0.2.6
 --
 traverseA ::
-     (Source r' ix a, Mutable r ix b, Monad f)
-  => (a -> f b)
+     (Source r' ix a, Mutable r ix e, Applicative f)
+  => (a -> f e)
   -> Array r' ix a
-  -> f (Array r ix b)
-traverseA f arr = loadList <$> foldrM g [] arr
-  -- loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr))
-  where
-    g e acc = (:acc) <$> f e
-    loadList xs =
-      runST $ do
-        marr <- unsafeNew (size arr)
-        _ <- F.foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
-        unsafeFreeze (getComp arr) marr
-    {-# INLINE loadList #-}
+  -> f (Array r ix e)
+traverseA f arr = makeArrayA (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE traverseA #-}
 
 -- | Traverse with an `Monad` index aware action over an array sequentially.
@@ -197,74 +186,21 @@ traverseA f arr = loadList <$> foldrM g [] arr
 -- @since 0.2.6
 --
 itraverseA ::
-     (Source r' ix a, Mutable r ix b, Monad f)
-  => (ix -> a -> f b)
+     (Source r' ix a, Mutable r ix e, Applicative f)
+  => (ix -> a -> f e)
   -> Array r' ix a
-  -> f (Array r ix b)
-itraverseA f arr = loadList <$> ifoldrM g [] arr
-  -- fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
-  where
-    g ix e acc = (:acc) <$> f ix e
-    loadList xs =
-      runST $ do
-        marr <- unsafeNew (size arr)
-        _ <- F.foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
-        unsafeFreeze (getComp arr) marr
-    {-# INLINE loadList #-}
+  -> f (Array r ix e)
+itraverseA f arr = makeArrayA (getComp arr) (size arr) $ \ !ix -> f ix (unsafeIndex arr ix)
+  -- -- fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
+  -- where
+  --   g ix e acc = (:acc) <$> f ix e
+  --   loadList xs =
+  --     runST $ do
+  --       marr <- unsafeNew (size arr)
+  --       _ <- F.foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
+  --       unsafeFreeze (getComp arr) marr
+  --   {-# INLINE loadList #-}
 {-# INLINE itraverseA #-}
-
-
-
--- | Traverse with an `PrimMonad` action over an array sequentially.
---
--- @since 0.3.0
---
-traverseP ::
-     (Source r' ix a, Mutable r ix b, PrimMonad m)
-  => (a -> m b)
-  -> Array r' ix a
-  -> m (Array r ix b)
-traverseP f arr = generateArray (getComp arr) (size arr) (f . unsafeIndex arr)
-{-# INLINE traverseP #-}
-
--- | Same as `traverseP`, but traverse with index aware action.
---
--- @since 0.3.0
---
-itraverseP ::
-     (Source r' ix a, Mutable r ix b, PrimMonad m)
-  => (ix -> a -> m b)
-  -> Array r' ix a
-  -> m (Array r ix b)
-itraverseP f arr = generateArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
-{-# INLINE itraverseP #-}
-
-
--- | Same as `traverseP`, but with ability to specify the desired representation.
---
--- @since 0.3.0
---
-traversePR ::
-     (Source r' ix a, Mutable r ix b, PrimMonad m)
-  => r
-  -> (a -> m b)
-  -> Array r' ix a
-  -> m (Array r ix b)
-traversePR _ = traverseP
-{-# INLINE traversePR #-}
-
--- | Same as `itraverseP`, but with ability to specify the desired representation.
---
--- @since 0.3.0
---
-itraversePR ::
-     (Source r' ix a, Mutable r ix b, PrimMonad m)
-  => r
-  -> (ix -> a -> m b)
-  -> Array r' ix a
-  -> m (Array r ix b)
-itraversePR _ = itraverseP
-{-# INLINE itraversePR #-}
 
 
 
@@ -273,7 +209,7 @@ itraversePR _ = itraverseP
 -- @since 0.2.6
 --
 traverseAR ::
-     (Source r' ix a, Mutable r ix b, Monad f)
+     (Source r' ix a, Mutable r ix b, Applicative f)
   => r
   -> (a -> f b)
   -> Array r' ix a
@@ -286,13 +222,68 @@ traverseAR _ = traverseA
 -- @since 0.2.6
 --
 itraverseAR ::
-     (Source r' ix a, Mutable r ix b, Monad f)
+     (Source r' ix a, Mutable r ix b, Applicative f)
   => r
   -> (ix -> a -> f b)
   -> Array r' ix a
   -> f (Array r ix b)
 itraverseAR _ = itraverseA
 {-# INLINE itraverseAR #-}
+
+
+
+-- | Traverse with an `PrimMonad` action over an array sequentially.
+--
+-- @since 0.3.0
+--
+traversePrim ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+traversePrim f arr = generateArray (getComp arr) (size arr) (f . unsafeIndex arr)
+{-# INLINE traversePrim #-}
+
+-- | Same as `traverseP`, but traverse with index aware action.
+--
+-- @since 0.3.0
+--
+itraversePrim ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+itraversePrim f arr = generateArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+{-# INLINE itraversePrim #-}
+
+
+-- | Same as `traverseP`, but with ability to specify the desired representation.
+--
+-- @since 0.3.0
+--
+traversePrimR ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => r
+  -> (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+traversePrimR _ = traversePrim
+{-# INLINE traversePrimR #-}
+
+-- | Same as `itraverseP`, but with ability to specify the desired representation.
+--
+-- @since 0.3.0
+--
+itraversePrimR ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => r
+  -> (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+itraversePrimR _ = itraversePrim
+{-# INLINE itraversePrimR #-}
+
+
 
 zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
 zipWithIndex arr = zip (makeArray mempty (size arr) id :: Array D ix ix) arr

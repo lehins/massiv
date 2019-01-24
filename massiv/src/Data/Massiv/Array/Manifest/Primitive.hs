@@ -185,24 +185,6 @@ instance (Index ix, Prim e) => Mutable P ix e where
   unsafeLinearSet (MPArray _ ma) = setByteArray ma
   {-# INLINE unsafeLinearSet #-}
 
-  unsafeNewA sz (State s#) =
-    let kb# = totalSize# sz (undefined :: e)
-        !(# s'#, mba# #) = newByteArray# kb# s# in
-      pure (State s'#, MPArray sz (MutableByteArray mba#))
-  {-# INLINE unsafeNewA #-}
-
-  unsafeThawA (PArray _ sz (ByteArray ba#)) s =
-    pure (s, MPArray sz (MutableByteArray (unsafeCoerce# ba#)))
-  {-# INLINE unsafeThawA #-}
-
-  unsafeFreezeA comp (MPArray sz (MutableByteArray mba#)) (State s#) =
-    case unsafeFreezeByteArray# mba# s# of
-      (# s'#, ba# #) -> pure (State s'#, PArray comp sz (ByteArray ba#))
-  {-# INLINE unsafeFreezeA #-}
-
-  unsafeLinearWriteA (MPArray _ (MutableByteArray mba#)) (I# i#) val (State s#) =
-    pure (State (writeByteArray# mba# i# val s#))
-  {-# INLINE unsafeLinearWriteA #-}
 
 instance (Prim e, Index ix) => Load P ix e where
   size = pSize

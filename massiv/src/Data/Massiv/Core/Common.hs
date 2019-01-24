@@ -30,8 +30,6 @@ module Data.Massiv.Core.Common
   , InnerSlice(..)
   , Manifest(..)
   , Mutable(..)
-  , State(..)
-  , WorldState
   , Ragged(..)
   , Nested(..)
   , NestedStruct
@@ -64,7 +62,6 @@ import           Control.Monad.Primitive
 import           Data.Massiv.Scheduler.Computation
 import           Data.Massiv.Core.Index
 import           Data.Typeable
-import           GHC.Prim
 
 #include "massiv.h"
 
@@ -225,11 +222,6 @@ class (Load r ix e, Source r ix e) => Manifest r ix e where
   unsafeLinearIndexM :: Array r ix e -> Int -> e
 
 
-data State s = State (State# s)
-
-type WorldState = State RealWorld
-
-
 class Manifest r ix e => Mutable r ix e where
   data MArray s r ix e :: *
 
@@ -293,35 +285,6 @@ class Manifest r ix e => Mutable r ix e where
   unsafeLinearSet marr offset len e =
     loopM_ offset (< (offset + len)) (+1) (\i -> unsafeLinearWrite marr i e)
   {-# INLINE unsafeLinearSet #-}
-
-  -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
-  -- either.
-  unsafeNewA :: Applicative f => Sz ix -> WorldState -> f (WorldState, MArray RealWorld r ix e)
-  unsafeNewA sz (State s#) =
-    case internal (unsafeNew sz :: IO (MArray RealWorld r ix e)) s# of
-      (# s'#, ma #) -> pure (State s'#, ma)
-  {-# INLINE unsafeNewA #-}
-
-  unsafeThawA :: Applicative m =>
-                 Array r ix e -> WorldState -> m (WorldState, MArray RealWorld r ix e)
-  unsafeThawA arr (State s#) =
-    case internal (unsafeThaw arr :: IO (MArray RealWorld r ix e)) s# of
-      (# s'#, ma #) -> pure (State s'#, ma)
-  {-# INLINE unsafeThawA #-}
-
-  unsafeFreezeA :: Applicative m =>
-                   Comp -> MArray RealWorld r ix e -> WorldState -> m (WorldState, Array r ix e)
-  unsafeFreezeA comp marr (State s#) =
-    case internal (unsafeFreeze comp marr :: IO (Array r ix e)) s# of
-      (# s'#, a #) -> pure (State s'#, a)
-  {-# INLINE unsafeFreezeA #-}
-
-  unsafeLinearWriteA :: Applicative m =>
-                        MArray RealWorld r ix e -> Int -> e -> WorldState -> m WorldState
-  unsafeLinearWriteA marr i val (State s#) =
-    case internal (unsafeLinearWrite marr i val :: IO ()) s# of
-      (# s'#, _ #) -> pure (State s'#)
-  {-# INLINE unsafeLinearWriteA #-}
 
 
 

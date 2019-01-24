@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE ExplicitForAll        #-}
@@ -37,8 +38,9 @@ module Data.Massiv.Array.Ops.Construct
   , expandInner
   ) where
 
+import           Control.Monad.ST
+import           Control.Applicative
 import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Ops.Map      as A
 import           Data.Massiv.Core.Common
 import           Prelude                        as P hiding (replicate)
 
@@ -68,20 +70,40 @@ makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
+
+newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
+
+runSTA :: (Mutable r ix e, Index ix) => Sz ix -> STA r ix e -> Array r ix e
+runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
+{-# INLINE runSTA  #-}
+
 -- | Similar to `makeArray`, but construct the array sequentially using an `Applicative` interface
 -- disregarding the supplied `Comp`.
 --
+-- /Note/ - using `Data.Massiv.Array.Mutable.generateArray` will always be faster, althought not always possible.
+--
+--
 -- @since 0.2.6
 --
-makeArrayA :: (Mutable r ix b, Monad f) => Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
-makeArrayA comp sz f = traverseA f $ makeArrayR D comp sz id
-{-# INLINE makeArrayA #-}
+makeArrayA :: (Mutable r ix e, Applicative f) => Comp -> Sz ix -> (ix -> f e) -> f (Array r ix e)
+makeArrayA !comp !sz f =
+  let n = totalElem sz
+      go !i
+        | i < n =
+          liftA2
+            (\e (STA st) -> STA (\ma -> unsafeLinearWrite ma i e >> st ma))
+            (f (fromLinearIndex sz i))
+            (go (i + 1))
+        | otherwise = pure (STA (unsafeFreeze comp))
+   in runSTA sz <$> go 0
+{-# INLINE makeArrayA  #-}
+
 
 -- | Same as `makeArrayA`, but with ability to supply result array representation.
 --
 -- @since 0.2.6
 --
-makeArrayAR :: (Mutable r ix b, Monad f) => r -> Comp -> Sz ix -> (ix -> f b) -> f (Array r ix b)
+makeArrayAR :: (Mutable r ix e, Applicative f) => r -> Comp -> Sz ix -> (ix -> f e) -> f (Array r ix e)
 makeArrayAR _ = makeArrayA
 {-# INLINE makeArrayAR #-}
 
@@ -137,6 +159,16 @@ rangeStep comp !from !step !to
     let (sz, r) = (to - from) `divMod` step
     in makeArray comp (Sz (sz + signum r)) (\i -> from + i * step)
 {-# INLINE rangeStep #-}
+
+rangeStepSz :: Index ix =>
+                 Comp
+              -> ix -- ^ @x@ - start value
+              -> ix -- ^ @delta@ - step value
+              -> Sz ix -- ^ @n@ - Size of resulting array
+              -> Array D ix ix
+rangeStepSz comp !from !step !sz =
+  makeArray comp sz $ \i -> liftIndex2 (+) from $ liftIndex2 (*) i step
+{-# INLINE rangeStepSz#-}
 
 
 -- | Same as `enumFromStepN` with step @delta = 1@.
