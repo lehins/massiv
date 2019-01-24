@@ -8,7 +8,7 @@ environment:
     # Avoid long paths on Windows
     STACK_ROOT: "c:\\s"
     STACK_WORK: ".w"
-    WORK_DIR: "c:\\w"
+    WORK_DIR: "c:\\m"
   matrix:
   - ARGS: "--resolver lts-9"
   - ARGS: "--resolver lts-11"
@@ -32,8 +32,8 @@ cache:
 
 before_test:
 # Avoid long paths not to each MAX_PATH of 260 chars
-- xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv\massiv "%WORK_DIR%"
-- xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv\massiv-scheduler "%WORK_DIR%"
+- xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv "%WORK_DIR%"
+- xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv "%WORK_DIR%"
 - cd "%WORK_DIR%"
 # Setup cache dirs
 # Debug paths
@@ -49,12 +49,17 @@ before_test:
 test_script:
   - cd "%WORK_DIR%"
   - stack %ARGS% --verbosity warn setup --no-reinstall > nul
+  - stack %ARGS% test massiv-scheduler:tests
+      -j 2
+      --no-terminal
+      --haddock
+      --no-haddock-deps
   - stack %ARGS% test massiv:tests
       -j 2
       --flag massiv:unsafe-checks
       --no-terminal
+      --haddock
       --no-haddock-deps
-      --work-dir %STACK_WORK%
 
 
 notifications:

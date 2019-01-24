@@ -107,8 +107,8 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-12"
-    compiler: ": #stack GHC-8.4.3 (lts-12)"
+  - env: BUILD=stack ARGS="--resolver lts-12.26"
+    compiler: ": #stack GHC-8.4.3 (lts-12.26)"
     addons:
       apt:
         packages: [libgmp-dev]
@@ -135,8 +135,8 @@ matrix:
     compiler: ": #stack GHC-8.2.2 (lts-11.22)"
     os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-12"
-    compiler: ": #stack GHC-8.4.3 (lts-12)"
+  - env: BUILD=stack ARGS="--resolver lts-12.26"
+    compiler: ": #stack GHC-8.4.3 (lts-12.26)"
     os: osx
 
   - env: BUILD=stack ARGS="--resolver lts-13"
@@ -171,7 +171,6 @@ before_install:
       else
         travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
       fi
-      cd $TRAVIS_BUILD_DIR/massiv
       ;;
     cabal)
       # Use the more reliable S3 mirror of Hackage
@@ -194,9 +193,6 @@ install:
     cabal)
       cabal --version
       travis_retry cabal update
-
-      MASSIV_SCHEDULER="$TRAVIS_BUILD_DIR/massiv-scheduler"
-      MASSIV="$TRAVIS_BUILD_DIR/massiv"
       ;;
   esac
   set +ex
@@ -206,7 +202,8 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack $ARGS test --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      stack $ARGS test massiv-scheduler:tests --haddock --no-haddock-deps
+      stack $ARGS test massiv:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       ;;
     cabal)
 
