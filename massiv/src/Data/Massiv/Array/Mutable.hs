@@ -4,7 +4,6 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
