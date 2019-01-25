@@ -24,8 +24,8 @@ module Data.Massiv.Array.Delayed.Push
   ) where
 
 import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Manifest.Boxed
-import           Data.Massiv.Array.Manifest.Internal
+--import           Data.Massiv.Array.Manifest.Boxed
+--import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Massiv.Core.Common
 import           Prelude                             hiding (map, zipWith)
@@ -56,9 +56,6 @@ instance Index ix => Construct DL ix e where
     DLArray comp sz $ \numWorkers scheduleWith dlWrite ->
       splitWith_ numWorkers scheduleWith (SafeSz (totalElem sz)) f dlWrite
   {-# INLINE makeArrayLinear #-}
-
-instance {-# OVERLAPPING #-} (Show (Array B ix e), Index ix) => Show (Array DL ix e) where
-  show = show . computeAs B
 
 
 -- | Specify how an array can be loaded/computed through creation of a `DL` array.

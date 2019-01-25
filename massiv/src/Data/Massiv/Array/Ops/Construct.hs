@@ -1,9 +1,9 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE ExplicitForAll        #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -29,8 +29,11 @@ module Data.Massiv.Array.Ops.Construct
     -- ** Enumeration
   , range
   , rangeStep
+  , rangeSize
+  , rangeStepSize
   , enumFromN
   , enumFromStepN
+  , enumFromTo
     -- ** Expansion
   , expandWithin
   , expandWithin'
@@ -38,11 +41,13 @@ module Data.Massiv.Array.Ops.Construct
   , expandInner
   ) where
 
-import           Control.Monad.ST
 import           Control.Applicative
+import           Control.Monad.ST
 import           Data.Massiv.Array.Delayed.Pull
+import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Core.Common
-import           Prelude                        as P hiding (replicate)
+import           Data.Massiv.Scheduler          (traverse_)
+import           Prelude                        as P hiding (replicate, enumFromTo)
 
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
@@ -127,18 +132,23 @@ replicateR _ comp sz e = makeArray comp sz (const e)
 
 
 
--- | Create a vector with a range of @Int@s incremented by 1.
--- @range k0 k1 == rangeStep k0 k1 1@
+-- | Create an array of indices with a range from start to finish (not-including), where indices are
+-- incrimeted by one.
+--
+-- prop> range comp from to == rangeStep comp from 1 to
 --
 -- >>> range Seq 1 6
 -- (Array D Seq (5)
 --   [ 1,2,3,4,5 ])
--- >>> range Seq (-2) 3
--- (Array D Seq (5)
---   [ -2,-1,0,1,2 ])
+-- >>> fromIx2 <$> range Seq (-1) (2 :. 2)
+-- (Array D Seq (Sz2 (3 :. 3))
+--   [ [ (-1,-1),(-1,0),(-1,1) ]
+--   , [ (0,-1),(0,0),(0,1) ]
+--   , [ (1,-1),(1,0),(1,1) ]
+--   ])
 --
-range :: Comp -> Ix1 -> Ix1 -> Array D Ix1 Int
-range comp !from !to = makeArray comp (Sz (to - from)) (+ from)
+range :: Index ix => Comp -> ix -> ix -> Array D ix ix
+range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 {-# INLINE range #-}
 
 
@@ -148,27 +158,62 @@ range comp !from !to = makeArray comp (Sz (to - from)) (+ from)
 -- (Array D Seq (3)
 --   [ 1,3,5 ])
 --
-rangeStep :: Comp -- ^ Computation strategy
-          -> Int -- ^ Start
-          -> Int -- ^ Step (Can't be zero)
-          -> Int -- ^ End
-          -> Array D Ix1 Int
+rangeStep :: Index ix =>
+             Comp -- ^ Computation strategy
+          -> ix -- ^ Start
+          -> ix -- ^ Step (Can't be zero)
+          -> ix -- ^ End
+          -> Maybe (Array D ix ix)
 rangeStep comp !from !step !to
-  | step == 0 = error "rangeStep: Step can't be zero"
+  | foldlIndex (\acc i -> acc || i == 0) False step = Nothing
   | otherwise =
-    let (sz, r) = (to - from) `divMod` step
-    in makeArray comp (Sz (sz + signum r)) (\i -> from + i * step)
+    let dist = liftIndex2 (-) to from
+        sz = liftIndex2 div dist step
+        r = liftIndex signum $ liftIndex2 mod dist step
+     in Just $ rangeStepSize comp from step (Sz (liftIndex2 (+) sz r))
 {-# INLINE rangeStep #-}
 
-rangeStepSz :: Index ix =>
-                 Comp
-              -> ix -- ^ @x@ - start value
-              -> ix -- ^ @delta@ - step value
-              -> Sz ix -- ^ @n@ - Size of resulting array
-              -> Array D ix ix
-rangeStepSz comp !from !step !sz =
-  makeArray comp sz $ \i -> liftIndex2 (+) from $ liftIndex2 (*) i step
-{-# INLINE rangeStepSz#-}
+-- | Just like `range`, except the finish index is included.
+--
+-- @since 0.3.0
+rangeInclusive :: Index ix => Comp -> ix -> ix -> Array D ix ix
+rangeInclusive comp ixFrom ixTo =
+  rangeSize comp ixFrom (Sz (liftIndex2 (-) (liftIndex (+ 1) ixTo) ixFrom))
+{-# INLINE rangeInclusive #-}
+
+
+-- | Just like `rangeStep`, except the finish index is included.
+--
+-- @since 0.3.0
+rangeStepInclusive :: Index ix => Comp -> ix -> ix -> ix -> Maybe (Array D ix ix)
+rangeStepInclusive comp ixFrom step ixTo = rangeStep comp ixFrom step (liftIndex (1 +) ixTo)
+{-# INLINE rangeStepInclusive #-}
+
+
+-- | Create an array of specified size with indices starting with some index at position @0@ and
+-- incremented by @1@ until the end of the array is reached
+--
+-- @since 0.3.0
+rangeSize :: Index ix =>
+               Comp
+            -> ix -- ^ @x@ - start value
+            -> Sz ix -- ^ @sz@ - Size of resulting array
+            -> Array D ix ix
+rangeSize comp !from !sz = makeArray comp sz (liftIndex2 (+) from)
+{-# INLINE rangeSize #-}
+
+-- | Same as `rangeSize`, but with ability to specify the step.
+--
+-- @since 0.3.0
+rangeStepSize :: Index ix =>
+               Comp
+            -> ix -- ^ @x@ - start value
+            -> ix -- ^ @delta@ - step value
+            -> Sz ix -- ^ @sz@ - Size of resulting array
+            -> Array D ix ix
+rangeStepSize comp !from !step !sz =
+  makeArray comp sz (liftIndex2 (+) from . liftIndex2 (*) step)
+{-# INLINE rangeStepSize #-}
 
 
 -- | Same as `enumFromStepN` with step @delta = 1@.
@@ -180,9 +225,9 @@ rangeStepSz comp !from !step !sz =
 enumFromN :: Num e =>
              Comp
           -> e -- ^ @x@ - start value
-          -> Int -- ^ @n@ - length of resulting vector.
+          -> Sz1 -- ^ @n@ - length of resulting vector.
           -> Array D Ix1 e
-enumFromN comp !from !sz = makeArray comp (Sz sz) $ \ i -> fromIntegral i + from
+enumFromN comp !from !sz = makeArray comp sz $ \ i -> fromIntegral i + from
 {-# INLINE enumFromN #-}
 
 
@@ -199,11 +244,32 @@ enumFromStepN :: Num e =>
                  Comp
               -> e -- ^ @x@ - start value
               -> e -- ^ @delta@ - step value
-              -> Int -- ^ @n@ - length of resulting vector
+              -> Sz1 -- ^ @n@ - length of resulting vector
               -> Array D Ix1 e
-enumFromStepN comp !from !step !sz = makeArray comp (Sz sz) $ \ i -> from + fromIntegral i * step
+enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}
 
+
+-- |
+--
+-- @since 0.3.0
+enumFromTo :: (Index ix, Enum ix) => Comp -> ix -> ix -> Array DL ix ix
+enumFromTo comp from to =
+  DLArray comp (Sz (liftIndex2 (\t f -> t - f + 1) to from)) $ \ _numWorkers _scheduleWith uWrite ->
+    traverse_ (\(ix, e) -> uWrite ix e) $ P.zip [0..] [from..to]
+{-# INLINE enumFromTo #-}
+
+
+-- |
+--
+-- @since 0.3.0
+enumFromToIx2 :: Ix2 -> Ix2 -> [Ix2]
+enumFromToIx2 (i0 :. j0) ix0@(_ :. n) = go [] ix0
+  where go acc  ix@(i :. j)
+          | j0 <= j = go (ix:acc) (i :. (j - 1))
+          | i0 <  i = go acc      ((i - 1) :. n)
+          | otherwise = acc
+{-# INLINE enumFromToIx2 #-}
 
 -- | Function that expands an array to one with a higher dimension.
 --

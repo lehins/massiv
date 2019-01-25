@@ -159,6 +159,7 @@ import           Prelude as P hiding ( all
                                      , sum
                                      , zip
                                      , replicate
+                                     , enumFromTo
                                      )
 
 {- $folding

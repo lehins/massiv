@@ -41,7 +41,8 @@ import           Control.Monad.Primitive
 import           Control.Monad.ST                    (runST)
 import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
-import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
+import           Data.Massiv.Array.Delayed.Push
+import           Data.Massiv.Array.Manifest.Internal (M, toManifest, computeAs)
 import           Data.Massiv.Array.Manifest.List     as L
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold.Internal
@@ -83,6 +84,10 @@ data instance Array B ix e = BArray { bComp :: !Comp
                                     , bSize :: !(Sz ix)
                                     , bData :: {-# UNPACK #-} !(A.Array e)
                                     }
+
+instance {-# OVERLAPPING #-} (Show (Array B ix e), Index ix) => Show (Array DL ix e) where
+  show = show . computeAs B
+
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
   rnf = (`deepseqArray` ())
