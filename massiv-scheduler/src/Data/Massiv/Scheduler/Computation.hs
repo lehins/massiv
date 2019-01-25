@@ -46,7 +46,6 @@ instance NFData Comp where
   rnf comp =
     case comp of
       Seq        -> ()
-      Par        -> ()
       ParOn wIds -> wIds `deepseq` ()
       ParN n     -> n `deepseq` ()
   {-# INLINE rnf #-}

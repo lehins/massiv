@@ -81,12 +81,13 @@ library
 test-suite tests
   type:               exitcode-stdio-1.0
   hs-source-dirs:     tests
-  main-is:            Spec.hs
+  main-is:            Main.hs
   other-modules:      Data.Massiv.Array.DelayedSpec
                     , Data.Massiv.Array.Delayed.WindowedSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.MutableSpec
+                    , Data.Massiv.Array.Numeric.IntegralSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec
@@ -96,6 +97,7 @@ test-suite tests
                     , Data.Massiv.CoreArbitrary
                     , Data.Massiv.Core.IndexSpec
                     , Data.Massiv.Core.SchedulerSpec
+                    , Spec
   build-depends:      base             >= 4.8 && < 5
                     , bytestring
                     , deepseq

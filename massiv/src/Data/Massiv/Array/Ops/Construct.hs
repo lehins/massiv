@@ -29,6 +29,9 @@ module Data.Massiv.Array.Ops.Construct
     -- ** Enumeration
   , range
   , rangeStep
+  , rangeStep'
+  , rangeInclusive
+  , rangeStepInclusive
   , rangeSize
   , rangeStepSize
   , enumFromN
@@ -48,7 +51,7 @@ import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Scheduler          (traverse_)
 import           Prelude                        as P hiding (replicate, enumFromTo)
-
+import Data.Maybe
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
@@ -172,6 +175,12 @@ rangeStep comp !from !step !to
         r = liftIndex signum $ liftIndex2 mod dist step
      in Just $ rangeStepSize comp from step (Sz (liftIndex2 (+) sz r))
 {-# INLINE rangeStep #-}
+
+-- | Same as `rangeStep`, but will throw an error whenever @step@ contains zeros.
+--
+-- @since 0.3.0
+rangeStep' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
+rangeStep' comp from step = fromMaybe (error "rangeStep") . rangeStep  comp from step
 
 -- | Just like `range`, except the finish index is included.
 --

@@ -228,7 +228,7 @@ handleWorkerException ::
      JQueue a -> MVar (Maybe SomeException) -> Int -> SomeException -> IO ()
 handleWorkerException jQueue workDoneMVar nWorkers exc = do
   case fromException exc of
-    Just wexc | WorkerTerminateException <- wexc -> print "die" >> return ()
+    Just wexc | WorkerTerminateException <- wexc -> return ()
       -- \ some co-worker died, we can just move on with our death.
     _ ->
       case fromException exc of
@@ -240,7 +240,7 @@ handleWorkerException jQueue workDoneMVar nWorkers exc = do
           throwIO asyncExc
           -- \ do not recover from an async exception
         Nothing -> do
-          putMVar workDoneMVar $ Just exc
+          putMVar workDoneMVar $ Just $ toException $ WorkerException exc
           -- \ Main thread must know how we died
           -- / Do the co-worker cleanup
           retireWorkersN jQueue (nWorkers - 1)

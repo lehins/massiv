@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns     #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- |
--- Module      : Data.Massiv.Array
+-- Module      : Data.Massiv.Array.Numeric.Integral
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
@@ -30,12 +30,14 @@ module Data.Massiv.Array.Numeric.Integral
   , fromFunction
   -- ** Sampled at the midpoint
   , fromFunctionMidpoint
+  -- * Helper functions
   ) where
 
 import           Data.Coerce
-import           Data.Massiv.Array.Delayed.Pull (D)
-import           Data.Massiv.Array.Delayed.Windowed (DW)
+import           Data.Massiv.Array.Delayed.Pull      (D)
+import           Data.Massiv.Array.Delayed.Windowed  (DW)
 import           Data.Massiv.Array.Manifest.Internal
+import           Data.Massiv.Array.Ops.Construct     (rangeInclusive)
 import           Data.Massiv.Array.Ops.Transform     (extract')
 import           Data.Massiv.Array.Stencil
 import           Data.Massiv.Core.Common
@@ -215,7 +217,7 @@ fromFunction ::
   -> Int -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
   -> Array D ix e
 fromFunction comp f a d (Sz sz) n =
-  fmap (\ix -> f scale ix) $ rangeInclusive comp zeroIndex (liftIndex (n *) sz)
+  fmap (f scale) $ rangeInclusive comp zeroIndex (liftIndex (n *) sz)
   where
     nFrac = fromIntegral n
     scale i = a + d * fromIntegral i / nFrac
@@ -251,6 +253,9 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 {-# INLINE fromFunctionMidpoint #-}
 
 
+-- (.!) :: Index ix => (e -> e) -> (Int -> Int) -> ix -> e
+-- (.!) f g y = f (liftIndex g y)
+
 
 -- $integral_intro
 --
@@ -262,7 +267,7 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- Implementation-wise, integral approximation here relies heavily on stencils with stride, as such
 -- computation is fast and is automatically parallelizable.
 --
--- Here are some example of where this can be useful:
+-- Here are some examples of where this can be useful:
 --
 -- === Integral of a function on a region
 --
@@ -271,18 +276,18 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- the function to that array, which will give us an array of @n + 1@ sample points, or looking from
 -- a different angle @n@ intervals.
 --
--- >>> f x = exp ( x ^ 2 )
--- >>> fromFunction Seq (\ scale x -> f (scale x)) 0 2 1 4
--- (Array D Seq (5)
---   [ 1.0,1.2840254166877414,2.718281828459045,9.487735836358526,54.598150033144236 ])
+-- >>> f x = exp ( x ^ (2 :: Int) ) :: Float
+-- >>> fromFunction Seq (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
+-- (Array D Seq (Sz1 (5))
+--   [ 1.0,1.2840254,2.7182817,9.487736,54.59815 ])
 --
--- Once we have that array of sample points ready we could use `integralApprox` and one of the
+-- Once we have that array of sample points ready, we could use `integralApprox` and one of the
 -- stencils to compute an integral, but there are already functions that will do both steps for you:
 --
--- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 1 4
+-- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
 --   [ 17.353626450374566 ])
 --
--- Scaling function @scale@ is what will change an array index into equally spaced and
+-- @scale@ is the function that will change an array index into equally spaced and
 -- appropriately shifted values of @x, y, ...@ before they can get applied to @f(x, y, ...)@
 --
 -- === Accurate values of a function
@@ -291,7 +296,7 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- representation of a non-linear function is desired. Consider the same gaussian function applied
 -- to equally spaced values, with zero being in the middle of the vector:
 --
--- >>> xArr = makeArrayR D Seq (Ix1 4) $ \ i -> (fromIntegral i - 1.5 :: Float)
+-- >>> xArr = makeArrayR D Seq (Sz1 4) $ \ i -> (fromIntegral i - 1.5 :: Float)
 -- >>> xArr
 -- (Array D Seq (4)
 --   [ -1.5,-0.5,0.5,1.5 ])

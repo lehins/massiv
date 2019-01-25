@@ -1,32 +1,32 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs            #-}
 module Data.Massiv.Array.Ops.ConstructSpec where
 
-import           Data.Massiv.Array                 as A
-import           Data.Massiv.CoreArbitrary         as A
+import           Data.Massiv.Array         as A
+import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
-import qualified GHC.Exts                   as GHC (IsList (..))
-import           Prelude                    as P
-import           Prelude                    hiding (map)
+import qualified GHC.Exts                  as GHC (IsList (..))
+import           Prelude                   as P
+import           Prelude                   hiding (map)
 import           Test.Hspec
 import           Test.QuickCheck
 
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
-prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep Par from 1 to
+prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep' Par from 1 to
 
 prop_rangeEqEnumFromN :: Int -> Int -> Property
-prop_rangeEqEnumFromN from to = range Seq from to === enumFromN Par from (to - from)
+prop_rangeEqEnumFromN from to = range Seq from to === enumFromN Par from (Sz (to - from))
 
 prop_rangeStepEqEnumFromStepN :: Int -> NonZero Int -> Int -> Property
 prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
-  rangeStep Seq from step (from + step * sz) === enumFromStepN Par from step sz
+  rangeStep' Seq from step (from + step * sz) === enumFromStepN Par from step (Sz sz)
 
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertSomeException (computeAs U (rangeStep Seq from 0 to))
+  assertSomeException (computeAs U (rangeStep' Seq from 0 to))
 
 prop_toFromListIsList ::
      (Show (Array U ix Int), GHC.IsList (Array U ix Int), Index ix)

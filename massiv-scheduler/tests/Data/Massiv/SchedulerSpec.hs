@@ -98,7 +98,7 @@ prop_KillBlockedCoworker :: Comp -> Property
 prop_KillBlockedCoworker comp =
   assertExceptionIO
     (== DivideByZero)
-    (withScheduler comp $ \scheduler -> do
+    (withScheduler_ comp $ \scheduler -> do
        if numWorkers scheduler < 2
          then scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int))
          else do
@@ -111,7 +111,7 @@ prop_KillSleepingCoworker :: Comp -> Property
 prop_KillSleepingCoworker comp =
   assertExceptionIO
     (== DivideByZero)
-    (withScheduler comp $ \scheduler -> do
+    (withScheduler_ comp $ \scheduler -> do
        scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int))
        scheduleWork scheduler $ do
          threadDelay 500000
@@ -146,6 +146,7 @@ spec = do
     it "Serially" $ property $ \ cs -> prop_Serially (ParOn cs)
   describe "Arbitrary Comp" $ do
     it "ArbitraryNested" $ property prop_ArbitraryCompNested
+  describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchDivideByZeroNested" $ property prop_CatchDivideByZeroNested
     it "KillBlockedCoworker" $ property $ prop_KillBlockedCoworker
@@ -163,7 +164,7 @@ assertExceptionIO isExc action =
         (catch
            (do res <- action
                res `deepseq` return False) $ \exc ->
-           show exc `deepseq` return (isExc exc))
+           displayException exc `deepseq` return (isExc exc))
     assert hasFailed
 
 
