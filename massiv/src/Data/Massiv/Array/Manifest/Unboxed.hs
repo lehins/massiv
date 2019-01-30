@@ -93,7 +93,7 @@ instance (VU.Unbox e, Index ix) => Load U ix e where
 
 
 instance {-# OVERLAPPING #-} VU.Unbox e => Slice U Ix1 e where
-  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
 

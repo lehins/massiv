@@ -44,6 +44,7 @@ module Data.Massiv.Core.Index.Ix
   , pattern Sz5
   ) where
 
+import           Control.Monad.Catch             (MonadThrow(..))
 import           Control.DeepSeq
 import           Control.Monad                   (liftM)
 import           Data.Massiv.Core.Index.Internal
@@ -259,21 +260,22 @@ instance Index Ix2 where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i2 :. i1) = (i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getDim (i2 :.  _) 2 = Just i2
-  getDim ( _ :. i1) 1 = Just i1
-  getDim _        _   = Nothing
-  {-# INLINE [1] getDim #-}
-  setDim ( _ :. i1) 2 i2 = Just (i2 :. i1)
-  setDim (i2 :.  _) 1 i1 = Just (i2 :. i1)
-  setDim _        _ _    = Nothing
-  {-# INLINE [1] setDim #-}
-  pullOutDim (i2 :. i1) 2 = Just (i2, i1)
-  pullOutDim (i2 :. i1) 1 = Just (i1, i2)
-  pullOutDim _          _ = Nothing
-  {-# INLINE [1] pullOutDim #-}
-  insertDim i1 2 i2 = Just (i2 :. i1)
-  insertDim i2 1 i1 = Just (i2 :. i1)
-  insertDim _  _  _ = Nothing
+  getDimM (i2 :.  _) 2 = pure i2
+  getDimM ( _ :. i1) 1 = pure i1
+  getDimM ix         d = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] getDimM #-}
+  setDimM ( _ :. i1) 2 i2 = pure (i2 :. i1)
+  setDimM (i2 :.  _) 1 i1 = pure (i2 :. i1)
+  setDimM ix         d _  = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] setDimM #-}
+  pullOutDimM (i2 :. i1) 2 = pure (i2, i1)
+  pullOutDimM (i2 :. i1) 1 = pure (i1, i2)
+  pullOutDimM ix         d = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] pullOutDimM #-}
+  insertDimM i1 2 i2 = pure (i2 :. i1)
+  insertDimM i2 1 i1 = pure (i2 :. i1)
+  insertDimM ix d  _ = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] insertDimM #-}
   pureIndex i = i :. i
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i2 :. i1) = f i2 :. f i1
@@ -306,26 +308,26 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i3 :> i2 :. i1) = (i3 :. i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getDim (i3 :>  _ :.  _) 3 = Just i3
-  getDim ( _ :> i2 :.  _) 2 = Just i2
-  getDim ( _ :>  _ :. i1) 1 = Just i1
-  getDim _             _    = Nothing
-  {-# INLINE [1] getDim #-}
-  setDim ( _ :> i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
-  setDim (i3 :>  _ :. i1) 2 i2 = Just (i3 :> i2 :. i1)
-  setDim (i3 :> i2 :.  _) 1 i1 = Just (i3 :> i2 :. i1)
-  setDim _             _ _     = Nothing
-  {-# INLINE [1] setDim #-}
-  pullOutDim (i3 :> i2 :. i1) 3 = Just (i3, i2 :. i1)
-  pullOutDim (i3 :> i2 :. i1) 2 = Just (i2, i3 :. i1)
-  pullOutDim (i3 :> i2 :. i1) 1 = Just (i1, i3 :. i2)
-  pullOutDim _                _ = Nothing
-  {-# INLINE [1] pullOutDim #-}
-  insertDim (i2 :. i1) 3 i3 = Just (i3 :> i2 :. i1)
-  insertDim (i3 :. i1) 2 i2 = Just (i3 :> i2 :. i1)
-  insertDim (i3 :. i2) 1 i1 = Just (i3 :> i2 :. i1)
-  insertDim _          _  _ = Nothing
-  {-# INLINE [1] insertDim #-}
+  getDimM (i3 :>  _ :.  _) 3 = pure i3
+  getDimM ( _ :> i2 :.  _) 2 = pure i2
+  getDimM ( _ :>  _ :. i1) 1 = pure i1
+  getDimM ix               d = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] getDimM #-}
+  setDimM ( _ :> i2 :. i1) 3 i3 = pure (i3 :> i2 :. i1)
+  setDimM (i3 :>  _ :. i1) 2 i2 = pure (i3 :> i2 :. i1)
+  setDimM (i3 :> i2 :.  _) 1 i1 = pure (i3 :> i2 :. i1)
+  setDimM ix               d _  = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] setDimM #-}
+  pullOutDimM (i3 :> i2 :. i1) 3 = pure (i3, i2 :. i1)
+  pullOutDimM (i3 :> i2 :. i1) 2 = pure (i2, i3 :. i1)
+  pullOutDimM (i3 :> i2 :. i1) 1 = pure (i1, i3 :. i2)
+  pullOutDimM ix               d = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] pullOutDimM #-}
+  insertDimM (i2 :. i1) 3 i3 = pure (i3 :> i2 :. i1)
+  insertDimM (i3 :. i1) 2 i2 = pure (i3 :> i2 :. i1)
+  insertDimM (i3 :. i2) 1 i1 = pure (i3 :> i2 :. i1)
+  insertDimM ix         d  _ = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> i :. i
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i3 :> i2 :. i1) = f i3 :> f i2 :. f i1
@@ -355,18 +357,18 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   unsnocDim (i :> ixl) = case unsnocDim ixl of
                           (ix, i1) -> (i :> ix, i1)
   {-# INLINE [1] unsnocDim #-}
-  getDim ix@(i :> ixl) d | d == dimensions (Just ix) = Just i
-                         | otherwise = getDim ixl d
-  {-# INLINE [1] getDim #-}
-  setDim ix@(i :> ixl) d di | d == dimensions (Just ix) = Just (di :> ixl)
-                            | otherwise = (i :>) <$> setDim ixl d di
-  {-# INLINE [1] setDim #-}
-  pullOutDim ix@(i :> ixl) d | d == dimensions (Just ix) = Just (i, ixl)
-                             | otherwise = fmap (i :>) <$> pullOutDim ixl d
-  {-# INLINE [1] pullOutDim #-}
-  insertDim ix@(i :> ixl) d di | d == dimensions (Just ix) + 1 = Just (di :> ix)
-                               | otherwise = (i :>) <$> insertDim ixl d di
-  {-# INLINE [1] insertDim #-}
+  getDimM ix@(i :> ixl) d | d == dimensions (Just ix) = pure i
+                         | otherwise = getDimM ixl d
+  {-# INLINE [1] getDimM #-}
+  setDimM ix@(i :> ixl) d di | d == dimensions (Just ix) = pure (di :> ixl)
+                            | otherwise = (i :>) <$> setDimM ixl d di
+  {-# INLINE [1] setDimM #-}
+  pullOutDimM ix@(i :> ixl) d | d == dimensions (Just ix) = pure (i, ixl)
+                             | otherwise = fmap (i :>) <$> pullOutDimM ixl d
+  {-# INLINE [1] pullOutDimM #-}
+  insertDimM ix@(i :> ixl) d di | d == dimensions (Just ix) + 1 = pure (di :> ix)
+                               | otherwise = (i :>) <$> insertDimM ixl d di
+  {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
   {-# INLINE [1] pureIndex #-}
   liftIndex f (i :> ix) = f i :> liftIndex f ix

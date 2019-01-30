@@ -319,7 +319,7 @@ showArray tyStr arr =
     "(Array " ++ tyStr ++
     showComp (getComp arr) ++ " (" ++
     (show (size arr)) ++ ")\n" ++
-    show (makeArray (getComp arr) (size arr) (evaluateAt arr) :: Array L ix e) ++ ")"
+    show (makeArray (getComp arr) (size arr) (evaluate' arr) :: Array L ix e) ++ ")"
     where showComp Seq = "Seq"
           showComp Par = "Par"
           showComp c   = "(" ++ show c ++ ")"

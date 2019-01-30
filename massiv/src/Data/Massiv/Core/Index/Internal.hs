@@ -35,9 +35,9 @@ module Data.Massiv.Core.Index.Internal
   , unconsSz
   , snocSz
   , unsnocSz
-  , setSz
-  , insertSz
-  , pullOutSz
+  , setSzM
+  , insertSzM
+  , pullOutSzM
   , Dim(..)
   , Dimension(DimN)
   , pattern Dim1
@@ -51,12 +51,17 @@ module Data.Massiv.Core.Index.Internal
   , Ix0(..)
   , type Ix1
   , pattern Ix1
+  , IndexException(..)
+  , SizeException(..)
   ) where
 
+import           Control.Exception (Exception(..))
+import           Control.Monad.Catch (MonadThrow(..))
 import           Control.DeepSeq
 import           Data.Coerce
 import           Data.Massiv.Core.Iterator
 import           GHC.TypeLits
+import           Data.Typeable
 
 -- | `Sz` provides type safety guarantees preventing mixup of index that is used to looking into
 -- array cells from the size, that describes total number of elements in the array along each
@@ -132,19 +137,19 @@ snocSz :: Index ix => Sz (Lower ix) -> Sz1 -> Sz ix
 snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 {-# INLINE snocSz #-}
 
--- | Same as `setDim`, but for `Sz`
+-- | Same as `setDimM`, but for `Sz`
 --
 -- @since 0.3.0
-setSz :: Index ix => Sz ix -> Dim -> Sz Int -> Maybe (Sz ix)
-setSz (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDim sz dim sz1
-{-# INLINE setSz #-}
+setSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> Sz Int -> m (Sz ix)
+setSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDimM sz dim sz1
+{-# INLINE setSzM #-}
 
--- | Same as `insertDim`, but for `Sz`
+-- | Same as `insertDimM`, but for `Sz`
 --
 -- @since 0.3.0
-insertSz :: Index ix => Sz (Lower ix) -> Dim -> Sz Int -> Maybe (Sz ix)
-insertSz (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDim sz dim sz1
-{-# INLINE insertSz #-}
+insertSzM :: (MonadThrow m, Index ix) => Sz (Lower ix) -> Dim -> Sz Int -> m (Sz ix)
+insertSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDimM sz dim sz1
+{-# INLINE insertSzM #-}
 
 -- | Same as `unconsDim`, but for `Sz`
 --
@@ -168,9 +173,9 @@ unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
 -- | Same as `pullOutDim`, but for `Sz`
 --
 -- @since 0.3.0
-pullOutSz :: Index ix => Sz ix -> Dim -> Maybe (Sz Ix1, Sz (Lower ix))
-pullOutSz (SafeSz sz) = coerce . pullOutDim sz
-{-# INLINE pullOutSz #-}
+pullOutSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> m (Sz Ix1, Sz (Lower ix))
+pullOutSzM (SafeSz sz) = fmap coerce . pullOutDimM sz
+{-# INLINE pullOutSzM #-}
 
 
 -- | A way to select Array dimension at a value level.
@@ -229,13 +234,13 @@ class ( Eq ix
   -- | Take a dimension from the index from the inside
   unsnocDim :: ix -> (Lower ix, Int)
   -- | Pull out value at specified dimension from the index, thus also lowering it dimensionality.
-  pullOutDim :: ix -> Dim -> Maybe (Int, Lower ix)
+  pullOutDimM :: MonadThrow m => ix -> Dim -> m (Int, Lower ix)
   -- | Insert a dimension into the index
-  insertDim :: Lower ix -> Dim -> Int -> Maybe ix
+  insertDimM :: MonadThrow m => Lower ix -> Dim -> Int -> m ix
   -- | Extract the value index has at specified dimension.
-  getDim :: ix -> Dim -> Maybe Int
+  getDimM :: MonadThrow m => ix -> Dim -> m Int
   -- | Set the value for an index at specified dimension.
-  setDim :: ix -> Dim -> Int -> Maybe ix
+  setDimM :: MonadThrow m => ix -> Dim -> Int -> m ix
   -- | Lift an `Int` to any index by replicating the value as many times as there are dimensions.
   pureIndex :: Int -> ix
   -- | Zip together two indices with a function
@@ -401,18 +406,18 @@ instance Index Ix1 where
   {-# INLINE [1] snocDim #-}
   unsnocDim i = (Ix0, i)
   {-# INLINE [1] unsnocDim #-}
-  getDim i 1 = Just i
-  getDim _ _ = Nothing
-  {-# INLINE [1] getDim #-}
-  setDim _ 1 i = Just i
-  setDim _ _ _ = Nothing
-  {-# INLINE [1] setDim #-}
-  pullOutDim i 1 = Just (i, Ix0)
-  pullOutDim _ _ = Nothing
-  {-# INLINE [1] pullOutDim #-}
-  insertDim Ix0 1 i = Just i
-  insertDim _   _ _ = Nothing
-  {-# INLINE [1] insertDim #-}
+  getDimM i  1 = pure i
+  getDimM ix d = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] getDimM #-}
+  setDimM _  1 i = pure i
+  setDimM ix d _ = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] setDimM #-}
+  pullOutDimM i  1 = pure (i, Ix0)
+  pullOutDimM ix d = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] pullOutDimM #-}
+  insertDimM Ix0 1 i = pure i
+  insertDimM ix  d _ = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] insertDimM #-}
   pureIndex i = i
   {-# INLINE [1] pureIndex #-}
   liftIndex f = f
@@ -425,3 +430,45 @@ instance Index Ix1 where
   {-# INLINE iterM #-}
   iterM_ k0 k1 inc cond = loopM_ k0 (`cond` k1) (+inc)
   {-# INLINE iterM_ #-}
+
+
+-- | Exceptions that get thrown when there is a problem with an index, size or dimension.
+data IndexException where
+  -- | Index contains a zero value along one of the dimensions.
+  IndexZeroException :: Index ix => !ix -> IndexException
+  -- | Dimension is out of reach.
+  IndexDimensionException :: (Show ix, Typeable ix) => !ix -> Dim -> IndexException
+  -- | Index is out of bounds.
+  IndexOutOfBoundsException :: Index ix => !(Sz ix) -> !ix -> IndexException
+
+instance Show IndexException where
+  show (IndexZeroException ix) = "IndexZeroException: " ++ show ix
+  show (IndexDimensionException ix dim) =
+    "IndexDimensionException: " ++ show dim ++ " for " ++ show ix
+  show (IndexOutOfBoundsException sz ix) =
+    "IndexOutOfBoundsException: " ++ show ix ++ " not safe for (" ++ show sz ++ ")"
+
+instance Exception IndexException
+
+data SizeException where
+  -- | Two sizes are expected to be equal along some or all dimensions, but they are not.
+  SizeMismatchException :: Index ix => !(Sz ix) -> !(Sz ix) -> SizeException
+  -- | Total number of elements does not match between the two sizes.
+  SizeElementsMismatchException :: (Index ix, Index ix') => !(Sz ix) -> !(Sz ix') -> SizeException
+  -- | Described subregion is too big for the specified size.
+  SizeSubregionException :: Index ix => !(Sz ix) -> !ix -> !(Sz ix) -> SizeException
+  -- | An array with the size cannot contain any elements.
+  SizeEmpty :: Index ix => !(Sz ix) -> SizeException
+
+
+instance Show SizeException where
+  show (SizeMismatchException sz sz') =
+    "SizeMismatchException: (" ++ show sz ++ ") vs (" ++ show sz' ++ ")"
+  show (SizeElementsMismatchException sz sz') =
+    "SizeElementsMismatchException: (" ++ show sz ++ ") vs (" ++ show sz' ++ ")"
+  show (SizeSubregionException sz' ix sz) =
+    "SizeSubregionException: (" ++
+    show sz' ++ ") is to small for " ++ show ix ++ " (" ++ show sz ++ ")"
+  show (SizeEmpty sz) = "SizeEmpty: (" ++ show sz ++ ") corresponds to an empty array"
+
+instance Exception SizeException

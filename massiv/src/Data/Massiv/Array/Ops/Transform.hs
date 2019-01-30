@@ -16,6 +16,8 @@ module Data.Massiv.Array.Ops.Transform
   , transposeInner
   , transposeOuter
   -- ** Backpermute
+  , backpermuteM
+  , backpermute'
   , backpermute
   -- ** Resize
   , resize
@@ -30,10 +32,12 @@ module Data.Massiv.Array.Ops.Transform
   , uncons
   , snoc
   , unsnoc
+  , appendM
   , append
   , append'
-  , concat
+  , concatM
   , concat'
+  , splitAtM
   , splitAt
   , splitAt'
   -- ** Upsample/Downsample
@@ -44,7 +48,7 @@ module Data.Massiv.Array.Ops.Transform
   , traverse2
   ) where
 
-import           Control.Monad                   as M (foldM_, guard, unless)
+import           Control.Monad                   as M (foldM_, unless, when)
 import           Data.Bifunctor                  (bimap)
 import           Data.Foldable                   as F (foldl', foldrM, toList)
 import           Data.Massiv.Array.Delayed.Pull
@@ -52,10 +56,36 @@ import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
-import           Data.Maybe                      (fromMaybe)
+import           Data.Massiv.Scheduler           (traverse_)
 import           Prelude                         as P hiding (concat, splitAt,
-                                                       traverse)
+                                                              traverse)
 
+
+-- | Extract a sub-array from within a larger source array. Array that is being extracted must be
+-- fully encapsulated in a source array, otherwise `Nothing` is returned,
+extractM :: (MonadThrow m, Extract r ix e)
+         => ix -- ^ Starting index
+         -> Sz ix -- ^ Size of the resulting array
+         -> Array r ix e -- ^ Source array
+         -> m (Array (EltRepr r ix) ix e)
+extractM !sIx !newSz !arr
+  | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
+    pure $ unsafeExtract sIx newSz arr
+  | otherwise = throwM $ SizeSubregionException (size arr) sIx newSz
+  where
+    sz1 = Sz (liftIndex (+1) (unSz (size arr)))
+    eIx1 = Sz (liftIndex (+1) eIx)
+    eIx = liftIndex2 (+) sIx $ unSz newSz
+{-# INLINE extractM #-}
+
+-- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
+extract' :: Extract r ix e
+        => ix -- ^ Starting index
+        -> Sz ix -- ^ Size of the resulting array
+        -> Array r ix e -- ^ Source array
+        -> Array (EltRepr r ix) ix e
+extract' sIx newSz = either throw id . extractM sIx newSz
+{-# INLINE extract' #-}
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
 -- fully encapsulated in a source array, otherwise `Nothing` is returned,
@@ -73,22 +103,18 @@ extract !sIx !newSz !arr
     eIx1 = Sz (liftIndex (+1) eIx)
     eIx = liftIndex2 (+) sIx $ unSz newSz
 {-# INLINE extract #-}
+{-# DEPRECATED extract "In favor of a more general `extractM`" #-}
 
--- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
-extract' :: Extract r ix e
-        => ix -- ^ Starting index
-        -> Sz ix -- ^ Size of the resulting array
-        -> Array r ix e -- ^ Source array
-        -> Array (EltRepr r ix) ix e
-extract' !sIx !newSz !arr =
-  case extract sIx newSz arr of
-    Just arr' -> arr'
-    Nothing ->
-      error $
-      "Data.Massiv.Array.extract': Cannot extract an array of size " ++
-      show newSz ++
-      " starting at " ++ show sIx ++ " from within an array of size: " ++ show (size arr)
-{-# INLINE extract' #-}
+
+-- | Similar to `extract`, except it takes starting and ending index. Result array will not include
+-- the ending index.
+extractFromToM :: (MonadThrow m, Extract r ix e) =>
+                  ix -- ^ Starting index
+               -> ix -- ^ Index up to which elements should be extracted.
+               -> Array r ix e -- ^ Source array.
+               -> m (Array (EltRepr r ix) ix e)
+extractFromToM sIx eIx = extractM sIx (Sz (liftIndex2 (-) eIx sIx))
+{-# INLINE extractFromToM #-}
 
 -- | Similar to `extract`, except it takes starting and ending index. Result array will not include
 -- the ending index.
@@ -99,6 +125,7 @@ extractFromTo :: Extract r ix e =>
               -> Maybe (Array (EltRepr r ix) ix e)
 extractFromTo sIx eIx = extract sIx $ Sz (liftIndex2 (-) eIx sIx)
 {-# INLINE extractFromTo #-}
+{-# DEPRECATED extractFromTo "In favor of a more general `extractFromToM`" #-}
 
 -- | Same as `extractFromTo`, but throws an error on invalid indices.
 --
@@ -195,11 +222,11 @@ transposeInner :: (Index (Lower ix), Source r' ix e)
 transposeInner !arr = makeArray (getComp arr) newsz newVal
   where
     transInner !ix =
-      fromMaybe (errorImpossible "transposeInner" ix) $ do
-        n <- getDim ix dix
-        m <- getDim ix (dix - 1)
-        ix' <- setDim ix dix m
-        setDim ix' (dix - 1) n
+      either throwImpossible id $ do
+        n <- getDimM ix dix
+        m <- getDimM ix (dix - 1)
+        ix' <- setDimM ix dix m
+        setDimM ix' (dix - 1) n
     {-# INLINE transInner #-}
     newVal = unsafeIndex arr . transInner
     {-# INLINE newVal #-}
@@ -242,11 +269,11 @@ transposeOuter :: (Index (Lower ix), Source r' ix e)
 transposeOuter !arr = makeArray (getComp arr) newsz newVal
   where
     transOuter !ix =
-      fromMaybe (errorImpossible "transposeOuter" ix) $ do
-        n <- getDim ix 1
-        m <- getDim ix 2
-        ix' <- setDim ix 1 m
-        setDim ix' 2 n
+      either throwImpossible id $ do
+        n <- getDimM ix 1
+        m <- getDimM ix 2
+        ix' <- setDimM ix 1 m
+        setDimM ix' 2 n
     {-# INLINE transOuter #-}
     newVal = unsafeIndex arr . transOuter
     {-# INLINE newVal #-}
@@ -254,7 +281,8 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 {-# INLINE [1] transposeOuter #-}
 
 
--- | Rearrange elements of an array into a new one.
+-- | Rearrange elements of an array into a new one by using a function that maps indices of the
+-- newly created one into the old one. This function can throw `IndexOutOfBoundsException`.
 --
 -- ===__Examples__
 --
@@ -278,13 +306,41 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --   , [ (0,0,3),(0,1,3),(0,2,3) ]
 --   ])
 --
+-- @since 0.3.0
+backpermuteM :: (MonadThrow m, Source r' ix' e, Mutable r ix e, Index ix) =>
+                Sz ix -- ^ Size of the result array
+             -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
+             -> Array r' ix' e -- ^ Source array.
+             -> m (Array r ix e)
+backpermuteM sz ixF !arr = makeArrayA (getComp arr) sz (evaluateM arr . ixF)
+{-# INLINE backpermuteM #-}
+
+-- | Similar to `backpermuteM`, with few notable differences:
+--
+-- * Creates a delayed array, instead of manifest, therefore it can be fused
+-- * Respects computation strategy, so it can be parallelized
+-- * Throws a runtime `IndexOutOfBoundsException` from pure code.
+--
+-- @since 0.3.0
+backpermute' :: (Source r' ix' e, Index ix) =>
+               Sz ix -- ^ Size of the result array
+            -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
+            -> Array r' ix' e -- ^ Source array.
+            -> Array D ix e
+backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
+{-# INLINE backpermute' #-}
+
+-- | See `backpermute'`.
+--
+-- @since 0.1.0
 backpermute :: (Source r' ix' e, Index ix) =>
                Sz ix -- ^ Size of the result array
             -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
             -> Array r' ix' e -- ^ Source array.
             -> Array D ix e
-backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
+backpermute = backpermute'
 {-# INLINE backpermute #-}
+{-# DEPRECATED backpermute "In favor of a safe `backpermuteM` or an equivalent `backpermute'`" #-}
 
 
 -- | Append two arrays together along a particular dimension. Sizes of both arrays must match, with
@@ -321,16 +377,16 @@ backpermute sz ixF !arr = makeArray (getComp arr) sz (evaluateAt arr . ixF)
 -- >>> append 2 arrA arrC
 -- Nothing
 --
-append :: (Source r1 ix e, Source r2 ix e) =>
-          Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array DL ix e)
-append n !arr1 !arr2 = do
-  let sz1 = size arr1
-      sz2 = size arr2
-  (k1, szl1) <- pullOutSz sz1 n
-  (k2, szl2) <- pullOutSz sz2 n
-  guard $ szl1 == szl2
+appendM :: (MonadThrow m, Source r1 ix e, Source r2 ix e) =>
+          Dim -> Array r1 ix e -> Array r2 ix e -> m (Array DL ix e)
+appendM n !arr1 !arr2 = do -- TODO: switch to `concat n [arr1, arr2]`
+  let !sz1 = size arr1
+      !sz2 = size arr2
+  (k1, szl1) <- pullOutSzM sz1 n
+  (k2, szl2) <- pullOutSzM sz2 n
+  unless (szl1 == szl2) $ throwM $ SizeMismatchException sz1 sz2
   let k1' = unSz k1
-  newSz <- insertSz szl1 n (SafeSz (k1' + unSz k2))
+  newSz <- insertSzM szl1 n (SafeSz (k1' + unSz k2))
   return $
     DLArray
       { dlComp = getComp arr1 <> getComp arr2
@@ -346,56 +402,74 @@ append n !arr1 !arr2 = do
                     ix' = setDim' ix n (i + k1')
                  in dlWrite (toLinearIndex newSz ix') (unsafeIndex arr2 ix)
       }
+{-# INLINE appendM #-}
+
+append :: (Source r1 ix e, Source r2 ix e) =>
+          Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array DL ix e)
+append = appendM
 {-# INLINE append #-}
+{-# DEPRECATED append "In favor of a more general `appendM`" #-}
 
 cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
-cons e arr = DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \ numWorkers scheduleWith uWrite ->
-  uWrite 0 e >> loadArray numWorkers scheduleWith arr (\ i -> uWrite (i + 1))
+cons e arr =
+  DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \numWorkers scheduleWith uWrite ->
+    uWrite 0 e >> loadArray numWorkers scheduleWith arr (\i -> uWrite (i + 1))
+{-# INLINE cons #-}
 
-uncons :: Source r Ix1 e => Array r Ix1 e -> Maybe (e, Array D Ix1 e)
+uncons :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
 uncons arr
-  | 0 == totalElem sz = Nothing
+  | 0 == totalElem sz = throwM $ SizeEmpty sz
   | otherwise =
-    Just
+    pure
       ( unsafeLinearIndex arr 0
       , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\i -> unsafeLinearIndex arr (i + 1)))
   where
-    sz = size arr
+    !sz = size arr
+{-# INLINE uncons #-}
 
 snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
 snoc arr e =
   DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
     loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
   where
-    k = unSz (size arr)
+    !k = unSz (size arr)
+{-# INLINE snoc #-}
 
 
-unsnoc :: Source r Ix1 e => Array r Ix1 e -> Maybe (Array D Ix1 e, e)
+unsnoc :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
 unsnoc arr
-  | 0 == totalElem sz = Nothing
+  | 0 == totalElem sz = throwM $ SizeEmpty sz
   | otherwise =
-    Just (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
+    pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
   where
-    sz = size arr
-    k = unSz sz - 1
+    !sz = size arr
+    !k = unSz sz - 1
+{-# INLINE unsnoc #-}
 
 concat' :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Array DL ix e
-concat' n arrs =
-  case concat n arrs of
-    Nothing     -> error $ "Data.Massiv.Array.concat': size mismatch "
-    Just resArr -> resArr
+concat' n arrs = either throw id $ concatM n arrs
+{-# INLINE concat' #-}
 
-
-concat :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Maybe (Array DL ix e)
-concat n !arrsF = do
-  guard $ not $ null arrsF
+-- | Concatenate many arrays together along some dimension. It is important that all sizes are
+-- equal, with an exception of the dimensions along which concatenation happens.
+--
+-- @since 0.3.0
+concatM ::
+     (MonadThrow m, Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> m (Array DL ix e)
+concatM n !arrsF = do
+  when (null arrsF) $ throwM $ SizeEmpty (SafeSz (length arrsF))
+  -- \ prevent concatenation of an empty Foldables
   let arrs = F.toList arrsF
       szs = P.map (unSz . size) arrs
+  -- / remove the dimension out of all sizes along which concatenation will happen
   (ks, (szl:szls)) <-
-    F.foldrM (\ !sz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDim sz n) ([], []) szs
-  guard $ all (== szl) szls
+    F.foldrM (\ !sz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM sz n) ([], []) szs
+  -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
+  traverse_
+    (\(sz', _) -> throwM (SizeMismatchException (SafeSz (head szs)) (SafeSz sz')))
+    (dropWhile ((== szl) . snd) $ zip (tail szs) szls)
   let kTotal = SafeSz $ F.foldl' (+) 0 ks
-  newSz <- insertSz (SafeSz szl) n kTotal
+  newSz <- insertSzM (SafeSz szl) n kTotal
   return $
     DLArray
       { dlComp = mconcat $ P.map getComp arrs
@@ -411,7 +485,7 @@ concat n !arrsF = do
                   pure (kAcc + k)
              in M.foldM_ arrayLoader 0 $ P.zip ks arrs
       }
-{-# INLINE concat #-}
+{-# INLINE concatM #-}
 
 
 -- | Same as `append`, but will throw an error instead of returning `Nothing` on mismatched sizes.
@@ -428,6 +502,22 @@ append' dim arr1 arr2 =
 {-# INLINE append' #-}
 
 -- | /O(1)/ - Split an array at an index along a specified dimension.
+splitAtM ::
+     (MonadThrow m, Extract r ix e, r' ~ EltRepr r ix)
+  => Dim -- ^ Dimension along which to split
+  -> Int -- ^ Index along the dimension to split at
+  -> Array r ix e -- ^ Source array
+  -> m (Array r' ix e, Array r' ix e)
+splitAtM dim i arr = do
+  let Sz sz = size arr
+  eIx <- setDimM sz dim i
+  sIx <- setDimM zeroIndex dim i
+  arr1 <- extractFromToM zeroIndex eIx arr
+  arr2 <- extractFromToM sIx sz arr
+  return (arr1, arr2)
+{-# INLINE splitAtM #-}
+
+-- | /O(1)/ - Split an array at an index along a specified dimension.
 splitAt ::
      (Extract r ix e, r' ~ EltRepr r ix)
   => Dim -- ^ Dimension along which to split
@@ -436,12 +526,13 @@ splitAt ::
   -> Maybe (Array r' ix e, Array r' ix e)
 splitAt dim i arr = do
   let Sz sz = size arr
-  eIx <- setDim sz dim i
-  sIx <- setDim zeroIndex dim i
+  eIx <- setDimM sz dim i
+  sIx <- setDimM zeroIndex dim i
   arr1 <- extractFromTo zeroIndex eIx arr
   arr2 <- extractFromTo sIx sz arr
   return (arr1, arr2)
 {-# INLINE splitAt #-}
+{-# DEPRECATED splitAt "In favor of a more general `splitAtM`" #-}
 
 -- | Same as `splitAt`, but will throw an error instead of returning `Nothing` on wrong dimension
 -- and index out of bounds.
@@ -537,7 +628,7 @@ traverse
                               -- an index for an element it should return a value of.
   -> Array r1 ix1 e1 -- ^ Source array
   -> Array D ix e
-traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluateAt arr1))
+traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluate' arr1))
 {-# INLINE traverse #-}
 
 
@@ -549,12 +640,6 @@ traverse2
   -> Array r1 ix1 e1
   -> Array r2 ix2 e2
   -> Array D ix e
-traverse2 sz f arr1 arr2 = makeArray (getComp arr1) sz (f (evaluateAt arr1) (evaluateAt arr2))
+traverse2 sz f arr1 arr2 = makeArray (getComp arr1) sz (f (evaluate' arr1) (evaluate' arr2))
 {-# INLINE traverse2 #-}
 
-
--- | Throw an impossible error on a `Nothing`
-errorImpossible :: Show c => String -> c -> a
-errorImpossible fName cause =
-  error $ "Data.Massiv.Array." ++ fName ++ ": Impossible happened " ++ show cause
-{-# NOINLINE errorImpossible #-}

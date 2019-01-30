@@ -59,6 +59,8 @@ import           System.IO.Unsafe           (unsafePerformIO)
 
 
 -- | /O(n)/ - Unstructured fold of an array.
+--
+-- @since 0.1.0
 fold :: Source r ix e =>
         (e -> e -> e) -- ^ Folding function (like with left fold, first argument
                       -- is an accumulator)
@@ -72,18 +74,24 @@ fold f initAcc = foldlInternal f initAcc f initAcc
 
 
 -- | /O(n)/ - Monadic left fold.
+--
+-- @since 0.1.0
 foldlM :: (Source r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m a
 foldlM f = ifoldlM (\ a _ b -> f a b)
 {-# INLINE foldlM #-}
 
 
 -- | /O(n)/ - Monadic left fold, that discards the result.
+--
+-- @since 0.1.0
 foldlM_ :: (Source r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m ()
 foldlM_ f = ifoldlM_ (\ a _ b -> f a b)
 {-# INLINE foldlM_ #-}
 
 
 -- | /O(n)/ - Monadic left fold with an index aware function.
+--
+-- @since 0.1.0
 ifoldlM :: (Source r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m a
 ifoldlM f !acc !arr =
   iterM zeroIndex (unSz (size arr)) (pureIndex 1) (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
@@ -91,24 +99,32 @@ ifoldlM f !acc !arr =
 
 
 -- | /O(n)/ - Monadic left fold with an index aware function, that discards the result.
+--
+-- @since 0.1.0
 ifoldlM_ :: (Source r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m ()
 ifoldlM_ f acc = void . ifoldlM f acc
 {-# INLINE ifoldlM_ #-}
 
 
 -- | /O(n)/ - Monadic right fold.
+--
+-- @since 0.1.0
 foldrM :: (Source r ix e, Monad m) => (e -> a -> m a) -> a -> Array r ix e -> m a
 foldrM f = ifoldrM (\_ e a -> f e a)
 {-# INLINE foldrM #-}
 
 
 -- | /O(n)/ - Monadic right fold, that discards the result.
+--
+-- @since 0.1.0
 foldrM_ :: (Source r ix e, Monad m) => (e -> a -> m a) -> a -> Array r ix e -> m ()
 foldrM_ f = ifoldrM_ (\_ e a -> f e a)
 {-# INLINE foldrM_ #-}
 
 
 -- | /O(n)/ - Monadic right fold with an index aware function.
+--
+-- @since 0.1.0
 ifoldrM :: (Source r ix e, Monad m) => (ix -> e -> a -> m a) -> a -> Array r ix e -> m a
 ifoldrM f !acc !arr =
   iterM (liftIndex (subtract 1) (unSz (size arr))) zeroIndex (pureIndex (-1)) (>=) acc $ \ !ix !acc0 ->
@@ -117,6 +133,8 @@ ifoldrM f !acc !arr =
 
 
 -- | /O(n)/ - Monadic right fold with an index aware function, that discards the result.
+--
+-- @since 0.1.0
 ifoldrM_ :: (Source r ix e, Monad m) => (ix -> e -> a -> m a) -> a -> Array r ix e -> m ()
 ifoldrM_ f !acc !arr = void $ ifoldrM f acc arr
 {-# INLINE ifoldrM_ #-}
@@ -124,6 +142,8 @@ ifoldrM_ f !acc !arr = void $ ifoldrM f acc arr
 
 
 -- | /O(n)/ - Left fold, computed sequentially with lazy accumulator.
+--
+-- @since 0.1.0
 lazyFoldlS :: Source r ix e => (a -> e -> a) -> a -> Array r ix e -> a
 lazyFoldlS f initAcc arr = go initAcc 0 where
     len = totalElem (size arr)
@@ -133,18 +153,24 @@ lazyFoldlS f initAcc arr = go initAcc 0 where
 
 
 -- | /O(n)/ - Right fold, computed sequentially with lazy accumulator.
+--
+-- @since 0.1.0
 lazyFoldrS :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
 lazyFoldrS = foldrFB
 {-# INLINE lazyFoldrS #-}
 
 
 -- | /O(n)/ - Left fold, computed sequentially.
+--
+-- @since 0.1.0
 foldlS :: Source r ix e => (a -> e -> a) -> a -> Array r ix e -> a
 foldlS f = ifoldlS (\ a _ e -> f a e)
 {-# INLINE foldlS #-}
 
 
 -- | /O(n)/ - Left fold with an index aware function, computed sequentially.
+--
+-- @since 0.1.0
 ifoldlS :: Source r ix e
         => (a -> ix -> e -> a) -> a -> Array r ix e -> a
 ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> return $ f a ix e) acc
@@ -152,12 +178,24 @@ ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> return $ f a ix e) acc
 
 
 -- | /O(n)/ - Right fold, computed sequentially.
+--
+-- @since 0.1.0
 foldrS :: Source r ix e => (e -> a -> a) -> a -> Array r ix e -> a
 foldrS f = ifoldrS (\_ e a -> f e a)
 {-# INLINE foldrS #-}
 
 
+-- | /O(n)/ - Right fold with an index aware function, computed sequentially.
+--
+-- @since 0.1.0
+ifoldrS :: Source r ix e => (ix -> e -> a -> a) -> a -> Array r ix e -> a
+ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
+{-# INLINE ifoldrS #-}
+
+
 -- | Version of foldr that supports @foldr/build@ list fusion implemented by GHC.
+--
+-- @since 0.1.0
 foldrFB :: Source r ix e => (e -> b -> b) -> b -> Array r ix e -> b
 foldrFB c n arr = go 0
   where
@@ -166,13 +204,6 @@ foldrFB c n arr = go 0
       | i == k = n
       | otherwise = let !v = unsafeLinearIndex arr i in v `c` go (i + 1)
 {-# INLINE [0] foldrFB #-}
-
-
-
--- | /O(n)/ - Right fold with an index aware function, computed sequentially.
-ifoldrS :: Source r ix e => (ix -> e -> a -> a) -> a -> Array r ix e -> a
-ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
-{-# INLINE ifoldrS #-}
 
 
 
@@ -194,6 +225,7 @@ ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
 -- >>> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArrayR U Seq (Ix1 11) id
 -- [[10,9],[8,7,6],[5,4,3],[2,1,0]]
 --
+-- @since 0.1.0
 foldlP :: Source r ix e =>
           (a -> e -> a) -- ^ Folding function @g@.
        -> a -- ^ Accumulator. Will be applied to @g@ multiple times, thus must be neutral.
@@ -207,6 +239,8 @@ foldlP f = ifoldlP (\ x _ -> f x)
 -- | Just like `foldlP`, but allows you to specify which cores (capabilities) to run computation
 -- on. The order in which chunked results will be supplied to function @f@ is guaranteed to be
 -- consecutive and aligned with the folding direction.
+--
+-- @since 0.1.0
 foldlOnP
   :: Source r ix e
   => [Int] -> (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
@@ -216,6 +250,8 @@ foldlOnP wIds f = ifoldlOnP wIds (\ x _ -> f x)
 
 
 -- | Parallel left fold.
+--
+-- @since 0.1.0
 ifoldlIO :: Source r ix e =>
             [Int] -- ^ List of capabilities
          -> (a -> ix -> e -> IO a) -- ^ Index aware folding IO action
@@ -243,6 +279,8 @@ ifoldlIO wIds f !initAcc g !tAcc !arr = do
 
 -- | Just like `ifoldlP`, but allows you to specify which cores to run
 -- computation on.
+--
+-- @since 0.1.0
 ifoldlOnP :: Source r ix e =>
            [Int] -> (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
 ifoldlOnP wIds f initAcc g =
@@ -254,6 +292,8 @@ ifoldlOnP wIds f initAcc g =
 -- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
 -- like `foldlP`, except that folding function will receive an index of an
 -- element it is being applied to.
+--
+-- @since 0.1.0
 ifoldlP :: Source r ix e =>
            (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
 ifoldlP = ifoldlOnP []
@@ -268,6 +308,8 @@ ifoldlP = ifoldlOnP []
 -- >>> foldrP (++) [] (:) [] $ makeArray2D (3,4) id
 -- [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3),(2,0),(2,1),(2,2),(2,3)]
 --
+--
+-- @since 0.1.0
 foldrP :: Source r ix e =>
           (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
 foldrP f = ifoldrP (const f)
@@ -300,6 +342,8 @@ foldrP f = ifoldrP (const f)
 -- >>> fmap (P.zip [4,3..]) <$> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 11 id
 -- [(4,[0,1,2]),(3,[3,4,5]),(2,[6,7,8]),(1,[9,10])]
 --
+--
+-- @since 0.1.0
 foldrOnP :: Source r ix e =>
             [Int] -> (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
 foldrOnP wIds f = ifoldrOnP wIds (const f)
@@ -308,6 +352,8 @@ foldrOnP wIds f = ifoldrOnP wIds (const f)
 
 -- | Parallel right fold. Differs from `ifoldrP` in that it accepts `IO` actions instead of the
 -- usual pure functions as arguments.
+--
+-- @since 0.1.0
 ifoldrIO :: Source r ix e =>
            [Int] -> (ix -> e -> a -> IO a) -> a -> (a -> b -> IO b) -> b -> Array r ix e -> IO b
 ifoldrIO wIds f !initAcc g !tAcc !arr = do
@@ -331,6 +377,8 @@ ifoldrIO wIds f !initAcc g !tAcc !arr = do
 -- | /O(n)/ - Right fold with an index aware function, computed in parallel.
 -- Same as `ifoldlP`, except directed from the last element in the array towards
 -- beginning.
+--
+-- @since 0.1.0
 ifoldrOnP :: Source r ix e =>
            [Int] -> (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
 ifoldrOnP wIds f !initAcc g =
@@ -339,6 +387,8 @@ ifoldrOnP wIds f !initAcc g =
 
 
 -- | Just like `ifoldrOnP`, but allows you to specify which cores to run computation on.
+--
+-- @since 0.1.0
 ifoldrP :: Source r ix e =>
            (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
 ifoldrP = ifoldrOnP []

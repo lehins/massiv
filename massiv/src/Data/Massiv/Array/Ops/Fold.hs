@@ -21,7 +21,11 @@ module Data.Massiv.Array.Ops.Fold
   , foldMono
   , ifoldSemi
   , foldSemi
+  , minimumM
+  , minimum'
   , minimum
+  , maximumM
+  , maximum'
   , maximum
   , sum
   , product
@@ -299,53 +303,105 @@ foldrInner = foldrWithin' 1
 
 
 -- | /O(n)/ - Compute maximum of all elements.
+--
+-- @since 0.3.0
+maximumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
+maximumM = \arr ->
+  if isEmpty arr
+    then throwM (SizeEmpty (size arr))
+    else pure $ fold max (unsafeIndex arr zeroIndex) arr
+{-# INLINE maximumM #-}
+
+
+-- | /O(n)/ - Compute maximum of all elements.
+--
+-- @since 0.1.0
 maximum :: (Source r ix e, Ord e) => Array r ix e -> e
 maximum = \arr ->
   if isEmpty arr
     then error "Data.Massiv.Array.maximum - empty"
-    else fold max (evaluateAt arr zeroIndex) arr
+    else fold max (evaluate' arr zeroIndex) arr
 {-# INLINE maximum #-}
+{-# DEPRECATED maximum "In favor of a safee `maximumM` or an equivalent `maximum'`" #-}
+
+-- | /O(n)/ - Compute maximum of all elements.
+--
+-- @since 0.3.0
+maximum' :: (Source r ix e, Ord e) => Array r ix e -> e
+maximum' = either throw id . maximumM
+{-# INLINE maximum' #-}
 
 
 -- | /O(n)/ - Compute minimum of all elements.
+--
+-- @since 0.3.0
+minimumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
+minimumM = \arr ->
+  if isEmpty arr
+    then throwM (SizeEmpty (size arr))
+    else pure $ fold min (unsafeIndex arr zeroIndex) arr
+{-# INLINE minimumM #-}
+
+-- | /O(n)/ - Compute minimum of all elements.
+--
+-- @since 0.3.0
+minimum' :: (Source r ix e, Ord e) => Array r ix e -> e
+minimum' = either throw id . minimumM
+{-# INLINE minimum' #-}
+
+-- | /O(n)/ - Compute minimum of all elements.
+--
+-- @since 0.1.0
 minimum :: (Source r ix e, Ord e) => Array r ix e -> e
 minimum = \arr ->
   if isEmpty arr
     then error "Data.Massiv.Array.minimum - empty"
-    else fold min (evaluateAt arr zeroIndex) arr
+    else fold min (evaluate' arr zeroIndex) arr
 {-# INLINE minimum #-}
-
+{-# DEPRECATED minimum "In favor of a safer `minimumM` or an equivalent `minimum'`" #-}
 
 -- | /O(n)/ - Compute sum of all elements.
+--
+-- @since 0.1.0
 sum :: (Source r ix e, Num e) => Array r ix e -> e
 sum = fold (+) 0
 {-# INLINE sum #-}
 
 
 -- | /O(n)/ - Compute product of all elements.
+--
+-- @since 0.1.0
 product :: (Source r ix e, Num e) => Array r ix e -> e
 product = fold (*) 1
 {-# INLINE product #-}
 
 
 -- | /O(n)/ - Compute conjunction of all elements.
+--
+-- @since 0.1.0
 and :: Source r ix Bool => Array r ix Bool -> Bool
 and = fold (&&) True
 {-# INLINE and #-}
 
 
 -- | /O(n)/ - Compute disjunction of all elements.
+--
+-- @since 0.1.0
 or :: Source r ix Bool => Array r ix Bool -> Bool
 or = fold (||) False
 {-# INLINE or #-}
 
 
 -- | /O(n)/ - Determines whether all element of the array satisfy the predicate.
+--
+-- @since 0.1.0
 all :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
 all f = foldlInternal (\acc el -> acc && f el) True (&&) True
 {-# INLINE all #-}
 
 -- | /O(n)/ - Determines whether any element of the array satisfies the predicate.
+--
+-- @since 0.1.0
 any :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
 any f = foldlInternal (\acc el -> acc || f el) False (||) False
 {-# INLINE any #-}

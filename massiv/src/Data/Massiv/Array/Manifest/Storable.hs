@@ -105,6 +105,10 @@ instance ( VS.Storable e
   unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
   {-# INLINE unsafeInnerSlice #-}
 
+instance {-# OVERLAPPING #-} VS.Storable e => Slice S Ix1 e where
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
+
 
 instance (Index ix, VS.Storable e) => Manifest S ix e where
 

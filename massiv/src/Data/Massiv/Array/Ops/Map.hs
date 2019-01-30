@@ -191,15 +191,6 @@ itraverseA ::
   -> Array r' ix a
   -> f (Array r ix e)
 itraverseA f arr = makeArrayA (getComp arr) (size arr) $ \ !ix -> f ix (unsafeIndex arr ix)
-  -- -- fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
-  -- where
-  --   g ix e acc = (:acc) <$> f ix e
-  --   loadList xs =
-  --     runST $ do
-  --       marr <- unsafeNew (size arr)
-  --       _ <- F.foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
-  --       unsafeFreeze (getComp arr) marr
-  --   {-# INLINE loadList #-}
 {-# INLINE itraverseA #-}
 
 
@@ -283,11 +274,6 @@ itraversePrimR ::
 itraversePrimR _ = itraversePrim
 {-# INLINE itraversePrimR #-}
 
-
-
-zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
-zipWithIndex arr = zip (makeArray mempty (size arr) id :: Array D ix ix) arr
-{-# INLINE zipWithIndex #-}
 
 --------------------------------------------------------------------------------
 -- mapM ------------------------------------------------------------------------

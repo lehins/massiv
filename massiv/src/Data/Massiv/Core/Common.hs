@@ -40,27 +40,39 @@ module Data.Massiv.Core.Common
   -- * Indexing
   , (!?)
   , index
+  , indexM
   , indexWith
   , (!)
   , index'
   , (??)
   , defaultIndex
   , borderIndex
+  , evaluateM
+  , evaluate'
   , evaluateAt
   , module Data.Massiv.Core.Index
   -- * Common Operations
   , imapM_
   , module Data.Massiv.Scheduler.Computation
   , Semigroup((<>))
+  -- * Exceptions
+  , MonadThrow(..)
+  , throw
+  , IndexException(..)
+  , SizeException(..)
+  , module Data.Massiv.Core.Exception
   ) where
 
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup
 #endif
-
+import           Control.Exception (throw)
+import           Control.Monad.Catch (MonadThrow(..))
 import           Control.Monad.Primitive
 import           Data.Massiv.Scheduler.Computation
+import           Data.Massiv.Core.Exception
 import           Data.Massiv.Core.Index
+import           Data.Massiv.Core.Index.Internal
 import           Data.Typeable
 
 #include "massiv.h"
@@ -211,7 +223,7 @@ class Load r ix e => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Sz (Lower ix), Sz Int) -> Int -> Elt r ix e
 
 class Load r ix e => Slice r ix e where
-  unsafeSlice :: Array r ix e -> ix -> Sz ix -> Dim -> Maybe (Elt r ix e)
+  unsafeSlice :: MonadThrow m => Array r ix e -> ix -> Sz ix -> Dim -> m (Elt r ix e)
 
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
@@ -337,8 +349,8 @@ infixl 4 !, !?, ??
 
 
 -- | Infix version of `index`.
-(!?) :: Manifest r ix e => Array r ix e -> ix -> Maybe e
-(!?) = index
+(!?) :: (MonadThrow m, Manifest r ix e) => Array r ix e -> ix -> m e
+(!?) = indexM
 {-# INLINE (!?) #-}
 
 
@@ -349,16 +361,26 @@ infixl 4 !, !?, ??
 -- >>> (fromList Seq [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)) ??> 1 ?? (0 :. 2)
 -- Just 6
 --
-(??) :: Manifest r ix e => Maybe (Array r ix e) -> ix -> Maybe e
-(??) Nothing    = const Nothing
-(??) (Just arr) = (arr !?)
+(??) :: (MonadThrow m, Manifest r ix e) => m (Array r ix e) -> ix -> m e
+(??) marr ix = marr >>= (!? ix)
 {-# INLINE (??) #-}
 
--- | /O(1)/ - Lookup an element in the array. Returns `Nothing`, when index is out
--- of bounds, `Just` element otherwise.
+-- | /O(1)/ - Lookup an element in the array. Returns `Nothing`, when index is out of bounds and
+-- returns the element at the supplied index otherwise. Use `indexM` instead, since it is more
+-- generaland can just as well be used with `Maybe`.
+--
+-- @since 0.1.0
 index :: Manifest r ix e => Array r ix e -> ix -> Maybe e
-index arr = handleBorderIndex (Fill Nothing) (size arr) (Just . unsafeIndex arr)
+index = indexM
 {-# INLINE index #-}
+
+-- | /O(1)/ - Lookup an element in the array. Throws `IndexOutOfBoundsException`, when index is out
+-- of bounds and returns the element at the supplied index otherwise.
+--
+-- @since 0.3.0
+indexM :: (MonadThrow m, Manifest r ix e) => Array r ix e -> ix -> m e
+indexM = evaluateM
+{-# INLINE indexM #-}
 
 -- | /O(1)/ - Lookup an element in the array, while using default element when
 -- index is out of bounds.
@@ -372,26 +394,46 @@ borderIndex :: Manifest r ix e => Border e -> Array r ix e -> ix -> e
 borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 {-# INLINE borderIndex #-}
 
--- | /O(1)/ - Lookup an element in the array. Throw an error if index is out of bounds.
+-- | /O(1)/ - Lookup an element in the array. This is a partial function and it can throw
+-- `IndexOutOfBoundsException` inside pure code. It is safer to use `index` instead.
 index' :: Manifest r ix e => Array r ix e -> ix -> e
-index' arr ix =
-  borderIndex (Fill (errorIx "Data.Massiv.Array.index" (size arr) ix)) arr ix
+index' = evaluate'
 {-# INLINE index' #-}
 
-
--- | This is just like `index'` function, but it allows getting values from
--- delayed arrays as well as manifest. As the name suggests, indexing into a
+-- | This is just like `indexM` function, but it allows getting values from
+-- delayed arrays as well as `Manifest`. As the name suggests, indexing into a
 -- delayed array at the same index multiple times will cause evaluation of the
 -- value each time and can destroy the performace if used without care.
-evaluateAt :: Source r ix e => Array r ix e -> ix -> e
-evaluateAt !arr !ix =
+--
+-- @since 0.3.0
+evaluateM :: (MonadThrow m, Source r ix e) => Array r ix e -> ix -> m e
+evaluateM arr ix =
   handleBorderIndex
-    (Fill (errorIx "Data.Massiv.Array.evaluateAt" (size arr) ix))
+    (Fill (throwM (IndexOutOfBoundsException (size arr) ix)))
+    (size arr)
+    (pure . unsafeIndex arr)
+    ix
+{-# INLINE evaluateM #-}
+
+-- | Similar to `evaluateM`, but will throw an exception in pure code.
+--
+-- @since 0.3.0
+evaluate' :: Source r ix e => Array r ix e -> ix -> e
+evaluate' arr ix =
+  handleBorderIndex
+    (Fill (throw (IndexOutOfBoundsException (size arr) ix)))
     (size arr)
     (unsafeIndex arr)
     ix
-{-# INLINE evaluateAt #-}
+{-# INLINE evaluate' #-}
 
+-- | See `evaluate'`.
+--
+-- @since 0.1.0
+evaluateAt :: Source r ix e => Array r ix e -> ix -> e
+evaluateAt = evaluate'
+{-# INLINE evaluateAt #-}
+{-# DEPRECATED evaluateAt "In favor of a safe `evaluateM` or an equivalent `evaluate'`" #-}
 
 indexWith ::
      Index ix

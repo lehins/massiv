@@ -162,7 +162,7 @@ instance Index ix => Extract M ix e where
 
 
 instance {-# OVERLAPPING #-} Slice M Ix1 e where
-  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
 instance ( Index ix
@@ -171,7 +171,7 @@ instance ( Index ix
          ) =>
          Slice M ix e where
   unsafeSlice arr start cutSz dim = do
-    (_, newSz) <- pullOutSz cutSz dim
+    (_, newSz) <- pullOutSzM cutSz dim
     return $ unsafeResize newSz (unsafeExtract start cutSz arr)
   {-# INLINE unsafeSlice #-}
 
@@ -273,7 +273,7 @@ computeInto ::
   -> Array r' ix e -- ^ Array to load
   -> IO ()
 computeInto !mArr !arr = do
-  unless (msize mArr == size arr) $ errorSizeMismatch "computeInto" (msize mArr) (size arr)
+  unless (msize mArr == size arr) $ throwM $ SizeMismatchException (msize mArr) (size arr)
   withScheduler_ (getComp arr) $ \scheduler ->
     loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}

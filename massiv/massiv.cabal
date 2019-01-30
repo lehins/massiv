@@ -53,6 +53,7 @@ library
                      , Data.Massiv.Array.Stencil.Convolution
                      , Data.Massiv.Array.Stencil.Internal
                      , Data.Massiv.Core.Common
+                     , Data.Massiv.Core.Exception
                      , Data.Massiv.Core.Index.Internal
                      , Data.Massiv.Core.Index.Ix
                      , Data.Massiv.Core.Index.Stride

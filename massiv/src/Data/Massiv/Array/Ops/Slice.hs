@@ -23,7 +23,7 @@ module Data.Massiv.Array.Ops.Slice
   , (<??>)
   ) where
 
-import           Control.Monad           (guard)
+import           Control.Monad           (unless, guard)
 import           Data.Massiv.Core.Common
 
 
@@ -78,10 +78,12 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 
 -- | /O(1)/ - Just like `!>` slices the array from the outside, but returns
 -- `Nothing` when index is out of bounds.
-(!?>) :: OuterSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
+(!?>) :: (MonadThrow m, OuterSlice r ix e) => Array r ix e -> Int -> m (Elt r ix e)
 (!?>) !arr !i
-  | isSafeIndex (fst (unconsSz (size arr))) i = Just $ unsafeOuterSlice arr i
-  | otherwise = Nothing
+  | isSafeIndex sz i = pure $ unsafeOuterSlice arr i
+  | otherwise = throwM $ IndexOutOfBoundsException sz i
+  where
+    !sz = fst (unconsSz (size arr))
 {-# INLINE (!?>) #-}
 
 
@@ -98,17 +100,16 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- >>> arr !?> -2 ??> 0 ?? 1
 -- Nothing
 --
-(??>) :: OuterSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
-(??>) Nothing      _ = Nothing
-(??>) (Just arr) !ix = arr !?> ix
+(??>) :: (MonadThrow m, OuterSlice r ix e) => m (Array r ix e) -> Int -> m (Elt r ix e)
+(??>) marr !ix = marr >>= (!?> ix)
 {-# INLINE (??>) #-}
 
 
 -- | /O(1)/ - Safe slice from the inside
-(<!?) :: InnerSlice r ix e => Array r ix e -> Int -> Maybe (Elt r ix e)
+(<!?) :: (MonadThrow m, InnerSlice r ix e) => Array r ix e -> Int -> m (Elt r ix e)
 (<!?) !arr !i
-  | isSafeIndex m i = Just $ unsafeInnerSlice arr sz i
-  | otherwise = Nothing
+  | isSafeIndex m i = pure $ unsafeInnerSlice arr sz i
+  | otherwise = throwM $ IndexOutOfBoundsException m i
   where
     !sz@(_, m) = unsnocSz (size arr)
 {-# INLINE (<!?) #-}
@@ -118,25 +119,24 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 (<!) :: InnerSlice r ix e => Array r ix e -> Int -> Elt r ix e
 (<!) !arr !ix =
   case arr <!? ix of
-    Just res -> res
-    Nothing  -> errorIx "(<!)" (size arr) ix
+    Right res -> res
+    Left exc -> throw exc
 {-# INLINE (<!) #-}
 
 
 -- | /O(1)/ - Safe slicing continuation from the inside
-(<??) :: InnerSlice r ix e => Maybe (Array r ix e) -> Int -> Maybe (Elt r ix e)
-(<??) Nothing      _ = Nothing
-(<??) (Just arr) !ix = arr <!? ix
+(<??) :: (MonadThrow m, InnerSlice r ix e) => m (Array r ix e) -> Int -> m (Elt r ix e)
+(<??) marr !ix = marr >>= (<!? ix)
 {-# INLINE (<??) #-}
 
 
 -- | /O(1)/ - Same as (`<!>`), but fails gracefully with a `Nothing`, instead of an error
-(<!?>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Maybe (Elt r ix e)
+(<!?>) :: (MonadThrow m, Slice r ix e) => Array r ix e -> (Dim, Int) -> m (Elt r ix e)
 (<!?>) !arr !(dim, i) = do
-  (m, szl) <- pullOutSz (size arr) dim
-  guard $ isSafeIndex m i
-  start <- setDim zeroIndex dim i
-  cutSz <- insertSz szl dim oneSz
+  (m, szl) <- pullOutSzM (size arr) dim
+  unless (isSafeIndex m i) $ throwM $ IndexOutOfBoundsException m i
+  start <- setDimM zeroIndex dim i
+  cutSz <- insertSzM szl dim oneSz
   unsafeSlice arr start cutSz dim
 {-# INLINE (<!?>) #-}
 
@@ -148,21 +148,14 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- prop> arr <! i == arr <!> (1,i)
 --
 (<!>) :: Slice r ix e => Array r ix e -> (Dim, Int) -> Elt r ix e
-(<!>) !arr !(dim, i) =
-  case arr <!?> (dim, i) of
-    Just res -> res
-    Nothing ->
-      let arrDims = dimensions (size arr)
-      in if dim < 1 || dim > arrDims
-           then error $
-                "(<!>): Invalid dimension: " ++
-                show dim ++ " for Array of dimensions: " ++ show arrDims
-           else errorIx "(<!>)" (size arr) (dim, i)
+(<!>) !arr !dix =
+  case arr <!?> dix of
+    Right res -> res
+    Left exc -> throw exc
 {-# INLINE (<!>) #-}
 
 
 -- | /O(1)/ - Safe slicing continuation from within.
-(<??>) :: Slice r ix e => Maybe (Array r ix e) -> (Dim, Int) -> Maybe (Elt r ix e)
-(<??>) Nothing      _ = Nothing
-(<??>) (Just arr) !ix = arr <!?> ix
+(<??>) :: (MonadThrow m, Slice r ix e) => m (Array r ix e) -> (Dim, Int) -> m (Elt r ix e)
+(<??>) !marr !ix = marr >>= (<!?> ix)
 {-# INLINE (<??>) #-}

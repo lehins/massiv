@@ -143,6 +143,10 @@ instance ( NFData e
   unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
   {-# INLINE unsafeInnerSlice #-}
 
+instance {-# OVERLAPPING #-} Slice B Ix1 e where
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
+
 
 instance Index ix => Manifest B ix e where
 
@@ -291,6 +295,10 @@ instance ( NFData e
          InnerSlice N ix e where
   unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
+
+instance {-# OVERLAPPING #-} NFData e => Slice N Ix1 e where
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
 
 
 instance (Index ix, NFData e) => Manifest N ix e where

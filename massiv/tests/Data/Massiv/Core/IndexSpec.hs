@@ -228,42 +228,42 @@ prop_BorderRepairSafe _ border (SzNE sz) ix =
 prop_GetDropInsert :: Index ix => proxy ix -> NonNegative Int -> ix -> Property
 prop_GetDropInsert _ (NonNegative d) ix =
   expected === do
-    i <- getDim ix dim
-    ixL <- dropDim ix dim
-    insertDim ixL dim i
+    i <- getDimM ix dim
+    ixL <- dropDimM ix dim
+    insertDimM ixL dim i
   where expected = if d >= 1 && dim <= dimensions (Just ix) then Just ix else Nothing
         dim = Dim d
 
 prop_PullOutInsert :: Index ix => proxy ix -> NonNegative Int -> ix -> Property
 prop_PullOutInsert _ (NonNegative d) ix =
   expected === do
-    (i, ixL) <- pullOutDim ix dim
-    insertDim ixL dim i
+    (i, ixL) <- pullOutDimM ix dim
+    insertDimM ixL dim i
   where expected = if d >= 1 && dim <= dimensions (Just ix) then Just ix else Nothing
         dim = Dim d
 
 prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Property
 prop_UnconsGetDrop _ ix =
   Just (unconsDim ix) === do
-    i <- getDim ix (dimensions (Just ix))
-    ixL <- dropDim ix (dimensions (Just ix))
+    i <- getDimM ix (dimensions (Just ix))
+    ixL <- dropDimM ix (dimensions (Just ix))
     return (i, ixL)
 
 prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Property
 prop_UnsnocGetDrop _ ix =
   Just (unsnocDim ix) === do
-    i <- getDim ix 1
-    ixL <- dropDim ix 1
+    i <- getDimM ix 1
+    ixL <- dropDimM ix 1
     return (ixL, i)
 
 prop_SetAll :: Index ix => proxy ix -> ix -> Int -> Bool
 prop_SetAll _ ix i =
-  foldM (\cix d -> setDim cix d i) ix ([1 .. dimensions (Just ix)] :: [Dim]) ==
+  foldM (\cix d -> setDimM cix d i) ix ([1 .. dimensions (Just ix)] :: [Dim]) ==
   Just (pureIndex i)
 
 
 prop_SetGet :: Index ix => proxy ix -> ix -> DimIx ix -> Int -> Bool
-prop_SetGet _ ix (DimIx dim) n = Just n == (setDim ix dim n >>= (`getDim` dim))
+prop_SetGet _ ix (DimIx dim) n = Just n == (setDimM ix dim n >>= (`getDimM` dim))
 
 
 prop_BorderIx1 :: Positive Int -> Border Char -> Fun Ix1 Char -> SzNE Ix1 -> Ix1 -> Bool

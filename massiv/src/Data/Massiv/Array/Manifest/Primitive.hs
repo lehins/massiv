@@ -97,7 +97,7 @@ instance (Prim e, Index ix) => Extract P ix e where
 
 
 instance {-# OVERLAPPING #-} Prim e => Slice P Ix1 e where
-  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
 

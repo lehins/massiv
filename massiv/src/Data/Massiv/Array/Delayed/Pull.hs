@@ -75,7 +75,7 @@ instance ( Index ix
          ) =>
          Slice D ix e where
   unsafeSlice arr start cut@(SafeSz cutSz) dim = do
-    newSz <- dropDim cutSz dim
+    newSz <- dropDimM cutSz dim
     return $ unsafeResize (SafeSz newSz) (unsafeExtract start cut arr)
   {-# INLINE unsafeSlice #-}
 
@@ -250,7 +250,7 @@ liftArray2 f !arr1 !arr2
   | sz2 == oneSz = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
   | sz1 == sz2 =
     DArray (getComp arr1) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = errorSizeMismatch "liftArray2" (size arr1) (size arr2)
+  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
   where
     sz1 = size arr1
     sz2 = size arr2

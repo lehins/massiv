@@ -99,10 +99,13 @@ module Data.Massiv.Array
   , (!?)
   , (!)
   , (??)
+  , indexM
   , index
   , index'
   , defaultIndex
   , borderIndex
+  , evaluateM
+  , evaluate'
   , evaluateAt
   -- * Mapping
   , module Data.Massiv.Array.Ops.Map

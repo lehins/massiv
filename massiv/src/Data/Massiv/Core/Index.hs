@@ -35,9 +35,9 @@ module Data.Massiv.Core.Index
   , unconsSz
   , snocSz
   , unsnocSz
-  , setSz
-  , insertSz
-  , pullOutSz
+  , setSzM
+  , insertSzM
+  , pullOutSzM
   , Dim(..)
   , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)
   , IsIndexDimension
@@ -58,11 +58,16 @@ module Data.Massiv.Core.Index
   , lastDim
   , initDim
   , getDim'
+  , getDim
   , setDim'
-  , dropDim
+  , setDim
+  , dropDimM
   , dropDim'
+  , dropDim
   , pullOutDim'
+  , pullOutDim
   , insertDim'
+  , insertDim
   , fromDimension
   , getDimension
   , setDimension
@@ -78,11 +83,13 @@ module Data.Massiv.Core.Index
   , module Data.Massiv.Core.Index.Tuple
   -- * Error functions
   , errorIx
-  , errorSizeMismatch
+  -- , errorSizeMismatch
   ) where
 
+import           Control.Exception               (throw)
 import           Control.DeepSeq
-import           Data.Functor.Identity         (runIdentity)
+import           Control.Monad.Catch             (MonadThrow(..))
+import           Data.Functor.Identity           (runIdentity)
 import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Index.Tuple
 import           Data.Massiv.Core.Index.Ix
@@ -196,49 +203,59 @@ initDim = fst . unsnocDim
 {-# INLINE [1] initDim #-}
 
 setDim' :: Index ix => ix -> Dim -> Int -> ix
-setDim' ix dim i =
-  case setDim ix dim i of
-    Just ix' -> ix'
-    Nothing  -> errorDim "setDim'" dim
+setDim' ix dim = either throw id . setDimM ix dim
 {-# INLINE [1] setDim' #-}
 
+setDim :: Index ix => ix -> Dim -> Int -> Maybe ix
+setDim = setDimM
+{-# INLINE [1] setDim #-}
+{-# DEPRECATED setDim "In favor of more general `setDimM`" #-}
+
 getDim' :: Index ix => ix -> Dim -> Int
-getDim' ix dim =
-  case getDim ix dim of
-    Just ix' -> ix'
-    Nothing  -> errorDim "getDim'" dim
+getDim' ix = either throw id . getDimM ix
 {-# INLINE [1] getDim' #-}
 
--- | Remove a dimension from the index
-dropDim :: Index ix => ix -> Dim -> Maybe (Lower ix)
-dropDim ix = fmap snd . pullOutDim ix
-{-# INLINE [1] dropDim #-}
+getDim :: Index ix => ix -> Dim -> Maybe Int
+getDim = getDimM
+{-# INLINE [1] getDim #-}
+{-# DEPRECATED getDim "In favor of more general `getDimM`" #-}
 
+-- | Remove a dimension from the index.
+--
+-- @since 0.3.0
+dropDimM :: (MonadThrow m, Index ix) => ix -> Dim -> m (Lower ix)
+dropDimM ix = fmap snd . pullOutDimM ix
+{-# INLINE [1] dropDimM #-}
+
+-- | Remove a dimension from the index.
+--
+-- @since 0.1.0
+dropDim :: Index ix => ix -> Dim -> Maybe (Lower ix)
+dropDim = dropDimM
+{-# INLINE [1] dropDim #-}
+{-# DEPRECATED dropDim "In favor of more general `dropDimM`" #-}
 
 dropDim' :: Index ix => ix -> Dim -> Lower ix
-dropDim' ix dim =
-  case dropDim ix dim of
-    Just ixl -> ixl
-    Nothing  -> errorDim "dropDim'" dim
+dropDim' ix = either throw id . dropDimM ix
 {-# INLINE [1] dropDim' #-}
 
 pullOutDim' :: Index ix => ix -> Dim -> (Int, Lower ix)
-pullOutDim' ix dim =
-  case pullOutDim ix dim of
-    Just i_ixl -> i_ixl
-    Nothing    -> errorDim "pullOutDim'" dim
+pullOutDim' ix = either throw id . pullOutDimM ix
 {-# INLINE [1] pullOutDim' #-}
 
+pullOutDim :: Index ix => ix -> Dim -> Maybe (Int, Lower ix)
+pullOutDim = pullOutDimM
+{-# INLINE [1] pullOutDim #-}
+{-# DEPRECATED pullOutDim "In favor of more general `pullOutDimM`" #-}
+
 insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
-insertDim' ix dim i =
-  case insertDim ix dim i of
-    Just ix' -> ix'
-    Nothing  -> errorDim "insertDim'" dim
+insertDim' ix dim = either throw id . insertDimM ix dim
 {-# INLINE [1] insertDim' #-}
 
-errorDim :: String -> Dim -> a
-errorDim funName dim = error $ funName ++ ": Dimension is out of reach: " ++ show dim
-{-# NOINLINE errorDim #-}
+insertDim :: Index ix => Lower ix -> Dim -> Int -> Maybe ix
+insertDim = insertDimM
+{-# INLINE [1] insertDim #-}
+{-# DEPRECATED insertDim "In favor of more general `insertDimM`" #-}
 
 fromDimension :: KnownNat n => Dimension n -> Dim
 fromDimension = fromIntegral . natVal
@@ -340,11 +357,11 @@ errorIx fName sz ix =
 {-# NOINLINE errorIx #-}
 
 
--- | Helper function for throwing error when sizes do not match
-errorSizeMismatch :: (Show ix, Show ix') => String -> ix -> ix' -> a
-errorSizeMismatch fName sz sz' =
-  error $ fName ++ ": Mismatch in size of arrays " ++ show sz ++ " vs " ++ show sz'
-{-# NOINLINE errorSizeMismatch #-}
+-- -- | Helper function for throwing error when sizes do not match
+-- errorSizeMismatch :: (Show ix, Show ix') => String -> ix -> ix' -> a
+-- errorSizeMismatch fName sz sz' =
+--   error $ fName ++ ": Mismatch in size of arrays " ++ show sz ++ " vs " ++ show sz'
+-- {-# NOINLINE errorSizeMismatch #-}
 
 -- splitWith_ :: (Index ix, Monad m) =>
 --   Int -> (m () -> m a) -> ix -> (ix -> b) -> (ix -> b -> m ()) -> m a
