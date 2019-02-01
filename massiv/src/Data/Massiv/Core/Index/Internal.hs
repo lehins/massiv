@@ -53,6 +53,7 @@ module Data.Massiv.Core.Index.Internal
   , pattern Ix1
   , IndexException(..)
   , SizeException(..)
+  , ShapeException(..)
   ) where
 
 import           Control.Exception (Exception(..))
@@ -179,7 +180,10 @@ pullOutSzM (SafeSz sz) = fmap coerce . pullOutDimM sz
 
 
 -- | A way to select Array dimension at a value level.
-newtype Dim = Dim { unDim :: Int } deriving (Show, Eq, Ord, Num, Real, Integral, Enum)
+newtype Dim = Dim { unDim :: Int } deriving (Eq, Ord, Num, Real, Integral, Enum)
+
+instance Show Dim where
+  show (Dim d) = "(Dim " ++ show d ++ ")"
 
 -- | A way to select Array dimension at a type level.
 data Dimension (n :: Nat) where
@@ -450,6 +454,7 @@ instance Show IndexException where
 
 instance Exception IndexException
 
+-- | Exception that indicates an issue with an array size.
 data SizeException where
   -- | Two sizes are expected to be equal along some or all dimensions, but they are not.
   SizeMismatchException :: Index ix => !(Sz ix) -> !(Sz ix) -> SizeException
@@ -458,7 +463,9 @@ data SizeException where
   -- | Described subregion is too big for the specified size.
   SizeSubregionException :: Index ix => !(Sz ix) -> !ix -> !(Sz ix) -> SizeException
   -- | An array with the size cannot contain any elements.
-  SizeEmpty :: Index ix => !(Sz ix) -> SizeException
+  SizeEmptyException :: Index ix => !(Sz ix) -> SizeException
+
+instance Exception SizeException
 
 
 instance Show SizeException where
@@ -469,6 +476,14 @@ instance Show SizeException where
   show (SizeSubregionException sz' ix sz) =
     "SizeSubregionException: (" ++
     show sz' ++ ") is to small for " ++ show ix ++ " (" ++ show sz ++ ")"
-  show (SizeEmpty sz) = "SizeEmpty: (" ++ show sz ++ ") corresponds to an empty array"
+  show (SizeEmptyException sz) =
+    "SizeEmptyException: (" ++ show sz ++ ") corresponds to an empty array"
 
-instance Exception SizeException
+
+
+data ShapeException where
+  DimTooShortException :: !Dim -> ShapeException -- TODO: add row length
+  DimTooLongException :: !Dim -> ShapeException -- TODO: add row length
+  deriving Show
+
+instance Exception ShapeException

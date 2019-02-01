@@ -60,6 +60,7 @@ module Data.Massiv.Core.Common
   , throw
   , IndexException(..)
   , SizeException(..)
+  , ShapeException(..)
   , module Data.Massiv.Core.Exception
   ) where
 

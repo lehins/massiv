@@ -49,9 +49,12 @@ data instance Array U ix e = UArray { uComp :: !Comp
                                     , uData :: !(VU.Vector e)
                                     }
 
+instance (Ragged L ix e, Show e, VU.Unbox e) => Show (Array U ix e) where
+  show = showArray id
 
 instance (Index ix, NFData e) => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
+  {-# INLINE rnf #-}
 
 
 instance (VU.Unbox e, Index ix) => Construct U ix e where

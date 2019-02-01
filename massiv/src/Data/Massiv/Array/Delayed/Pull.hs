@@ -29,6 +29,7 @@ import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.List               (showArray, L)
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
 
@@ -37,11 +38,13 @@ import           Prelude                             hiding (zipWith)
 -- | Delayed representation.
 data D = D deriving Show
 
-
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !(Sz ix)
                                     , dIndex :: ix -> e }
 type instance EltRepr D ix = D
+
+instance (Ragged L ix e, Show e) => Show (Array D ix e) where
+  show = showArray id
 
 instance Index ix => Resize Array D ix where
   unsafeResize !sz !arr =

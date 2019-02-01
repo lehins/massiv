@@ -19,7 +19,6 @@ module Data.Massiv.Array.Manifest.Boxed
   ( B(..)
   , N(..)
   , Array(..)
-  , Uninitialized(..)
   , unwrapArray
   , evalArray
   , unwrapMutableArray
@@ -41,8 +40,7 @@ import           Control.Monad.Primitive
 import           Control.Monad.ST                    (runST)
 import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
-import           Data.Massiv.Array.Delayed.Push
-import           Data.Massiv.Array.Manifest.Internal (M, toManifest, computeAs)
+import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as L
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold.Internal
@@ -85,8 +83,8 @@ data instance Array B ix e = BArray { bComp :: !Comp
                                     , bData :: {-# UNPACK #-} !(A.Array e)
                                     }
 
-instance {-# OVERLAPPING #-} (Show (Array B ix e), Index ix) => Show (Array DL ix e) where
-  show = show . computeAs B
+instance (Ragged L ix e, Show e) => Show (Array B ix e) where
+  show = showArray id
 
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
@@ -235,9 +233,12 @@ type instance EltRepr N ix = M
 
 newtype instance Array N ix e = NArray { bArray :: Array B ix e }
 
+instance (Ragged L ix e, Show e, NFData e) => Show (Array N ix e) where
+  show = showArray bArray
+
 instance (Index ix, NFData e) => NFData (Array N ix e) where
   rnf (NArray barr) = barr `deepseqArray` ()
-
+  {-# INLINE rnf #-}
 
 instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
   (==) = eq (==)
@@ -359,16 +360,6 @@ instance ( NFData e
 ----------------------
 -- Helper functions --
 ----------------------
-
--- | An error that gets thrown when an unitialized element of a boxed array gets accessed. Can only
--- happen when array was constructed with `unsafeNew`.
-data Uninitialized = Uninitialized
-
-instance Show Uninitialized where
-  show Uninitialized = "Array element is uninitialized"
-
-instance Exception Uninitialized
-
 
 uninitialized :: a
 uninitialized = throw Uninitialized

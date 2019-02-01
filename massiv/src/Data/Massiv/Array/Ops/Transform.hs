@@ -23,8 +23,10 @@ module Data.Massiv.Array.Ops.Transform
   , resize
   , resize'
   -- ** Extract
+  , extractM
   , extract
   , extract'
+  , extractFromToM
   , extractFromTo
   , extractFromTo'
   -- ** Append/Split
@@ -418,7 +420,7 @@ cons e arr =
 
 uncons :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
 uncons arr
-  | 0 == totalElem sz = throwM $ SizeEmpty sz
+  | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise =
     pure
       ( unsafeLinearIndex arr 0
@@ -438,7 +440,7 @@ snoc arr e =
 
 unsnoc :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
 unsnoc arr
-  | 0 == totalElem sz = throwM $ SizeEmpty sz
+  | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise =
     pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
   where
@@ -457,7 +459,7 @@ concat' n arrs = either throw id $ concatM n arrs
 concatM ::
      (MonadThrow m, Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> m (Array DL ix e)
 concatM n !arrsF = do
-  when (null arrsF) $ throwM $ SizeEmpty (SafeSz (length arrsF))
+  when (null arrsF) $ throwM $ SizeEmptyException (SafeSz (length arrsF))
   -- \ prevent concatenation of an empty Foldables
   let arrs = F.toList arrsF
       szs = P.map (unSz . size) arrs

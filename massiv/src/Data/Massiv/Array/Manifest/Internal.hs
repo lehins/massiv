@@ -85,6 +85,10 @@ data instance Array M ix e = MArray { mComp :: !Comp
                                     , mLinearIndex :: Int -> e }
 type instance EltRepr M ix = M
 
+instance (Ragged L ix e, Show e) => Show (Array M ix e) where
+  show = showArray id
+
+
 instance (Eq e, Index ix) => Eq (Array M ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
@@ -328,7 +332,7 @@ convertProxy _ = convert
 
 -- | Convert a ragged array into a usual rectangular shaped one.
 fromRaggedArray :: (Ragged r' ix e, Load r' ix e, Mutable r ix e) =>
-                   Array r' ix e -> Either ShapeError (Array r ix e)
+                   Array r' ix e -> Either ShapeException (Array r ix e)
 fromRaggedArray arr =
   unsafePerformIO $ do
     let !sz = edgeSize arr
@@ -344,11 +348,7 @@ fromRaggedArray arr =
 -- rectangular.
 fromRaggedArray' :: (Load r' ix e, Ragged r' ix e, Mutable r ix e) =>
                     Array r' ix e -> Array r ix e
-fromRaggedArray' arr =
-  case fromRaggedArray arr of
-    Left RowTooShortError -> error "Not enough elements in a row"
-    Left RowTooLongError  -> error "Too many elements in a row"
-    Right resArr          -> resArr
+fromRaggedArray' arr = either throw id $ fromRaggedArray arr
 {-# INLINE fromRaggedArray' #-}
 
 

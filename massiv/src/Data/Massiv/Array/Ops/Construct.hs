@@ -28,15 +28,16 @@ module Data.Massiv.Array.Ops.Construct
   , makeArrayAR
     -- ** Enumeration
   , range
-  , rangeStep
+  , rangeStepM
   , rangeStep'
+  , rangeStep
   , rangeInclusive
-  , rangeStepInclusive
+  , rangeStepInclusiveM
   , rangeSize
   , rangeStepSize
   , enumFromN
   , enumFromStepN
-  , enumFromTo
+  --, enumFromTo
     -- ** Expansion
   , expandWithin
   , expandWithin'
@@ -47,11 +48,10 @@ module Data.Massiv.Array.Ops.Construct
 import           Control.Applicative
 import           Control.Monad.ST
 import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Delayed.Push
+--import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Scheduler          (traverse_)
+--import           Data.Massiv.Scheduler          (traverse_)
 import           Prelude                        as P hiding (replicate, enumFromTo)
-import Data.Maybe
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
@@ -133,8 +133,6 @@ replicateR _ comp sz e = makeArray comp sz (const e)
 
 
 
-
-
 -- | Create an array of indices with a range from start to finish (not-including), where indices are
 -- incrimeted by one.
 --
@@ -161,26 +159,42 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 -- (Array D Seq (3)
 --   [ 1,3,5 ])
 --
-rangeStep :: Index ix =>
+rangeStep :: (Index ix) =>
              Comp -- ^ Computation strategy
           -> ix -- ^ Start
-          -> ix -- ^ Step (Can't be zero)
+          -> ix -- ^ Step (Can't have zeros)
           -> ix -- ^ End
           -> Maybe (Array D ix ix)
-rangeStep comp !from !step !to
-  | foldlIndex (\acc i -> acc || i == 0) False step = Nothing
+rangeStep = rangeStepM
+{-# INLINE rangeStep #-}
+{-# DEPRECATED rangeStep "In favor of more general `rangeStepM`" #-}
+
+-- | Same as `range`, but with a custom step.
+--
+-- >>> rangeStep Seq 1 2 6
+-- (Array D Seq (3)
+--   [ 1,3,5 ])
+--
+rangeStepM :: (MonadThrow m, Index ix) =>
+             Comp -- ^ Computation strategy
+          -> ix -- ^ Start
+          -> ix -- ^ Step (Can't have zeros)
+          -> ix -- ^ End
+          -> m (Array D ix ix)
+rangeStepM comp !from !step !to
+  | foldlIndex (\acc i -> acc || i == 0) False step = throwM $ IndexZeroException step
   | otherwise =
     let dist = liftIndex2 (-) to from
         sz = liftIndex2 div dist step
         r = liftIndex signum $ liftIndex2 mod dist step
-     in Just $ rangeStepSize comp from step (Sz (liftIndex2 (+) sz r))
-{-# INLINE rangeStep #-}
+     in pure $ rangeStepSize comp from step (Sz (liftIndex2 (+) sz r))
+{-# INLINE rangeStepM #-}
 
 -- | Same as `rangeStep`, but will throw an error whenever @step@ contains zeros.
 --
 -- @since 0.3.0
 rangeStep' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
-rangeStep' comp from step = fromMaybe (error "rangeStep") . rangeStep  comp from step
+rangeStep' comp from step = either throw id  . rangeStepM comp from step
 
 -- | Just like `range`, except the finish index is included.
 --
@@ -194,9 +208,9 @@ rangeInclusive comp ixFrom ixTo =
 -- | Just like `rangeStep`, except the finish index is included.
 --
 -- @since 0.3.0
-rangeStepInclusive :: Index ix => Comp -> ix -> ix -> ix -> Maybe (Array D ix ix)
-rangeStepInclusive comp ixFrom step ixTo = rangeStep comp ixFrom step (liftIndex (1 +) ixTo)
-{-# INLINE rangeStepInclusive #-}
+rangeStepInclusiveM :: (MonadThrow m, Index ix) => Comp -> ix -> ix -> ix -> m (Array D ix ix)
+rangeStepInclusiveM comp ixFrom step ixTo = rangeStepM comp ixFrom step (liftIndex (1 +) ixTo)
+{-# INLINE rangeStepInclusiveM #-}
 
 
 -- | Create an array of specified size with indices starting with some index at position @0@ and
@@ -259,14 +273,14 @@ enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromInteg
 {-# INLINE enumFromStepN #-}
 
 
--- |
---
--- @since 0.3.0
-enumFromTo :: (Index ix, Enum ix) => Comp -> ix -> ix -> Array DL ix ix
-enumFromTo comp from to =
-  DLArray comp (Sz (liftIndex2 (\t f -> t - f + 1) to from)) $ \ _numWorkers _scheduleWith uWrite ->
-    traverse_ (\(ix, e) -> uWrite ix e) $ P.zip [0..] [from..to]
-{-# INLINE enumFromTo #-}
+-- -- |
+-- --
+-- -- @since 0.3.0
+-- enumFromTo :: (Index ix, Enum ix) => Comp -> ix -> ix -> Array DL ix ix
+-- enumFromTo comp from to =
+--   DLArray comp (Sz (liftIndex2 (\t f -> t - f + 1) to from)) $ \ _numWorkers _scheduleWith uWrite ->
+--     traverse_ (\(ix, e) -> uWrite ix e) $ P.zip [0..] [from..to]
+-- {-# INLINE enumFromTo #-}
 
 
 -- |

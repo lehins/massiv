@@ -31,10 +31,8 @@ import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Data.Massiv.Core.List               (showArray)
+import           Data.Massiv.Core.List               (L, showArray)
 import           Data.Maybe                          (fromMaybe)
-import           Data.Proxy                          (Proxy (..))
-import           Data.Typeable                       (showsTypeRep, typeRep)
 import           GHC.TypeLits
 
 -- | Delayed Windowed Array representation.
@@ -61,9 +59,8 @@ data instance Array DW ix e = DWArray { dwArray :: !(Array D ix e)
                                       , dwWindow :: !(Maybe (Window ix e))
                                       }
 
-instance {-# OVERLAPPING #-} (Show e, Ragged L ix e, Load DW ix e) =>
-  Show (Array DW ix e) where
-  show arr = showArray (showsTypeRep (typeRep (Proxy :: Proxy DW)) " ") (computeAs B arr)
+instance (Ragged L ix e, Load DW ix e, Show e) => Show (Array DW ix e) where
+  show = showArray (computeAs B)
 
 
 instance Index ix => Construct DW ix e where
@@ -225,7 +222,7 @@ loadWithIx2 with arr unsafeWrite = do
       !blockHeight =
         case mStencilSize of
           Just (Sz (i :. _)) -> min (max 1 i) 7
-          _             -> 1
+          _                  -> 1
       stride = oneStride
       !sz = strideSize stride $ size arr
       writeB !ix = unsafeWrite (toLinearIndex sz ix) (indexB ix)

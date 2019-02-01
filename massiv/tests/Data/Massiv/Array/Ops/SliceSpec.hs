@@ -18,18 +18,32 @@ import           Control.Exception
 
 -- extract
 
-prop_ExtractEqualsExtractFromTo
-  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Extract r ix e)
-  => proxy (r, ix, e) -> SzIx ix -> Array r ix e -> Bool
+prop_ExtractEqualsExtractFromTo ::
+     ( Eq (Array (EltRepr r ix) ix e)
+     , Show (Array (EltRepr r ix) ix e)
+     , Arbitrary (Array r ix e)
+     , Extract r ix e
+     )
+  => proxy (r, ix, e)
+  -> SzIx ix
+  -> Array r ix e
+  -> Property
 prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
-  extractFromTo sIx eIx arr == extract sIx (Sz (liftIndex2 (-) eIx sIx)) arr
+  maybe Nothing Just (extractFromToM sIx eIx arr) === extractM sIx (Sz (liftIndex2 (-) eIx sIx)) arr
 
 
 
 
-specSizeN
-  :: (Eq (Array (EltRepr r ix) ix e), Arbitrary (Array r ix e), Show (Array r ix e), Arbitrary ix, Extract r ix e)
-  => proxy (r, ix, e) -> Spec
+specSizeN ::
+     ( Eq (Array (EltRepr r ix) ix e)
+     , Show (Array (EltRepr r ix) ix e)
+     , Arbitrary (Array r ix e)
+     , Show (Array r ix e)
+     , Arbitrary ix
+     , Extract r ix e
+     )
+  => proxy (r, ix, e)
+  -> Spec
 specSizeN proxy = do
   describe "extract" $ do
     it "ExtractEqualsExtractFromTo" $ property $ prop_ExtractEqualsExtractFromTo proxy

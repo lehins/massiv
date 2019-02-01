@@ -48,7 +48,6 @@ module Data.Massiv.Array.Ops.Fold.Internal
 import           Control.Monad              (void, when)
 import qualified Data.Foldable              as F
 import           Data.Functor.Identity      (runIdentity)
-import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Scheduler
 import           Prelude                    hiding (all, and, any, foldl, foldr,

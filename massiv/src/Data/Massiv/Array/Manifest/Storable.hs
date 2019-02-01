@@ -51,8 +51,12 @@ data instance Array S ix e = SArray { sComp :: !Comp
                                     , sData :: !(VS.Vector e)
                                     }
 
+instance (Ragged L ix e, Show e, VS.Storable e) => Show (Array S ix e) where
+  show = showArray id
+
 instance Index ix => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
+  {-# INLINE rnf #-}
 
 instance (VS.Storable e, Eq e, Index ix) => Eq (Array S ix e) where
   (==) = eq (==)

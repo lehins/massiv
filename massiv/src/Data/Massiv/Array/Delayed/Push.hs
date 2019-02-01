@@ -23,11 +23,11 @@ module Data.Massiv.Array.Delayed.Push
   , fromStrideLoad
   ) where
 
-import           Data.Massiv.Array.Delayed.Pull
---import           Data.Massiv.Array.Manifest.Boxed
---import           Data.Massiv.Array.Manifest.Internal
+import           Data.Massiv.Array.Manifest.Boxed    (B(B))
+import           Data.Massiv.Array.Manifest.Internal (computeAs)
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.List               (L, showArray)
 import           Prelude                             hiding (map, zipWith)
 
 
@@ -48,6 +48,9 @@ data instance Array DL ix e = DLArray
   }
 
 type instance EltRepr DL ix = DL
+
+instance (Ragged L ix e, Show e) => Show (Array DL ix e) where
+  show = showArray (computeAs B)
 
 instance Index ix => Construct DL ix e where
   setComp c arr = arr {dlComp = c}

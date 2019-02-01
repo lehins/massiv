@@ -2,6 +2,7 @@
 module Data.Massiv.Core.Exception
   ( ImpossibleException(..)
   , throwImpossible
+  , Uninitialized(..)
   ) where
 
 import           Control.Exception
@@ -21,8 +22,11 @@ instance Exception ImpossibleException where
     "): Either one of the unsafe functions was used or it is a bug in the library. " ++
     "In latter case please report this error."
 
+-- | An error that gets thrown when an unitialized element of a boxed array gets accessed. Can only
+-- happen when array was constructed with `unsafeNew`.
+data Uninitialized = Uninitialized deriving Show
 
-data ShapeException where
-  RowTooShortError :: ShapeException -- TODO: add row length
-  RowTooLongError :: ShapeException -- TODO: add row length
+instance Exception Uninitialized where
+  displayException Uninitialized = "Array element is uninitialized"
+
 
