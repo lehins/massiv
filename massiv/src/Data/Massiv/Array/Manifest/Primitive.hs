@@ -292,47 +292,55 @@ fromMutableByteArray sz ba
 {-# INLINE fromMutableByteArray #-}
 
 
+
 -- | Atomically read an `Int` element from the array
 --
 -- @since 0.3.0
 unsafeAtomicReadIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> m Int
-unsafeAtomicReadIntArray (MPArray sz (MutableByteArray mba#)) ix =
-  primitive $ \s# ->
-    case atomicReadIntArray# mba# i# s# of
-      (# s'#, e# #) -> (# s'#, I# e# #)
-  where
-    !(I# i#) = toLinearIndex sz ix
+unsafeAtomicReadIntArray (MPArray sz mba) ix =
+  INDEX_CHECK
+    ( "unsafeAtomicReadIntArray"
+    , Sz . elemsMutableByteArray (0 :: Int)
+    , \(MutableByteArray mba#) (I# i#) ->
+        primitive $ \s# ->
+          case atomicReadIntArray# mba# i# s# of
+            (# s'#, e# #) -> (# s'#, I# e# #))
+    mba
+    (toLinearIndex sz ix)
 {-# INLINE unsafeAtomicReadIntArray #-}
-
 
 -- | Atomically write an `Int` element int the array
 --
 -- @since 0.3.0
 unsafeAtomicWriteIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m ()
-unsafeAtomicWriteIntArray (MPArray sz (MutableByteArray mba#)) ix (I# e#) =
-  primitive_ (atomicWriteIntArray# mba# i# e#)
-  where
-    !(I# i#) = toLinearIndex sz ix
+unsafeAtomicWriteIntArray (MPArray sz mba) ix _e@(I# e#) =
+  INDEX_CHECK
+    ( "unsafeAtomicWriteIntArray"
+    , Sz . elemsMutableByteArray _e
+    , \(MutableByteArray mba#) (I# i#) ->
+        primitive_ (atomicWriteIntArray# mba# i# e#))
+    mba
+    (toLinearIndex sz ix)
 {-# INLINE unsafeAtomicWriteIntArray #-}
-
-
-
 
 -- | Atomically CAS an `Int` in the array. Returns the old value.
 --
 -- @since 0.3.0
 unsafeCasIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> Int -> m Int
-unsafeCasIntArray (MPArray sz (MutableByteArray mba#)) ix (I# e#) (I# n#) =
-  primitive $ \s# ->
-    case casIntArray# mba# i# e# n# s# of
-      (# s'#, o# #) -> (# s'#, I# o# #)
-  where
-    !(I# i#) = toLinearIndex sz ix
+unsafeCasIntArray (MPArray sz mba) ix _e@(I# e#) (I# n#) =
+  INDEX_CHECK
+    ( "unsafeCasIntArray"
+    , Sz . elemsMutableByteArray _e
+    , \(MutableByteArray mba#) (I# i#) ->
+        primitive $ \s# ->
+          case casIntArray# mba# i# e# n# s# of
+            (# s'#, o# #) -> (# s'#, I# o# #))
+    mba
+    (toLinearIndex sz ix)
 {-# INLINE unsafeCasIntArray #-}
-
 
 
 -- | Atomically modify an `Int` element of the array. Returns the old value.
@@ -340,19 +348,24 @@ unsafeCasIntArray (MPArray sz (MutableByteArray mba#)) ix (I# e#) (I# n#) =
 -- @since 0.3.0
 unsafeAtomicModifyIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> (Int -> Int) -> m Int
-unsafeAtomicModifyIntArray (MPArray sz (MutableByteArray mba#)) ix f =
-  primitive $ \s# ->
-    case atomicReadIntArray# mba# i# s# of
-      (# s'#, o# #) -> go s'# o#
+unsafeAtomicModifyIntArray (MPArray sz mba) ix f =
+  INDEX_CHECK
+    ("unsafeAtomicModifyIntArray", Sz . elemsMutableByteArray (0 :: Int), atomicModify)
+    mba
+    (toLinearIndex sz ix)
   where
-    !(I# i#) = toLinearIndex sz ix
-    go s# o# =
-      let !(I# n#) = f (I# o#)
-       in case casIntArray# mba# i# o# n# s# of
-            (# s'#, o'# #) ->
-              case o# ==# o'# of
-                0# -> go s# o'#
-                _  -> (# s'#, I# o# #)
+    atomicModify (MutableByteArray mba#) (I# i#) =
+      let go s# o# =
+            let !(I# n#) = f (I# o#)
+             in case casIntArray# mba# i# o# n# s# of
+                  (# s'#, o'# #) ->
+                    case o# ==# o'# of
+                      0# -> go s# o'#
+                      _ -> (# s'#, I# o# #)
+       in primitive $ \s# ->
+            case atomicReadIntArray# mba# i# s# of
+              (# s'#, o# #) -> go s'# o#
+    {-# INLINE atomicModify #-}
 {-# INLINE unsafeAtomicModifyIntArray #-}
 
 
@@ -363,7 +376,7 @@ unsafeAtomicAddIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicAddIntArray (MPArray sz mba) ix _e@(I# e#) =
   INDEX_CHECK
-    ( "unsafeAtomicAdIntArray"
+    ( "unsafeAtomicAddIntArray"
     , Sz . elemsMutableByteArray _e
     , \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
@@ -444,16 +457,6 @@ unsafeAtomicOrIntArray (MPArray sz mba) ix _e@(I# e#) =
     mba
     (toLinearIndex sz ix)
 {-# INLINE unsafeAtomicOrIntArray #-}
-
-withMutableByteArray ::
-     Index ix => String -> MArray s P ix e -> ix -> (MutableByteArray s -> Int -> a) -> a
-withMutableByteArray _fname (MPArray sz mba) ix fetch =
-  INDEX_CHECK
-    (_fname, Sz . elemsMutableByteArray (0 :: Int), fetch)
-    mba
-    (toLinearIndex sz ix)
-{-# INLINE withMutableByteArray #-}
-
 
 
 -- | Atomically XOR an `Int` element in the array. Returns the old value.

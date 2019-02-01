@@ -101,6 +101,7 @@ test-suite tests
                     , Data.Massiv.Core.SchedulerSpec
                     , Spec
   build-depends:      base             >= 4.8 && < 5
+                    , async
                     , bytestring
                     , deepseq
                     , data-default

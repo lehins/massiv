@@ -43,7 +43,9 @@ import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as L
 import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Array.Ops.Fold.Internal
+import           Data.Massiv.Array.Ops.Map           (traverseA)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Primitive.Array                as A
@@ -198,15 +200,23 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE foldr' #-}
   null (BArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = F.foldl' (+) 0
+  sum = fold (+) 0
   {-# INLINE sum #-}
-  product = F.foldl' (*) 1
+  product = fold (*) 1
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 
+
+instance Index ix => Functor (Array B ix) where
+  fmap f arr = makeArrayLinear (bComp arr) (bSize arr) (f . unsafeLinearIndex arr)
+  {-# INLINE fmap #-}
+
+instance Index ix => Traversable (Array B ix) where
+  traverse = traverseA
+  {-# INLINE traverse #-}
 
 instance ( IsList (Array L ix e)
          , Nested LN ix e

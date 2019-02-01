@@ -118,7 +118,7 @@ toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
 {-# INLINE toManifest #-}
 
 
--- | Row-major sequential folding over a Manifest array.
+-- | Row-major sequentia folding over a Manifest array.
 instance Index ix => Foldable (Array M ix) where
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
@@ -130,9 +130,9 @@ instance Index ix => Foldable (Array M ix) where
   {-# INLINE foldr' #-}
   null (MArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = foldl' (+) 0
+  sum = M.fold (+) 0
   {-# INLINE sum #-}
-  product = foldl' (*) 1
+  product = M.fold (*) 1
   {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}

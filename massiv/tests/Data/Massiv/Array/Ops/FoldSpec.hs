@@ -60,8 +60,8 @@ specFold proxy dimStr = do
 
 foldOpsProp :: (Source P ix Int) => proxy ix -> Fun Int Bool -> ArrTiny1 P ix Int -> Property
 foldOpsProp _ f (ArrTiny1 arr) =
-  (A.maximum arr === getMax (foldMono Max arr)) .&&.
-  (A.minimum arr === getMin (foldSemi Min maxBound arr)) .&&.
+  (A.maximum' arr === getMax (foldMono Max arr)) .&&.
+  (A.minimum' arr === getMin (foldSemi Min maxBound arr)) .&&.
   (A.sum arr === F.sum ls) .&&.
   (A.product (A.map ((+ 0.1) . (fromIntegral :: Int -> Double)) arr) ===
    getProduct (foldMono (Product . (+ 0.1) . fromIntegral) arr)) .&&.
