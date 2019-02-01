@@ -30,6 +30,8 @@ module Data.Massiv.Core.Common
   , InnerSlice(..)
   , Manifest(..)
   , Mutable(..)
+  , unsafeRead
+  , unsafeWrite
   , Ragged(..)
   , Nested(..)
   , NestedStruct
@@ -299,6 +301,17 @@ class Manifest r ix e => Mutable r ix e where
     loopM_ offset (< (offset + len)) (+1) (\i -> unsafeLinearWrite marr i e)
   {-# INLINE unsafeLinearSet #-}
 
+-- | Read an array element
+unsafeRead :: (Mutable r ix e, PrimMonad m) =>
+               MArray (PrimState m) r ix e -> ix -> m e
+unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
+{-# INLINE unsafeRead #-}
+
+-- | Write an element into array
+unsafeWrite :: (Mutable r ix e, PrimMonad m) =>
+               MArray (PrimState m) r ix e -> ix -> e -> m ()
+unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
+{-# INLINE unsafeWrite #-}
 
 
 class Nested r ix e where

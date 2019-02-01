@@ -13,7 +13,7 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Mutable
-  ( -- * Element-wise mutation
+  ( -- ** Element-wise mutation
     read
   , read'
   , write
@@ -58,7 +58,7 @@ import           Control.Monad                       (unless)
 import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST
 import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Unsafe
+--import           Data.Massiv.Array.Manifest.Primitive
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Scheduler
 

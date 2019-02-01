@@ -47,7 +47,6 @@ import           Control.Monad.ST
 import           Data.Foldable                       (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Fold.Internal as M
-import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Scheduler

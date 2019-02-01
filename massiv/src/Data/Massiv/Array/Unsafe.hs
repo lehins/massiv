@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -15,7 +16,8 @@ module Data.Massiv.Array.Unsafe
   -- , unsafeGenerateArray
   -- , unsafeGenerateArrayP
   -- * Indexing
-    unsafeIndex
+    pattern SafeSz
+  , unsafeIndex
   , unsafeLinearIndex
   , unsafeLinearIndexM
   -- * Manipulations
@@ -37,14 +39,23 @@ module Data.Massiv.Array.Unsafe
   , unsafeWrite
   , unsafeLinearWrite
   , unsafeLinearSet
+  -- ** Atomic Operations
+  , unsafeAtomicReadIntArray
+  , unsafeAtomicWriteIntArray
+  , unsafeAtomicModifyIntArray
+  , unsafeAtomicAddIntArray
+  , unsafeAtomicSubIntArray
+  , unsafeAtomicAndIntArray
+  , unsafeAtomicNandIntArray
+  , unsafeAtomicOrIntArray
+  , unsafeAtomicXorIntArray
+  , unsafeCasIntArray
   ) where
 
-import           Control.Monad.Primitive        (PrimMonad (..))
---import           Control.Monad.ST               (runST)
-import           Data.Massiv.Array.Delayed.Pull (D)
+import           Data.Massiv.Array.Delayed.Pull       (D)
+import           Data.Massiv.Array.Manifest.Primitive
 import           Data.Massiv.Core.Common
---import           Data.Massiv.Core.Scheduler
---import           System.IO.Unsafe               (unsafePerformIO)
+import           Data.Massiv.Core.Index.Internal      (Sz (SafeSz))
 
 
 unsafeBackpermute :: (Load r' ix' e, Source r' ix' e, Index ix) =>
@@ -77,17 +88,6 @@ unsafeTraverse2 sz f arr1 arr2 =
 {-# INLINE unsafeTraverse2 #-}
 
 
--- | Read an array element
-unsafeRead :: (Mutable r ix e, PrimMonad m) =>
-               MArray (PrimState m) r ix e -> ix -> m e
-unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
-{-# INLINE unsafeRead #-}
-
--- | Write an element into array
-unsafeWrite :: (Mutable r ix e, PrimMonad m) =>
-               MArray (PrimState m) r ix e -> ix -> e -> m ()
-unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
-{-# INLINE unsafeWrite #-}
 
 
 -- -- | Create an array sequentially using mutable interface
