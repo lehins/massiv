@@ -14,6 +14,10 @@ import           Test.Hspec
 import           Test.QuickCheck
 import           Test.QuickCheck.Function
 
+-- | For backwards compatibility with QuickCheck <= 2.9.2
+applyFun2' :: Fun (a, b) c -> (a -> b -> c)
+applyFun2' (Fun _ f) a b = f (a, b)
+
 prop_zipUnzip ::
      (Arbitrary ix, CoArbitrary ix, Index ix, Show (Array D ix Int))
   => proxy ix
@@ -77,8 +81,8 @@ prop_itraverseA ::
   -> Fun (ix, Int) Int
   -> Property
 prop_itraverseA _ arr fun =
-  alt_imapM (\ix -> Just . applyFun2 fun ix) arr ===
-  itraverseAR U (\ix -> Just . applyFun2 fun ix) arr
+  alt_imapM (\ix -> Just . applyFun2' fun ix) arr ===
+  itraverseAR U (\ix -> Just . applyFun2' fun ix) arr
 
 
 mapSpec ::

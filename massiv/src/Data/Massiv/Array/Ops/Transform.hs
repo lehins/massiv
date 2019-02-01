@@ -31,9 +31,9 @@ module Data.Massiv.Array.Ops.Transform
   , extractFromTo'
   -- ** Append/Split
   , cons
-  , uncons
+  , unconsM
   , snoc
-  , unsnoc
+  , unsnocM
   , appendM
   , append
   , append'
@@ -50,9 +50,10 @@ module Data.Massiv.Array.Ops.Transform
   , traverse2
   ) where
 
-import           Control.Monad                   as M (foldM_, unless, when)
+import           Control.Monad                   as M (foldM_, unless)
 import           Data.Bifunctor                  (bimap)
 import           Data.Foldable                   as F (foldl', foldrM, toList)
+import qualified Data.List                       as L (uncons)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
@@ -60,7 +61,7 @@ import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Massiv.Scheduler           (traverse_)
 import           Prelude                         as P hiding (concat, splitAt,
-                                                              traverse)
+                                                       traverse)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
@@ -418,8 +419,8 @@ cons e arr =
     uWrite 0 e >> loadArray numWorkers scheduleWith arr (\i -> uWrite (i + 1))
 {-# INLINE cons #-}
 
-uncons :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
-uncons arr
+unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
+unconsM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise =
     pure
@@ -427,7 +428,7 @@ uncons arr
       , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\i -> unsafeLinearIndex arr (i + 1)))
   where
     !sz = size arr
-{-# INLINE uncons #-}
+{-# INLINE unconsM #-}
 
 snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
 snoc arr e =
@@ -438,15 +439,15 @@ snoc arr e =
 {-# INLINE snoc #-}
 
 
-unsnoc :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
-unsnoc arr
+unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
+unsnocM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise =
     pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
   where
     !sz = size arr
     !k = unSz sz - 1
-{-# INLINE unsnoc #-}
+{-# INLINE unsnocM #-}
 
 concat' :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Array DL ix e
 concat' n arrs = either throw id $ concatM n arrs
@@ -459,18 +460,22 @@ concat' n arrs = either throw id $ concatM n arrs
 concatM ::
      (MonadThrow m, Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> m (Array DL ix e)
 concatM n !arrsF = do
-  when (null arrsF) $ throwM $ SizeEmptyException (SafeSz (length arrsF))
-  -- \ prevent concatenation of an empty Foldables
-  let arrs = F.toList arrsF
+  (a, arrs) <-
+    case L.uncons (F.toList arrsF) of
+      Just arrs -> pure arrs
+      Nothing -> throwM $ SizeEmptyException (SafeSz (length arrsF))
+                 -- \ prevent concatenation of an empty list
+  let sz = unSz (size a)
       szs = P.map (unSz . size) arrs
+  (k, szl) <- pullOutDimM sz n
   -- / remove the dimension out of all sizes along which concatenation will happen
-  (ks, (szl:szls)) <-
-    F.foldrM (\ !sz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM sz n) ([], []) szs
+  (ks, szls) <-
+    F.foldrM (\ !csz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM csz n) ([], []) szs
   -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
   traverse_
-    (\(sz', _) -> throwM (SizeMismatchException (SafeSz (head szs)) (SafeSz sz')))
-    (dropWhile ((== szl) . snd) $ zip (tail szs) szls)
-  let kTotal = SafeSz $ F.foldl' (+) 0 ks
+    (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
+    (dropWhile ((== szl) . snd) $ zip szs szls)
+  let kTotal = SafeSz $ F.foldl' (+) k ks
   newSz <- insertSzM (SafeSz szl) n kTotal
   return $
     DLArray
@@ -478,14 +483,14 @@ concatM n !arrsF = do
       , dlSize = newSz
       , dlLoad =
           \_numWorkers scheduleWith dlWrite ->
-            let arrayLoader !kAcc (k, arr) = do
+            let arrayLoader !kAcc (kCur, arr) = do
                   scheduleWith $
                     iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
                       let i = getDim' ix n
                           ix' = setDim' ix n (i + kAcc)
                        in dlWrite (toLinearIndex newSz ix') (unsafeIndex arr ix)
-                  pure (kAcc + k)
-             in M.foldM_ arrayLoader 0 $ P.zip ks arrs
+                  pure (kAcc + kCur)
+             in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
       }
 {-# INLINE concatM #-}
 
