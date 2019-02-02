@@ -1,7 +1,7 @@
 resolver: lts-9.21
 packages:
 - '.'
+extra-deps:
 - '../massiv-scheduler/'
-extra-deps: []
 flags: {}
 extra-package-dbs: []

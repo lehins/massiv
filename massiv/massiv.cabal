@@ -78,6 +78,11 @@ library
 
   default-language:    Haskell2010
   ghc-options:         -Wall
+                       -Wcompat
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wredundant-constraints
+
 
 
 test-suite tests
