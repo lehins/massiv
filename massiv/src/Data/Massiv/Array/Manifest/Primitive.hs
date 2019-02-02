@@ -21,8 +21,10 @@ module Data.Massiv.Array.Manifest.Primitive
   , Array(..)
   , Prim
   , toByteArray
+  , fromByteArrayM
   , fromByteArray
   , toMutableByteArray
+  , fromMutableByteArrayM
   , fromMutableByteArray
   , unsafeAtomicReadIntArray
   , unsafeAtomicWriteIntArray
@@ -238,15 +240,21 @@ toByteArray = pData
 -- | /O(1)/ - Construct a primitive array from the `ByteArray`. Will return `Nothing` if number of
 -- elements doesn't match.
 --
--- @since 0.2.1
-fromByteArray :: (Index ix, Prim e) => Comp -> Sz ix -> ByteArray -> Maybe (Array P ix e)
-fromByteArray comp sz ba
-  | totalElem sz /= elemsBA arr ba = Nothing
-  | otherwise = Just arr
+-- @since 0.3.0
+fromByteArrayM :: (MonadThrow m, Index ix, Prim e) => Comp -> Sz ix -> ByteArray -> m (Array P ix e)
+fromByteArrayM comp sz ba =
+  guardNumberOfElements sz (Sz (elemsBA arr ba)) >> pure arr
   where
     arr = PArray comp sz ba
-{-# INLINE fromByteArray #-}
+{-# INLINE fromByteArrayM #-}
 
+-- | See `fromByteArrayM`.
+--
+-- @since 0.2.1
+fromByteArray :: (Index ix, Prim e) => Comp -> Sz ix -> ByteArray -> Maybe (Array P ix e)
+fromByteArray = fromByteArrayM
+{-# INLINE fromByteArray #-}
+{-# DEPRECATED fromByteArray "In favor of more general `fromByteArrayM`" #-}
 
 
 -- | /O(1)/ - Extract the internal `MutableByteArray`.
@@ -260,14 +268,22 @@ toMutableByteArray (MPArray _ mba) = mba
 -- | /O(1)/ - Construct a primitive mutable array from the `MutableByteArray`. Will return `Nothing`
 -- if number of elements doesn't match.
 --
+-- @since 0.3.0
+fromMutableByteArrayM ::
+     (MonadThrow m, Index ix, Prim e) => Sz ix -> MutableByteArray s -> m (MArray s P ix e)
+fromMutableByteArrayM sz mba =
+  guardNumberOfElements sz (Sz (elemsMBA marr mba)) >> pure marr
+  where
+    marr = MPArray sz mba
+{-# INLINE fromMutableByteArrayM #-}
+
+-- | See `fromMutableByteArray`.
+--
 -- @since 0.2.1
 fromMutableByteArray :: (Index ix, Prim e) => Sz ix -> MutableByteArray s -> Maybe (MArray s P ix e)
-fromMutableByteArray sz ba
-  | totalElem sz /= elemsMBA marr ba = Nothing
-  | otherwise = Just marr
-  where
-    marr = MPArray sz ba
+fromMutableByteArray = fromMutableByteArrayM
 {-# INLINE fromMutableByteArray #-}
+{-# DEPRECATED fromMutableByteArray "In favor of more general `fromMutableByteArrayM`" #-}
 
 
 -- | Atomically read an `Int` element from the array

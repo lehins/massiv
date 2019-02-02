@@ -16,7 +16,7 @@ module Data.Massiv.Array.Unsafe
   -- , unsafeGenerateArray
   -- , unsafeGenerateArrayP
   -- * Indexing
-    pattern SafeSz
+    Sz(SafeSz)
   , unsafeIndex
   , unsafeLinearIndex
   , unsafeLinearIndexM

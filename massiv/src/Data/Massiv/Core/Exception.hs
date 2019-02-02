@@ -3,10 +3,13 @@ module Data.Massiv.Core.Exception
   ( ImpossibleException(..)
   , throwImpossible
   , Uninitialized(..)
+  , guardNumberOfElements
   ) where
 
 import           Control.Exception
-
+import           Control.Monad
+import           Control.Monad.Catch
+import           Data.Massiv.Core.Index.Internal
 
 newtype ImpossibleException =
   ImpossibleException SomeException
@@ -30,3 +33,6 @@ instance Exception Uninitialized where
   displayException Uninitialized = "Array element is uninitialized"
 
 
+guardNumberOfElements :: (MonadThrow m, Index ix, Index ix') => Sz ix -> Sz ix' -> m ()
+guardNumberOfElements sz sz' = do
+  unless (totalElem sz == totalElem sz) $ throwM $ SizeElementsMismatchException sz sz'

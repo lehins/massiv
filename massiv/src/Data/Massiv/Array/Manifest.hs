@@ -39,8 +39,10 @@ module Data.Massiv.Array.Manifest
   -- ** Conversion
   , toByteArray
   , fromByteArray
+  , fromByteArrayM
   , toMutableByteArray
   , fromMutableByteArray
+  , fromMutableByteArrayM
   -- * Storable
   , S(..)
   , Storable

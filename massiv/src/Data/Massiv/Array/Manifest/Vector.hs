@@ -13,7 +13,9 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest.Vector
-  ( fromVector
+  ( fromVectorM
+  , fromVector'
+  , fromVector
   , castFromVector
   , toVector
   , castToVector
@@ -85,23 +87,50 @@ castFromVector comp sz vector = do
 -- will do a /O(1)/ - conversion using `castFromVector`, otherwise Vector elements
 -- will be copied into a new array. Will throw an error if length of resulting
 -- array doesn't match the source vector length.
+--
+-- @since 0.3.0
+fromVectorM ::
+     ( MonadThrow m
+     , Typeable v
+     , VG.Vector v a
+     , Mutable (ARepr v) ix a
+     , Construct r ix a
+     , Mutable r ix a
+     )
+  => Comp
+  -> Sz ix -- ^ Resulting size of the array
+  -> v a -- ^ Source Vector
+  -> m (Array r ix a)
+fromVectorM comp sz v =
+  case castFromVector comp sz v of
+    Just arr -> pure $ convert arr
+    Nothing -> do
+      guardNumberOfElements sz (Sz (VG.length v))
+      pure (makeArrayLinear comp sz (VG.unsafeIndex v))
+{-# NOINLINE fromVectorM #-}
+
+
+-- | Just like `fromVectorM`, but will throw an exception on a mismatched size.
+--
+-- @since 0.3.0
+fromVector' ::
+     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
+  => Comp
+  -> Sz ix -- ^ Resulting size of the array
+  -> v a -- ^ Source Vector
+  -> Array r ix a
+fromVector' comp sz = either throw id . fromVectorM comp sz
+{-# INLINE fromVector' #-}
+
 fromVector ::
      (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
   -> Array r ix a
-fromVector comp sz v =
-  case castFromVector comp sz v of
-    Just arr -> convert arr
-    Nothing ->
-      if (totalElem sz /= VG.length v)
-        then error $
-             "Data.Array.Massiv.Manifest.fromVector: Supplied size: " ++
-             show sz ++ " doesn't match vector length: " ++ show (VG.length v)
-        else makeArrayLinear comp sz (VG.unsafeIndex v)
-{-# NOINLINE fromVector #-}
-
+fromVector comp sz = either throw id . fromVectorM comp sz
+{-# INLINE fromVector #-}
+{-# DEPRECATED fromVector "In favor of safer `fromVectorM`" #-}
 
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will
 -- return `Nothing` only if source array representation was not one of `B`, `N`,
