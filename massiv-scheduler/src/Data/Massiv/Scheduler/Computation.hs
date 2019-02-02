@@ -34,7 +34,7 @@ data Comp
   -- where @x@ is the number of capabilities. Ommiting @x@ in above flags
   -- defaults to number available cores.
   | ParN {-# UNPACK #-} !Word16
-  -- ^ Simply specify the number of workers to do the job
+  -- ^ Specify the number of workers that will be handling all the jobs.
   deriving (Show, Eq)
 
 -- | Parallel computation using all available cores.

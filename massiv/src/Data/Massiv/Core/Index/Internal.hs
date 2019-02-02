@@ -70,7 +70,11 @@ import           Data.Typeable
 -- numbers
 --
 -- @since 0.3.0
-newtype Sz ix = SafeSz ix deriving (Eq, Ord, NFData)
+newtype Sz ix =
+  SafeSz ix
+  -- ^ Safe size constructor. It is unsafe to use it without making sure that it does not contain
+  -- negative components. Use `Data.Massiv.Core.Index.Sz` pattern instead.
+  deriving (Eq, Ord, NFData)
 
 -- | A safe bidirectional pattern synonym for `Sz` construction that will make sure that none of
 -- the size elements are negative.

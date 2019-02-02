@@ -202,10 +202,12 @@ instance (Prim e, Index ix) => Load P ix e where
   getComp = pComp
   {-# INLINE getComp #-}
   loadArray !numWorkers scheduleWork !arr =
-    splitLinearlyWith_ numWorkers scheduleWork (totalElem (size arr)) (unsafeLinearIndex arr)
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArray #-}
 
-instance ( VP.Prim e
+instance (Prim e, Index ix) => StrideLoad P ix e
+
+instance ( Prim e
          , IsList (Array L ix e)
          , Nested LN ix e
          , Nested L ix e

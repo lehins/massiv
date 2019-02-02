@@ -119,7 +119,6 @@ alt_imapM
      (t1 -> t2 -> f b) -> Array r1 t1 t2 -> f (Array r2 t1 b)
 alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWithIndex arr)
   where
-    g ix e acc = (: acc) <$> f ix e
     loadList xs =
       runST $ do
         marr <- unsafeNew (size arr)

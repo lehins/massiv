@@ -38,7 +38,7 @@ module Data.Massiv.Core
   , L(..)
   , LN
   , ListItem
-  , Comp(Seq, Par, ParOn)
+  , Comp(Seq, Par, ParOn, ParN)
   , module Data.Massiv.Core.Index
   ) where
 

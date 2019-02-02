@@ -175,16 +175,6 @@ class (Typeable r, Index ix) => Load r ix e where
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
-  default loadArray
-    :: (Source r ix e, Monad m) =>
-       Int
-    -> (m () -> m ())
-    -> Array r ix e
-    -> (Int -> e -> m ())
-    -> m ()
-  loadArray numWorkers scheduleWork arr =
-    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArray #-}
 
 class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation can only handle the sequential
@@ -211,7 +201,7 @@ class Load r ix e => StrideLoad r ix e where
   loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem resultSize) unsafeLinearWriteWithStride
     where
-      strideIx = unStride stride
+      !strideIx = unStride stride
       unsafeLinearWriteWithStride =
         unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
       {-# INLINE unsafeLinearWriteWithStride #-}

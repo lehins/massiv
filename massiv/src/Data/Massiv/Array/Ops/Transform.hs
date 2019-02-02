@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -20,8 +21,9 @@ module Data.Massiv.Array.Ops.Transform
   , backpermute'
   , backpermute
   -- ** Resize
-  , resize
+  , resizeM
   , resize'
+  , resize
   -- ** Extract
   , extractM
   , extract
@@ -150,16 +152,23 @@ resize !sz !arr
   | totalElem sz == totalElem (size arr) = Just $ unsafeResize sz arr
   | otherwise = Nothing
 {-# INLINE resize #-}
+{-# DEPRECATED resize "In favor of a more general `resizeM`" #-}
 
--- | Same as `resize`, but will throw an error if supplied dimensions are incorrect.
+-- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
+-- number of elements does not match the source array.
+--
+-- @since 0.3.0
+resizeM ::
+     (MonadThrow m, Index ix', Load r ix e, Resize Array r ix)
+  => Sz ix'
+  -> Array r ix e
+  -> m (Array r ix' e)
+resizeM sz arr = guardNumberOfElements (size arr) sz >> pure (unsafeResize sz arr)
+{-# INLINE resizeM #-}
+
+-- | Same as `resizeM`, but will throw an error if supplied dimensions are incorrect.
 resize' :: (Index ix', Load r ix e, Resize Array r ix) => Sz ix' -> Array r ix e -> Array r ix' e
-resize' !sz !arr =
-  maybe
-    (error $
-     "Total number of elements do not match: " ++
-     show sz ++ " vs " ++ show (size arr))
-    id $
-  resize sz arr
+resize' sz = either throw id . resizeM sz
 {-# INLINE resize' #-}
 
 
@@ -310,7 +319,7 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --   ])
 --
 -- @since 0.3.0
-backpermuteM :: (MonadThrow m, Source r' ix' e, Mutable r ix e, Index ix) =>
+backpermuteM :: (MonadThrow m, Source r' ix' e, Mutable r ix e) =>
                 Sz ix -- ^ Size of the result array
              -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
              -> Array r' ix' e -- ^ Source array.

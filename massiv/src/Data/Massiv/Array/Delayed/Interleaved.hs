@@ -59,25 +59,25 @@ instance Index ix => Load DI ix e where
   {-# INLINE size #-}
   getComp = dComp . diArray
   {-# INLINE getComp #-}
-  loadArray numWorkers' scheduleWork' (DIArray (DArray _ sz f)) unsafeWrite =
+  loadArray numWorkers' scheduleWork' (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
       scheduleWork' $
-      iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> unsafeWrite k . f
+      iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> uWrite k . f
   {-# INLINE loadArray #-}
 
 instance Index ix => StrideLoad DI ix e where
-  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr unsafeWrite =
+  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr uWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
     in loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
           scheduleWork' $
           iterLinearM_ resultSize start (totalElem resultSize) numWorkers' (<) $
-            \ !i ix -> unsafeWrite i (f (liftIndex2 (*) strideIx ix))
+            \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
   {-# INLINE loadArrayWithStride #-}
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out
--- of order (interleaved amoungs cores), hence making unbalanced computation better parallelizable.
-toInterleaved :: (Load r ix e, Source r ix e) => Array r ix e -> Array DI ix e
+-- of order (interleaved amongst cores), hence making unbalanced computation better parallelizable.
+toInterleaved :: Source r ix e => Array r ix e -> Array DI ix e
 toInterleaved = DIArray . delay
 {-# INLINE toInterleaved #-}
 

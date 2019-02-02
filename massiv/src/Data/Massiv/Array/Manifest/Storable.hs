@@ -153,7 +153,11 @@ instance (Index ix, VS.Storable e) => Load S ix e where
   {-# INLINE size #-}
   getComp = sComp
   {-# INLINE getComp #-}
+  loadArray !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArray #-}
 
+instance (Index ix, VS.Storable e) => StrideLoad S ix e
 
 
 instance ( VS.Storable e

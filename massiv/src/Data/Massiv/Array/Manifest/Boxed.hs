@@ -186,6 +186,11 @@ instance Index ix => Load B ix e where
   {-# INLINE size #-}
   getComp = bComp
   {-# INLINE getComp #-}
+  loadArray !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArray #-}
+
+instance Index ix => StrideLoad B ix e
 
 
 -- | Row-major sequential folding over a Boxed array.
@@ -350,6 +355,11 @@ instance (Index ix, NFData e) => Load N ix e where
   {-# INLINE size #-}
   getComp = bComp . bArray
   {-# INLINE getComp #-}
+  loadArray !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArray #-}
+
+instance (Index ix, NFData e) => StrideLoad N ix e
 
 
 

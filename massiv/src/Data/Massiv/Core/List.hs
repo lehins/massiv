@@ -268,7 +268,7 @@ unsafeGenerateN comp sz f = unsafePerformIO $ do
 {-# INLINE unsafeGenerateN #-}
 
 
-toListArray :: (Construct L ix e, Load r ix e, Source r ix e)
+toListArray :: (Construct L ix e, Source r ix e)
             => Array r ix e
             -> Array L ix e
 toListArray !arr = makeArray (getComp arr) (size arr) (unsafeIndex arr)
@@ -317,7 +317,7 @@ showN fShow lnPrefix ls =
 
 
 showArray ::
-     forall r r' ix ix' e. (Show (Array L ix' e), Ragged L ix' e, Load r ix e, Source r' ix' e, Show e)
+     forall r r' ix ix' e. (Show (Array L ix' e), Ragged L ix' e, Load r ix e, Source r' ix' e)
   => (Array r ix e -> Array r' ix' e) -- ^ Modifier
   -> Array r ix e -- Array to show
   -> String

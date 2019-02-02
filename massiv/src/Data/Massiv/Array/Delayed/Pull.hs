@@ -146,7 +146,7 @@ instance Index ix => Load D ix e where
   getComp = dComp
   {-# INLINE getComp #-}
   loadArray !numWorkers scheduleWork !arr =
-    splitLinearlyWith_ numWorkers scheduleWork (totalElem (size arr)) (unsafeLinearIndex arr)
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArray #-}
 
 instance Index ix => StrideLoad D ix e
