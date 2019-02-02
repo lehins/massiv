@@ -184,7 +184,7 @@ unsafeWithPtr arr = VS.unsafeWith (sData arr)
 -- | A pointer to the beginning of the mutable array.
 --
 -- @since 0.1.3
-withPtr :: (Index ix, VS.Storable a) => MArray RealWorld S ix a -> (Ptr a -> IO b) -> IO b
+withPtr :: VS.Storable a => MArray RealWorld S ix a -> (Ptr a -> IO b) -> IO b
 withPtr (MSArray _ mv) = MVS.unsafeWith mv
 
 

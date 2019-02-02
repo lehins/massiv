@@ -355,6 +355,44 @@ backpermute = backpermute'
 {-# DEPRECATED backpermute "In favor of a safe `backpermuteM` or an equivalent `backpermute'`" #-}
 
 
+
+cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
+cons e arr =
+  DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \numWorkers scheduleWith uWrite ->
+    uWrite 0 e >> loadArray numWorkers scheduleWith arr (\i -> uWrite (i + 1))
+{-# INLINE cons #-}
+
+unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
+unconsM arr
+  | 0 == totalElem sz = throwM $ SizeEmptyException sz
+  | otherwise =
+    pure
+      ( unsafeLinearIndex arr 0
+      , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\i -> unsafeLinearIndex arr (i + 1)))
+  where
+    !sz = size arr
+{-# INLINE unconsM #-}
+
+snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
+snoc arr e =
+  DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
+    loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
+  where
+    !k = unSz (size arr)
+{-# INLINE snoc #-}
+
+
+unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
+unsnocM arr
+  | 0 == totalElem sz = throwM $ SizeEmptyException sz
+  | otherwise =
+    pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
+  where
+    !sz = size arr
+    !k = unSz sz - 1
+{-# INLINE unsnocM #-}
+
+
 -- | Append two arrays together along a particular dimension. Sizes of both arrays must match, with
 -- an allowed exception of the dimension they are being appended along, otherwise `Nothing` is
 -- returned.
@@ -422,41 +460,19 @@ append = appendM
 {-# INLINE append #-}
 {-# DEPRECATED append "In favor of a more general `appendM`" #-}
 
-cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
-cons e arr =
-  DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \numWorkers scheduleWith uWrite ->
-    uWrite 0 e >> loadArray numWorkers scheduleWith arr (\i -> uWrite (i + 1))
-{-# INLINE cons #-}
 
-unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
-unconsM arr
-  | 0 == totalElem sz = throwM $ SizeEmptyException sz
-  | otherwise =
-    pure
-      ( unsafeLinearIndex arr 0
-      , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\i -> unsafeLinearIndex arr (i + 1)))
-  where
-    !sz = size arr
-{-# INLINE unconsM #-}
-
-snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
-snoc arr e =
-  DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
-    loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
-  where
-    !k = unSz (size arr)
-{-# INLINE snoc #-}
-
-
-unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
-unsnocM arr
-  | 0 == totalElem sz = throwM $ SizeEmptyException sz
-  | otherwise =
-    pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
-  where
-    !sz = size arr
-    !k = unSz sz - 1
-{-# INLINE unsnocM #-}
+-- | Same as `append`, but will throw an error instead of returning `Nothing` on mismatched sizes.
+append' :: (Source r1 ix e, Source r2 ix e) =>
+           Dim -> Array r1 ix e -> Array r2 ix e -> Array DL ix e
+append' dim arr1 arr2 =
+  case append dim arr1 arr2 of
+    Just arr -> arr
+    Nothing ->
+      error $
+      if 0 < dim && dim <= dimensions (size arr1)
+        then "append': Dimension mismatch: " ++ show (size arr1) ++ " and " ++ show (size arr2)
+        else "append': Invalid dimension: " ++ show dim
+{-# INLINE append' #-}
 
 concat' :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Array DL ix e
 concat' n arrs = either throw id $ concatM n arrs
@@ -503,19 +519,6 @@ concatM n !arrsF = do
       }
 {-# INLINE concatM #-}
 
-
--- | Same as `append`, but will throw an error instead of returning `Nothing` on mismatched sizes.
-append' :: (Source r1 ix e, Source r2 ix e) =>
-           Dim -> Array r1 ix e -> Array r2 ix e -> Array DL ix e
-append' dim arr1 arr2 =
-  case append dim arr1 arr2 of
-    Just arr -> arr
-    Nothing ->
-      error $
-      if 0 < dim && dim <= dimensions (size arr1)
-        then "append': Dimension mismatch: " ++ show (size arr1) ++ " and " ++ show (size arr2)
-        else "append': Invalid dimension: " ++ show dim
-{-# INLINE append' #-}
 
 -- | /O(1)/ - Split an array at an index along a specified dimension.
 splitAtM ::

@@ -44,9 +44,9 @@ module Data.Massiv.Array.Manifest.Internal
 import           Control.Exception                   (try)
 import           Control.Monad                       (unless)
 import           Control.Monad.ST
-import           Data.Foldable                       (Foldable (..))
+import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Ops.Fold.Internal as M
+import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Scheduler
@@ -120,6 +120,10 @@ toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
 
 -- | Row-major sequentia folding over a Manifest array.
 instance Index ix => Foldable (Array M ix) where
+  fold = fold
+  {-# INLINE fold #-}
+  foldMap = foldMono
+  {-# INLINE foldMap #-}
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
   foldl' = foldlS
@@ -130,10 +134,6 @@ instance Index ix => Foldable (Array M ix) where
   {-# INLINE foldr' #-}
   null (MArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = M.fold (+) 0
-  {-# INLINE sum #-}
-  product = M.fold (*) 1
-  {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)

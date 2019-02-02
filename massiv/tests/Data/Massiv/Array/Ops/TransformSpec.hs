@@ -35,6 +35,13 @@ prop_ConcatAppend (DimIx dim) comp sz (NonEmpty fns) =
   where
     arrs = P.map (makeArrayR P comp sz . apply) fns
 
+prop_ConcatMconcat
+  :: [Array D Ix1 Int] -> Property
+prop_ConcatMconcat arrs =
+  computeAs P (concat' 1 (emptyArray : arrs)) === computeAs P (mconcat (fmap toLoadArray arrs))
+  where
+    emptyArray = makeArray Seq zeroSz id
+
 
 spec :: Spec
 spec = do
@@ -54,3 +61,5 @@ spec = do
     it "Ix2" $ property (prop_ConcatAppend @Ix2)
     it "Ix3" $ property (prop_ConcatAppend @Ix3)
     it "Ix4" $ property (prop_ConcatAppend @Ix4)
+  describe "ConcatMconcat" $ do
+    it "Ix1" $ property (prop_ConcatMconcat)

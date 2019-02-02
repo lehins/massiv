@@ -114,20 +114,8 @@ ifoldMono ::
   => (ix -> e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
   -> Array r ix e -- ^ Source array
   -> m
-ifoldMono f = fold mappend mempty . imap f
+ifoldMono f = ifoldlInternal (\a ix e -> a `mappend` f ix e) mempty mappend mempty
 {-# INLINE ifoldMono #-}
-
-
--- | /O(n)/ - Monoidal fold over an array. Also known as reduce.
---
--- @since 0.1.4
-foldMono ::
-     (Source r ix e, Monoid m)
-  => (e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
-  -> Array r ix e -- ^ Source array
-  -> m
-foldMono f = fold mappend mempty . map f
-{-# INLINE foldMono #-}
 
 
 -- | /O(n)/ - Semigroup fold over an array with an index aware function.
@@ -139,7 +127,7 @@ ifoldSemi ::
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
   -> m
-ifoldSemi f m = fold (<>) m . imap f
+ifoldSemi f m = ifoldlInternal (\a ix e -> a <> f ix e) m (<>) m
 {-# INLINE ifoldSemi #-}
 
 
@@ -152,7 +140,7 @@ foldSemi ::
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
   -> m
-foldSemi f m = fold (<>) m . map f
+foldSemi f m = foldlInternal (\a e -> a <> f e) m (<>) m
 {-# INLINE foldSemi #-}
 
 
@@ -306,10 +294,12 @@ foldrInner = foldrWithin' 1
 --
 -- @since 0.3.0
 maximumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
-maximumM = \arr ->
-  if isEmpty arr
-    then throwM (SizeEmptyException (size arr))
-    else pure $ fold max (unsafeIndex arr zeroIndex) arr
+maximumM =
+  \arr ->
+    if isEmpty arr
+      then throwM (SizeEmptyException (size arr))
+      else let e0 = unsafeIndex arr zeroIndex
+            in pure $ foldlInternal max e0 max e0 arr
 {-# INLINE maximumM #-}
 
 
@@ -317,10 +307,7 @@ maximumM = \arr ->
 --
 -- @since 0.1.0
 maximum :: (Source r ix e, Ord e) => Array r ix e -> e
-maximum = \arr ->
-  if isEmpty arr
-    then error "Data.Massiv.Array.maximum - empty"
-    else fold max (evaluate' arr zeroIndex) arr
+maximum = maximum'
 {-# INLINE maximum #-}
 {-# DEPRECATED maximum "In favor of a safee `maximumM` or an equivalent `maximum'`" #-}
 
@@ -336,10 +323,12 @@ maximum' = either throw id . maximumM
 --
 -- @since 0.3.0
 minimumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
-minimumM = \arr ->
-  if isEmpty arr
-    then throwM (SizeEmptyException (size arr))
-    else pure $ fold min (unsafeIndex arr zeroIndex) arr
+minimumM =
+  \arr ->
+    if isEmpty arr
+      then throwM (SizeEmptyException (size arr))
+      else let e0 = unsafeIndex arr zeroIndex
+            in pure $ foldlInternal min e0 min e0 arr
 {-# INLINE minimumM #-}
 
 -- | /O(n)/ - Compute minimum of all elements.
@@ -353,10 +342,7 @@ minimum' = either throw id . minimumM
 --
 -- @since 0.1.0
 minimum :: (Source r ix e, Ord e) => Array r ix e -> e
-minimum = \arr ->
-  if isEmpty arr
-    then error "Data.Massiv.Array.minimum - empty"
-    else fold min (evaluate' arr zeroIndex) arr
+minimum = minimum'
 {-# INLINE minimum #-}
 {-# DEPRECATED minimum "In favor of a safer `minimumM` or an equivalent `minimum'`" #-}
 
@@ -364,7 +350,7 @@ minimum = \arr ->
 --
 -- @since 0.1.0
 sum :: (Source r ix e, Num e) => Array r ix e -> e
-sum = fold (+) 0
+sum = foldlInternal (+) 0 (+) 0
 {-# INLINE sum #-}
 
 
@@ -372,7 +358,7 @@ sum = fold (+) 0
 --
 -- @since 0.1.0
 product :: (Source r ix e, Num e) => Array r ix e -> e
-product = fold (*) 1
+product = foldlInternal (*) 1 (*) 1
 {-# INLINE product #-}
 
 
@@ -380,7 +366,7 @@ product = fold (*) 1
 --
 -- @since 0.1.0
 and :: Source r ix Bool => Array r ix Bool -> Bool
-and = fold (&&) True
+and = foldlInternal (&&) True (&&) True
 {-# INLINE and #-}
 
 
@@ -388,7 +374,7 @@ and = fold (&&) True
 --
 -- @since 0.1.0
 or :: Source r ix Bool => Array r ix Bool -> Bool
-or = fold (||) False
+or = foldlInternal (||) False (||) False
 {-# INLINE or #-}
 
 

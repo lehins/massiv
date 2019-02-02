@@ -25,7 +25,7 @@ module Data.Massiv.Array.Delayed.Pull
   , liftArray2
   ) where
 
-import           Data.Foldable                       (Foldable (..))
+import qualified Data.Foldable                        as F
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Common
@@ -120,6 +120,10 @@ instance Index ix => Applicative (Array D ix) where
 
 -- | Row-major sequential folding over a Delayed array.
 instance Index ix => Foldable (Array D ix) where
+  fold = A.fold
+  {-# INLINE fold #-}
+  foldMap = A.foldMono
+  {-# INLINE foldMap #-}
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
   foldl' = foldlS
@@ -130,10 +134,6 @@ instance Index ix => Foldable (Array D ix) where
   {-# INLINE foldr' #-}
   null (DArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = foldl' (+) 0
-  {-# INLINE sum #-}
-  product = foldl' (*) 1
-  {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)
@@ -209,19 +209,17 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 
 
 -- TODO: switch to zipWith
--- | /O(n1 + n2)/ - Compute array equality by applying a comparing function to each element.
+-- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
 eq :: (Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
-  A.fold
-    (&&)
-    True
+  F.and
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE eq #-}
 
--- | /O(n1 + n2)/ - Compute array ordering by applying a comparing function to each element.
+-- | /O(min (n1, n2))/ - Compute array ordering by applying a comparing function to each element.
 -- The exact ordering is unspecified so this is only intended for use in maps and the like where
 -- you need an ordering but do not care about which one is used.
 ord :: (Source r1 ix e1, Source r2 ix e2) =>
@@ -229,8 +227,6 @@ ord :: (Source r1 ix e1, Source r2 ix e2) =>
 ord f arr1 arr2 =
   (compare (size arr1) (size arr2)) <>
   A.fold
-    (<>)
-    mempty
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE ord #-}
@@ -252,7 +248,7 @@ liftArray2 f !arr1 !arr2
   | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
   | sz2 == oneSz = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
   | sz1 == sz2 =
-    DArray (getComp arr1) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+    DArray (getComp arr1 <> getComp arr2) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
   | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
   where
     sz1 = size arr1

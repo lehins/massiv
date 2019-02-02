@@ -195,6 +195,10 @@ instance Index ix => StrideLoad B ix e
 
 -- | Row-major sequential folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
+  fold = fold
+  {-# INLINE fold #-}
+  foldMap = foldMono
+  {-# INLINE foldMap #-}
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
   foldl' = foldlS
@@ -205,10 +209,6 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE foldr' #-}
   null (BArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = fold (+) 0
-  {-# INLINE sum #-}
-  product = fold (*) 1
-  {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)

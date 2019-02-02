@@ -23,7 +23,7 @@ module Data.Massiv.Array.Ops.Slice
   , (<??>)
   ) where
 
-import           Control.Monad           (unless, guard)
+import           Control.Monad           (unless)
 import           Data.Massiv.Core.Common
 
 

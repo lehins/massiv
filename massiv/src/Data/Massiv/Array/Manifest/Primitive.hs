@@ -50,7 +50,6 @@ import           Data.Massiv.Core.List
 import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types
-import qualified Data.Vector.Primitive               as VP
 import           GHC.Base                            (Int (..))
 import           GHC.Exts                            as GHC (IsList (..))
 import           GHC.Prim

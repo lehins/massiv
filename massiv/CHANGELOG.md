@@ -9,6 +9,10 @@
     applicability to mutable `MArray`s
   * `Extract` with `unsafeExtract` from old `Size`
   * `StrideLoad`, child of `Load`
+* `ifoldlIO` and related no longer take list of capabilities, but instead respect the inner
+  computation strategy.
+* `fold` now is just like the one from `Data.Foldable` takes no arguments and requires elements to
+  be a monoid
 
 # 0.2.6
 

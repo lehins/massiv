@@ -61,6 +61,23 @@ instance Index ix => Construct DL ix e where
   {-# INLINE makeArrayLinear #-}
 
 
+instance Semigroup (Array DL Ix1 e) where
+  (<>) (DLArray c1 sz1 load1) (DLArray c2 sz2 load2) =
+    let k = unSz sz1
+     in DLArray
+          { dlComp = c1 <> c2
+          , dlSize = SafeSz (k + unSz sz2)
+          , dlLoad =
+              \numWorkers scheduleWith dlWrite -> do
+                load1 numWorkers scheduleWith dlWrite
+                load2 numWorkers scheduleWith (\i -> dlWrite (i + k))
+          }
+  {-# INLINE (<>) #-}
+
+instance Monoid (Array DL Ix1 e) where
+  mempty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
+  {-# INLINE mempty #-}
+
 -- | Specify how an array can be loaded/computed through creation of a `DL` array.
 --
 -- @since 0.3.0

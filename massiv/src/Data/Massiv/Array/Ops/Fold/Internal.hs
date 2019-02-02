@@ -28,7 +28,9 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldrM_
   --Special folds
   , fold
+  , foldMono
   , foldlInternal
+  , ifoldlInternal
   , foldrFB
   , lazyFoldlS
   , lazyFoldrS
@@ -59,17 +61,27 @@ import           System.IO.Unsafe           (unsafePerformIO)
 
 -- | /O(n)/ - Unstructured fold of an array.
 --
--- @since 0.1.0
-fold :: Source r ix e =>
-        (e -> e -> e) -- ^ Folding function (like with left fold, first argument
-                      -- is an accumulator)
-     -> e -- ^ Initial element. Has to be neutral with respect to the folding
-          -- function.
-     -> Array r ix e -- ^ Source array
-     -> e
-fold f initAcc = foldlInternal f initAcc f initAcc
+-- @since 0.3.0
+fold ::
+     (Monoid e, Source r ix e)
+  => Array r ix e -- ^ Source array
+  -> e
+fold = foldlInternal mappend mempty mappend mempty
 {-# INLINE fold #-}
 
+
+-- | /O(n)/ - This is exactly like `Data.Foldable.foldMap`, but for arrays. Fold over an array,
+-- while converting each element into a `Monoid`. Also known as map-reduce. If elements of the array
+-- are already a `Monoid` you can use `fold` instead.
+--
+-- @since 0.1.4
+foldMono ::
+     (Source r ix e, Monoid m)
+  => (e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
+  -> Array r ix e -- ^ Source array
+  -> m
+foldMono f = foldlInternal (\a e -> a `mappend` f e) mempty mappend mempty
+{-# INLINE foldMono #-}
 
 
 -- | /O(n)/ - Monadic left fold.
@@ -248,6 +260,33 @@ foldlOnP wIds f = ifoldlOnP wIds (\ x _ -> f x)
 
 
 
+ifoldlIO' ::
+     Source r ix e
+  => (a -> ix -> e -> IO a) -- ^ Index aware folding IO action
+  -> a -- ^ Accumulator
+  -> (b -> a -> IO b) -- ^ Folding action that is applied to results of parallel fold
+  -> b -- ^ Accumulator for chunks folding
+  -> Array r ix e
+  -> IO b
+ifoldlIO' f !initAcc g !tAcc !arr = do
+  let !sz = size arr
+      !totalLength = totalElem sz
+  results <-
+    withScheduler (getComp arr) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $
+          iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
+            f acc ix (unsafeLinearIndex arr i)
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
+            f acc ix (unsafeLinearIndex arr i)
+  F.foldlM g tAcc results
+{-# INLINE ifoldlIO' #-}
+
+
+
 -- | Parallel left fold.
 --
 -- @since 0.1.0
@@ -295,7 +334,7 @@ ifoldlOnP wIds f initAcc g =
 -- @since 0.1.0
 ifoldlP :: Source r ix e =>
            (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
-ifoldlP = ifoldlOnP []
+ifoldlP f initAcc g = ifoldlIO' (\acc ix -> return . f acc ix) initAcc (\acc -> return . g acc)
 {-# INLINE ifoldlP #-}
 
 
@@ -396,10 +435,11 @@ ifoldrP = ifoldrOnP []
 
 -- | This folding function breaks referential transparency on some functions
 -- @f@, therefore it is kept here for internal use only.
-foldlInternal :: Source r ix e =>
-         (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
-foldlInternal g initAcc f resAcc = \ arr ->
-  case getComp arr of
-    Seq        -> f resAcc (foldlS g initAcc arr)
-    ParOn wIds -> unsafePerformIO $ foldlOnP wIds g initAcc f resAcc arr
+foldlInternal :: Source r ix e => (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
+foldlInternal g initAcc f resAcc = unsafePerformIO . foldlP g initAcc f resAcc
 {-# INLINE foldlInternal #-}
+
+
+ifoldlInternal :: Source r ix e => (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
+ifoldlInternal g initAcc f resAcc = unsafePerformIO . ifoldlP g initAcc f resAcc
+{-# INLINE ifoldlInternal #-}

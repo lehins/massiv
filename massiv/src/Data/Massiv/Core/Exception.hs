@@ -17,6 +17,7 @@ newtype ImpossibleException =
 
 throwImpossible :: Exception e => e -> a
 throwImpossible = throw . ImpossibleException . toException
+{-# NOINLINE throwImpossible #-}
 
 instance Exception ImpossibleException where
   displayException (ImpossibleException exc) =
@@ -36,3 +37,4 @@ instance Exception Uninitialized where
 guardNumberOfElements :: (MonadThrow m, Index ix, Index ix') => Sz ix -> Sz ix' -> m ()
 guardNumberOfElements sz sz' = do
   unless (totalElem sz == totalElem sz) $ throwM $ SizeElementsMismatchException sz sz'
+{-# INLINE guardNumberOfElements #-}
