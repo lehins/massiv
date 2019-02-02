@@ -99,14 +99,14 @@ fromVector comp sz v =
         then error $
              "Data.Array.Massiv.Manifest.fromVector: Supplied size: " ++
              show sz ++ " doesn't match vector length: " ++ show (VG.length v)
-        else makeArray comp sz ((VG.unsafeIndex v) . toLinearIndex sz)
+        else makeArrayLinear comp sz (VG.unsafeIndex v)
 {-# NOINLINE fromVector #-}
 
 
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will
 -- return `Nothing` only if source array representation was not one of `B`, `N`,
 -- `P`, `S` or `U`.
-castToVector :: forall v r ix e . (VG.Vector v e, Mutable r ix e, VRepr r ~ v)
+castToVector :: forall v r ix e . (Mutable r ix e, VRepr r ~ v)
          => Array r ix e -> Maybe (v e)
 castToVector arr =
   msum
