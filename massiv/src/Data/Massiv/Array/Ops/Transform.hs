@@ -356,10 +356,20 @@ backpermute = backpermute'
 
 
 
+-- cons :: e -> Array DL Ix1 e -> Array DL Ix1 e
+-- cons !e !arr =
+--   arr
+--     { dlSize = SafeSz (1 + unSz (dlSize arr))
+--     , dlLoad =
+--         \numWorkers scheduleWith uWrite ->
+--           uWrite 0 e >> dlLoad arr numWorkers scheduleWith (\ !i -> uWrite (i + 1))
+--     }
+-- {-# INLINE cons #-}
+
 cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
-cons e arr =
+cons !e !arr =
   DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \numWorkers scheduleWith uWrite ->
-    uWrite 0 e >> loadArray numWorkers scheduleWith arr (\i -> uWrite (i + 1))
+    uWrite 0 e >> loadArray numWorkers scheduleWith arr (\ !i -> uWrite (i + 1))
 {-# INLINE cons #-}
 
 unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
@@ -368,18 +378,31 @@ unconsM arr
   | otherwise =
     pure
       ( unsafeLinearIndex arr 0
-      , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\i -> unsafeLinearIndex arr (i + 1)))
+      , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\ !i -> unsafeLinearIndex arr (i + 1)))
   where
     !sz = size arr
 {-# INLINE unconsM #-}
 
 snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
-snoc arr e =
+snoc !arr !e =
   DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
     loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
   where
     !k = unSz (size arr)
 {-# INLINE snoc #-}
+
+
+-- snoc :: Array DL Ix1 e -> e -> Array DL Ix1 e
+-- snoc !arr !e =
+--   arr
+--     { dlSize = SafeSz (1 + k)
+--     , dlLoad =
+--         \numWorkers scheduleWith uWrite ->
+--           loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
+--     }
+--   where
+--     !k = unSz (size arr)
+-- {-# INLINE snoc #-}
 
 
 unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)

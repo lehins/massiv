@@ -13,6 +13,9 @@
   computation strategy.
 * `fold` now is just like the one from `Data.Foldable` takes no arguments and requires elements to
   be a monoid
+* `singleton` does not accept computation strategy any more and creates `Seq` array by default
+* new function `empty`.
+
 
 # 0.2.6
 

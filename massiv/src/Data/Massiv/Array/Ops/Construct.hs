@@ -21,6 +21,7 @@ module Data.Massiv.Array.Ops.Construct
   , makeArrayR
   , makeVectorR
   , singleton
+  , empty
   , replicate
   , replicateR
     -- *** Applicative
@@ -45,13 +46,14 @@ module Data.Massiv.Array.Ops.Construct
   , expandInner
   ) where
 
-import           Control.Applicative
+import           Control.Applicative            hiding (empty)
 import           Control.Monad.ST
 import           Data.Massiv.Array.Delayed.Pull
 --import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Core.Common
 --import           Data.Massiv.Scheduler          (traverse_)
-import           Prelude                        as P hiding (replicate, enumFromTo)
+import           Prelude                        as P hiding (enumFromTo,
+                                                      replicate)
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.

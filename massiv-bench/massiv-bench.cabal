@@ -124,6 +124,8 @@ benchmark append
                      , criterion
                      , massiv
                      , massiv-bench
+                     , vector
+                     , dlist
   default-language:    Haskell2010
 
 -- benchmark fuse-seq

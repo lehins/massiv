@@ -110,7 +110,7 @@ instance Functor (Array D ix) where
 
 
 instance Index ix => Applicative (Array D ix) where
-  pure = singleton Seq
+  pure = singleton
   {-# INLINE pure #-}
   (<*>) (DArray c1 (SafeSz sz1) uIndex1) (DArray c2 (SafeSz sz2) uIndex2) =
     DArray (c1 <> c2) (SafeSz (liftIndex2 min sz1 sz2)) $ \ !ix ->
@@ -162,18 +162,18 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE abs #-}
   signum      = liftArray signum
   {-# INLINE signum #-}
-  fromInteger = singleton Seq . fromInteger
+  fromInteger = singleton . fromInteger
   {-# INLINE fromInteger #-}
 
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
   (/)          = liftArray2 (/)
   {-# INLINE (/) #-}
-  fromRational = singleton Seq . fromRational
+  fromRational = singleton . fromRational
   {-# INLINE fromRational #-}
 
 
 instance (Index ix, Floating e) => Floating (Array D ix e) where
-  pi    = singleton Seq pi
+  pi    = singleton pi
   {-# INLINE pi #-}
   exp   = liftArray exp
   {-# INLINE exp #-}

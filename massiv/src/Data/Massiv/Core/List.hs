@@ -102,8 +102,8 @@ instance Nested LN ix e => IsList (Array L ix e) where
 instance {-# OVERLAPPING #-} Ragged L Ix1 e where
   isNull = null . unList . lData
   {-# INLINE isNull #-}
-  empty comp = LArray comp (List [])
-  {-# INLINE empty #-}
+  emptyR comp = LArray comp (List [])
+  {-# INLINE emptyR #-}
   edgeSize = SafeSz . length . unList . lData
   {-# INLINE edgeSize #-}
   consR x arr = arr { lData = coerce (x : coerce (lData arr)) }
@@ -154,8 +154,8 @@ instance ( Index ix
          Ragged L ix e where
   isNull = null . unList . lData
   {-# INLINE isNull #-}
-  empty comp = LArray comp (List [])
-  {-# INLINE empty #-}
+  emptyR comp = LArray comp (List [])
+  {-# INLINE emptyR #-}
   edgeSize arr =
     SafeSz
       (consDim (length (unList (lData arr))) $
@@ -177,7 +177,7 @@ instance ( Index ix
   {-# INLINE unconsR #-}
   -- generateRaggedM Seq !sz f = do
   --   let !(k, szL) = unconsSz sz
-  --   loopDeepM 0 (< coerce k) (+ 1) (empty Seq) $ \i acc -> do
+  --   loopDeepM 0 (< coerce k) (+ 1) (emptyR Seq) $ \i acc -> do
   --     e <- generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))
   --     return (cons e acc)
   generateRaggedM = unsafeGenerateParM
@@ -264,7 +264,7 @@ unsafeGenerateN comp sz f = unsafePerformIO $ do
   xs <- withScheduler comp $ \scheduler ->
     loopM_ 0 (< coerce m) (+ 1) $ \i -> scheduleWork scheduler $
       generateRaggedM comp szL $ \ix -> return $ f (consDim i ix)
-  return $! foldr' consR (empty comp) xs
+  return $! foldr' consR (emptyR comp) xs
 {-# INLINE unsafeGenerateN #-}
 
 

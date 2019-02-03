@@ -35,6 +35,7 @@ module Data.Massiv.Core.Common
   , Ragged(..)
   , Nested(..)
   , NestedStruct
+  , empty
   , singleton
   -- * Size
   , elemsCount
@@ -312,7 +313,7 @@ class Nested r ix e where
 
 class Construct r ix e => Ragged r ix e where
 
-  empty :: Comp -> Array r ix e
+  emptyR :: Comp -> Array r ix e
 
   isNull :: Array r ix e -> Bool
 
@@ -336,11 +337,18 @@ class Construct r ix e => Ragged r ix e where
 
 
 -- | Create an Array with a single element.
-singleton :: Construct r ix e =>
-             Comp -- ^ Computation strategy
-          -> e -- ^ The element
-          -> Array r ix e
-singleton !c = makeArray c oneSz . const
+empty ::
+     Construct r ix e
+  => Array r ix e
+empty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
+{-# INLINE empty #-}
+
+-- | Create an Array with a single element.
+singleton ::
+     Construct r ix e
+  => e -- ^ The element
+  -> Array r ix e
+singleton = makeArray Seq oneSz . const
 {-# INLINE singleton #-}
 
 

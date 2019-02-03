@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
@@ -23,13 +24,16 @@ module Data.Massiv.Array.Delayed.Push
   , fromStrideLoad
   ) where
 
-import           Data.Massiv.Array.Manifest.Boxed    (B(B))
+import qualified Data.Foldable                       as F (foldl', foldlM)
+import qualified Control.Monad                       as F (foldM_, void)
+import           Data.Massiv.Array.Manifest.Boxed    (B (B))
 import           Data.Massiv.Array.Manifest.Internal (computeAs)
-import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Index.Internal     (Sz (SafeSz))
 import           Data.Massiv.Core.List               (L, showArray)
+import           Data.Semigroup                      (Sum (..))
+import           GHC.Magic
 import           Prelude                             hiding (map, zipWith)
-
 
 #include "massiv.h"
 
@@ -60,23 +64,28 @@ instance Index ix => Construct DL ix e where
       splitWith_ numWorkers scheduleWith (SafeSz (totalElem sz)) f dlWrite
   {-# INLINE makeArrayLinear #-}
 
+instance Index ix => Resize Array DL ix where
+  unsafeResize !sz arr = arr { dlSize = sz }
+  {-# INLINE unsafeResize #-}
 
 instance Semigroup (Array DL Ix1 e) where
   (<>) (DLArray c1 sz1 load1) (DLArray c2 sz2 load2) =
-    let k = unSz sz1
-     in DLArray
-          { dlComp = c1 <> c2
-          , dlSize = SafeSz (k + unSz sz2)
-          , dlLoad =
-              \numWorkers scheduleWith dlWrite -> do
-                load1 numWorkers scheduleWith dlWrite
-                load2 numWorkers scheduleWith (\i -> dlWrite (i + k))
-          }
+    DLArray {dlComp = c1 <> c2, dlSize = SafeSz (k + unSz sz2), dlLoad = load}
+    where
+      !k = unSz sz1
+      load :: Monad m => Int -> (m () -> m ()) -> (Int -> e -> m ()) -> m ()
+      load numWorkers scheduleWith dlWrite = do
+        load1 numWorkers scheduleWith dlWrite
+        load2 numWorkers scheduleWith (\ !i -> dlWrite (i + k))
+      {-# INLINE load #-}
   {-# INLINE (<>) #-}
 
-instance Monoid (Array DL Ix1 e) where
-  mempty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
-  {-# INLINE mempty #-}
+
+-- mconcat is too slow: `mconcat [a1, a2]` is like x1000 slower than `a1 <> a2 <> mempty`
+-- instance Monoid (Array DL Ix1 e) where
+--   mempty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
+--   {-# INLINE mempty #-}
+
 
 -- | Specify how an array can be loaded/computed through creation of a `DL` array.
 --
@@ -90,10 +99,17 @@ makeLoadArray ::
 makeLoadArray comp sz f = DLArray comp sz f
 {-# INLINE makeLoadArray #-}
 
-instance Index ix => Resize Array DL ix where
-  unsafeResize !sz arr = arr { dlSize = sz }
-  {-# INLINE unsafeResize #-}
 
+-- -- | Convert any `Load`able array into `DL` representation.
+-- --
+-- -- @since 0.3.0
+-- toLoadArray :: forall r ix e . Source r ix e => Array r ix e -> Array DL ix e
+-- toLoadArray arr =
+--   DLArray (getComp arr) sz $ \numWorkers scheduleWith dlWrite ->
+--     splitWith_ numWorkers scheduleWith (SafeSz (totalElem sz)) (unsafeLinearIndex arr) dlWrite
+--   where
+--     !sz = size arr
+-- {-# INLINE toLoadArray #-}
 
 -- | Convert any `Load`able array into `DL` representation.
 --
@@ -128,7 +144,7 @@ instance Functor (Array DL ix) where
     arr
       { dlLoad =
           \numWorkers scheduleWork uWrite ->
-            (dlLoad arr) numWorkers scheduleWork (\i e -> uWrite i (f e))
+            dlLoad arr numWorkers scheduleWork (\i e -> uWrite i (f e))
       }
   {-# INLINE fmap #-}
 
