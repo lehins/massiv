@@ -83,7 +83,7 @@ makeVectorR _ = makeArray
 
 newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
 
-runSTA :: (Mutable r ix e, Index ix) => Sz ix -> STA r ix e -> Array r ix e
+runSTA :: Mutable r ix e => Sz ix -> STA r ix e -> Array r ix e
 runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 {-# INLINE runSTA  #-}
 
@@ -274,27 +274,6 @@ enumFromStepN :: Num e =>
 enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromIntegral i * step
 {-# INLINE enumFromStepN #-}
 
-
--- -- |
--- --
--- -- @since 0.3.0
--- enumFromTo :: (Index ix, Enum ix) => Comp -> ix -> ix -> Array DL ix ix
--- enumFromTo comp from to =
---   DLArray comp (Sz (liftIndex2 (\t f -> t - f + 1) to from)) $ \ _numWorkers _scheduleWith uWrite ->
---     traverse_ (\(ix, e) -> uWrite ix e) $ P.zip [0..] [from..to]
--- {-# INLINE enumFromTo #-}
-
-
--- |
---
--- @since 0.3.0
-enumFromToIx2 :: Ix2 -> Ix2 -> [Ix2]
-enumFromToIx2 (i0 :. j0) ix0@(_ :. n) = go [] ix0
-  where go acc  ix@(i :. j)
-          | j0 <= j = go (ix:acc) (i :. (j - 1))
-          | i0 <  i = go acc      ((i - 1) :. n)
-          | otherwise = acc
-{-# INLINE enumFromToIx2 #-}
 
 -- | Function that expands an array to one with a higher dimension.
 --

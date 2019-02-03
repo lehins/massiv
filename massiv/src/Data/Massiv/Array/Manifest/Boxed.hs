@@ -123,8 +123,7 @@ instance Index ix => Extract B ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance ( NFData e
-         , Index ix
+instance ( Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
          , Elt B ix e ~ Array M (Lower ix) e
@@ -133,8 +132,7 @@ instance ( NFData e
   unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( NFData e
-         , Index ix
+instance ( Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
          , Elt B ix e ~ Array M (Lower ix) e

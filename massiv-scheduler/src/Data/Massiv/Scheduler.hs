@@ -27,7 +27,7 @@ module Data.Massiv.Scheduler
   , fromWorkerAsyncException
   -- * Helper functions
   , traverse_
-  -- , mapConcurrently
+  , mapConcurrently
   ) where
 
 import           Control.Exception
@@ -70,12 +70,12 @@ traverse_ :: (Foldable t, Applicative f) => (a -> f ()) -> t a -> f ()
 traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
 
 
--- -- | Map an action over each element of the `Foldable` @t@ acccording to the supplied computation
--- -- strategy.
--- --
--- -- @since 0.1.0
--- mapConcurrently :: Foldable t => Comp -> (a -> IO b) -> t a -> IO [b]
--- mapConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
+-- | Map an action over each element of the `Foldable` @t@ acccording to the supplied computation
+-- strategy.
+--
+-- @since 0.1.0
+mapConcurrently :: Foldable t => Comp -> (a -> IO b) -> t a -> IO [b]
+mapConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
 
 -- | Schedule an action to be picked up and computed by a worker from a pool. See `withScheduler` to
 -- initialize a scheduler. Use `scheduleWork_` if you do not intend to keep the result of the

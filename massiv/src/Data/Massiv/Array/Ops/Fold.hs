@@ -97,7 +97,6 @@ module Data.Massiv.Array.Ops.Fold
 
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Array.Ops.Map           (imap, map)
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
@@ -382,14 +381,14 @@ or = foldlInternal (||) False (||) False
 --
 -- @since 0.1.0
 all :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
-all f = foldlInternal (\acc el -> acc && f el) True (&&) True
+all f = foldlInternal (\acc e -> acc && f e) True (&&) True
 {-# INLINE all #-}
 
 -- | /O(n)/ - Determines whether any element of the array satisfies the predicate.
 --
 -- @since 0.1.0
 any :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
-any f = foldlInternal (\acc el -> acc || f el) False (||) False
+any f = foldlInternal (\acc e -> acc || f e) False (||) False
 {-# INLINE any #-}
 
 

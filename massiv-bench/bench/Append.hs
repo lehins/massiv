@@ -2,12 +2,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-import           Control.Monad            (guard)
 import           Criterion.Main
 import qualified Data.DList               as DL
 import           Data.Massiv.Array        as A
-import qualified Data.Foldable            as F
-import           Data.Massiv.Array.Unsafe as A
 import           Data.Massiv.Bench        as A
 import qualified Data.Vector.Primitive    as VP
 import           Prelude                  as P
@@ -15,18 +12,15 @@ import           Prelude                  as P
 main :: IO ()
 main = do
   let !sz = Sz (600 :. 1000)
+      !arr = computeAs P $ resize' (Sz $ totalElem sz) $ arrRLightIx2 DL Par sz
   defaultMain
     [ mkAppendBenchGroup "LeftToRight" (Dim 1) sz
     , mkAppendBenchGroup "TopToBottom" (Dim 2) sz
-    , env (return (computeAs P $ resize' (Sz $ totalElem sz) $ arrRLightIx2 D Seq sz)) $ \arr ->
-        bgroup
-          "Monoid"
-          [ bench "computeDL" $ whnf (A.computeAs P . toLoadArray) arr
-          , bench "computeD" $ whnf (A.computeAs P . delay) arr
-          , bench "mappend" $ whnf (\a -> A.computeAs P (toLoadArray a <> toLoadArray a)) arr
-          -- , bench "mconcat" $
-          --   whnf (\a -> A.computeAs P (mconcat [toLoadArray a, toLoadArray a])) arr
-          ]
+    , bgroup
+        "Monoid"
+        [ bench "mappend" $ whnf (\a -> A.computeAs P (toLoadArray a <> toLoadArray a)) arr
+        , bench "mconcat" $ whnf (A.computeAs P . mconcat) [toLoadArray arr, toLoadArray arr]
+        ]
     , bgroup
         "cons"
         [ bench "Array DL Ix1 Int (10000)" $ nf (A.computeAs P . consArray 10000) empty

@@ -356,21 +356,21 @@ backpermute = backpermute'
 
 
 
--- cons :: e -> Array DL Ix1 e -> Array DL Ix1 e
--- cons !e !arr =
---   arr
---     { dlSize = SafeSz (1 + unSz (dlSize arr))
---     , dlLoad =
---         \numWorkers scheduleWith uWrite ->
---           uWrite 0 e >> dlLoad arr numWorkers scheduleWith (\ !i -> uWrite (i + 1))
---     }
--- {-# INLINE cons #-}
-
-cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
-cons !e !arr =
-  DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \numWorkers scheduleWith uWrite ->
-    uWrite 0 e >> loadArray numWorkers scheduleWith arr (\ !i -> uWrite (i + 1))
+cons :: e -> Array DL Ix1 e -> Array DL Ix1 e
+cons e arr =
+  arr
+    { dlSize = SafeSz (1 + unSz (dlSize arr))
+    , dlLoad =
+        \numWorkers scheduleWith startAt uWrite ->
+          uWrite startAt e >> dlLoad arr numWorkers scheduleWith (startAt + 1) uWrite
+    }
 {-# INLINE cons #-}
+
+-- cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
+-- cons !e !arr =
+--   DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \numWorkers scheduleWith startAt uWrite ->
+--     uWrite startAt e >> loadArray numWorkers scheduleWith arr (\ !i -> uWrite (i + startAt))
+-- {-# INLINE cons #-}
 
 unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
 unconsM arr
@@ -383,26 +383,26 @@ unconsM arr
     !sz = size arr
 {-# INLINE unconsM #-}
 
-snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
-snoc !arr !e =
-  DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
-    loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
-  where
-    !k = unSz (size arr)
-{-# INLINE snoc #-}
-
-
--- snoc :: Array DL Ix1 e -> e -> Array DL Ix1 e
+-- snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
 -- snoc !arr !e =
---   arr
---     { dlSize = SafeSz (1 + k)
---     , dlLoad =
---         \numWorkers scheduleWith uWrite ->
---           loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
---     }
+--   DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
+--     loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
 --   where
 --     !k = unSz (size arr)
 -- {-# INLINE snoc #-}
+
+
+snoc :: Array DL Ix1 e -> e -> Array DL Ix1 e
+snoc arr e =
+  arr
+    { dlSize = SafeSz (1 + k)
+    , dlLoad =
+        \numWorkers scheduleWith startAt uWrite ->
+          dlLoad arr numWorkers scheduleWith startAt uWrite >> uWrite (k + startAt) e
+    }
+  where
+    !k = unSz (size arr)
+{-# INLINE snoc #-}
 
 
 unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
@@ -452,7 +452,7 @@ unsnocM arr
 --
 appendM :: (MonadThrow m, Source r1 ix e, Source r2 ix e) =>
           Dim -> Array r1 ix e -> Array r2 ix e -> m (Array DL ix e)
-appendM n !arr1 !arr2 = do -- TODO: switch to `concat n [arr1, arr2]`
+appendM n !arr1 !arr2 = do --concatM n [delay arr1, delay arr2]
   let !sz1 = size arr1
       !sz2 = size arr2
   (k1, szl1) <- pullOutSzM sz1 n
@@ -465,18 +465,19 @@ appendM n !arr1 !arr2 = do -- TODO: switch to `concat n [arr1, arr2]`
       { dlComp = getComp arr1 <> getComp arr2
       , dlSize = newSz
       , dlLoad =
-          \_numWorkers scheduleWith dlWrite -> do
+          \_numWorkers scheduleWith startAt dlWrite -> do
             scheduleWith $
               iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
-                dlWrite (toLinearIndex newSz ix) (unsafeIndex arr1 ix)
+                dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
             scheduleWith $
               iterM_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
                 let i = getDim' ix n
                     ix' = setDim' ix n (i + k1')
-                 in dlWrite (toLinearIndex newSz ix') (unsafeIndex arr2 ix)
+                 in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr2 ix)
       }
 {-# INLINE appendM #-}
 
+-- | Append two arrays together along a specified dimension.
 append :: (Source r1 ix e, Source r2 ix e) =>
           Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array DL ix e)
 append = appendM
@@ -484,17 +485,10 @@ append = appendM
 {-# DEPRECATED append "In favor of a more general `appendM`" #-}
 
 
--- | Same as `append`, but will throw an error instead of returning `Nothing` on mismatched sizes.
+-- | Same as `appendM`, but will throw an error instead of returning `Nothing` on mismatched sizes.
 append' :: (Source r1 ix e, Source r2 ix e) =>
            Dim -> Array r1 ix e -> Array r2 ix e -> Array DL ix e
-append' dim arr1 arr2 =
-  case append dim arr1 arr2 of
-    Just arr -> arr
-    Nothing ->
-      error $
-      if 0 < dim && dim <= dimensions (size arr1)
-        then "append': Dimension mismatch: " ++ show (size arr1) ++ " and " ++ show (size arr2)
-        else "append': Invalid dimension: " ++ show dim
+append' dim arr1 arr2 = either throw id $ appendM dim arr1 arr2
 {-# INLINE append' #-}
 
 concat' :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Array DL ix e
@@ -507,39 +501,37 @@ concat' n arrs = either throw id $ concatM n arrs
 -- @since 0.3.0
 concatM ::
      (MonadThrow m, Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> m (Array DL ix e)
-concatM n !arrsF = do
-  (a, arrs) <-
-    case L.uncons (F.toList arrsF) of
-      Just arrs -> pure arrs
-      Nothing -> throwM $ SizeEmptyException (SafeSz (length arrsF))
-                 -- \ prevent concatenation of an empty list
-  let sz = unSz (size a)
-      szs = P.map (unSz . size) arrs
-  (k, szl) <- pullOutDimM sz n
-  -- / remove the dimension out of all sizes along which concatenation will happen
-  (ks, szls) <-
-    F.foldrM (\ !csz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM csz n) ([], []) szs
-  -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
-  traverse_
-    (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
-    (dropWhile ((== szl) . snd) $ zip szs szls)
-  let kTotal = SafeSz $ F.foldl' (+) k ks
-  newSz <- insertSzM (SafeSz szl) n kTotal
-  return $
-    DLArray
-      { dlComp = mconcat $ P.map getComp arrs
-      , dlSize = newSz
-      , dlLoad =
-          \_numWorkers scheduleWith dlWrite ->
-            let arrayLoader !kAcc (kCur, arr) = do
-                  scheduleWith $
-                    iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
-                      let i = getDim' ix n
-                          ix' = setDim' ix n (i + kAcc)
-                       in dlWrite (toLinearIndex newSz ix') (unsafeIndex arr ix)
-                  pure (kAcc + kCur)
-             in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
-      }
+concatM n !arrsF =
+  case L.uncons (F.toList arrsF) of
+    Nothing -> pure empty
+    Just (a, arrs) -> do
+      let sz = unSz (size a)
+          szs = P.map (unSz . size) arrs
+      (k, szl) <- pullOutDimM sz n
+      -- / remove the dimension out of all sizes along which concatenation will happen
+      (ks, szls) <-
+        F.foldrM (\ !csz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM csz n) ([], []) szs
+      -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
+      traverse_
+        (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
+        (dropWhile ((== szl) . snd) $ zip szs szls)
+      let kTotal = SafeSz $ F.foldl' (+) k ks
+      newSz <- insertSzM (SafeSz szl) n kTotal
+      return $
+        DLArray
+          { dlComp = mconcat $ P.map getComp arrs
+          , dlSize = newSz
+          , dlLoad =
+              \_numWorkers scheduleWith startAt dlWrite ->
+                let arrayLoader !kAcc (kCur, arr) = do
+                      scheduleWith $
+                        iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
+                          let i = getDim' ix n
+                              ix' = setDim' ix n (i + kAcc)
+                           in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr ix)
+                      pure (kAcc + kCur)
+                 in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
+          }
 {-# INLINE concatM #-}
 
 
@@ -603,12 +595,13 @@ downsample !stride arr =
     { dlComp = getComp arr
     , dlSize = resultSize
     , dlLoad =
-        \numWorkers scheduleWith dlWrite ->
-          splitLinearlyWith_
+        \numWorkers scheduleWith startAt dlWrite ->
+          splitLinearlyWithStartAtM_
             numWorkers
             scheduleWith
+            startAt
             (totalElem resultSize)
-            unsafeLinearWriteWithStride
+            (pure . unsafeLinearWriteWithStride)
             dlWrite
     }
   where
@@ -630,15 +623,15 @@ upsample !fillWith !safeStride arr =
     { dlComp = getComp arr
     , dlSize = newsz
     , dlLoad =
-        \numWorkers scheduleWith dlWrite -> do
+        \numWorkers scheduleWith startAt dlWrite -> do
           unless (stride == pureIndex 1) $
-            loopM_ 0 (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
+            loopM_ startAt (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
           -- TODO: experiment a bit more. So far the fastest solution is to prefill the whole array
           -- with default value and override non-stride elements afterwards.  This approach seems a
           -- bit wasteful, nevertheless it is fastest
           --
           -- TODO: Is it possible to use fast fill operation that is available for MutableByteArray?
-          loadArray numWorkers scheduleWith arr (\i -> dlWrite (adjustLinearStride i))
+          loadArray numWorkers scheduleWith arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
     }
   where
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
