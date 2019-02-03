@@ -24,8 +24,8 @@ module Data.Massiv.Array.Delayed.Push
   , fromStrideLoad
   ) where
 
-import qualified Data.Foldable                       as F (foldl', foldlM)
 import qualified Control.Monad                       as F (foldM_, void)
+import qualified Data.Foldable                       as F (foldl', foldlM)
 import           Data.Massiv.Array.Manifest.Boxed    (B (B))
 import           Data.Massiv.Array.Manifest.Internal (computeAs)
 import           Data.Massiv.Core.Common
@@ -42,13 +42,13 @@ data DL = DL deriving Show
 
 
 data instance Array DL ix e = DLArray
-  { dlComp :: !Comp
-  , dlSize :: !(Sz ix)
-  , dlLoad :: forall m . Monad m
-           => Int
-           -> (m () -> m ())
-           -> (Int -> e -> m ())
-           -> m ()
+  { dlComp    :: !Comp
+  , dlSize    :: !(Sz ix)
+  , dlLoad    :: forall m . Monad m
+              => Int -- number of workers
+              -> (m () -> m ()) -- how to schedule the work
+              -> (Int -> e -> m ()) -- linear element writing action
+              -> m ()
   }
 
 type instance EltRepr DL ix = DL
@@ -61,7 +61,7 @@ instance Index ix => Construct DL ix e where
   {-# INLINE setComp #-}
   makeArrayLinear comp sz f =
     DLArray comp sz $ \numWorkers scheduleWith dlWrite ->
-      splitWith_ numWorkers scheduleWith (SafeSz (totalElem sz)) f dlWrite
+      splitLinearlyWith_ numWorkers scheduleWith (totalElem sz) f dlWrite
   {-# INLINE makeArrayLinear #-}
 
 instance Index ix => Resize Array DL ix where
@@ -84,6 +84,9 @@ instance Semigroup (Array DL Ix1 e) where
 instance Monoid (Array DL Ix1 e) where
   mempty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
   {-# INLINE mempty #-}
+
+  mappend = (<>)
+  {-# INLINE mappend #-}
 
 
 -- | Specify how an array can be loaded/computed through creation of a `DL` array.
