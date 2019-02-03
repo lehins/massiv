@@ -75,16 +75,15 @@ instance Semigroup (Array DL Ix1 e) where
       !k = unSz sz1
       load :: Monad m => Int -> (m () -> m ()) -> (Int -> e -> m ()) -> m ()
       load numWorkers scheduleWith dlWrite = do
-        load1 numWorkers scheduleWith dlWrite
+        load1 numWorkers scheduleWith (\ !i -> dlWrite i)
         load2 numWorkers scheduleWith (\ !i -> dlWrite (i + k))
       {-# INLINE load #-}
   {-# INLINE (<>) #-}
 
 
--- mconcat is too slow: `mconcat [a1, a2]` is like x1000 slower than `a1 <> a2 <> mempty`
--- instance Monoid (Array DL Ix1 e) where
---   mempty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
---   {-# INLINE mempty #-}
+instance Monoid (Array DL Ix1 e) where
+  mempty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
+  {-# INLINE mempty #-}
 
 
 -- | Specify how an array can be loaded/computed through creation of a `DL` array.

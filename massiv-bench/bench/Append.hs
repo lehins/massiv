@@ -24,8 +24,6 @@ main = do
           [ bench "computeDL" $ whnf (A.computeAs P . toLoadArray) arr
           , bench "computeD" $ whnf (A.computeAs P . delay) arr
           , bench "mappend" $ whnf (\a -> A.computeAs P (toLoadArray a <> toLoadArray a)) arr
-          , bench "myAppend" $
-            whnf (\a -> A.computeAs P (toLoadArray a `myAppend` toLoadArray a)) arr
           -- , bench "mconcat" $
           --   whnf (\a -> A.computeAs P (mconcat [toLoadArray a, toLoadArray a])) arr
           ]
@@ -84,14 +82,3 @@ mkAppendBenchGroup gname dim sz =
           ]
     ]
 
-
-myAppend :: (Load r1 Int e, Load r2 Int e) => Array r1 Int e -> Array r2 Int e -> Array DL Int e
-myAppend arr1 arr2 =
-  let !k = unSz $ size arr1
-   in makeLoadArray
-        (getComp arr1 <> getComp arr2)
-        (SafeSz (k + unSz (size arr2)))
-        (\numWorkers scheduleWith dlWrite -> do
-           loadArray numWorkers scheduleWith arr1 dlWrite
-           loadArray numWorkers scheduleWith arr2 (\ !i -> dlWrite (i + k)))
-{-# INLINE myAppend #-}
