@@ -87,7 +87,7 @@ fromLists comp = either (const Nothing) Just . fromRaggedArray . setComp comp . 
 --
 -- prop> fromLists' Seq xs == fromList xs
 --
--- ===__Examples__
+-- ====__Examples__
 --
 -- Convert a list of lists into a 2D Array
 --
@@ -142,7 +142,7 @@ toList !arr = build (\ c n -> foldrFB c n arr)
 --
 -- __Note__: This function is almost the same as `GHC.Exts.toList`.
 --
--- ====__Examples__
+-- ==== __Examples__
 --
 -- >>> let arr = makeArrayR U Seq (2 :> 1 :. 3) fromIx3
 -- >>> print arr

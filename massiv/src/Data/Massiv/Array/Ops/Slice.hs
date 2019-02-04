@@ -69,10 +69,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- True
 --
 (!>) :: OuterSlice r ix e => Array r ix e -> Int -> Elt r ix e
-(!>) !arr !ix =
-  case arr !?> ix of
-    Just res -> res
-    Nothing  -> errorIx "(!>)" (fst $ unconsSz (size arr)) ix
+(!>) !arr !ix = either throw id (arr !?> ix)
 {-# INLINE (!>) #-}
 
 

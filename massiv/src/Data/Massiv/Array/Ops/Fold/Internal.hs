@@ -39,22 +39,17 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , foldrP
   , ifoldlP
   , ifoldrP
-  , foldlOnP
   , ifoldlIO
-  , foldrOnP
-  , ifoldlOnP
-  , ifoldrOnP
   , ifoldrIO
   ) where
 
-import           Control.Monad              (void, when)
-import qualified Data.Foldable              as F
-import           Data.Functor.Identity      (runIdentity)
+import           Control.Monad           (void, when)
+import qualified Data.Foldable           as F
+import           Data.Functor.Identity   (runIdentity)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Scheduler
-import           Prelude                    hiding (all, and, any, foldl, foldr,
-                                             maximum, minimum, or, product, sum)
-import           System.IO.Unsafe           (unsafePerformIO)
+import           Prelude                 hiding (foldl, foldr)
+import           System.IO.Unsafe        (unsafePerformIO)
 
 
 
@@ -246,87 +241,6 @@ foldlP :: Source r ix e =>
 foldlP f = ifoldlP (\ x _ -> f x)
 {-# INLINE foldlP #-}
 
-
--- | Just like `foldlP`, but allows you to specify which cores (capabilities) to run computation
--- on. The order in which chunked results will be supplied to function @f@ is guaranteed to be
--- consecutive and aligned with the folding direction.
---
--- @since 0.1.0
-foldlOnP
-  :: Source r ix e
-  => [Int] -> (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
-foldlOnP wIds f = ifoldlOnP wIds (\ x _ -> f x)
-{-# INLINE foldlOnP #-}
-
-
-
-ifoldlIO' ::
-     Source r ix e
-  => (a -> ix -> e -> IO a) -- ^ Index aware folding IO action
-  -> a -- ^ Accumulator
-  -> (b -> a -> IO b) -- ^ Folding action that is applied to results of parallel fold
-  -> b -- ^ Accumulator for chunks folding
-  -> Array r ix e
-  -> IO b
-ifoldlIO' f !initAcc g !tAcc !arr = do
-  let !sz = size arr
-      !totalLength = totalElem sz
-  results <-
-    withScheduler (getComp arr) $ \scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-          scheduleWork scheduler $
-          iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
-            f acc ix (unsafeLinearIndex arr i)
-        when (slackStart < totalLength) $
-          scheduleWork scheduler $
-          iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
-            f acc ix (unsafeLinearIndex arr i)
-  F.foldlM g tAcc results
-{-# INLINE ifoldlIO' #-}
-
-
-
--- | Parallel left fold.
---
--- @since 0.1.0
-ifoldlIO :: Source r ix e =>
-            [Int] -- ^ List of capabilities
-         -> (a -> ix -> e -> IO a) -- ^ Index aware folding IO action
-         -> a -- ^ Accumulator
-         -> (b -> a -> IO b) -- ^ Folding action that is applied to results of parallel fold
-         -> b -- ^ Accumulator for chunks folding
-         -> Array r ix e -> IO b
-ifoldlIO wIds f !initAcc g !tAcc !arr = do
-  let !sz = size arr
-      !totalLength = totalElem sz
-  results <-
-    withScheduler (ParOn wIds) $ \scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-          scheduleWork scheduler $
-          iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
-            f acc ix (unsafeLinearIndex arr i)
-        when (slackStart < totalLength) $
-          scheduleWork scheduler $
-          iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
-            f acc ix (unsafeLinearIndex arr i)
-  F.foldlM g tAcc results
-{-# INLINE ifoldlIO #-}
-
-
--- | Just like `ifoldlP`, but allows you to specify which cores to run
--- computation on.
---
--- @since 0.1.0
-ifoldlOnP :: Source r ix e =>
-           [Int] -> (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
-ifoldlOnP wIds f initAcc g =
-  ifoldlIO wIds (\acc ix -> return . f acc ix) initAcc (\acc -> return . g acc)
-{-# INLINE ifoldlOnP #-}
-
-
-
 -- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
 -- like `foldlP`, except that folding function will receive an index of an
 -- element it is being applied to.
@@ -334,7 +248,7 @@ ifoldlOnP wIds f initAcc g =
 -- @since 0.1.0
 ifoldlP :: Source r ix e =>
            (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
-ifoldlP f initAcc g = ifoldlIO' (\acc ix -> return . f acc ix) initAcc (\acc -> return . g acc)
+ifoldlP f initAcc g = ifoldlIO (\acc ix -> return . f acc ix) initAcc (\acc -> return . g acc)
 {-# INLINE ifoldlP #-}
 
 
@@ -354,7 +268,7 @@ foldrP f = ifoldrP (const f)
 {-# INLINE foldrP #-}
 
 
--- | Just like `foldrP`, but allows you to specify which cores to run
+-- Just like `foldrP`, but allows you to specify which cores to run
 -- computation on.
 --
 -- ==== __Examples__
@@ -382,54 +296,16 @@ foldrP f = ifoldrP (const f)
 --
 --
 -- @since 0.1.0
-foldrOnP :: Source r ix e =>
-            [Int] -> (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
-foldrOnP wIds f = ifoldrOnP wIds (const f)
-{-# INLINE foldrOnP #-}
 
 
--- | Parallel right fold. Differs from `ifoldrP` in that it accepts `IO` actions instead of the
--- usual pure functions as arguments.
---
--- @since 0.1.0
-ifoldrIO :: Source r ix e =>
-           [Int] -> (ix -> e -> a -> IO a) -> a -> (a -> b -> IO b) -> b -> Array r ix e -> IO b
-ifoldrIO wIds f !initAcc g !tAcc !arr = do
-  let !sz = size arr
-      !totalLength = totalElem sz
-  results <-
-    withScheduler (ParOn wIds) $ \ scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \ chunkLength slackStart -> do
-        when (slackStart < totalLength) $
-          scheduleWork scheduler $
-          iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
-            f ix (unsafeLinearIndex arr i) acc
-        loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
-          scheduleWork scheduler $
-            iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
-              f ix (unsafeLinearIndex arr i) acc
-  F.foldlM (flip g) tAcc results
-{-# INLINE ifoldrIO #-}
 
-
--- | /O(n)/ - Right fold with an index aware function, computed in parallel.
+-- | /O(n)/ - Right fold with an index aware function, while respecting the computation strategy.
 -- Same as `ifoldlP`, except directed from the last element in the array towards
--- beginning.
+-- beginning, but also row-major.
 --
 -- @since 0.1.0
-ifoldrOnP :: Source r ix e =>
-           [Int] -> (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
-ifoldrOnP wIds f !initAcc g =
-  ifoldrIO wIds (\ix e -> return . f ix e) initAcc (\e -> return . g e)
-{-# INLINE ifoldrOnP #-}
-
-
--- | Just like `ifoldrOnP`, but allows you to specify which cores to run computation on.
---
--- @since 0.1.0
-ifoldrP :: Source r ix e =>
-           (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
-ifoldrP = ifoldrOnP []
+ifoldrP :: Source r ix e => (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
+ifoldrP f initAcc g = ifoldrIO (\ix e -> return . f ix e) initAcc (\e -> return . g e)
 {-# INLINE ifoldrP #-}
 
 
@@ -443,3 +319,54 @@ foldlInternal g initAcc f resAcc = unsafePerformIO . foldlP g initAcc f resAcc
 ifoldlInternal :: Source r ix e => (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
 ifoldlInternal g initAcc f resAcc = unsafePerformIO . ifoldlP g initAcc f resAcc
 {-# INLINE ifoldlInternal #-}
+
+
+ifoldlIO ::
+     Source r ix e
+  => (a -> ix -> e -> IO a) -- ^ Index aware folding IO action
+  -> a -- ^ Accumulator
+  -> (b -> a -> IO b) -- ^ Folding action that is applied to the results of a parallel fold
+  -> b -- ^ Accumulator for chunks folding
+  -> Array r ix e
+  -> IO b
+ifoldlIO f !initAcc g !tAcc !arr = do
+  let !sz = size arr
+      !totalLength = totalElem sz
+  results <-
+    withScheduler (getComp arr) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $
+          iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
+            f acc ix (unsafeLinearIndex arr i)
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
+            f acc ix (unsafeLinearIndex arr i)
+  F.foldlM g tAcc results
+{-# INLINE ifoldlIO #-}
+
+
+
+-- | Parallel right fold. Differs from `ifoldrP` in that it accepts `IO` actions instead of the
+-- usual pure functions as arguments.
+--
+-- @since 0.1.0
+ifoldrIO :: Source r ix e =>
+           (ix -> e -> a -> IO a) -> a -> (a -> b -> IO b) -> b -> Array r ix e -> IO b
+ifoldrIO f !initAcc g !tAcc !arr = do
+  let !sz = size arr
+      !totalLength = totalElem sz
+  results <-
+    withScheduler (getComp arr) $ \ scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \ chunkLength slackStart -> do
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
+            f ix (unsafeLinearIndex arr i) acc
+        loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
+          scheduleWork scheduler $
+            iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
+              f ix (unsafeLinearIndex arr i) acc
+  F.foldlM (flip g) tAcc results
+{-# INLINE ifoldrIO #-}

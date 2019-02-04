@@ -2,7 +2,6 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -16,8 +15,8 @@ module Data.Massiv.Array.Ops.Fold
   -- ** Unstructured folds
 
   -- $unstruct_folds
-
-    ifoldMono
+    fold
+  , ifoldMono
   , foldMono
   , ifoldSemi
   , foldSemi
@@ -87,11 +86,7 @@ module Data.Massiv.Array.Ops.Fold
   , foldrP
   , ifoldlP
   , ifoldrP
-  , foldlOnP
   , ifoldlIO
-  , foldrOnP
-  , ifoldlOnP
-  , ifoldrOnP
   , ifoldrIO
   ) where
 

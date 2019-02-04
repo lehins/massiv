@@ -10,12 +10,13 @@
   * `Extract` with `unsafeExtract` from old `Size`
   * `StrideLoad`, child of `Load`
 * `ifoldlIO` and related no longer take list of capabilities, but instead respect the inner
-  computation strategy.
+  computation strategy. FOr that reason these folds have been removed: `foldlOnP`, `ifoldlOnP`,
+  `foldrOnP`, `ifoldrOnP`
 * `fold` now is just like the one from `Data.Foldable` takes no arguments and requires elements to
   be a monoid
 * `singleton` does not accept computation strategy any more and creates `Seq` array by default
-* new function `empty`.
-
+* New function `empty`.
+* Partial functions `read'`, `write'` and `swap'` now live in IO and trow proper exceptions.
 
 # 0.2.6
 

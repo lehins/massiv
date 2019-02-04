@@ -32,6 +32,7 @@ module Data.Massiv.Core.Common
   , Mutable(..)
   , unsafeRead
   , unsafeWrite
+  , unsafeLinearModify
   , Ragged(..)
   , Nested(..)
   , NestedStruct
@@ -305,6 +306,16 @@ unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeWrite #-}
 
 
+-- | Modify an element in the array with an index aware action.
+unsafeLinearModify :: (Mutable r ix e, PrimMonad m) =>
+                      MArray (PrimState m) r ix e -> (Int -> e -> m e) -> Int -> m ()
+unsafeLinearModify !marr f !i = do
+  v <- unsafeLinearRead marr i
+  v' <- f i v
+  unsafeLinearWrite marr i v'
+{-# INLINE unsafeLinearModify #-}
+
+
 class Nested r ix e where
   fromNested :: NestedStruct r ix e -> Array r ix e
 
@@ -460,7 +471,7 @@ indexWith ::
 indexWith fileName lineNo funName getSize' f arr ix
   | isSafeIndex (getSize' arr) ix = f arr ix
   | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) (getSize' arr) ix
-{-# INLINE indexWith #-}
+{-# NOINLINE indexWith #-}
 
 
 

@@ -52,6 +52,7 @@ module Data.Massiv.Core.Index
   , Border(..)
   , handleBorderIndex
   , zeroIndex
+  , oneIndex
   , isNonEmpty
   , headDim
   , tailDim
@@ -79,11 +80,9 @@ module Data.Massiv.Core.Index
   , iterLinearM
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
-  , splitWith_
   , module Data.Massiv.Core.Index.Tuple
   -- * Error functions
   , errorIx
-  -- , errorSizeMismatch
   ) where
 
 import           Control.Exception               (throw)
@@ -175,6 +174,13 @@ handleBorderIndex border !sz getVal !ix =
 zeroIndex :: Index ix => ix
 zeroIndex = pureIndex 0
 {-# INLINE [1] zeroIndex #-}
+
+-- | Index with all ones
+--
+-- @since 0.3.0
+oneIndex :: Index ix => ix
+oneIndex = pureIndex 1
+{-# INLINE [1] oneIndex #-}
 
 -- | Checks whether array with this size can hold at least one element.
 isNonEmpty :: Index ix => Sz ix -> Bool
@@ -335,19 +341,6 @@ iterLinearM_ sz !k0 !k1 !inc cond f =
 {-# INLINE iterLinearM_ #-}
 
 
-
-splitWith_ :: (Index ix, Monad m) =>
-  Int -> (m () -> m a) -> Sz ix -> (ix -> b) -> (ix -> b -> m ()) -> m a
-splitWith_ numChunks with sz index write =
-  let totalLength = totalElem sz
-  in splitLinearly numChunks totalLength $ \chunkLength slackStart -> do
-       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-         with $ iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ _i !ix -> write ix (index ix)
-       with $ iterLinearM_ sz slackStart totalLength 1 (<) $ \ _i !ix -> write ix (index ix)
-{-# INLINE splitWith_ #-}
-
-
-
 -- | Helper function for throwing out of bounds errors
 errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
 errorIx fName sz ix =
@@ -355,22 +348,3 @@ errorIx fName sz ix =
   fName ++
   ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
 {-# NOINLINE errorIx #-}
-
-
--- -- | Helper function for throwing error when sizes do not match
--- errorSizeMismatch :: (Show ix, Show ix') => String -> ix -> ix' -> a
--- errorSizeMismatch fName sz sz' =
---   error $ fName ++ ": Mismatch in size of arrays " ++ show sz ++ " vs " ++ show sz'
--- {-# NOINLINE errorSizeMismatch #-}
-
--- splitWith_ :: (Index ix, Monad m) =>
---   Int -> (m () -> m a) -> ix -> (ix -> b) -> (ix -> b -> m ()) -> m a
--- splitWith_ numChunks with sz index write =
---   let totalLength = totalElem sz
---   in splitLinearly numChunks totalLength $ \chunkLength slackStart -> do
---        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---          with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !i ->
---            let ix = fromLinearIndex sz i in write ix (index ix)
---        with $ loopM_ slackStart (< totalLength) (+ 1) $ \ !i ->
---            let ix = fromLinearIndex sz i in write ix (index ix)
--- {-# INLINE splitWith_ #-}
