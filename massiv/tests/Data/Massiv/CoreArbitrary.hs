@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -20,6 +21,7 @@ module Data.Massiv.CoreArbitrary
   , assertExceptionIO
   , assertSomeExceptionIO
   , module Data.Massiv.Array
+  , Semigroup((<>))
   ) where
 
 import           Control.DeepSeq            (NFData, deepseq)
@@ -29,6 +31,9 @@ import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Semigroup
+#endif
 
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
 newtype Arr r ix e = Arr {unArr :: Array r ix e}
