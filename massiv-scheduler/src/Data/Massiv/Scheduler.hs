@@ -39,16 +39,17 @@ import           Data.Foldable                     as F (foldl')
 import           Data.IORef
 import           Data.Massiv.Scheduler.Computation
 import           Data.Massiv.Scheduler.Queue
+import           Control.Monad.IO.Unlift
 
 
 -- | Main type for scheduling work. See `withScheduler` for the only way to get access to such data
 -- type.
 --
 -- @since 0.1.0
-data Scheduler a = Scheduler
+data Scheduler m a = Scheduler
   { sNumWorkers        :: {-# UNPACK #-} !Int
   , sWorkersCounterRef :: !(IORef Int)
-  , sJQueue            :: !(JQueue a)
+  , sJQueue            :: !(JQueue m a)
   , sJobsCountRef      :: !(IORef Int)
   }
   -- TODO: Make Scheduler a sum type with: ?
@@ -59,7 +60,7 @@ data Scheduler a = Scheduler
 -- | Get number of workers from the scheduler
 --
 -- @since 0.1.0
-numWorkers :: Scheduler a -> Int
+numWorkers :: Scheduler m a -> Int
 numWorkers = sNumWorkers
 
 
@@ -74,7 +75,7 @@ traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
 -- strategy.
 --
 -- @since 0.1.0
-mapConcurrently :: Foldable t => Comp -> (a -> IO b) -> t a -> IO [b]
+mapConcurrently :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m [b]
 mapConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
 
 -- | Schedule an action to be picked up and computed by a worker from a pool. See `withScheduler` to
@@ -82,18 +83,18 @@ mapConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s
 -- computation, as it will result in faster code.
 --
 -- @since 0.1.0
-scheduleWork :: Scheduler a -> IO a -> IO ()
+scheduleWork :: MonadIO m => Scheduler m a -> m a -> m ()
 scheduleWork = scheduleWorkInternal mkJob
 
 -- | Similarly to `scheduleWork`, but ignores the result of computation, thus having less overhead.
 --
 -- @since 0.1.0
-scheduleWork_ :: Scheduler a -> IO b -> IO ()
+scheduleWork_ :: MonadIO m => Scheduler m a -> m b -> m ()
 scheduleWork_ = scheduleWorkInternal (return . Job_ . void)
 
-scheduleWorkInternal :: (IO b -> IO (Job a)) -> Scheduler a -> IO b -> IO ()
+scheduleWorkInternal :: MonadIO m => (m b -> m (Job m a)) -> Scheduler m a -> m b -> m ()
 scheduleWorkInternal mkJob' Scheduler {sJQueue, sJobsCountRef, sNumWorkers} action = do
-  atomicModifyIORefCAS_ sJobsCountRef (+ 1)
+  liftIO $ atomicModifyIORefCAS_ sJobsCountRef (+ 1)
   job <-
     mkJob' $ do
       res <- action
@@ -102,14 +103,14 @@ scheduleWorkInternal mkJob' Scheduler {sJQueue, sJobsCountRef, sNumWorkers} acti
   pushJQueue sJQueue job
 
 -- | Helper function to place `Retire` instructions on the job queue.
-retireWorkersN :: JQueue a -> Int -> IO ()
+retireWorkersN :: MonadIO m => JQueue m a -> Int -> m ()
 retireWorkersN sJQueue n = traverse_ (pushJQueue sJQueue) $ replicate n Retire
 
 -- | Decrease a counter by one and perform an action when it drops down to zero.
-dropCounterOnZero :: IORef Int -> IO () -> IO ()
+dropCounterOnZero :: MonadIO m => IORef Int -> m () -> m ()
 dropCounterOnZero counterRef onZero = do
   jc <-
-    atomicModifyIORefCAS
+    liftIO $ atomicModifyIORefCAS
       counterRef
       (\ !i' ->
          let !i = i' - 1
@@ -119,9 +120,10 @@ dropCounterOnZero counterRef onZero = do
 
 -- | Runs the worker until the job queue is exhausted, at which point it will exhecute the final task
 -- of retirement and return
-runWorker :: JQueue a
-          -> IO () -- ^ Action to run upon retirement
-          -> IO ()
+runWorker :: MonadIO m =>
+             JQueue m a
+          -> m () -- ^ Action to run upon retirement
+          -> m ()
 runWorker jQueue onRetire = go
   where
     go =
@@ -157,37 +159,40 @@ runWorker jQueue onRetire = go
 -- @-threaded@ GHC flag and executed with @+RTS -N -RTS@ to use all available cores.
 --
 -- @since 0.1.0
-withScheduler :: Comp -- ^ Computation strategy
-              -> (Scheduler a -> IO b)
+withScheduler ::
+     MonadUnliftIO m
+  => Comp -- ^ Computation strategy
+  -> (Scheduler m a -> m b)
               -- ^ Action that will be scheduling all the work.
-              -> IO [a]
+  -> m [a]
 withScheduler comp submitWork = do
   sNumWorkers <-
     case comp of
       Seq -> return 1
-      Par -> getNumCapabilities
+      Par -> liftIO getNumCapabilities
       ParOn ws -> return $ length ws
-      ParN 0 -> getNumCapabilities
+      ParN 0 -> liftIO getNumCapabilities
       ParN n -> return $ fromIntegral n
-  sWorkersCounterRef <- newIORef sNumWorkers
+  sWorkersCounterRef <- liftIO $ newIORef sNumWorkers
   sJQueue <- newJQueue
-  sJobsCountRef <- newIORef 0
-  workDoneMVar <- newEmptyMVar
+  sJobsCountRef <- liftIO $ newIORef 0
+  workDoneMVar <- liftIO $ newEmptyMVar
   let scheduler = Scheduler {..}
-      onRetire = dropCounterOnZero sWorkersCounterRef $ putMVar workDoneMVar Nothing
+      onRetire = dropCounterOnZero sWorkersCounterRef $ liftIO (putMVar workDoneMVar Nothing)
   -- / Wait for the initial jobs to get scheduled before spawining off the workers, otherwise it would
   -- be trickier to identify the beginning and the end of a job pool.
   _ <- submitWork scheduler
   -- / Ensure at least something gets scheduled, so retirement can be triggered
-  jc <- readIORef sJobsCountRef
+  jc <- liftIO $ readIORef sJobsCountRef
   when (jc == 0) $ scheduleWork_ scheduler (pure ())
-  let spawnWorkersWith fork ws = do
+  let spawnWorkersWith fork ws =
         forM ws $ \w ->
-          mask_ $
-          fork w $ \unmask ->
-            catch
-              (unmask $ runWorker sJQueue onRetire)
-              (unmask . handleWorkerException sJQueue workDoneMVar sNumWorkers)
+          withRunInIO $ \run ->
+            mask_ $
+            fork w $ \unmask ->
+              catch
+                (unmask $ run $ runWorker sJQueue onRetire)
+                (unmask . run . handleWorkerException sJQueue workDoneMVar sNumWorkers)
       {-# INLINE spawnWorkersWith #-}
   tids <-
     case comp of
@@ -198,7 +203,7 @@ withScheduler comp submitWork = do
       ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. sNumWorkers]
   -- / wait for all worker to finish. If any one of them had a problem this MVar will contain an
   -- exception
-  mExc <- readMVar workDoneMVar
+  mExc <- liftIO $ readMVar workDoneMVar
   case mExc of
     Nothing
      -- / Now we are sure all workers have done their job we can safely read all of the IORefs eith
@@ -206,26 +211,28 @@ withScheduler comp submitWork = do
      -> flushResults sJQueue
     Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the main thread
              -- will think like it's his own
-      | Just (WorkerException wexc) <- fromException exc -> do
-        traverse_ (`throwTo` WorkerTerminateException) tids
-        throwIO wexc
-    Just exc -> throwIO exc -- Somethig funky is happening, propagate it.
-
+      | Just (WorkerException wexc) <- fromException exc ->
+        liftIO $ do
+          traverse_ (`throwTo` WorkerTerminateException) tids
+          throwIO wexc
+    Just exc -> liftIO $ throwIO exc -- Somethig funky is happening, propagate it.
 
 -- | Same as `withScheduler`, but discards results of submitted jobs. Make sure to use
 -- `scheduleWork_` to get optimal performance.
 --
 -- @since 0.1.0
-withScheduler_ :: Comp -- ^ Computation strategy
-              -> (Scheduler a -> IO b)
+withScheduler_ ::
+     MonadUnliftIO m
+  => Comp -- ^ Computation strategy
+  -> (Scheduler m a -> m b)
               -- ^ Action that will be scheduling all the work.
-              -> IO ()
+  -> m ()
 withScheduler_ comp = void . withScheduler comp
 
 
 -- | Specialized exception handler for the work scheduler.
 handleWorkerException ::
-     JQueue a -> MVar (Maybe SomeException) -> Int -> SomeException -> IO ()
+  MonadIO m => JQueue m a -> MVar (Maybe SomeException) -> Int -> SomeException -> m ()
 handleWorkerException jQueue workDoneMVar nWorkers exc = do
   case fromException exc of
     Just wexc | WorkerTerminateException <- wexc -> return ()
@@ -233,14 +240,14 @@ handleWorkerException jQueue workDoneMVar nWorkers exc = do
     _ ->
       case fromException exc of
         Just asyncExc -> do
-          putMVar workDoneMVar $ Just $ toException $ WorkerAsyncException asyncExc
+          liftIO $ putMVar workDoneMVar $ Just $ toException $ WorkerAsyncException asyncExc
           -- \ Let the main thread know about this terrible async exception.
           -- / Do the co-worker cleanup
           retireWorkersN jQueue (nWorkers - 1)
-          throwIO asyncExc
+          liftIO $ throwIO asyncExc
           -- \ do not recover from an async exception
         Nothing -> do
-          putMVar workDoneMVar $ Just $ toException $ WorkerException exc
+          liftIO $ putMVar workDoneMVar $ Just $ toException $ WorkerException exc
           -- \ Main thread must know how we died
           -- / Do the co-worker cleanup
           retireWorkersN jQueue (nWorkers - 1)

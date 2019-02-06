@@ -31,34 +31,7 @@ import           Control.Concurrent.MVar
 import           Control.Monad           (join, void)
 import           Data.Atomics            (atomicModifyIORefCAS)
 import           Data.IORef
-
--- import Control.Concurrent
--- import Say
--- import GHC.Stack (HasCallStack, CallStack, getCallStack, callStack, SrcLoc(..))
--- import System.Timeout
-
--- _TIMEOUT :: Int
--- _TIMEOUT = 1000000
-
--- _DEBUG :: Bool
--- _DEBUG = True
-
--- -- @since 0.0.0.0
--- sayStack :: CallStack -> IO ()
--- sayStack cs =
---   sayString $
---   case reverse $ getCallStack cs of
---     [] -> "<no call stack found>"
---     (_desc, loc):_ ->
---       srcLocFile loc <> ":" <> show (srcLocStartLine loc) <> ":" <> show (srcLocStartCol loc)
-
-
--- isDeadlock :: HasCallStack => IO a -> IO a
--- isDeadlock io =
---   if _DEBUG && False
---     then timeout _TIMEOUT io >>= maybe (sayStack callStack >> error "Deadlock") return
---     else io
-
+import           Control.Monad.IO.Unlift
 
 
 -- | Pure functional Okasaki queue with total length
@@ -81,39 +54,38 @@ popQueue queue@Queue {qQueue, qStack} =
         []   -> Nothing
         y:ys -> Just (y, Queue {qQueue = ys, qStack = []})
 
-data Job a
-  = Job !(IORef a)
-        !(IO a)
-  | Job_ !(IO ())
+data Job m a
+  = Job !(IORef a) !(m a)
+  | Job_ !(m ())
   | Retire
 
 
-mkJob :: IO a -> IO (Job a)
+mkJob :: MonadIO m => m a -> m (Job m a)
 mkJob action = do
-  resRef <- newIORef $ error "mkJob: result is uncomputed"
+  resRef <- liftIO $ newIORef $ error "mkJob: result is uncomputed"
   return $!
     Job resRef $ do
       res <- action
-      writeIORef resRef res
+      liftIO $ writeIORef resRef res
       return res
 
 
-newtype JQueue a =
-  JQueue (IORef (Queue (Job a), [IORef a], MVar ()))
+newtype JQueue m a =
+  JQueue (IORef (Queue (Job m a), [IORef a], MVar ()))
 
 
-newJQueue :: IO (JQueue a)
+newJQueue :: MonadIO m => m (JQueue m a)
 newJQueue = do
-  newBaton <- newEmptyMVar
-  queueRef <- newIORef (emptyQueue, [], newBaton)
+  newBaton <- liftIO $ newEmptyMVar
+  queueRef <- liftIO $ newIORef (emptyQueue, [], newBaton)
   return $ JQueue queueRef
 
 
-pushJQueue :: JQueue a -> Job a -> IO ()
+pushJQueue :: MonadIO m => JQueue m a -> Job m a -> m ()
 pushJQueue (JQueue jQueueRef) job = do
-  newBaton <- newEmptyMVar
+  newBaton <- liftIO $ newEmptyMVar
   join $
-    atomicModifyIORefCAS
+    liftIO $ atomicModifyIORefCAS
       jQueueRef
       (\(queue, resRefs, baton) ->
          ( ( pushQueue queue job
@@ -121,11 +93,11 @@ pushJQueue (JQueue jQueueRef) job = do
                Job resRef _ -> resRef : resRefs
                _            -> resRefs
            , newBaton)
-         , putMVar baton ()))
+         , liftIO $ putMVar baton ()))
 
 
-popJQueue :: JQueue a -> IO (Maybe (IO ()))
-popJQueue (JQueue jQueueRef) = inner
+popJQueue :: MonadIO m => JQueue m a -> m (Maybe (m ()))
+popJQueue (JQueue jQueueRef) = liftIO $ inner
   where
     inner =
       join $
@@ -137,10 +109,11 @@ popJQueue (JQueue jQueueRef) = inner
             , case job of
                 Job _ action -> return $ Just (void action)
                 Job_ action_ -> return $ Just action_
-                Retire       -> return Nothing)
+                Retire -> return Nothing)
 
-flushResults :: JQueue a -> IO [a]
-flushResults (JQueue jQueueRef) = do
-  resRefs <-
-    atomicModifyIORefCAS jQueueRef $ \(queue, resRefs, baton) -> ((queue, [], baton), resRefs)
-  mapM readIORef $ reverse resRefs
+flushResults :: MonadIO m => JQueue m a -> m [a]
+flushResults (JQueue jQueueRef) =
+  liftIO $ do
+    resRefs <-
+      atomicModifyIORefCAS jQueueRef $ \(queue, resRefs, baton) -> ((queue, [], baton), resRefs)
+    mapM readIORef $ reverse resRefs
