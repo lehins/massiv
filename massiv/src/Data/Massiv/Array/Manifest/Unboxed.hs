@@ -52,7 +52,7 @@ data instance Array U ix e = UArray { uComp :: !Comp
 instance (Ragged L ix e, Show e, VU.Unbox e) => Show (Array U ix e) where
   show = showArray id
 
-instance (Index ix, NFData e) => NFData (Array U ix e) where
+instance NFData ix => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
@@ -61,7 +61,7 @@ instance (VU.Unbox e, Index ix) => Construct U ix e where
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (return . f)
+  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
   {-# INLINE makeArray #-}
 
 

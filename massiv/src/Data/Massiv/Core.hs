@@ -40,6 +40,7 @@ module Data.Massiv.Core
   , ListItem
   , Comp(Seq, Par, ParOn, ParN)
   , module Data.Massiv.Core.Index
+  , MonadUnliftIO
   ) where
 
 import           Data.Massiv.Core.Common

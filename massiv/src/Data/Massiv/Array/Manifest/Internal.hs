@@ -41,7 +41,6 @@ module Data.Massiv.Array.Manifest.Internal
   ) where
 
 import           Control.Exception                   (try)
-import           Control.Monad                       (unless)
 import           Control.Monad.ST
 import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull
@@ -221,23 +220,11 @@ instance Index ix => StrideLoad M ix e
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
 compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
-compute !arr =
-  unsafePerformIO $ do
-    loadArrayIO arr >>= unsafeFreeze (getComp arr)
-    -- mArr <- unsafeNew (size arr)
-    -- let !comp = getComp arr
-    -- withScheduler_ comp $ \scheduler ->
-    --   loadArrayM (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
-    -- unsafeFreeze comp mArr
+compute !arr = unsafePerformIO $ loadArray arr >>= unsafeFreeze (getComp arr)
 {-# INLINE compute #-}
 
 computeS :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
-computeS !arr =
-  runST $ do
-    mArr <- unsafeNew (size arr)
-    let !comp = getComp arr
-    loadArrayM 1 id arr (unsafeLinearWrite mArr)
-    unsafeFreeze comp mArr
+computeS !arr = runST $ loadArrayS arr >>= unsafeFreeze (getComp arr)
 {-# INLINE computeS #-}
 
 -- | Just as `compute`, but let's you supply resulting representation type as an argument.
@@ -283,7 +270,7 @@ computeSource arr =
 
 -- | /O(n)/ - Make an exact immutable copy of an Array.
 clone :: Mutable r ix e => Array r ix e -> Array r ix e
-clone = compute . toManifest
+clone arr = unsafePerformIO $ thaw arr >>= unsafeFreeze (getComp arr)
 {-# INLINE clone #-}
 
 

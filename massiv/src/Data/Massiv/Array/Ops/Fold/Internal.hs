@@ -232,13 +232,13 @@ foldrFB c n arr = go 0
 -- [[10,9],[8,7,6],[5,4,3],[2,1,0]]
 --
 -- @since 0.1.0
-foldlP :: Source r ix e =>
+foldlP :: (MonadIO m, Source r ix e) =>
           (a -> e -> a) -- ^ Folding function @g@.
        -> a -- ^ Accumulator. Will be applied to @g@ multiple times, thus must be neutral.
        -> (b -> a -> b) -- ^ Chunk results folding function @f@.
        -> b -- ^ Accumulator for results of chunks folding.
-       -> Array r ix e -> IO b
-foldlP f = ifoldlP (\ x _ -> f x)
+       -> Array r ix e -> m b
+foldlP f fAcc g gAcc = liftIO . ifoldlP (\ x _ -> f x) fAcc g gAcc
 {-# INLINE foldlP #-}
 
 -- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
@@ -246,9 +246,10 @@ foldlP f = ifoldlP (\ x _ -> f x)
 -- element it is being applied to.
 --
 -- @since 0.1.0
-ifoldlP :: Source r ix e =>
-           (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> IO b
-ifoldlP f initAcc g = ifoldlIO (\acc ix -> return . f acc ix) initAcc (\acc -> return . g acc)
+ifoldlP :: (MonadIO m, Source r ix e) =>
+           (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> m b
+ifoldlP f fAcc g gAcc =
+  liftIO . ifoldlIO (\acc ix -> return . f acc ix) fAcc (\acc -> return . g acc) gAcc
 {-# INLINE ifoldlP #-}
 
 
@@ -262,9 +263,9 @@ ifoldlP f initAcc g = ifoldlIO (\acc ix -> return . f acc ix) initAcc (\acc -> r
 --
 --
 -- @since 0.1.0
-foldrP :: Source r ix e =>
-          (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
-foldrP f = ifoldrP (const f)
+foldrP :: (MonadIO m, Source r ix e) =>
+          (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> m b
+foldrP f fAcc g gAcc = liftIO . ifoldrP (const f) fAcc g gAcc
 {-# INLINE foldrP #-}
 
 
@@ -304,8 +305,15 @@ foldrP f = ifoldrP (const f)
 -- beginning, but also row-major.
 --
 -- @since 0.1.0
-ifoldrP :: Source r ix e => (ix -> e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> IO b
-ifoldrP f initAcc g = ifoldrIO (\ix e -> return . f ix e) initAcc (\e -> return . g e)
+ifoldrP ::
+     (MonadIO m, Source r ix e)
+  => (ix -> e -> a -> a)
+  -> a
+  -> (a -> b -> b)
+  -> b
+  -> Array r ix e
+  -> m b
+ifoldrP f fAcc g gAcc = liftIO . ifoldrIO (\ix e -> pure . f ix e) fAcc (\e -> pure . g e) gAcc
 {-# INLINE ifoldrP #-}
 
 
@@ -322,13 +330,13 @@ ifoldlInternal g initAcc f resAcc = unsafePerformIO . ifoldlP g initAcc f resAcc
 
 
 ifoldlIO ::
-     Source r ix e
-  => (a -> ix -> e -> IO a) -- ^ Index aware folding IO action
+     (MonadUnliftIO m, Source r ix e)
+  => (a -> ix -> e -> m a) -- ^ Index aware folding IO action
   -> a -- ^ Accumulator
-  -> (b -> a -> IO b) -- ^ Folding action that is applied to the results of a parallel fold
+  -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
   -> b -- ^ Accumulator for chunks folding
   -> Array r ix e
-  -> IO b
+  -> m b
 ifoldlIO f !initAcc g !tAcc !arr = do
   let !sz = size arr
       !totalLength = totalElem sz
@@ -348,12 +356,12 @@ ifoldlIO f !initAcc g !tAcc !arr = do
 
 
 
--- | Parallel right fold. Differs from `ifoldrP` in that it accepts `IO` actions instead of the
+-- | Parallel right fold. Differs from `ifoldrP` in that it accepts monadic actions instead of the
 -- usual pure functions as arguments.
 --
 -- @since 0.1.0
-ifoldrIO :: Source r ix e =>
-           (ix -> e -> a -> IO a) -> a -> (a -> b -> IO b) -> b -> Array r ix e -> IO b
+ifoldrIO :: (MonadUnliftIO m, Source r ix e) =>
+           (ix -> e -> a -> m a) -> a -> (a -> b -> m b) -> b -> Array r ix e -> m b
 ifoldrIO f !initAcc g !tAcc !arr = do
   let !sz = size arr
       !totalLength = totalElem sz

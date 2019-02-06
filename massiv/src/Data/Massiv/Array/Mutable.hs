@@ -26,13 +26,15 @@ module Data.Massiv.Array.Mutable
   -- *** Basic conversion
   , new
   , thaw
+  , thawS
   , freeze
+  , freezeS
   , msize
   -- *** Create mutable
   , makeMArray
   , makeMArrayLinear
-  , makeMArrayIO
-  , makeMArrayLinearIO
+  , makeMArrayS
+  , makeMArrayLinearS
   -- *** Create pure
   , createArray_
   , createArray
@@ -40,8 +42,9 @@ module Data.Massiv.Array.Mutable
   , createArrayST
   -- *** Generate
   , generateArray
-  , generateArrayIO
-  , generateArrayLinearIO
+  , generateArrayLinear
+  , generateArrayS
+  , generateArrayLinearS
   -- *** Unfold
   , unfoldlPrim_
   , unfoldlPrim
@@ -60,13 +63,11 @@ module Data.Massiv.Array.Mutable
   , RealWorld
   , computeInto
   , loadArray
-  , loadArrayIO
+  , loadArrayS
   ) where
 
 import           Prelude                             hiding (mapM, read)
-
 import           Control.Monad                       (unless)
-import           Control.Monad.IO.Class
 import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST
 import           Data.Massiv.Core.Common
@@ -79,7 +80,7 @@ import           Data.Massiv.Scheduler
 --
 -- >>> :set -XTypeApplications
 -- >>> marr <- new @P @Int (Sz2 2 6)
--- >>> freeze Seq marr
+-- >>> freezeS Seq marr
 -- (Array P Seq (Sz2 (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0 ]
@@ -98,12 +99,13 @@ new = initializeNew Nothing
 --
 -- ==== __Example__
 --
+-- >>> :set -XTypeApplications
 -- >>> a <- resizeM (Sz2 2 5) $ enumFromN @Int Seq 12 (Sz1 10)
--- λ> thaw @P a
--- λ> ma <- thaw @P a
--- λ> modify ma (`mod` 10) (1 :. 2)
+-- >>> thaw @P a
+-- >>> ma <- thaw @P a
+-- >>> modify ma (`mod` 10) (1 :. 2)
 -- True
--- λ> freeze Seq ma
+-- >>> freeze Seq ma
 -- (Array P Seq (Sz2 (2 :. 5))
 --   [ [ 12, 13, 14, 15, 16 ]
 --   , [ 17, 18, 9, 20, 21 ]
@@ -111,10 +113,17 @@ new = initializeNew Nothing
 -- )
 --
 -- @since 0.1.0
-thaw :: (Mutable r ix e, PrimMonad m) => Array r ix e -> m (MArray (PrimState m) r ix e)
-thaw arr = makeMArrayLinear (size arr) (pure . unsafeLinearIndexM arr)
+thaw :: (Mutable r ix e, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
+thaw arr = liftIO $ makeMArrayLinear (getComp arr) (size arr) (pure . unsafeLinearIndexM arr)
 -- TODO: use faster memcpy
 {-# INLINE thaw #-}
+
+
+thawS :: (Mutable r ix e, PrimMonad m) => Array r ix e -> m (MArray (PrimState m) r ix e)
+thawS arr = makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
+-- TODO: use faster memcpy
+{-# INLINE thawS #-}
+
 
 -- TODO: implement and benchmark parallel `thawIO` and `freezeIO` with memcpy
 
@@ -126,36 +135,41 @@ thaw arr = makeMArrayLinear (size arr) (pure . unsafeLinearIndexM arr)
 -- >>> ma <- thaw @P $ range Seq 100 (Ix1 110)
 --
 -- @since 0.1.0
-freeze ::
-     forall r e ix m. (Mutable r ix e, PrimMonad m)
-  => Comp
-  -> MArray (PrimState m) r ix e
-  -> m (Array r ix e)
-freeze comp marr = generateArrayLinear comp (msize marr) (unsafeLinearRead marr)
+freeze :: (Mutable r ix e, MonadIO m) => Comp -> MArray RealWorld r ix e -> m (Array r ix e)
+freeze comp marr = liftIO $ generateArrayLinear comp (msize marr) (unsafeLinearRead marr)
 {-# INLINE freeze #-}
 
 
-loadArray ::
+-- | Same as `freeze`, but disregard the supplied computation strategy when doing a copy of the
+-- mutable array and perform it sequentially. Also, unlike `freeze` that has to be done in `IO`,
+-- `freezeS` can be used with `ST`.
+--
+-- @since 0.3.0
+freezeS :: (Mutable r ix e, PrimMonad m) => Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
+freezeS comp marr = generateArrayLinearS comp (msize marr) (unsafeLinearRead marr)
+{-# INLINE freezeS #-}
+
+
+loadArrayS ::
      forall r e ix r' m. (Load r' ix e, Mutable r ix e, PrimMonad m)
   => Array r' ix e
   -> m (MArray (PrimState m) r ix e)
-loadArray arr = do
+loadArrayS arr = do
   marr <- unsafeNew (size arr)
   loadArrayM 1 id arr (unsafeLinearWrite marr)
   pure marr
-{-# INLINE loadArray #-}
+{-# INLINE loadArrayS #-}
 
-loadArrayIO ::
+loadArray ::
      forall r e ix r' m. (Load r' ix e, Mutable r ix e, MonadIO m)
   => Array r' ix e
   -> m (MArray RealWorld r ix e)
-loadArrayIO arr =
-  liftIO $ do
-    marr <- unsafeNew (size arr)
-    withScheduler_ (getComp arr) $ \s ->
-      loadArrayM (numWorkers s) (scheduleWork s) arr (unsafeLinearWrite marr)
-    pure marr
-{-# INLINE loadArrayIO #-}
+loadArray arr = liftIO $ do
+  marr <- unsafeNew (size arr)
+  withScheduler_ (getComp arr) $ \s ->
+    loadArrayM (numWorkers s) (scheduleWork s) arr (unsafeLinearWrite marr)
+  pure marr
+{-# INLINE loadArray #-}
 
 
 
@@ -179,51 +193,51 @@ computeInto !mArr !arr =
 -- | Create a mutable array using an index aware generating action.
 --
 -- @since 0.3.0
-makeMArray ::
+makeMArrayS ::
      (Mutable r ix e, PrimMonad m) => Sz ix -> (ix -> m e) -> m (MArray (PrimState m) r ix e)
-makeMArray sz f = makeMArrayLinear sz (f . fromLinearIndex sz)
-{-# INLINE makeMArray #-}
+makeMArrayS sz f = makeMArrayLinearS sz (f . fromLinearIndex sz)
+{-# INLINE makeMArrayS #-}
 
 
--- | Same as `makeMArray`, but index supplied to the action is row-major linear index.
+-- | Same as `makeMArrayS`, but index supplied to the action is row-major linear index.
 --
 -- @since 0.3.0
-makeMArrayLinear ::
+makeMArrayLinearS ::
      (Mutable r ix e, PrimMonad m) => Sz ix -> (Int -> m e) -> m (MArray (PrimState m) r ix e)
-makeMArrayLinear sz f = do
+makeMArrayLinearS sz f = do
   marr <- unsafeNew sz
   loopM_ 0 (< totalElem (msize marr)) (+ 1) (\ !i -> f i >>= unsafeLinearWrite marr i)
   return marr
-{-# INLINE makeMArrayLinear #-}
+{-# INLINE makeMArrayLinearS #-}
 
--- | Just like `makeMArray`, but also accepts computation strategy and runs in `IO`.
+-- | Just like `makeMArrayS`, but also accepts computation strategy and runs in `IO`.
 --
 -- @since 0.3.0
-makeMArrayIO ::
-     (Mutable r ix e)
+makeMArray ::
+     (PrimMonad m, MonadUnliftIO m, Mutable r ix e)
   => Comp
   -> Sz ix
-  -> (ix -> IO e)
-  -> IO (MArray RealWorld r ix e)
-makeMArrayIO comp sz f = makeMArrayLinearIO comp sz (f . fromLinearIndex sz)
-{-# INLINE makeMArrayIO #-}
+  -> (ix -> m e)
+  -> m (MArray (PrimState m) r ix e)
+makeMArray comp sz f = makeMArrayLinear comp sz (f . fromLinearIndex sz)
+{-# INLINE makeMArray #-}
 
 
--- | Just like `makeMArrayLinear`, but also accepts computation strategy and runs in `IO`.
+-- | Just like `makeMArrayLinearS`, but also accepts computation strategy and runs in `IO`.
 --
 -- @since 0.3.0
-makeMArrayLinearIO ::
-     (Mutable r ix e)
+makeMArrayLinear ::
+     (PrimMonad m, MonadUnliftIO m, Mutable r ix e)
   => Comp
   -> Sz ix
-  -> (Int -> IO e)
-  -> IO (MArray RealWorld r ix e)
-makeMArrayLinearIO comp sz f = do
+  -> (Int -> m e)
+  -> m (MArray (PrimState m) r ix e)
+makeMArrayLinear comp sz f = do
   marr <- unsafeNew sz
   withScheduler_ comp $ \s ->
     splitLinearlyWithM_ (numWorkers s) (scheduleWork s) (totalElem sz) f (unsafeLinearWrite marr)
   return marr
-{-# INLINE makeMArrayLinearIO #-}
+{-# INLINE makeMArrayLinear #-}
 
 
 -- | Create a new array by supplying an action that will fill the new blank mutable array. Use
@@ -309,55 +323,55 @@ createArrayST comp sz action = runST $ createArray comp sz action
 -- >>> readIORef ref
 -- 15
 --
-generateArray ::
+generateArrayS ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ingored during generation)
   -> Sz ix -- ^ Resulting size of the array
   -> (ix -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
-generateArray comp sz gen = generateArrayLinear comp sz (gen . fromLinearIndex sz)
-{-# INLINE generateArray #-}
+generateArrayS comp sz gen = generateArrayLinearS comp sz (gen . fromLinearIndex sz)
+{-# INLINE generateArrayS #-}
 
 -- | Same as `generateArray` but with action takes row-major linear index.
 --
 -- @since 0.3.0
-generateArrayLinear ::
+generateArrayLinearS ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ingored during generation)
   -> Sz ix -- ^ Resulting size of the array
   -> (Int -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
-generateArrayLinear comp sz gen = do
+generateArrayLinearS comp sz gen = do
   marr <- unsafeNew sz
   loopM_ 0 (< totalElem (msize marr)) (+ 1) $ \i -> gen i >>= unsafeLinearWrite marr i
   unsafeFreeze comp marr
-{-# INLINE generateArrayLinear #-}
+{-# INLINE generateArrayLinearS #-}
 
 
 -- | Just like `generateArray`, except this generator __will__ respect the supplied computation
 -- strategy, and for that reason it is restricted to `IO`.
 --
 -- @since 0.2.6
-generateArrayIO ::
-     (Mutable r ix e)
+generateArray ::
+     (MonadUnliftIO m, PrimMonad m, Mutable r ix e)
   => Comp
   -> Sz ix
-  -> (ix -> IO e)
-  -> IO (Array r ix e)
-generateArrayIO comp sz f = generateArrayLinearIO comp sz (f . fromLinearIndex sz)
-{-# INLINE generateArrayIO #-}
+  -> (ix -> m e)
+  -> m (Array r ix e)
+generateArray comp sz f = generateArrayLinear comp sz (f . fromLinearIndex sz)
+{-# INLINE generateArray #-}
 
 -- | Just like `generateArrayIO`, but action supplied will receive a row-major linear index.
 --
 -- @since 0.3.0
-generateArrayLinearIO ::
-     (Mutable r ix e)
+generateArrayLinear ::
+     (MonadUnliftIO m, PrimMonad m, Mutable r ix e)
   => Comp
   -> Sz ix
-  -> (Int -> IO e)
-  -> IO (Array r ix e)
-generateArrayLinearIO comp sz f = makeMArrayLinearIO comp sz f >>= unsafeFreeze comp
-{-# INLINE generateArrayLinearIO #-}
+  -> (Int -> m e)
+  -> m (Array r ix e)
+generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
+{-# INLINE generateArrayLinear #-}
 
 
 -- | Sequentially unfold an array from the left.
@@ -441,22 +455,51 @@ iforLinearPrim_ marr f = loopM_ 0 (< totalElem (msize marr)) (+ 1) (unsafeLinear
 {-# INLINE iforLinearPrim_ #-}
 
 
--- | Create a copy of a pure array, mutate it in place and return its frozen version.
+-- | Create a copy of a pure array, mutate it in place and return its frozen version. The big
+-- difference between `withMArrayS` is that it's not only gonna respect the computation strategy
+-- supplied to it, but it will also pass extra argumens to the action that suppose to modify the
+-- mutable copy of the source array. These two extra arguments are:
 --
--- @since 0.2.2
+-- * Number of capabilities derived from the `Comp`utation strategy of the array.
+--
+-- * An action that can be used to schedule arbitrary number of jobs that will be executed in
+--   parallel.
+--
+-- * And, of course, the mutable array itself.
+--
+-- @since 0.3.0
 withMArray ::
+     (Mutable r ix e, MonadUnliftIO m)
+  => Array r ix e
+  -> (Int -> (m () -> m ()) -> MArray RealWorld r ix e -> m a)
+  -> m (Array r ix e)
+withMArray arr action = do
+  marr <- thaw arr
+  withScheduler_ (getComp arr) $ \scheduler ->
+    action (numWorkers scheduler) (scheduleWork_ scheduler) marr
+  liftIO $ unsafeFreeze (getComp arr) marr
+{-# INLINE withMArray #-}
+
+
+-- | Create a copy of a pure array, mutate it in place and return its frozen version. The important
+-- benefit over doing a manual `thawS` followed by a `freezeS` is that an array will be only copied
+-- once.
+--
+-- @since 0.3.0
+withMArrayS ::
      (Mutable r ix e, PrimMonad m)
   => Array r ix e
   -> (MArray (PrimState m) r ix e -> m a)
   -> m (Array r ix e)
-withMArray arr action = do
-  marr <- thaw arr
+withMArrayS arr action = do
+  marr <- thawS arr
   _ <- action marr
   unsafeFreeze (getComp arr) marr
-{-# INLINE withMArray #-}
+{-# INLINE withMArrayS #-}
 
 
--- | Same as `withMArray` but in `ST`.
+-- | Same as `withMArrayS` but in `ST`. This is not only pure, but also the safest way to do
+-- mutation to the array.
 --
 -- @since 0.2.2
 withMArrayST ::
@@ -464,7 +507,7 @@ withMArrayST ::
   => Array r ix e
   -> (forall s . MArray s r ix e -> ST s a)
   -> Array r ix e
-withMArrayST arr f = runST $ withMArray arr f
+withMArrayST arr f = runST $ withMArrayS arr f
 {-# INLINE withMArrayST #-}
 
 
@@ -473,27 +516,25 @@ read :: (Mutable r ix e, PrimMonad m) =>
         MArray (PrimState m) r ix e -> ix -> m (Maybe e)
 read marr ix =
   if isSafeIndex (msize marr) ix
-  then Just <$> unsafeRead marr ix
-  else return Nothing
+    then Just <$> unsafeRead marr ix
+    else return Nothing
 {-# INLINE read #-}
 
 
 -- | /O(1)/ - Same as `read`, but lives in IO and throws an `IndexOutOfBoundsException` on invalid
 -- index.
-read' :: (Mutable r ix e, MonadIO m) => MArray RealWorld r ix e -> ix -> m e
-read' marr ix =
-  liftIO $ do
-    mval <- read marr ix
-    case mval of
-      Just e -> pure e
-      Nothing -> throwM $ IndexOutOfBoundsException (msize marr) ix
+read' :: (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> m e
+read' marr ix = do
+  mval <- read marr ix
+  case mval of
+    Just e -> pure e
+    Nothing -> throwM $ IndexOutOfBoundsException (msize marr) ix
 {-# INLINE read' #-}
 
 
 -- | /O(1)/ - Write an element into the cell of a mutable array. Returns `False` when index is out
 -- of bounds.
-write :: (Mutable r ix e, PrimMonad m) =>
-        MArray (PrimState m) r ix e -> ix -> e -> m Bool
+write :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m Bool
 write marr ix e =
   if isSafeIndex (msize marr) ix
   then unsafeWrite marr ix e >> return True
@@ -503,17 +544,15 @@ write marr ix e =
 
 -- | /O(1)/ - Same as `write`, but lives in IO and throws an `IndexOutOfBoundsException` on invalid
 -- index.
-write' :: (Mutable r ix e, MonadIO m) =>
-        MArray RealWorld r ix e -> ix -> e -> m ()
-write' marr ix e =
-  liftIO $ write marr ix e >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
+write' ::
+     (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
+write' marr ix e = write marr ix e >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
 {-# INLINE write' #-}
 
 
 -- | /O(1)/ - Modify an element in the cell of a mutable array with a supplied function. Returns
 -- `False` when index is out of bounds.
-modify :: (Mutable r ix e, PrimMonad m) =>
-        MArray (PrimState m) r ix e -> (e -> e) -> ix -> m Bool
+modify :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> e) -> ix -> m Bool
 modify marr f ix =
   if isSafeIndex (msize marr) ix
   then do
@@ -525,17 +564,16 @@ modify marr f ix =
 
 
 -- | /O(1)/ - Same as `modify`, but throws an error if index is out of bounds.
-modify' :: (Mutable r ix e, MonadIO m) =>
-        MArray RealWorld r ix e -> (e -> e) -> ix -> m ()
+modify' :: (Mutable r ix e, MonadThrow m, PrimMonad m) =>
+        MArray (PrimState m) r ix e -> (e -> e) -> ix -> m ()
 modify' marr f ix =
-  liftIO $ modify marr f ix >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
+  modify marr f ix >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
 {-# INLINE modify' #-}
 
 
 -- | /O(1)/ - Swap two elements in a mutable array by supplying their indices. Returns `False` when
 -- either one of the indices is out of bounds.
-swap :: (Mutable r ix e, PrimMonad m) =>
-        MArray (PrimState m) r ix e -> ix -> ix -> m Bool
+swap :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m Bool
 swap marr ix1 ix2 = do
   let sz = msize marr
   if isSafeIndex sz ix1 && isSafeIndex sz ix2
@@ -548,14 +586,13 @@ swap marr ix1 ix2 = do
 {-# INLINE swap #-}
 
 
--- | /O(1)/ - Same as `reaswap`, but lives in IO and throws an `IndexOutOfBoundsException` on
--- invalid index.
-swap' :: (Mutable r ix e, MonadIO m) => MArray RealWorld r ix e -> ix -> ix -> m ()
-swap' marr ix1 ix2 =
-  liftIO $ do
-    swap marr ix1 ix2 >>=
-      (`unless` if isSafeIndex (msize marr) ix1
-                  then throwM $ IndexOutOfBoundsException (msize marr) ix2
-                  else throwM $ IndexOutOfBoundsException (msize marr) ix1)
+-- | /O(1)/ - Same as `reaswap`, but throws an `IndexOutOfBoundsException` on invalid indices.
+swap' ::
+     (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
+swap' marr ix1 ix2 = do
+  swap marr ix1 ix2 >>=
+    (`unless` if isSafeIndex (msize marr) ix1
+                then throwM $ IndexOutOfBoundsException (msize marr) ix2
+                else throwM $ IndexOutOfBoundsException (msize marr) ix1)
 {-# INLINE swap' #-}
 

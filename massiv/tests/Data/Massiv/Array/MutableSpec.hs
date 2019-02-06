@@ -31,18 +31,18 @@ prop_iMapiMapM r _ f (ArrTiny arr) =
 
 
 prop_generateMakeST ::
-     (Show (Array r ix Int), Eq (Array r ix Int), Construct r ix Int, Mutable r ix Int)
+     (Show (Array r ix Int), Eq (Array r ix Int), Mutable r ix Int)
   => r
   -> Proxy ix
   -> Arr r ix Int
   -> Property
 prop_generateMakeST _ _ (Arr arr) =
-  arr === runST (generateArray (getComp arr) (size arr) (return . evaluate' arr))
+  arr === runST (generateArrayS (getComp arr) (size arr) (return . evaluate' arr))
 
 prop_generateMakeIO :: (Show (Array r ix Int), Eq (Array r ix Int), Mutable r ix Int) =>
                              r -> Proxy ix -> Arr r ix Int -> Property
 prop_generateMakeIO _ _ (Arr arr) = monadicIO $ do
-  arr' <- run $ generateArrayIO (getComp arr) (size arr) (evaluateM arr)
+  arr' <- run $ generateArray (getComp arr) (size arr) (evaluateM arr)
   return (arr === arr')
 
 prop_atomicModifyIntArrayMany :: ArrIx P Ix2 Int -> Array B Ix1 Int -> Property

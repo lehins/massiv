@@ -109,7 +109,7 @@ instance Index ix => Construct B ix e where
   setComp c arr = arr { bComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (\ !ix -> return $! f ix)
+  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (\ !ix -> return $! f ix)
   {-# INLINE makeArray #-}
 
 instance Index ix => Source B ix e where
@@ -271,7 +271,7 @@ instance (Index ix, NFData e) => Construct N ix e where
   {-# INLINE setComp #-}
   makeArray !comp !sz f =
     unsafePerformIO $
-    generateArrayIO
+    generateArray
       comp
       sz
       (\ !ix ->

@@ -223,7 +223,7 @@ itraverseAR _ = itraverseA
 
 
 
--- | Traverse with an `PrimMonad` action over an array sequentially.
+-- | Traverse sequentially within `PrimMonad` over an array with an action.
 --
 -- @since 0.3.0
 --
@@ -232,10 +232,10 @@ traversePrim ::
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-traversePrim f arr = generateArray (getComp arr) (size arr) (f . unsafeIndex arr)
+traversePrim f arr = generateArrayS (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE traversePrim #-}
 
--- | Same as `traverseP`, but traverse with index aware action.
+-- | Same as `traversePrim`, but traverse with index aware action.
 --
 -- @since 0.3.0
 --
@@ -244,7 +244,7 @@ itraversePrim ::
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-itraversePrim f arr = generateArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+itraversePrim f arr = generateArrayS (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE itraversePrim #-}
 
 
@@ -412,10 +412,10 @@ mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeI
 -- Here is a common way of iterating N times using a for loop in an imperative
 -- language with mutation being an obvious side effect:
 --
--- >>> :m + Data.IORef
--- >>> var <- newIORef 0 :: IO (IORef Int)
--- >>> forM_ (range 0 1000) $ \ i -> modifyIORef' var (+i)
--- >>> readIORef var
+-- >>> import Data.IORef
+-- >>> ref <- newIORef 0 :: IO (IORef Int)
+-- >>> forM_ (range Seq (Ix1 0) 1000) $ \ i -> modifyIORef' ref (+i)
+-- >>> readIORef ref
 -- 499500
 --
 forM_ :: (Source r ix a, Monad m) => Array r ix a -> (a -> m b) -> m ()
@@ -435,7 +435,10 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     (Source r' ix a, Mutable r ix b) => (a -> IO b) -> Array r' ix a -> IO (Array r ix b)
+     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
 mapIO action = imapIO (const action)
 {-# INLINE mapIO #-}
 
@@ -443,14 +446,14 @@ mapIO action = imapIO (const action)
 -- array, therefore it is faster. Use this instead of `mapIO` when result is irrelevant.
 --
 -- @since 0.2.6
-mapIO_ :: Source r b e => (e -> IO a) -> Array r b e -> IO ()
+mapIO_ :: (Source r b e, MonadUnliftIO m) => (e -> m a) -> Array r b e -> m ()
 mapIO_ action = imapIO_ (const action)
 {-# INLINE mapIO_ #-}
 
 -- | Same as `mapIO_`, but map an index aware action instead.
 --
 -- @since 0.2.6
-imapIO_ :: Source r ix e => (ix -> e -> IO a) -> Array r ix e -> IO ()
+imapIO_ :: (Source r ix e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
 imapIO_ action arr = do
   let sz = size arr
   withScheduler_ (getComp arr) $ \scheduler ->
@@ -467,22 +470,39 @@ imapIO_ action arr = do
 --
 -- @since 0.2.6
 imapIO ::
-     (Source r' ix a, Mutable r ix b) => (ix -> a -> IO b) -> Array r' ix a -> IO (Array r ix b)
-imapIO action arr = generateArrayIO (getComp arr) (size arr) $ \ix -> action ix (unsafeIndex arr ix)
+     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+imapIO action arr = generateArray (getComp arr) (size arr) $ \ix -> action ix (unsafeIndex arr ix)
 {-# INLINE imapIO #-}
 
 -- | Same as `mapIO` but with arguments flipped.
 --
 -- @since 0.2.6
 forIO ::
-     (Source r' ix a, Mutable r ix b) => Array r' ix a -> (a -> IO b) -> IO (Array r ix b)
+     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => Array r' ix a
+  -> (a -> m b)
+  -> m (Array r ix b)
 forIO = flip mapIO
 {-# INLINE forIO #-}
 
 -- | Same as `mapIO_` but with arguments flipped.
 --
+-- ==== __Example__
+--
+-- This is the same example as in `forM_`, with important difference that accumulator `ref` will be
+-- modified concurrently by as many threads as there are capabilities.
+--
+-- >>> import Data.IORef
+-- >>> ref <- newIORef 0 :: IO (IORef Int)
+-- >>> forIO_ (range Par (Ix1 0) 1000) $ \ i -> atomicModifyIORef' ref (\v -> (v+i, ()))
+-- >>> readIORef ref
+-- 499500
+--
 -- @since 0.2.6
-forIO_ :: Source r ix e => Array r ix e -> (e -> IO a) -> IO ()
+forIO_ :: (Source r ix e, MonadUnliftIO m) => Array r ix e -> (e -> m a) -> m ()
 forIO_ = flip mapIO_
 {-# INLINE forIO_ #-}
 
@@ -490,13 +510,16 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     (Source r' ix a, Mutable r ix b) => Array r' ix a -> (ix -> a -> IO b) -> IO (Array r ix b)
+     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => Array r' ix a
+  -> (ix -> a -> m b)
+  -> m (Array r ix b)
 iforIO = flip imapIO
 {-# INLINE iforIO #-}
 
 -- | Same as `imapIO_` but with arguments flipped.
 --
 -- @since 0.2.6
-iforIO_ :: Source r ix a => Array r ix a -> (ix -> a -> IO b) -> IO ()
+iforIO_ :: (Source r ix a, MonadUnliftIO m) => Array r ix a -> (ix -> a -> m b) -> m ()
 iforIO_ = flip imapIO_
 {-# INLINE iforIO_ #-}

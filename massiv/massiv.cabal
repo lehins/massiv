@@ -69,6 +69,7 @@ library
                      , ghc-prim
                      , massiv-scheduler
                      , primitive
+                     , unliftio-core
                      , vector
   include-dirs: include
   install-includes: massiv.h

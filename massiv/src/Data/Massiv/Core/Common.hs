@@ -66,6 +66,8 @@ module Data.Massiv.Core.Common
   , SizeException(..)
   , ShapeException(..)
   , module Data.Massiv.Core.Exception
+  , MonadUnliftIO
+  , MonadIO(liftIO)
   ) where
 
 #if !MIN_VERSION_base(4,11,0)
@@ -73,6 +75,7 @@ import           Data.Semigroup
 #endif
 import           Control.Exception (throw)
 import           Control.Monad.Catch (MonadThrow(..))
+import           Control.Monad.IO.Unlift (MonadUnliftIO, MonadIO(liftIO))
 import           Control.Monad.Primitive
 import           Data.Massiv.Scheduler.Computation
 import           Data.Massiv.Core.Exception

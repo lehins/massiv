@@ -87,7 +87,7 @@ instance (Prim e, Index ix) => Construct P ix e where
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (return . f)
+  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
   {-# INLINE makeArray #-}
 
 instance (Prim e, Index ix) => Source P ix e where

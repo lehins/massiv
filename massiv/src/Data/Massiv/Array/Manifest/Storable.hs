@@ -25,6 +25,7 @@ module Data.Massiv.Array.Manifest.Storable
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
+import           Control.Monad.IO.Unlift
 import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Manifest.List     as A
@@ -54,7 +55,7 @@ data instance Array S ix e = SArray { sComp :: !Comp
 instance (Ragged L ix e, Show e, VS.Storable e) => Show (Array S ix e) where
   show = showArray id
 
-instance Index ix => NFData (Array S ix e) where
+instance NFData ix => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
@@ -70,7 +71,7 @@ instance (VS.Storable e, Index ix) => Construct S ix e where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArrayIO comp sz (return . f)
+  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
   {-# INLINE makeArray #-}
 
 
@@ -173,19 +174,21 @@ instance ( VS.Storable e
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
--- | A pointer to the beginning of the storable array. It is unsafe since it can break referential
--- transparency.
+-- | A pointer to the beginning of the storable array. It is unsafe since, if mutated, it can break
+-- referential transparency.
 --
 -- @since 0.1.3
-unsafeWithPtr :: VS.Storable a => Array S ix a -> (Ptr a -> IO b) -> IO b
-unsafeWithPtr arr = VS.unsafeWith (sData arr)
+unsafeWithPtr :: (MonadUnliftIO m, VS.Storable a) => Array S ix a -> (Ptr a -> m b) -> m b
+unsafeWithPtr arr f = withRunInIO $ \run -> VS.unsafeWith (sData arr) (run . f)
+{-# INLINE unsafeWithPtr #-}
 
 
 -- | A pointer to the beginning of the mutable array.
 --
 -- @since 0.1.3
-withPtr :: VS.Storable a => MArray RealWorld S ix a -> (Ptr a -> IO b) -> IO b
-withPtr (MSArray _ mv) = MVS.unsafeWith mv
+withPtr :: (MonadUnliftIO m, VS.Storable a) => MArray RealWorld S ix a -> (Ptr a -> m b) -> m b
+withPtr (MSArray _ mv) f = withRunInIO $ \run -> MVS.unsafeWith mv (run . f)
+{-# INLINE withPtr #-}
 
 
 -- | /O(1)/ - Unwrap storable array and pull out the underlying storable vector.
