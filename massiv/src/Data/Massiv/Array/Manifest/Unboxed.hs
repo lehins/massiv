@@ -93,9 +93,9 @@ instance (VU.Unbox e, Index ix) => Load U ix e where
   {-# INLINE size #-}
   getComp = uComp
   {-# INLINE getComp #-}
-  loadArray !numWorkers scheduleWork !arr =
+  loadArrayM !numWorkers scheduleWork !arr =
     splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
 instance (VU.Unbox e, Index ix) => StrideLoad U ix e
 

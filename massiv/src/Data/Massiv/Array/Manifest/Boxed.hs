@@ -40,7 +40,8 @@ import           Control.Monad.Primitive
 import           Control.Monad.ST                    (runST)
 import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
-import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
+import           Data.Massiv.Array.Delayed.Push      (DL)
+import           Data.Massiv.Array.Manifest.Internal (M, toManifest, computeAs)
 import           Data.Massiv.Array.Manifest.List     as L
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Fold
@@ -87,6 +88,9 @@ data instance Array B ix e = BArray { bComp :: !Comp
 
 instance (Ragged L ix e, Show e) => Show (Array B ix e) where
   show = showArray id
+
+instance (Ragged L ix e, Show e) => Show (Array DL ix e) where
+  show = showArray (computeAs B)
 
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
@@ -184,9 +188,9 @@ instance Index ix => Load B ix e where
   {-# INLINE size #-}
   getComp = bComp
   {-# INLINE getComp #-}
-  loadArray !numWorkers scheduleWork !arr =
+  loadArrayM !numWorkers scheduleWork !arr =
     splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad B ix e
 
@@ -353,9 +357,9 @@ instance (Index ix, NFData e) => Load N ix e where
   {-# INLINE size #-}
   getComp = bComp . bArray
   {-# INLINE getComp #-}
-  loadArray !numWorkers scheduleWork !arr =
+  loadArrayM !numWorkers scheduleWork !arr =
     splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
 instance (Index ix, NFData e) => StrideLoad N ix e
 

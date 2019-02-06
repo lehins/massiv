@@ -24,6 +24,12 @@ module Data.Massiv.Array.Ops.Construct
   , empty
   , replicate
   , replicateR
+  , iterateN
+  , iiterateN
+  , unfoldlS_
+  , iunfoldlS_
+  , unfoldrS_
+  , iunfoldrS_
     -- *** Applicative
   , makeArrayA
   , makeArrayAR
@@ -47,9 +53,10 @@ module Data.Massiv.Array.Ops.Construct
   ) where
 
 import           Control.Applicative            hiding (empty)
+import           Control.Monad                  (void)
 import           Control.Monad.ST
 import           Data.Massiv.Array.Delayed.Pull
---import           Data.Massiv.Array.Delayed.Push
+import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Core.Common
 --import           Data.Massiv.Scheduler          (traverse_)
 import           Prelude                        as P hiding (enumFromTo,
@@ -133,6 +140,81 @@ replicateR _ comp sz e = makeArray comp sz (const e)
 {-# INLINE replicateR #-}
 
 
+-- | Sequentially iterate over each cell in the array in the row-major order while continuously
+-- aplying the accumulator at each step.
+--
+-- ==== __Example__
+--
+-- >>> iterateN Seq (Sz2 2 10) succ (10 :: Int)
+-- (Array DL Seq (Sz2 (2 :. 10))
+--   [ [ 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ]
+--   , [ 21, 22, 23, 24, 25, 26, 27, 28, 29, 30 ]
+--   ]
+-- )
+--
+-- @since 0.3.0
+iterateN :: Index ix => Comp -> Sz ix -> (e -> e) -> e -> Array DL ix e
+iterateN comp sz f = unfoldlS_ comp sz $ \a -> let !a' = f a in (a', a')
+{-# INLINE iterateN #-}
+
+-- |
+--
+-- @since 0.3.0
+iiterateN :: Index ix => Comp -> Sz ix -> (e -> ix -> e) -> e -> Array DL ix e
+iiterateN comp sz f = iunfoldlS_ comp sz $ \a ix -> let !a' = f a ix in (a', a')
+{-# INLINE iiterateN #-}
+
+
+-- |
+--
+-- @since 0.3.0
+unfoldlS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
+unfoldlS_ comp sz f = iunfoldlS_ comp sz (\a _ -> f a)
+{-# INLINE unfoldlS_ #-}
+
+-- |
+--
+-- @since 0.3.0
+iunfoldlS_
+  :: Construct DL ix e => Comp -> Sz ix -> (a -> ix -> (a, e)) -> a -> Array DL ix e
+iunfoldlS_ comp sz f acc0 =
+  DLArray
+    { dlComp = comp
+    , dlSize = sz
+    , dlLoad =
+        \_numWorkers _scheduleWith startAt dlWrite ->
+          void $ loopM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
+            let (acc', e) = f acc $ fromLinearIndex sz (i - startAt)
+            dlWrite i e
+            pure acc'
+    }
+{-# INLINE iunfoldlS_ #-}
+
+
+-- |
+--
+-- @since 0.3.0
+unfoldrS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
+unfoldrS_ comp sz f = iunfoldrS_ comp sz (const f)
+{-# INLINE unfoldrS_ #-}
+
+-- |
+--
+-- @since 0.3.0
+iunfoldrS_
+  :: Construct DL ix e => Comp -> Sz ix -> (ix -> a -> (a, e)) -> a -> Array DL ix e
+iunfoldrS_ comp sz f acc0 =
+  DLArray
+    { dlComp = comp
+    , dlSize = sz
+    , dlLoad =
+        \_numWorkers _scheduleWith startAt dlWrite ->
+          void $ loopDeepM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
+            let (acc', e) = f (fromLinearIndex sz (i - startAt)) acc
+            dlWrite i e
+            pure acc'
+    }
+{-# INLINE iunfoldrS_ #-}
 
 
 -- | Create an array of indices with a range from start to finish (not-including), where indices are

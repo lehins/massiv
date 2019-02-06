@@ -160,7 +160,7 @@ instance Load DW Ix1 e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArray numWorkers scheduleWork arr uWrite = do
+  loadArrayM numWorkers scheduleWork arr uWrite = do
     (loadWindow, (wStart, wEnd)) <- loadWithIx1 scheduleWork arr uWrite
     let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers
     loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
@@ -169,10 +169,10 @@ instance Load DW Ix1 e where
     when (slackHeight > 0) $
       let !itSlack = numWorkers * chunkHeight + wStart
        in loadWindow (itSlack, itSlack + slackHeight)
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix1 e where
-  loadArrayWithStride numWorkers scheduleWork stride sz arr uWrite = do
+  loadArrayWithStrideM numWorkers scheduleWork stride sz arr uWrite = do
       (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 scheduleWork arr stride sz uWrite
       let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers
       loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
@@ -181,7 +181,7 @@ instance StrideLoad DW Ix1 e where
       when (slackHeight > 0) $
         let !itSlack = numWorkers * chunkHeight + wStart
          in loadWindow (itSlack, itSlack + slackHeight)
-  {-# INLINE loadArrayWithStride #-}
+  {-# INLINE loadArrayWithStrideM #-}
 
 loadArrayWithIx1 ::
      (Monad m)
@@ -244,7 +244,7 @@ instance Load DW Ix2 e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArray numWorkers scheduleWork arr uWrite = do
+  loadArrayM numWorkers scheduleWork arr uWrite = do
     (loadWindow, it :. ib) <- loadWithIx2 scheduleWork arr uWrite
     let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers
     loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
@@ -253,10 +253,10 @@ instance Load DW Ix2 e where
     when (slackHeight > 0) $
       let !itSlack = numWorkers * chunkHeight + it
        in loadWindow (itSlack :. (itSlack + slackHeight))
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix2 e where
-  loadArrayWithStride numWorkers scheduleWork stride sz arr uWrite = do
+  loadArrayWithStrideM numWorkers scheduleWork stride sz arr uWrite = do
     (loadWindow, it :. ib) <- loadArrayWithIx2 scheduleWork arr stride sz uWrite
     let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers
     loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
@@ -265,7 +265,7 @@ instance StrideLoad DW Ix2 e where
     when (slackHeight > 0) $
       let !itSlack = numWorkers * chunkHeight + it
        in loadWindow (itSlack :. (itSlack + slackHeight))
-  {-# INLINE loadArrayWithStride #-}
+  {-# INLINE loadArrayWithStrideM #-}
 
 loadArrayWithIx2 ::
      Monad m
@@ -308,11 +308,11 @@ instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArray _numWorkers = loadWithIxN
-  {-# INLINE loadArray #-}
+  loadArrayM _numWorkers = loadWithIxN
+  {-# INLINE loadArrayM #-}
 instance (Index (IxN n), StrideLoad DW (Ix (n - 1)) e) => StrideLoad DW (IxN n) e where
-  loadArrayWithStride = loadArrayWithIxN
-  {-# INLINE loadArrayWithStride #-}
+  loadArrayWithStrideM = loadArrayWithIxN
+  {-# INLINE loadArrayWithStrideM #-}
 
 loadArrayWithIxN ::
      (Index ix, Monad m, StrideLoad DW (Lower ix) e)
@@ -349,7 +349,7 @@ loadArrayWithIxN numWorkers scheduleWork stride szResult arr uWrite = do
                 , dwStencilSize = mLowerStencilSize
                 , dwWindow = Just lowerWindow
                 }
-         in loadArrayWithStride
+         in loadArrayWithStrideM
               numWorkers
               scheduleWork
               (Stride lowerStrideIx)
@@ -394,7 +394,7 @@ loadWithIxN with arr uWrite = do
                 , dwWindow = Just lowerWindow
                 }
          in with $
-            loadArray
+            loadArrayM
               1
               id
               lowerArr
@@ -467,32 +467,32 @@ instance Load DW Ix2T e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArray numWorkers scheduleWork arr =
-    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
-  {-# INLINE loadArray #-}
+  loadArrayM numWorkers scheduleWork arr =
+    loadArrayWithStrideM numWorkers scheduleWork oneStride (size arr) arr
+  {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix2T e where
-  loadArrayWithStride numWorkers scheduleWork stride sz arr =
-    loadArrayWithStride
+  loadArrayWithStrideM numWorkers scheduleWork stride sz arr =
+    loadArrayWithStrideM
       numWorkers
       scheduleWork
       (Stride $ toIx2 $ unStride stride)
       (SafeSz (toIx2 (unSz sz)))
       (toIx2ArrayDW arr)
-  {-# INLINE loadArrayWithStride #-}
+  {-# INLINE loadArrayWithStrideM #-}
 
 instance Load DW Ix3T e where
   size = dSize . dwArray
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArray numWorkers scheduleWork arr =
-    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
-  {-# INLINE loadArray #-}
+  loadArrayM numWorkers scheduleWork arr =
+    loadArrayWithStrideM numWorkers scheduleWork oneStride (size arr) arr
+  {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix3T e where
-  loadArrayWithStride = loadArrayWithIxN
-  {-# INLINE loadArrayWithStride #-}
+  loadArrayWithStrideM = loadArrayWithIxN
+  {-# INLINE loadArrayWithStrideM #-}
 
 
 instance Load DW Ix4T e where
@@ -500,13 +500,13 @@ instance Load DW Ix4T e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArray numWorkers scheduleWork arr =
-    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
-  {-# INLINE loadArray #-}
+  loadArrayM numWorkers scheduleWork arr =
+    loadArrayWithStrideM numWorkers scheduleWork oneStride (size arr) arr
+  {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix4T e where
-  loadArrayWithStride = loadArrayWithIxN
-  {-# INLINE loadArrayWithStride #-}
+  loadArrayWithStrideM = loadArrayWithIxN
+  {-# INLINE loadArrayWithStrideM #-}
 
 
 instance Load DW Ix5T e where
@@ -514,9 +514,9 @@ instance Load DW Ix5T e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArray numWorkers scheduleWork arr =
-    loadArrayWithStride numWorkers scheduleWork oneStride (size arr) arr
-  {-# INLINE loadArray #-}
+  loadArrayM numWorkers scheduleWork arr =
+    loadArrayWithStrideM numWorkers scheduleWork oneStride (size arr) arr
+  {-# INLINE loadArrayM #-}
 instance StrideLoad DW Ix5T e where
-  loadArrayWithStride = loadArrayWithIxN
-  {-# INLINE loadArrayWithStride #-}
+  loadArrayWithStrideM = loadArrayWithIxN
+  {-# INLINE loadArrayWithStrideM #-}

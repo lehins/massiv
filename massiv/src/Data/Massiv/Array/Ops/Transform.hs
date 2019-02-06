@@ -631,7 +631,7 @@ upsample !fillWith !safeStride arr =
           -- bit wasteful, nevertheless it is fastest
           --
           -- TODO: Is it possible to use fast fill operation that is available for MutableByteArray?
-          loadArray numWorkers scheduleWith arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
+          loadArrayM numWorkers scheduleWith arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
     }
   where
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz

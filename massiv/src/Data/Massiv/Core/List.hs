@@ -138,9 +138,9 @@ instance (Index ix, Ragged L ix e) => Load L ix e where
   {-# INLINE size #-}
   getComp = lComp
   {-# INLINE getComp #-}
-  loadArray _numWorkers using arr uWrite = loadRagged using uWrite 0 (totalElem sz) sz arr
+  loadArrayM _numWorkers using arr uWrite = loadRagged using uWrite 0 (totalElem sz) sz arr
     where !sz = edgeSize arr
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
 
 

@@ -27,7 +27,6 @@ module Data.Massiv.Array.Manifest.Internal
   , computeAs
   , computeProxy
   , computeSource
-  , computeInto
   , computeWithStride
   , computeWithStrideAs
   , clone
@@ -47,12 +46,14 @@ import           Control.Monad.ST
 import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Fold.Internal
+import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
+import qualified Data.Vector.Mutable                 as MV
 import           GHC.Base                            hiding (ord)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
@@ -97,13 +98,16 @@ instance (Ord e, Index ix) => Ord (Array M ix e) where
   {-# INLINE compare #-}
 
 instance Index ix => Construct M ix e where
-  setComp c arr = arr { mComp = c }
+  setComp c arr = arr {mComp = c}
   {-# INLINE setComp #-}
-
-  -- makeArray !c !sz f = MArray c sz (V.unsafeIndex (makeBoxedVector sz f))
-  -- {-# INLINE makeArray #-}
-  -- TODO: make it respect comp strategy
-  makeArrayLinear c !sz f = MArray c sz (V.unsafeIndex (V.generate (totalElem sz) f))
+  makeArrayLinear !comp !sz f =
+    unsafePerformIO $ do
+      let !k = totalElem sz
+      mv <- MV.unsafeNew k
+      withScheduler_ comp $ \s ->
+        splitLinearlyWithM_ (numWorkers s) (scheduleWork s) k (pure . f) (MV.unsafeWrite mv)
+      v <- V.unsafeFreeze mv
+      pure $ MArray comp sz (V.unsafeIndex v)
   {-# INLINE makeArrayLinear #-}
 
 -- | Create a boxed from usual size and index to element function
@@ -206,9 +210,9 @@ instance Index ix => Load M ix e where
   {-# INLINE size #-}
   getComp = mComp
   {-# INLINE getComp #-}
-  loadArray numWorkers' scheduleWork' (MArray _ sz f) =
+  loadArrayM numWorkers' scheduleWork' (MArray _ sz f) =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad M ix e
 
@@ -219,11 +223,12 @@ instance Index ix => StrideLoad M ix e
 compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
 compute !arr =
   unsafePerformIO $ do
-    mArr <- unsafeNew (size arr)
-    let !comp = getComp arr
-    withScheduler_ comp $ \scheduler ->
-      loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
-    unsafeFreeze comp mArr
+    loadArrayIO arr >>= unsafeFreeze (getComp arr)
+    -- mArr <- unsafeNew (size arr)
+    -- let !comp = getComp arr
+    -- withScheduler_ comp $ \scheduler ->
+    --   loadArrayM (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+    -- unsafeFreeze comp mArr
 {-# INLINE compute #-}
 
 computeS :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
@@ -231,7 +236,7 @@ computeS !arr =
   runST $ do
     mArr <- unsafeNew (size arr)
     let !comp = getComp arr
-    loadArray 1 id arr (unsafeLinearWrite mArr)
+    loadArrayM 1 id arr (unsafeLinearWrite mArr)
     unsafeFreeze comp mArr
 {-# INLINE computeS #-}
 
@@ -265,21 +270,6 @@ computeProxy :: (Load r' ix e, Mutable r ix e) => proxy r -> Array r' ix e -> Ar
 computeProxy _ = compute
 {-# INLINE computeProxy #-}
 
-
--- | Compute an Array while loading the results into the supplied mutable target array. Sizes of
--- both arrays must agree, otherwise error.
---
--- @since 0.1.3
-computeInto ::
-     (Load r' ix e, Mutable r ix e)
-  => MArray RealWorld r ix e -- ^ Target Array
-  -> Array r' ix e -- ^ Array to load
-  -> IO ()
-computeInto !mArr !arr = do
-  unless (msize mArr == size arr) $ throwM $ SizeMismatchException (msize mArr) (size arr)
-  withScheduler_ (getComp arr) $ \scheduler ->
-    loadArray (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
-{-# INLINE computeInto #-}
 
 
 -- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if
@@ -365,7 +355,7 @@ computeWithStride stride !arr =
         comp = getComp arr
     mArr <- unsafeNew sz
     withScheduler_ comp $ \scheduler ->
-      loadArrayWithStride
+      loadArrayWithStrideM
         (numWorkers scheduler)
         (scheduleWork scheduler)
         stride

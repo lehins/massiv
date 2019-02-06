@@ -169,7 +169,7 @@ class (Typeable r, Index ix) => Load r ix e where
 
   -- | Load an array into memory. Default implementation will respect the scheduler and use `Source`
   -- instance to do loading in row-major fashion in parallel as well as sequentially.
-  loadArray
+  loadArrayM
     :: Monad m =>
        Int -- ^ Total number of workers (for `Seq` it's always 1)
     -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
@@ -181,7 +181,7 @@ class (Typeable r, Index ix) => Load r ix e where
 class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation can only handle the sequential
   -- case and only if there is an instance of `Source`.
-  loadArrayWithStride
+  loadArrayWithStrideM
     :: Monad m =>
        Int -- ^ Total number of workers (for `Seq` it's always 1)
     -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
@@ -191,7 +191,7 @@ class Load r ix e => StrideLoad r ix e where
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
-  default loadArrayWithStride
+  default loadArrayWithStrideM
     :: (Source r ix e, Monad m) =>
        Int
     -> (m () -> m ())
@@ -200,14 +200,14 @@ class Load r ix e => StrideLoad r ix e where
     -> Array r ix e
     -> (Int -> e -> m ())
     -> m ()
-  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr =
+  loadArrayWithStrideM numWorkers' scheduleWork' stride resultSize arr =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem resultSize) unsafeLinearWriteWithStride
     where
       !strideIx = unStride stride
       unsafeLinearWriteWithStride =
         unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
       {-# INLINE unsafeLinearWriteWithStride #-}
-  {-# INLINE loadArrayWithStride #-}
+  {-# INLINE loadArrayWithStrideM #-}
 
 
 class Load r ix e => OuterSlice r ix e where

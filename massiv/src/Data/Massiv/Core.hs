@@ -23,7 +23,7 @@ module Data.Massiv.Core
   , Elt
   , EltRepr
   , Construct
-  , Load(loadArray)
+  , Load(loadArrayM)
   , Source
   , Extract
   , StrideLoad(..)

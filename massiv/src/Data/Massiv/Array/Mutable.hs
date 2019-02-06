@@ -23,15 +23,17 @@ module Data.Massiv.Array.Mutable
   , swap
   , swap'
   -- ** Operate over `MArray`
-  -- ** Convert
+  -- *** Basic conversion
   , new
-  , makeMArray
-  , makeMArrayLinear
-  , makeMArrayLinearIO
   , thaw
   , freeze
   , msize
-  -- *** Create
+  -- *** Create mutable
+  , makeMArray
+  , makeMArrayLinear
+  , makeMArrayIO
+  , makeMArrayLinearIO
+  -- *** Create pure
   , createArray_
   , createArray
   , createArrayST_
@@ -57,6 +59,8 @@ module Data.Massiv.Array.Mutable
   , MArray
   , RealWorld
   , computeInto
+  , loadArray
+  , loadArrayIO
   ) where
 
 import           Prelude                             hiding (mapM, read)
@@ -65,14 +69,13 @@ import           Control.Monad                       (unless)
 import           Control.Monad.IO.Class
 import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST
-import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Scheduler
 
 -- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
 -- Boxed arrays that will be an `Uninitialized` exception, while for othere it will be zeros.
 --
--- ==== __Example__
+-- ==== __Examples__
 --
 -- >>> :set -XTypeApplications
 -- >>> marr <- new @P @Int (Sz2 2 6)
@@ -109,25 +112,13 @@ new = initializeNew Nothing
 --
 -- @since 0.1.0
 thaw :: (Mutable r ix e, PrimMonad m) => Array r ix e -> m (MArray (PrimState m) r ix e)
-thaw = toMutableArray
+thaw arr = makeMArrayLinear (size arr) (pure . unsafeLinearIndexM arr)
 -- TODO: use faster memcpy
 {-# INLINE thaw #-}
 
+-- TODO: implement and benchmark parallel `thawIO` and `freezeIO` with memcpy
 
-toMutableArray ::
-     (Mutable r1 ix e, PrimMonad m, Load r2 ix e)
-  => Array r2 ix e
-  -> m (MArray (PrimState m) r1 ix e)
-toMutableArray arr = do
-  marr <- unsafeNew (size arr)
-  loadArray 1 id arr (unsafeLinearWrite marr)
-  pure marr
-  --makeMArrayLinear (size arr) (pure  . unsafeLinearIndex arr)
-
-
--- TODO: implement and benchmark parallel `thawIO`
-
--- | /O(n)/ - Yield an immutable copy of the mutable array. Note that mutable representations do
+-- | /O(n)/ - Yield an immutable copy of the mutable array. Note that mutable representations
 -- have to be the same.
 --
 -- ==== __Example__
@@ -136,23 +127,63 @@ toMutableArray arr = do
 --
 -- @since 0.1.0
 freeze ::
-     forall r e ix r' m. (Mutable r' ix e, Mutable r ix e, PrimMonad m)
+     forall r e ix m. (Mutable r ix e, PrimMonad m)
   => Comp
-  -> MArray (PrimState m) r' ix e
+  -> MArray (PrimState m) r ix e
   -> m (Array r ix e)
 freeze comp marr = generateArrayLinear comp (msize marr) (unsafeLinearRead marr)
 {-# INLINE freeze #-}
+
+
+loadArray ::
+     forall r e ix r' m. (Load r' ix e, Mutable r ix e, PrimMonad m)
+  => Array r' ix e
+  -> m (MArray (PrimState m) r ix e)
+loadArray arr = do
+  marr <- unsafeNew (size arr)
+  loadArrayM 1 id arr (unsafeLinearWrite marr)
+  pure marr
+{-# INLINE loadArray #-}
+
+loadArrayIO ::
+     forall r e ix r' m. (Load r' ix e, Mutable r ix e, MonadIO m)
+  => Array r' ix e
+  -> m (MArray RealWorld r ix e)
+loadArrayIO arr =
+  liftIO $ do
+    marr <- unsafeNew (size arr)
+    withScheduler_ (getComp arr) $ \s ->
+      loadArrayM (numWorkers s) (scheduleWork s) arr (unsafeLinearWrite marr)
+    pure marr
+{-# INLINE loadArrayIO #-}
+
+
+
+-- | Compute an Array while loading the results into the supplied mutable target array. Sizes of
+-- both arrays must agree, otherwise error.
+--
+-- @since 0.1.3
+computeInto ::
+     (Load r' ix e, Mutable r ix e, MonadIO m)
+  => MArray RealWorld r ix e -- ^ Target Array
+  -> Array r' ix e -- ^ Array to load
+  -> m ()
+computeInto !mArr !arr =
+  liftIO $ do
+    unless (msize mArr == size arr) $ throwM $ SizeMismatchException (msize mArr) (size arr)
+    withScheduler_ (getComp arr) $ \scheduler ->
+      loadArrayM (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+{-# INLINE computeInto #-}
+
 
 -- | Create a mutable array using an index aware generating action.
 --
 -- @since 0.3.0
 makeMArray ::
      (Mutable r ix e, PrimMonad m) => Sz ix -> (ix -> m e) -> m (MArray (PrimState m) r ix e)
-makeMArray sz f = do
-  marr <- unsafeNew sz
-  iterLinearM_ sz 0 (totalElem sz) 1 (<) (\ !i !ix -> f ix >>= unsafeLinearWrite marr i)
-  return marr
+makeMArray sz f = makeMArrayLinear sz (f . fromLinearIndex sz)
 {-# INLINE makeMArray #-}
+
 
 -- | Same as `makeMArray`, but index supplied to the action is row-major linear index.
 --
@@ -164,6 +195,36 @@ makeMArrayLinear sz f = do
   loopM_ 0 (< totalElem (msize marr)) (+ 1) (\ !i -> f i >>= unsafeLinearWrite marr i)
   return marr
 {-# INLINE makeMArrayLinear #-}
+
+-- | Just like `makeMArray`, but also accepts computation strategy and runs in `IO`.
+--
+-- @since 0.3.0
+makeMArrayIO ::
+     (Mutable r ix e)
+  => Comp
+  -> Sz ix
+  -> (ix -> IO e)
+  -> IO (MArray RealWorld r ix e)
+makeMArrayIO comp sz f = makeMArrayLinearIO comp sz (f . fromLinearIndex sz)
+{-# INLINE makeMArrayIO #-}
+
+
+-- | Just like `makeMArrayLinear`, but also accepts computation strategy and runs in `IO`.
+--
+-- @since 0.3.0
+makeMArrayLinearIO ::
+     (Mutable r ix e)
+  => Comp
+  -> Sz ix
+  -> (Int -> IO e)
+  -> IO (MArray RealWorld r ix e)
+makeMArrayLinearIO comp sz f = do
+  marr <- unsafeNew sz
+  withScheduler_ comp $ \s ->
+    splitLinearlyWithM_ (numWorkers s) (scheduleWork s) (totalElem sz) f (unsafeLinearWrite marr)
+  return marr
+{-# INLINE makeMArrayLinearIO #-}
+
 
 -- | Create a new array by supplying an action that will fill the new blank mutable array. Use
 -- `createArray` if you'd like to keep the result of the filling function.
@@ -283,16 +344,7 @@ generateArrayIO ::
   -> Sz ix
   -> (ix -> IO e)
   -> IO (Array r ix e)
-generateArrayIO comp sz gen = do
-  marr <- unsafeNew sz
-  withScheduler_ comp $ \scheduler ->
-    splitLinearlyWithM_
-      (numWorkers scheduler)
-      (scheduleWork scheduler)
-      (totalElem sz)
-      (gen . fromLinearIndex sz)
-      (unsafeLinearWrite marr)
-  unsafeFreeze comp marr
+generateArrayIO comp sz f = generateArrayLinearIO comp sz (f . fromLinearIndex sz)
 {-# INLINE generateArrayIO #-}
 
 -- | Just like `generateArrayIO`, but action supplied will receive a row-major linear index.
@@ -304,28 +356,9 @@ generateArrayLinearIO ::
   -> Sz ix
   -> (Int -> IO e)
   -> IO (Array r ix e)
-generateArrayLinearIO comp sz gen = do
-  marr <- unsafeNew sz
-  withScheduler_ comp $ \s ->
-    splitLinearlyWithM_ (numWorkers s) (scheduleWork s) (totalElem sz) gen (unsafeLinearWrite marr)
-  unsafeFreeze comp marr
+generateArrayLinearIO comp sz f = makeMArrayLinearIO comp sz f >>= unsafeFreeze comp
 {-# INLINE generateArrayLinearIO #-}
 
--- | Just like `makeArrayIO`, but action supplied will receive a row-major linear index.
---
--- @since 0.3.0
-makeMArrayLinearIO ::
-     (Mutable r ix e)
-  => Comp
-  -> Sz ix
-  -> (Int -> IO e)
-  -> IO (MArray RealWorld r ix e)
-makeMArrayLinearIO comp sz gen = do
-  marr <- unsafeNew sz
-  withScheduler_ comp $ \s ->
-    splitLinearlyWithM_ (numWorkers s) (scheduleWork s) (totalElem sz) gen (unsafeLinearWrite marr)
-  return marr
-{-# INLINE makeMArrayLinearIO #-}
 
 -- | Sequentially unfold an array from the left.
 --

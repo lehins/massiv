@@ -24,7 +24,6 @@ module Data.Massiv.Array.Delayed.Push
   , fromStrideLoad
   ) where
 
-import           Data.Massiv.Array.Manifest.Boxed    (B (B))
 import           Data.Massiv.Array.Manifest.Internal (computeAs)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (SafeSz))
@@ -50,9 +49,6 @@ data instance Array DL ix e = DLArray
   }
 
 type instance EltRepr DL ix = DL
-
-instance (Ragged L ix e, Show e) => Show (Array DL ix e) where
-  show = showArray (computeAs B)
 
 instance Index ix => Construct DL ix e where
   setComp c arr = arr {dlComp = c}
@@ -105,7 +101,7 @@ makeLoadArray comp sz f = DLArray comp sz f
 toLoadArray :: Load r ix e => Array r ix e -> Array DL ix e
 toLoadArray arr =
   DLArray (getComp arr) (size arr) $ \numWorkers scheduleWith startAt dlWrite ->
-    loadArray numWorkers scheduleWith arr (\ !i -> dlWrite (i + startAt))
+    loadArrayM numWorkers scheduleWith arr (\ !i -> dlWrite (i + startAt))
 {-# INLINE toLoadArray #-}
 
 -- | Convert an array that can be loaded with stride into `DL` representation.
@@ -115,7 +111,7 @@ fromStrideLoad
   :: StrideLoad r ix e => Stride ix -> Array r ix e -> Array DL ix e
 fromStrideLoad stride arr =
   DLArray (getComp arr) newsz $ \numWorkers scheduleWith startAt dlWrite ->
-    loadArrayWithStride numWorkers scheduleWith stride newsz arr (\ !i -> dlWrite (i + startAt))
+    loadArrayWithStrideM numWorkers scheduleWith stride newsz arr (\ !i -> dlWrite (i + startAt))
   where newsz = strideSize stride (size arr)
 {-# INLINE fromStrideLoad #-}
 
@@ -124,8 +120,8 @@ instance Index ix => Load DL ix e where
   {-# INLINE size #-}
   getComp = dlComp
   {-# INLINE getComp #-}
-  loadArray numWorkers scheduleWith DLArray {dlLoad} = dlLoad numWorkers scheduleWith 0
-  {-# INLINE loadArray #-}
+  loadArrayM numWorkers scheduleWith DLArray {dlLoad} = dlLoad numWorkers scheduleWith 0
+  {-# INLINE loadArrayM #-}
 
 instance Functor (Array DL ix) where
   fmap f arr =
