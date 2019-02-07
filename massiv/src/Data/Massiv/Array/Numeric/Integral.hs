@@ -183,7 +183,7 @@ simpsonsRule ::
   -> e -- ^ @d@ - Distance per matrix cell.
   -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction. This value must be even,
-         -- otherwise error..
+         -- otherwise error.
   -> Array M ix e
 simpsonsRule comp r f a d sz n =
   integralApprox simpsonsStencil d sz n $ computeAs r $ fromFunction comp f a d sz n

@@ -88,31 +88,3 @@ unsafeTraverse2 sz f arr1 arr2 =
 {-# INLINE unsafeTraverse2 #-}
 
 
-
-
--- -- | Create an array sequentially using mutable interface
--- unsafeGenerateArray :: Mutable r ix e => ix -> (ix -> e) -> Array r ix e
--- unsafeGenerateArray !sz f = runST $ do
---   marr <- unsafeNew sz
---   iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !k !ix ->
---     unsafeLinearWrite marr k (f ix)
---   unsafeFreeze Seq marr
--- {-# INLINE unsafeGenerateArray #-}
-
-
--- -- | Create an array in parallel using mutable interface
--- --
--- -- @since 0.1.5
--- unsafeGenerateArrayP :: Mutable r ix e => [Int] -> Sz ix -> (ix -> e) -> Array r ix e
--- unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
---   marr <- unsafeNew sz
---   divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
---     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---       scheduleWork scheduler $
---         iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix ->
---           unsafeLinearWrite marr k (f ix)
---     scheduleWork scheduler $
---       iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix ->
---         unsafeLinearWrite marr k (f ix)
---   unsafeFreeze (ParOn wIds) marr
--- {-# INLINE unsafeGenerateArrayP #-}

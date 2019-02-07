@@ -81,8 +81,6 @@ module Data.Massiv.Core.Index
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
   , module Data.Massiv.Core.Index.Tuple
-  -- * Error functions
-  , errorIx
   ) where
 
 import           Control.Exception               (throw)
@@ -339,12 +337,3 @@ iterLinearM_ :: (Index ix, Monad m) =>
 iterLinearM_ sz !k0 !k1 !inc cond f =
   loopM_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
-
-
--- | Helper function for throwing out of bounds errors
-errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
-errorIx fName sz ix =
-  error $
-  fName ++
-  ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
-{-# NOINLINE errorIx #-}

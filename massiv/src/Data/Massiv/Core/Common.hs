@@ -476,6 +476,13 @@ indexWith fileName lineNo funName getSize' f arr ix
   | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) (getSize' arr) ix
 {-# NOINLINE indexWith #-}
 
+-- | Helper function for throwing out of bounds errors
+errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
+errorIx fName sz ix =
+  error $
+  fName ++
+  ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
+{-# NOINLINE errorIx #-}
 
 
 -- | Map a monadic index aware function over an array sequentially, while discarding the result.

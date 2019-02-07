@@ -572,16 +572,7 @@ splitAt dim i arr = do
 -- and index out of bounds.
 splitAt' :: (Extract r ix e, r' ~ EltRepr r ix) =>
            Dim -> Int -> Array r ix e -> (Array r' ix e, Array r' ix e)
-splitAt' dim i arr =
-  case splitAt dim i arr of
-    Just res -> res
-    Nothing ->
-      error $
-      "Data.Massiv.Array.splitAt': " ++
-      if 0 < dim && dim <= dimensions (size arr)
-        then "Index out of bounds: " ++
-             show i ++ " for dimension: " ++ show dim ++ " and array with size: " ++ show (size arr)
-        else "Invalid dimension: " ++ show dim ++ " for array with size: " ++ show (size arr)
+splitAt' dim i arr = either throw id $ splitAtM dim i arr
 {-# INLINE splitAt' #-}
 
 

@@ -101,7 +101,7 @@ infixl 6  .+, .-
 (.^) arr n = liftArray (^ n) arr
 {-# INLINE (.^) #-}
 
--- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
+-- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
      (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (EltRepr r Ix2) Ix1 e, Num e)
   => Array r Ix2 e
@@ -154,10 +154,7 @@ multiplyTransposed ::
   -> Array r Ix2 e
   -> Array D Ix2 e
 multiplyTransposed arr1 arr2
-  | n1 /= m2 =
-    error $
-    "(|*|): Inner array dimensions must agree, but received: " ++
-    show (size arr1) ++ " and " ++ show (size arr2)
+  | n1 /= m2 = throw $ SizeMismatchException (size arr1) (size arr2)
   | otherwise =
     DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
       A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))

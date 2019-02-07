@@ -24,10 +24,8 @@ module Data.Massiv.Array.Delayed.Push
   , fromStrideLoad
   ) where
 
-import           Data.Massiv.Array.Manifest.Internal (computeAs)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (SafeSz))
-import           Data.Massiv.Core.List               (L, showArray)
 import qualified Data.Semigroup                      as Semigroup
 import           Prelude                             hiding (map, zipWith)
 

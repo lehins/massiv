@@ -345,7 +345,7 @@ instance Ragged L ix e => OuterSlice L ix e where
     where
       go n arr =
         case unconsR arr of
-          Nothing -> errorIx "Data.Massiv.Core.List.unsafeOuterSlice" (headDim (unSz (size arr'))) i
+          Nothing -> throw $ IndexOutOfBoundsException (Sz (headDim (unSz (size arr')))) i
           Just (x, _) | n == i -> x
           Just (_, xs) -> go (n + 1) xs
   {-# INLINE unsafeOuterSlice #-}

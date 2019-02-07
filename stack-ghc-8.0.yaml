@@ -1,8 +1,9 @@
 resolver: lts-9.21
 packages:
-- '.'
+- 'massiv/'
+- 'massiv-io/'
+- 'massiv-scheduler/'
 extra-deps:
-- '../massiv-scheduler/'
 - unliftio-core-0.1.2.0@sha256:49d43dc863d14d89d91a676a968cea8d9f0030ad6ac95768747a44d0d273dd68
 flags: {}
 extra-package-dbs: []
