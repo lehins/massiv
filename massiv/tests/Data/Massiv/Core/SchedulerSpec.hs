@@ -11,9 +11,6 @@ import           Control.Exception.Base    (ArithException (DivideByZero),
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Massiv.Scheduler
 import           Prelude                   as P
-import           Test.Hspec
-import           Test.QuickCheck
-import           Test.QuickCheck.Monadic
 
 
 -- | Ensure proper exception handling.

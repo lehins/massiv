@@ -1,11 +1,9 @@
 # massiv
 
-`massiv` is a Haskell library for array manipulation. Performance is one of its
-main goals, thus it is able to run effortlessly almost all operations in
-parallel as well as sequentially.
+`massiv` is a Haskell library for array manipulation. Performance is one of its main goals, thus it
+is capable of seemless parallelization of almost all of operations.
 
-The name for this library comes from the Russian word Massiv (Масси́в), which
-means an Array.
+The name for this library comes from the Russian word Massiv (Масси́в), which means an Array.
 
 ## Status
 

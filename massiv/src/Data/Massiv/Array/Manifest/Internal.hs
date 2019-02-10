@@ -34,8 +34,9 @@ module Data.Massiv.Array.Manifest.Internal
   , convertAs
   , convertProxy
   , gcastArr
-  , fromRaggedArray
+  , fromRaggedArrayM
   , fromRaggedArray'
+  , fromRaggedArray
   , sizeofArray
   , sizeofMutableArray
   ) where
@@ -319,15 +320,31 @@ fromRaggedArray arr =
         loadRagged (scheduleWork scheduler) (unsafeLinearWrite mArr) 0 (totalElem sz) sz arr
       unsafeFreeze comp mArr
 {-# INLINE fromRaggedArray #-}
+{-# DEPRECATED fromRaggedArray "In favor of a more general `fromRaggedArrayM`" #-}
+
+-- | Convert a ragged array into a common array with rectangular shaped. Throws `ShapeException`
+-- whenever supplied ragged array does not have a rectangular shape.
+--
+-- @since 0.3.0
+fromRaggedArrayM ::
+     (Ragged r' ix e, Load r' ix e, Mutable r ix e, MonadThrow m)
+  => Array r' ix e
+  -> m (Array r ix e)
+fromRaggedArrayM arr =
+  let sz = edgeSize arr
+   in either (\(e :: ShapeException) -> throwM e) pure $
+      unsafePerformIO $
+      try $
+      createArray_ (getComp arr) sz $ \_numWorkers scheduleWork' marr -> do
+        loadRagged scheduleWork' (unsafeLinearWrite marr) 0 (totalElem sz) sz arr
+{-# INLINE fromRaggedArrayM #-}
+
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not
 -- rectangular.
-fromRaggedArray' :: (Load r' ix e, Ragged r' ix e, Mutable r ix e) =>
-                    Array r' ix e -> Array r ix e
-fromRaggedArray' arr = either throw id $ fromRaggedArray arr
+fromRaggedArray' :: (Load r' ix e, Ragged r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
+fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
 {-# INLINE fromRaggedArray' #-}
-
-
 
 
 -- | Same as `compute`, but with `Stride`.
@@ -338,18 +355,9 @@ computeWithStride ::
   -> Array r ix e
 computeWithStride stride !arr =
   unsafePerformIO $ do
-    let sz = strideSize stride (size arr)
-        comp = getComp arr
-    mArr <- unsafeNew sz
-    withScheduler_ comp $ \scheduler ->
-      loadArrayWithStrideM
-        (numWorkers scheduler)
-        (scheduleWork scheduler)
-        stride
-        sz
-        arr
-        (unsafeLinearWrite mArr)
-    unsafeFreeze comp mArr
+    let !sz = strideSize stride (size arr)
+    createArray_ (getComp arr) sz $ \numWorkers' scheduleWork' marr ->
+      loadArrayWithStrideM numWorkers' scheduleWork' stride sz arr (unsafeLinearWrite marr)
 {-# INLINE computeWithStride #-}
 
 

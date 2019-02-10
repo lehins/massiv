@@ -47,7 +47,12 @@ module Data.Massiv.Array.Ops.Transform
   -- ** Upsample/Downsample
   , upsample
   , downsample
-  -- * Traverse
+  -- ** Transform
+  , transformM
+  , transform'
+  , transform2M
+  , transform2'
+  -- ** Traverse (deprecated)
   , traverse
   , traverse2
   ) where
@@ -59,6 +64,7 @@ import qualified Data.List                       as L (uncons)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Ops.Construct
+import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
 import           Data.Massiv.Scheduler           (traverse_)
@@ -366,12 +372,6 @@ cons e arr =
     }
 {-# INLINE cons #-}
 
--- cons :: Load r Ix1 e => e -> Array r Ix1 e -> Array DL Ix1 e
--- cons !e !arr =
---   DLArray (getComp arr) (SafeSz (1 + unSz (size arr))) $ \numWorkers scheduleWith startAt uWrite ->
---     uWrite startAt e >> loadArray numWorkers scheduleWith arr (\ !i -> uWrite (i + startAt))
--- {-# INLINE cons #-}
-
 unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
 unconsM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
@@ -382,15 +382,6 @@ unconsM arr
   where
     !sz = size arr
 {-# INLINE unconsM #-}
-
--- snoc :: Load r Ix1 e => Array r Ix1 e -> e -> Array DL Ix1 e
--- snoc !arr !e =
---   DLArray (getComp arr) (SafeSz (1 + k)) $ \numWorkers scheduleWith uWrite ->
---     loadArray numWorkers scheduleWith arr uWrite >> uWrite k e
---   where
---     !k = unSz (size arr)
--- {-# INLINE snoc #-}
-
 
 snoc :: Array DL Ix1 e -> e -> Array DL Ix1 e
 snoc arr e =
@@ -656,7 +647,7 @@ traverse
   -> Array D ix e
 traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluate' arr1))
 {-# INLINE traverse #-}
-
+{-# DEPRECATED traverse "In favor of more general `transform'`" #-}
 
 -- | Create an array by traversing two source arrays.
 traverse2
@@ -666,6 +657,57 @@ traverse2
   -> Array r1 ix1 e1
   -> Array r2 ix2 e2
   -> Array D ix e
-traverse2 sz f arr1 arr2 = makeArray (getComp arr1) sz (f (evaluate' arr1) (evaluate' arr2))
+traverse2 sz f arr1 arr2 =
+  makeArray (getComp arr1 <> getComp arr2) sz (f (evaluate' arr1) (evaluate' arr2))
 {-# INLINE traverse2 #-}
+{-# DEPRECATED traverse2 "In favor of more general `transform2'`" #-}
 
+
+transformM ::
+     (Source r' ix' e', Mutable r ix e, MonadUnliftIO m, PrimMonad m, MonadThrow m)
+  => (Sz ix' -> m (Sz ix, a))
+  -> (a -> (ix' -> m e') -> ix -> m e)
+  -> Array r' ix' e'
+  -> m (Array r ix e)
+transformM getSzM getM arr = do
+  (sz, a) <- getSzM (size arr)
+  generateArray (getComp arr) sz (getM a (evaluateM arr))
+{-# INLINE transformM #-}
+
+
+transform' ::
+     (Source r' ix' e', Index ix)
+  => (Sz ix' -> (Sz ix, a))
+  -> (a -> (ix' -> e') -> ix -> e)
+  -> Array r' ix' e'
+  -> Array D ix e
+transform' getSz get arr = makeArray (getComp arr) sz (get a (evaluate' arr))
+  where
+    (sz, a) = getSz (size arr)
+{-# INLINE transform' #-}
+
+transform2M ::
+     (Source r1 ix1 e1, Source r2 ix2 e2, Mutable r ix e, MonadUnliftIO m, PrimMonad m, MonadThrow m)
+  => (Sz ix1 -> Sz ix2 -> m (Sz ix, a))
+  -> (a -> (ix1 -> m e1) -> (ix2 -> m e2) -> ix -> m e)
+  -> Array r1 ix1 e1
+  -> Array r2 ix2 e2
+  -> m (Array r ix e)
+transform2M getSzM getM arr1 arr2 = do
+  (sz, a) <- getSzM (size arr1) (size arr2)
+  generateArray (getComp arr1 <> getComp arr2) sz (getM a (evaluateM arr1) (evaluateM arr2))
+{-# INLINE transform2M #-}
+
+
+transform2' ::
+     (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
+  => (Sz ix1 -> Sz ix2 -> (Sz ix, a))
+  -> (a -> (ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
+  -> Array r1 ix1 e1
+  -> Array r2 ix2 e2
+  -> Array D ix e
+transform2' getSz get arr1 arr2 =
+  makeArray (getComp arr1 <> getComp arr2) sz (get a (evaluate' arr1) (evaluate' arr2))
+  where
+    (sz, a) = getSz (size arr1) (size arr2)
+{-# INLINE transform2' #-}

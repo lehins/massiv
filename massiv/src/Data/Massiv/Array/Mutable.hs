@@ -38,6 +38,8 @@ module Data.Massiv.Array.Mutable
   -- *** Create pure
   , createArray_
   , createArray
+  , createArrayS_
+  , createArrayS
   , createArrayST_
   , createArrayST
   -- *** Generate
@@ -68,7 +70,6 @@ module Data.Massiv.Array.Mutable
 
 import           Prelude                             hiding (mapM, read)
 import           Control.Monad                       (unless)
-import           Control.Monad.Primitive             (PrimMonad (..))
 import           Control.Monad.ST
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Scheduler
@@ -240,6 +241,8 @@ makeMArrayLinear comp sz f = do
 {-# INLINE makeMArrayLinear #-}
 
 
+
+
 -- | Create a new array by supplying an action that will fill the new blank mutable array. Use
 -- `createArray` if you'd like to keep the result of the filling function.
 --
@@ -252,50 +255,95 @@ makeMArrayLinear comp sz f = do
 -- @since 0.2.6
 --
 createArray_ ::
+     (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
+  => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
+  -> Sz ix -- ^ Size of the newly created array
+  -> (Int -> (m () -> m ()) -> MArray (PrimState m) r ix e -> m a)
+  -- ^ An action that should fill all elements of the brand new mutable array
+  -> m (Array r ix e)
+createArray_ comp sz action = do
+  marr <- new sz
+  withScheduler_ comp $ \scheduler ->
+    action (numWorkers scheduler) (scheduleWork_ scheduler) marr
+  unsafeFreeze comp marr
+{-# INLINE createArray_ #-}
+
+-- | Just like `createArray_`, but together with `Array` it returns the result of the filling action.
+--
+-- @since 0.3.0
+--
+createArray ::
+     (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
+  => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
+  -> Sz ix -- ^ Size of the newly created array
+  -> (Int -> (m a -> m ()) -> MArray (PrimState m) r ix e -> m [a])
+  -- ^ An action that should fill all elements of the brand new mutable array
+  -> m ([a], Array r ix e)
+createArray comp sz action = do
+  marr <- new sz
+  a <- withScheduler comp $ \scheduler ->
+    action (numWorkers scheduler) (scheduleWork scheduler) marr
+  arr <- unsafeFreeze comp marr
+  return (a, arr)
+{-# INLINE createArray #-}
+
+
+-- | Create a new array by supplying an action that will fill the new blank mutable array. Use
+-- `createArray` if you'd like to keep the result of the filling function.
+--
+-- ====__Examples__
+--
+-- >>> createArray_ Seq (Ix1 2) (\ marr -> write marr 0 10 >> write marr 1 11) :: IO (Array P Ix1 Int)
+-- (Array P Seq (2)
+--   [ 10,11 ])
+--
+-- @since 0.3.0
+--
+createArrayS_ ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
-createArray_ comp sz action = snd <$> createArray comp sz action
-{-# INLINE createArray_ #-}
+createArrayS_ comp sz action = snd <$> createArrayS comp sz action
+{-# INLINE createArrayS_ #-}
 
 -- | Just like `createArray_`, but together with `Array` it returns the result of the filling action.
 --
--- @since 0.2.6
+-- @since 0.3.0
 --
-createArray ::
+createArrayS ::
      (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (a, Array r ix e)
-createArray comp sz action = do
+createArrayS comp sz action = do
   marr <- new sz
   a <- action marr
   arr <- unsafeFreeze comp marr
   return (a, arr)
-{-# INLINE createArray #-}
+{-# INLINE createArrayS #-}
 
--- | Just like `createArray_`, but restricted to `ST`.
+-- | Just like `createArrayS_`, but restricted to `ST`.
 --
--- @since 0.2.6
+-- @since 0.3.0
 --
 createArrayST_ ::
      Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
-createArrayST_ comp sz action = runST $ createArray_ comp sz action
+createArrayST_ comp sz action = runST $ createArrayS_ comp sz action
 {-# INLINE createArrayST_ #-}
 
 
--- | Just like `createArray`, but restricted to `ST`.
+-- | Just like `createArrayS`, but restricted to `ST`.
 --
 -- @since 0.2.6
 --
 createArrayST ::
      Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> (a, Array r ix e)
-createArrayST comp sz action = runST $ createArray comp sz action
+createArrayST comp sz action = runST $ createArrayS comp sz action
 {-# INLINE createArrayST #-}
 
 
@@ -419,7 +467,7 @@ unfoldlPrim ::
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)
 unfoldlPrim comp sz gen acc0 =
-  createArray comp sz $ \marr ->
+  createArrayS comp sz $ \marr ->
     let sz' = msize marr
      in iterLinearM sz' 0 (totalElem sz') 1 (<) acc0 $ \i ix acc -> do
           (acc', e) <- gen acc ix

@@ -8,8 +8,6 @@ import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Array
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
-import           Test.Hspec
-import           Test.QuickCheck
 
 
 downsampleArr :: Source r ix e => Stride ix -> Array r ix e -> Array D ix e

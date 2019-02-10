@@ -9,10 +9,6 @@ import           Data.Massiv.CoreArbitrary as A
 import           Data.Semigroup
 import           Prelude                   hiding (map, product, sum)
 import qualified Prelude                   as P (length, sum)
-import           Test.Hspec
-import           Test.QuickCheck
-import           Test.QuickCheck.Function
-import           Test.QuickCheck.Monadic
 
 
 prop_SumSEqSumP :: Index ix => proxy ix -> Array D ix Int -> Bool

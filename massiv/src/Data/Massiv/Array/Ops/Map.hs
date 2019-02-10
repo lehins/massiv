@@ -16,9 +16,13 @@ module Data.Massiv.Array.Ops.Map
   -- ** Traversing
   -- *** Applicative
   , traverseA
+  , traverseA_
   , itraverseA
+  , itraverseA_
   , traverseAR
   , itraverseAR
+  , sequenceA
+  , sequenceA_
   -- *** PrimMonad
   , traversePrim
   , itraversePrim
@@ -57,6 +61,11 @@ module Data.Massiv.Array.Ops.Map
   , izipWith
   , izipWith3
   , liftArray2
+  -- *** Applicative
+  , zipWithA
+  , izipWithA
+  , zipWith3A
+  , izipWith3A
   ) where
 
 import           Control.Monad                       (void)
@@ -71,7 +80,7 @@ import           Data.Massiv.Scheduler
 import           Prelude                             hiding (map, mapM, mapM_,
                                                       traverse, unzip, unzip3,
                                                       zip, zip3, zipWith,
-                                                      zipWith3)
+                                                      zipWith3, sequenceA)
 
 --------------------------------------------------------------------------------
 -- map -------------------------------------------------------------------------
@@ -163,6 +172,70 @@ izipWith3 f arr1 arr2 arr3 =
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
 
+
+-- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
+-- resulting array has Mutable representation.
+--
+-- @since 0.3.0
+zipWithA ::
+     (Source r1 ix e1, Source r2 ix e2, Applicative f, Mutable r ix e)
+  => (e1 -> e2 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> f (Array r ix e)
+zipWithA f = izipWithA (const f)
+{-# INLINE zipWithA #-}
+
+-- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
+-- resulting array has Mutable representation.
+--
+-- @since 0.3.0
+izipWithA ::
+     (Source r1 ix e1, Source r2 ix e2, Applicative f, Mutable r ix e)
+  => (ix -> e1 -> e2 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> f (Array r ix e)
+izipWithA f arr1 arr2 =
+  makeArrayA
+    (getComp arr1 <> getComp arr2)
+    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))) $ \ !ix ->
+    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
+{-# INLINE izipWithA #-}
+
+-- | Same as `zipWithA`, but for three arrays.
+--
+-- @since 0.3.0
+zipWith3A ::
+     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Applicative f, Mutable r ix e)
+  => (e1 -> e2 -> e3 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> f (Array r ix e)
+zipWith3A f = izipWith3A (const f)
+{-# INLINE zipWith3A #-}
+
+-- | Same as `izipWithA`, but for three arrays.
+--
+-- @since 0.3.0
+izipWith3A ::
+     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Applicative f, Mutable r ix e)
+  => (ix -> e1 -> e2 -> e3 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> f (Array r ix e)
+izipWith3A f arr1 arr2 arr3 =
+  makeArrayA (getComp arr1 <> getComp arr2 <> getComp arr3) sz $ \ !ix ->
+    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
+  where
+    sz =
+      SafeSz $
+      liftIndex2 min (liftIndex2 min (coerce (size arr1)) (coerce (size arr2))) (coerce (size arr3))
+{-# INLINE izipWith3A #-}
+
+
 --------------------------------------------------------------------------------
 -- traverse --------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -181,7 +254,33 @@ traverseA ::
 traverseA f arr = makeArrayA (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE traverseA #-}
 
--- | Traverse with an `Monad` index aware action over an array sequentially.
+-- | Traverse sequentially over a source array, while discarding the result.
+--
+-- @since 0.3.0
+--
+traverseA_ :: (Source r ix a, Applicative f) => (a -> f e) -> Array r ix a -> f ()
+traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearIndex arr)
+{-# INLINE traverseA_ #-}
+
+-- | Sequence actions in a source array.
+--
+-- @since 0.3.0
+--
+sequenceA ::
+     (Source r' ix (f e), Mutable r ix e, Applicative f) => Array r' ix (f e) -> f (Array r ix e)
+sequenceA = traverseA id
+{-# INLINE sequenceA #-}
+
+-- | Sequence actions in a source array, while discarding the result.
+--
+-- @since 0.3.0
+--
+sequenceA_ :: (Source r ix (f e), Applicative f) => Array r ix (f e) -> f ()
+sequenceA_ = traverseA_ id
+{-# INLINE sequenceA_ #-}
+
+
+-- | Traverse with an `Applicative` index aware action over an array sequentially.
 --
 -- @since 0.2.6
 --
@@ -192,6 +291,18 @@ itraverseA ::
   -> f (Array r ix e)
 itraverseA f arr = makeArrayA (getComp arr) (size arr) $ \ !ix -> f ix (unsafeIndex arr ix)
 {-# INLINE itraverseA #-}
+
+
+-- | Traverse with an `Applicative` index aware action over an array sequentially.
+--
+-- @since 0.2.6
+--
+itraverseA_ :: (Source r ix a, Applicative f) => (ix -> a -> f e) -> Array r ix a -> f ()
+itraverseA_ f arr =
+  loopA_ 0 (< totalElem sz) (+ 1) (\ !i -> f (fromLinearIndex sz i) (unsafeLinearIndex arr i))
+  where
+    sz = size arr
+{-# INLINE itraverseA_ #-}
 
 
 

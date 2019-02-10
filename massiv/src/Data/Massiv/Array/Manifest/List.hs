@@ -17,8 +17,9 @@ module Data.Massiv.Array.Manifest.List
   (
   -- ** List
     fromList
-  , fromLists
+  , fromListsM
   , fromLists'
+  , fromLists
   , toList
   , toLists
   , toLists2
@@ -74,10 +75,17 @@ fromList = fromLists'
 -- >>> fromLists Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix3 Int)
 -- Nothing
 --
+-- @since 0.3.0
+fromListsM :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Mutable r ix e, MonadThrow m)
+           => Comp -> [ListItem ix e] -> m (Array r ix e)
+fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
+{-# INLINE fromListsM #-}
+
 fromLists :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Mutable r ix e)
          => Comp -> [ListItem ix e] -> Maybe (Array r ix e)
-fromLists comp = either (const Nothing) Just . fromRaggedArray . setComp comp . throughNested
+fromLists comp = fromRaggedArrayM . setComp comp . throughNested
 {-# INLINE fromLists #-}
+{-# DEPRECATED fromLists "In favor of a more general `fromListsM`" #-}
 
 
 -- | Same as `fromLists`, but will throw an error on irregular shaped lists.

@@ -8,9 +8,6 @@ module Data.Massiv.Array.StencilSpec (spec) where
 import           Control.DeepSeq           (deepseq)
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
-import           Test.Hspec
-import           Test.QuickCheck
-import           Test.QuickCheck.Function
 import           Data.Default              (Default(def))
 
 -- sum3x3Stencil :: Fractional a => Stencil Ix2 a a

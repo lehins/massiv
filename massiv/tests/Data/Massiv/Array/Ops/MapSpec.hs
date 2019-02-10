@@ -2,50 +2,45 @@
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Data.Massiv.Array.Ops.MapSpec (spec) where
 
 import           Control.Monad.ST
 import           Data.Foldable             as F
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.CoreArbitrary as A
-import           Data.Proxy
 import           Prelude                   as P
-import           Test.Hspec
-import           Test.QuickCheck
-import           Test.QuickCheck.Function
+
 
 -- | For backwards compatibility with QuickCheck <= 2.9.2
 applyFun2' :: Fun (a, b) c -> (a -> b -> c)
 applyFun2' (Fun _ f) a b = f (a, b)
 
 prop_zipUnzip ::
-     (Arbitrary ix, CoArbitrary ix, Index ix, Show (Array D ix Int))
-  => proxy ix
-  -> Array D ix Int
+     (Index ix, Show (Array D ix Int))
+  => Array D ix Int
   -> Array D ix Int
   -> Property
-prop_zipUnzip _ arr1 arr2 =
+prop_zipUnzip arr1 arr2 =
   (extract' zeroIndex sz arr1, extract' zeroIndex sz arr2) === A.unzip (A.zip arr1 arr2)
   where sz = Sz (liftIndex2 min (unSz (size arr1)) (unSz (size arr2)))
 
 prop_zipFlip ::
-     (Arbitrary ix, CoArbitrary ix, Index ix, Show (Array D ix Int), Show (Array D ix (Int, Int)))
-  => proxy ix
-  -> Array D ix Int
+     (Index ix, Show (Array D ix (Int, Int)))
+  => Array D ix Int
   -> Array D ix Int
   -> Property
-prop_zipFlip _ arr1 arr2 =
+prop_zipFlip arr1 arr2 =
   A.zip arr1 arr2 ===
   A.map (\(e2, e1) -> (e1, e2)) (A.zip arr2 arr1)
 
 prop_zipUnzip3 ::
-     (Arbitrary ix, CoArbitrary ix, Index ix, Show (Array D ix Int))
-  => proxy ix
-  -> Array D ix Int
+     (Index ix, Show (Array D ix Int))
+  => Array D ix Int
   -> Array D ix Int
   -> Array D ix Int
   -> Property
-prop_zipUnzip3 _ arr1 arr2 arr3 =
+prop_zipUnzip3 arr1 arr2 arr3 =
   (extract' zeroIndex sz arr1, extract' zeroIndex sz arr2, extract' zeroIndex sz arr3) ===
   A.unzip3 (A.zip3 arr1 arr2 arr3)
   where
@@ -53,39 +48,25 @@ prop_zipUnzip3 _ arr1 arr2 arr3 =
       Sz (liftIndex2 min (liftIndex2 min (unSz (size arr1)) (unSz (size arr2))) (unSz (size arr3)))
 
 prop_zipFlip3 ::
-     ( Arbitrary ix
-     , CoArbitrary ix
-     , Index ix
-     , Show (Array D ix Int)
-     , Show (Array D ix (Int, Int, Int))
-     )
-  => proxy ix
-  -> Array D ix Int
+     (Index ix, Show (Array D ix (Int, Int, Int)))
+  => Array D ix Int
   -> Array D ix Int
   -> Array D ix Int
   -> Property
-prop_zipFlip3 _ arr1 arr2 arr3 =
+prop_zipFlip3 arr1 arr2 arr3 =
   A.zip3 arr1 arr2 arr3 === A.map (\(e3, e2, e1) -> (e1, e2, e3)) (A.zip3 arr3 arr2 arr1)
 
 
 
 prop_itraverseA ::
-     ( Arbitrary ix
-     , CoArbitrary ix
-     , Index ix
-     , Function ix
-     , Show (Array U ix Int)
-     )
-  => proxy ix
-  -> Array D ix Int
-  -> Fun (ix, Int) Int
-  -> Property
-prop_itraverseA _ arr fun =
+     (Index ix, Show (Array U ix Int)) => Array D ix Int -> Fun (ix, Int) Int -> Property
+prop_itraverseA arr fun =
   alt_imapM (\ix -> Just . applyFun2' fun ix) arr ===
   itraverseAR U (\ix -> Just . applyFun2' fun ix) arr
 
 
 mapSpec ::
+     forall ix.
      ( Arbitrary ix
      , CoArbitrary ix
      , Index ix
@@ -95,22 +76,22 @@ mapSpec ::
      , Show (Array D ix (Int, Int))
      , Show (Array D ix (Int, Int, Int))
      )
-  => proxy ix -> Spec
-mapSpec proxy = do
+  => Spec
+mapSpec = do
   describe "Zipping" $ do
-    it "zipUnzip" $ property $ prop_zipUnzip proxy
-    it "zipFlip" $ property $ prop_zipFlip proxy
-    it "zipUnzip3" $ property $ prop_zipUnzip3 proxy
-    it "zipFlip3" $ property $ prop_zipFlip3 proxy
+    it "zipUnzip" $ property $ prop_zipUnzip @ix
+    it "zipFlip" $ property $ prop_zipFlip @ix
+    it "zipUnzip3" $ property $ prop_zipUnzip3 @ix
+    it "zipFlip3" $ property $ prop_zipFlip3 @ix
   describe "Traversing" $ do
-    it "itraverseA" $ property $ prop_itraverseA proxy
+    it "itraverseA" $ property $ prop_itraverseA @ix
 
 spec :: Spec
 spec = do
-  describe "Ix1" $ mapSpec (Proxy :: Proxy Ix1)
-  describe "Ix2" $ mapSpec (Proxy :: Proxy Ix2)
-  describe "Ix3" $ mapSpec (Proxy :: Proxy Ix3)
-  describe "Ix4" $ mapSpec (Proxy :: Proxy Ix4)
+  describe "Ix1" $ mapSpec @Ix1
+  describe "Ix2" $ mapSpec @Ix2
+  describe "Ix3" $ mapSpec @Ix3
+  describe "Ix4" $ mapSpec @Ix4
 
 
 

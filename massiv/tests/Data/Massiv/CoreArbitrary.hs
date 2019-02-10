@@ -22,6 +22,7 @@ module Data.Massiv.CoreArbitrary
   , assertSomeExceptionIO
   , module Data.Massiv.Array
   , Semigroup((<>))
+  , module X
   ) where
 
 import           Control.DeepSeq            (NFData, deepseq)
@@ -29,8 +30,10 @@ import           Control.Exception          (Exception, SomeException, catch)
 import           Data.Massiv.Array
 import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
-import           Test.QuickCheck
-import           Test.QuickCheck.Monadic
+import           Test.Hspec                 as X
+import           Test.QuickCheck            as X hiding (resize)
+import           Test.QuickCheck.Monadic    as X
+import           Test.QuickCheck.Function   as X
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup
 #endif

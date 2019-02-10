@@ -14,8 +14,6 @@ import qualified Data.Vector.Generic          as VG
 import qualified Data.Vector.Primitive        as VP
 import qualified Data.Vector.Storable         as VS
 import qualified Data.Vector.Unboxed          as VU
-import           Test.Hspec
-import           Test.QuickCheck
 
 prop_castToFromVector
   :: ( VG.Vector (VRepr r) Int

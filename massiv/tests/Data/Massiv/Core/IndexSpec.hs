@@ -303,7 +303,7 @@ prop_BorderIx1 (Positive period) border getVal (SzNE sz) ix =
   where
     val = handleBorderIndex border sz (apply getVal) ix
 
-specDimN :: (Index ix, Ord ix, CoArbitrary ix, Arbitrary ix) => proxy ix -> Spec
+specDimN :: (Index ix, Arbitrary ix) => proxy ix -> Spec
 specDimN proxy = do
   describe "Safety" $ do
     it "isSafeIndex" $ property $ prop_IsSafeIx proxy
@@ -328,7 +328,7 @@ specDimN proxy = do
     it "PullOutInsert" $ property $ prop_PullOutInsert proxy
 
 specDim2AndUp
-  :: (Index ix, Index (Lower ix), Ord ix, CoArbitrary ix, Arbitrary ix)
+  :: (Index ix, Index (Lower ix), Arbitrary ix)
   => proxy ix -> Spec
 specDim2AndUp proxy = do
   describe "Higher/Lower" $ do

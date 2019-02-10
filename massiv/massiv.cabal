@@ -118,7 +118,13 @@ test-suite tests
                     , vector
 
   default-language:   Haskell2010
-  ghc-options:        -Wall -fno-warn-orphans -threaded -with-rtsopts=-N2
+  ghc-options:        -Wall
+                      -Wincomplete-record-updates
+                      -Wincomplete-uni-patterns
+                      -Wredundant-constraints
+                      -fno-warn-orphans
+                      -threaded
+                      -with-rtsopts=-N2
 
 source-repository head
   type:     git

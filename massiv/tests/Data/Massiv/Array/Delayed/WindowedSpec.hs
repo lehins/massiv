@@ -12,8 +12,6 @@ import           Data.Massiv.Array.Delayed
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Typeable
-import           Test.Hspec
-import           Test.QuickCheck
 
 
 data ArrDW ix e = ArrDW (Array D ix e) (Array DW ix e)

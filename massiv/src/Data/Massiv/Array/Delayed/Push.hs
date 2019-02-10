@@ -87,8 +87,7 @@ instance Monoid (Array DL Ix1 e) where
 makeLoadArray ::
      Comp
   -> Sz ix
-  -> (forall m. Monad m =>
-                  Int -> (m () -> m ()) -> Int -> (Int -> e -> m ()) -> m ())
+  -> (forall m. Monad m => Int -> (m () -> m ()) -> Int -> (Int -> e -> m ()) -> m ())
   -> Array DL ix e
 makeLoadArray comp sz f = DLArray comp sz f
 {-# INLINE makeLoadArray #-}

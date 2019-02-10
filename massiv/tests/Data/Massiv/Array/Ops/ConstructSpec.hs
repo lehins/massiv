@@ -3,14 +3,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Massiv.Array.Ops.ConstructSpec where
 
-import           Data.Massiv.Array         as A
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
 import qualified GHC.Exts                  as GHC (IsList (..))
 import           Prelude                   as P
 import           Prelude                   hiding (map)
-import           Test.Hspec
-import           Test.QuickCheck
 
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
@@ -37,7 +34,7 @@ prop_toFromListIsList _ (Arr arr) = arr === GHC.fromList (GHC.toList arr)
 
 
 prop_toFromList ::
-  forall ix . (Show (Array U ix Int), Nested LN ix Int, Nested L ix Int, Ragged L ix Int)
+  forall ix . (Show (Array U ix Int), Nested LN ix Int, Ragged L ix Int)
   => Proxy ix
   -> Arr U ix Int
   -> Property

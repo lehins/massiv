@@ -6,14 +6,10 @@ module Data.Massiv.Array.Ops.TransformSpec (spec) where
 
 import           Data.Massiv.CoreArbitrary as A
 import           Prelude                   as P
-import           Test.Hspec
-import           Test.QuickCheck
-import           Test.QuickCheck.Function
 
 
 prop_transposeOuterInner :: Arr D Ix2 Int -> Property
 prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
-
 
 prop_upsampleDownsample ::
      (Show (Array P ix Int), Index ix) => ArrTiny P ix Int -> Stride ix -> Int -> Property

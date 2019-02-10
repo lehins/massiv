@@ -68,6 +68,7 @@ module Data.Massiv.Core.Common
   , module Data.Massiv.Core.Exception
   , MonadUnliftIO
   , MonadIO(liftIO)
+  , PrimMonad(PrimState)
   ) where
 
 #if !MIN_VERSION_base(4,11,0)

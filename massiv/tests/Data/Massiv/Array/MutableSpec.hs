@@ -13,10 +13,7 @@ import           Data.Massiv.Array.Mutable.Atomic
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.CoreArbitrary        as A
 import           Data.Proxy
-import           Test.Hspec
-import           Test.QuickCheck
-import           Test.QuickCheck.Function
-import           Test.QuickCheck.Monadic
+
 
 prop_MapMapM :: (Show (Array r ix Int), Eq (Array r ix Int), Mutable r ix Int) =>
                 r -> Proxy ix -> Fun Int Int -> ArrTiny D ix Int -> Property
@@ -53,7 +50,8 @@ prop_atomicModifyIntArrayMany (ArrIx arr ix) barr =
         marr <- thaw arr
         mbarr' <- mapConcurrently (atomicModifyIntArray marr ix . const) barr
         x <- A.read' marr ix
-        pure (x : maybe (error "atomicModifyIntArray returned Nothing") toList (sequenceA mbarr'))
+        let xs = maybe (error "atomicModifyIntArray read'") toList (Prelude.sequenceA mbarr')
+        pure (x : xs)
     return (L.sort (index' arr ix : toList barr) === L.sort xs)
 
 
