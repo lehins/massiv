@@ -108,8 +108,8 @@ test-suite tests
   build-depends:      base             >= 4.8 && < 5
                     , async
                     , bytestring
-                    , deepseq
                     , data-default
+                    , deepseq
                     , safe-exceptions
                     , massiv
                     , massiv-scheduler

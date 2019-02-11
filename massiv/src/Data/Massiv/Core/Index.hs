@@ -81,6 +81,10 @@ module Data.Massiv.Core.Index
   , iterLinearM_
   , module Data.Massiv.Core.Iterator
   , module Data.Massiv.Core.Index.Tuple
+  -- * Exceptions
+  , IndexException(..)
+  , SizeException(..)
+  , ShapeException(..)
   ) where
 
 import           Control.Exception               (throw)

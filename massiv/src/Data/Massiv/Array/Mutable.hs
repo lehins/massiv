@@ -13,8 +13,10 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Mutable
-  ( -- ** Element-wise mutation
-    read
+  ( -- ** Size
+    msize
+    -- ** Element-wise mutation
+  , read
   , read'
   , write
   , write'
@@ -23,13 +25,12 @@ module Data.Massiv.Array.Mutable
   , swap
   , swap'
   -- ** Operate over `MArray`
-  -- *** Basic conversion
+  -- *** Immutable conversion
   , new
   , thaw
   , thawS
   , freeze
   , freezeS
-  , msize
   -- *** Create mutable
   , makeMArray
   , makeMArrayLinear
@@ -75,12 +76,12 @@ import           Data.Massiv.Core.Common
 import           Data.Massiv.Scheduler
 
 -- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
--- Boxed arrays that will be an `Uninitialized` exception, while for othere it will be zeros.
+-- boxed arrays in will be a thunk with `Uninitialized` exception, while for others it will be
+-- simply zeros.
 --
 -- ==== __Examples__
 --
--- >>> :set -XTypeApplications
--- >>> marr <- new @P @Int (Sz2 2 6)
+-- >>> marr <- new (Sz2 2 6) :: IO (MArray RealWorld P Ix2 Int)
 -- >>> freezeS Seq marr
 -- (Array P Seq (Sz2 (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
@@ -88,39 +89,65 @@ import           Data.Massiv.Scheduler
 --   ]
 -- )
 --
+-- Or using @TypeApplications@:
+--
+-- >>> :set -XTypeApplications
+-- >>> new @P @Ix2 @Int (Sz2 2 6) >>= freezeS Seq
+-- (Array P Seq (Sz2 (2 :. 6))
+--   [ [ 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0 ]
+--   ]
+-- )
+-- >>> new @B @Int (Sz2 2 6) >>= (`read'` 1)
+-- *** Exception: Uninitialized
+--
 -- @since 0.1.0
 new ::
-     forall r e ix m. (Mutable r ix e, PrimMonad m)
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
   => Sz ix
   -> m (MArray (PrimState m) r ix e)
 new = initializeNew Nothing
 {-# INLINE new #-}
 
--- | /O(n)/ - Make a mutable copy of a pure array.
+-- | /O(n)/ - Make a mutable copy of a pure array. Keep in mind that both `freeze` and `thaw` trigger a
+-- copy of the full array.
 --
 -- ==== __Example__
 --
 -- >>> :set -XTypeApplications
--- >>> a <- resizeM (Sz2 2 5) $ enumFromN @Int Seq 12 (Sz1 10)
--- >>> thaw @P a
--- >>> ma <- thaw @P a
--- >>> modify ma (`mod` 10) (1 :. 2)
+-- >>> arr <- fromListsM @U @Ix2 @Double Par [[12,21],[13,31]]
+-- >>> marr <- thaw arr
+-- >>> modify marr (+ 10) (1 :. 0)
 -- True
--- >>> freeze Seq ma
--- (Array P Seq (Sz2 (2 :. 5))
---   [ [ 12, 13, 14, 15, 16 ]
---   , [ 17, 18, 9, 20, 21 ]
+-- >>> freeze Par marr
+-- (Array U Par (Sz2 (2 :. 2))
+--   [ [ 12.0, 21.0 ]
+--   , [ 23.0, 31.0 ]
 --   ]
 -- )
 --
 -- @since 0.1.0
-thaw :: (Mutable r ix e, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
+thaw :: forall r ix e m. (Mutable r ix e, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
 thaw arr = liftIO $ makeMArrayLinear (getComp arr) (size arr) (pure . unsafeLinearIndexM arr)
 -- TODO: use faster memcpy
 {-# INLINE thaw #-}
 
-
-thawS :: (Mutable r ix e, PrimMonad m) => Array r ix e -> m (MArray (PrimState m) r ix e)
+-- | Same as `thaw`, but restrict computation to sequential only.
+--
+-- >>> :set -XOverloadedLists
+-- >>> thawS @P @Ix1 @Double [1..10]
+-- >>> marr <- thawS @P @Ix1 @Double [1..10]
+-- >>> write' marr 5 100
+-- >>> freezeS marr
+-- (Array P Seq (Sz1 (10))
+--   [ 1.0, 2.0, 3.0, 4.0, 5.0, 100.0, 7.0, 8.0, 9.0, 10.0 ]
+-- )
+--
+-- @since 0.3.0
+thawS ::
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
+  => Array r ix e
+  -> m (MArray (PrimState m) r ix e)
 thawS arr = makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
 -- TODO: use faster memcpy
 {-# INLINE thawS #-}
@@ -133,7 +160,14 @@ thawS arr = makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
 --
 -- ==== __Example__
 --
--- >>> ma <- thaw @P $ range Seq 100 (Ix1 110)
+-- >>> marr <- new @P @Int (Sz2 2 6)
+-- >>> forM_ (range Seq 0 (Ix2 1 4)) $ \ix -> write marr ix 9
+-- >>> freeze Seq marr
+-- (Array P Seq (Sz2 (2 :. 6))
+--   [ [ 9, 9, 9, 9, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0 ]
+--   ]
+-- )
 --
 -- @since 0.1.0
 freeze :: (Mutable r ix e, MonadIO m) => Comp -> MArray RealWorld r ix e -> m (Array r ix e)
@@ -141,18 +175,17 @@ freeze comp marr = liftIO $ generateArrayLinear comp (msize marr) (unsafeLinearR
 {-# INLINE freeze #-}
 
 
--- | Same as `freeze`, but disregard the supplied computation strategy when doing a copy of the
--- mutable array and perform it sequentially. Also, unlike `freeze` that has to be done in `IO`,
--- `freezeS` can be used with `ST`.
+-- | Same as `freeze`, but do the copy of supplied muable array sequentially. Also, unlike `freeze`
+-- that has to be done in `IO`, `freezeS` can be used with `ST`.
 --
 -- @since 0.3.0
-freezeS :: (Mutable r ix e, PrimMonad m) => Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
-freezeS comp marr = generateArrayLinearS comp (msize marr) (unsafeLinearRead marr)
+freezeS :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> m (Array r ix e)
+freezeS marr = generateArrayLinearS Seq (msize marr) (unsafeLinearRead marr)
 {-# INLINE freezeS #-}
 
 
 loadArrayS ::
-     forall r e ix r' m. (Load r' ix e, Mutable r ix e, PrimMonad m)
+     forall r ix e r' m. (Load r' ix e, Mutable r ix e, PrimMonad m)
   => Array r' ix e
   -> m (MArray (PrimState m) r ix e)
 loadArrayS arr = do
@@ -162,7 +195,7 @@ loadArrayS arr = do
 {-# INLINE loadArrayS #-}
 
 loadArray ::
-     forall r e ix r' m. (Load r' ix e, Mutable r ix e, MonadIO m)
+     forall r ix e r' m. (Load r' ix e, Mutable r ix e, MonadIO m)
   => Array r' ix e
   -> m (MArray RealWorld r ix e)
 loadArray arr = liftIO $ do
@@ -569,7 +602,7 @@ read marr ix =
 {-# INLINE read #-}
 
 
--- | /O(1)/ - Same as `read`, but lives in IO and throws an `IndexOutOfBoundsException` on invalid
+-- | /O(1)/ - Same as `read`, but lives in IO and throws `IndexOutOfBoundsException` on invalid
 -- index.
 read' :: (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> m e
 read' marr ix = do
@@ -590,7 +623,7 @@ write marr ix e =
 {-# INLINE write #-}
 
 
--- | /O(1)/ - Same as `write`, but lives in IO and throws an `IndexOutOfBoundsException` on invalid
+-- | /O(1)/ - Same as `write`, but lives in IO and throws `IndexOutOfBoundsException` on invalid
 -- index.
 write' ::
      (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()

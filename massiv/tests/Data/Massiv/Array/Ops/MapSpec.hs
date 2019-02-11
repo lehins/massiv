@@ -12,9 +12,6 @@ import           Data.Massiv.CoreArbitrary as A
 import           Prelude                   as P
 
 
--- | For backwards compatibility with QuickCheck <= 2.9.2
-applyFun2' :: Fun (a, b) c -> (a -> b -> c)
-applyFun2' (Fun _ f) a b = f (a, b)
 
 prop_zipUnzip ::
      (Index ix, Show (Array D ix Int))
@@ -61,8 +58,8 @@ prop_zipFlip3 arr1 arr2 arr3 =
 prop_itraverseA ::
      (Index ix, Show (Array U ix Int)) => Array D ix Int -> Fun (ix, Int) Int -> Property
 prop_itraverseA arr fun =
-  alt_imapM (\ix -> Just . applyFun2' fun ix) arr ===
-  itraverseAR U (\ix -> Just . applyFun2' fun ix) arr
+  alt_imapM (\ix -> Just . applyFun2Compat fun ix) arr ===
+  itraverseAR U (\ix -> Just . applyFun2Compat fun ix) arr
 
 
 mapSpec ::

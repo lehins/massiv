@@ -23,6 +23,7 @@ module Data.Massiv.CoreArbitrary
   , module Data.Massiv.Array
   , Semigroup((<>))
   , module X
+  , applyFun2Compat
   ) where
 
 import           Control.DeepSeq            (NFData, deepseq)
@@ -36,6 +37,12 @@ import           Test.QuickCheck.Monadic    as X
 import           Test.QuickCheck.Function   as X
 #if !MIN_VERSION_base(4,11,0)
 import           Data.Semigroup
+#endif
+applyFun2Compat :: Fun (a, b) c -> (a -> b -> c)
+#if !MIN_VERSION_QuickCheck(2,9,2)
+applyFun2Compat (Fun _ f) a b = f (a, b)
+#else
+applyFun2Compat = applyFun2
 #endif
 
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.

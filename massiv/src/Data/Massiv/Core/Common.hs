@@ -81,7 +81,6 @@ import           Control.Monad.Primitive
 import           Data.Massiv.Scheduler.Computation
 import           Data.Massiv.Core.Exception
 import           Data.Massiv.Core.Index
-import           Data.Massiv.Core.Index.Internal
 import           Data.Typeable
 
 #include "massiv.h"

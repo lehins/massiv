@@ -35,10 +35,11 @@ import           Data.Massiv.Core.List
 import           GHC.Base                            (build)
 
 -- | Convert a flat list into a vector
-fromList :: (Nested LN Ix1 e, Nested L Ix1 e, Ragged L Ix1 e, Mutable r Ix1 e)
-         => Comp -- ^ Computation startegy to use
-         -> [e] -- ^ Flat list
-         -> Array r Ix1 e
+fromList ::
+     forall r e. Mutable r Ix1 e
+  => Comp -- ^ Computation startegy to use
+  -> [e] -- ^ Flat list
+  -> Array r Ix1 e
 fromList = fromLists'
 {-# INLINE fromList #-}
 
@@ -76,12 +77,12 @@ fromList = fromLists'
 -- Nothing
 --
 -- @since 0.3.0
-fromListsM :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Mutable r ix e, MonadThrow m)
+fromListsM :: forall r ix e m . (Nested LN ix e, Ragged L ix e, Mutable r ix e, MonadThrow m)
            => Comp -> [ListItem ix e] -> m (Array r ix e)
 fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 {-# INLINE fromListsM #-}
 
-fromLists :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Mutable r ix e)
+fromLists :: (Nested LN ix e, Ragged L ix e, Mutable r ix e)
          => Comp -> [ListItem ix e] -> Maybe (Array r ix e)
 fromLists comp = fromRaggedArrayM . setComp comp . throughNested
 {-# INLINE fromLists #-}
@@ -119,7 +120,7 @@ fromLists comp = fromRaggedArrayM . setComp comp . throughNested
 -- >>> fromLists' Seq [[1],[3,4]] :: Array U Ix2 Int
 -- (Array U *** Exception: Too many elements in a row
 --
-fromLists' :: (Nested LN ix e, Nested L ix e, Ragged L ix e, Mutable r ix e)
+fromLists' :: forall r ix e . (Nested LN ix e, Ragged L ix e, Mutable r ix e)
          => Comp -- ^ Computation startegy to use
          -> [ListItem ix e] -- ^ Nested list
          -> Array r ix e
@@ -127,7 +128,7 @@ fromLists' comp = fromRaggedArray' . setComp comp . throughNested
 {-# INLINE fromLists' #-}
 
 
-throughNested :: forall ix e . (Nested LN ix e, Nested L ix e) => [ListItem ix e] -> Array L ix e
+throughNested :: forall ix e . Nested LN ix e => [ListItem ix e] -> Array L ix e
 throughNested xs = fromNested (fromNested xs :: Array LN ix e)
 {-# INLINE throughNested #-}
 
@@ -163,7 +164,7 @@ toList !arr = build (\ c n -> foldrFB c n arr)
 -- >>> toLists arr
 -- [[[(0,0,0),(0,0,1),(0,0,2)]],[[(1,0,0),(1,0,1),(1,0,2)]]]
 --
-toLists :: (Nested LN ix e, Nested L ix e, Construct L ix e, Source r ix e)
+toLists :: (Nested LN ix e, Construct L ix e, Source r ix e)
        => Array r ix e
        -> [ListItem ix e]
 toLists = toNested . toNested . toListArray
