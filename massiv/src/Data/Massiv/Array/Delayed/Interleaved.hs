@@ -20,7 +20,7 @@ module Data.Massiv.Array.Delayed.Interleaved
 
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List          (L, showsArrayPrec)
+import           Data.Massiv.Core.List          (L, showsArrayPrec, showArrayList)
 
 
 -- | Delayed array that will be loaded in an interleaved fasion during parallel

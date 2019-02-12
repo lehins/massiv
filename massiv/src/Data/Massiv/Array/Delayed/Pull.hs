@@ -29,7 +29,7 @@ import qualified Data.Foldable                        as F
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List               (showsArrayPrec, L)
+import           Data.Massiv.Core.List               (L, showsArrayPrec, showArrayList)
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
 

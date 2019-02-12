@@ -29,7 +29,7 @@ module Data.Massiv.Core.List
 import           Control.Exception
 import           Control.Monad                   (unless, when)
 import           Data.Coerce
-import           Data.Foldable                   (foldr', foldl')
+import           Data.Foldable                   (foldr')
 import qualified Data.List                       as L
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal

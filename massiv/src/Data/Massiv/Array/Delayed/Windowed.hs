@@ -31,7 +31,7 @@ import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Data.Massiv.Core.List               (L, showsArrayPrec)
+import           Data.Massiv.Core.List               (L, showsArrayPrec, showArrayList)
 import           Data.Maybe                          (fromMaybe)
 import           GHC.TypeLits
 
