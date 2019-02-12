@@ -39,10 +39,10 @@ import           Test.QuickCheck.Function   as X
 import           Data.Semigroup
 #endif
 applyFun2Compat :: Fun (a, b) c -> (a -> b -> c)
-#if !MIN_VERSION_QuickCheck(2,9,2)
-applyFun2Compat (Fun _ f) a b = f (a, b)
-#else
+#if MIN_VERSION_QuickCheck(2,10,0)
 applyFun2Compat = applyFun2
+#else
+applyFun2Compat (Fun _ f) a b = f (a, b)
 #endif
 
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
