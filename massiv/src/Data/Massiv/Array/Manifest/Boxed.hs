@@ -89,9 +89,11 @@ data instance Array B ix e = BArray { bComp :: !Comp
 
 instance (Ragged L ix e, Show e) => Show (Array B ix e) where
   showsPrec = showsArrayPrec id
+  showList = showArrayList
 
 instance (Ragged L ix e, Show e) => Show (Array DL ix e) where
   showsPrec = showsArrayPrec (computeAs B)
+  showList = showArrayList
 
 
 instance (Index ix, NFData e) => NFData (Array B ix e) where
@@ -253,6 +255,7 @@ newtype instance Array N ix e = NArray { bArray :: Array B ix e }
 
 instance (Ragged L ix e, Show e, NFData e) => Show (Array N ix e) where
   showsPrec = showsArrayPrec bArray
+  showList = showArrayList
 
 instance (Index ix, NFData e) => NFData (Array N ix e) where
   rnf (NArray barr) = barr `deepseqArray` ()

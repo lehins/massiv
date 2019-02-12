@@ -61,6 +61,7 @@ data instance Array DW ix e = DWArray { dwArray :: !(Array D ix e)
 
 instance (Ragged L ix e, Load DW ix e, Show e) => Show (Array DW ix e) where
   showsPrec = showsArrayPrec (computeAs B)
+  showList = showArrayList
 
 
 instance Index ix => Construct DW ix e where

@@ -33,6 +33,7 @@ newtype instance Array DI ix e = DIArray { diArray :: Array D ix e }
 
 instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
   showsPrec = showsArrayPrec diArray
+  showList = showArrayList
 
 instance Index ix => Construct DI ix e where
   setComp c arr = arr { diArray = (diArray arr) { dComp = c } }

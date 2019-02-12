@@ -87,6 +87,7 @@ type instance EltRepr M ix = M
 
 instance (Ragged L ix e, Show e) => Show (Array M ix e) where
   showsPrec = showsArrayPrec id
+  showList = showArrayList
 
 
 instance (Eq e, Index ix) => Eq (Array M ix e) where

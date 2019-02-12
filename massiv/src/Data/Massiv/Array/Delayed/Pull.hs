@@ -45,6 +45,7 @@ type instance EltRepr D ix = D
 
 instance (Ragged L ix e, Show e) => Show (Array D ix e) where
   showsPrec = showsArrayPrec id
+  showList = showArrayList
 
 instance Index ix => Resize Array D ix where
   unsafeResize !sz !arr =

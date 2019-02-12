@@ -51,6 +51,7 @@ data instance Array U ix e = UArray { uComp :: !Comp
 
 instance (Ragged L ix e, Show e, VU.Unbox e) => Show (Array U ix e) where
   showsPrec = showsArrayPrec id
+  showList = showArrayList
 
 instance NFData ix => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()

@@ -22,13 +22,14 @@ module Data.Massiv.Core.List
   , Array(..)
   , toListArray
   , showsArrayPrec
+  , showArrayList
   , ListItem
   ) where
 
 import           Control.Exception
 import           Control.Monad                   (unless, when)
 import           Data.Coerce
-import           Data.Foldable                   (foldr')
+import           Data.Foldable                   (foldr', foldl')
 import qualified Data.List                       as L
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal
@@ -305,13 +306,13 @@ showsArrayLAsPrec pr n arr =
   opp .
   ("Array " ++) .
   showsTypeRep (typeRep pr) .
-  (" " ++) .
+  (' ':) .
   showsPrec 1 (getComp arr) . (" (" ++) . shows (size arr) . (")\n" ++) . shows lnarr . clp
   where
     (opp, clp) =
       if n == 0
         then (id, id)
-        else (("(" ++), (++ "\n)"))
+        else (('(':), ("\n)" ++))
     lnarr = toNested arr
 
 
@@ -325,6 +326,18 @@ showsArrayPrec f n arr = showsArrayLAsPrec (Proxy :: Proxy r) n larr
   where
     arr' = f arr
     larr = makeArray (getComp arr') (size arr') (evaluate' arr') :: Array L ix' e
+
+
+showArrayList
+  :: Show arr => [arr] -> String -> String
+showArrayList arrs s = ('[':) . go arrs . (']':) $ s
+  where
+    go [] = id
+    go [x] = (' ':) . shows x . ('\n':)
+    go (x:xs) = (' ':) . shows x . ("\n," ++) . go xs
+
+  -- ("["++ ) . foldl' showsAcc (++ s) arrs $ "]"
+  -- where showsAcc acc arr = (" " ++) . shows arr . ("\n," ++) . acc
 
 
 instance {-# OVERLAPPING #-} OuterSlice L Ix1 e where

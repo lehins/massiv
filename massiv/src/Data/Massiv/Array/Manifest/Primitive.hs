@@ -70,6 +70,7 @@ data instance Array P ix e = PArray { pComp :: !Comp
 
 instance (Ragged L ix e, Show e, Prim e) => Show (Array P ix e) where
   showsPrec = showsArrayPrec id
+  showList = showArrayList
 
 instance Index ix => NFData (Array P ix e) where
   rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()
