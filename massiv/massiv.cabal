@@ -9,7 +9,8 @@ author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
 copyright:           2018-2019 Alexey Kuleshevich
 category:            Data, Data Structures
-build-type:          Simple
+--build-type:          Simple
+build-type:          Custom
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
@@ -18,6 +19,12 @@ flag unsafe-checks
                significant performance penalty
   default: False
   manual: True
+
+custom-setup
+  setup-depends:
+      base
+    , Cabal
+    , cabal-doctest  >=1.0.6
 
 library
   hs-source-dirs:      src
@@ -78,12 +85,10 @@ library
     cpp-options: -DMASSIV_UNSAFE_CHECKS
 
   default-language:    Haskell2010
-  ghc-options:         -Wall
-                       -Wincomplete-record-updates
-                       -Wincomplete-uni-patterns
-                       -Wredundant-constraints
-
-
+  ghc-options:        -Wall
+                      -Wincomplete-record-updates
+                      -Wincomplete-uni-patterns
+                      -Wredundant-constraints
 
 test-suite tests
   type:               exitcode-stdio-1.0
@@ -118,13 +123,24 @@ test-suite tests
                     , vector
 
   default-language:   Haskell2010
-  ghc-options:        -Wall
-                      -Wincomplete-record-updates
-                      -Wincomplete-uni-patterns
-                      -Wredundant-constraints
-                      -fno-warn-orphans
-                      -threaded
-                      -with-rtsopts=-N2
+  ghc-options:       -Wall
+                     -Wincomplete-record-updates
+                     -Wincomplete-uni-patterns
+                     -Wredundant-constraints
+                     -fno-warn-orphans
+                     -threaded
+                     -with-rtsopts=-N2
+
+test-suite doctests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  main-is:          doctests.hs
+  build-depends: base
+               , doctest           >=0.15
+               , QuickCheck
+               , massiv
+               , template-haskell
+  default-language:    Haskell2010
 
 source-repository head
   type:     git

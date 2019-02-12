@@ -19,7 +19,6 @@ import           Control.Exception
 prop_ExtractEqualsExtractFromTo ::
      ( Eq (Array (EltRepr r ix) ix e)
      , Show (Array (EltRepr r ix) ix e)
-     , Arbitrary (Array r ix e)
      , Extract r ix e
      )
   => proxy (r, ix, e)
@@ -28,8 +27,6 @@ prop_ExtractEqualsExtractFromTo ::
   -> Property
 prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
   maybe Nothing Just (extractFromToM sIx eIx arr) === extractM sIx (Sz (liftIndex2 (-) eIx sIx)) arr
-
-
 
 
 specSizeN ::
@@ -53,7 +50,7 @@ specSizeN proxy = do
 
 
 prop_SliceRight ::
-     (Arbitrary (Array r ix e), Slice r ix e, OuterSlice r ix e, Eq (Elt r ix e), Show (Elt r ix e))
+     (Slice r ix e, OuterSlice r ix e, Eq (Elt r ix e), Show (Elt r ix e))
   => proxy (r, ix, e)
   -> Int
   -> Array r ix e
@@ -64,7 +61,7 @@ prop_SliceRight _ i arr =
 
 
 prop_SliceLeft ::
-     (Arbitrary (Array r ix e), Slice r ix e, InnerSlice r ix e, Eq (Elt r ix e), Show (Elt r ix e))
+     (Slice r ix e, InnerSlice r ix e, Eq (Elt r ix e), Show (Elt r ix e))
   => proxy (r, ix, e)
   -> Int
   -> Array r ix e
@@ -202,7 +199,6 @@ prop_SliceIndexDim4M (ArrIx arr ix@(i1 :> i2 :> i3 :. i4)) =
 
 specSliceN :: ( Arbitrary (Array r ix e)
               , Show (Array r ix e)
-              , Arbitrary ix
               , Slice r ix e
               , OuterSlice r ix e
               , InnerSlice r ix e

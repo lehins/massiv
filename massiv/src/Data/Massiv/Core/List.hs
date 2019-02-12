@@ -21,7 +21,7 @@ module Data.Massiv.Core.List
   , L(..)
   , Array(..)
   , toListArray
-  , showArray
+  , showsArrayPrec
   , ListItem
   ) where
 
@@ -121,14 +121,14 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
       return (e:acc)
     return $ LArray comp $ coerce xs
   {-# INLINE generateRaggedM #-}
-  loadRagged using uWrite start end _ xs =
+  loadRagged using uWrite start end sz xs =
     using $ do
       leftOver <-
         loopM start (< end) (+ 1) xs $ \i xs' ->
           case unconsR xs' of
-            Nothing      -> return $! throw (DimTooShortException 1)
+            Nothing      -> return $! throw (DimTooShortException sz (outerLength xs))
             Just (y, ys) -> uWrite i y >> return ys
-      unless (isNull leftOver) (return $! throw (DimTooLongException 1))
+      unless (isNull leftOver) (return $! throw DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f _ arr = L.concat $ "[ " : L.intersperse ", " (map f (coerce (lData arr))) ++ [" ]"]
 
@@ -143,6 +143,9 @@ instance (Index ix, Ragged L ix e) => Load L ix e where
   {-# INLINE loadArrayM #-}
 
 
+
+outerLength :: Array L ix e -> Sz Int
+outerLength = SafeSz . length . unList . lData
 
 instance ( Index ix
          , Index (Lower ix)
@@ -187,19 +190,19 @@ instance ( Index ix
       xs = concatMap (unList . lData . flatten . LArray (lComp arr)) (unList (lData arr))
   {-# INLINE flatten #-}
   loadRagged using uWrite start end sz xs = do
-    let (_, szL) = unconsSz sz
+    let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
-    when (isZero && not (isNull (flatten xs))) (return $! throw (DimTooLongException (dimensions sz)))
+    when (isZero && not (isNull (flatten xs))) (return $! throw DimTooLongException)
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
           case unconsR zs of
-            Nothing -> return $! throw (DimTooShortException (dimensions sz))
+            Nothing -> return $! throw (DimTooShortException k (outerLength xs))
             Just (y, ys) -> do
               _ <- loadRagged using uWrite i (i + step) szL y
               return ys
-      unless (isNull leftOver) (return $! throw (DimTooLongException (dimensions sz)))
+      unless (isNull leftOver) (return $! throw DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L (Lower ix) e)) sep (coerce xs)
@@ -277,11 +280,11 @@ toListArray !arr = makeArray (getComp arr) (size arr) (unsafeIndex arr)
 
 
 instance (Ragged L ix e, Show e) => Show (Array L ix e) where
-  show arr = "  " ++ raggedFormat show "\n  " arr
+  showsPrec = showsArrayLAsPrec (Proxy :: Proxy L)
 
-instance (Ragged L ix e, Show e) =>
-  Show (Array LN ix e) where
-  show arr = show (fromNested arr :: Array L ix e)
+instance (Ragged L ix e, Show e) => Show (Array LN ix e) where
+  show arr = "  " ++ raggedFormat show "\n  " arrL
+    where arrL = fromNested arr :: Array L ix e
 
 
 showN :: (String -> a -> String) -> String -> [a] -> String
@@ -292,47 +295,36 @@ showN fShow lnPrefix ls =
      L.intersperse (lnPrefix ++ ", ") (map (fShow (lnPrefix ++ "  ")) ls) ++ [lnPrefix, "]"])
 
 
--- instance ( Ragged L ix e
---          , Source r ix e
---          , Show e
---          , Typeable r
---          ) =>
---          Show (Array r ix e) where
---   show = showArray (showsTypeRep (typeRep (Proxy :: Proxy r)) " ")
-
-
--- showArray ::
---      forall r ix e. (Ragged L ix e, Load r ix e, Source r ix e, Show e)
---   => String
---   -> Array r ix e
---   -> String
--- showArray tyStr arr =
---     "(Array " ++ tyStr ++
---     showComp (getComp arr) ++ " (" ++
---     (show (size arr)) ++ ")\n" ++
---     show (makeArray (getComp arr) (size arr) (evaluate' arr) :: Array L ix e) ++ ")"
---     where showComp Seq = "Seq"
---           showComp Par = "Par"
---           showComp c   = "(" ++ show c ++ ")"
-
-
-showArray ::
-     forall r r' ix ix' e. (Show (Array L ix' e), Ragged L ix' e, Load r ix e, Source r' ix' e)
-  => (Array r ix e -> Array r' ix' e) -- ^ Modifier
-  -> Array r ix e -- Array to show
-  -> String
-showArray f arr =
-  "(Array " ++
-  showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-  showComp (getComp arr) ++
-  " (" ++
-  (show (size arr)) ++
-  ")\n" ++ show (makeArray (getComp arr') (size arr') (evaluate' arr') :: Array L ix' e) ++ "\n)"
+showsArrayLAsPrec ::
+     forall r ix e. (Ragged L ix e, Typeable r, Show e)
+  => Proxy r
+  -> Int
+  -> Array L ix e -- Array to show
+  -> ShowS
+showsArrayLAsPrec pr n arr =
+  opp .
+  ("Array " ++) .
+  showsTypeRep (typeRep pr) .
+  (" " ++) .
+  showsPrec 1 (getComp arr) . (" (" ++) . shows (size arr) . (")\n" ++) . shows lnarr . clp
   where
-    showComp Seq = "Seq"
-    showComp Par = "Par"
-    showComp c = "(" ++ show c ++ ")"
+    (opp, clp) =
+      if n == 0
+        then (id, id)
+        else (("(" ++), (++ "\n)"))
+    lnarr = toNested arr
+
+
+showsArrayPrec ::
+     forall r r' ix ix' e. (Ragged L ix' e, Load r ix e, Source r' ix' e, Show e)
+  => (Array r ix e -> Array r' ix' e) -- ^ Modifier
+  -> Int
+  -> Array r ix e -- Array to show
+  -> ShowS
+showsArrayPrec f n arr = showsArrayLAsPrec (Proxy :: Proxy r) n larr
+  where
     arr' = f arr
+    larr = makeArray (getComp arr') (size arr') (evaluate' arr') :: Array L ix' e
 
 
 instance {-# OVERLAPPING #-} OuterSlice L Ix1 e where

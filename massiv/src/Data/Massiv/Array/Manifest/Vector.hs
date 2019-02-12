@@ -166,8 +166,9 @@ castToVector arr =
 -- In this example a `S`torable Array is created and then casted into a Storable
 -- `VS.Vector` in costant time:
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> import qualified Data.Vector.Storable as VS
--- >>> toVector (makeArrayR S Par (5 :. 6) (\(i :. j) -> i + j)) :: VS.Vector Int
+-- >>> toVector (makeArrayR S Par (Sz2 5 6) (\(i :. j) -> i + j)) :: VS.Vector Int
 -- [0,1,2,3,4,5,1,2,3,4,5,6,2,3,4,5,6,7,3,4,5,6,7,8,4,5,6,7,8,9]
 --
 -- While in this example `S`torable Array will first be converted into `U`nboxed
@@ -175,7 +176,7 @@ castToVector arr =
 -- `VU.Vector` in constant time.
 --
 -- >>> import qualified Data.Vector.Unboxed as VU
--- >>> toVector (makeArrayR S Par (5 :. 6) (\(i :. j) -> i + j)) :: VU.Vector Int
+-- >>> toVector (makeArrayR S Par (Sz2 5 6) (\(i :. j) -> i + j)) :: VU.Vector Int
 -- [0,1,2,3,4,5,1,2,3,4,5,6,2,3,4,5,6,7,3,4,5,6,7,8,4,5,6,7,8,9]
 --
 toVector ::

@@ -53,7 +53,7 @@ data instance Array S ix e = SArray { sComp :: !Comp
                                     }
 
 instance (Ragged L ix e, Show e, VS.Storable e) => Show (Array S ix e) where
-  show = showArray id
+  showsPrec = showsArrayPrec id
 
 instance NFData ix => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()

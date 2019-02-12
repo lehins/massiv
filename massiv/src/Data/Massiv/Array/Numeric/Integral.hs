@@ -192,18 +192,18 @@ simpsonsRule comp r f a d sz n =
 
 -- | Create an array from a function with sample points at the edges
 --
--- >>> fromFunction Seq (\ scale (i :. j) -> scale i + scale j) (-2) 1 (4 :. 4) 2
--- (Array D Seq (9 :. 9)
---   [ [ -4.0,-3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0 ]
---   , [ -3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5 ]
---   , [ -3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0 ]
---   , [ -2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5 ]
---   , [ -2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0 ]
---   , [ -1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5 ]
---   , [ -1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0 ]
---   , [ -0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5 ]
---   , [ 0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0 ]
---   ])
+-- >>> fromFunction Seq (\ scale (i :. j) -> scale i + scale j :: Double) (-2) 1 (Sz 4) 2
+-- Array D Seq (Sz2 (9 :. 9))
+--   [ [ -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0 ]
+--   , [ -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5 ]
+--   , [ -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0 ]
+--   , [ -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5 ]
+--   , [ -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0 ]
+--   , [ -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5 ]
+--   , [ -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 ]
+--   , [ -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 ]
+--   , [ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0 ]
+--   ]
 --
 fromFunction ::
      (Index ix, Fractional a)
@@ -228,17 +228,17 @@ fromFunction comp f a d (Sz sz) n =
 -- | Similar to `fromFunction`, but will create an array from a function with sample points in the
 -- middle of cells.
 --
--- >>> fromFunctionMidpoint Seq (\ scale (i :. j) -> scale i + scale j) (-2) 1 (4 :. 4) 2
--- (Array D Seq (8 :. 8)
---   [ [ -3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0 ]
---   , [ -3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5 ]
---   , [ -2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0 ]
---   , [ -2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5 ]
---   , [ -1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0 ]
---   , [ -1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5 ]
---   , [ -0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0 ]
---   , [ 0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5 ]
---   ])
+-- >>> fromFunctionMidpoint Seq (\ scale (i :. j) -> scale i + scale j :: Double) (-2) 1 (Sz 4) 2
+-- Array D Seq (Sz2 (8 :. 8))
+--   [ [ -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0 ]
+--   , [ -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5 ]
+--   , [ -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0 ]
+--   , [ -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5 ]
+--   , [ -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0 ]
+--   , [ -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5 ]
+--   , [ -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 ]
+--   , [ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 ]
+--   ]
 --
 fromFunctionMidpoint
   :: (Index ix, Fractional a) =>
@@ -251,10 +251,6 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
     scale i = dx2 + a + d * fromIntegral i / nFrac
     {-# INLINE scale #-}
 {-# INLINE fromFunctionMidpoint #-}
-
-
--- (.!) :: Index ix => (e -> e) -> (Int -> Int) -> ix -> e
--- (.!) f g y = f (liftIndex g y)
 
 
 -- $integral_intro
@@ -276,16 +272,18 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- the function to that array, which will give us an array of @n + 1@ sample points, or looking from
 -- a different angle @n@ intervals.
 --
+-- >>> import Data.Massiv.Array
 -- >>> f x = exp ( x ^ (2 :: Int) ) :: Float
 -- >>> fromFunction Seq (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
--- (Array D Seq (Sz1 (5))
---   [ 1.0,1.2840254,2.7182817,9.487736,54.59815 ])
+-- Array D Seq (Sz1 5)
+--   [ 1.0, 1.2840254, 2.7182817, 9.487736, 54.59815 ]
 --
 -- Once we have that array of sample points ready, we could use `integralApprox` and one of the
 -- stencils to compute an integral, but there are already functions that will do both steps for you:
 --
 -- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
---   [ 17.353626450374566 ])
+-- Array M Seq (Sz1 1)
+--   [ 17.353626 ]
 --
 -- @scale@ is the function that will change an array index into equally spaced and
 -- appropriately shifted values of @x, y, ...@ before they can get applied to @f(x, y, ...)@
@@ -296,13 +294,13 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- representation of a non-linear function is desired. Consider the same gaussian function applied
 -- to equally spaced values, with zero being in the middle of the vector:
 --
--- >>> xArr = makeArrayR D Seq (Sz1 4) $ \ i -> (fromIntegral i - 1.5 :: Float)
+-- >>> xArr = makeArrayR D Seq (Sz1 4) $ \ i -> fromIntegral i - 1.5 :: Float
 -- >>> xArr
--- (Array D Seq (4)
---   [ -1.5,-0.5,0.5,1.5 ])
+-- Array D Seq (Sz1 4)
+--   [ -1.5, -0.5, 0.5, 1.5 ]
 -- >>> fmap f xArr
--- (Array D Seq (4)
---   [ 9.487736,1.2840254,1.2840254,9.487736 ])
+-- Array D Seq (Sz1 4)
+--   [ 9.487736, 1.2840254, 1.2840254, 9.487736 ]
 --
 -- The problem with above example is that computed values do not accurately represent the total
 -- value contained within each vector cell. For that reason if your were to later use it for example
@@ -312,16 +310,16 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 --
 -- >>> startValue = -2 :: Float
 -- >>> distPerCell = 1 :: Float
--- >>> desiredSize = 4 :: Ix1
+-- >>> desiredSize = Sz1 4 :: Sz1
 -- >>> numSamples = 4 :: Int
 -- >>> xArrX4 = fromFunction Seq ($) startValue distPerCell desiredSize numSamples
 -- >>> xArrX4
--- (Array D Seq (17)
---   [ -2.0,-1.75,-1.5,-1.25,-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0 ])
+-- Array D Seq (Sz1 17)
+--   [ -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0 ]
 -- >>> yArrX4 = computeAs U $ fmap f xArrX4
 -- >>> integralApprox trapezoidStencil distPerCell desiredSize numSamples yArrX4
--- (Array M Seq (4)
---   [ 16.074406,1.4906789,1.4906789,16.074408 ])
+-- Array M Seq (Sz1 4)
+--   [ 16.074406, 1.4906789, 1.4906789, 16.074408 ]
 --
 -- We can clearly see the difference is huge, but it doesn't mean it is much better than our
 -- previous estimate. In order to get more accurate results we can use a better Simpson's rule for
@@ -329,5 +327,5 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- and `yArr`, there are functions like `simpsonRule` that will take care it for you:
 --
 -- >>> simpsonsRule Seq U (\ scale i -> f (scale i)) startValue distPerCell desiredSize 128
--- (Array M Seq (4)
---   [ 14.989977,1.4626511,1.4626517,14.989977 ])
+-- Array M Seq (Sz1 4)
+--   [ 14.989977, 1.4626511, 1.4626517, 14.989977 ]

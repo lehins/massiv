@@ -35,12 +35,22 @@ data Comp
   -- defaults to number available cores.
   | ParN {-# UNPACK #-} !Word16
   -- ^ Specify the number of workers that will be handling all the jobs.
-  deriving (Show, Eq)
+  deriving Eq
 
 -- | Parallel computation using all available cores.
 pattern Par :: Comp
 pattern Par <- ParOn [] where
         Par =  ParOn []
+
+instance Show Comp where
+  show Seq        = "Seq"
+  show Par        = "Par"
+  show (ParOn ws) = "ParOn " ++ show ws
+  show (ParN n)   = "ParN " ++ show n
+  showsPrec _ Seq = ("Seq" ++)
+  showsPrec _ Par = ("Par" ++)
+  showsPrec 0 comp = (show comp ++)
+  showsPrec _ comp = (("(" ++ show comp ++ ")") ++)
 
 instance NFData Comp where
   rnf comp =

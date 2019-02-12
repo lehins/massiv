@@ -1,7 +1,6 @@
 module Main where
 
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stdout)
-import Test.DocTest
 import Test.Hspec
 import Spec
 import Data.Massiv.Array

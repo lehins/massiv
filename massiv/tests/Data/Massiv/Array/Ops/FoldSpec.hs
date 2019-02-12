@@ -8,7 +8,6 @@ import qualified Data.Foldable             as F
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Semigroup
 import           Prelude                   hiding (map, product, sum)
-import qualified Prelude                   as P (length, sum)
 
 
 prop_SumSEqSumP :: Index ix => proxy ix -> Array D ix Int -> Bool

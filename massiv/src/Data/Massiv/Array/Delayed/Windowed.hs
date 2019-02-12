@@ -31,7 +31,7 @@ import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Data.Massiv.Core.List               (L, showArray)
+import           Data.Massiv.Core.List               (L, showsArrayPrec)
 import           Data.Maybe                          (fromMaybe)
 import           GHC.TypeLits
 
@@ -60,7 +60,7 @@ data instance Array DW ix e = DWArray { dwArray :: !(Array D ix e)
                                       }
 
 instance (Ragged L ix e, Load DW ix e, Show e) => Show (Array DW ix e) where
-  show = showArray (computeAs B)
+  showsPrec = showsArrayPrec (computeAs B)
 
 
 instance Index ix => Construct DW ix e where

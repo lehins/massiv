@@ -29,7 +29,7 @@ import qualified Data.Foldable                        as F
 import           Data.Massiv.Array.Ops.Fold.Internal as A
 import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List               (showArray, L)
+import           Data.Massiv.Core.List               (showsArrayPrec, L)
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
 
@@ -44,7 +44,7 @@ data instance Array D ix e = DArray { dComp :: !Comp
 type instance EltRepr D ix = D
 
 instance (Ragged L ix e, Show e) => Show (Array D ix e) where
-  show = showArray id
+  showsPrec = showsArrayPrec id
 
 instance Index ix => Resize Array D ix where
   unsafeResize !sz !arr =

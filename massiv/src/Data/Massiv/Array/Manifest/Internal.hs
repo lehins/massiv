@@ -86,7 +86,7 @@ data instance Array M ix e = MArray { mComp :: !Comp
 type instance EltRepr M ix = M
 
 instance (Ragged L ix e, Show e) => Show (Array M ix e) where
-  show = showArray id
+  showsPrec = showsArrayPrec id
 
 
 instance (Eq e, Index ix) => Eq (Array M ix e) where

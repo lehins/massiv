@@ -20,7 +20,7 @@ module Data.Massiv.Array.Delayed.Interleaved
 
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List          (L, showArray)
+import           Data.Massiv.Core.List          (L, showsArrayPrec)
 
 
 -- | Delayed array that will be loaded in an interleaved fasion during parallel
@@ -32,7 +32,7 @@ type instance EltRepr DI ix = DI
 newtype instance Array DI ix e = DIArray { diArray :: Array D ix e }
 
 instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
-  show = showArray diArray
+  showsPrec = showsArrayPrec diArray
 
 instance Index ix => Construct DI ix e where
   setComp c arr = arr { diArray = (diArray arr) { dComp = c } }

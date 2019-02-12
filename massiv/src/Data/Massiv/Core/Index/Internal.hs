@@ -93,7 +93,10 @@ pattern Sz1 ix  <- SafeSz ix where
 
 
 instance Index ix => Show (Sz ix) where
-  show sz@(SafeSz usz) = "Sz" ++ show (unDim (dimensions sz)) ++ " (" ++ show usz ++ ")"
+  show sz@(SafeSz usz) = "Sz" ++ case unDim (dimensions sz) of
+                                   1 -> "1 " ++ show usz
+                                   n | n < 6 -> show n ++ " (" ++ show usz ++ ")"
+                                   _ -> " (" ++ show usz ++ ")"
 
 
 -- | Just a helper function for unwrapping `Sz`.
@@ -485,9 +488,15 @@ instance Show SizeException where
 
 
 
-data ShapeException where
-  DimTooShortException :: !Dim -> ShapeException -- TODO: add row length
-  DimTooLongException :: !Dim -> ShapeException -- TODO: add row length
-  deriving Show
+data ShapeException
+  = DimTooShortException !Sz1 !Sz1
+  | DimTooLongException
+  deriving Eq
+
+instance Show ShapeException where
+  show (DimTooShortException sz sz') =
+    "DimTooShortException: expected (" ++ show sz ++ "), got (" ++ show sz' ++ ")"
+  show DimTooLongException =
+    "DimTooLongException"
 
 instance Exception ShapeException

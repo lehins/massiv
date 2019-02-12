@@ -52,29 +52,33 @@ fromList = fromLists'
 --
 -- ==== __Examples__
 --
--- >>> fromLists Seq [[1,2],[3,4]] :: Maybe (Array U Ix2 Int)
--- Just (Array U Seq (2 :. 2)
---   [ [ 1,2 ]
---   , [ 3,4 ]
---   ])
+-- >>> import Data.Massiv.Array as A
+-- >>> fromListsM Seq [[1,2,3],[4,5,6]] :: Maybe (Array U Ix2 Int)
+-- Just (Array U Seq (Sz2 (2 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   ]
+-- )
 --
--- >>> fromLists Par [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)
--- Just (Array U Par (2 :> 1 :. 3)
---   [ [ [ 1,2,3 ]
+-- >>> fromListsM Par [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)
+-- Just (Array U Par (Sz3 (2 :> 1 :. 3))
+--   [ [ [ 1, 2, 3 ]
 --     ]
---   , [ [ 4,5,6 ]
+--   , [ [ 4, 5, 6 ]
 --     ]
---   ])
+--   ]
+-- )
 --
 -- Elements of a boxed array could be lists themselves if necessary, but cannot be ragged:
 --
--- >>> fromLists Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix2 [Int])
--- Just (Array B Seq (2 :. 1)
+-- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix2 [Int])
+-- Just (Array B Seq (Sz2 (2 :. 1))
 --   [ [ [1,2,3] ]
 --   , [ [4,5] ]
---   ])
--- >>> fromLists Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix3 Int)
--- Nothing
+--   ]
+-- )
+-- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: IO (Array B Ix3 Int)
+-- *** Exception: DimTooShortException: expected (Sz1 3), got (Sz1 2)
 --
 -- @since 0.3.0
 fromListsM :: forall r ix e m . (Nested LN ix e, Ragged L ix e, Mutable r ix e, MonadThrow m)
@@ -100,25 +104,26 @@ fromLists comp = fromRaggedArrayM . setComp comp . throughNested
 --
 -- Convert a list of lists into a 2D Array
 --
--- >>> fromLists' Seq [[1,2],[3,4]] :: Array U Ix2 Int
--- (Array U Seq (2 :. 2)
---   [ [ 1,2 ]
---   , [ 3,4 ]
---   ])
+-- >>> import Data.Massiv.Array as A
+-- >>> fromLists' Seq [[1,2,3],[4,5,6]] :: Array U Ix2 Int
+-- Array U Seq (Sz2 (2 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   ]
 --
 -- Above example implemented using GHC's `OverloadedLists` extension:
 --
 -- >>> :set -XOverloadedLists
--- >>> [[1,2],[3,4]] :: Array U Ix2 Int
--- (Array U Seq (2 :. 2)
---   [ [ 1,2 ]
---   , [ 3,4 ]
---   ])
+-- >>> [[1,2,3],[4,5,6]] :: Array U Ix2 Int
+-- Array U Seq (Sz2 (2 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   ]
 --
 -- Example of failure on conversion of an irregular nested list.
 --
 -- >>> fromLists' Seq [[1],[3,4]] :: Array U Ix2 Int
--- (Array U *** Exception: Too many elements in a row
+-- Array U *** Exception: Too many elements in a row
 --
 fromLists' :: forall r ix e . (Nested LN ix e, Ragged L ix e, Mutable r ix e)
          => Comp -- ^ Computation startegy to use
