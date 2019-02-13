@@ -33,7 +33,7 @@ loop !init' condition increment !initAcc f = go init' initAcc
 {-# INLINE loop #-}
 
 
--- | Very efficient monadic loop with an accumulator
+-- | Efficient monadic loop with an accumulator
 --
 -- >>> loopM 1 (< 20) (+ 2) [] (\i a -> Just (i:a))
 -- Just [19,17,15,13,11,9,7,5,3,1]
@@ -62,7 +62,7 @@ loopM_ !init' condition increment f = go init'
 {-# INLINE loopM_ #-}
 
 
--- | Efficient monadic loop. Result of each iteration is discarded.
+-- | Efficient Applicative loop. Result of each iteration is discarded.
 --
 -- @since 0.3.0
 loopA_ :: Applicative f => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> f a) -> f ()

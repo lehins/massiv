@@ -1,20 +1,14 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TypeOperators              #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Tuple
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
--- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
+-- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
 -- Portability : non-portable
 --
@@ -26,7 +20,7 @@ module Data.Massiv.Core.Index.Tuple
   , Ix2T
   , toIx2
   , fromIx2
-    -- *** 3-dimensional
+    -- ** 3-dimensional
   , Ix3T
   , toIx3
   , fromIx3
@@ -69,6 +63,8 @@ type instance Lower Ix5T = Ix4T
 
 -- | Convert an `Int` tuple to `Ix2`
 --
+-- ==== __Example__
+--
 -- >>> toIx2 (2, 3)
 -- 2 :. 3
 --
@@ -78,6 +74,8 @@ toIx2 (i, j) = i :. j
 {-# INLINE toIx2 #-}
 
 -- | Convert an `Ix2` to `Int` tuple
+--
+-- ==== __Example__
 --
 -- >>> fromIx2 (2 :. 3)
 -- (2,3)
@@ -89,6 +87,8 @@ fromIx2 (i :. j) = (i, j)
 
 -- | Convert a `Int` 3-tuple to `Ix3`
 --
+-- ==== __Example__
+--
 -- >>> toIx3 (1, 2, 3)
 -- 1 :> 2 :. 3
 --
@@ -98,6 +98,8 @@ toIx3 (i, j, k) = i :> j :. k
 {-# INLINE toIx3 #-}
 
 -- | Convert an `Ix3` to `Int` 3-tuple
+--
+-- ==== __Example__
 --
 -- >>> fromIx3 (1 :>  2 :. 3)
 -- (1,2,3)
@@ -109,6 +111,8 @@ fromIx3 (i :> j :. k) = (i, j, k)
 
 -- | Convert a `Int` 4-tuple to `Ix4`
 --
+-- ==== __Example__
+--
 -- >>> toIx4 (1, 2, 3, 4)
 -- 1 :> 2 :> 3 :. 4
 --
@@ -118,6 +122,8 @@ toIx4 (i, j, k, l) = i :> j :> k :. l
 {-# INLINE toIx4 #-}
 
 -- | Convert an `Ix4` to `Int` 4-tuple
+--
+-- ==== __Example__
 --
 -- >>> fromIx4 (1 :> 2 :> 3 :. 4)
 -- (1,2,3,4)
@@ -129,6 +135,8 @@ fromIx4 (i :> j :> k :. l) = (i, j, k, l)
 
 -- | Convert a `Int` 5-tuple to `Ix5`
 --
+-- ==== __Example__
+--
 -- >>> toIx5 (1, 2, 3, 4, 5)
 -- 1 :> 2 :> 3 :> 4 :. 5
 --
@@ -139,8 +147,10 @@ toIx5 (i, j, k, l, m) = i :> j :> k :> l :. m
 
 -- | Convert an `Ix5` to `Int` 5-tuple
 --
+-- ==== __Example__
+--
 -- >>> fromIx5 (1 :> 2 :> 3 :> 4 :. 5)
--- fromIx5 (1 :> 2 :> 3 :> 4 :. 5)
+-- (1,2,3,4,5)
 --
 -- @since 0.1.0
 fromIx5 :: Ix5 -> Ix5T

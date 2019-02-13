@@ -19,7 +19,7 @@
 -- Module      : Data.Massiv.Core.Index.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
--- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
+-- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
 -- Portability : non-portable
 --
@@ -64,43 +64,59 @@ import           Data.Massiv.Core.Iterator
 import           GHC.TypeLits
 import           Data.Typeable
 
--- | `Sz` provides type safety guarantees preventing mixup of index that is used to looking into
--- array cells from the size, that describes total number of elements in the array along each
--- dimension. Moreover the @Sz@ constructor will prevent creation of invalid sizes with negative
--- numbers
+-- | `Sz` provides type safety guarantees preventing mixup with index, which is used for looking into
+-- array cells, from the size, that describes total number of elements along each dimension in the
+-- array. Moreover the @Sz@ constructor will prevent creation of invalid sizes with negative numbers.
 --
 -- @since 0.3.0
 newtype Sz ix =
   SafeSz ix
   -- ^ Safe size constructor. It is unsafe to use it without making sure that it does not contain
   -- negative components. Use `Data.Massiv.Core.Index.Sz` pattern instead.
+  --
+  -- @since 0.3.0
   deriving (Eq, Ord, NFData)
 
 -- | A safe bidirectional pattern synonym for `Sz` construction that will make sure that none of
 -- the size elements are negative.
+--
+-- @since 0.3.0
 pattern Sz :: Index ix => ix -> Sz ix
 pattern Sz ix <- SafeSz ix where
         Sz ix = SafeSz (liftIndex (max 0) ix)
 {-# COMPLETE Sz #-}
 
 -- | 1-dimensional type synonym for size.
+--
+-- @since 0.3.0
 type Sz1 = Sz Ix1
 
 -- | 1-dimensional size constructor. Especially useful with literals: @(Sz1 5) == Sz (5 :: Int)@.
+--
+-- @since 0.3.0
 pattern Sz1 :: Ix1 -> Sz1
 pattern Sz1 ix  <- SafeSz ix where
         Sz1 ix = SafeSz (max 0 ix)
 
 
 instance Index ix => Show (Sz ix) where
-  show sz@(SafeSz usz) = "Sz" ++ case unDim (dimensions sz) of
-                                   1 -> "1 " ++ show usz
-                                   n | n < 6 -> show n ++ " (" ++ show usz ++ ")"
-                                   _ -> " (" ++ show usz ++ ")"
+  showsPrec n sz@(SafeSz usz) s =
+    if n == 0
+      then str ++ s
+      else '(' : str ++ ')' : s
+    where
+      str =
+        "Sz" ++
+        case unDim (dimensions sz) of
+          1 -> "1 " ++ show usz
+          _ -> " (" ++ show usz ++ ")"
 
 
--- | Just a helper function for unwrapping `Sz`.
+-- | Function for unwrapping `Sz`.
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
 -- >>> unSz $ Sz3 1 2 3
 -- 1 :> 2 :. 3
 --
@@ -111,8 +127,11 @@ unSz (SafeSz ix) = ix
 
 -- | An empty size with all elements in size equal to @0@.
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
 -- >>> zeroSz :: Sz5
--- Sz5 (0 :> 0 :> 0 :> 0 :. 0)
+-- Sz (0 :> 0 :> 0 :> 0 :. 0)
 --
 -- @since 0.3.0
 zeroSz :: Index ix => Sz ix
@@ -121,8 +140,11 @@ zeroSz = SafeSz (pureIndex 0)
 
 -- | A singleton size with all elements in size equal to @1@.
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
 -- >>> oneSz :: Sz3
--- Sz3 (1 :> 1 :. 1)
+-- Sz (1 :> 1 :. 1)
 --
 -- @since 0.3.0
 oneSz :: Index ix => Sz ix
@@ -132,6 +154,12 @@ oneSz = SafeSz (pureIndex 1)
 
 -- | Same as `consDim`, but for `Sz`
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
+-- >>> consSz (Sz1 1) (Sz2 2 3) :: Sz3
+-- Sz (1 :> 2 :. 3)
+--
 -- @since 0.3.0
 consSz :: Index ix => Sz1 -> Sz (Lower ix) -> Sz ix
 consSz (SafeSz i) (SafeSz ix) = SafeSz (consDim i ix)
@@ -140,12 +168,26 @@ consSz (SafeSz i) (SafeSz ix) = SafeSz (consDim i ix)
 
 -- | Same as `snocDim`, but for `Sz`
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
+-- >>> snocSz (Sz2 2 3) (Sz1 1) :: Sz3
+-- Sz (2 :> 3 :. 1)
+--
 -- @since 0.3.0
 snocSz :: Index ix => Sz (Lower ix) -> Sz1 -> Sz ix
 snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 {-# INLINE snocSz #-}
 
 -- | Same as `setDimM`, but for `Sz`
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
+-- >>> setSzM (Sz2 2 3) 2 (Sz1 1) :: IO Sz2
+-- Sz (1 :. 3)
+-- >>> setSzM (Sz2 2 3) 3 (Sz1 1) :: IO Sz2
+-- *** Exception: IndexDimensionException: (Dim 3) for 2 :. 3
 --
 -- @since 0.3.0
 setSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> Sz Int -> m (Sz ix)
@@ -154,6 +196,14 @@ setSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDimM sz dim sz1
 
 -- | Same as `insertDimM`, but for `Sz`
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
+-- >>> insertSzM (Sz2 2 3) 3 (Sz1 1) :: IO Sz3
+-- Sz (1 :> 2 :. 3)
+-- >>> insertSzM (Sz2 2 3) 4 (Sz1 1) :: IO Sz3
+-- *** Exception: IndexDimensionException: (Dim 4) for 2 :. 3
+--
 -- @since 0.3.0
 insertSzM :: (MonadThrow m, Index ix) => Sz (Lower ix) -> Dim -> Sz Int -> m (Sz ix)
 insertSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDimM sz dim sz1
@@ -161,10 +211,11 @@ insertSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDimM sz dim sz1
 
 -- | Same as `unconsDim`, but for `Sz`
 --
--- >>> unconsSz $ Sz3 1 2 3
--- (Sz1 (1),Sz2 (2 :. 3))
+-- ==== __Example__
 --
--- prop> uncurry consSz (unconsSz sz) == sz
+-- >>> import Data.Massiv.Core.Index
+-- >>> unconsSz $ Sz3 1 2 3
+-- (Sz1 1,Sz (2 :. 3))
 --
 -- @since 0.3.0
 unconsSz :: Index ix => Sz ix -> (Sz1, Sz (Lower ix))
@@ -173,12 +224,22 @@ unconsSz (SafeSz sz) = coerce (unconsDim sz)
 
 -- | Same as `unsnocDim`, but for `Sz`
 --
+-- >>> import Data.Massiv.Core.Index
+-- >>> unsnocSz $ Sz3 1 2 3
+-- (Sz (1 :. 2),Sz1 3)
+--
 -- @since 0.3.0
 unsnocSz :: Index ix => Sz ix -> (Sz (Lower ix), Sz1)
 unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
 {-# INLINE unsnocSz #-}
 
 -- | Same as `pullOutDim`, but for `Sz`
+--
+-- >>> import Data.Massiv.Core.Index
+-- >>> pullOutSzM (Sz3 1 2 3) 3
+-- (Sz1 1,Sz (2 :. 3))
+-- >>> pullOutSzM (Sz3 1 2 3) 0
+-- *** Exception: IndexDimensionException: (Dim 0) for 1 :> 2 :. 3
 --
 -- @since 0.3.0
 pullOutSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> m (Sz Ix1, Sz (Lower ix))
@@ -187,34 +248,61 @@ pullOutSzM (SafeSz sz) = fmap coerce . pullOutDimM sz
 
 
 -- | A way to select Array dimension at a value level.
+--
+-- @since 0.1.0
 newtype Dim = Dim { unDim :: Int } deriving (Eq, Ord, Num, Real, Integral, Enum)
 
 instance Show Dim where
   show (Dim d) = "(Dim " ++ show d ++ ")"
 
 -- | A way to select Array dimension at a type level.
+--
+-- @since 0.2.4
 data Dimension (n :: Nat) where
   DimN :: (1 <= n, KnownNat n) => Dimension n
 
+-- | Construct 1st dimension
+--
+-- @since 0.2.4
 pattern Dim1 :: Dimension 1
 pattern Dim1 = DimN
+
+-- | Construct 2nd dimension
+--
+-- @since 0.2.4
 pattern Dim2 :: Dimension 2
 pattern Dim2 = DimN
+
+-- | Construct 3rd dimension
+--
+-- @since 0.2.4
 pattern Dim3 :: Dimension 3
 pattern Dim3 = DimN
+
+-- | Construct 4th dimension
+--
+-- @since 0.2.4
 pattern Dim4 :: Dimension 4
 pattern Dim4 = DimN
+
+-- | Construct 5th dimension
+--
+-- @since 0.2.4
 pattern Dim5 :: Dimension 5
 pattern Dim5 = DimN
 
 
 -- | A type level constraint that ensures index is indeed valid and that supplied dimension can be
 -- safely used with it.
+--
+-- @since 0.2.4
 type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
 
 
 -- | This type family will always point to a type for a dimension that is one lower than the type
 -- argument.
+--
+-- @since 0.1.0
 type family Lower ix :: *
 
 -- | This is bread and butter of multi-dimensional array indexing. It is unlikely that any of the
@@ -231,35 +319,73 @@ class ( Eq ix
       ) =>
       Index ix
   where
+  -- | Type level information on how many dimensions this index has.
+  --
+  -- @since 0.2.0
   type Dimensions ix :: Nat
-  -- | Dimensions of an array that has this index type, i.e. what is the dimensionality.
+
+  -- | What is the dimensionality of this index.
+  --
+  -- @since 0.2.0
   dimensions :: proxy ix -> Dim
+
   -- | Total number of elements in an array of this size.
+  --
+  -- @since 0.1.0
   totalElem :: Sz ix -> Int
+
   -- | Prepend a dimension to the index
+  --
+  -- @since 0.1.0
   consDim :: Int -> Lower ix -> ix
+
   -- | Take a dimension from the index from the outside
+  --
+  -- @since 0.1.0
   unconsDim :: ix -> (Int, Lower ix)
+
   -- | Apppend a dimension to the index
+  --
+  -- @since 0.1.0
   snocDim :: Lower ix -> Int -> ix
+
   -- | Take a dimension from the index from the inside
+  --
+  -- @since 0.1.0
   unsnocDim :: ix -> (Lower ix, Int)
+
   -- | Pull out value at specified dimension from the index, thus also lowering it dimensionality.
+  --
+  -- @since 0.2.5
   pullOutDimM :: MonadThrow m => ix -> Dim -> m (Int, Lower ix)
+
   -- | Insert a dimension into the index
   insertDimM :: MonadThrow m => Lower ix -> Dim -> Int -> m ix
+
   -- | Extract the value index has at specified dimension.
   getDimM :: MonadThrow m => ix -> Dim -> m Int
+
   -- | Set the value for an index at specified dimension.
   setDimM :: MonadThrow m => ix -> Dim -> Int -> m ix
+
   -- | Lift an `Int` to any index by replicating the value as many times as there are dimensions.
+  --
+  -- @since 0.1.0
   pureIndex :: Int -> ix
+
   -- | Zip together two indices with a function
+  --
+  -- @since 0.1.0
   liftIndex2 :: (Int -> Int -> Int) -> ix -> ix -> ix
+
   -- | Map a function over an index
+  --
+  -- @since 0.1.0
   liftIndex :: (Int -> Int) -> ix -> ix
   liftIndex f = liftIndex2 (\_ i -> f i) (pureIndex 0)
   {-# INLINE [1] liftIndex #-}
+
+  -- | Perform a left fold over the index
   foldlIndex :: (a -> Int -> a) -> a -> ix -> a
   default foldlIndex :: Index (Lower ix) =>
     (a -> Int -> a) -> a -> ix -> a
@@ -267,8 +393,11 @@ class ( Eq ix
     where
       !(i0, ixL) = unconsDim ix
   {-# INLINE [1] foldlIndex #-}
+
   -- TODO: implement in terms of foldlIndex and pull out of the class
   -- | Check whether index is positive and is within the size.
+  --
+  -- @since 0.1.0
   isSafeIndex ::
        Sz ix -- ^ Size
     -> ix -- ^ Index
@@ -280,7 +409,10 @@ class ( Eq ix
       !(n0, szL) = unconsSz sz
       !(i0, ixL) = unconsDim ix
   {-# INLINE [1] isSafeIndex #-}
+
   -- | Convert linear index from size and index
+  --
+  -- @since 0.1.0
   toLinearIndex ::
        Sz ix -- ^ Size
     -> ix -- ^ Index
@@ -292,8 +424,11 @@ class ( Eq ix
       !(szL, n) = unsnocDim sz
       !(ixL, i) = unsnocDim ix
   {-# INLINE [1] toLinearIndex #-}
+
   -- | Convert linear index from size and index with an accumulator. Currently is useless and will
   -- likley be removed in future versions.
+  --
+  -- @since 0.1.0
   toLinearIndexAcc :: Int -> ix -> ix -> Int
   default toLinearIndexAcc :: Index (Lower ix) =>
     Int -> ix -> ix -> Int
@@ -302,7 +437,10 @@ class ( Eq ix
       !(n, szL) = unconsDim sz
       !(i, ixL) = unconsDim ix
   {-# INLINE [1] toLinearIndexAcc #-}
+
   -- | Compute an index from size and linear index
+  --
+  -- @since 0.1.0
   fromLinearIndex :: Sz ix -> Int -> ix
   default fromLinearIndex :: Index (Lower ix) =>
     Sz ix -> Int -> ix
@@ -310,8 +448,11 @@ class ( Eq ix
     where
       !(q, ixL) = fromLinearIndexAcc (snd (unconsDim sz)) k
   {-# INLINE [1] fromLinearIndex #-}
+
   -- | Compute an index from size and linear index using an accumulator, thus trying to optimize for
   -- tail recursion while getting the index computed.
+  --
+  -- @since 0.1.0
   fromLinearIndexAcc :: ix -> Int -> (Int, ix)
   default fromLinearIndexAcc :: Index (Lower ix) =>
     ix -> Int -> (Int, ix)
@@ -321,8 +462,11 @@ class ( Eq ix
       !(kL, ixL) = fromLinearIndexAcc ix k
       !(q, r) = quotRem kL m
   {-# INLINE [1] fromLinearIndexAcc #-}
+
   -- | A way to make sure index is withing the bounds for the supplied size. Takes two functions
   -- that will be invoked whenever index (2nd arg) is outsize the supplied size (1st arg)
+  --
+  -- @since 0.1.0
   repairIndex ::
        Sz ix -- ^ Size
     -> ix -- ^ Index
@@ -337,7 +481,10 @@ class ( Eq ix
       !(n, szL) = unconsSz sz
       !(i, ixL) = unconsDim ix
   {-# INLINE [1] repairIndex #-}
+
   -- | This function is what makes it possible to iterate over an array of any dimension.
+  --
+  -- @since 0.1.0
   iterM ::
        Monad m
     => ix -- ^ Start index
@@ -357,8 +504,11 @@ class ( Eq ix
       !(e, eIxL) = unconsDim eIx
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM #-}
+
   -- TODO: Implement in terms of iterM, benchmark it and remove from `Index`
   -- | Same as `iterM`, but don't bother with accumulator and return value.
+  --
+  -- @since 0.1.0
   iterM_ :: Monad m => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
   default iterM_ :: (Index (Lower ix), Monad m) =>
     ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
@@ -378,10 +528,22 @@ instance NFData Ix0 where
   rnf Ix0 = ()
 
 -- | A type synonym for 1-dimensional index, i.e. `Int`.
+--
+-- >>> 5 :: Ix1
+-- 5
+--
+-- @since 0.1.0
 type Ix1 = Int
 
 -- | This is a very handy pattern synonym to indicate that any arbitrary `Integral` literal is an
 -- `Int`, e.g. a 1-dimensional index: @(Ix1 5) == (5 :: Int)@
+--
+-- >>> Ix1 5
+-- 5
+-- >>> :t Ix1 5
+-- Ix1 5 :: Ix1
+--
+-- @since 0.1.0
 pattern Ix1 :: Int -> Ix1
 pattern Ix1 i = i
 
@@ -444,6 +606,8 @@ instance Index Ix1 where
 
 
 -- | Exceptions that get thrown when there is a problem with an index, size or dimension.
+--
+-- @since 0.3.0
 data IndexException where
   -- | Index contains a zero value along one of the dimensions.
   IndexZeroException :: Index ix => !ix -> IndexException
@@ -458,10 +622,14 @@ instance Show IndexException where
     "IndexDimensionException: " ++ show dim ++ " for " ++ show ix
   show (IndexOutOfBoundsException sz ix) =
     "IndexOutOfBoundsException: " ++ show ix ++ " not safe for (" ++ show sz ++ ")"
+  showsPrec 0 arr s = show arr ++ s
+  showsPrec _ arr s = '(' : show arr ++ ")" ++ s
 
 instance Exception IndexException
 
 -- | Exception that indicates an issue with an array size.
+--
+-- @since 0.3.0
 data SizeException where
   -- | Two sizes are expected to be equal along some or all dimensions, but they are not.
   SizeMismatchException :: Index ix => !(Sz ix) -> !(Sz ix) -> SizeException
@@ -485,9 +653,13 @@ instance Show SizeException where
     show sz' ++ ") is to small for " ++ show ix ++ " (" ++ show sz ++ ")"
   show (SizeEmptyException sz) =
     "SizeEmptyException: (" ++ show sz ++ ") corresponds to an empty array"
+  showsPrec 0 arr s = show arr ++ s
+  showsPrec _ arr s = '(' : show arr ++ ")" ++ s
 
-
-
+-- | Exception that can happen upon conversion of a ragged type array into the rectangular kind. Which
+-- means conversion from lists is susceptible to this exception.
+--
+-- @since 0.3.0
 data ShapeException
   = DimTooShortException !Sz1 !Sz1
   | DimTooLongException
@@ -498,5 +670,7 @@ instance Show ShapeException where
     "DimTooShortException: expected (" ++ show sz ++ "), got (" ++ show sz' ++ ")"
   show DimTooLongException =
     "DimTooLongException"
+  showsPrec 0 arr s = show arr ++ s
+  showsPrec _ arr s = '(' : show arr ++ ")" ++ s
 
 instance Exception ShapeException

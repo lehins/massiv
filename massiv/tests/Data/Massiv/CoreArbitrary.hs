@@ -20,15 +20,14 @@ module Data.Massiv.CoreArbitrary
   , assertSomeException
   , assertExceptionIO
   , assertSomeExceptionIO
-  , module Data.Massiv.Array
   , Semigroup((<>))
-  , module X
   , applyFun2Compat
+  , module X
   ) where
 
 import           Control.DeepSeq            (NFData, deepseq)
 import           Control.Exception          (Exception, SomeException, catch)
-import           Data.Massiv.Array
+import           Data.Massiv.Array          as X
 import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
 import           Test.Hspec                 as X
