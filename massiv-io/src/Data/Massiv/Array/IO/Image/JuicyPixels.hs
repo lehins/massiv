@@ -904,7 +904,7 @@ toJPImageUnsafe
   -> JP.Image a
 toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toVector arrS where
   !arrS = computeSource img :: Image S cs (JP.PixelBaseComponent a)
-  (m :. n) = size img
+  (m :. n) = unSz $ size img
 {-# INLINE toJPImageUnsafe #-}
 
 toJPImageY8 :: Source r Ix2 (Pixel Y Word8) => Image r Y Word8 -> JP.Image JP.Pixel8
@@ -969,6 +969,6 @@ fromJPImageUnsafe :: forall jpx cs e . (Storable (Pixel cs e), JP.Pixel jpx) =>
                      JP.Image jpx -> Maybe (Image S cs e)
 fromJPImageUnsafe (JP.Image n m !v) = do
   guard (n * m * sizeOf (undefined :: Pixel cs e) == V.length v)
-  return $ fromVector Par (m :. n) $ V.unsafeCast v
+  return $ fromVector Par (Sz (m :. n)) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 
