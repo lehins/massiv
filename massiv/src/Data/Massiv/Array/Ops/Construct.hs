@@ -18,6 +18,7 @@
 module Data.Massiv.Array.Ops.Construct
   ( -- ** From a function
     makeArray
+  , makeArrayLinear
   , makeArrayR
   , makeVectorR
   , singleton
@@ -65,6 +66,9 @@ import           Prelude                        as P hiding (enumFromTo,
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
 --
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
 -- >>> makeArrayR U Par (2 :> 3 :. 4) (\ (i :> j :. k) -> i * i + j * j == k * k)
 -- (Array U Par (2 :> 3 :. 4)
 --   [ [ [ True,False,False,False ]
@@ -145,12 +149,12 @@ replicateR _ comp sz e = makeArray comp sz (const e)
 --
 -- ==== __Example__
 --
+-- >>> import Data.Massiv.Array
 -- >>> iterateN Seq (Sz2 2 10) succ (10 :: Int)
--- (Array DL Seq (Sz2 (2 :. 10))
+-- Array DL Seq (Sz (2 :. 10))
 --   [ [ 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ]
 --   , [ 21, 22, 23, 24, 25, 26, 27, 28, 29, 30 ]
 --   ]
--- )
 --
 -- @since 0.3.0
 iterateN :: Index ix => Comp -> Sz ix -> (e -> e) -> e -> Array DL ix e
@@ -222,15 +226,16 @@ iunfoldrS_ comp sz f acc0 =
 --
 -- prop> range comp from to == rangeStep comp from 1 to
 --
+-- >>> import Data.Massiv.Array
 -- >>> range Seq 1 6
--- (Array D Seq (5)
---   [ 1,2,3,4,5 ])
+-- Array D Seq (Sz1 5)
+--   [ 1, 2, 3, 4, 5 ]
 -- >>> fromIx2 <$> range Seq (-1) (2 :. 2)
--- (Array D Seq (Sz2 (3 :. 3))
---   [ [ (-1,-1),(-1,0),(-1,1) ]
---   , [ (0,-1),(0,0),(0,1) ]
---   , [ (1,-1),(1,0),(1,1) ]
---   ])
+-- Array D Seq (Sz (3 :. 3))
+--   [ [ (-1,-1), (-1,0), (-1,1) ]
+--   , [ (0,-1), (0,0), (0,1) ]
+--   , [ (1,-1), (1,0), (1,1) ]
+--   ]
 --
 range :: Index ix => Comp -> ix -> ix -> Array D ix ix
 range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
@@ -239,9 +244,10 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 
 -- | Same as `range`, but with a custom step.
 --
+-- >>> import Data.Massiv.Array
 -- >>> rangeStep Seq 1 2 6
--- (Array D Seq (3)
---   [ 1,3,5 ])
+-- Array D Seq (Sz1 3)
+--   [ 1,3,5 ]
 --
 rangeStep :: (Index ix) =>
              Comp -- ^ Computation strategy
@@ -255,6 +261,7 @@ rangeStep = rangeStepM
 
 -- | Same as `range`, but with a custom step.
 --
+-- >>> import Data.Massiv.Array
 -- >>> rangeStep Seq 1 2 6
 -- (Array D Seq (3)
 --   [ 1,3,5 ])
@@ -325,6 +332,7 @@ rangeStepSize comp !from !step !sz =
 
 -- | Same as `enumFromStepN` with step @delta = 1@.
 --
+-- >>> import Data.Massiv.Array
 -- >>> enumFromN Seq (5 :: Double) 3
 -- (Array D Seq (3)
 --   [ 5.0,6.0,7.0 ])
@@ -343,9 +351,10 @@ enumFromN comp !from !sz = makeArray comp sz $ \ i -> fromIntegral i + from
 -- x + delta ..]@. Major difference is that `fromList` constructs an `Array` with manifest
 -- representation, while `enumFromStepN` is delayed.
 --
+-- >>> import Data.Massiv.Array
 -- >>> enumFromStepN Seq 1 (0.1 :: Double) 5
--- (Array D Seq (5)
---   [ 1.0,1.1,1.2,1.3,1.4 ])
+-- Array D Seq (Sz1 5)
+--   [ 1.0, 1.1, 1.2, 1.3, 1.4 ]
 --
 enumFromStepN :: Num e =>
                  Comp
@@ -372,39 +381,39 @@ enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromInteg
 -- you use 'expandWithin' and a creation function @a -> Int -> b@ to create an
 -- @`Array` `D` `Ix2` b@ or @`Array` `D` `Ix3` b@ respectfully.
 --
--- @since 0.2.6
---
 -- ====__Examples__
 --
--- >>> a = makeArrayR U Seq (Ix1 6) (+10) -- Imagine (+10) is some expensive function
+-- >>> import Data.Massiv.Array
+-- >>> a = makeArrayR U Seq (Sz1 6) (+10) -- Imagine (+10) is some expensive function
 -- >>> a
--- (Array U Seq (6)
---   [ 10,11,12,13,14,15 ])
+-- Array U Seq (Sz1 6)
+--   [ 10, 11, 12, 13, 14, 15 ]
 -- >>> expandWithin Dim1 5 (\ e j -> (j + 1) * 100 + e) a :: Array D Ix2 Int
--- (Array D Seq (6 :. 5)
---   [ [ 110,210,310,410,510 ]
---   , [ 111,211,311,411,511 ]
---   , [ 112,212,312,412,512 ]
---   , [ 113,213,313,413,513 ]
---   , [ 114,214,314,414,514 ]
---   , [ 115,215,315,415,515 ]
---   ])
+-- Array D Seq (Sz (6 :. 5))
+--   [ [ 110, 210, 310, 410, 510 ]
+--   , [ 111, 211, 311, 411, 511 ]
+--   , [ 112, 212, 312, 412, 512 ]
+--   , [ 113, 213, 313, 413, 513 ]
+--   , [ 114, 214, 314, 414, 514 ]
+--   , [ 115, 215, 315, 415, 515 ]
+--   ]
 -- >>> expandWithin Dim2 5 (\ e j -> (j + 1) * 100 + e) a :: Array D Ix2 Int
--- (Array D Seq (5 :. 6)
---   [ [ 110,111,112,113,114,115 ]
---   , [ 210,211,212,213,214,215 ]
---   , [ 310,311,312,313,314,315 ]
---   , [ 410,411,412,413,414,415 ]
---   , [ 510,511,512,513,514,515 ]
---   ])
+-- Array D Seq (Sz (5 :. 6))
+--   [ [ 110, 111, 112, 113, 114, 115 ]
+--   , [ 210, 211, 212, 213, 214, 215 ]
+--   , [ 310, 311, 312, 313, 314, 315 ]
+--   , [ 410, 411, 412, 413, 414, 415 ]
+--   , [ 510, 511, 512, 513, 514, 515 ]
+--   ]
 --
-expandWithin
-  :: (IsIndexDimension ix n, Manifest r (Lower ix) a)
+-- @since 0.2.6
+expandWithin ::
+     forall ix e r n a. (IsIndexDimension ix n, Manifest r (Lower ix) a)
   => Dimension n
   -> Int
-  -> (a -> Int -> b)
+  -> (a -> Int -> e)
   -> Array r (Lower ix) a
-  -> Array D ix b
+  -> Array D ix e
 expandWithin dim k f arr = do
   makeArray (getComp arr) sz $ \ix ->
     let (i, ixl) = pullOutDimension ix dim

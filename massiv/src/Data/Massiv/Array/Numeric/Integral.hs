@@ -193,7 +193,7 @@ simpsonsRule comp r f a d sz n =
 -- | Create an array from a function with sample points at the edges
 --
 -- >>> fromFunction Seq (\ scale (i :. j) -> scale i + scale j :: Double) (-2) 1 (Sz 4) 2
--- Array D Seq (Sz2 (9 :. 9))
+-- Array D Seq (Sz (9 :. 9))
 --   [ [ -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0 ]
 --   , [ -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5 ]
 --   , [ -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0 ]
@@ -229,7 +229,7 @@ fromFunction comp f a d (Sz sz) n =
 -- middle of cells.
 --
 -- >>> fromFunctionMidpoint Seq (\ scale (i :. j) -> scale i + scale j :: Double) (-2) 1 (Sz 4) 2
--- Array D Seq (Sz2 (8 :. 8))
+-- Array D Seq (Sz (8 :. 8))
 --   [ [ -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0 ]
 --   , [ -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5 ]
 --   , [ -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0 ]

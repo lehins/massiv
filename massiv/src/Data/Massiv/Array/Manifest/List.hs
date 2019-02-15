@@ -54,14 +54,14 @@ fromList = fromLists'
 --
 -- >>> import Data.Massiv.Array as A
 -- >>> fromListsM Seq [[1,2,3],[4,5,6]] :: Maybe (Array U Ix2 Int)
--- Just (Array U Seq (Sz2 (2 :. 3))
+-- Just (Array U Seq (Sz (2 :. 3))
 --   [ [ 1, 2, 3 ]
 --   , [ 4, 5, 6 ]
 --   ]
 -- )
 --
 -- >>> fromListsM Par [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)
--- Just (Array U Par (Sz3 (2 :> 1 :. 3))
+-- Just (Array U Par (Sz (2 :> 1 :. 3))
 --   [ [ [ 1, 2, 3 ]
 --     ]
 --   , [ [ 4, 5, 6 ]
@@ -72,7 +72,7 @@ fromList = fromLists'
 -- Elements of a boxed array could be lists themselves if necessary, but cannot be ragged:
 --
 -- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix2 [Int])
--- Just (Array B Seq (Sz2 (2 :. 1))
+-- Just (Array B Seq (Sz (2 :. 1))
 --   [ [ [1,2,3] ]
 --   , [ [4,5] ]
 --   ]
@@ -106,7 +106,7 @@ fromLists comp = fromRaggedArrayM . setComp comp . throughNested
 --
 -- >>> import Data.Massiv.Array as A
 -- >>> fromLists' Seq [[1,2,3],[4,5,6]] :: Array U Ix2 Int
--- Array U Seq (Sz2 (2 :. 3))
+-- Array U Seq (Sz (2 :. 3))
 --   [ [ 1, 2, 3 ]
 --   , [ 4, 5, 6 ]
 --   ]
@@ -115,7 +115,7 @@ fromLists comp = fromRaggedArrayM . setComp comp . throughNested
 --
 -- >>> :set -XOverloadedLists
 -- >>> [[1,2,3],[4,5,6]] :: Array U Ix2 Int
--- Array U Seq (Sz2 (2 :. 3))
+-- Array U Seq (Sz (2 :. 3))
 --   [ [ 1, 2, 3 ]
 --   , [ 4, 5, 6 ]
 --   ]

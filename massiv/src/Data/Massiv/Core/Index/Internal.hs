@@ -621,7 +621,7 @@ instance Show IndexException where
   show (IndexDimensionException ix dim) =
     "IndexDimensionException: " ++ show dim ++ " for " ++ show ix
   show (IndexOutOfBoundsException sz ix) =
-    "IndexOutOfBoundsException: " ++ show ix ++ " not safe for (" ++ show sz ++ ")"
+    "IndexOutOfBoundsException: " ++ showsPrec 1 ix " not safe for (" ++ show sz ++ ")"
   showsPrec 0 arr s = show arr ++ s
   showsPrec _ arr s = '(' : show arr ++ ")" ++ s
 

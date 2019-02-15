@@ -50,7 +50,9 @@ module Data.Massiv.Array.Mutable
   , generateArrayLinearS
   -- *** Unfold
   , unfoldlPrim_
+  , iunfoldlPrim_
   , unfoldlPrim
+  , iunfoldlPrim
   -- *** Mapping
   , forPrim_
   , iforPrim_
@@ -81,24 +83,23 @@ import           Data.Massiv.Scheduler
 --
 -- ==== __Examples__
 --
+-- >>> import Data.Massiv.Array
 -- >>> marr <- new (Sz2 2 6) :: IO (MArray RealWorld P Ix2 Int)
--- >>> freezeS Seq marr
--- (Array P Seq (Sz2 (2 :. 6))
+-- >>> freeze Seq marr
+-- Array P Seq (Sz (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0 ]
 --   ]
--- )
 --
 -- Or using @TypeApplications@:
 --
 -- >>> :set -XTypeApplications
--- >>> new @P @Ix2 @Int (Sz2 2 6) >>= freezeS Seq
--- (Array P Seq (Sz2 (2 :. 6))
+-- >>> new @P @Ix2 @Int (Sz2 2 6) >>= freezeS
+-- Array P Seq (Sz (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0 ]
 --   ]
--- )
--- >>> new @B @Int (Sz2 2 6) >>= (`read'` 1)
+-- >>> new @B @_ @Int (Sz2 2 6) >>= (`read'` 1)
 -- *** Exception: Uninitialized
 --
 -- @since 0.1.0
@@ -114,17 +115,17 @@ new = initializeNew Nothing
 --
 -- ==== __Example__
 --
+-- >>> import Data.Massiv.Array
 -- >>> :set -XTypeApplications
 -- >>> arr <- fromListsM @U @Ix2 @Double Par [[12,21],[13,31]]
 -- >>> marr <- thaw arr
 -- >>> modify marr (+ 10) (1 :. 0)
 -- True
 -- >>> freeze Par marr
--- (Array U Par (Sz2 (2 :. 2))
+-- Array U Par (Sz (2 :. 2))
 --   [ [ 12.0, 21.0 ]
 --   , [ 23.0, 31.0 ]
 --   ]
--- )
 --
 -- @since 0.1.0
 thaw :: forall r ix e m. (Mutable r ix e, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
@@ -134,14 +135,16 @@ thaw arr = liftIO $ makeMArrayLinear (getComp arr) (size arr) (pure . unsafeLine
 
 -- | Same as `thaw`, but restrict computation to sequential only.
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array
 -- >>> :set -XOverloadedLists
 -- >>> thawS @P @Ix1 @Double [1..10]
 -- >>> marr <- thawS @P @Ix1 @Double [1..10]
 -- >>> write' marr 5 100
 -- >>> freezeS marr
--- (Array P Seq (Sz1 (10))
+-- Array P Seq (Sz1 10)
 --   [ 1.0, 2.0, 3.0, 4.0, 5.0, 100.0, 7.0, 8.0, 9.0, 10.0 ]
--- )
 --
 -- @since 0.3.0
 thawS ::
@@ -160,14 +163,14 @@ thawS arr = makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
 --
 -- ==== __Example__
 --
--- >>> marr <- new @P @Int (Sz2 2 6)
+-- >>> import Data.Massiv.Array
+-- >>> marr <- new @P @_ @Int (Sz2 2 6)
 -- >>> forM_ (range Seq 0 (Ix2 1 4)) $ \ix -> write marr ix 9
 -- >>> freeze Seq marr
--- (Array P Seq (Sz2 (2 :. 6))
+-- Array P Seq (Sz (2 :. 6))
 --   [ [ 9, 9, 9, 9, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0 ]
 --   ]
--- )
 --
 -- @since 0.1.0
 freeze :: (Mutable r ix e, MonadIO m) => Comp -> MArray RealWorld r ix e -> m (Array r ix e)
@@ -228,7 +231,10 @@ computeInto !mArr !arr =
 --
 -- @since 0.3.0
 makeMArrayS ::
-     (Mutable r ix e, PrimMonad m) => Sz ix -> (ix -> m e) -> m (MArray (PrimState m) r ix e)
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
+  => Sz ix
+  -> (ix -> m e)
+  -> m (MArray (PrimState m) r ix e)
 makeMArrayS sz f = makeMArrayLinearS sz (f . fromLinearIndex sz)
 {-# INLINE makeMArrayS #-}
 
@@ -237,7 +243,10 @@ makeMArrayS sz f = makeMArrayLinearS sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 makeMArrayLinearS ::
-     (Mutable r ix e, PrimMonad m) => Sz ix -> (Int -> m e) -> m (MArray (PrimState m) r ix e)
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
+  => Sz ix
+  -> (Int -> m e)
+  -> m (MArray (PrimState m) r ix e)
 makeMArrayLinearS sz f = do
   marr <- unsafeNew sz
   loopM_ 0 (< totalElem (msize marr)) (+ 1) (\ !i -> f i >>= unsafeLinearWrite marr i)
@@ -248,7 +257,7 @@ makeMArrayLinearS sz f = do
 --
 -- @since 0.3.0
 makeMArray ::
-     (PrimMonad m, MonadUnliftIO m, Mutable r ix e)
+     forall r ix e m. (PrimMonad m, MonadUnliftIO m, Mutable r ix e)
   => Comp
   -> Sz ix
   -> (ix -> m e)
@@ -261,7 +270,7 @@ makeMArray comp sz f = makeMArrayLinear comp sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 makeMArrayLinear ::
-     (PrimMonad m, MonadUnliftIO m, Mutable r ix e)
+     forall r ix e m. (PrimMonad m, MonadUnliftIO m, Mutable r ix e)
   => Comp
   -> Sz ix
   -> (Int -> m e)
@@ -281,14 +290,16 @@ makeMArrayLinear comp sz f = do
 --
 -- ====__Examples__
 --
--- >>> createArray_ Seq (Ix1 2) (\ marr -> write marr 0 10 >> write marr 1 11) :: IO (Array P Ix1 Int)
--- (Array P Seq (2)
---   [ 10,11 ])
+-- >>> :set -XTypeApplications
+-- >>> import Data.Massiv.Array
+-- >>> createArray_ @P @_ @Int Seq (Sz1 2) (\ _ schedule marr -> schedule (write' marr 0 10) >> schedule (write' marr 1 11))
+-- Array P Seq (Sz1 2)
+--   [ 10, 11 ]
 --
--- @since 0.2.6
+-- @since 0.3.0
 --
 createArray_ ::
-     (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (Int -> (m () -> m ()) -> MArray (PrimState m) r ix e -> m a)
@@ -301,12 +312,13 @@ createArray_ comp sz action = do
   unsafeFreeze comp marr
 {-# INLINE createArray_ #-}
 
--- | Just like `createArray_`, but together with `Array` it returns the result of the filling action.
+-- | Just like `createArray_`, but together with `Array` it returns results of scheduled filling
+-- actions.
 --
 -- @since 0.3.0
 --
 createArray ::
-     (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (Int -> (m a -> m ()) -> MArray (PrimState m) r ix e -> m [a])
@@ -326,14 +338,16 @@ createArray comp sz action = do
 --
 -- ====__Examples__
 --
--- >>> createArray_ Seq (Ix1 2) (\ marr -> write marr 0 10 >> write marr 1 11) :: IO (Array P Ix1 Int)
--- (Array P Seq (2)
---   [ 10,11 ])
+-- >>> :set -XTypeApplications
+-- >>> import Data.Massiv.Array
+-- >>> createArrayS_ @P @_ @Int Seq (Sz1 2) (\ marr -> write marr 0 10 >> write marr 1 12)
+-- Array P Seq (Sz1 2)
+--   [ 10, 12 ]
 --
 -- @since 0.3.0
 --
 createArrayS_ ::
-     (Mutable r ix e, PrimMonad m)
+     forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
@@ -347,7 +361,7 @@ createArrayS_ comp sz action = snd <$> createArrayS comp sz action
 -- @since 0.3.0
 --
 createArrayS ::
-     (Mutable r ix e, PrimMonad m)
+     forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
@@ -365,7 +379,11 @@ createArrayS comp sz action = do
 -- @since 0.3.0
 --
 createArrayST_ ::
-     Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
+     forall r ix e a. Mutable r ix e
+  => Comp
+  -> Sz ix
+  -> (forall s. MArray s r ix e -> ST s a)
+  -> Array r ix e
 createArrayST_ comp sz action = runST $ createArrayS_ comp sz action
 {-# INLINE createArrayST_ #-}
 
@@ -375,7 +393,11 @@ createArrayST_ comp sz action = runST $ createArrayS_ comp sz action
 -- @since 0.2.6
 --
 createArrayST ::
-     Mutable r ix e => Comp -> Sz ix -> (forall s. MArray s r ix e -> ST s a) -> (a, Array r ix e)
+     forall r ix e a. Mutable r ix e
+  => Comp
+  -> Sz ix
+  -> (forall s. MArray s r ix e -> ST s a)
+  -> (a, Array r ix e)
 createArrayST comp sz action = runST $ createArrayS comp sz action
 {-# INLINE createArrayST #-}
 
@@ -390,22 +412,23 @@ createArrayST comp sz action = runST $ createArrayS comp sz action
 --
 -- ====__Examples__
 --
+-- >>> import Data.Massiv.Array
 -- >>> import Data.IORef
 -- >>> ref <- newIORef (0 :: Int)
--- >>> generateArray Seq (Ix1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
+-- >>> generateArray Seq (Sz1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
 -- 0
 -- 1
 -- 2
 -- 3
 -- 4
 -- 5
--- (Array U Seq (6)
---   [ 0,1,2,3,4,5 ])
+-- Array U Seq (Sz1 6)
+--   [ 0, 1, 2, 3, 4, 5 ]
 -- >>> readIORef ref
 -- 15
 --
 generateArrayS ::
-     (Mutable r ix e, PrimMonad m)
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ingored during generation)
   -> Sz ix -- ^ Resulting size of the array
   -> (ix -> m e) -- ^ Element producing generator
@@ -417,7 +440,7 @@ generateArrayS comp sz gen = generateArrayLinearS comp sz (gen . fromLinearIndex
 --
 -- @since 0.3.0
 generateArrayLinearS ::
-     (Mutable r ix e, PrimMonad m)
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ingored during generation)
   -> Sz ix -- ^ Resulting size of the array
   -> (Int -> m e) -- ^ Element producing generator
@@ -434,7 +457,7 @@ generateArrayLinearS comp sz gen = do
 --
 -- @since 0.2.6
 generateArray ::
-     (MonadUnliftIO m, PrimMonad m, Mutable r ix e)
+     forall r ix e m. (MonadUnliftIO m, PrimMonad m, Mutable r ix e)
   => Comp
   -> Sz ix
   -> (ix -> m e)
@@ -446,7 +469,7 @@ generateArray comp sz f = generateArrayLinear comp sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 generateArrayLinear ::
-     (MonadUnliftIO m, PrimMonad m, Mutable r ix e)
+     forall r ix e m. (MonadUnliftIO m, PrimMonad m, Mutable r ix e)
   => Comp
   -> Sz ix
   -> (Int -> m e)
@@ -457,14 +480,13 @@ generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
 
 -- | Sequentially unfold an array from the left.
 --
--- @since 0.2.6
---
 -- ====__Examples__
 --
 -- Create an array with Fibonacci numbers while performing and `IO` action on the accumulator for
 -- each element of the array.
 --
--- >>> unfoldlPrim_ Seq  (Ix1 10) (\a@(f0, f1) _ -> let fn = f0 + f1 in print a >> return ((f1, fn), f0)) (0, 1) :: IO (Array P Ix1 Int)
+-- >>> import Data.Massiv.Array
+-- >>> unfoldlPrim_ Seq  (Sz1 10) (\a@(f0, f1) -> let fn = f0 + f1 in print a >> return ((f1, fn), f0)) (0, 1) :: IO (Array P Ix1 Int)
 -- (0,1)
 -- (1,1)
 -- (1,2)
@@ -475,35 +497,70 @@ generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
 -- (13,21)
 -- (21,34)
 -- (34,55)
--- (Array P Seq (10)
---   [ 0,1,1,2,3,5,8,13,21,34 ])
+-- Array P Seq (Sz1 10)
+--   [ 0, 1, 1, 2, 3, 5, 8, 13, 21, 34 ]
+--
+-- @since 0.3.0
 --
 unfoldlPrim_ ::
-     (Mutable r ix e, PrimMonad m)
+     forall r ix e a m. (Mutable r ix e, PrimMonad m)
+  => Comp -- ^ Computation strategy (ignored during initial creation)
+  -> Sz ix -- ^ Size of the desired array
+  -> (a -> m (a, e)) -- ^ Unfolding action
+  -> a -- ^ Initial accumulator
+  -> m (Array r ix e)
+unfoldlPrim_ comp sz gen acc0 = snd <$> unfoldlPrim comp sz gen acc0
+{-# INLINE unfoldlPrim_ #-}
+
+-- | Same as `unfoldlPrim_` but do the unfolding with index aware function.
+--
+-- @since 0.3.0
+--
+iunfoldlPrim_ ::
+     forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
-unfoldlPrim_ comp sz gen acc0 = fmap snd $ unfoldlPrim comp sz gen acc0
-{-# INLINE unfoldlPrim_ #-}
+iunfoldlPrim_ comp sz gen acc0 = snd <$> iunfoldlPrim comp sz gen acc0
+{-# INLINE iunfoldlPrim_ #-}
 
 
--- | Just like `unfoldlPrim_`, but also returns the final value of the accumulator.
+-- | Just like `iunfoldlPrim_`, but also returns the final value of the accumulator.
 --
--- @since 0.2.6
-unfoldlPrim ::
-     (Mutable r ix e, PrimMonad m)
+-- @since 0.3.0
+iunfoldlPrim ::
+     forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)
-unfoldlPrim comp sz gen acc0 =
+iunfoldlPrim comp sz gen acc0 =
   createArrayS comp sz $ \marr ->
     let sz' = msize marr
      in iterLinearM sz' 0 (totalElem sz') 1 (<) acc0 $ \i ix acc -> do
           (acc', e) <- gen acc ix
+          unsafeLinearWrite marr i e
+          return acc'
+{-# INLINE iunfoldlPrim #-}
+
+-- | Just like `iunfoldlPrim`, but do the unfolding with index aware function.
+--
+-- @since 0.3.0
+unfoldlPrim ::
+     forall r ix e a m. (Mutable r ix e, PrimMonad m)
+  => Comp -- ^ Computation strategy (ignored during initial creation)
+  -> Sz ix -- ^ Size of the desired array
+  -> (a -> m (a, e)) -- ^ Unfolding action
+  -> a -- ^ Initial accumulator
+  -> m (a, Array r ix e)
+unfoldlPrim comp sz gen acc0 =
+  createArrayS comp sz $ \marr ->
+    let sz' = msize marr
+     in loopM 0 (< totalElem sz') (+1) acc0 $ \i acc -> do
+          (acc', e) <- gen acc
           unsafeLinearWrite marr i e
           return acc'
 {-# INLINE unfoldlPrim #-}

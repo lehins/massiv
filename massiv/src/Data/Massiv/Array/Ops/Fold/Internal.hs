@@ -213,23 +213,22 @@ foldrFB c n arr = go 0
 
 
 
--- | /O(n)/ - Left fold, computed in parallel. Parallelization of folding is implemented in such a
--- way that an array is split into a number of chunks of equal length, plus an extra one for the
--- left over. Number of chunks is the same as number of available cores (capabilities) plus one, and
--- each chunk is individually folded by a separate core with a function @g@. Results from folding
--- each chunk are further folded with another function @f@, thus allowing us to use information
--- about the structure of an array during folding.
+-- | /O(n)/ - Left fold, computed with respect of array's computation strategy. Because we do
+-- potentially split the folding among many threads, we also need a combining function and an
+-- accumulator for the results. Depending on the number of threads being used, results can be
+-- different, hence is the `MonadIO` constraint.
 --
 -- ===__Examples__
 --
--- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArrayR U Seq (Ix1 11) id
--- [[10,9,8,7,6,5,4,3,2,1,0]]
---
--- And this is how the result would look like if the above computation would be performed in a
--- program executed with @+RTS -N3@, i.e. with 3 capabilities:
---
--- >>> foldlOnP [1,2,3] (flip (:)) [] (flip (:)) [] $ makeArrayR U Seq (Ix1 11) id
--- [[10,9],[8,7,6],[5,4,3],[2,1,0]]
+-- >>> import Data.Massiv.Array
+-- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArrayR D Seq (Sz1 6) id
+-- [[5,4,3,2,1,0]]
+-- >>> foldlP (flip (:)) [] (++) [] $ makeArrayR D Seq (Sz1 6) id
+-- [5,4,3,2,1,0]
+-- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArrayR D (ParN 3) (Sz1 6) id
+-- [[5,4],[3,2],[1,0]]
+-- >>> foldlP (flip (:)) [] (++) [] $ makeArrayR D (ParN 3) (Sz1 6) id
+-- [1,0,3,2,5,4]
 --
 -- @since 0.1.0
 foldlP :: (MonadIO m, Source r ix e) =>
@@ -253,51 +252,24 @@ ifoldlP f fAcc g gAcc =
 {-# INLINE ifoldlP #-}
 
 
--- | /O(n)/ - Right fold, computed in parallel. Same as `foldlP`, except directed
--- from the last element in the array towards beginning.
+-- | /O(n)/ - Right fold, computed with respect to computation strategy. Same as `foldlP`, except
+-- directed from the last element in the array towards beginning.
 --
 -- ==== __Examples__
 --
--- >>> foldrP (++) [] (:) [] $ makeArray2D (3,4) id
--- [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3),(2,0),(2,1),(2,2),(2,3)]
---
+-- >>> import Data.Massiv.Array
+-- >>> foldrP (:) [] (++) [] $ makeArrayR D (ParN 2) (Sz2 2 3) fromIx2
+-- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
+-- >>> foldrP (:) [] (:) [] $ makeArrayR D Seq (Sz1 6) id
+-- [[0,1,2,3,4,5]]
+-- >>> foldrP (:) [] (:) [] $ makeArrayR D (ParN 3) (Sz1 6) id
+-- [[0,1],[2,3],[4,5]]
 --
 -- @since 0.1.0
 foldrP :: (MonadIO m, Source r ix e) =>
           (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> m b
 foldrP f fAcc g gAcc = liftIO . ifoldrP (const f) fAcc g gAcc
 {-# INLINE foldrP #-}
-
-
--- Just like `foldrP`, but allows you to specify which cores to run
--- computation on.
---
--- ==== __Examples__
---
--- Number of wokers dictate the result structure:
---
--- >>> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 9 id
--- [[0,1,2],[3,4,5],[6,7,8]]
--- >>> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 10 id
--- [[0,1,2],[3,4,5],[6,7,8],[9]]
--- >>> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 12 id
--- [[0,1,2,3],[4,5,6,7],[8,9,10,11]]
---
--- But most of the time that structure is of no importance:
---
--- >>> foldrOnP [1,2,3] (++) [] (:) [] $ makeArray1D 10 id
--- [0,1,2,3,4,5,6,7,8,9]
---
--- Same as `foldlOnP`, order is guaranteed to be consecutive and in proper direction:
---
--- >>> fmap snd $ foldrOnP [1,2,3] (\x (i, acc) -> (i + 1, (i, x):acc)) (1, []) (:) [] $ makeArray1D 11 id
--- [(4,[0,1,2]),(3,[3,4,5]),(2,[6,7,8]),(1,[9,10])]
--- >>> fmap (P.zip [4,3..]) <$> foldrOnP [1,2,3] (:) [] (:) [] $ makeArray1D 11 id
--- [(4,[0,1,2]),(3,[3,4,5]),(2,[6,7,8]),(1,[9,10])]
---
---
--- @since 0.1.0
-
 
 
 -- | /O(n)/ - Right fold with an index aware function, while respecting the computation strategy.
@@ -329,6 +301,9 @@ ifoldlInternal g initAcc f resAcc = unsafePerformIO . ifoldlP g initAcc f resAcc
 {-# INLINE ifoldlInternal #-}
 
 
+-- | Similar to `ifoldlP`, except that folding functions themselves do live in IO
+--
+-- @since 0.1.0
 ifoldlIO ::
      (MonadUnliftIO m, Source r ix e)
   => (a -> ix -> e -> m a) -- ^ Index aware folding IO action
@@ -356,8 +331,7 @@ ifoldlIO f !initAcc g !tAcc !arr = do
 
 
 
--- | Parallel right fold. Differs from `ifoldrP` in that it accepts monadic actions instead of the
--- usual pure functions as arguments.
+-- | Similar to `ifoldrP`, except that folding functions themselves do live in IO
 --
 -- @since 0.1.0
 ifoldrIO :: (MonadUnliftIO m, Source r ix e) =>

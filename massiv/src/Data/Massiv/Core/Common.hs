@@ -104,6 +104,19 @@ class (Typeable r, Index ix) => Construct r ix e where
   {-# MINIMAL setComp,(makeArray|makeArrayLinear) #-}
 
   -- | Set computation strategy for this array
+  --
+  -- ==== __Example__
+  --
+  -- >>> :set -XTypeApplications
+  -- >>> import Data.Massiv.Array
+  -- >>> a = singleton @DL @Ix1 @Int 0
+  -- >>> a
+  -- Array DL Seq (Sz1 1)
+  --   [ 0 ]
+  -- >>> setComp (ParN 6) a -- use 6 capabilities
+  -- Array DL (ParN 6) (Sz1 1)
+  --   [ 0 ]
+  --
   setComp :: Comp -> Array r ix e -> Array r ix e
 
   -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
@@ -113,21 +126,33 @@ class (Typeable r, Index ix) => Construct r ix e where
   -- >>> import Data.Massiv.Array
   -- >>> makeArray Seq (Sz (3 :. 4)) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
   -- Array D Seq (Sz (3 :. 4))
-  --   [ [ 0,0,0,0 ]
-  --   , [ 0,1,0,0 ]
-  --   , [ 0,0,2,0 ]
+  --   [ [ 0, 0, 0, 0 ]
+  --   , [ 0, 1, 0, 0 ]
+  --   , [ 0, 0, 2, 0 ]
+  --   ]
+  --
+  -- Instead of restricting the full type manually we can use `TypeApplications` as convenience:
+  --
+  -- >>> :set -XTypeApplications
+  -- >>> makeArray @P @_ @Double Seq (Sz2 3 4) $ \(i :. j) -> logBase (fromIntegral i) (fromIntegral j)
+  -- Array P Seq (Sz (3 :. 4))
+  --   [ [ NaN, -0.0, -0.0, -0.0 ]
+  --   , [ -Infinity, NaN, Infinity, Infinity ]
+  --   , [ -Infinity, 0.0, 1.0, 1.5849625007211563 ]
   --   ]
   --
   -- @since 0.1.0
-  makeArray :: Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
-            -> Sz ix -- ^ Size of the result array.
-            -> (ix -> e) -- ^ Function to generate elements at a particular index
-            -> Array r ix e
+  makeArray ::
+       Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
+    -> Sz ix -- ^ Size of the result array.
+    -> (ix -> e) -- ^ Function to generate elements at a particular index
+    -> Array r ix e
   makeArray comp sz f = makeArrayLinear comp sz (f . fromLinearIndex sz)
   {-# INLINE makeArray #-}
 
   -- | Same as `makeArray`, but produce elements using linear row-major index.
   --
+  -- >>> import Data.Massiv.Array
   -- >>> makeArrayLinear Seq (Sz (2 :. 4)) id :: Array D Ix2 Int
   -- Array D Seq (Sz (2 :. 4))
   --   [ [ 0, 1, 2, 3 ]
@@ -175,6 +200,7 @@ class Load r ix e => Source r ix e where
 class (Typeable r, Index ix) => Load r ix e where
 
   -- | Get computation strategy of this array
+  
   getComp :: Array r ix e -> Comp
 
   -- | Get the size of an immutabe array
@@ -414,6 +440,18 @@ infixl 4 !, !?, ??
 
 -- | Infix version of `index'`.
 --
+-- >>> import Data.Massiv.Array as A
+-- >>> a = computeAs U $ iterateN Seq (Sz (2 :. 3)) succ (0 :: Int)
+-- >>> a
+-- Array U Seq (Sz (2 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   ]
+-- >>> a ! 0 :. 2
+-- 3
+-- >>> a ! 0 :. 3
+-- *** Exception: IndexOutOfBoundsException: (0 :. 3) not safe for (Sz (2 :. 3))
+--
 -- @since 0.1.0
 (!) :: Manifest r ix e => Array r ix e -> ix -> e
 (!) = index'
@@ -422,21 +460,58 @@ infixl 4 !, !?, ??
 
 -- | Infix version of `index`.
 --
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> :set -XTypeApplications
+-- >>> a <- fromListsM @U @Ix2 @Int Seq [[1,2,3],[4,5,6]]
+-- >>> a
+-- Array U Seq (Sz (2 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   ]
+-- >>> a !? 0 :. 2
+-- 3
+-- >>> a !? 0 :. 3
+-- *** Exception: IndexOutOfBoundsException: (0 :. 3) not safe for (Sz (2 :. 3))
+-- >>> a !? 0 :. 3 :: Maybe Int
+-- Nothing
+--
 -- @since 0.1.0
-(!?) :: (MonadThrow m, Manifest r ix e) => Array r ix e -> ix -> m e
+(!?) :: (Manifest r ix e, MonadThrow m) => Array r ix e -> ix -> m e
 (!?) = indexM
 {-# INLINE (!?) #-}
 
 
--- | /O(1)/ - Lookup an element in the array, where array can itself be
--- `Nothing`. This operator is useful when used together with slicing or other
--- functions that return `Maybe` array:
+-- | /O(1)/ - Lookup an element in the array, where array itself is wrapped with
+-- `MonadThrow`. This operator is useful when used together with slicing or other
+-- functions that can fail.
 --
--- >>> (fromList Seq [[[1,2,3]],[[4,5,6]]] :: Maybe (Array U Ix3 Int)) ??> 1 ?? (0 :. 2)
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> :set -XTypeApplications
+-- >>> ma = fromListsM @U @Ix3 @Int @Maybe Seq [[[1,2,3]],[[4,5,6]]]
+-- >>> ma
+-- Just (Array U Seq (Sz (2 :> 1 :. 3))
+--   [ [ [ 1, 2, 3 ]
+--     ]
+--   , [ [ 4, 5, 6 ]
+--     ]
+--   ]
+-- )
+-- >>> ma ??> 1
+-- Just (Array M Seq (Sz (1 :. 3))
+--   [ [ 4, 5, 6 ]
+--   ]
+-- )
+-- >>> ma ??> 1 ?? 0 :. 2
+-- Just 6
+-- >>> ma ?? 1 :> 0 :. 2
 -- Just 6
 --
 -- @since 0.1.0
-(??) :: (MonadThrow m, Manifest r ix e) => m (Array r ix e) -> ix -> m e
+(??) :: (Manifest r ix e, MonadThrow m) => m (Array r ix e) -> ix -> m e
 (??) marr ix = marr >>= (!? ix)
 {-# INLINE (??) #-}
 
@@ -453,7 +528,7 @@ index = indexM
 -- of bounds and returns the element at the supplied index otherwise.
 --
 -- @since 0.3.0
-indexM :: (MonadThrow m, Manifest r ix e) => Array r ix e -> ix -> m e
+indexM :: (Manifest r ix e, MonadThrow m) => Array r ix e -> ix -> m e
 indexM = evaluateM
 {-# INLINE indexM #-}
 
@@ -520,10 +595,10 @@ index' = evaluate'
 -- >>> evaluateM (range Seq (Ix2 10 20) (100 :. 210)) 50 :: Either SomeException Ix2
 -- Right (60 :. 70)
 -- >>> evaluateM (range Seq (Ix2 10 20) (100 :. 210)) 150 :: Either SomeException Ix2
--- Left (IndexOutOfBoundsException: 150 :. 150 not safe for (Sz (90 :. 190)))
+-- Left (IndexOutOfBoundsException: (150 :. 150) not safe for (Sz (90 :. 190)))
 --
 -- @since 0.3.0
-evaluateM :: (MonadThrow m, Source r ix e) => Array r ix e -> ix -> m e
+evaluateM :: (Source r ix e, MonadThrow m) => Array r ix e -> ix -> m e
 evaluateM arr ix =
   handleBorderIndex
     (Fill (throwM (IndexOutOfBoundsException (size arr) ix)))
@@ -540,7 +615,7 @@ evaluateM arr ix =
 -- >>> evaluate' (range Seq (Ix2 10 20) (100 :. 210)) 50
 -- 60 :. 70
 -- >>> evaluate' (range Seq (Ix2 10 20) (100 :. 210)) 150
--- *** Exception: IndexOutOfBoundsException: 150 :. 150 not safe for (Sz (90 :. 190))
+-- *** Exception: IndexOutOfBoundsException: (150 :. 150) not safe for (Sz (90 :. 190))
 --
 -- @since 0.3.0
 evaluate' :: Source r ix e => Array r ix e -> ix -> e

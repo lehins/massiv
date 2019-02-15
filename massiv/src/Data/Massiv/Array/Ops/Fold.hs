@@ -151,18 +151,20 @@ ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 --
 -- ====__Example__
 --
--- >>> let arr = makeArrayR U Seq (2 :. 5) (toLinearIndex (2 :. 5))
+-- >>> import Data.Massiv.Array
+-- >>> :set -XTypeApplications
+-- >>> arr = makeArrayLinear @U Seq (Sz (2 :. 5)) id
 -- >>> arr
--- (Array U Seq (2 :. 5)
---   [ [ 0,1,2,3,4 ]
---   , [ 5,6,7,8,9 ]
---   ])
+-- Array U Seq (Sz (2 :. 5))
+--   [ [ 0, 1, 2, 3, 4 ]
+--   , [ 5, 6, 7, 8, 9 ]
+--   ]
 -- >>> foldlWithin Dim1 (flip (:)) [] arr
--- (Array D Seq (2)
---   [ [4,3,2,1,0],[9,8,7,6,5] ])
+-- Array D Seq (Sz1 2)
+--   [ [4,3,2,1,0], [9,8,7,6,5] ]
 -- >>> foldlWithin Dim2 (flip (:)) [] arr
--- (Array D Seq (5)
---   [ [5,0],[6,1],[7,2],[8,3],[9,4] ])
+-- Array D Seq (Sz1 5)
+--   [ [5,0], [6,1], [7,2], [8,3], [9,4] ]
 --
 -- @since 0.2.4
 foldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
