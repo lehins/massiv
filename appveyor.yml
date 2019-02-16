@@ -54,7 +54,7 @@ test_script:
       --no-terminal
       --haddock
       --no-haddock-deps
-  - stack %ARGS% test massiv:tests
+  - stack %ARGS% test massiv:tests massiv:doctests
       -j 2
       --flag massiv:unsafe-checks
       --no-terminal

@@ -370,7 +370,9 @@ backpermute = backpermute'
 {-# DEPRECATED backpermute "In favor of a safe `backpermuteM` or an equivalent `backpermute'`" #-}
 
 
-
+-- | /O(1)/ - Add an element to the vector from the left side
+--
+-- @since 0.3.0
 cons :: e -> Array DL Ix1 e -> Array DL Ix1 e
 cons e arr =
   arr
@@ -381,6 +383,9 @@ cons e arr =
     }
 {-# INLINE cons #-}
 
+-- | /O(1)/ - Take one element off the vector from the left side.
+--
+-- @since 0.3.0
 unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
 unconsM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
@@ -392,6 +397,9 @@ unconsM arr
     !sz = size arr
 {-# INLINE unconsM #-}
 
+-- | /O(1)/ - Add an element to the vector from the right side
+--
+-- @since 0.3.0
 snoc :: Array DL Ix1 e -> e -> Array DL Ix1 e
 snoc arr e =
   arr
@@ -405,6 +413,9 @@ snoc arr e =
 {-# INLINE snoc #-}
 
 
+-- | /O(1)/ - Take one element off the vector from the right side.
+--
+-- @since 0.3.0
 unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
 unsnocM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
