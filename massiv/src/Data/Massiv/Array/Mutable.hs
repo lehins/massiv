@@ -187,6 +187,9 @@ freezeS marr = generateArrayLinearS Seq (msize marr) (unsafeLinearRead marr)
 {-# INLINE freezeS #-}
 
 
+-- | Load sequentially a pure array into the newly created mutable array.
+--
+-- @since 0.3.0
 loadArrayS ::
      forall r ix e r' m. (Load r' ix e, Mutable r ix e, PrimMonad m)
   => Array r' ix e
@@ -197,6 +200,10 @@ loadArrayS arr = do
   pure marr
 {-# INLINE loadArrayS #-}
 
+
+-- | Load a pure array into the newly created mutable array, while respecting computation startegy.
+--
+-- @since 0.3.0
 loadArray ::
      forall r ix e r' m. (Load r' ix e, Mutable r ix e, MonadIO m)
   => Array r' ix e
@@ -452,7 +459,7 @@ generateArrayLinearS comp sz gen = do
 {-# INLINE generateArrayLinearS #-}
 
 
--- | Just like `generateArray`, except this generator __will__ respect the supplied computation
+-- | Just like `generateArrayS`, except this generator __will__ respect the supplied computation
 -- strategy, and for that reason it is restricted to `IO`.
 --
 -- @since 0.2.6

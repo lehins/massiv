@@ -16,7 +16,9 @@
   be a monoid
 * `singleton` does not accept computation strategy any more and creates `Seq` array by default
 * New function `empty`.
-* Partial functions `read'`, `write'` and `swap'` now live in IO and trow proper exceptions.
+* Partial functions `read'`, `write'` and `swap'` now live in IO and throw proper exceptions.
+* `loadArray` is renamed to `loadArrayM` and there is a new separate function (not part of `Load`
+  class) with the name `loadArray` that actually uses `loadArrayM`
 
 # 0.2.6
 

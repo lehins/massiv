@@ -117,7 +117,7 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 -- | Similar to `makeArray`, but construct the array sequentially using an `Applicative` interface
 -- disregarding the supplied `Comp`.
 --
--- /Note/ - using `Data.Massiv.Array.Mutable.generateArray` will always be faster, althought not always possible.
+-- /Note/ - using `Data.Massiv.Array.Mutable.generateArrayS` will always be faster, althought not always possible.
 --
 --
 -- @since 0.2.6
@@ -238,6 +238,8 @@ iunfoldrS_ comp sz f acc0 =
 -- | Create an array of indices with a range from start to finish (not-including), where indices are
 -- incrimeted by one.
 --
+-- ==== __Examples__
+--
 -- >>> import Data.Massiv.Array
 -- >>> range Seq (Ix1 1) 6
 -- Array D Seq (Sz1 5)
@@ -258,17 +260,14 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 -- | Same as `range`, but with a custom step.
 --
 -- @since 0.1.0
-rangeStep :: (Index ix) =>
-             Comp -- ^ Computation strategy
-          -> ix -- ^ Start
-          -> ix -- ^ Step (Can't have zeros)
-          -> ix -- ^ End
-          -> Maybe (Array D ix ix)
+rangeStep :: Index ix => Comp -> ix -> ix -> ix -> Maybe (Array D ix ix)
 rangeStep = rangeStepM
 {-# INLINE rangeStep #-}
 {-# DEPRECATED rangeStep "In favor of more general `rangeStepM`" #-}
 
 -- | Same as `range`, but with a custom step.
+--
+-- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
 -- >>> rangeStepM Seq (Ix1 1) 2 8
