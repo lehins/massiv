@@ -232,8 +232,8 @@ computeInto !mArr !arr =
 -- @since 0.3.0
 makeMArrayS ::
      forall r ix e m. (Mutable r ix e, PrimMonad m)
-  => Sz ix
-  -> (ix -> m e)
+  => Sz ix -- ^ Size of the create array
+  -> (ix -> m e) -- ^ Element generating action
   -> m (MArray (PrimState m) r ix e)
 makeMArrayS sz f = makeMArrayLinearS sz (f . fromLinearIndex sz)
 {-# INLINE makeMArrayS #-}

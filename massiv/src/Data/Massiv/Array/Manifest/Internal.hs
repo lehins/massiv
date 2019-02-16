@@ -233,9 +233,10 @@ computeS !arr = runST $ loadArrayS arr >>= unsafeFreeze (getComp arr)
 --
 -- ====__Examples__
 --
--- >>> computeAs P $ range Seq 0 10
--- (Array P Seq (10)
---   [ 0,1,2,3,4,5,6,7,8,9 ])
+-- >>> import Data.Massiv.Array
+-- >>> computeAs P $ range Seq (Ix1 0) 10
+-- Array P Seq (Sz1 10)
+--   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 --
 computeAs :: (Load r' ix e, Mutable r ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
@@ -245,24 +246,27 @@ computeAs _ = compute
 -- | Same as `compute` and `computeAs`, but let's you supply resulting representation type as a proxy
 -- argument.
 --
+-- ==== __Examples__
+--
+-- Useful only really for cases when representation constructor or @TypeApplications@ extension
+-- aren't desireable for some reason:
+--
+-- >>> import Data.Proxy
+-- >>> import Data.Massiv.Array
+-- >>> computeProxy (Proxy :: Proxy P) $ (^ (2 :: Int)) <$> range Seq (Ix1 0) 10
+-- Array P Seq (Sz1 10)
+--   [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
+--
 -- @since 0.1.1
---
--- ====__Examples__
---
--- Useful for cases when representation constructor isn't available for some reason:
---
--- >>> computeProxy (Nothing :: Maybe P) $ range Seq 0 10
--- (Array P Seq (10)
---   [ 0,1,2,3,4,5,6,7,8,9 ])
---
 computeProxy :: (Load r' ix e, Mutable r ix e) => proxy r -> Array r' ix e -> Array r ix e
 computeProxy _ = compute
 {-# INLINE computeProxy #-}
 
 
-
 -- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if
 -- resulting type is the same as the input.
+--
+-- @since 0.1.0
 computeSource :: forall r' r ix e . (Load r' ix e, Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr =
@@ -271,6 +275,8 @@ computeSource arr =
 
 
 -- | /O(n)/ - Make an exact immutable copy of an Array.
+--
+-- @since 0.1.0
 clone :: Mutable r ix e => Array r ix e -> Array r ix e
 clone arr = unsafePerformIO $ thaw arr >>= unsafeFreeze (getComp arr)
 {-# INLINE clone #-}
@@ -284,6 +290,8 @@ gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 
 -- | /O(n)/ - conversion between manifest types, except when source and result arrays
 -- are of the same representation, in which case it is an /O(1)/ operation.
+--
+-- @since 0.1.0
 convert :: (Manifest r' ix e, Mutable r ix e)
         => Array r' ix e -> Array r ix e
 convert arr =
@@ -291,6 +299,8 @@ convert arr =
 {-# INLINE convert #-}
 
 -- | Same as `convert`, but let's you supply resulting representation type as an argument.
+--
+-- @since 0.1.0
 convertAs :: (Manifest r' ix e, Mutable r ix e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
@@ -301,7 +311,6 @@ convertAs _ = convert
 -- proxy argument.
 --
 -- @since 0.1.1
---
 convertProxy :: (Manifest r' ix e, Mutable r ix e)
              => proxy r -> Array r' ix e -> Array r ix e
 convertProxy _ = convert
@@ -349,6 +358,11 @@ fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
 
 
 -- | Same as `compute`, but with `Stride`.
+--
+-- /O(n div k)/ - Where @n@ is numer of elements in the source array and @k@ is number of elemts in
+-- the stride.
+--
+-- @since 0.3.0
 computeWithStride ::
      (StrideLoad r' ix e, Mutable r ix e)
   => Stride ix
@@ -363,6 +377,8 @@ computeWithStride stride !arr =
 
 
 -- | Same as `computeWithStride`, but with ability to specify resulting array representation.
+--
+-- @since 0.3.0
 computeWithStrideAs ::
      (StrideLoad r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
 computeWithStrideAs _ = computeWithStride

@@ -16,15 +16,16 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Construct
-  ( -- ** From a function
-    makeArray
+  ( -- ** With constant value
+    empty
+  , singleton
+  , replicate
+    -- ** With a function
+  , makeArray
   , makeArrayLinear
   , makeArrayR
+  , makeArrayLinearR
   , makeVectorR
-  , singleton
-  , empty
-  , replicate
-  , replicateR
   , iterateN
   , iiterateN
   , unfoldlS_
@@ -45,7 +46,6 @@ module Data.Massiv.Array.Ops.Construct
   , rangeStepSize
   , enumFromN
   , enumFromStepN
-  --, enumFromTo
     -- ** Expansion
   , expandWithin
   , expandWithin'
@@ -59,7 +59,6 @@ import           Control.Monad.ST
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Core.Common
---import           Data.Massiv.Scheduler          (traverse_)
 import           Prelude                        as P hiding (enumFromTo,
                                                       replicate)
 
@@ -69,27 +68,44 @@ import           Prelude                        as P hiding (enumFromTo,
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> makeArrayR U Par (2 :> 3 :. 4) (\ (i :> j :. k) -> i * i + j * j == k * k)
--- (Array U Par (2 :> 3 :. 4)
---   [ [ [ True,False,False,False ]
---     , [ False,True,False,False ]
---     , [ False,False,True,False ]
+-- >>> makeArrayR U Par (Sz (2 :> 3 :. 4)) (\ (i :> j :. k) -> i * i + j * j == k * k)
+-- Array U Par (Sz (2 :> 3 :. 4))
+--   [ [ [ True, False, False, False ]
+--     , [ False, True, False, False ]
+--     , [ False, False, True, False ]
 --     ]
---   , [ [ False,True,False,False ]
---     , [ False,False,False,False ]
---     , [ False,False,False,False ]
+--   , [ [ False, True, False, False ]
+--     , [ False, False, False, False ]
+--     , [ False, False, False, False ]
 --     ]
---   ])
+--   ]
 --
+-- @since 0.1.0
 makeArrayR :: Construct r ix e => r -> Comp -> Sz ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
 {-# INLINE makeArrayR #-}
 
+-- | Same as `makeArrayLinear`, but with ability to supply resulting representation
+--
+-- @since 0.3.0
+makeArrayLinearR :: Construct r ix e => r -> Comp -> Sz ix -> (Int -> e) -> Array r ix e
+makeArrayLinearR _ = makeArrayLinear
+{-# INLINE makeArrayLinearR #-}
 
 -- | Same as `makeArrayR`, but restricted to 1-dimensional arrays.
+--
+-- @since 0.1.0
 makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix1 e
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
+
+
+-- | Replicate the same elements
+--
+-- @since 0.3.0
+replicate :: forall r ix e . Construct r ix e => Comp -> Sz ix -> e -> Array r ix e
+replicate comp sz e = makeArray comp sz (const e)
+{-# INLINE replicate #-}
 
 
 newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
@@ -106,7 +122,12 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 --
 -- @since 0.2.6
 --
-makeArrayA :: (Mutable r ix e, Applicative f) => Comp -> Sz ix -> (ix -> f e) -> f (Array r ix e)
+makeArrayA ::
+     forall r ix e f. (Mutable r ix e, Applicative f)
+  => Comp
+  -> Sz ix
+  -> (ix -> f e)
+  -> f (Array r ix e)
 makeArrayA !comp !sz f =
   let n = totalElem sz
       go !i
@@ -124,24 +145,15 @@ makeArrayA !comp !sz f =
 --
 -- @since 0.2.6
 --
-makeArrayAR :: (Mutable r ix e, Applicative f) => r -> Comp -> Sz ix -> (ix -> f e) -> f (Array r ix e)
+makeArrayAR ::
+     forall r ix e f. (Mutable r ix e, Applicative f)
+  => r
+  -> Comp
+  -> Sz ix
+  -> (ix -> f e)
+  -> f (Array r ix e)
 makeArrayAR _ = makeArrayA
 {-# INLINE makeArrayAR #-}
-
--- |
---
--- @since 0.3.0
-replicate :: Construct r ix e => Comp -> Sz ix -> e -> Array r ix e
-replicate comp sz e = makeArray comp sz (const e)
-{-# INLINE replicate #-}
-
-
--- |
---
--- @since 0.3.0
-replicateR :: Construct r ix e => r -> Comp -> Sz ix -> e -> Array r ix e
-replicateR _ comp sz e = makeArray comp sz (const e)
-{-# INLINE replicateR #-}
 
 
 -- | Sequentially iterate over each cell in the array in the row-major order while continuously
@@ -157,14 +169,14 @@ replicateR _ comp sz e = makeArray comp sz (const e)
 --   ]
 --
 -- @since 0.3.0
-iterateN :: Index ix => Comp -> Sz ix -> (e -> e) -> e -> Array DL ix e
+iterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> e) -> e -> Array DL ix e
 iterateN comp sz f = unfoldlS_ comp sz $ \a -> let !a' = f a in (a', a')
 {-# INLINE iterateN #-}
 
 -- |
 --
 -- @since 0.3.0
-iiterateN :: Index ix => Comp -> Sz ix -> (e -> ix -> e) -> e -> Array DL ix e
+iiterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> ix -> e) -> e -> Array DL ix e
 iiterateN comp sz f = iunfoldlS_ comp sz $ \a ix -> let !a' = f a ix in (a', a')
 {-# INLINE iiterateN #-}
 
@@ -172,7 +184,7 @@ iiterateN comp sz f = iunfoldlS_ comp sz $ \a ix -> let !a' = f a ix in (a', a')
 -- |
 --
 -- @since 0.3.0
-unfoldlS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
+unfoldlS_ :: forall ix e a . Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
 unfoldlS_ comp sz f = iunfoldlS_ comp sz (\a _ -> f a)
 {-# INLINE unfoldlS_ #-}
 
@@ -195,14 +207,15 @@ iunfoldlS_ comp sz f acc0 =
 {-# INLINE iunfoldlS_ #-}
 
 
--- |
+-- | Unfold sequentially from the right. Unfortunately there is really no way to safe the
+-- accumulator, since resulting array is delayed.
 --
 -- @since 0.3.0
 unfoldrS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
 unfoldrS_ comp sz f = iunfoldrS_ comp sz (const f)
 {-# INLINE unfoldrS_ #-}
 
--- |
+-- | Unfold sequentially from the right with an index aware function.
 --
 -- @since 0.3.0
 iunfoldrS_
@@ -220,14 +233,13 @@ iunfoldrS_ comp sz f acc0 =
     }
 {-# INLINE iunfoldrS_ #-}
 
-
+-- prop> range comp from to == rangeStep comp from 1 to
+--
 -- | Create an array of indices with a range from start to finish (not-including), where indices are
 -- incrimeted by one.
 --
--- prop> range comp from to == rangeStep comp from 1 to
---
 -- >>> import Data.Massiv.Array
--- >>> range Seq 1 6
+-- >>> range Seq (Ix1 1) 6
 -- Array D Seq (Sz1 5)
 --   [ 1, 2, 3, 4, 5 ]
 -- >>> fromIx2 <$> range Seq (-1) (2 :. 2)
@@ -237,6 +249,7 @@ iunfoldrS_ comp sz f acc0 =
 --   , [ (1,-1), (1,0), (1,1) ]
 --   ]
 --
+-- @since 0.1.0
 range :: Index ix => Comp -> ix -> ix -> Array D ix ix
 range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 {-# INLINE range #-}
@@ -244,11 +257,7 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 
 -- | Same as `range`, but with a custom step.
 --
--- >>> import Data.Massiv.Array
--- >>> rangeStep Seq 1 2 6
--- Array D Seq (Sz1 3)
---   [ 1,3,5 ]
---
+-- @since 0.1.0
 rangeStep :: (Index ix) =>
              Comp -- ^ Computation strategy
           -> ix -- ^ Start
@@ -262,16 +271,19 @@ rangeStep = rangeStepM
 -- | Same as `range`, but with a custom step.
 --
 -- >>> import Data.Massiv.Array
--- >>> rangeStep Seq 1 2 6
--- (Array D Seq (3)
---   [ 1,3,5 ])
+-- >>> rangeStepM Seq (Ix1 1) 2 8
+-- Array D Seq (Sz1 4)
+--   [ 1, 3, 5, 7 ]
+-- >>> rangeStepM Seq (Ix1 1) 0 8
+-- *** Exception: IndexZeroException: 0
 --
-rangeStepM :: (MonadThrow m, Index ix) =>
-             Comp -- ^ Computation strategy
-          -> ix -- ^ Start
-          -> ix -- ^ Step (Can't have zeros)
-          -> ix -- ^ End
-          -> m (Array D ix ix)
+-- @since 0.3.0
+rangeStepM :: (Index ix, MonadThrow m) =>
+              Comp -- ^ Computation strategy
+           -> ix -- ^ Start
+           -> ix -- ^ Step (Can't have zeros)
+           -> ix -- ^ End
+           -> m (Array D ix ix)
 rangeStepM comp !from !step !to
   | foldlIndex (\acc i -> acc || i == 0) False step = throwM $ IndexZeroException step
   | otherwise =
@@ -283,9 +295,17 @@ rangeStepM comp !from !step !to
 
 -- | Same as `rangeStep`, but will throw an error whenever @step@ contains zeros.
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> rangeStep' Seq (Ix1 1) 2 6
+-- Array D Seq (Sz1 3)
+--   [ 1, 3, 5 ]
+--
 -- @since 0.3.0
 rangeStep' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
 rangeStep' comp from step = either throw id  . rangeStepM comp from step
+{-# INLINE rangeStep' #-}
 
 -- | Just like `range`, except the finish index is included.
 --
@@ -320,11 +340,11 @@ rangeSize comp !from !sz = makeArray comp sz (liftIndex2 (+) from)
 --
 -- @since 0.3.0
 rangeStepSize :: Index ix =>
-               Comp
-            -> ix -- ^ @x@ - start value
-            -> ix -- ^ @delta@ - step value
-            -> Sz ix -- ^ @sz@ - Size of resulting array
-            -> Array D ix ix
+                 Comp
+              -> ix -- ^ @x@ - start value
+              -> ix -- ^ @delta@ - step value
+              -> Sz ix -- ^ @sz@ - Size of resulting array
+              -> Array D ix ix
 rangeStepSize comp !from !step !sz =
   makeArray comp sz (liftIndex2 (+) from . liftIndex2 (*) step)
 {-# INLINE rangeStepSize #-}
@@ -332,11 +352,14 @@ rangeStepSize comp !from !step !sz =
 
 -- | Same as `enumFromStepN` with step @delta = 1@.
 --
+-- ==== __Examples__
+--
 -- >>> import Data.Massiv.Array
 -- >>> enumFromN Seq (5 :: Double) 3
--- (Array D Seq (3)
---   [ 5.0,6.0,7.0 ])
+-- Array D Seq (Sz1 3)
+--   [ 5.0, 6.0, 7.0 ]
 --
+-- @since 0.1.0
 enumFromN :: Num e =>
              Comp
           -> e -- ^ @x@ - start value
@@ -351,11 +374,14 @@ enumFromN comp !from !sz = makeArray comp sz $ \ i -> fromIntegral i + from
 -- x + delta ..]@. Major difference is that `fromList` constructs an `Array` with manifest
 -- representation, while `enumFromStepN` is delayed.
 --
+-- ==== __Examples__
+--
 -- >>> import Data.Massiv.Array
 -- >>> enumFromStepN Seq 1 (0.1 :: Double) 5
 -- Array D Seq (Sz1 5)
 --   [ 1.0, 1.1, 1.2, 1.3, 1.4 ]
 --
+-- @since 0.1.0
 enumFromStepN :: Num e =>
                  Comp
               -> e -- ^ @x@ - start value

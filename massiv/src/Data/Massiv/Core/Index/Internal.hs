@@ -111,6 +111,22 @@ instance Index ix => Show (Sz ix) where
           1 -> "1 " ++ show usz
           _ -> " (" ++ show usz ++ ")"
 
+instance (Num ix, Index ix) => Num (Sz ix) where
+  (+) x y = SafeSz (coerce x + coerce y)
+  {-# INLINE (+) #-}
+  (-) x y = Sz (coerce x - coerce y)
+  {-# INLINE (-) #-}
+  (*) x y = SafeSz (coerce x * coerce y)
+  {-# INLINE (*) #-}
+  abs !x = x
+  {-# INLINE abs #-}
+  negate !x = x
+  {-# INLINE negate #-}
+  signum x = SafeSz (signum (coerce x))
+  {-# INLINE signum #-}
+  fromInteger = Sz . fromInteger
+  {-# INLINE fromInteger #-}
+
 
 -- | Function for unwrapping `Sz`.
 --

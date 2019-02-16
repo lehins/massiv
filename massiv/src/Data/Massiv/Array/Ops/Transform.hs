@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE ExplicitForAll        #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -180,21 +181,23 @@ resize' sz = either throw id . resizeM sz
 
 -- | Transpose a 2-dimensional array
 --
--- ===__Examples__
+-- ==== __Examples__
 --
--- >>> let arr = makeArrayR U Seq (2 :. 3) (toLinearIndex (2 :. 3))
+-- >>> import Data.Massiv.Array
+-- >>> arr = makeArrayLinearR D Seq (Sz (2 :. 3)) id
 -- >>> arr
--- (ArrayU Seq (2 :. 3)
---   [ [ 0,1,2 ]
---   , [ 3,4,5 ]
---   ])
+-- Array D Seq (Sz (2 :. 3))
+--   [ [ 0, 1, 2 ]
+--   , [ 3, 4, 5 ]
+--   ]
 -- >>> transpose arr
--- (Array D Seq (3 :. 2)
---   [ [ 0,3 ]
---   , [ 1,4 ]
---   , [ 2,5 ]
---   ])
+-- Array D Seq (Sz (3 :. 2))
+--   [ [ 0, 3 ]
+--   , [ 1, 4 ]
+--   , [ 2, 5 ]
+--   ]
 --
+-- @since 0.1.0
 transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
 transpose = transposeInner
 {-# INLINE [1] transpose #-}
@@ -210,30 +213,31 @@ transpose = transposeInner
 --
 -- ===__Examples__
 --
--- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
+-- >>> import Data.Massiv.Array
+-- >>> arr = makeArrayLinearR U Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
--- (Array U Seq (2 :> 3 :. 4)
---   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---     , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---     , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+-- Array U Seq (Sz (2 :> 3 :. 4))
+--   [ [ [ 0, 1, 2, 3 ]
+--     , [ 4, 5, 6, 7 ]
+--     , [ 8, 9, 10, 11 ]
 --     ]
---   , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
---     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
---     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   , [ [ 12, 13, 14, 15 ]
+--     , [ 16, 17, 18, 19 ]
+--     , [ 20, 21, 22, 23 ]
 --     ]
---   ])
+--   ]
 -- >>> transposeInner arr
--- (Array D Seq (3 :> 2 :. 4)
---   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---     , [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
+-- Array D Seq (Sz (3 :> 2 :. 4))
+--   [ [ [ 0, 1, 2, 3 ]
+--     , [ 12, 13, 14, 15 ]
 --     ]
---   , [ [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
+--   , [ [ 4, 5, 6, 7 ]
+--     , [ 16, 17, 18, 19 ]
 --     ]
---   , [ [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
---     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   , [ [ 8, 9, 10, 11 ]
+--     , [ 20, 21, 22, 23 ]
 --     ]
---   ])
+--   ]
 --
 transposeInner :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
@@ -254,33 +258,35 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 
 -- | Transpose outer two dimensions of at least rank-2 array.
 --
--- ===__Examples__
+-- ====__Examples__
 --
--- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
+-- >>> import Data.Massiv.Array
+-- >>> :set -XTypeApplications
+-- >>> arr = makeArrayLinear @U Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
--- (Array U Seq (2 :> 3 :. 4)
---   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---     , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---     , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+-- Array U Seq (Sz (2 :> 3 :. 4))
+--   [ [ [ 0, 1, 2, 3 ]
+--     , [ 4, 5, 6, 7 ]
+--     , [ 8, 9, 10, 11 ]
 --     ]
---   , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
---     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
---     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   , [ [ 12, 13, 14, 15 ]
+--     , [ 16, 17, 18, 19 ]
+--     , [ 20, 21, 22, 23 ]
 --     ]
---   ])
+--   ]
 -- >>> transposeOuter arr
--- (Array D Seq (2 :> 4 :. 3)
---   [ [ [ (0,0,0),(0,1,0),(0,2,0) ]
---     , [ (0,0,1),(0,1,1),(0,2,1) ]
---     , [ (0,0,2),(0,1,2),(0,2,2) ]
---     , [ (0,0,3),(0,1,3),(0,2,3) ]
+-- Array D Seq (Sz (2 :> 4 :. 3))
+--   [ [ [ 0, 4, 8 ]
+--     , [ 1, 5, 9 ]
+--     , [ 2, 6, 10 ]
+--     , [ 3, 7, 11 ]
 --     ]
---   , [ [ (1,0,0),(1,1,0),(1,2,0) ]
---     , [ (1,0,1),(1,1,1),(1,2,1) ]
---     , [ (1,0,2),(1,1,2),(1,2,2) ]
---     , [ (1,0,3),(1,1,3),(1,2,3) ]
+--   , [ [ 12, 16, 20 ]
+--     , [ 13, 17, 21 ]
+--     , [ 14, 18, 22 ]
+--     , [ 15, 19, 23 ]
 --     ]
---   ])
+--   ]
 --
 transposeOuter :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
@@ -304,32 +310,35 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --
 -- ===__Examples__
 --
--- >>> let arr = makeArrayR U Seq (2 :> 3 :. 4) fromIx3
+-- >>> import Data.Massiv.Array
+-- >>> :set -XTypeApplications
+-- >>> arr = makeArrayLinear @D Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
--- (Array U Seq (2 :> 3 :. 4)
---   [ [ [ (0,0,0),(0,0,1),(0,0,2),(0,0,3) ]
---     , [ (0,1,0),(0,1,1),(0,1,2),(0,1,3) ]
---     , [ (0,2,0),(0,2,1),(0,2,2),(0,2,3) ]
+-- Array D Seq (Sz (2 :> 3 :. 4))
+--   [ [ [ 0, 1, 2, 3 ]
+--     , [ 4, 5, 6, 7 ]
+--     , [ 8, 9, 10, 11 ]
 --     ]
---   , [ [ (1,0,0),(1,0,1),(1,0,2),(1,0,3) ]
---     , [ (1,1,0),(1,1,1),(1,1,2),(1,1,3) ]
---     , [ (1,2,0),(1,2,1),(1,2,2),(1,2,3) ]
+--   , [ [ 12, 13, 14, 15 ]
+--     , [ 16, 17, 18, 19 ]
+--     , [ 20, 21, 22, 23 ]
 --     ]
---   ])
--- >>> backpermute (4 :. 3) (\(i :. j) -> 0 :> j :. i) arr
--- (Array D Seq (4 :. 3)
---   [ [ (0,0,0),(0,1,0),(0,2,0) ]
---   , [ (0,0,1),(0,1,1),(0,2,1) ]
---   , [ (0,0,2),(0,1,2),(0,2,2) ]
---   , [ (0,0,3),(0,1,3),(0,2,3) ]
---   ])
+--   ]
+-- >>> backpermuteM @U (Sz (4 :. 2)) (\(i :. j) -> j :> j :. i) arr
+-- Array U Seq (Sz (4 :. 2))
+--   [ [ 0, 16 ]
+--   , [ 1, 17 ]
+--   , [ 2, 18 ]
+--   , [ 3, 19 ]
+--   ]
 --
 -- @since 0.3.0
-backpermuteM :: (MonadThrow m, Source r' ix' e, Mutable r ix e) =>
-                Sz ix -- ^ Size of the result array
-             -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
-             -> Array r' ix' e -- ^ Source array.
-             -> m (Array r ix e)
+backpermuteM ::
+     forall r ix e r' ix' m . (Mutable r ix e, Source r' ix' e, MonadThrow m)
+  => Sz ix -- ^ Size of the result array
+  -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
+  -> Array r' ix' e -- ^ Source array.
+  -> m (Array r ix e)
 backpermuteM sz ixF !arr = makeArrayA (getComp arr) sz (evaluateM arr . ixF)
 {-# INLINE backpermuteM #-}
 
@@ -413,37 +422,39 @@ unsnocM arr
 --
 -- ===__Examples__
 --
--- Append two 2D arrays along both dimensions. Note that they have the same shape.
+-- Append two 2D arrays along both dimensions. Note that they do agree on inner dimensions.
 --
--- >>> let arrA = makeArrayR U Seq (2 :. 3) (\(i :. j) -> ('A', i, j))
--- >>> let arrB = makeArrayR U Seq (2 :. 3) (\(i :. j) -> ('B', i, j))
--- >>> append 1 arrA arrB
--- Just (Array D Seq (2 :. 6)
---   [ [ ('A',0,0),('A',0,1),('A',0,2),('B',0,0),('B',0,1),('B',0,2) ]
---   , [ ('A',1,0),('A',1,1),('A',1,2),('B',1,0),('B',1,1),('B',1,2) ]
---   ])
--- >>> append 2 arrA arrB
--- Just (Array D Seq (4 :. 3)
---   [ [ ('A',0,0),('A',0,1),('A',0,2) ]
---   , [ ('A',1,0),('A',1,1),('A',1,2) ]
---   , [ ('B',0,0),('B',0,1),('B',0,2) ]
---   , [ ('B',1,0),('B',1,1),('B',1,2) ]
---   ])
+-- >>> import Data.Massiv.Array
+-- >>> arrA = makeArrayR U Seq (Sz2 2 3) (\(i :. j) -> ('A', i, j))
+-- >>> arrB = makeArrayR U Seq (Sz2 2 3) (\(i :. j) -> ('B', i, j))
+-- >>> appendM 1 arrA arrB
+-- Array DL Seq (Sz (2 :. 6))
+--   [ [ ('A',0,0), ('A',0,1), ('A',0,2), ('B',0,0), ('B',0,1), ('B',0,2) ]
+--   , [ ('A',1,0), ('A',1,1), ('A',1,2), ('B',1,0), ('B',1,1), ('B',1,2) ]
+--   ]
+-- >>> appendM 2 arrA arrB
+-- Array DL Seq (Sz (4 :. 3))
+--   [ [ ('A',0,0), ('A',0,1), ('A',0,2) ]
+--   , [ ('A',1,0), ('A',1,1), ('A',1,2) ]
+--   , [ ('B',0,0), ('B',0,1), ('B',0,2) ]
+--   , [ ('B',1,0), ('B',1,1), ('B',1,2) ]
+--   ]
 --
 -- Now appending arrays with different sizes:
 --
--- >>> let arrC = makeArrayR U Seq (2 :. 4) (\(i :. j) -> ('C', i, j))
--- >>> append 1 arrA arrC
--- Just (Array D Seq (2 :. 7)
---   [ [ ('A',0,0),('A',0,1),('A',0,2),('C',0,0),('C',0,1),('C',0,2),('C',0,3) ]
---   , [ ('A',1,0),('A',1,1),('A',1,2),('C',1,0),('C',1,1),('C',1,2),('C',1,3) ]
---   ])
--- >>> append 2 arrA arrC
--- Nothing
+-- >>> arrC = makeArrayR U Seq (Sz (2 :. 4)) (\(i :. j) -> ('C', i, j))
+-- >>> appendM 1 arrA arrC
+-- Array DL Seq (Sz (2 :. 7))
+--   [ [ ('A',0,0), ('A',0,1), ('A',0,2), ('C',0,0), ('C',0,1), ('C',0,2), ('C',0,3) ]
+--   , [ ('A',1,0), ('A',1,1), ('A',1,2), ('C',1,0), ('C',1,1), ('C',1,2), ('C',1,3) ]
+--   ]
+-- >>> appendM 2 arrA arrC
+-- *** Exception: SizeMismatchException: (Sz (2 :. 3)) vs (Sz (2 :. 4))
 --
+-- @since 0.3.0
 appendM :: (MonadThrow m, Source r1 ix e, Source r2 ix e) =>
           Dim -> Array r1 ix e -> Array r2 ix e -> m (Array DL ix e)
-appendM n !arr1 !arr2 = do --concatM n [delay arr1, delay arr2]
+appendM n !arr1 !arr2 = do
   let !sz1 = size arr1
       !sz2 = size arr2
   (k1, szl1) <- pullOutSzM sz1 n
@@ -476,18 +487,24 @@ append = appendM
 {-# DEPRECATED append "In favor of a more general `appendM`" #-}
 
 
--- | Same as `appendM`, but will throw an error instead of returning `Nothing` on mismatched sizes.
+-- | Same as `appendM`, but will throw an exception in pure code on mismatched sizes.
+--
+-- @since 0.3.0
 append' :: (Source r1 ix e, Source r2 ix e) =>
            Dim -> Array r1 ix e -> Array r2 ix e -> Array DL ix e
 append' dim arr1 arr2 = either throw id $ appendM dim arr1 arr2
 {-# INLINE append' #-}
 
+-- | Concat many arrays together along some dimension.
+--
+-- @since 0.3.0
 concat' :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Array DL ix e
 concat' n arrs = either throw id $ concatM n arrs
 {-# INLINE concat' #-}
 
 -- | Concatenate many arrays together along some dimension. It is important that all sizes are
--- equal, with an exception of the dimensions along which concatenation happens.
+-- equal, with an exception of the dimensions along which concatenation happens, otherwise it doues
+-- result in a `SizeMismatchException` exception.
 --
 -- @since 0.3.0
 concatM ::

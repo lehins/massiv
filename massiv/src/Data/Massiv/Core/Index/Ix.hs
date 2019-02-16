@@ -151,14 +151,6 @@ pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
 --
--- ====__Examples__
---
--- >>> :t (1 :> 2 :> 3 :> 4 :. 5)
--- (1 :> 2 :> 3 :> 4 :. 5) :: IxN 5
--- >>> 3 :> 4 :. 5 :: Ix3
--- 3 :> 4 :. 5
---
---
 -- @since 0.1.0
 data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
 

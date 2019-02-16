@@ -393,11 +393,10 @@ itraversePrimR _ = itraversePrim
 -- | Map a monadic action over an array sequentially.
 --
 -- @since 0.2.6
---
 mapM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
-  => (a -> m b)
-  -> Array r' ix a
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
+  => (a -> m b) -- ^ Mapping action
+  -> Array r' ix a -- ^ Source array
   -> m (Array r ix b)
 mapM = traverseA
 {-# INLINE mapM #-}
@@ -406,9 +405,8 @@ mapM = traverseA
 -- | Same as `mapM`, except with ability to specify result representation.
 --
 -- @since 0.2.6
---
 mapMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> (a -> m b)
   -> Array r' ix a
@@ -420,9 +418,8 @@ mapMR _ = traverseA
 -- | Same as `mapM` except with arguments flipped.
 --
 -- @since 0.2.6
---
 forM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -433,9 +430,8 @@ forM = flip traverseA
 -- | Same as `forM`, except with ability to specify result representation.
 --
 -- @since 0.2.6
---
 forMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> Array r' ix a
   -> (a -> m b)
@@ -448,9 +444,8 @@ forMR _ = flip traverseA
 -- | Map a monadic action over an array sequentially.
 --
 -- @since 0.2.6
---
 imapM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -461,9 +456,8 @@ imapM = itraverseA
 -- | Same as `imapM`, except with ability to specify result representation.
 --
 -- @since 0.2.6
---
 imapMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> (ix -> a -> m b)
   -> Array r' ix a
@@ -476,9 +470,8 @@ imapMR _ = itraverseA
 -- | Same as `forM`, except map an index aware action.
 --
 -- @since 0.2.6
---
 iforM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -491,7 +484,7 @@ iforM = itraverseA
 -- @since 0.2.6
 --
 iforMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> (ix -> a -> m b)
   -> Array r' ix a
@@ -504,13 +497,15 @@ iforMR _ = itraverseA
 --
 -- ==== __Examples__
 --
--- >>> mapM_ print $ rangeStep 10 12 60
+-- >>> import Data.Massiv.Array as A
+-- >>> rangeStepM Par (Ix1 10) 12 60 >>= A.mapM_ print
 -- 10
 -- 22
 -- 34
 -- 46
 -- 58
 --
+-- @since 0.1.0
 mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
 mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeIndex arr)
 {-# INLINE mapM_ #-}
@@ -523,9 +518,10 @@ mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeI
 -- Here is a common way of iterating N times using a for loop in an imperative
 -- language with mutation being an obvious side effect:
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> import Data.IORef
 -- >>> ref <- newIORef 0 :: IO (IORef Int)
--- >>> forM_ (range Seq (Ix1 0) 1000) $ \ i -> modifyIORef' ref (+i)
+-- >>> A.forM_ (range Seq (Ix1 0) 1000) $ \ i -> modifyIORef' ref (+i)
 -- >>> readIORef ref
 -- 499500
 --
@@ -546,7 +542,7 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -581,7 +577,7 @@ imapIO_ action arr = do
 --
 -- @since 0.2.6
 imapIO ::
-     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -592,7 +588,7 @@ imapIO action arr = generateArray (getComp arr) (size arr) $ \ix -> action ix (u
 --
 -- @since 0.2.6
 forIO ::
-     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -606,6 +602,7 @@ forIO = flip mapIO
 -- This is the same example as in `forM_`, with important difference that accumulator `ref` will be
 -- modified concurrently by as many threads as there are capabilities.
 --
+-- >>> import Data.Massiv.Array
 -- >>> import Data.IORef
 -- >>> ref <- newIORef 0 :: IO (IORef Int)
 -- >>> forIO_ (range Par (Ix1 0) 1000) $ \ i -> atomicModifyIORef' ref (\v -> (v+i, ()))
@@ -621,7 +618,7 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)
