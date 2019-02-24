@@ -51,8 +51,7 @@ import           Data.Primitive                      (sizeOf)
 import           Data.Primitive.ByteArray
 import           Data.Primitive.Types
 import           GHC.Base                            (Int (..))
-import           GHC.Exts                            as GHC (IsList (..))
-import           GHC.Prim
+import           GHC.Exts                            as GHC
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 

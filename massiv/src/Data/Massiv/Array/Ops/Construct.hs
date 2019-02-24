@@ -170,57 +170,57 @@ makeArrayAR _ = makeArrayA
 --
 -- @since 0.3.0
 iterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> e) -> e -> Array DL ix e
-iterateN comp sz f = unfoldlS_ comp sz $ \a -> let !a' = f a in (a', a')
+iterateN comp sz f = unfoldrS_ comp sz $ \a -> let !a' = f a in (a', a')
 {-# INLINE iterateN #-}
 
 -- |
 --
 -- @since 0.3.0
 iiterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> ix -> e) -> e -> Array DL ix e
-iiterateN comp sz f = iunfoldlS_ comp sz $ \a ix -> let !a' = f a ix in (a', a')
+iiterateN comp sz f = iunfoldrS_ comp sz $ \a ix -> let !a' = f a ix in (a', a')
 {-# INLINE iiterateN #-}
 
 
 -- |
 --
 -- @since 0.3.0
-unfoldlS_ :: forall ix e a . Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
-unfoldlS_ comp sz f = iunfoldlS_ comp sz (\a _ -> f a)
-{-# INLINE unfoldlS_ #-}
+unfoldrS_ :: forall ix e a . Construct DL ix e => Comp -> Sz ix -> (a -> (e, a)) -> a -> Array DL ix e
+unfoldrS_ comp sz f = iunfoldrS_ comp sz (\a _ -> f a)
+{-# INLINE unfoldrS_ #-}
 
 -- |
 --
 -- @since 0.3.0
-iunfoldlS_
-  :: Construct DL ix e => Comp -> Sz ix -> (a -> ix -> (a, e)) -> a -> Array DL ix e
-iunfoldlS_ comp sz f acc0 =
+iunfoldrS_
+  :: Construct DL ix e => Comp -> Sz ix -> (a -> ix -> (e, a)) -> a -> Array DL ix e
+iunfoldrS_ comp sz f acc0 =
   DLArray
     { dlComp = comp
     , dlSize = sz
     , dlLoad =
         \_numWorkers _scheduleWith startAt dlWrite ->
           void $ loopM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
-            let (acc', e) = f acc $ fromLinearIndex sz (i - startAt)
+            let (e, acc') = f acc $ fromLinearIndex sz (i - startAt)
             dlWrite i e
             pure acc'
     }
-{-# INLINE iunfoldlS_ #-}
+{-# INLINE iunfoldrS_ #-}
 
 
 -- | Unfold sequentially from the right. Unfortunately there is really no way to safe the
 -- accumulator, since resulting array is delayed.
 --
 -- @since 0.3.0
-unfoldrS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
-unfoldrS_ comp sz f = iunfoldrS_ comp sz (const f)
-{-# INLINE unfoldrS_ #-}
+unfoldlS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
+unfoldlS_ comp sz f = iunfoldlS_ comp sz (const f)
+{-# INLINE unfoldlS_ #-}
 
 -- | Unfold sequentially from the right with an index aware function.
 --
 -- @since 0.3.0
-iunfoldrS_
+iunfoldlS_
   :: Construct DL ix e => Comp -> Sz ix -> (ix -> a -> (a, e)) -> a -> Array DL ix e
-iunfoldrS_ comp sz f acc0 =
+iunfoldlS_ comp sz f acc0 =
   DLArray
     { dlComp = comp
     , dlSize = sz
@@ -231,7 +231,7 @@ iunfoldrS_ comp sz f acc0 =
             dlWrite i e
             pure acc'
     }
-{-# INLINE iunfoldrS_ #-}
+{-# INLINE iunfoldlS_ #-}
 
 -- prop> range comp from to == rangeStep comp from 1 to
 --

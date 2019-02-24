@@ -22,6 +22,12 @@ module Data.Massiv.Array.Manifest.Storable
   , toStorableMVector
   , withPtr
   , unsafeWithPtr
+  , unsafeArrayToForeignPtr
+  , unsafeMArrayToForeignPtr
+  , unsafeArrayFromForeignPtr
+  , unsafeArrayFromForeignPtr0
+  , unsafeMArrayFromForeignPtr
+  , unsafeMArrayFromForeignPtr0
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
@@ -36,6 +42,7 @@ import qualified Data.Vector.Generic.Mutable         as VGM
 import qualified Data.Vector.Storable                as VS
 import qualified Data.Vector.Storable.Mutable        as MVS
 import           Foreign.Ptr
+import           Foreign.ForeignPtr
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
@@ -206,3 +213,55 @@ toStorableVector = sData
 toStorableMVector :: MArray s S ix e -> VS.MVector s e
 toStorableMVector (MSArray _ mv) = mv
 {-# INLINE toStorableMVector #-}
+
+
+-- | /O(1)/ - Yield the underlying `ForeignPtr` together with its length.
+--
+-- @since 0.3.0
+unsafeArrayToForeignPtr :: VS.Storable e => Array S ix e -> (ForeignPtr e, Int)
+unsafeArrayToForeignPtr = VS.unsafeToForeignPtr0 . toStorableVector
+{-# INLINE unsafeArrayToForeignPtr #-}
+
+-- | /O(1)/ - Yield the underlying `ForeignPtr` together with its length.
+--
+-- @since 0.3.0
+unsafeMArrayToForeignPtr :: VS.Storable e => MArray s S ix e -> (ForeignPtr e, Int)
+unsafeMArrayToForeignPtr = MVS.unsafeToForeignPtr0 . toStorableMVector
+{-# INLINE unsafeMArrayToForeignPtr #-}
+
+-- | /O(1)/ - Wrap a `ForeignPtr` and it's size into a pure storable array.
+--
+-- @since 0.3.0
+unsafeArrayFromForeignPtr0 :: VS.Storable e => Comp -> ForeignPtr e -> Sz1 -> Array S Ix1 e
+unsafeArrayFromForeignPtr0 comp ptr sz =
+  SArray {sComp = comp, sSize = sz, sData = VS.unsafeFromForeignPtr0 ptr (unSz sz)}
+{-# INLINE unsafeArrayFromForeignPtr0 #-}
+
+-- | /O(1)/ - Wrap a `ForeignPtr`, an offset and it's size into a pure storable array.
+--
+-- @since 0.3.0
+unsafeArrayFromForeignPtr :: VS.Storable e => Comp -> ForeignPtr e -> Int -> Sz1 -> Array S Ix1 e
+unsafeArrayFromForeignPtr comp ptr offset sz =
+  SArray {sComp = comp, sSize = sz, sData = VS.unsafeFromForeignPtr ptr offset (unSz sz)}
+{-# INLINE unsafeArrayFromForeignPtr #-}
+
+
+-- | /O(1)/ - Wrap a `ForeignPtr` and it's size into a mutable storable array. It is still safe to
+-- modify the pointer, unless the array gets frozen prior to modification.
+--
+-- @since 0.3.0
+unsafeMArrayFromForeignPtr0 :: VS.Storable e => ForeignPtr e -> Sz1 -> MArray s S Ix1 e
+unsafeMArrayFromForeignPtr0 fp sz =
+  MSArray sz (MVS.unsafeFromForeignPtr0 fp (unSz sz))
+{-# INLINE unsafeMArrayFromForeignPtr0 #-}
+
+
+-- | /O(1)/ - Wrap a `ForeignPtr`, an offset and it's size into a mutable storable array. It is
+-- still safe to modify the pointer, unless the array gets frozen prior to modification.
+--
+-- @since 0.3.0
+unsafeMArrayFromForeignPtr :: VS.Storable e => ForeignPtr e -> Int -> Sz1 -> MArray s S Ix1 e
+unsafeMArrayFromForeignPtr fp offset sz =
+  MSArray sz (MVS.unsafeFromForeignPtr fp offset (unSz sz))
+{-# INLINE unsafeMArrayFromForeignPtr #-}
+

@@ -54,9 +54,7 @@ import qualified Data.Primitive.Array                as A
 import qualified Data.Vector                         as VB
 import qualified Data.Vector.Mutable                 as VB
 import           GHC.Base                            (build)
-import           GHC.Exts                            as GHC (IsList (..))
-import           GHC.Prim
-import           GHC.Types
+import           GHC.Exts                            as GHC
 import           Prelude                             hiding (mapM)
 import           System.IO.Unsafe                    (unsafePerformIO)
 

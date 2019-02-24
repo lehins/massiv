@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE PatternSynonyms       #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -42,6 +42,14 @@ module Data.Massiv.Array.Unsafe
   , unsafeWrite
   , unsafeLinearWrite
   , unsafeLinearSet
+  -- * Pointer access
+  , unsafeWithPtr
+  , unsafeArrayToForeignPtr
+  , unsafeMArrayToForeignPtr
+  , unsafeArrayFromForeignPtr
+  , unsafeArrayFromForeignPtr0
+  , unsafeMArrayFromForeignPtr
+  , unsafeMArrayFromForeignPtr0
   -- ** Atomic Operations
   , unsafeAtomicReadIntArray
   , unsafeAtomicWriteIntArray
@@ -57,9 +65,9 @@ module Data.Massiv.Array.Unsafe
 
 import           Data.Massiv.Array.Delayed.Pull       (D)
 import           Data.Massiv.Array.Manifest.Primitive
+import           Data.Massiv.Array.Manifest.Storable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal      (Sz (SafeSz))
-
 
 unsafeBackpermute :: (Source r' ix' e, Index ix) =>
                      Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e

@@ -19,6 +19,11 @@
 * Partial functions `read'`, `write'` and `swap'` now live in IO and throw proper exceptions.
 * `loadArray` is renamed to `loadArrayM` and there is a new separate function (not part of `Load`
   class) with the name `loadArray` that actually uses `loadArrayM`
+* Moved `unsafeWithPtr` into `Data.Massiv.Array.Unsafe`
+* Addition of `unsafeArrayToForeignPtr`, `unsafeMArrayToForeignPtr`, `unsafeArrayFromForeignPtr` `unsafeArrayFromForeignPtr0`, `unsafeMArrayFromForeignPtr` and `unsafeMArrayFromForeignPtr0`
+* Addition of `castToByteString`, `castFromByteString`
+
+
 
 # 0.2.6
 

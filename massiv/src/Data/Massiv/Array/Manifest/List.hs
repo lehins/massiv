@@ -157,8 +157,9 @@ toList !arr = build (\ c n -> foldrFB c n arr)
 {-# INLINE toList #-}
 
 
--- | /O(n)/ - Convert an array into a nested list. Array rank and list nestedness will always match,
--- but you can use `toList`, `toLists2`, etc. if flattening of inner dimensions is desired.
+-- | /O(n)/ - Convert an array into a nested list. Number of array dimensions and list nestedness
+-- will always match, but you can use `toList`, `toLists2`, etc. if flattening of inner dimensions
+-- is desired.
 --
 -- __Note__: This function is almost the same as `GHC.Exts.toList`.
 --

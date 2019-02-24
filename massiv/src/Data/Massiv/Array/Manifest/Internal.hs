@@ -267,11 +267,11 @@ computeProxy _ = compute
 -- resulting type is the same as the input.
 --
 -- @since 0.1.0
-computeSource :: forall r' r ix e . (Load r' ix e, Source r' ix e, Mutable r ix e)
+computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
-computeSource arr =
-  maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
+computeSource arr = maybe (compute arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
+{-# DEPRECATED computeSource "In favor of less restrictive `convert`" #-}
 
 
 -- | /O(n)/ - Make an exact immutable copy of an Array.
@@ -288,20 +288,19 @@ gcastArr :: forall r' r ix e. (Typeable r, Typeable r')
 gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 
 
--- | /O(n)/ - conversion between manifest types, except when source and result arrays
--- are of the same representation, in which case it is an /O(1)/ operation.
+-- | /O(n)/ - conversion between array types. A full copy will occur, unless when the source and
+-- result arrays are of the same representation, in which case it is an /O(1)/ operation.
 --
 -- @since 0.1.0
-convert :: (Manifest r' ix e, Mutable r ix e)
+convert :: (Load r' ix e, Mutable r ix e)
         => Array r' ix e -> Array r ix e
-convert arr =
-  fromMaybe (compute $ toManifest arr) (gcastArr arr)
+convert arr = fromMaybe (compute arr) (gcastArr arr)
 {-# INLINE convert #-}
 
 -- | Same as `convert`, but let's you supply resulting representation type as an argument.
 --
 -- @since 0.1.0
-convertAs :: (Manifest r' ix e, Mutable r ix e)
+convertAs :: (Load r' ix e, Mutable r ix e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
 {-# INLINE convertAs #-}
@@ -311,7 +310,7 @@ convertAs _ = convert
 -- proxy argument.
 --
 -- @since 0.1.1
-convertProxy :: (Manifest r' ix e, Mutable r ix e)
+convertProxy :: (Load r' ix e, Mutable r ix e)
              => proxy r -> Array r' ix e -> Array r ix e
 convertProxy _ = convert
 {-# INLINE convertProxy #-}

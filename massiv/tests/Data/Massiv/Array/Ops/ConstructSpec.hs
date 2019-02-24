@@ -7,8 +7,7 @@ import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
 import qualified GHC.Exts                  as GHC (IsList (..))
 import           Prelude                   as P
-import           Prelude                   hiding (map)
-
+import Data.List as L
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
 prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep' Par from 1 to
@@ -58,7 +57,7 @@ prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
 prop_excFromToListIx3 comp ls3
   | P.null (P.concat (P.concat ls3)) =
     classify True "Expected Success" $ counterexample (show arr) $ totalElem (size arr) === 0
-  | P.all (head lsL ==) lsL && (P.and (P.map (P.all (head (head lsLL) ==)) lsLL)) =
+  | P.all (head lsL ==) lsL && P.and (P.map (P.all (head (head lsLL) ==)) lsLL) =
     classify True "Expected Success" $ counterexample (show arr) $ resultLs === ls3
   | otherwise = classify True "Expected Failure" $ assertSomeException resultLs
   where
@@ -93,10 +92,18 @@ mkIntermediate :: Int -> Array U Ix1 Int
 mkIntermediate t = A.fromList Seq [t + 50, t + 75]
 
 initArr :: Array N Ix1 (Array U Ix1 Int)
-initArr = makeArray Seq (Sz1 3) (\ x -> mkIntermediate x)
+initArr = makeArray Seq (Sz1 3) mkIntermediate
 
 initArr2 :: Array N Ix2 (Array U Ix1 Int)
 initArr2 = makeArray Seq (Sz 2) (\ (x :. y) -> mkIntermediate (x+y))
+
+prop_unfoldrList :: Sz1 -> Fun Word (Int, Word) -> Word -> Property
+prop_unfoldrList sz1 f i =
+  conjoin $
+  L.zipWith
+    (===)
+    (A.toList (computeAs P $ unfoldrS_ Seq sz1 (applyFun f) i))
+    (L.unfoldr (Just . applyFun f) i)
 
 specExpand :: Spec
 specExpand = do
@@ -115,3 +122,4 @@ spec = do
   describe "Ix2" specIx2
   describe "Ix3" specIx3
   describe "Expand" specExpand
+  describe "Unfolding" $ it "unfoldrS_" $ property prop_unfoldrList

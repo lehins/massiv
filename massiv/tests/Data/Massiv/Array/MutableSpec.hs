@@ -3,12 +3,13 @@
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
 module Data.Massiv.Array.MutableSpec (spec) where
 
 import           Control.Concurrent.Async
 import           Control.Monad.ST
 import           Data.Functor.Identity
-import           Data.List                        as L (sort)
+import           Data.List                        as L
 import           Data.Massiv.Array.Mutable.Atomic
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.CoreArbitrary        as A
@@ -66,15 +67,33 @@ prop_atomicReadIntArrayMany arr bix = monadicIO $ do
 
 
 prop_atomicWriteIntArrayMany :: Array P Ix2 Int -> Array B Ix1 Ix2 -> (Fun Ix2 Int) -> Property
-prop_atomicWriteIntArrayMany arr bix f = monadicIO $ do
+prop_atomicWriteIntArrayMany arr bix f =
+  monadicIO $
   run $ do
-      marr <- thaw arr
-      marr' <- unsafeThaw arr
-      bs :: Array N Ix1 Bool <- forM bix (\ix -> write marr ix (apply f ix))
-      bs' <- forM bix (\ix -> atomicWriteIntArray marr' ix (apply f ix))
-      arrRes <- unsafeFreeze (getComp arr) marr
-      arrRes' <- unsafeFreeze (getComp arr) marr'
-      pure (bs === bs' .&&. arrRes === arrRes')
+    marr <- thaw arr
+    marr' <- unsafeThaw arr
+    bs :: Array N Ix1 Bool <- forM bix (\ix -> write marr ix (apply f ix))
+    bs' <- forM bix (\ix -> atomicWriteIntArray marr' ix (apply f ix))
+    arrRes <- unsafeFreeze (getComp arr) marr
+    arrRes' <- unsafeFreeze (getComp arr) marr'
+    pure (bs === bs' .&&. arrRes === arrRes')
+
+
+
+prop_unfoldrList :: Sz1 -> Fun Word (Int, Word) -> Word -> Property
+prop_unfoldrList sz1 f i =
+  conjoin $
+  L.zipWith
+    (===)
+    (A.toList (runST $ unfoldrPrim_ @P Seq sz1 (pure . applyFun f) i))
+    (L.unfoldr (Just . applyFun f) i)
+
+prop_unfoldrReverseUnfoldl :: Sz1 -> Fun Word (Int, Word) -> Word -> Property
+prop_unfoldrReverseUnfoldl sz1 f i =
+  runST (unfoldrPrim_ @P Seq sz1 (pure . applyFun f) i) ===
+  rev (runST (unfoldlPrim_ @P Seq sz1 (pure . swapTuple . applyFun f) i))
+    where swapTuple (x, y) = (y, x)
+          rev a = computeAs P $ backpermute' sz1 (\ix1 -> unSz sz1 - ix1 - 1) a
 
 
 mutableSpec ::
@@ -94,7 +113,7 @@ mutableSpec ::
      )
   => r
   -> SpecWith ()
-mutableSpec r = do
+mutableSpec r =
   describe (show r) $ do
     describe "map == mapM" $ do
       it "Ix1" $ property $ prop_MapMapM r (Proxy :: Proxy Ix1)
@@ -127,6 +146,9 @@ spec :: Spec
 spec = do
   describe "GenerateM" generateSpec
   describe "AtomicIntArraySpec" $ do
-    it "atomicReadIntArrayMany" $ property $ prop_atomicReadIntArrayMany
-    it "atomicWriteIntArrayMany" $ property $ prop_atomicWriteIntArrayMany
-    it "atomicModifyIntArrayMany" $ property $ prop_atomicModifyIntArrayMany
+    it "atomicReadIntArrayMany" $ property prop_atomicReadIntArrayMany
+    it "atomicWriteIntArrayMany" $ property prop_atomicWriteIntArrayMany
+    it "atomicModifyIntArrayMany" $ property prop_atomicModifyIntArrayMany
+  describe "Unfolding" $ do
+    it "unfoldrList" $ property prop_unfoldrList
+    it "unfoldrReverseUnfoldl" $ property prop_unfoldrReverseUnfoldl

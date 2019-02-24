@@ -112,7 +112,7 @@ infixl 6  .+, .-
 
 {-# RULES
 "multDoubleTranspose" [~1] forall arr1 arr2 . arr1 |*| transpose arr2 =
-    multiplyTransposedFused arr1 (computeSource arr2)
+    multiplyTransposedFused arr1 (convert arr2)
  #-}
 
 multiplyTransposedFused ::
