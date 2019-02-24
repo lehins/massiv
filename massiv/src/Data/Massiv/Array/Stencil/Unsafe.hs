@@ -12,19 +12,19 @@
 --
 module Data.Massiv.Array.Stencil.Unsafe
   ( -- * Stencil
-    forStencilUnsafe
+    makeUnsafeStencil
+  , forStencilUnsafe
   ) where
 
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Array.Delayed.Windowed (Window(..), DW, Array(..))
 import           GHC.Exts                           (inline)
+import           Data.Massiv.Array.Stencil.Internal
 
 
--- | This is an unsafe version of the stencil computation. There are no bounds check further from
--- the border, so if you make sure you don't go outside the size of the stencil, you will be safe,
--- but this is not enforced.
---
--- __/Note/__ - Still experimental and subject to change
+-- | This is an unsafe version of the stencil computation. There are no bounds checking further from
+-- the border, so if you do make sure you are not going outside the size of the stencil, you will be
+-- safe, but this is not enforced.
 --
 -- @since 0.1.7
 forStencilUnsafe ::
@@ -56,3 +56,23 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
     {-# INLINE stencil #-}
     !sz = size arr
 {-# INLINE forStencilUnsafe #-}
+
+
+
+-- | Similar to `Data.Massiv.Array.Stencil.makeStencil`, but there are no guarantees that the
+-- stencil will not read out of bounds memory. This stencil is also a bit more powerful in that it gets an extar peice of information, namely the exact index for the element it is constructing.
+--
+-- @since 0.3.0
+makeUnsafeStencil
+  :: Index ix
+  => Sz ix -- ^ Size of the stencil
+  -> ix -- ^ Center of the stencil
+  -> (ix -> (ix -> e) -> a)
+  -- ^ Stencil function.
+  -> Stencil ix e a
+makeUnsafeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
+  where
+    stencil getVal !ix =
+      Value $ inline $ relStencil ix (unValue . getVal . liftIndex2 (+) ix)
+    {-# INLINE stencil #-}
+{-# INLINE makeUnsafeStencil #-}

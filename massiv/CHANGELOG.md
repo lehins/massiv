@@ -22,7 +22,7 @@
 * Moved `unsafeWithPtr` into `Data.Massiv.Array.Unsafe`
 * Addition of `unsafeArrayToForeignPtr`, `unsafeMArrayToForeignPtr`, `unsafeArrayFromForeignPtr` `unsafeArrayFromForeignPtr0`, `unsafeMArrayFromForeignPtr` and `unsafeMArrayFromForeignPtr0`
 * Addition of `castToByteString`, `castFromByteString`
-
+* Addition of `makeUnsafeStencil`
 
 
 # 0.2.6

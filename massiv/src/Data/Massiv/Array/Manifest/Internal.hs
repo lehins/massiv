@@ -64,7 +64,7 @@ import           Data.Primitive.Array                (sizeofArray,
 #else
 import qualified Data.Primitive.Array                as A (Array (..),
                                                            MutableArray (..))
-import           GHC.Prim                            (sizeofArray#,
+import           GHC.Exts                            (sizeofArray#,
                                                       sizeofMutableArray#)
 
 sizeofArray :: A.Array a -> Int

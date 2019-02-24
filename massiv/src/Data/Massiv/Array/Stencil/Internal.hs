@@ -138,7 +138,7 @@ instance Functor (Stencil ix e) where
 
 
 dimapStencil :: (c -> d) -> (a -> b) -> Stencil ix d a -> Stencil ix c b
-dimapStencil f g stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
     sf' s = Value . g . unValue . sf (Value . f . unValue . s)
     {-# INLINE sf' #-}
@@ -146,14 +146,14 @@ dimapStencil f g stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = s
 
 
 lmapStencil :: (c -> d) -> Stencil ix d a -> Stencil ix c a
-lmapStencil f stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
     sf' s = sf (Value . f . unValue . s)
     {-# INLINE sf' #-}
 {-# INLINE lmapStencil #-}
 
 rmapStencil :: (a -> b) -> Stencil ix e a -> Stencil ix e b
-rmapStencil f stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+rmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
     sf' s = Value . f . unValue . sf s
     {-# INLINE sf' #-}
@@ -172,7 +172,7 @@ instance Index ix => Applicative (Stencil ix e) where
   {-# INLINE pure #-}
   (<*>) (Stencil (SafeSz sSz1) sC1 f1) (Stencil (SafeSz sSz2) sC2 f2) = Stencil newSz maxCenter stF
     where
-      stF gV !ix = Value ((unValue (f1 gV ix)) (unValue (f2 gV ix)))
+      stF gV !ix = Value (unValue (f1 gV ix) (unValue (f2 gV ix)))
       {-# INLINE stF #-}
       !newSz =
         Sz
