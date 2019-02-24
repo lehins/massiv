@@ -102,8 +102,8 @@ prop_unfoldrList sz1 f i =
   conjoin $
   L.zipWith
     (===)
-    (A.toList (computeAs P $ unfoldrS_ Seq sz1 (applyFun f) i))
-    (L.unfoldr (Just . applyFun f) i)
+    (A.toList (computeAs P $ unfoldrS_ Seq sz1 (apply f) i))
+    (L.unfoldr (Just . apply f) i)
 
 specExpand :: Spec
 specExpand = do
