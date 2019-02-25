@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Map
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -14,11 +14,21 @@ module Data.Massiv.Array.Ops.Map
   ( map
   , imap
   -- ** Traversing
+  -- *** Applicative
   , traverseA
+  , traverseA_
   , itraverseA
+  , itraverseA_
   , traverseAR
   , itraverseAR
-  -- ** Monadic
+  , sequenceA
+  , sequenceA_
+  -- *** PrimMonad
+  , traversePrim
+  , itraversePrim
+  , traversePrimR
+  , itraversePrimR
+  -- ** Monadic mapping
   -- *** Sequential
   , mapM
   , mapMR
@@ -41,8 +51,6 @@ module Data.Massiv.Array.Ops.Map
   , forIO_
   , iforIO
   , iforIO_
-  , mapP_
-  , imapP_
   -- ** Zipping
   , zip
   , zip3
@@ -53,24 +61,26 @@ module Data.Massiv.Array.Ops.Map
   , izipWith
   , izipWith3
   , liftArray2
+  -- *** Applicative
+  , zipWithA
+  , izipWithA
+  , zipWith3A
+  , izipWith3A
   ) where
 
-
-import           Control.Monad                       (void, when)
-import           Control.Monad.ST                    (runST)
-import           Data.Foldable                       (foldlM)
-import           Data.Massiv.Array.Delayed.Internal
+import           Control.Monad                       (void)
+import           Control.Monad.Primitive             (PrimMonad)
+import           Data.Coerce
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
+import           Data.Massiv.Array.Ops.Construct     (makeArrayA)
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
-import           Data.Monoid                         ((<>))
-import           GHC.Base                            (build)
+import           Data.Massiv.Core.Index.Internal     (Sz (..))
+import           Data.Massiv.Scheduler
 import           Prelude                             hiding (map, mapM, mapM_,
                                                       traverse, unzip, unzip3,
                                                       zip, zip3, zipWith,
-                                                      zipWith3)
-import qualified Prelude                             as Prelude (traverse)
+                                                      zipWith3, sequenceA)
 
 --------------------------------------------------------------------------------
 -- map -------------------------------------------------------------------------
@@ -129,7 +139,9 @@ zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
 izipWith :: (Source r1 ix e1, Source r2 ix e2)
          => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
 izipWith f arr1 arr2 =
-  DArray (getComp arr1 <> getComp arr2) (liftIndex2 min (size arr1) (size arr2)) $ \ !ix ->
+  DArray
+    (getComp arr1 <> getComp arr2)
+    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
 {-# INLINE izipWith #-}
 
@@ -152,9 +164,77 @@ izipWith3
 izipWith3 f arr1 arr2 arr3 =
   DArray
     (getComp arr1 <> getComp arr2 <> getComp arr3)
-    (liftIndex2 min (liftIndex2 min (size arr1) (size arr2)) (size arr3)) $ \ !ix ->
+    (SafeSz
+       (liftIndex2
+          min
+          (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))
+          (coerce (size arr3)))) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
+
+
+-- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
+-- resulting array has Mutable representation.
+--
+-- @since 0.3.0
+zipWithA ::
+     (Source r1 ix e1, Source r2 ix e2, Applicative f, Mutable r ix e)
+  => (e1 -> e2 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> f (Array r ix e)
+zipWithA f = izipWithA (const f)
+{-# INLINE zipWithA #-}
+
+-- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
+-- resulting array has Mutable representation.
+--
+-- @since 0.3.0
+izipWithA ::
+     (Source r1 ix e1, Source r2 ix e2, Applicative f, Mutable r ix e)
+  => (ix -> e1 -> e2 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> f (Array r ix e)
+izipWithA f arr1 arr2 =
+  makeArrayA
+    (getComp arr1 <> getComp arr2)
+    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))) $ \ !ix ->
+    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
+{-# INLINE izipWithA #-}
+
+-- | Same as `zipWithA`, but for three arrays.
+--
+-- @since 0.3.0
+zipWith3A ::
+     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Applicative f, Mutable r ix e)
+  => (e1 -> e2 -> e3 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> f (Array r ix e)
+zipWith3A f = izipWith3A (const f)
+{-# INLINE zipWith3A #-}
+
+-- | Same as `izipWithA`, but for three arrays.
+--
+-- @since 0.3.0
+izipWith3A ::
+     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Applicative f, Mutable r ix e)
+  => (ix -> e1 -> e2 -> e3 -> f e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> f (Array r ix e)
+izipWith3A f arr1 arr2 arr3 =
+  makeArrayA (getComp arr1 <> getComp arr2 <> getComp arr3) sz $ \ !ix ->
+    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
+  where
+    sz =
+      SafeSz $
+      liftIndex2 min (liftIndex2 min (coerce (size arr1)) (coerce (size arr2))) (coerce (size arr3))
+{-# INLINE izipWith3A #-}
+
 
 --------------------------------------------------------------------------------
 -- traverse --------------------------------------------------------------------
@@ -162,42 +242,67 @@ izipWith3 f arr1 arr2 arr3 =
 
 -- | Traverse with an `Applicative` action over an array sequentially.
 --
+-- /Note/ - using `traversePrim` will always be faster, althought not always possible.
+--
 -- @since 0.2.6
 --
 traverseA ::
-     (Source r' ix a, Mutable r ix b, Applicative f)
-  => (a -> f b)
+     (Source r' ix a, Mutable r ix e, Applicative f)
+  => (a -> f e)
   -> Array r' ix a
-  -> f (Array r ix b)
-traverseA f arr = loadList <$> Prelude.traverse f (build (\c n -> foldrFB c n arr))
-  where
-    loadList xs =
-      runST $ do
-        marr <- unsafeNew (size arr)
-        _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
-        unsafeFreeze (getComp arr) marr
-    {-# INLINE loadList #-}
+  -> f (Array r ix e)
+traverseA f arr = makeArrayA (getComp arr) (size arr) (f . unsafeIndex arr)
 {-# INLINE traverseA #-}
+
+-- | Traverse sequentially over a source array, while discarding the result.
+--
+-- @since 0.3.0
+--
+traverseA_ :: (Source r ix a, Applicative f) => (a -> f e) -> Array r ix a -> f ()
+traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearIndex arr)
+{-# INLINE traverseA_ #-}
+
+-- | Sequence actions in a source array.
+--
+-- @since 0.3.0
+--
+sequenceA ::
+     (Source r' ix (f e), Mutable r ix e, Applicative f) => Array r' ix (f e) -> f (Array r ix e)
+sequenceA = traverseA id
+{-# INLINE sequenceA #-}
+
+-- | Sequence actions in a source array, while discarding the result.
+--
+-- @since 0.3.0
+--
+sequenceA_ :: (Source r ix (f e), Applicative f) => Array r ix (f e) -> f ()
+sequenceA_ = traverseA_ id
+{-# INLINE sequenceA_ #-}
+
 
 -- | Traverse with an `Applicative` index aware action over an array sequentially.
 --
 -- @since 0.2.6
 --
 itraverseA ::
-     (Source r' ix a, Mutable r ix b, Applicative f)
-  => (ix -> a -> f b)
+     (Source r' ix a, Mutable r ix e, Applicative f)
+  => (ix -> a -> f e)
   -> Array r' ix a
-  -> f (Array r ix b)
-itraverseA f arr =
-  fmap loadList $ Prelude.traverse (uncurry f) $ build (\c n -> foldrFB c n (zipWithIndex arr))
-  where
-    loadList xs =
-      runST $ do
-        marr <- unsafeNew (size arr)
-        _ <- foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
-        unsafeFreeze (getComp arr) marr
-    {-# INLINE loadList #-}
+  -> f (Array r ix e)
+itraverseA f arr = makeArrayA (getComp arr) (size arr) $ \ !ix -> f ix (unsafeIndex arr ix)
 {-# INLINE itraverseA #-}
+
+
+-- | Traverse with an `Applicative` index aware action over an array sequentially.
+--
+-- @since 0.2.6
+--
+itraverseA_ :: (Source r ix a, Applicative f) => (ix -> a -> f e) -> Array r ix a -> f ()
+itraverseA_ f arr =
+  loopA_ 0 (< totalElem sz) (+ 1) (\ !i -> f (fromLinearIndex sz i) (unsafeLinearIndex arr i))
+  where
+    sz = size arr
+{-# INLINE itraverseA_ #-}
 
 
 
@@ -227,9 +332,59 @@ itraverseAR ::
 itraverseAR _ = itraverseA
 {-# INLINE itraverseAR #-}
 
-zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
-zipWithIndex arr = zip (makeArray mempty (size arr) id :: Array D ix ix) arr
-{-# INLINE zipWithIndex #-}
+
+
+-- | Traverse sequentially within `PrimMonad` over an array with an action.
+--
+-- @since 0.3.0
+--
+traversePrim ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+traversePrim f arr = generateArrayS (getComp arr) (size arr) (f . unsafeIndex arr)
+{-# INLINE traversePrim #-}
+
+-- | Same as `traversePrim`, but traverse with index aware action.
+--
+-- @since 0.3.0
+--
+itraversePrim ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+itraversePrim f arr = generateArrayS (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+{-# INLINE itraversePrim #-}
+
+
+-- | Same as `traverseP`, but with ability to specify the desired representation.
+--
+-- @since 0.3.0
+--
+traversePrimR ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => r
+  -> (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+traversePrimR _ = traversePrim
+{-# INLINE traversePrimR #-}
+
+-- | Same as `itraverseP`, but with ability to specify the desired representation.
+--
+-- @since 0.3.0
+--
+itraversePrimR ::
+     (Source r' ix a, Mutable r ix b, PrimMonad m)
+  => r
+  -> (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+itraversePrimR _ = itraversePrim
+{-# INLINE itraversePrimR #-}
+
 
 --------------------------------------------------------------------------------
 -- mapM ------------------------------------------------------------------------
@@ -238,11 +393,10 @@ zipWithIndex arr = zip (makeArray mempty (size arr) id :: Array D ix ix) arr
 -- | Map a monadic action over an array sequentially.
 --
 -- @since 0.2.6
---
 mapM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
-  => (a -> m b)
-  -> Array r' ix a
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
+  => (a -> m b) -- ^ Mapping action
+  -> Array r' ix a -- ^ Source array
   -> m (Array r ix b)
 mapM = traverseA
 {-# INLINE mapM #-}
@@ -251,9 +405,8 @@ mapM = traverseA
 -- | Same as `mapM`, except with ability to specify result representation.
 --
 -- @since 0.2.6
---
 mapMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> (a -> m b)
   -> Array r' ix a
@@ -265,9 +418,8 @@ mapMR _ = traverseA
 -- | Same as `mapM` except with arguments flipped.
 --
 -- @since 0.2.6
---
 forM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -278,9 +430,8 @@ forM = flip traverseA
 -- | Same as `forM`, except with ability to specify result representation.
 --
 -- @since 0.2.6
---
 forMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> Array r' ix a
   -> (a -> m b)
@@ -293,9 +444,8 @@ forMR _ = flip traverseA
 -- | Map a monadic action over an array sequentially.
 --
 -- @since 0.2.6
---
 imapM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -306,9 +456,8 @@ imapM = itraverseA
 -- | Same as `imapM`, except with ability to specify result representation.
 --
 -- @since 0.2.6
---
 imapMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> (ix -> a -> m b)
   -> Array r' ix a
@@ -321,9 +470,8 @@ imapMR _ = itraverseA
 -- | Same as `forM`, except map an index aware action.
 --
 -- @since 0.2.6
---
 iforM ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -336,7 +484,7 @@ iforM = itraverseA
 -- @since 0.2.6
 --
 iforMR ::
-     (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
   => r
   -> (ix -> a -> m b)
   -> Array r' ix a
@@ -349,15 +497,17 @@ iforMR _ = itraverseA
 --
 -- ==== __Examples__
 --
--- >>> mapM_ print $ rangeStep 10 12 60
+-- >>> import Data.Massiv.Array as A
+-- >>> rangeStepM Par (Ix1 10) 12 60 >>= A.mapM_ print
 -- 10
 -- 22
 -- 34
 -- 46
 -- 58
 --
+-- @since 0.1.0
 mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
-mapM_ f !arr = iterM_ zeroIndex (size arr) (pureIndex 1) (<) (f . unsafeIndex arr)
+mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeIndex arr)
 {-# INLINE mapM_ #-}
 
 
@@ -368,10 +518,11 @@ mapM_ f !arr = iterM_ zeroIndex (size arr) (pureIndex 1) (<) (f . unsafeIndex ar
 -- Here is a common way of iterating N times using a for loop in an imperative
 -- language with mutation being an obvious side effect:
 --
--- >>> :m + Data.IORef
--- >>> var <- newIORef 0 :: IO (IORef Int)
--- >>> forM_ (range 0 1000) $ \ i -> modifyIORef' var (+i)
--- >>> readIORef var
+-- >>> import Data.Massiv.Array as A
+-- >>> import Data.IORef
+-- >>> ref <- newIORef 0 :: IO (IORef Int)
+-- >>> A.forM_ (range Seq (Ix1 0) 1000) $ \ i -> modifyIORef' ref (+i)
+-- >>> readIORef ref
 -- 499500
 --
 forM_ :: (Source r ix a, Monad m) => Array r ix a -> (a -> m b) -> m ()
@@ -391,7 +542,10 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     (Source r' ix a, Mutable r ix b) => (a -> IO b) -> Array r' ix a -> IO (Array r ix b)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => (a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
 mapIO action = imapIO (const action)
 {-# INLINE mapIO #-}
 
@@ -399,26 +553,23 @@ mapIO action = imapIO (const action)
 -- array, therefore it is faster. Use this instead of `mapIO` when result is irrelevant.
 --
 -- @since 0.2.6
-mapIO_ :: Source r b e => (e -> IO a) -> Array r b e -> IO ()
+mapIO_ :: (Source r b e, MonadUnliftIO m) => (e -> m a) -> Array r b e -> m ()
 mapIO_ action = imapIO_ (const action)
 {-# INLINE mapIO_ #-}
 
 -- | Same as `mapIO_`, but map an index aware action instead.
 --
 -- @since 0.2.6
-imapIO_ :: Source r ix e => (ix -> e -> IO a) -> Array r ix e -> IO ()
-imapIO_ action arr =
-  case getComp arr of
-    Seq -> imapM_ action arr
-    ParOn wids -> do
-      let sz = size arr
-      withScheduler_ wids $ \scheduler ->
-        splitLinearlyWith_
-          (numWorkers scheduler)
-          (scheduleWork scheduler)
-          (totalElem sz)
-          (unsafeLinearIndex arr)
-          (\i -> void . action (fromLinearIndex sz i))
+imapIO_ :: (Source r ix e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
+imapIO_ action arr = do
+  let sz = size arr
+  withScheduler_ (getComp arr) $ \scheduler ->
+    splitLinearlyWith_
+      (numWorkers scheduler)
+      (scheduleWork scheduler)
+      (totalElem sz)
+      (unsafeLinearIndex arr)
+      (\i -> void . action (fromLinearIndex sz i))
 {-# INLINE imapIO_ #-}
 
 
@@ -426,22 +577,40 @@ imapIO_ action arr =
 --
 -- @since 0.2.6
 imapIO ::
-     (Source r' ix a, Mutable r ix b) => (ix -> a -> IO b) -> Array r' ix a -> IO (Array r ix b)
-imapIO action arr = generateArrayIO (getComp arr) (size arr) $ \ix -> action ix (unsafeIndex arr ix)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => (ix -> a -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+imapIO action arr = generateArray (getComp arr) (size arr) $ \ix -> action ix (unsafeIndex arr ix)
 {-# INLINE imapIO #-}
 
 -- | Same as `mapIO` but with arguments flipped.
 --
 -- @since 0.2.6
 forIO ::
-     (Source r' ix a, Mutable r ix b) => Array r' ix a -> (a -> IO b) -> IO (Array r ix b)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => Array r' ix a
+  -> (a -> m b)
+  -> m (Array r ix b)
 forIO = flip mapIO
 {-# INLINE forIO #-}
 
 -- | Same as `mapIO_` but with arguments flipped.
 --
+-- ==== __Example__
+--
+-- This is the same example as in `forM_`, with important difference that accumulator `ref` will be
+-- modified concurrently by as many threads as there are capabilities.
+--
+-- >>> import Data.Massiv.Array
+-- >>> import Data.IORef
+-- >>> ref <- newIORef 0 :: IO (IORef Int)
+-- >>> forIO_ (range Par (Ix1 0) 1000) $ \ i -> atomicModifyIORef' ref (\v -> (v+i, ()))
+-- >>> readIORef ref
+-- 499500
+--
 -- @since 0.2.6
-forIO_ :: Source r ix e => Array r ix e -> (e -> IO a) -> IO ()
+forIO_ :: (Source r ix e, MonadUnliftIO m) => Array r ix e -> (e -> m a) -> m ()
 forIO_ = flip mapIO_
 {-# INLINE forIO_ #-}
 
@@ -449,42 +618,16 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     (Source r' ix a, Mutable r ix b) => Array r' ix a -> (ix -> a -> IO b) -> IO (Array r ix b)
+     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => Array r' ix a
+  -> (ix -> a -> m b)
+  -> m (Array r ix b)
 iforIO = flip imapIO
 {-# INLINE iforIO #-}
 
 -- | Same as `imapIO_` but with arguments flipped.
 --
 -- @since 0.2.6
-iforIO_ :: Source r ix a => Array r ix a -> (ix -> a -> IO b) -> IO ()
+iforIO_ :: (Source r ix a, MonadUnliftIO m) => Array r ix a -> (ix -> a -> m b) -> m ()
 iforIO_ = flip imapIO_
 {-# INLINE iforIO_ #-}
-
-
--- | Map an IO action, over an array in parallel, while discarding the result.
-mapP_ :: Source r ix a => (a -> IO b) -> Array r ix a -> IO ()
-mapP_ f = imapP_ (const f)
-{-# INLINE mapP_ #-}
-{-# DEPRECATED mapP_ "In favor of 'mapIO_'" #-}
-
-
--- | Map an index aware IO action, over an array in parallel, while
--- discarding the result.
-imapP_ :: Source r ix a => (ix -> a -> IO b) -> Array r ix a -> IO ()
-imapP_ f arr = do
-  let sz = size arr
-      wIds =
-        case getComp arr of
-          ParOn ids -> ids
-          _         -> []
-  divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-    loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      scheduleWork scheduler $
-      iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !i ix -> do
-        void $ f ix (unsafeLinearIndex arr i)
-    when (slackStart < totalLength) $
-      scheduleWork scheduler $
-      iterLinearM_ sz slackStart totalLength 1 (<) $ \ !i ix -> do
-        void $ f ix (unsafeLinearIndex arr i)
-{-# INLINE imapP_ #-}
-{-# DEPRECATED imapP_ "In favor of 'imapIO_'" #-}

@@ -1,16 +1,13 @@
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE PatternSynonyms            #-}
-
-#if __GLASGOW_HASKELL__ >= 800
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-#else
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE StandaloneDeriving         #-}
+
+#if __GLASGOW_HASKELL__ < 820
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 #endif
 -- |
 -- Module      : Data.Massiv.Core.Index.Stride
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -27,7 +24,7 @@ module Data.Massiv.Core.Index.Stride
   ) where
 
 import           Control.DeepSeq
-import           Data.Massiv.Core.Index.Class
+import           Data.Massiv.Core.Index.Internal
 
 -- | Stride provides a way to ignore elements of an array if an index is divisible by a
 -- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be
@@ -55,19 +52,8 @@ import           Data.Massiv.Core.Index.Class
 --   column intact then you'd use @Stride (5 :. 1)@.
 --
 
-#if __GLASGOW_HASKELL__ >= 800
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
 {-# COMPLETE Stride #-}
-#else
--- There is an issue in GHC 7.10 which prevents from placing `Index` constraint on a pattern.
-data Stride ix where
-  SafeStride :: Index ix => ix -> Stride ix
-
-deriving instance Eq ix => Eq (Stride ix)
-deriving instance Ord ix => Ord (Stride ix)
-instance NFData ix => NFData (Stride ix) where
-  rnf (SafeStride ix) = rnf ix
-#endif
 
 
 -- | A safe bidirectional pattern synonym for `Stride` construction that will make sure stride
@@ -86,7 +72,7 @@ unStride :: Stride ix -> ix
 unStride (SafeStride ix) = ix
 {-# INLINE unStride #-}
 
--- | Adjust strating index according to the stride
+-- | Adjust starting index according to the stride
 strideStart :: Index ix => Stride ix -> ix -> ix
 strideStart (SafeStride stride) ix =
   liftIndex2
@@ -96,14 +82,15 @@ strideStart (SafeStride stride) ix =
 {-# INLINE strideStart #-}
 
 -- | Adjust size according to the stride.
-strideSize :: Index ix => Stride ix -> Sz ix -> ix
-strideSize (SafeStride stride) sz = liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) sz) stride
+strideSize :: Index ix => Stride ix -> Sz ix -> Sz ix
+strideSize (SafeStride stride) (SafeSz sz) =
+  SafeSz (liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) sz) stride)
 {-# INLINE strideSize #-}
 
 -- | Compute an index with stride using the original size and index
 toLinearIndexStride :: Index ix =>
   Stride ix -- ^ Stride
-  -> ix -- ^ Size
+  -> Sz ix -- ^ Size
   -> ix -- ^ Index
   -> Int
 toLinearIndexStride (SafeStride stride) sz ix = toLinearIndex sz (liftIndex2 div ix stride)

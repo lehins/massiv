@@ -166,7 +166,7 @@ fromNetpbmImageUnsafe
   => Int -> Int -> V.Vector a -> Maybe (Image S cs e)
 fromNetpbmImageUnsafe m n v = do
   guard (n * m == V.length v)
-  return $ fromVector Par (m :. n) $ V.unsafeCast v
+  return $ fromVector Par (Sz (m :. n)) $ V.unsafeCast v
 
 
 

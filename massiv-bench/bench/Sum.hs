@@ -1,16 +1,16 @@
-{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE BangPatterns #-}
 module Main where
 
 import           Criterion.Main
 import           Data.Massiv.Array as A
 import           Data.Massiv.Bench as A
+import           Data.Monoid
 import           Prelude           as P
-
 
 
 main :: IO ()
 main = do
-  let !sz = 1600 :. 1200
+  let !sz = Sz2 1600 1200
   defaultMain
     [ bgroup
         "Sum"
@@ -20,6 +20,7 @@ main = do
               [ bench "foldlS" $ whnf (A.foldlS (+) 0) arr
               , bench "foldrS" $ whnf (A.foldrS (+) 0) arr
               , bench "sum" $ whnf A.sum arr
+              , bench "foldMono" $ whnf (getSum . foldMono Sum) arr
               , bench "foldlS . foldlWithin Dim2" $ whnf (A.foldlS (+) 0 . foldlWithin Dim2 (+) 0) arr
               , bench "foldlS . foldlInner" $ whnf (A.foldlS (+) 0 . foldlInner (+) 0) arr
               ]
@@ -29,6 +30,7 @@ main = do
               [ bench "foldlP" $ whnfIO (A.foldlP (+) 0 (+) 0 arr)
               , bench "foldrP" $ whnfIO (A.foldrP (+) 0 (+) 0 arr)
               , bench "sum" $ whnf A.sum arr
+              , bench "foldMono" $ whnf (getSum . foldMono Sum) arr
               , bench "foldlS . foldlWithin Dim2" $
                 whnfIO (A.foldlP (+) 0 (+) 0 $ foldlWithin Dim2 (+) 0 arr)
               , bench "foldlS . foldlInner" $

@@ -20,7 +20,7 @@ main = do
       {-# INLINE f #-}
       !a = -3
       !d = 1
-      !sz = 10 :. 10
+      !sz = Sz2 10 10
       !n = 100
   defaultMain
     [ bgroup

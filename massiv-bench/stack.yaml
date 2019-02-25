@@ -1,5 +1,1 @@
-resolver: lts-12.2
-packages:
-- '.'
-- '../massiv/'
-extra-deps: []
+stack-ghc-8.4.yaml

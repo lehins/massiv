@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -62,14 +62,14 @@ module Data.Massiv.Array.Numeric
   , atan2A
   ) where
 
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Manifest.Internal
 import           Data.Massiv.Array.Ops.Fold         as A
 import           Data.Massiv.Array.Ops.Map          as A
 import           Data.Massiv.Array.Ops.Transform    as A
 import           Data.Massiv.Core
+import           Data.Massiv.Core.Index.Internal    (Sz (SafeSz))
 import           Data.Massiv.Core.Common
-import           Data.Monoid                        ((<>))
 import           Prelude                            as P
 
 
@@ -101,7 +101,7 @@ infixl 6  .+, .-
 (.^) arr n = liftArray (^ n) arr
 {-# INLINE (.^) #-}
 
--- | Perform matrix multiplication. Inner dimensions must agree, otherwise error.
+-- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
      (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (EltRepr r Ix2) Ix1 e, Num e)
   => Array r Ix2 e
@@ -112,7 +112,7 @@ infixl 6  .+, .-
 
 {-# RULES
 "multDoubleTranspose" [~1] forall arr1 arr2 . arr1 |*| transpose arr2 =
-    multiplyTransposedFused arr1 (computeSource arr2)
+    multiplyTransposedFused arr1 (convert arr2)
  #-}
 
 multiplyTransposedFused ::
@@ -154,16 +154,13 @@ multiplyTransposed ::
   -> Array r Ix2 e
   -> Array D Ix2 e
 multiplyTransposed arr1 arr2
-  | n1 /= m2 =
-    error $
-    "(|*|): Inner array dimensions must agree, but received: " ++
-    show (size arr1) ++ " and " ++ show (size arr2)
+  | n1 /= m2 = throw $ SizeMismatchException (size arr1) (size arr2)
   | otherwise =
-    DArray (getComp arr1 <> getComp arr2) (m1 :. n2) $ \(i :. j) ->
+    DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
       A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
   where
-    (m1 :. n1) = size arr1
-    (n2 :. m2) = size arr2
+    SafeSz (m1 :. n1) = size arr1
+    SafeSz (n2 :. m2) = size arr2
 {-# INLINE multiplyTransposed #-}
 
 
@@ -188,7 +185,7 @@ signumA = liftArray signum
 fromIntegerA
   :: (Index ix, Num e)
   => Integer -> Array D ix e
-fromIntegerA = singleton Seq . fromInteger
+fromIntegerA = singleton . fromInteger
 {-# INLINE fromIntegerA #-}
 
 (./)
@@ -213,13 +210,13 @@ recipA = liftArray recip
 fromRationalA
   :: (Index ix, Fractional e)
   => Rational -> Array D ix e
-fromRationalA = singleton Seq . fromRational
+fromRationalA = singleton . fromRational
 {-# INLINE fromRationalA #-}
 
 piA
   :: (Index ix, Floating e)
   => Array D ix e
-piA = singleton Seq pi
+piA = singleton pi
 {-# INLINE piA #-}
 
 expA

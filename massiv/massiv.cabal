@@ -1,5 +1,5 @@
 name:                massiv
-version:             0.2.7.0
+version:             0.3.0.0
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -7,9 +7,10 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018 Alexey Kuleshevich
+copyright:           2018-2019 Alexey Kuleshevich
 category:            Data, Data Structures
-build-type:          Simple
+--build-type:          Simple
+build-type:          Custom
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
@@ -19,6 +20,12 @@ flag unsafe-checks
   default: False
   manual: True
 
+custom-setup
+  setup-depends:
+      base
+    , Cabal
+    , cabal-doctest  >=1.0.6
+
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Massiv.Array
@@ -26,17 +33,18 @@ library
                      , Data.Massiv.Array.Manifest
                      , Data.Massiv.Array.Manifest.Vector
                      , Data.Massiv.Array.Mutable
+                     , Data.Massiv.Array.Mutable.Atomic
                      , Data.Massiv.Array.Numeric
                      , Data.Massiv.Array.Numeric.Integral
                      , Data.Massiv.Array.Stencil
                      , Data.Massiv.Array.Stencil.Unsafe
                      , Data.Massiv.Array.Unsafe
                      , Data.Massiv.Core
-                     , Data.Massiv.Core.Scheduler
                      , Data.Massiv.Core.Index
 
-  other-modules:       Data.Massiv.Array.Delayed.Internal
-                     , Data.Massiv.Array.Delayed.Interleaved
+  other-modules:       Data.Massiv.Array.Delayed.Interleaved
+                     , Data.Massiv.Array.Delayed.Pull
+                     , Data.Massiv.Array.Delayed.Push
                      , Data.Massiv.Array.Delayed.Windowed
                      , Data.Massiv.Array.Manifest.Boxed
                      , Data.Massiv.Array.Manifest.Internal
@@ -53,18 +61,21 @@ library
                      , Data.Massiv.Array.Stencil.Convolution
                      , Data.Massiv.Array.Stencil.Internal
                      , Data.Massiv.Core.Common
-                     , Data.Massiv.Core.Computation
-                     , Data.Massiv.Core.Index.Class
+                     , Data.Massiv.Core.Exception
+                     , Data.Massiv.Core.Index.Internal
                      , Data.Massiv.Core.Index.Ix
                      , Data.Massiv.Core.Index.Stride
+                     , Data.Massiv.Core.Index.Tuple
                      , Data.Massiv.Core.Iterator
                      , Data.Massiv.Core.List
   build-depends:       base            >= 4.8 && < 5
                      , bytestring
                      , data-default-class
                      , deepseq
-                     , ghc-prim
+                     , exceptions
+                     , massiv-scheduler
                      , primitive
+                     , unliftio-core
                      , vector
   include-dirs: include
   install-includes: massiv.h
@@ -72,24 +83,22 @@ library
   if flag(unsafe-checks)
     cpp-options: -DMASSIV_UNSAFE_CHECKS
 
-  if impl(ghc < 8.0)
-    build-depends: semigroups
-  if impl(ghc < 7.10)
-    build-depends: unsupported-ghc-version > 1 && < 1
-
   default-language:    Haskell2010
-  ghc-options:         -Wall
-
+  ghc-options:        -Wall
+                      -Wincomplete-record-updates
+                      -Wincomplete-uni-patterns
+                      -Wredundant-constraints
 
 test-suite tests
   type:               exitcode-stdio-1.0
   hs-source-dirs:     tests
-  main-is:            Spec.hs
+  main-is:            Main.hs
   other-modules:      Data.Massiv.Array.DelayedSpec
                     , Data.Massiv.Array.Delayed.WindowedSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.MutableSpec
+                    , Data.Massiv.Array.Numeric.IntegralSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec
@@ -99,20 +108,38 @@ test-suite tests
                     , Data.Massiv.CoreArbitrary
                     , Data.Massiv.Core.IndexSpec
                     , Data.Massiv.Core.SchedulerSpec
-  build-depends:      base            >= 4.8 && < 5
+                    , Spec
+  build-depends:      base             >= 4.8 && < 5
+                    , async
                     , bytestring
-                    , deepseq
                     , data-default
+                    , deepseq
                     , safe-exceptions
                     , massiv
+                    , massiv-scheduler
                     , hspec
                     , QuickCheck
                     , vector
-  if impl(ghc < 8.0)
-    build-depends: semigroups
 
   default-language:   Haskell2010
-  ghc-options:        -Wall -fno-warn-orphans -threaded -with-rtsopts=-N2
+  ghc-options:       -Wall
+                     -Wincomplete-record-updates
+                     -Wincomplete-uni-patterns
+                     -Wredundant-constraints
+                     -fno-warn-orphans
+                     -threaded
+                     -with-rtsopts=-N2
+
+test-suite doctests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  main-is:          doctests.hs
+  build-depends: base
+               , doctest           >=0.15
+               , QuickCheck
+               , massiv
+               , template-haskell
+  default-language:    Haskell2010
 
 source-repository head
   type:     git

@@ -1,15 +1,16 @@
-{-# LANGUAGE BangPatterns              #-}
-{-# LANGUAGE CPP                       #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MagicHash                 #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE UndecidableInstances      #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -19,7 +20,6 @@ module Data.Massiv.Array.Manifest.Boxed
   ( B(..)
   , N(..)
   , Array(..)
-  , Uninitialized(..)
   , unwrapArray
   , evalArray
   , unwrapMutableArray
@@ -40,23 +40,23 @@ import           Control.Exception
 import           Control.Monad.Primitive
 import           Control.Monad.ST                    (runST)
 import qualified Data.Foldable                       as F (Foldable (..))
-import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
-import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
+import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
+import           Data.Massiv.Array.Delayed.Push      (DL)
+import           Data.Massiv.Array.Manifest.Internal (M, toManifest, computeAs)
 import           Data.Massiv.Array.Manifest.List     as L
 import           Data.Massiv.Array.Mutable
+import           Data.Massiv.Array.Ops.Fold
 import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
-                                                      unsafeGenerateArrayP)
+import           Data.Massiv.Array.Ops.Map           (traverseA)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import qualified Data.Primitive.Array                as A
 import qualified Data.Vector                         as VB
 import qualified Data.Vector.Mutable                 as VB
 import           GHC.Base                            (build)
-import           GHC.Exts                            as GHC (IsList (..))
-import           GHC.Prim
-import           GHC.Types
+import           GHC.Exts                            as GHC
 import           Prelude                             hiding (mapM)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -81,12 +81,22 @@ data B = B deriving Show
 type instance EltRepr B ix = M
 
 data instance Array B ix e = BArray { bComp :: !Comp
-                                    , bSize :: !ix
+                                    , bSize :: !(Sz ix)
                                     , bData :: {-# UNPACK #-} !(A.Array e)
                                     }
 
+instance (Ragged L ix e, Show e) => Show (Array B ix e) where
+  showsPrec = showsArrayPrec id
+  showList = showArrayList
+
+instance (Ragged L ix e, Show e) => Show (Array DL ix e) where
+  showsPrec = showsArrayPrec (computeAs B)
+  showList = showArrayList
+
+
 instance (Index ix, NFData e) => NFData (Array B ix e) where
   rnf = (`deepseqArray` ())
+  {-# INLINE rnf #-}
 
 instance (Index ix, Eq e) => Eq (Array B ix e) where
   (==) = eq (==)
@@ -97,35 +107,28 @@ instance (Index ix, Ord e) => Ord (Array B ix e) where
   {-# INLINE compare #-}
 
 instance Index ix => Construct B ix e where
-  getComp = bComp
-  {-# INLINE getComp #-}
-
   setComp c arr = arr { bComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (\ !ix -> return $! f ix)
+  {-# INLINE makeArray #-}
 
 instance Index ix => Source B ix e where
   unsafeLinearIndex (BArray _ _ a) =
-    INDEX_CHECK("(Source B ix e).unsafeLinearIndex", sizeofArray, A.indexArray) a
+    INDEX_CHECK("(Source B ix e).unsafeLinearIndex", Sz . sizeofArray, A.indexArray) a
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Size B ix e where
-  size = bSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array B ix where
   unsafeResize !sz !arr = arr { bSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance Index ix => Extract B ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
 
-instance ( NFData e
-         , Index ix
+instance ( Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
          , Elt B ix e ~ Array M (Lower ix) e
@@ -134,8 +137,7 @@ instance ( NFData e
   unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( NFData e
-         , Index ix
+instance ( Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
          , Elt B ix e ~ Array M (Lower ix) e
@@ -144,16 +146,20 @@ instance ( NFData e
   unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
   {-# INLINE unsafeInnerSlice #-}
 
+instance {-# OVERLAPPING #-} Slice B Ix1 e where
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
+
 
 instance Index ix => Manifest B ix e where
 
   unsafeLinearIndexM (BArray _ _ a) =
-    INDEX_CHECK("(Manifest B ix e).unsafeLinearIndexM", sizeofArray, A.indexArray) a
+    INDEX_CHECK("(Manifest B ix e).unsafeLinearIndexM", Sz . sizeofArray, A.indexArray) a
   {-# INLINE unsafeLinearIndexM #-}
 
 
 instance Index ix => Mutable B ix e where
-  data MArray s B ix e = MBArray !ix {-# UNPACK #-} !(A.MutableArray s e)
+  data MArray s B ix e = MBArray !(Sz ix) {-# UNPACK #-} !(A.MutableArray s e)
 
   msize (MBArray sz _) = sz
   {-# INLINE msize #-}
@@ -167,20 +173,35 @@ instance Index ix => Mutable B ix e where
   unsafeNew sz = MBArray sz <$> A.newArray (totalElem sz) uninitialized
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero = unsafeNew
-  {-# INLINE unsafeNewZero #-}
+  initialize _ = return ()
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MBArray _ ma) =
-    INDEX_CHECK("(Mutable B ix e).unsafeLinearRead", sizeofMutableArray, A.readArray) ma
+    INDEX_CHECK("(Mutable B ix e).unsafeLinearRead", Sz . sizeofMutableArray, A.readArray) ma
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MBArray _ ma) i e = e `seq`
-    INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite", sizeofMutableArray, A.writeArray) ma i e
+    INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite", Sz . sizeofMutableArray, A.writeArray) ma i e
   {-# INLINE unsafeLinearWrite #-}
+
+instance Index ix => Load B ix e where
+  size = bSize
+  {-# INLINE size #-}
+  getComp = bComp
+  {-# INLINE getComp #-}
+  loadArrayM !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayM #-}
+
+instance Index ix => StrideLoad B ix e
 
 
 -- | Row-major sequential folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
+  fold = fold
+  {-# INLINE fold #-}
+  foldMap = foldMono
+  {-# INLINE foldMap #-}
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
   foldl' = foldlS
@@ -191,15 +212,19 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE foldr' #-}
   null (BArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = F.foldl' (+) 0
-  {-# INLINE sum #-}
-  product = F.foldl' (*) 1
-  {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 
+
+instance Index ix => Functor (Array B ix) where
+  fmap f arr = makeArrayLinear (bComp arr) (bSize arr) (f . unsafeLinearIndex arr)
+  {-# INLINE fmap #-}
+
+instance Index ix => Traversable (Array B ix) where
+  traverse = traverseA
+  {-# INLINE traverse #-}
 
 instance ( IsList (Array L ix e)
          , Nested LN ix e
@@ -226,9 +251,13 @@ type instance EltRepr N ix = M
 
 newtype instance Array N ix e = NArray { bArray :: Array B ix e }
 
+instance (Ragged L ix e, Show e, NFData e) => Show (Array N ix e) where
+  showsPrec = showsArrayPrec bArray
+  showList = showArrayList
+
 instance (Index ix, NFData e) => NFData (Array N ix e) where
   rnf (NArray barr) = barr `deepseqArray` ()
-
+  {-# INLINE rnf #-}
 
 instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
   (==) = eq (==)
@@ -240,29 +269,29 @@ instance (Index ix, NFData e, Ord e) => Ord (Array N ix e) where
 
 
 instance (Index ix, NFData e) => Construct N ix e where
-  getComp = bComp . bArray
-  {-# INLINE getComp #-}
-
-  setComp c (NArray arr) = NArray (arr { bComp = c })
+  setComp c (NArray arr) = NArray (arr {bComp = c})
   {-# INLINE setComp #-}
-
-  unsafeMakeArray Seq          !sz f = NArray $ unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = NArray $ unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f =
+    unsafePerformIO $
+    generateArray
+      comp
+      sz
+      (\ !ix ->
+         let res = f ix
+          in res `deepseq` return res)
+  {-# INLINE makeArray #-}
 
 instance (Index ix, NFData e) => Source N ix e where
   unsafeLinearIndex (NArray arr) =
-    INDEX_CHECK("(Source N ix e).unsafeLinearIndex", totalElem . size, unsafeLinearIndex) arr
+    INDEX_CHECK("(Source N ix e).unsafeLinearIndex", Sz . totalElem . size, unsafeLinearIndex) arr
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (Index ix, NFData e) => Size N ix e where
-  size = bSize . bArray
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array N ix where
   unsafeResize !sz = NArray . unsafeResize sz . bArray
   {-# INLINE unsafeResize #-}
 
+instance (Index ix, NFData e) => Extract N ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
@@ -287,11 +316,15 @@ instance ( NFData e
   unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
 
+instance {-# OVERLAPPING #-} NFData e => Slice N Ix1 e where
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
+  {-# INLINE unsafeSlice #-}
+
 
 instance (Index ix, NFData e) => Manifest N ix e where
 
   unsafeLinearIndexM (NArray arr) =
-    INDEX_CHECK("(Manifest N ix e).unsafeLinearIndexM", totalElem . size, unsafeLinearIndexM) arr
+    INDEX_CHECK("(Manifest N ix e).unsafeLinearIndexM", Sz . totalElem . size, unsafeLinearIndexM) arr
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -310,16 +343,28 @@ instance (Index ix, NFData e) => Mutable N ix e where
   unsafeNew sz = MNArray <$> unsafeNew sz
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero = unsafeNew
-  {-# INLINE unsafeNewZero #-}
+  initialize _ = return ()
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MNArray ma) =
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", totalElem . msize, unsafeLinearRead) ma
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", Sz . totalElem . msize, unsafeLinearRead) ma
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MNArray ma) i e = e `deepseq`
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", totalElem . msize, unsafeLinearWrite) ma i e
+    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", Sz . totalElem . msize, unsafeLinearWrite) ma i e
   {-# INLINE unsafeLinearWrite #-}
+
+instance (Index ix, NFData e) => Load N ix e where
+  size = bSize . bArray
+  {-# INLINE size #-}
+  getComp = bComp . bArray
+  {-# INLINE getComp #-}
+  loadArrayM !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayM #-}
+
+instance (Index ix, NFData e) => StrideLoad N ix e
+
 
 
 instance ( NFData e
@@ -339,16 +384,6 @@ instance ( NFData e
 ----------------------
 -- Helper functions --
 ----------------------
-
--- | An error that gets thrown when an unitialized element of a boxed array gets accessed. Can only
--- happen when array was constructed with `unsafeNew`.
-data Uninitialized = Uninitialized
-
-instance Show Uninitialized where
-  show Uninitialized = "Array element is uninitialized"
-
-instance Exception Uninitialized
-
 
 uninitialized :: a
 uninitialized = throw Uninitialized
@@ -461,7 +496,7 @@ fromMutableArraySeq ::
 fromMutableArraySeq with mbarr = do
   let !sz = sizeofMutableArray mbarr
   loopM_ 0 (< sz) (+ 1) $ \i -> A.readArray mbarr i >>= (`with` return ())
-  return $! MBArray sz mbarr
+  return $! MBArray (Sz sz) mbarr
 {-# INLINE fromMutableArraySeq #-}
 
 fromArraySeq ::
@@ -469,7 +504,7 @@ fromArraySeq ::
   -> Comp
   -> A.Array e
   -> a
-fromArraySeq with comp barr = with (BArray comp (sizeofArray barr) barr)
+fromArraySeq with comp barr = with (BArray comp (Sz (sizeofArray barr)) barr)
 {-# INLINE fromArraySeq #-}
 
 

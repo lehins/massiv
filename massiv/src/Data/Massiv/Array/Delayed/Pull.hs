@@ -1,22 +1,21 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
--- Module      : Data.Massiv.Array.Delayed.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Module      : Data.Massiv.Array.Delayed.Pull
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Delayed.Internal
+module Data.Massiv.Array.Delayed.Pull
   ( D(..)
   , Array(..)
   , delay
@@ -26,11 +25,11 @@ module Data.Massiv.Array.Delayed.Internal
   , liftArray2
   ) where
 
-import           Data.Foldable                       (Foldable (..))
+import qualified Data.Foldable                        as F
 import           Data.Massiv.Array.Ops.Fold.Internal as A
+import           Data.Massiv.Core.Index.Internal
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
-import           Data.Monoid                         ((<>))
+import           Data.Massiv.Core.List               (L, showsArrayPrec, showArrayList)
 import           GHC.Base                            (build)
 import           Prelude                             hiding (zipWith)
 
@@ -39,62 +38,62 @@ import           Prelude                             hiding (zipWith)
 -- | Delayed representation.
 data D = D deriving Show
 
-
 data instance Array D ix e = DArray { dComp :: !Comp
-                                    , dSize :: !ix
+                                    , dSize :: !(Sz ix)
                                     , dIndex :: ix -> e }
 type instance EltRepr D ix = D
 
-instance Index ix => Construct D ix e where
-  getComp = dComp
-  {-# INLINE getComp #-}
+instance (Ragged L ix e, Show e) => Show (Array D ix e) where
+  showsPrec = showsArrayPrec id
+  showList = showArrayList
 
+instance Index ix => Resize Array D ix where
+  unsafeResize !sz !arr =
+    DArray (dComp arr) sz $ \ !ix ->
+      unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
+  {-# INLINE unsafeResize #-}
+
+instance Index ix => Extract D ix e where
+  unsafeExtract !sIx !newSz !arr =
+    DArray (dComp arr) newSz $ \ !ix ->
+      unsafeIndex arr (liftIndex2 (+) ix sIx)
+  {-# INLINE unsafeExtract #-}
+
+
+instance Index ix => Construct D ix e where
   setComp c arr = arr { dComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray = DArray
-  {-# INLINE unsafeMakeArray #-}
+  makeArray = DArray
+  {-# INLINE makeArray #-}
 
 
 instance Index ix => Source D ix e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
 
-instance Index ix => Size D ix e where
-  size = dSize
-  {-# INLINE size #-}
-
-  unsafeResize !sz !arr =
-    DArray (getComp arr) sz $ \ !ix ->
-      unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
-  {-# INLINE unsafeResize #-}
-
-  unsafeExtract !sIx !newSz !arr =
-    DArray (getComp arr) newSz $ \ !ix ->
-      unsafeIndex arr (liftIndex2 (+) ix sIx)
-  {-# INLINE unsafeExtract #-}
 
 instance ( Index ix
          , Index (Lower ix)
          , Elt D ix e ~ Array D (Lower ix) e
          ) =>
          Slice D ix e where
-  unsafeSlice arr start cutSz dim = do
-    newSz <- dropDim cutSz dim
-    return $ unsafeResize newSz (unsafeExtract start cutSz arr)
+  unsafeSlice arr start cut@(SafeSz cutSz) dim = do
+    newSz <- dropDimM cutSz dim
+    return $ unsafeResize (SafeSz newSz) (unsafeExtract start cut arr)
   {-# INLINE unsafeSlice #-}
 
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e where
 
   unsafeOuterSlice !arr !i =
-    DArray (getComp arr) (tailDim (size arr)) (\ !ix -> unsafeIndex arr (consDim i ix))
+    DArray (dComp arr) (snd (unconsSz (size arr))) (\ !ix -> unsafeIndex arr (consDim i ix))
   {-# INLINE unsafeOuterSlice #-}
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e where
 
   unsafeInnerSlice !arr !(szL, _) !i =
-    DArray (getComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i))
+    DArray (dComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i))
   {-# INLINE unsafeInnerSlice #-}
 
 
@@ -112,16 +111,20 @@ instance Functor (Array D ix) where
 
 
 instance Index ix => Applicative (Array D ix) where
-  pure a = DArray Seq (liftIndex (+ 1) zeroIndex) (const a)
+  pure = singleton
   {-# INLINE pure #-}
-  (<*>) (DArray c1 sz1 uIndex1) (DArray c2 sz2 uIndex2) =
-    DArray (c1 <> c2) (liftIndex2 min sz1 sz2) $ \ !ix ->
+  (<*>) (DArray c1 (SafeSz sz1) uIndex1) (DArray c2 (SafeSz sz2) uIndex2) =
+    DArray (c1 <> c2) (SafeSz (liftIndex2 min sz1 sz2)) $ \ !ix ->
       (uIndex1 ix) (uIndex2 ix)
   {-# INLINE (<*>) #-}
 
 
 -- | Row-major sequential folding over a Delayed array.
 instance Index ix => Foldable (Array D ix) where
+  fold = A.fold
+  {-# INLINE fold #-}
+  foldMap = A.foldMono
+  {-# INLINE foldMap #-}
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
   foldl' = foldlS
@@ -132,10 +135,6 @@ instance Index ix => Foldable (Array D ix) where
   {-# INLINE foldr' #-}
   null (DArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = foldl' (+) 0
-  {-# INLINE sum #-}
-  product = foldl' (*) 1
-  {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)
@@ -143,18 +142,15 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix e where
-  loadS (DArray _ sz f) _ unsafeWrite =
-    iterM_ zeroIndex sz (pureIndex 1) (<) $ \ !ix -> unsafeWrite (toLinearIndex sz ix) (f ix)
-  {-# INLINE loadS #-}
-  loadP wIds (DArray _ sz f) _ unsafeWrite =
-    divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        scheduleWork scheduler $
-        iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
-      scheduleWork scheduler $
-        iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix -> unsafeWrite k (f ix)
-  {-# INLINE loadP #-}
+  size = dSize
+  {-# INLINE size #-}
+  getComp = dComp
+  {-# INLINE getComp #-}
+  loadArrayM !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayM #-}
 
+instance Index ix => StrideLoad D ix e
 
 instance (Index ix, Num e) => Num (Array D ix e) where
   (+)         = liftArray2 (+)
@@ -167,18 +163,18 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE abs #-}
   signum      = liftArray signum
   {-# INLINE signum #-}
-  fromInteger = singleton Seq . fromInteger
+  fromInteger = singleton . fromInteger
   {-# INLINE fromInteger #-}
 
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
   (/)          = liftArray2 (/)
   {-# INLINE (/) #-}
-  fromRational = singleton Seq . fromRational
+  fromRational = singleton . fromRational
   {-# INLINE fromRational #-}
 
 
 instance (Index ix, Floating e) => Floating (Array D ix e) where
-  pi    = singleton Seq pi
+  pi    = singleton pi
   {-# INLINE pi #-}
   exp   = liftArray exp
   {-# INLINE exp #-}
@@ -213,19 +209,18 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE delay #-}
 
 
--- | /O(n1 + n2)/ - Compute array equality by applying a comparing function to each element.
+-- TODO: switch to zipWith
+-- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
 eq :: (Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
-  A.fold
-    (&&)
-    True
+  F.and
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE eq #-}
 
--- | /O(n1 + n2)/ - Compute array ordering by applying a comparing function to each element.
+-- | /O(min (n1, n2))/ - Compute array ordering by applying a comparing function to each element.
 -- The exact ordering is unspecified so this is only intended for use in maps and the like where
 -- you need an ordering but do not care about which one is used.
 ord :: (Source r1 ix e1, Source r2 ix e2) =>
@@ -233,8 +228,6 @@ ord :: (Source r1 ix e1, Source r2 ix e2) =>
 ord f arr1 arr2 =
   (compare (size arr1) (size arr2)) <>
   A.fold
-    (<>)
-    mempty
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE ord #-}
@@ -253,13 +246,12 @@ liftArray2
   :: (Source r1 ix a, Source r2 ix b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2 f !arr1 !arr2
-  | sz1 == oneIndex = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
-  | sz2 == oneIndex = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
+  | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
+  | sz2 == oneSz = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
   | sz1 == sz2 =
-    DArray (getComp arr1) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = errorSizeMismatch "liftArray2" (size arr1) (size arr2)
+    DArray (getComp arr1 <> getComp arr2) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
   where
-    oneIndex = pureIndex 1
     sz1 = size arr1
     sz2 = size arr2
 {-# INLINE liftArray2 #-}

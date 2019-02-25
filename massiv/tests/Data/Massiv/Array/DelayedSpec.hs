@@ -8,8 +8,6 @@ import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.Array
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
-import           Test.Hspec
-import           Test.QuickCheck
 
 
 downsampleArr :: Source r ix e => Stride ix -> Array r ix e -> Array D ix e
@@ -36,7 +34,7 @@ prop_computeWithStrideInterleavedEqDownsample _ stride arr =
   computeWithStride stride (toInterleaved arr) === computeAs U (downsampleArr stride arr)
 
 prop_computeWithStrideWindowedEqDownsample ::
-     (Ragged L ix Int, Load DW ix Int)
+     (Ragged L ix Int, StrideLoad DW ix Int)
   => proxy ix
   -> Stride ix
   -> ArrIx D ix Int
@@ -47,7 +45,7 @@ prop_computeWithStrideWindowedEqDownsample _ stride (ArrIx arr _) =
 
 
 delayedSpec ::
-     (Arbitrary ix, CoArbitrary ix, Load DW ix Int, Ragged L ix Int)
+     (Arbitrary ix, CoArbitrary ix, StrideLoad DW ix Int, Ragged L ix Int)
   => String
   -> proxy ix
   -> SpecWith ()

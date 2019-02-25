@@ -1,5 +1,13 @@
 {-# LANGUAGE BangPatterns     #-}
 {-# LANGUAGE FlexibleContexts #-}
+-- |
+-- Module      : Data.Massiv.Array.Numeric.Integral
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- License     : BSD3
+-- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
+-- Stability   : experimental
+-- Portability : non-portable
+--
 module Data.Massiv.Array.Numeric.Integral
   (
   -- $integral_intro
@@ -22,11 +30,14 @@ module Data.Massiv.Array.Numeric.Integral
   , fromFunction
   -- ** Sampled at the midpoint
   , fromFunctionMidpoint
+  -- * Helper functions
   ) where
 
 import           Data.Coerce
-import           Data.Massiv.Array.Delayed
+import           Data.Massiv.Array.Delayed.Pull      (D)
+import           Data.Massiv.Array.Delayed.Windowed  (DW)
 import           Data.Massiv.Array.Manifest.Internal
+import           Data.Massiv.Array.Ops.Construct     (rangeInclusive)
 import           Data.Massiv.Array.Ops.Transform     (extract')
 import           Data.Massiv.Array.Stencil
 import           Data.Massiv.Core.Common
@@ -46,7 +57,7 @@ midpointStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 midpointStencil dx dim k =
-  makeStencilDef 0 (setDim' (pureIndex 1) dim k) zeroIndex $ \g ->
+  makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim k)) zeroIndex $ \g ->
     pure dx * loop 0 (< k) (+ 1) 0 (\i -> (+ g (setDim' zeroIndex dim i)))
 {-# INLINE midpointStencil #-}
 
@@ -65,7 +76,7 @@ trapezoidStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 trapezoidStencil dx dim n =
-  makeStencilDef 0 (setDim' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
+  makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \g ->
     pure dx / 2 *
     (loop 1 (< n) (+ 1) (g zeroIndex) (\i -> (+ 2 * g (setDim' zeroIndex dim i))) +
      g (setDim' zeroIndex dim n))
@@ -90,7 +101,7 @@ simpsonsStencil dx dim n
     error $
     "Number of sample points for Simpson's rule stencil should be even, but received: " ++ show n
   | otherwise =
-    makeStencilDef 0 (setDim' (pureIndex 1) dim (n + 1)) zeroIndex $ \g ->
+    makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \g ->
       let simAcc i (prev, acc) =
             let !fx3 = g (setDim' zeroIndex dim (i + 2))
                 !newAcc = acc + prev + 4 * g (setDim' zeroIndex dim (i + 1)) + fx3
@@ -100,7 +111,7 @@ simpsonsStencil dx dim n
 
 -- | Integrate with a stencil along a particular dimension.
 integrateWith ::
-     (Fractional e, Load DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
   => (Dim -> Int -> Stencil ix e e)
   -> Dim -- ^ Dimension along which integration should be estimated.
   -> Int -- ^ @n@ - Number of samples
@@ -115,7 +126,7 @@ integrateWith stencil dim n arr =
 
 -- | Compute an approximation of integral using a supplied rule in a form of `Stencil`.
 integralApprox ::
-     (Fractional e, Load DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
   => (e -> Dim -> Int -> Stencil ix e e) -- ^ Integration Stencil
   -> e -- ^ @d@ - Length of interval per cell
   -> Sz ix -- ^ @sz@ - Result size of the matrix
@@ -133,7 +144,7 @@ integralApprox stencil d sz n arr =
 
 -- | Use midpoint rule to approximate an integral.
 midpointRule ::
-     (Fractional e, Load DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
   => Comp -- ^ Computation strategy.
   -> r -- ^ Intermediate array representation.
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
@@ -149,14 +160,14 @@ midpointRule comp r f a d sz n =
 
 -- | Use trapezoid rule to approximate an integral.
 trapezoidRule ::
-     (Fractional e, Load DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
-  -> e -- ^ @a@ - starting point
-  -> e -- ^ @d@ - distance per matrix cell
-  -> Sz ix -- ^ @sz@ - end matrix size
-  -> Int -- ^ @n@ - number of sample points per cell in each direction
+  -> e -- ^ @a@ - Starting value point.
+  -> e -- ^ @d@ - Distance per matrix cell.
+  -> Sz ix -- ^ @sz@ - Result matrix size.
+  -> Int -- ^ @n@ - Number of sample points per cell in each direction.
   -> Array M ix e
 trapezoidRule comp r f a d sz n =
   integralApprox trapezoidStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
@@ -164,15 +175,15 @@ trapezoidRule comp r f a d sz n =
 
 -- | Use Simpson's rule to approximate an integral.
 simpsonsRule ::
-     (Fractional e, Load DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
-  -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
-  -> e -- ^ @a@ - starting point
-  -> e -- ^ @d@ - distance per matrix cell
-  -> Sz ix -- ^ @sz@ - end matrix size
-  -> Int -- ^ @n@ - number of sample points per cell in each direction. This value must be even,
-         -- otherwise error..
+  -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
+  -> e -- ^ @a@ - Starting value point.
+  -> e -- ^ @d@ - Distance per matrix cell.
+  -> Sz ix -- ^ @sz@ - Result matrix size.
+  -> Int -- ^ @n@ - Number of sample points per cell in each direction. This value must be even,
+         -- otherwise error.
   -> Array M ix e
 simpsonsRule comp r f a d sz n =
   integralApprox simpsonsStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
@@ -181,18 +192,18 @@ simpsonsRule comp r f a d sz n =
 
 -- | Create an array from a function with sample points at the edges
 --
--- >>> fromFunction Seq (\ scale (i :. j) -> scale i + scale j) (-2) 1 (4 :. 4) 2
--- (Array D Seq (9 :. 9)
---   [ [ -4.0,-3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0 ]
---   , [ -3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5 ]
---   , [ -3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0 ]
---   , [ -2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5 ]
---   , [ -2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0 ]
---   , [ -1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5 ]
---   , [ -1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0 ]
---   , [ -0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5 ]
---   , [ 0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0 ]
---   ])
+-- >>> fromFunction Seq (\ scale (i :. j) -> scale i + scale j :: Double) (-2) 1 (Sz 4) 2
+-- Array D Seq (Sz (9 :. 9))
+--   [ [ -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0 ]
+--   , [ -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5 ]
+--   , [ -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0 ]
+--   , [ -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5 ]
+--   , [ -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0 ]
+--   , [ -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5 ]
+--   , [ -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 ]
+--   , [ -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 ]
+--   , [ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0 ]
+--   ]
 --
 fromFunction ::
      (Index ix, Fractional a)
@@ -205,8 +216,8 @@ fromFunction ::
   -> Sz ix -- ^ @sz@ - Size of the desired array
   -> Int -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
   -> Array D ix e
-fromFunction comp f a d sz n =
-  fmap (\ix -> f scale ix) $ range' comp zeroIndex (liftIndex (n *) sz)
+fromFunction comp f a d (Sz sz) n =
+  fmap (f scale) $ rangeInclusive comp zeroIndex (liftIndex (n *) sz)
   where
     nFrac = fromIntegral n
     scale i = a + d * fromIntegral i / nFrac
@@ -217,39 +228,29 @@ fromFunction comp f a d sz n =
 -- | Similar to `fromFunction`, but will create an array from a function with sample points in the
 -- middle of cells.
 --
--- >>> fromFunctionMidpoint Seq (\ scale (i :. j) -> scale i + scale j) (-2) 1 (4 :. 4) 2
--- (Array D Seq (8 :. 8)
---   [ [ -3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0 ]
---   , [ -3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5 ]
---   , [ -2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0 ]
---   , [ -2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5 ]
---   , [ -1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0 ]
---   , [ -1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5 ]
---   , [ -0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0 ]
---   , [ 0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5 ]
---   ])
+-- >>> fromFunctionMidpoint Seq (\ scale (i :. j) -> scale i + scale j :: Double) (-2) 1 (Sz 4) 2
+-- Array D Seq (Sz (8 :. 8))
+--   [ [ -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0 ]
+--   , [ -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5 ]
+--   , [ -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0 ]
+--   , [ -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5 ]
+--   , [ -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0 ]
+--   , [ -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5 ]
+--   , [ -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 ]
+--   , [ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 ]
+--   ]
 --
 fromFunctionMidpoint
   :: (Index ix, Fractional a) =>
-     Comp -> ((Int -> a) -> ix -> e) -> a -> a -> ix -> Int -> Array D ix e
-fromFunctionMidpoint comp f a d sz n =
-  fmap (\ix -> f scale ix) $ range' comp zeroIndex (liftIndex (\i -> n * i - 1) sz)
+     Comp -> ((Int -> a) -> ix -> e) -> a -> a -> Sz ix -> Int -> Array D ix e
+fromFunctionMidpoint comp f a d (Sz sz) n =
+  fmap (\ix -> f scale ix) $ rangeInclusive comp zeroIndex (liftIndex (\i -> n * i - 1) sz)
   where
     nFrac = fromIntegral n
     dx2 = d / nFrac / 2
     scale i = dx2 + a + d * fromIntegral i / nFrac
     {-# INLINE scale #-}
 {-# INLINE fromFunctionMidpoint #-}
-
-
--- TODO: make this function external
--- https://github.com/lehins/massiv/issues/47
-range' :: Index ix => Comp -> ix -> ix -> Array D ix ix
-range' comp ixFrom ixTo =
-  makeArray comp sz (\ix -> liftIndex2 (+) ixFrom ix)
-  where
-    sz = liftIndex2 (-) (liftIndex (+ 1) ixTo) ixFrom
-{-# INLINE range' #-}
 
 
 -- $integral_intro
@@ -262,7 +263,7 @@ range' comp ixFrom ixTo =
 -- Implementation-wise, integral approximation here relies heavily on stencils with stride, as such
 -- computation is fast and is automatically parallelizable.
 --
--- Here are some example of where this can be useful:
+-- Here are some examples of where this can be useful:
 --
 -- === Integral of a function on a region
 --
@@ -271,18 +272,20 @@ range' comp ixFrom ixTo =
 -- the function to that array, which will give us an array of @n + 1@ sample points, or looking from
 -- a different angle @n@ intervals.
 --
--- >>> f x = exp ( x ^ 2 )
--- >>> fromFunction Seq (\ scale x -> f (scale x)) 0 2 1 4
--- (Array D Seq (5)
---   [ 1.0,1.2840254166877414,2.718281828459045,9.487735836358526,54.598150033144236 ])
+-- >>> import Data.Massiv.Array
+-- >>> f x = exp ( x ^ (2 :: Int) ) :: Float
+-- >>> fromFunction Seq (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
+-- Array D Seq (Sz1 5)
+--   [ 1.0, 1.2840254, 2.7182817, 9.487736, 54.59815 ]
 --
--- Once we have that array of sample points ready we could use `integralApprox` and one of the
+-- Once we have that array of sample points ready, we could use `integralApprox` and one of the
 -- stencils to compute an integral, but there are already functions that will do both steps for you:
 --
--- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 1 4
---   [ 17.353626450374566 ])
+-- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
+-- Array M Seq (Sz1 1)
+--   [ 17.353626 ]
 --
--- Scaling function @scale@ is what will change an array index into equally spaced and
+-- @scale@ is the function that will change an array index into equally spaced and
 -- appropriately shifted values of @x, y, ...@ before they can get applied to @f(x, y, ...)@
 --
 -- === Accurate values of a function
@@ -291,13 +294,13 @@ range' comp ixFrom ixTo =
 -- representation of a non-linear function is desired. Consider the same gaussian function applied
 -- to equally spaced values, with zero being in the middle of the vector:
 --
--- >>> xArr = makeArrayR D Seq (Ix1 4) $ \ i -> (fromIntegral i - 1.5 :: Float)
+-- >>> xArr = makeArrayR D Seq (Sz1 4) $ \ i -> fromIntegral i - 1.5 :: Float
 -- >>> xArr
--- (Array D Seq (4)
---   [ -1.5,-0.5,0.5,1.5 ])
+-- Array D Seq (Sz1 4)
+--   [ -1.5, -0.5, 0.5, 1.5 ]
 -- >>> fmap f xArr
--- (Array D Seq (4)
---   [ 9.487736,1.2840254,1.2840254,9.487736 ])
+-- Array D Seq (Sz1 4)
+--   [ 9.487736, 1.2840254, 1.2840254, 9.487736 ]
 --
 -- The problem with above example is that computed values do not accurately represent the total
 -- value contained within each vector cell. For that reason if your were to later use it for example
@@ -307,16 +310,16 @@ range' comp ixFrom ixTo =
 --
 -- >>> startValue = -2 :: Float
 -- >>> distPerCell = 1 :: Float
--- >>> desiredSize = 4 :: Ix1
+-- >>> desiredSize = Sz1 4 :: Sz1
 -- >>> numSamples = 4 :: Int
 -- >>> xArrX4 = fromFunction Seq ($) startValue distPerCell desiredSize numSamples
 -- >>> xArrX4
--- (Array D Seq (17)
---   [ -2.0,-1.75,-1.5,-1.25,-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0 ])
+-- Array D Seq (Sz1 17)
+--   [ -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0 ]
 -- >>> yArrX4 = computeAs U $ fmap f xArrX4
 -- >>> integralApprox trapezoidStencil distPerCell desiredSize numSamples yArrX4
--- (Array M Seq (4)
---   [ 16.074406,1.4906789,1.4906789,16.074408 ])
+-- Array M Seq (Sz1 4)
+--   [ 16.074406, 1.4906789, 1.4906789, 16.074408 ]
 --
 -- We can clearly see the difference is huge, but it doesn't mean it is much better than our
 -- previous estimate. In order to get more accurate results we can use a better Simpson's rule for
@@ -324,5 +327,5 @@ range' comp ixFrom ixTo =
 -- and `yArr`, there are functions like `simpsonRule` that will take care it for you:
 --
 -- >>> simpsonsRule Seq U (\ scale i -> f (scale i)) startValue distPerCell desiredSize 128
--- (Array M Seq (4)
---   [ 14.989977,1.4626511,1.4626517,14.989977 ])
+-- Array M Seq (Sz1 4)
+--   [ 14.989977, 1.4626511, 1.4626517, 14.989977 ]

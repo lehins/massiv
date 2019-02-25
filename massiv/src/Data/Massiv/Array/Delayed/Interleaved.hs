@@ -6,7 +6,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Interleaved
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -18,9 +18,9 @@ module Data.Massiv.Array.Delayed.Interleaved
   , fromInterleaved
   ) where
 
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Core.List          (L, showsArrayPrec, showArrayList)
 
 
 -- | Delayed array that will be loaded in an interleaved fasion during parallel
@@ -31,57 +31,53 @@ type instance EltRepr DI ix = DI
 
 newtype instance Array DI ix e = DIArray { diArray :: Array D ix e }
 
-instance Index ix => Construct DI ix e where
-  getComp = dComp . diArray
-  {-# INLINE getComp #-}
+instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
+  showsPrec = showsArrayPrec diArray
+  showList = showArrayList
 
+instance Index ix => Construct DI ix e where
   setComp c arr = arr { diArray = (diArray arr) { dComp = c } }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray c sz = DIArray . unsafeMakeArray c sz
-  {-# INLINE unsafeMakeArray #-}
+  makeArray c sz = DIArray . makeArray c sz
+  {-# INLINE makeArray #-}
 
 instance Functor (Array DI ix) where
   fmap f (DIArray arr) = DIArray (fmap f arr)
 
-instance Index ix => Size DI ix e where
-  size (DIArray arr) = size arr
-  {-# INLINE size #-}
 
+instance Index ix => Resize Array DI ix where
   unsafeResize sz = DIArray . unsafeResize sz . diArray
   {-# INLINE unsafeResize #-}
 
+instance Index ix => Extract DI ix e where
   unsafeExtract sIx newSz = DIArray . unsafeExtract sIx newSz . diArray
   {-# INLINE unsafeExtract #-}
 
 
 instance Index ix => Load DI ix e where
-  loadS (DIArray arr) = loadS arr
-  {-# INLINE loadS #-}
-  loadP wIds (DIArray (DArray _ sz f)) _ unsafeWrite =
-    withScheduler_ wIds $ \scheduler -> do
-      let !totalLength = totalElem sz
-      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
-        scheduleWork scheduler $
-        iterLinearM_ sz start totalLength (numWorkers scheduler) (<) $ \ !k !ix ->
-          unsafeWrite k $ f ix
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' (DIArray (DArray _ sz f)) _ unsafeWrite =
+  size (DIArray arr) = size arr
+  {-# INLINE size #-}
+  getComp = dComp . diArray
+  {-# INLINE getComp #-}
+  loadArrayM numWorkers' scheduleWork' (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
       scheduleWork' $
-      iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> unsafeWrite k . f
-  {-# INLINE loadArray #-}
-  loadArrayWithStride numWorkers' scheduleWork' stride resultSize arr _ unsafeWrite =
+      iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> uWrite k . f
+  {-# INLINE loadArrayM #-}
+
+instance Index ix => StrideLoad DI ix e where
+  loadArrayWithStrideM numWorkers' scheduleWork' stride resultSize arr uWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
     in loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
           scheduleWork' $
           iterLinearM_ resultSize start (totalElem resultSize) numWorkers' (<) $
-            \ !i ix -> unsafeWrite i (f (liftIndex2 (*) strideIx ix))
-  {-# INLINE loadArrayWithStride #-}
+            \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
+  {-# INLINE loadArrayWithStrideM #-}
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out
--- of order (interleaved amoungs cores), hence making unbalanced computation better parallelizable.
+-- of order (interleaved amongst cores), hence making unbalanced computation better parallelizable.
 toInterleaved :: Source r ix e => Array r ix e -> Array DI ix e
 toInterleaved = DIArray . delay
 {-# INLINE toInterleaved #-}

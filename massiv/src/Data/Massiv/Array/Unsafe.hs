@@ -2,9 +2,10 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms       #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -12,20 +13,22 @@
 --
 module Data.Massiv.Array.Unsafe
   ( -- * Creation
-    unsafeMakeArray
-  , unsafeGenerateArray
-  , unsafeGenerateArrayP
-  , unsafeGenerateM
+  -- , unsafeGenerateArray
+  -- , unsafeGenerateArrayP
   -- * Indexing
+    Sz(SafeSz)
   , unsafeIndex
   , unsafeLinearIndex
   , unsafeLinearIndexM
   -- * Manipulations
   , unsafeBackpermute
-  , unsafeTraverse
-  , unsafeTraverse2
   , unsafeResize
   , unsafeExtract
+  , unsafeTransform
+  , unsafeTransform2
+  -- ** Deprecated
+  , unsafeTraverse
+  , unsafeTraverse2
   -- * Slicing
   , unsafeSlice
   , unsafeOuterSlice
@@ -34,37 +37,55 @@ module Data.Massiv.Array.Unsafe
   , unsafeThaw
   , unsafeFreeze
   , unsafeNew
-  , unsafeNewZero
   , unsafeRead
   , unsafeLinearRead
   , unsafeWrite
   , unsafeLinearWrite
+  , unsafeLinearSet
+  -- * Pointer access
+  , unsafeWithPtr
+  , unsafeArrayToForeignPtr
+  , unsafeMArrayToForeignPtr
+  , unsafeArrayFromForeignPtr
+  , unsafeArrayFromForeignPtr0
+  , unsafeMArrayFromForeignPtr
+  , unsafeMArrayFromForeignPtr0
+  -- ** Atomic Operations
+  , unsafeAtomicReadIntArray
+  , unsafeAtomicWriteIntArray
+  , unsafeAtomicModifyIntArray
+  , unsafeAtomicAddIntArray
+  , unsafeAtomicSubIntArray
+  , unsafeAtomicAndIntArray
+  , unsafeAtomicNandIntArray
+  , unsafeAtomicOrIntArray
+  , unsafeAtomicXorIntArray
+  , unsafeCasIntArray
   ) where
 
-import           Control.Monad.Primitive            (PrimMonad (..))
-import           Control.Monad.ST                   (runST)
-import           Data.Massiv.Array.Delayed.Internal (D)
+import           Data.Massiv.Array.Delayed.Pull       (D)
+import           Data.Massiv.Array.Manifest.Primitive
+import           Data.Massiv.Array.Manifest.Storable
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Scheduler
-import           System.IO.Unsafe                   (unsafePerformIO)
-
+import           Data.Massiv.Core.Index.Internal      (Sz (SafeSz))
 
 unsafeBackpermute :: (Source r' ix' e, Index ix) =>
                      Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
 unsafeBackpermute !sz ixF !arr =
-  unsafeMakeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
+  makeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
 {-# INLINE unsafeBackpermute #-}
 
 
 unsafeTraverse
-  :: (Source r1 ix1 e1, Index ix)
+  :: (Source r ix' e', Index ix)
   => Sz ix
-  -> ((ix1 -> e1) -> ix -> e)
-  -> Array r1 ix1 e1
+  -> ((ix' -> e') -> ix -> e)
+  -> Array r ix' e'
   -> Array D ix e
 unsafeTraverse sz f arr1 =
-  unsafeMakeArray (getComp arr1) sz (f (unsafeIndex arr1))
+  makeArray (getComp arr1) sz (f (unsafeIndex arr1))
 {-# INLINE unsafeTraverse #-}
+{-# DEPRECATED unsafeTraverse "In favor of more general `unsafeTransform'`" #-}
 
 
 unsafeTraverse2
@@ -75,45 +96,38 @@ unsafeTraverse2
   -> Array r2 ix2 e2
   -> Array D ix e
 unsafeTraverse2 sz f arr1 arr2 =
-  unsafeMakeArray (getComp arr1) sz (f (unsafeIndex arr1) (unsafeIndex arr2))
+  makeArray (getComp arr1 <> getComp arr2) sz (f (unsafeIndex arr1) (unsafeIndex arr2))
 {-# INLINE unsafeTraverse2 #-}
+{-# DEPRECATED unsafeTraverse2 "In favor of more general `unsafeTransform2'`" #-}
 
-
--- | Read an array element
-unsafeRead :: (Mutable r ix e, PrimMonad m) =>
-               MArray (PrimState m) r ix e -> ix -> m e
-unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
-{-# INLINE unsafeRead #-}
-
--- | Write an element into array
-unsafeWrite :: (Mutable r ix e, PrimMonad m) =>
-               MArray (PrimState m) r ix e -> ix -> e -> m ()
-unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
-{-# INLINE unsafeWrite #-}
-
-
--- | Create an array sequentially using mutable interface
-unsafeGenerateArray :: Mutable r ix e => Sz ix -> (ix -> e) -> Array r ix e
-unsafeGenerateArray !sz f = runST $ do
-  marr <- unsafeNew sz
-  iterLinearM_ sz 0 (totalElem sz) 1 (<) $ \ !k !ix ->
-    unsafeLinearWrite marr k (f ix)
-  unsafeFreeze Seq marr
-{-# INLINE unsafeGenerateArray #-}
-
--- | Create an array in parallel using mutable interface
+-- | Same `Data.Array.transform'`, except no bounds checking is performed, thus making it faster,
+-- but unsafe.
 --
--- @since 0.1.5
-unsafeGenerateArrayP :: Mutable r ix e => [Int] -> Sz ix -> (ix -> e) -> Array r ix e
-unsafeGenerateArrayP wIds !sz f = unsafePerformIO $ do
-  marr <- unsafeNew sz
-  divideWork_ wIds sz $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-    loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      scheduleWork scheduler $
-        iterLinearM_ sz start (start + chunkLength) 1 (<) $ \ !k !ix ->
-          unsafeLinearWrite marr k (f ix)
-    scheduleWork scheduler $
-      iterLinearM_ sz slackStart totalLength 1 (<) $ \ !k !ix ->
-        unsafeLinearWrite marr k (f ix)
-  unsafeFreeze (ParOn wIds) marr
-{-# INLINE unsafeGenerateArrayP #-}
+-- @since 0.3.0
+unsafeTransform ::
+     (Source r' ix' e', Index ix)
+  => (Sz ix' -> (Sz ix, a))
+  -> (a -> (ix' -> e') -> ix -> e)
+  -> Array r' ix' e'
+  -> Array D ix e
+unsafeTransform getSz get arr = makeArray (getComp arr) sz (get a (unsafeIndex arr))
+  where
+    (sz, a) = getSz (size arr)
+{-# INLINE unsafeTransform #-}
+
+-- | Same `Data.Array.transform2'`, except no bounds checking is performed, thus making it faster,
+-- but unsafe.
+--
+-- @since 0.3.0
+unsafeTransform2 ::
+     (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
+  => (Sz ix1 -> Sz ix2 -> (Sz ix, a))
+  -> (a -> (ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
+  -> Array r1 ix1 e1
+  -> Array r2 ix2 e2
+  -> Array D ix e
+unsafeTransform2 getSz get arr1 arr2 =
+  makeArray (getComp arr1 <> getComp arr2) sz (get a (unsafeIndex arr1) (unsafeIndex arr2))
+  where
+    (sz, a) = getSz (size arr1) (size arr2)
+{-# INLINE unsafeTransform2 #-}

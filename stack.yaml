@@ -1,0 +1,8 @@
+resolver: lts-12.26
+packages:
+- 'massiv/'
+- 'massiv-io/'
+- 'massiv-scheduler/'
+extra-deps: []
+flags: {}
+extra-package-dbs: []

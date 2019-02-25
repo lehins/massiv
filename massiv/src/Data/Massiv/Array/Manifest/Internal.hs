@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -23,10 +23,10 @@ module Data.Massiv.Array.Manifest.Internal
   , makeBoxedVector
   , toManifest
   , compute
+  , computeS
   , computeAs
   , computeProxy
   , computeSource
-  , computeInto
   , computeWithStride
   , computeWithStrideAs
   , clone
@@ -34,29 +34,26 @@ module Data.Massiv.Array.Manifest.Internal
   , convertAs
   , convertProxy
   , gcastArr
-  , loadMutableS
-  , loadMutableOnP
-  , sequenceP
-  , sequenceOnP
-  , fromRaggedArray
+  , fromRaggedArrayM
   , fromRaggedArray'
+  , fromRaggedArray
   , sizeofArray
   , sizeofMutableArray
   ) where
 
 import           Control.Exception                   (try)
-import           Control.Monad                       (unless)
-import           Control.Monad.ST                    (runST)
-import           Data.Foldable                       (Foldable (..))
-import           Data.Massiv.Array.Delayed.Internal
-import           Data.Massiv.Array.Ops.Fold.Internal as M
-import           Data.Massiv.Array.Unsafe
+import           Control.Monad.ST
+import qualified Data.Foldable                       as F (Foldable (..))
+import           Data.Massiv.Array.Delayed.Pull
+import           Data.Massiv.Array.Ops.Fold.Internal
+import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
-import           Data.Massiv.Core.Scheduler
+import           Data.Massiv.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
+import qualified Data.Vector.Mutable                 as MV
 import           GHC.Base                            hiding (ord)
 import           System.IO.Unsafe                    (unsafePerformIO)
 
@@ -67,7 +64,7 @@ import           Data.Primitive.Array                (sizeofArray,
 #else
 import qualified Data.Primitive.Array                as A (Array (..),
                                                            MutableArray (..))
-import           GHC.Prim                            (sizeofArray#,
+import           GHC.Exts                            (sizeofArray#,
                                                       sizeofMutableArray#)
 
 sizeofArray :: A.Array a -> Int
@@ -84,9 +81,14 @@ sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
 data M
 
 data instance Array M ix e = MArray { mComp :: !Comp
-                                    , mSize :: !ix
+                                    , mSize :: !(Sz ix)
                                     , mLinearIndex :: Int -> e }
 type instance EltRepr M ix = M
+
+instance (Ragged L ix e, Show e) => Show (Array M ix e) where
+  showsPrec = showsArrayPrec id
+  showList = showArrayList
+
 
 instance (Eq e, Index ix) => Eq (Array M ix e) where
   (==) = eq (==)
@@ -97,14 +99,17 @@ instance (Ord e, Index ix) => Ord (Array M ix e) where
   {-# INLINE compare #-}
 
 instance Index ix => Construct M ix e where
-  getComp = mComp
-  {-# INLINE getComp #-}
-
-  setComp c arr = arr { mComp = c }
+  setComp c arr = arr {mComp = c}
   {-# INLINE setComp #-}
-
-  unsafeMakeArray !c !sz f = MArray c sz (V.unsafeIndex (makeBoxedVector sz f))
-  {-# INLINE unsafeMakeArray #-}
+  makeArrayLinear !comp !sz f =
+    unsafePerformIO $ do
+      let !k = totalElem sz
+      mv <- MV.unsafeNew k
+      withScheduler_ comp $ \s ->
+        splitLinearlyWithM_ (numWorkers s) (scheduleWork s) k (pure . f) (MV.unsafeWrite mv)
+      v <- V.unsafeFreeze mv
+      pure $ MArray comp sz (V.unsafeIndex v)
+  {-# INLINE makeArrayLinear #-}
 
 -- | Create a boxed from usual size and index to element function
 makeBoxedVector :: Index ix => Sz ix -> (ix -> a) -> V.Vector a
@@ -118,8 +123,12 @@ toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
 {-# INLINE toManifest #-}
 
 
--- | Row-major sequential folding over a Manifest array.
+-- | Row-major sequentia folding over a Manifest array.
 instance Index ix => Foldable (Array M ix) where
+  fold = fold
+  {-# INLINE fold #-}
+  foldMap = foldMono
+  {-# INLINE foldMap #-}
   foldl = lazyFoldlS
   {-# INLINE foldl #-}
   foldl' = foldlS
@@ -130,10 +139,6 @@ instance Index ix => Foldable (Array M ix) where
   {-# INLINE foldr' #-}
   null (MArray _ sz _) = totalElem sz == 0
   {-# INLINE null #-}
-  sum = foldl' (+) 0
-  {-# INLINE sum #-}
-  product = foldl' (*) 1
-  {-# INLINE product #-}
   length = totalElem . size
   {-# INLINE length #-}
   toList arr = build (\ c n -> foldrFB c n arr)
@@ -152,13 +157,11 @@ instance Index ix => Manifest M ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance Index ix => Size M ix e where
-  size = mSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array M ix where
   unsafeResize !sz !arr = arr { mSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance Index ix => Extract M ix e where
   unsafeExtract !sIx !newSz !arr =
     MArray (getComp arr) newSz $ \ i ->
       unsafeIndex arr (liftIndex2 (+) (fromLinearIndex newSz i) sIx)
@@ -167,7 +170,7 @@ instance Index ix => Size M ix e where
 
 
 instance {-# OVERLAPPING #-} Slice M Ix1 e where
-  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
 instance ( Index ix
@@ -176,7 +179,7 @@ instance ( Index ix
          ) =>
          Slice M ix e where
   unsafeSlice arr start cutSz dim = do
-    newSz <- dropDim cutSz dim
+    (_, newSz) <- pullOutSzM cutSz dim
     return $ unsafeResize newSz (unsafeExtract start cutSz arr)
   {-# INLINE unsafeSlice #-}
 
@@ -186,7 +189,7 @@ instance {-# OVERLAPPING #-} OuterSlice M Ix1 e where
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => OuterSlice M ix e where
   unsafeOuterSlice !arr !i =
-    MArray (getComp arr) (tailDim (size arr)) (unsafeLinearIndex arr . (+ kStart))
+    MArray (getComp arr) (snd (unconsSz (size arr))) (unsafeLinearIndex arr . (+ kStart))
     where
       !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
   {-# INLINE unsafeOuterSlice #-}
@@ -197,67 +200,43 @@ instance {-# OVERLAPPING #-} InnerSlice M Ix1 e where
 
 instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
   unsafeInnerSlice !arr (szL, m) !i =
-    MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * m + kStart))
+    MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * unSz m + kStart))
     where
       !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
   {-# INLINE unsafeInnerSlice #-}
 
 
 instance Index ix => Load M ix e where
-  loadS (MArray _ sz f) _ uWrite =
-    iterM_ 0 (totalElem sz) 1 (<) $ \ !i ->
-      uWrite i (f i)
-  {-# INLINE loadS #-}
-  loadP wIds (MArray _ sz f) _ uWrite =
-    divideWork_ wIds (totalElem sz) $ \ !scheduler !chunkLength !totalLength !slackStart -> do
-      loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-        scheduleWork scheduler $
-        iterM_ start (start + chunkLength) 1 (<) $ \ !i ->
-          uWrite i (f i)
-      scheduleWork scheduler $
-        iterM_ slackStart totalLength 1 (<) $ \ !i ->
-          uWrite i (f i)
-  {-# INLINE loadP #-}
-  loadArray numWorkers' scheduleWork' (MArray _ sz f) _ =
+  size = mSize
+  {-# INLINE size #-}
+  getComp = mComp
+  {-# INLINE getComp #-}
+  loadArrayM numWorkers' scheduleWork' (MArray _ sz f) =
     splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
-  {-# INLINE loadArray #-}
+  {-# INLINE loadArrayM #-}
 
-
-loadMutableS :: (Load r' ix e, Mutable r ix e) =>
-                Array r' ix e -> Array r ix e
-loadMutableS !arr =
-  runST $ do
-    mArr <- unsafeNew (size arr)
-    loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-    unsafeFreeze Seq mArr
-{-# INLINE loadMutableS #-}
-
-loadMutableOnP :: (Load r' ix e, Mutable r ix e) =>
-                 [Int] -> Array r' ix e -> IO (Array r ix e)
-loadMutableOnP wIds !arr = do
-  mArr <- unsafeNew (size arr)
-  loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-  unsafeFreeze (ParOn wIds) mArr
-{-# INLINE loadMutableOnP #-}
+instance Index ix => StrideLoad M ix e
 
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
 compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
-compute !arr =
-  case getComp arr of
-    Seq        -> loadMutableS arr
-    ParOn wIds -> unsafePerformIO $ loadMutableOnP wIds arr
+compute !arr = unsafePerformIO $ loadArray arr >>= unsafeFreeze (getComp arr)
 {-# INLINE compute #-}
+
+computeS :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
+computeS !arr = runST $ loadArrayS arr >>= unsafeFreeze (getComp arr)
+{-# INLINE computeS #-}
 
 -- | Just as `compute`, but let's you supply resulting representation type as an argument.
 --
 -- ====__Examples__
 --
--- >>> computeAs P $ range Seq 0 10
--- (Array P Seq (10)
---   [ 0,1,2,3,4,5,6,7,8,9 ])
+-- >>> import Data.Massiv.Array
+-- >>> computeAs P $ range Seq (Ix1 0) 10
+-- Array P Seq (Sz1 10)
+--   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 --
 computeAs :: (Load r' ix e, Mutable r ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
@@ -267,50 +246,39 @@ computeAs _ = compute
 -- | Same as `compute` and `computeAs`, but let's you supply resulting representation type as a proxy
 -- argument.
 --
+-- ==== __Examples__
+--
+-- Useful only really for cases when representation constructor or @TypeApplications@ extension
+-- aren't desireable for some reason:
+--
+-- >>> import Data.Proxy
+-- >>> import Data.Massiv.Array
+-- >>> computeProxy (Proxy :: Proxy P) $ (^ (2 :: Int)) <$> range Seq (Ix1 0) 10
+-- Array P Seq (Sz1 10)
+--   [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
+--
 -- @since 0.1.1
---
--- ====__Examples__
---
--- Useful for cases when representation constructor isn't available for some reason:
---
--- >>> computeProxy (Nothing :: Maybe P) $ range Seq 0 10
--- (Array P Seq (10)
---   [ 0,1,2,3,4,5,6,7,8,9 ])
---
 computeProxy :: (Load r' ix e, Mutable r ix e) => proxy r -> Array r' ix e -> Array r ix e
 computeProxy _ = compute
 {-# INLINE computeProxy #-}
 
 
--- | Compute an Array while loading the results into the supplied mutable target array. Sizes of
--- both arrays must agree, otherwise error.
---
--- @since 0.1.3
-computeInto ::
-     (Load r' ix e, Mutable r ix e)
-  => MArray RealWorld r ix e -- ^ Target Array
-  -> Array r' ix e -- ^ Array to load
-  -> IO ()
-computeInto !mArr !arr = do
-  unless (msize mArr == size arr) $ errorSizeMismatch "computeInto" (msize mArr) (size arr)
-  case getComp arr of
-    Seq        -> loadS arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-    ParOn wIds -> loadP wIds arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-{-# INLINE computeInto #-}
-
-
 -- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if
 -- resulting type is the same as the input.
+--
+-- @since 0.1.0
 computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
-computeSource arr =
-  maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
+computeSource arr = maybe (compute arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
+{-# DEPRECATED computeSource "In favor of less restrictive `convert`" #-}
 
 
 -- | /O(n)/ - Make an exact immutable copy of an Array.
+--
+-- @since 0.1.0
 clone :: Mutable r ix e => Array r ix e -> Array r ix e
-clone = compute . toManifest
+clone arr = unsafePerformIO $ thaw arr >>= unsafeFreeze (getComp arr)
 {-# INLINE clone #-}
 
 
@@ -320,16 +288,19 @@ gcastArr :: forall r' r ix e. (Typeable r, Typeable r')
 gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 
 
--- | /O(n)/ - conversion between manifest types, except when source and result arrays
--- are of the same representation, in which case it is an /O(1)/ operation.
-convert :: (Manifest r' ix e, Mutable r ix e)
+-- | /O(n)/ - conversion between array types. A full copy will occur, unless when the source and
+-- result arrays are of the same representation, in which case it is an /O(1)/ operation.
+--
+-- @since 0.1.0
+convert :: (Load r' ix e, Mutable r ix e)
         => Array r' ix e -> Array r ix e
-convert arr =
-  fromMaybe (compute $ toManifest arr) (gcastArr arr)
+convert arr = fromMaybe (compute arr) (gcastArr arr)
 {-# INLINE convert #-}
 
 -- | Same as `convert`, but let's you supply resulting representation type as an argument.
-convertAs :: (Manifest r' ix e, Mutable r ix e)
+--
+-- @since 0.1.0
+convertAs :: (Load r' ix e, Mutable r ix e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
 {-# INLINE convertAs #-}
@@ -339,101 +310,75 @@ convertAs _ = convert
 -- proxy argument.
 --
 -- @since 0.1.1
---
-convertProxy :: (Manifest r' ix e, Mutable r ix e)
+convertProxy :: (Load r' ix e, Mutable r ix e)
              => proxy r -> Array r' ix e -> Array r ix e
 convertProxy _ = convert
 {-# INLINE convertProxy #-}
 
-sequenceOnP :: (Source r1 ix (IO e), Mutable r ix e) =>
-               [Int] -> Array r1 ix (IO e) -> IO (Array r ix e)
-sequenceOnP wIds !arr = do
-  resArrM <- unsafeNew (size arr)
-  withScheduler_ wIds $ \scheduler ->
-    flip imapM_ arr $ \ !ix action ->
-      scheduleWork scheduler $ action >>= unsafeWrite resArrM ix
-  unsafeFreeze (getComp arr) resArrM
-{-# INLINE sequenceOnP #-}
-
-
-sequenceP :: (Source r1 ix (IO e), Mutable r ix e) => Array r1 ix (IO e) -> IO (Array r ix e)
-sequenceP = sequenceOnP []
-{-# INLINE sequenceP #-}
-
 
 -- | Convert a ragged array into a usual rectangular shaped one.
-fromRaggedArray :: (Ragged r' ix e, Mutable r ix e) =>
-                   Array r' ix e -> Either ShapeError (Array r ix e)
+fromRaggedArray :: (Ragged r' ix e, Load r' ix e, Mutable r ix e) =>
+                   Array r' ix e -> Either ShapeException (Array r ix e)
 fromRaggedArray arr =
   unsafePerformIO $ do
-    let sz = edgeSize arr
+    let !sz = edgeSize arr
+        !comp = getComp arr
     mArr <- unsafeNew sz
-    let loadWith using = loadRagged using (unsafeLinearWrite mArr) 0 (totalElem sz) sz arr
-    try $
-      case getComp arr of
-        c -> do
-          loadWith id
-          unsafeFreeze c mArr
-       -- Seq -> do
-       --   loadWith id
-       --   unsafeFreeze Seq mArr
-       -- pComp@(ParOn ss) -> do
-       --   withScheduler_ ss (loadWith . scheduleWork)
-       --   unsafeFreeze pComp mArr
+    try $ do
+      withScheduler_ comp $ \scheduler ->
+        loadRagged (scheduleWork scheduler) (unsafeLinearWrite mArr) 0 (totalElem sz) sz arr
+      unsafeFreeze comp mArr
 {-# INLINE fromRaggedArray #-}
+{-# DEPRECATED fromRaggedArray "In favor of a more general `fromRaggedArrayM`" #-}
+
+-- | Convert a ragged array into a common array with rectangular shaped. Throws `ShapeException`
+-- whenever supplied ragged array does not have a rectangular shape.
+--
+-- @since 0.3.0
+fromRaggedArrayM ::
+     (Ragged r' ix e, Load r' ix e, Mutable r ix e, MonadThrow m)
+  => Array r' ix e
+  -> m (Array r ix e)
+fromRaggedArrayM arr =
+  let sz = edgeSize arr
+   in either (\(e :: ShapeException) -> throwM e) pure $
+      unsafePerformIO $
+      try $
+      createArray_ (getComp arr) sz $ \_numWorkers scheduleWork' marr -> do
+        loadRagged scheduleWork' (unsafeLinearWrite marr) 0 (totalElem sz) sz arr
+{-# INLINE fromRaggedArrayM #-}
+
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not
 -- rectangular.
-fromRaggedArray' :: (Ragged r' ix e, Mutable r ix e) =>
-                    Array r' ix e -> Array r ix e
-fromRaggedArray' arr =
-  case fromRaggedArray arr of
-    Left RowTooShortError -> error "Not enough elements in a row"
-    Left RowTooLongError  -> error "Too many elements in a row"
-    Right resArr          -> resArr
+fromRaggedArray' :: (Load r' ix e, Ragged r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
+fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
 {-# INLINE fromRaggedArray' #-}
 
 
-
-
 -- | Same as `compute`, but with `Stride`.
-computeWithStride :: (Load r' ix e, Mutable r ix e) => Stride ix -> Array r' ix e -> Array r ix e
+--
+-- /O(n div k)/ - Where @n@ is numer of elements in the source array and @k@ is number of elemts in
+-- the stride.
+--
+-- @since 0.3.0
+computeWithStride ::
+     (StrideLoad r' ix e, Mutable r ix e)
+  => Stride ix
+  -> Array r' ix e
+  -> Array r ix e
 computeWithStride stride !arr =
   unsafePerformIO $ do
-    let sz = strideSize stride (size arr)
-        comp = getComp arr
-    mArr <- unsafeNew sz
-    case comp of
-      Seq -> loadArrayWithStride 1 id stride sz arr (unsafeLinearRead mArr) (unsafeLinearWrite mArr)
-      ParOn wIds ->
-        withScheduler_ wIds $ \scheduler ->
-          loadArrayWithStride
-            (numWorkers scheduler)
-            (scheduleWork scheduler)
-            stride
-            sz
-            arr
-            (unsafeLinearRead mArr)
-            (unsafeLinearWrite mArr)
-    -- -- Alternative way to run computation sequentially: decreaseas compile time
-    -- let wIds = case comp of
-    --              Seq -> [1]
-    --              ParOn caps -> caps
-    -- withScheduler_ wIds $ \scheduler ->
-    --       loadArrayWithStride
-    --         (numWorkers scheduler)
-    --         (scheduleWork scheduler)
-    --         stride
-    --         sz
-    --         arr
-    --         (unsafeLinearRead mArr)
-    --         (unsafeLinearWrite mArr)
-    unsafeFreeze comp mArr
+    let !sz = strideSize stride (size arr)
+    createArray_ (getComp arr) sz $ \numWorkers' scheduleWork' marr ->
+      loadArrayWithStrideM numWorkers' scheduleWork' stride sz arr (unsafeLinearWrite marr)
 {-# INLINE computeWithStride #-}
 
 
 -- | Same as `computeWithStride`, but with ability to specify resulting array representation.
+--
+-- @since 0.3.0
 computeWithStrideAs ::
-     (Load r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
+     (StrideLoad r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
 computeWithStrideAs _ = computeWithStride
 {-# INLINE computeWithStrideAs #-}

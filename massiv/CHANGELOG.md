@@ -1,9 +1,29 @@
-# 0.2.7
+# 0.3.0
 
-* Fixed a serious performance regression in `Stencil`'s `Functor` instance, which was introduced in
-  version `0.2.3`
-* Added type and pattern synonyms `Sz` for future compatibility with version `0.3`. Could be useful
-  for migration.
+* Class hierarchy an associated methods:
+  * `getComp` moved from `Construct` to `Load`
+  * `Size` class lost array value parameter `e`. `unsafeResize` and `unsafeExtract` became their own
+    classes
+* New classes:
+  * `Resize` with `unsafeResize` from old `Size`, except with `array` type parameter for
+    applicability to mutable `MArray`s
+  * `Extract` with `unsafeExtract` from old `Size`
+  * `StrideLoad`, child of `Load`
+* `ifoldlIO` and related no longer take list of capabilities, but instead respect the inner
+  computation strategy. FOr that reason these folds have been removed: `foldlOnP`, `ifoldlOnP`,
+  `foldrOnP`, `ifoldrOnP`
+* `fold` now is just like the one from `Data.Foldable` takes no arguments and requires elements to
+  be a monoid
+* `singleton` does not accept computation strategy any more and creates `Seq` array by default
+* New function `empty`.
+* Partial functions `read'`, `write'` and `swap'` now live in IO and throw proper exceptions.
+* `loadArray` is renamed to `loadArrayM` and there is a new separate function (not part of `Load`
+  class) with the name `loadArray` that actually uses `loadArrayM`
+* Moved `unsafeWithPtr` into `Data.Massiv.Array.Unsafe`
+* Addition of `unsafeArrayToForeignPtr`, `unsafeMArrayToForeignPtr`, `unsafeArrayFromForeignPtr` `unsafeArrayFromForeignPtr0`, `unsafeMArrayFromForeignPtr` and `unsafeMArrayFromForeignPtr0`
+* Addition of `castToByteString`, `castFromByteString`
+* Addition of `makeUnsafeStencil`
+
 
 # 0.2.6
 

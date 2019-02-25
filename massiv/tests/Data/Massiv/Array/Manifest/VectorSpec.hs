@@ -14,8 +14,6 @@ import qualified Data.Vector.Generic          as VG
 import qualified Data.Vector.Primitive        as VP
 import qualified Data.Vector.Storable         as VS
 import qualified Data.Vector.Unboxed          as VU
-import           Test.Hspec
-import           Test.QuickCheck
 
 prop_castToFromVector
   :: ( VG.Vector (VRepr r) Int
@@ -32,7 +30,8 @@ prop_castToFromVector _ _ (Arr arr) =
 
 prop_toFromVector ::
      forall r ix v.
-     ( Mutable r ix Int
+     ( Construct r ix Int
+     , Mutable r ix Int
      , Mutable (ARepr v) ix Int
      , VRepr (ARepr v) ~ v
      , Eq (Array r ix Int)
@@ -46,7 +45,7 @@ prop_toFromVector ::
   -> Arr r ix Int
   -> Property
 prop_toFromVector _ _ _ (Arr arr) =
-  arr === fromVector (getComp arr) (size arr) (toVector arr :: v Int)
+  arr === fromVector' (getComp arr) (size arr) (toVector arr :: v Int)
 
 toFromVectorSpec :: Spec
 toFromVectorSpec  = do

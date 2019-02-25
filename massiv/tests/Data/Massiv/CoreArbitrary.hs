@@ -1,5 +1,4 @@
-{-# LANGUAGE ExplicitNamespaces #-}
-{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -14,24 +13,38 @@ module Data.Massiv.CoreArbitrary
   , ArrP(..)
   , ArrS(..)
   , ArrIxP(..)
-  , Sz(..)
   , SzIx(..)
-  , SzZ(..)
+  , SzNE(..)
   , DimIx(..)
   , assertException
   , assertSomeException
   , assertExceptionIO
   , assertSomeExceptionIO
-  , module Data.Massiv.Array
+  , Semigroup((<>))
+  , applyFun2Compat
+  , module X
   ) where
 
 import           Control.DeepSeq            (NFData, deepseq)
 import           Control.Exception          (Exception, SomeException, catch)
-import           Data.Massiv.Array          hiding (type Sz, pattern Sz)
+import           Data.Massiv.Array          as X
 import           Data.Massiv.Core.IndexSpec hiding (spec)
 import           Data.Typeable
-import           Test.QuickCheck
-import           Test.QuickCheck.Monadic
+import           Test.Hspec                 as X
+import           Test.QuickCheck            as X hiding (resize)
+import           Test.QuickCheck.Monadic    as X
+import           Test.QuickCheck.Function   as X
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Semigroup
+#endif
+applyFun2Compat :: Fun (a, b) c -> (a -> b -> c)
+#if MIN_VERSION_QuickCheck(2,10,0)
+applyFun2Compat = applyFun2
+#else
+applyFun2Compat (Fun _ f) a b = f (a, b)
+instance Function Word where
+  function = functionMap fromIntegral fromInteger
+#endif
 
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
 newtype Arr r ix e = Arr {unArr :: Array r ix e}
@@ -72,7 +85,7 @@ instance Arbitrary Comp where
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (Array r ix e) where
   arbitrary = do
-    SzZ sz <- arbitrary
+    sz <- arbitrary
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
     return $ makeArray comp sz func
@@ -81,24 +94,24 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrTiny r ix e) where
   arbitrary = do
-    SzZ sz <- arbitrary
+    sz <- unSz <$> arbitrary
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
-    return $ ArrTiny $ makeArray comp (liftIndex (`mod` 10) sz) func
+    return $ ArrTiny $ makeArray comp (Sz (liftIndex (`mod` 10) sz)) func
 
 -- | Arbitrary small and possibly empty array. Computation strategy can be either `Seq` or `Par`.
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrTiny1 r ix e) where
   arbitrary = do
-    SzZ sz <- arbitrary
+    sz <- unSz <$> arbitrary
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
-    return $ ArrTiny1 $ makeArray comp (liftIndex (succ . (`mod` 10)) sz) func
+    return $ ArrTiny1 $ makeArray comp (Sz (liftIndex (succ . (`mod` 10)) sz)) func
 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (Arr r ix e) where
   arbitrary = do
-    Sz sz <- arbitrary
+    SzNE sz <- arbitrary
     func <- arbitrary
     comp <- oneof [pure Seq, pure Par]
     return $ Arr $ makeArray comp sz func
@@ -108,7 +121,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrS r ix e) where
   arbitrary = do
-    Sz sz <- arbitrary
+    SzNE sz <- arbitrary
     func <- arbitrary
     return $ ArrS $ makeArray Seq sz func
 
@@ -121,7 +134,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrIx r ix e) where
   arbitrary = do
-    SzIx (Sz sz) ix <- arbitrary
+    SzIx sz ix <- arbitrary
     func <- arbitrary
     comp <- arbitrary
     return $ ArrIx (makeArray comp sz func) ix
@@ -129,7 +142,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrIxS r ix e) where
   arbitrary = do
-    SzIx (Sz sz) ix <- arbitrary
+    SzIx sz ix <- arbitrary
     func <- arbitrary
     return $ ArrIxS (makeArray Seq sz func) ix
 

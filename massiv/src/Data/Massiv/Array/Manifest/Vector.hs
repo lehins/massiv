@@ -6,14 +6,16 @@
 {-# LANGUAGE TypeOperators         #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Vector
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest.Vector
-  ( fromVector
+  ( fromVectorM
+  , fromVector'
+  , fromVector
   , castFromVector
   , toVector
   , castToVector
@@ -85,28 +87,55 @@ castFromVector comp sz vector = do
 -- will do a /O(1)/ - conversion using `castFromVector`, otherwise Vector elements
 -- will be copied into a new array. Will throw an error if length of resulting
 -- array doesn't match the source vector length.
-fromVector ::
-     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Mutable r ix a)
+--
+-- @since 0.3.0
+fromVectorM ::
+     ( MonadThrow m
+     , Typeable v
+     , VG.Vector v a
+     , Mutable (ARepr v) ix a
+     , Construct r ix a
+     , Mutable r ix a
+     )
+  => Comp
+  -> Sz ix -- ^ Resulting size of the array
+  -> v a -- ^ Source Vector
+  -> m (Array r ix a)
+fromVectorM comp sz v =
+  case castFromVector comp sz v of
+    Just arr -> pure $ convert arr
+    Nothing -> do
+      guardNumberOfElements sz (Sz (VG.length v))
+      pure (makeArrayLinear comp sz (VG.unsafeIndex v))
+{-# NOINLINE fromVectorM #-}
+
+
+-- | Just like `fromVectorM`, but will throw an exception on a mismatched size.
+--
+-- @since 0.3.0
+fromVector' ::
+     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
   -> Array r ix a
-fromVector comp sz v =
-  case castFromVector comp sz v of
-    Just arr -> convert arr
-    Nothing ->
-      if (totalElem sz /= VG.length v)
-        then error $
-             "Data.Array.Massiv.Manifest.fromVector: Supplied size: " ++
-             show sz ++ " doesn't match vector length: " ++ show (VG.length v)
-        else makeArray comp sz ((VG.unsafeIndex v) . toLinearIndex sz)
-{-# NOINLINE fromVector #-}
+fromVector' comp sz = either throw id . fromVectorM comp sz
+{-# INLINE fromVector' #-}
 
+fromVector ::
+     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
+  => Comp
+  -> Sz ix -- ^ Resulting size of the array
+  -> v a -- ^ Source Vector
+  -> Array r ix a
+fromVector comp sz = either throw id . fromVectorM comp sz
+{-# INLINE fromVector #-}
+{-# DEPRECATED fromVector "In favor of safer `fromVectorM`" #-}
 
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will
 -- return `Nothing` only if source array representation was not one of `B`, `N`,
 -- `P`, `S` or `U`.
-castToVector :: forall v r ix e . (VG.Vector v e, Mutable r ix e, VRepr r ~ v)
+castToVector :: forall v r ix e . (Mutable r ix e, VRepr r ~ v)
          => Array r ix e -> Maybe (v e)
 castToVector arr =
   msum
@@ -137,8 +166,9 @@ castToVector arr =
 -- In this example a `S`torable Array is created and then casted into a Storable
 -- `VS.Vector` in costant time:
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> import qualified Data.Vector.Storable as VS
--- >>> toVector (makeArrayR S Par (5 :. 6) (\(i :. j) -> i + j)) :: VS.Vector Int
+-- >>> toVector (makeArrayR S Par (Sz2 5 6) (\(i :. j) -> i + j)) :: VS.Vector Int
 -- [0,1,2,3,4,5,1,2,3,4,5,6,2,3,4,5,6,7,3,4,5,6,7,8,4,5,6,7,8,9]
 --
 -- While in this example `S`torable Array will first be converted into `U`nboxed
@@ -146,7 +176,7 @@ castToVector arr =
 -- `VU.Vector` in constant time.
 --
 -- >>> import qualified Data.Vector.Unboxed as VU
--- >>> toVector (makeArrayR S Par (5 :. 6) (\(i :. j) -> i + j)) :: VU.Vector Int
+-- >>> toVector (makeArrayR S Par (Sz2 5 6) (\(i :. j) -> i + j)) :: VU.Vector Int
 -- [0,1,2,3,4,5,1,2,3,4,5,6,2,3,4,5,6,7,3,4,5,6,7,8,4,5,6,7,8,9]
 --
 toVector ::

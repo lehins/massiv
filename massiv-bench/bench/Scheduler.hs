@@ -2,27 +2,26 @@
 module Main where
 
 import           Criterion.Main
+import           Control.DeepSeq
 import           Data.Massiv.Bench          as A
 import           Data.Massiv.Core.Index
-import           Data.Massiv.Core.Scheduler as A
 import           Prelude                    as P
-
-
-mapConcurrently :: Foldable t => (a -> IO b) -> t a -> IO [b]
-mapConcurrently f ls = withScheduler' [] $ \s -> mapM_ (scheduleWork s . f) ls
-
-
+import qualified Data.Massiv.Scheduler as S
 
 main :: IO ()
 main = do
-  let !sz@(_ :. k) = 600 :. 200
-  defaultMain
-    [ env (return (totalElem sz)) $ \n ->
-        bgroup
-          "Map"
-          [ bench "mapConcurrently (lightFuncIx1)" $
-            whnfIO (mapConcurrently (\i -> return $! lightFuncIx1 k i) [0 .. n - 1])
-          , bench "mapConcurrently (succ)" $
-            whnfIO (mapConcurrently (\i -> return $! succ i) [0 .. n - 1])
-          ]
+  defaultMain $ map (mkBench "return" return) [100, 10000, 100000]
+
+
+
+mkBench :: (NFData a) => String -> (Int -> IO a) -> Int -> Benchmark
+mkBench name f n =
+  bgroup
+    ("(" ++ show n ++ ") mapConcurrently - action: " ++ name)
+    [ bgroup
+        "Massiv Scheduler"
+        [ bench "Par" $ nfIO (S.mapConcurrently S.Par f [0 .. n])
+        , bench "ParN" $ nfIO (S.mapConcurrently (S.ParN 0) f [0 .. n])
+        , bench "Seq" $ nfIO (S.mapConcurrently S.Seq f [0 .. n])
+        ]
     ]

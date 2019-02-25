@@ -1,32 +1,28 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs            #-}
 module Data.Massiv.Array.Ops.ConstructSpec where
 
-import           Data.Massiv.Array                 as A
-import           Data.Massiv.CoreArbitrary         as A
+import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
-import qualified GHC.Exts                   as GHC (IsList (..))
-import           Prelude                    as P
-import           Prelude                    hiding (map)
-import           Test.Hspec
-import           Test.QuickCheck
-
+import qualified GHC.Exts                  as GHC (IsList (..))
+import           Prelude                   as P
+import Data.List as L
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
-prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep Par from 1 to
+prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep' Par from 1 to
 
 prop_rangeEqEnumFromN :: Int -> Int -> Property
-prop_rangeEqEnumFromN from to = range Seq from to === enumFromN Par from (to - from)
+prop_rangeEqEnumFromN from to = range Seq from to === enumFromN Par from (Sz (to - from))
 
 prop_rangeStepEqEnumFromStepN :: Int -> NonZero Int -> Int -> Property
 prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
-  rangeStep Seq from step (from + step * sz) === enumFromStepN Par from step sz
+  rangeStep' Seq from step (from + step * sz) === enumFromStepN Par from step (Sz sz)
 
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertSomeException (computeAs U (rangeStep Seq from 0 to))
+  assertSomeException (computeAs U (rangeStep' Seq from 0 to))
 
 prop_toFromListIsList ::
      (Show (Array U ix Int), GHC.IsList (Array U ix Int), Index ix)
@@ -37,7 +33,7 @@ prop_toFromListIsList _ (Arr arr) = arr === GHC.fromList (GHC.toList arr)
 
 
 prop_toFromList ::
-  forall ix . (Show (Array U ix Int), Nested LN ix Int, Nested L ix Int, Ragged L ix Int)
+  forall ix . (Show (Array U ix Int), Nested LN ix Int, Ragged L ix Int)
   => Proxy ix
   -> Arr U ix Int
   -> Property
@@ -61,7 +57,7 @@ prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
 prop_excFromToListIx3 comp ls3
   | P.null (P.concat (P.concat ls3)) =
     classify True "Expected Success" $ counterexample (show arr) $ totalElem (size arr) === 0
-  | P.all (head lsL ==) lsL && (P.and (P.map (P.all (head (head lsLL) ==)) lsLL)) =
+  | P.all (head lsL ==) lsL && P.and (P.map (P.all (head (head lsLL) ==)) lsLL) =
     classify True "Expected Success" $ counterexample (show arr) $ resultLs === ls3
   | otherwise = classify True "Expected Failure" $ assertSomeException resultLs
   where
@@ -96,21 +92,29 @@ mkIntermediate :: Int -> Array U Ix1 Int
 mkIntermediate t = A.fromList Seq [t + 50, t + 75]
 
 initArr :: Array N Ix1 (Array U Ix1 Int)
-initArr = makeArray Seq 3 (\ x -> mkIntermediate x)
+initArr = makeArray Seq (Sz1 3) mkIntermediate
 
 initArr2 :: Array N Ix2 (Array U Ix1 Int)
-initArr2 = makeArray Seq (2 :. 2) (\ (x :. y) -> mkIntermediate (x+y))
+initArr2 = makeArray Seq (Sz 2) (\ (x :. y) -> mkIntermediate (x+y))
+
+prop_unfoldrList :: Sz1 -> Fun Word (Int, Word) -> Word -> Property
+prop_unfoldrList sz1 f i =
+  conjoin $
+  L.zipWith
+    (===)
+    (A.toList (computeAs P $ unfoldrS_ Seq sz1 (apply f) i))
+    (L.unfoldr (Just . apply f) i)
 
 specExpand :: Spec
 specExpand = do
   it "expandOuter" $ compute (expandOuter 2 A.index' initArr :: Array D Ix2 Int) `shouldBe`
-    resize' (2 :. 3) (fromList Seq [50, 51, 52, 75, 76, 77] :: Array U Ix1 Int)
+    resize' (Sz2 2 3) (fromList Seq [50, 51, 52, 75, 76, 77] :: Array U Ix1 Int)
   it "expandInner" $ compute (expandInner 2 A.index' initArr :: Array D Ix2 Int) `shouldBe`
-    resize' (3 :. 2) (fromList Seq [50, 75, 51, 76, 52, 77] :: Array U Ix1 Int)
+    resize' (Sz2 3 2) (fromList Seq [50, 75, 51, 76, 52, 77] :: Array U Ix1 Int)
   it "expandwithin" $ compute (expandWithin Dim1 2 A.index' initArr2 :: Array D Ix3 Int) `shouldBe`
-    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Int)
+    resize' (Sz 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Int)
   it "expandwithin'" $ compute (expandWithin' 1 2 A.index' initArr2 :: Array D Ix3 Int) `shouldBe`
-    resize' (2 :> 2 :. 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Int)
+    resize' (Sz 2) (fromList Seq [50, 75, 51, 76, 51, 76, 52, 77] :: Array U Ix1 Int)
 
 spec :: Spec
 spec = do
@@ -118,3 +122,4 @@ spec = do
   describe "Ix2" specIx2
   describe "Ix3" specIx3
   describe "Expand" specExpand
+  describe "Unfolding" $ it "unfoldrS_" $ property prop_unfoldrList

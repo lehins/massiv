@@ -32,8 +32,10 @@ benchmark scheduler
   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
+                     , deepseq
                      , massiv
                      , massiv-bench
+                     , massiv-scheduler
   default-language:    Haskell2010
 
 benchmark sum
@@ -69,6 +71,17 @@ benchmark mult
                      , massiv-bench
   default-language:    Haskell2010
 
+benchmark minmax
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             MinMax.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+  default-language:    Haskell2010
+
 benchmark sobel
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
@@ -89,6 +102,30 @@ benchmark integral
                      , criterion
                      , massiv
                      , massiv-bench
+  default-language:    Haskell2010
+
+benchmark upsample
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Upsample.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+  default-language:    Haskell2010
+
+benchmark append
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Append.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+                     , vector
+                     , dlist
   default-language:    Haskell2010
 
 -- benchmark fuse-seq
@@ -254,10 +291,10 @@ executable massiv
                      -- , time
   default-language:    Haskell2010
   --ghc-options:         -O2 -fllvm
-  ghc-options:         -threaded -O2 -ddump-simpl-stats
+  -- ghc-options:         -threaded -O2 -ddump-simpl-stats
   --ghc-options:         -threaded -rtsopts -with-rtsopts=-N7 -O2
   --ghc-options:         -Wall -O2 -threaded -prof -fprof-auto
-  --ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
+  ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
 
 source-repository head
   type:     git

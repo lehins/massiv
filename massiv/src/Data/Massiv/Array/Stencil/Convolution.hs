@@ -2,7 +2,7 @@
 {-# LANGUAGE BangPatterns     #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Convolution
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -58,7 +58,7 @@ makeConvolutionStencilFromKernel
 makeConvolutionStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
-    !sCenter = liftIndex (`div` 2) sz
+    !sCenter = liftIndex (`div` 2) $ unSz sz
     stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
         unValue (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
@@ -93,7 +93,7 @@ makeCorrelationStencilFromKernel
 makeCorrelationStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
-    !sCenter = liftIndex (`div` 2) sz
+    !sCenter = liftIndex (`div` 2) $ unSz sz
     stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
         unValue (getVal (liftIndex2 (+) ix (liftIndex2 (+) sCenter kIx))) * kVal + acc

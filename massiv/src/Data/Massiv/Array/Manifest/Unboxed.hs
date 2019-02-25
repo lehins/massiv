@@ -3,12 +3,13 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Unboxed
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -23,18 +24,18 @@ module Data.Massiv.Array.Manifest.Unboxed
   ) where
 
 import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Data.Massiv.Array.Delayed.Internal  (eq, ord)
+import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
 import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import           Data.Massiv.Array.Manifest.List     as A
 import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Unsafe            (unsafeGenerateArray,
-                                                      unsafeGenerateArrayP)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
+import qualified Data.Vector.Generic.Mutable         as VGM
 import qualified Data.Vector.Unboxed                 as VU
 import qualified Data.Vector.Unboxed.Mutable         as MVU
 import           GHC.Exts                            as GHC (IsList (..))
 import           Prelude                             hiding (mapM)
+import           System.IO.Unsafe                    (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -44,25 +45,25 @@ data U = U deriving Show
 type instance EltRepr U ix = M
 
 data instance Array U ix e = UArray { uComp :: !Comp
-                                    , uSize :: !ix
+                                    , uSize :: !(Sz ix)
                                     , uData :: !(VU.Vector e)
                                     }
 
+instance (Ragged L ix e, Show e, VU.Unbox e) => Show (Array U ix e) where
+  showsPrec = showsArrayPrec id
+  showList = showArrayList
 
-instance (Index ix, NFData e) => NFData (Array U ix e) where
+instance NFData ix => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
+  {-# INLINE rnf #-}
 
 
 instance (VU.Unbox e, Index ix) => Construct U ix e where
-  getComp = uComp
-  {-# INLINE getComp #-}
-
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  unsafeMakeArray Seq          !sz f = unsafeGenerateArray sz f
-  unsafeMakeArray (ParOn wIds) !sz f = unsafeGenerateArrayP wIds sz f
-  {-# INLINE unsafeMakeArray #-}
+  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
+  {-# INLINE makeArray #-}
 
 
 instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
@@ -76,23 +77,32 @@ instance (VU.Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
 
 instance (VU.Unbox e, Index ix) => Source U ix e where
   unsafeLinearIndex (UArray _ _ v) =
-    INDEX_CHECK("(Source U ix e).unsafeLinearIndex", VU.length, VU.unsafeIndex) v
+    INDEX_CHECK("(Source U ix e).unsafeLinearIndex", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance (VU.Unbox e, Index ix) => Size U ix e where
-  size = uSize
-  {-# INLINE size #-}
-
+instance Index ix => Resize Array U ix where
   unsafeResize !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeResize #-}
 
+instance (VU.Unbox e, Index ix) => Extract U ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
+instance (VU.Unbox e, Index ix) => Load U ix e where
+  size = uSize
+  {-# INLINE size #-}
+  getComp = uComp
+  {-# INLINE getComp #-}
+  loadArrayM !numWorkers scheduleWork !arr =
+    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayM #-}
+
+instance (VU.Unbox e, Index ix) => StrideLoad U ix e
+
 
 instance {-# OVERLAPPING #-} VU.Unbox e => Slice U Ix1 e where
-  unsafeSlice arr i _ _ = Just (unsafeLinearIndex arr i)
+  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
 
@@ -138,11 +148,12 @@ instance ( VU.Unbox e
 instance (VU.Unbox e, Index ix) => Manifest U ix e where
 
   unsafeLinearIndexM (UArray _ _ v) =
-    INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", VU.length, VU.unsafeIndex) v
+    INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
+
 instance (VU.Unbox e, Index ix) => Mutable U ix e where
-  data MArray s U ix e = MUArray ix (VU.MVector s e)
+  data MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
   msize (MUArray sz _) = sz
   {-# INLINE msize #-}
@@ -156,15 +167,15 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  unsafeNewZero sz = MUArray sz <$> MVU.new (totalElem sz)
-  {-# INLINE unsafeNewZero #-}
+  initialize (MUArray _ marr) = VGM.basicInitialize marr
+  {-# INLINE initialize #-}
 
   unsafeLinearRead (MUArray _ mv) =
-    INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", MVU.length, MVU.unsafeRead) mv
+    INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", Sz . MVU.length, MVU.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MUArray _ mv) =
-    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", MVU.length, MVU.unsafeWrite) mv
+    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
 

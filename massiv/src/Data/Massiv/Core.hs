@@ -7,12 +7,12 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-#if __GLASGOW_HASKELL__ >= 800
-  {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
+#if __GLASGOW_HASKELL__ > 820
+{-# OPTIONS_GHC -Wno-deplicate-exports #-}
 #endif
 -- |
 -- Module      : Data.Massiv.Core
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -23,31 +23,27 @@ module Data.Massiv.Core
   , Elt
   , EltRepr
   , Construct
+  , Load(loadArrayM)
   , Source
-  , Load(..)
-  , Size
+  , Extract
+  , StrideLoad(..)
   , Slice
-  , OuterSlice(outerLength)
+  , OuterSlice
   , InnerSlice
   , Manifest
   , Mutable
-  , Ragged(..)
+  , Ragged
   , Nested(..)
   , NestedStruct
   , L(..)
   , LN
   , ListItem
-#if __GLASGOW_HASKELL__ >= 800
-  , Comp(Seq, Par, ParOn)
-  , pattern Par -- already exported above and only needed for Haddock
-#else
-  , Comp(..)
-  , pattern Par
-#endif
+  , Comp(Seq, Par, ParOn, ParN)
   , module Data.Massiv.Core.Index
+  , MonadUnliftIO
   ) where
 
-import           Data.Massiv.Core.Common hiding (indexWith, unsafeGenerateM)
+import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
 import           Data.Massiv.Core.Index
 

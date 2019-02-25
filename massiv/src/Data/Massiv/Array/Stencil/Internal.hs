@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -7,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -24,17 +23,15 @@ module Data.Massiv.Array.Stencil.Internal
 
 import           Control.Applicative
 import           Control.DeepSeq
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Core.Common
-#if !MIN_VERSION_base(4,11,0)
-import           Data.Semigroup
-#endif
+import           Data.Massiv.Core.Index.Internal
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
 -- `Data.Array.makeConvolutionStencil` in order to create a stencil.
 data Stencil ix e a = Stencil
-  { stencilSize   :: !ix
+  { stencilSize   :: !(Sz ix)
   , stencilCenter :: !ix
   , stencilFunc   :: (ix -> Value e) -> ix -> Value a
   }
@@ -141,7 +138,7 @@ instance Functor (Stencil ix e) where
 
 
 dimapStencil :: (c -> d) -> (a -> b) -> Stencil ix d a -> Stencil ix c b
-dimapStencil f g stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
     sf' s = Value . g . unValue . sf (Value . f . unValue . s)
     {-# INLINE sf' #-}
@@ -149,18 +146,20 @@ dimapStencil f g stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = s
 
 
 lmapStencil :: (c -> d) -> Stencil ix d a -> Stencil ix c a
-lmapStencil f stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
     sf' s = sf (Value . f . unValue . s)
     {-# INLINE sf' #-}
 {-# INLINE lmapStencil #-}
 
 rmapStencil :: (a -> b) -> Stencil ix e a -> Stencil ix e b
-rmapStencil f stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
+rmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
     sf' s = Value . f . unValue . sf s
     {-# INLINE sf' #-}
 {-# INLINE rmapStencil #-}
+
+
 
 -- TODO: Figure out interchange law (u <*> pure y = pure ($ y) <*> u) and issue
 -- with discarding size and center. Best idea so far is to increase stencil size to
@@ -169,17 +168,18 @@ rmapStencil f stencil@(Stencil {stencilFunc = sf}) = stencil {stencilFunc = sf'}
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance Index ix => Applicative (Stencil ix e) where
-  pure a = Stencil (pureIndex 1) zeroIndex (const (const (Value a)))
+  pure a = Stencil oneSz zeroIndex (const (const (Value a)))
   {-# INLINE pure #-}
-  (<*>) (Stencil sSz1 sC1 f1) (Stencil sSz2 sC2 f2) = Stencil newSz maxCenter stF
+  (<*>) (Stencil (SafeSz sSz1) sC1 f1) (Stencil (SafeSz sSz2) sC2 f2) = Stencil newSz maxCenter stF
     where
-      stF gV !ix = Value ((unValue (f1 gV ix)) (unValue (f2 gV ix)))
+      stF gV !ix = Value (unValue (f1 gV ix) (unValue (f2 gV ix)))
       {-# INLINE stF #-}
       !newSz =
-        liftIndex2
-          (+)
-          maxCenter
-          (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2))
+        Sz
+          (liftIndex2
+             (+)
+             maxCenter
+             (liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2)))
       !maxCenter = liftIndex2 max sC1 sC2
   {-# INLINE (<*>) #-}
 
@@ -249,9 +249,7 @@ instance (Index ix, Floating a) => Floating (Stencil ix e a) where
 safeStencilIndex :: Index ix => Array D ix e -> ix -> e
 safeStencilIndex DArray {..} ix
   | isSafeIndex dSize ix = dIndex ix
-  | otherwise =
-    error $
-    "Index is out of bounds: " ++ show ix ++ " for stencil size: " ++ show dSize
+  | otherwise = throw $ IndexOutOfBoundsException dSize ix
 
 
 -- | Make sure constructed stencil doesn't index outside the allowed stencil size boundary.

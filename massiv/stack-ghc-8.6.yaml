@@ -1,7 +1,7 @@
-resolver: lts-3.22
+resolver: lts-13.1
 packages:
 - '.'
 extra-deps:
-- safe-exceptions-0.1.6.0
+- '../massiv-scheduler/'
 flags: {}
 extra-package-dbs: []

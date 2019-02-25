@@ -1,0 +1,6 @@
+resolver: lts-13.1
+packages:
+- '.'
+- '../massiv/'
+- '../massiv-scheduler/'
+extra-deps: []

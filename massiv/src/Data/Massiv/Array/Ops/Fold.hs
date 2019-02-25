@@ -2,10 +2,9 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -16,13 +15,16 @@ module Data.Massiv.Array.Ops.Fold
   -- ** Unstructured folds
 
   -- $unstruct_folds
-
     fold
   , ifoldMono
   , foldMono
   , ifoldSemi
   , foldSemi
+  , minimumM
+  , minimum'
   , minimum
+  , maximumM
+  , maximum'
   , maximum
   , sum
   , product
@@ -84,20 +86,15 @@ module Data.Massiv.Array.Ops.Fold
   , foldrP
   , ifoldlP
   , ifoldrP
-  , foldlOnP
   , ifoldlIO
-  , foldrOnP
-  , ifoldlOnP
-  , ifoldrOnP
   , ifoldrIO
   ) where
 
-import           Data.Massiv.Array.Delayed.Internal
+import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Array.Ops.Map           (imap, map)
 import           Data.Massiv.Core
 import           Data.Massiv.Core.Common
-import           Data.Semigroup
+import           Data.Massiv.Core.Index.Internal     (Sz (..))
 import           Prelude                             hiding (all, and, any,
                                                       foldl, foldr, map,
                                                       maximum, minimum, or,
@@ -111,20 +108,8 @@ ifoldMono ::
   => (ix -> e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
   -> Array r ix e -- ^ Source array
   -> m
-ifoldMono f = foldlInternal mappend mempty mappend mempty . imap f
+ifoldMono f = ifoldlInternal (\a ix e -> a `mappend` f ix e) mempty mappend mempty
 {-# INLINE ifoldMono #-}
-
-
--- | /O(n)/ - Monoidal fold over an array. Also known as reduce.
---
--- @since 0.1.4
-foldMono ::
-     (Source r ix e, Monoid m)
-  => (e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
-  -> Array r ix e -- ^ Source array
-  -> m
-foldMono f = foldlInternal mappend mempty mappend mempty . map f
-{-# INLINE foldMono #-}
 
 
 -- | /O(n)/ - Semigroup fold over an array with an index aware function.
@@ -136,7 +121,7 @@ ifoldSemi ::
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
   -> m
-ifoldSemi f m = foldlInternal (<>) m (<>) m . imap f
+ifoldSemi f m = ifoldlInternal (\a ix e -> a <> f ix e) m (<>) m
 {-# INLINE ifoldSemi #-}
 
 
@@ -149,7 +134,7 @@ foldSemi ::
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
   -> m
-foldSemi f m = foldlInternal (<>) m (<>) m . map f
+foldSemi f m = foldlInternal (\a e -> a <> f e) m (<>) m
 {-# INLINE foldSemi #-}
 
 
@@ -166,18 +151,20 @@ ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 --
 -- ====__Example__
 --
--- >>> let arr = makeArrayR U Seq (2 :. 5) (toLinearIndex (2 :. 5))
+-- >>> import Data.Massiv.Array
+-- >>> :set -XTypeApplications
+-- >>> arr = makeArrayLinear @U Seq (Sz (2 :. 5)) id
 -- >>> arr
--- (Array U Seq (2 :. 5)
---   [ [ 0,1,2,3,4 ]
---   , [ 5,6,7,8,9 ]
---   ])
+-- Array U Seq (Sz (2 :. 5))
+--   [ [ 0, 1, 2, 3, 4 ]
+--   , [ 5, 6, 7, 8, 9 ]
+--   ]
 -- >>> foldlWithin Dim1 (flip (:)) [] arr
--- (Array D Seq (2)
---   [ [4,3,2,1,0],[9,8,7,6,5] ])
+-- Array D Seq (Sz1 2)
+--   [ [4,3,2,1,0], [9,8,7,6,5] ]
 -- >>> foldlWithin Dim2 (flip (:)) [] arr
--- (Array D Seq (5)
---   [ [5,0],[6,1],[7,2],[8,3],[9,4] ])
+-- Array D Seq (Sz1 5)
+--   [ [5,0], [6,1], [7,2], [8,3], [9,4] ]
 --
 -- @since 0.2.4
 foldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
@@ -211,7 +198,7 @@ foldrWithin dim f = ifoldrWithin dim (const f)
 ifoldlWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlWithin' dim f acc0 arr =
-  unsafeMakeArray (getComp arr) szl $ \ixl ->
+  makeArray (getComp arr) (SafeSz szl) $ \ixl ->
     iter
       (insertDim' ixl dim 0)
       (insertDim' ixl dim (k - 1))
@@ -220,7 +207,7 @@ ifoldlWithin' dim f acc0 arr =
       acc0
       (\ix acc' -> f ix acc' (unsafeIndex arr ix))
   where
-    sz = size arr
+    SafeSz sz = size arr
     (k, szl) = pullOutDim' sz dim
 {-# INLINE ifoldlWithin' #-}
 
@@ -243,7 +230,7 @@ foldlWithin' dim f = ifoldlWithin' dim (const f)
 ifoldrWithin' :: (Index (Lower ix), Source r ix e) =>
   Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrWithin' dim f acc0 arr =
-  unsafeMakeArray (getComp arr) szl $ \ixl ->
+  makeArray (getComp arr) (SafeSz szl) $ \ixl ->
     iter
       (insertDim' ixl dim (k - 1))
       (insertDim' ixl dim 0)
@@ -252,7 +239,7 @@ ifoldrWithin' dim f acc0 arr =
       acc0
       (\ix acc' -> f ix (unsafeIndex arr ix) acc')
   where
-    sz = size arr
+    SafeSz sz = size arr
     (k, szl) = pullOutDim' sz dim
 {-# INLINE ifoldrWithin' #-}
 
@@ -300,63 +287,105 @@ foldrInner = foldrWithin' 1
 
 
 -- | /O(n)/ - Compute maximum of all elements.
-maximum :: (Source r ix e, Ord e) =>
-           Array r ix e -> e
-maximum = \arr ->
-  if isEmpty arr
-    then error "Data.Massiv.Array.maximum - empty"
-    else fold max (evaluateAt arr zeroIndex) arr
+--
+-- @since 0.3.0
+maximumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
+maximumM =
+  \arr ->
+    if isEmpty arr
+      then throwM (SizeEmptyException (size arr))
+      else let e0 = unsafeIndex arr zeroIndex
+            in pure $ foldlInternal max e0 max e0 arr
+{-# INLINE maximumM #-}
+
+
+-- | /O(n)/ - Compute maximum of all elements.
+--
+-- @since 0.1.0
+maximum :: (Source r ix e, Ord e) => Array r ix e -> e
+maximum = maximum'
 {-# INLINE maximum #-}
+{-# DEPRECATED maximum "In favor of a safee `maximumM` or an equivalent `maximum'`" #-}
+
+-- | /O(n)/ - Compute maximum of all elements.
+--
+-- @since 0.3.0
+maximum' :: (Source r ix e, Ord e) => Array r ix e -> e
+maximum' = either throw id . maximumM
+{-# INLINE maximum' #-}
 
 
 -- | /O(n)/ - Compute minimum of all elements.
-minimum :: (Source r ix e, Ord e) =>
-           Array r ix e -> e
-minimum = \arr ->
-  if isEmpty arr
-    then error "Data.Massiv.Array.minimum - empty"
-    else fold min (evaluateAt arr zeroIndex) arr
-{-# INLINE minimum #-}
+--
+-- @since 0.3.0
+minimumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
+minimumM =
+  \arr ->
+    if isEmpty arr
+      then throwM (SizeEmptyException (size arr))
+      else let e0 = unsafeIndex arr zeroIndex
+            in pure $ foldlInternal min e0 min e0 arr
+{-# INLINE minimumM #-}
 
+-- | /O(n)/ - Compute minimum of all elements.
+--
+-- @since 0.3.0
+minimum' :: (Source r ix e, Ord e) => Array r ix e -> e
+minimum' = either throw id . minimumM
+{-# INLINE minimum' #-}
+
+-- | /O(n)/ - Compute minimum of all elements.
+--
+-- @since 0.1.0
+minimum :: (Source r ix e, Ord e) => Array r ix e -> e
+minimum = minimum'
+{-# INLINE minimum #-}
+{-# DEPRECATED minimum "In favor of a safer `minimumM` or an equivalent `minimum'`" #-}
 
 -- | /O(n)/ - Compute sum of all elements.
-sum :: (Source r ix e, Num e) =>
-        Array r ix e -> e
-sum = fold (+) 0
+--
+-- @since 0.1.0
+sum :: (Source r ix e, Num e) => Array r ix e -> e
+sum = foldlInternal (+) 0 (+) 0
 {-# INLINE sum #-}
 
 
 -- | /O(n)/ - Compute product of all elements.
-product :: (Source r ix e, Num e) =>
-            Array r ix e -> e
-product = fold (*) 1
+--
+-- @since 0.1.0
+product :: (Source r ix e, Num e) => Array r ix e -> e
+product = foldlInternal (*) 1 (*) 1
 {-# INLINE product #-}
 
 
 -- | /O(n)/ - Compute conjunction of all elements.
-and :: (Source r ix Bool) =>
-       Array r ix Bool -> Bool
-and = fold (&&) True
+--
+-- @since 0.1.0
+and :: Source r ix Bool => Array r ix Bool -> Bool
+and = foldlInternal (&&) True (&&) True
 {-# INLINE and #-}
 
 
 -- | /O(n)/ - Compute disjunction of all elements.
-or :: Source r ix Bool =>
-      Array r ix Bool -> Bool
-or = fold (||) False
+--
+-- @since 0.1.0
+or :: Source r ix Bool => Array r ix Bool -> Bool
+or = foldlInternal (||) False (||) False
 {-# INLINE or #-}
 
 
 -- | /O(n)/ - Determines whether all element of the array satisfy the predicate.
-all :: Source r ix e =>
-       (e -> Bool) -> Array r ix e -> Bool
-all f = foldlInternal (\acc el -> acc && f el) True (&&) True
+--
+-- @since 0.1.0
+all :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
+all f = foldlInternal (\acc e -> acc && f e) True (&&) True
 {-# INLINE all #-}
 
 -- | /O(n)/ - Determines whether any element of the array satisfies the predicate.
-any :: Source r ix e =>
-       (e -> Bool) -> Array r ix e -> Bool
-any f = foldlInternal (\acc el -> acc || f el) False (||) False
+--
+-- @since 0.1.0
+any :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
+any f = foldlInternal (\acc e -> acc || f e) False (||) False
 {-# INLINE any #-}
 
 

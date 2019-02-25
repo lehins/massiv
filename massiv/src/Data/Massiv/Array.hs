@@ -1,6 +1,6 @@
 -- |
 -- Module      : Data.Massiv.Array
--- Copyright   : (c) Alexey Kuleshevich 2018
+-- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -11,9 +11,9 @@
 -- sequentially. Depending on the representation (@__r__@), an @__`Array` r ix e__@ will have
 -- certain properties that are unique to that particular representation, but all of them will share
 -- the same trait, that an array is simply a mapping from an index (@__ix__@) of an arbitrary
--- dimension to an element (@__e__@) of some value. Which means that some of the array types are
--- pretty classic and are represented by a contiguous chunk of memory reserved for the elements,
--- namely arrays with `Manifest` representations:
+-- dimension to an element (@__e__@) of some value. Which means that some representations describe
+-- classic arrays and are backed by a contiguous chunk of memory reserved for the elements (or
+-- pointers to elements), namely arrays with `Manifest` representations:
 --
 -- * `B` - The most basic type of array that can hold any type of element in a boxed form, i.e. each
 --         element is a pointer to the actual value, therefore it is also the slowest
@@ -36,15 +36,21 @@
 -- * `M` - General manifest array type, that any of the above representations can be converted to in
 --       constant time using `toManifest`.
 --
--- While at the same time, there are arrays that only describe how values for it's elements can be
--- computed, and have no memory overhead on their own.
+-- There are also array represnetation that only describe how values for its elements can be
+-- computed or loaded into memory, as such, they are represented by functions and do not impose the
+-- memory overhead, that is normally associated with arrays. They are needed for proper fusion and
+-- parallelization of computation.
 --
--- * `D` - delayed array that is a mere function from an index to an element. Crucial representation
---         for fusing computation. Use `computeAs` in order to load array into `Manifest`
---         representation.
+-- * `D` - delayed array that is a mere function from an index to an element. Also known as /Pull/
+--         array. Crucial representation for fusing computation. Use `computeAs` in order to load
+--         array into `Manifest` representation.
 --
--- * `DI` - delayed interleaved array. Same as `D`, but performced better with unbalanced
---         computation, when evaluation one element takes much longer than it's neighbor.
+-- * `DL` - delayed load array representation that describes how an array can be loaded. Also known
+--         as /Push/ array. Useful for fusing various array combining functions. Use `computeAs` in
+--         order to load array into `Manifest` representation.
+--
+-- * `DI` - delayed interleaved array. Same as `D`, but performes better with unbalanced
+--         computation, when evaluation of one element takes much longer than of its neighbor.
 --
 -- * `DW` - delayed windowed array. This peculiar representation allows for very fast `Stencil`
 --        computation.
@@ -52,8 +58,8 @@
 -- Other Array types:
 --
 -- * `L` and `LN` - those types aren't particularly useful on their own, but because of their unique
---       ability to be converted to and from nested lists in constant time, provide an amazing
---       intermediary for list/array conversion.
+--       ability to be converted to and from nested lists in constant time, provide a perfect
+--       intermediary for lists <-> array conversion.
 --
 -- Most of the `Manifest` arrays are capable of in-place mutation. Check out
 -- "Data.Massiv.Array.Mutable" module for available functionality.
@@ -73,6 +79,7 @@ module Data.Massiv.Array
   , getComp
   , setComp
   , compute
+  , computeS
   , computeAs
   , computeProxy
   , computeSource
@@ -92,10 +99,13 @@ module Data.Massiv.Array
   , (!?)
   , (!)
   , (??)
+  , indexM
   , index
   , index'
   , defaultIndex
   , borderIndex
+  , evaluateM
+  , evaluate'
   , evaluateAt
   -- * Mapping
   , module Data.Massiv.Array.Ops.Map
@@ -151,6 +161,8 @@ import           Prelude as P hiding ( all
                                      , splitAt
                                      , sum
                                      , zip
+                                     , replicate
+                                     , enumFromTo
                                      )
 
 {- $folding

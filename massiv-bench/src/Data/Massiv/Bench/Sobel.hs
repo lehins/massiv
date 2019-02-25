@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns     #-}
 module Data.Massiv.Bench.Sobel
   ( sobelX
   , sobelY
@@ -12,7 +12,7 @@ import Data.Massiv.Array
 
 sobelX :: Num e => Stencil Ix2 e e
 sobelX =
-  makeConvolutionStencil (3 :. 3) (1 :. 1) $
+  makeConvolutionStencil (Sz 3) (1 :. 1) $
   \ f -> f (-1 :. -1)   1  .
          f ( 0 :. -1)   2  .
          f ( 1 :. -1)   1  .
@@ -24,7 +24,7 @@ sobelX =
 
 sobelY :: Num e => Stencil Ix2 e e
 sobelY =
-  makeConvolutionStencil (3 :. 3) (1 :. 1) $
+  makeConvolutionStencil (Sz 3) (1 :. 1) $
   \ f -> f (-1 :. -1)   1  .
          f (-1 :.  0)   2  .
          f (-1 :.  1)   1  .
