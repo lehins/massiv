@@ -73,7 +73,6 @@ library
                      , data-default-class
                      , deepseq
                      , exceptions
-                     --, ghc-prim
                      , massiv-scheduler
                      , primitive
                      , unliftio-core

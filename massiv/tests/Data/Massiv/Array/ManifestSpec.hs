@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
 module Data.Massiv.Array.ManifestSpec (spec) where
 
 import           Data.ByteString           as S
@@ -12,8 +13,12 @@ import           Data.Word                 (Word8)
 
 
 -- ByteString
-prop_toFromByteString :: Array P Ix1 Word8 -> Property
+prop_toFromByteString :: Manifest r Ix1 Word8 => Array r Ix1 Word8 -> Property
 prop_toFromByteString arr = toManifest arr === fromByteString (getComp arr) (toByteString arr)
+
+prop_castToFromByteString :: Array S Ix1 Word8 -> Property
+prop_castToFromByteString arr = arr === castFromByteString (getComp arr) (castToByteString arr)
+
 
 prop_fromToByteString :: Comp -> [Word8] -> Property
 prop_fromToByteString comp ls = bs === toByteString (fromByteString comp bs)
@@ -24,9 +29,11 @@ prop_toBuilder arr = bs === SL.toStrict (S.toLazyByteString (toBuilder S.word8 a
   where bs = toByteString arr
 
 conversionSpec :: Spec
-conversionSpec = do
+conversionSpec =
   describe "ByteString" $ do
-    it "to/from ByteString" $ property prop_toFromByteString
+    it "castTo/TromByteString" $ property prop_castToFromByteString
+    it "to/from ByteString P" $ property (prop_toFromByteString @P)
+    it "to/from ByteString S" $ property (prop_toFromByteString @S)
     it "from/to ByteString" $ property prop_fromToByteString
     it "toBuilder" $ property prop_toBuilder
 

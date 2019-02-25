@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -80,7 +81,6 @@ import           Data.Massiv.Core.Index.Internal      (Sz (..))
 import           Data.Word                            (Word8)
 
 
-
 -- | /O(1)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
 -- doesn't match the total number of elements of new array.
 --
@@ -97,10 +97,16 @@ fromByteString comp bs = MArray comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
 --
 -- @since 0.2.1
 toByteString ::
-     Source r ix Word8
+     Load r ix Word8
   => Array r ix Word8 -- ^ Source array
   -> ByteString
-toByteString = castToByteString . convert
+toByteString = castToByteString .
+#if __GLASGOW_HASKELL__ >= 820
+  convert
+  {- For ghc-8.0 `covert` results in "internal error: ARR_WORDS object entered!" -}
+#else
+  compute
+#endif
   --fst $ unfoldrN (totalElem (size arr)) (\ !i -> Just (unsafeLinearIndex arr i, i + 1)) 0
 {-# INLINE toByteString #-}
 
@@ -118,7 +124,7 @@ castToByteString :: Array S ix Word8 -> ByteString
 castToByteString = (\(fp, len) -> PS fp 0 len) . unsafeArrayToForeignPtr
 {-# INLINE castToByteString #-}
 
--- | /O(1)/ - Cast a strict `ByteString` into  a`S`torable array
+-- | /O(1)/ - Cast a strict `ByteString` into a `S`torable array
 --
 -- @since 0.3.0
 castFromByteString :: Comp -> ByteString -> Array S Ix1 Word8
