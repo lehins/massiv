@@ -43,7 +43,7 @@ applyFun2Compat = applyFun2
 #else
 applyFun2Compat (Fun _ f) a b = f (a, b)
 instance Function Word where
-  function = functionIntegral
+  function = functionMap fromIntegral fromInteger
 #endif
 
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
