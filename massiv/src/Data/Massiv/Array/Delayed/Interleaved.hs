@@ -46,7 +46,7 @@ instance Functor (Array DI ix) where
   fmap f (DIArray arr) = DIArray (fmap f arr)
 
 
-instance Index ix => Resize Array DI ix where
+instance Index ix => Resize DI ix where
   unsafeResize sz = DIArray . unsafeResize sz . diArray
   {-# INLINE unsafeResize #-}
 

@@ -81,7 +81,7 @@ instance (VU.Unbox e, Index ix) => Source U ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Resize Array U ix where
+instance Index ix => Resize U ix where
   unsafeResize !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeResize #-}
 

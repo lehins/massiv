@@ -12,6 +12,7 @@ module Data.Massiv.Array.Delayed
   , DL(..)
   , toLoadArray
   , makeLoadArray
+  , fromStrideLoad
   , DI(..)
   , toInterleaved
   , fromInterleaved
@@ -25,4 +26,3 @@ import           Data.Massiv.Array.Delayed.Interleaved
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Array.Delayed.Windowed
-

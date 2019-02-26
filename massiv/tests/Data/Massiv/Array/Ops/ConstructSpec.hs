@@ -1,13 +1,13 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Data.Massiv.Array.Ops.ConstructSpec where
+module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 
+import           Data.List                 as L
 import           Data.Massiv.CoreArbitrary as A
 import           Data.Proxy
 import qualified GHC.Exts                  as GHC (IsList (..))
 import           Prelude                   as P
-import Data.List as L
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
 prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep' Par from 1 to

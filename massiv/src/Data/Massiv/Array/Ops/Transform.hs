@@ -74,7 +74,7 @@ import           Prelude                         as P hiding (concat, splitAt,
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
--- fully encapsulated in a source array, otherwise `Nothing` is returned,
+-- fully encapsulated in a source array, otherwise `SizeSubregionException` will be thrown.
 extractM :: (MonadThrow m, Extract r ix e)
          => ix -- ^ Starting index
          -> Sz ix -- ^ Size of the resulting array
@@ -91,6 +91,8 @@ extractM !sIx !newSz !arr
 {-# INLINE extractM #-}
 
 -- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
+--
+-- @since 0.1.0
 extract' :: Extract r ix e
         => ix -- ^ Starting index
         -> Sz ix -- ^ Size of the resulting array
@@ -118,8 +120,10 @@ extract !sIx !newSz !arr
 {-# DEPRECATED extract "In favor of a more general `extractM`" #-}
 
 
--- | Similar to `extract`, except it takes starting and ending index. Result array will not include
+-- | Similar to `extractM`, except it takes starting and ending index. Result array will not include
 -- the ending index.
+--
+-- @since 0.3.0
 extractFromToM :: (MonadThrow m, Extract r ix e) =>
                   ix -- ^ Starting index
                -> ix -- ^ Index up to which elements should be extracted.
@@ -154,7 +158,7 @@ extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 -- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
 -- number of elements does not match the source array.
 resize ::
-     (Index ix', Load r ix e, Resize Array r ix) => Sz ix' -> Array r ix e -> Maybe (Array r ix' e)
+     (Index ix', Load r ix e, Resize r ix) => Sz ix' -> Array r ix e -> Maybe (Array r ix' e)
 resize !sz !arr
   | totalElem sz == totalElem (size arr) = Just $ unsafeResize sz arr
   | otherwise = Nothing
@@ -166,7 +170,7 @@ resize !sz !arr
 --
 -- @since 0.3.0
 resizeM ::
-     (MonadThrow m, Index ix', Load r ix e, Resize Array r ix)
+     (MonadThrow m, Index ix', Load r ix e, Resize r ix)
   => Sz ix'
   -> Array r ix e
   -> m (Array r ix' e)
@@ -174,7 +178,9 @@ resizeM sz arr = guardNumberOfElements (size arr) sz >> pure (unsafeResize sz ar
 {-# INLINE resizeM #-}
 
 -- | Same as `resizeM`, but will throw an error if supplied dimensions are incorrect.
-resize' :: (Index ix', Load r ix e, Resize Array r ix) => Sz ix' -> Array r ix e -> Array r ix' e
+--
+-- @since 0.1.0
+resize' :: (Index ix', Load r ix e, Resize r ix) => Sz ix' -> Array r ix e -> Array r ix' e
 resize' sz = either throw id . resizeM sz
 {-# INLINE resize' #-}
 
@@ -239,6 +245,7 @@ transpose = transposeInner
 --     ]
 --   ]
 --
+-- @since 0.1.0
 transposeInner :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
 transposeInner !arr = makeArray (getComp arr) newsz newVal
@@ -288,6 +295,8 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 --     ]
 --   ]
 --
+--
+-- @since 0.1.0
 transposeOuter :: (Index (Lower ix), Source r' ix e)
                => Array r' ix e -> Array D ix e
 transposeOuter !arr = makeArray (getComp arr) newsz newVal
@@ -334,12 +343,13 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --
 -- @since 0.3.0
 backpermuteM ::
-     forall r ix e r' ix' m . (Mutable r ix e, Source r' ix' e, MonadThrow m)
+     forall r ix e r' ix' m.
+     (Mutable r ix e, Source r' ix' e, MonadUnliftIO m, PrimMonad m, MonadThrow m)
   => Sz ix -- ^ Size of the result array
   -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
   -> Array r' ix' e -- ^ Source array.
   -> m (Array r ix e)
-backpermuteM sz ixF !arr = makeArrayA (getComp arr) sz (evaluateM arr . ixF)
+backpermuteM sz ixF !arr = generateArray (getComp arr) sz (evaluateM arr . ixF)
 {-# INLINE backpermuteM #-}
 
 -- | Similar to `backpermuteM`, with few notable differences:
@@ -350,10 +360,10 @@ backpermuteM sz ixF !arr = makeArrayA (getComp arr) sz (evaluateM arr . ixF)
 --
 -- @since 0.3.0
 backpermute' :: (Source r' ix' e, Index ix) =>
-               Sz ix -- ^ Size of the result array
-            -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
-            -> Array r' ix' e -- ^ Source array.
-            -> Array D ix e
+                Sz ix -- ^ Size of the result array
+             -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
+             -> Array r' ix' e -- ^ Source array.
+             -> Array D ix e
 backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 {-# INLINE backpermute' #-}
 
@@ -555,6 +565,8 @@ concatM n !arrsF =
 
 
 -- | /O(1)/ - Split an array at an index along a specified dimension.
+--
+-- @since 0.3.0
 splitAtM ::
      (MonadThrow m, Extract r ix e, r' ~ EltRepr r ix)
   => Dim -- ^ Dimension along which to split
@@ -690,9 +702,12 @@ traverse2 sz f arr1 arr2 =
 {-# INLINE traverse2 #-}
 {-# DEPRECATED traverse2 "In favor of more general `transform2'`" #-}
 
-
+-- | General array transformation, that forces computation and produces a manifest array.
+--
+-- @since 0.3.0
 transformM ::
-     (Source r' ix' e', Mutable r ix e, MonadUnliftIO m, PrimMonad m, MonadThrow m)
+     forall r ix e r' ix' e' a m.
+     (Mutable r ix e, Source r' ix' e', MonadUnliftIO m, PrimMonad m, MonadThrow m)
   => (Sz ix' -> m (Sz ix, a))
   -> (a -> (ix' -> m e') -> ix -> m e)
   -> Array r' ix' e'
@@ -703,6 +718,9 @@ transformM getSzM getM arr = do
 {-# INLINE transformM #-}
 
 
+-- | General array transformation
+--
+-- @since 0.3.0
 transform' ::
      (Source r' ix' e', Index ix)
   => (Sz ix' -> (Sz ix, a))
@@ -714,8 +732,11 @@ transform' getSz get arr = makeArray (getComp arr) sz (get a (evaluate' arr))
     (sz, a) = getSz (size arr)
 {-# INLINE transform' #-}
 
+-- | Same as `transformM`, but operates on two arrays
+--
+-- @since 0.3.0
 transform2M ::
-     (Source r1 ix1 e1, Source r2 ix2 e2, Mutable r ix e, MonadUnliftIO m, PrimMonad m, MonadThrow m)
+     (Mutable r ix e, Source r1 ix1 e1, Source r2 ix2 e2, MonadUnliftIO m, PrimMonad m, MonadThrow m)
   => (Sz ix1 -> Sz ix2 -> m (Sz ix, a))
   -> (a -> (ix1 -> m e1) -> (ix2 -> m e2) -> ix -> m e)
   -> Array r1 ix1 e1
@@ -727,6 +748,9 @@ transform2M getSzM getM arr1 arr2 = do
 {-# INLINE transform2M #-}
 
 
+-- | Same as `transform'`, but operates on two arrays
+--
+-- @since 0.3.0
 transform2' ::
      (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
   => (Sz ix1 -> Sz ix2 -> (Sz ix, a))

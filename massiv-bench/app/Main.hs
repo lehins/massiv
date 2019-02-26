@@ -3,7 +3,7 @@ module Main where
 
 
 import Data.Massiv.Array as A
-
+import Data.Monoid
 
 main :: IO ()
 main = do

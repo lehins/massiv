@@ -100,7 +100,7 @@ makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
 
--- | Replicate the same elements
+-- | Replicate the same element
 --
 -- @since 0.3.0
 replicate :: forall r ix e . Construct r ix e => Comp -> Sz ix -> e -> Array r ix e
@@ -117,7 +117,8 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 -- | Similar to `makeArray`, but construct the array sequentially using an `Applicative` interface
 -- disregarding the supplied `Comp`.
 --
--- /Note/ - using `Data.Massiv.Array.Mutable.generateArrayS` will always be faster, althought not always possible.
+-- /Note/ - using `Data.Massiv.Array.Mutable.generateArray` or
+-- `Data.Massiv.Array.Mutable.generateArrayS` will always be faster, althought not always possible.
 --
 --
 -- @since 0.2.6
@@ -173,7 +174,7 @@ iterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> e) -> e -> Array DL
 iterateN comp sz f = unfoldrS_ comp sz $ \a -> let !a' = f a in (a', a')
 {-# INLINE iterateN #-}
 
--- |
+-- | Same as `iterateN`, but with index aware function.
 --
 -- @since 0.3.0
 iiterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> ix -> e) -> e -> Array DL ix e
@@ -207,8 +208,9 @@ iunfoldrS_ comp sz f acc0 =
 {-# INLINE iunfoldrS_ #-}
 
 
--- | Unfold sequentially from the right. Unfortunately there is really no way to safe the
--- accumulator, since resulting array is delayed.
+-- | Unfold sequentially from the end. There is no way to save the accumulator after unfolding is
+-- done, since resulting array is delayed, but it's possible to use
+-- `Data.Massiv.Array.Mutable.unfoldlPrim` to achive such effect.
 --
 -- @since 0.3.0
 unfoldlS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e

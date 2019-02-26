@@ -330,14 +330,11 @@ showsArrayPrec f n arr = showsArrayLAsPrec (Proxy :: Proxy r) n larr
 
 showArrayList
   :: Show arr => [arr] -> String -> String
-showArrayList arrs s = ('[':) . go arrs . (']':) $ s
+showArrayList arrs = ('[':) . go arrs . (']':)
   where
     go [] = id
     go [x] = (' ':) . shows x . ('\n':)
     go (x:xs) = (' ':) . shows x . ("\n," ++) . go xs
-
-  -- ("["++ ) . foldl' showsAcc (++ s) arrs $ "]"
-  -- where showsAcc acc arr = (" " ++) . shows arr . ("\n," ++) . acc
 
 
 instance {-# OVERLAPPING #-} OuterSlice L Ix1 e where

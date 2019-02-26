@@ -1,15 +1,3 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
-#if __GLASGOW_HASKELL__ > 820
-{-# OPTIONS_GHC -Wno-deplicate-exports #-}
-#endif
 -- |
 -- Module      : Data.Massiv.Core
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -25,6 +13,7 @@ module Data.Massiv.Core
   , Construct
   , Load(loadArrayM)
   , Source
+  , Resize
   , Extract
   , StrideLoad(..)
   , Slice

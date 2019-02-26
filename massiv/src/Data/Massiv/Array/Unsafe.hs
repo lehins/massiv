@@ -17,6 +17,7 @@ module Data.Massiv.Array.Unsafe
   -- , unsafeGenerateArrayP
   -- * Indexing
     Sz(SafeSz)
+  , Stride(SafeStride)
   , unsafeIndex
   , unsafeLinearIndex
   , unsafeLinearIndexM
@@ -68,6 +69,7 @@ import           Data.Massiv.Array.Manifest.Primitive
 import           Data.Massiv.Array.Manifest.Storable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal      (Sz (SafeSz))
+import           Data.Massiv.Core.Index.Stride        (Stride (SafeStride))
 
 unsafeBackpermute :: (Source r' ix' e, Index ix) =>
                      Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e

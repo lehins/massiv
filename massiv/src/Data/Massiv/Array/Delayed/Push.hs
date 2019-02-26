@@ -56,7 +56,7 @@ instance Index ix => Construct DL ix e where
       splitLinearlyWithStartAtM_ numWorkers scheduleWith startAt (totalElem sz) (pure . f) dlWrite
   {-# INLINE makeArrayLinear #-}
 
-instance Index ix => Resize Array DL ix where
+instance Index ix => Resize DL ix where
   unsafeResize !sz arr = arr { dlSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -89,7 +89,7 @@ makeLoadArray ::
   -> Sz ix
   -> (forall m. Monad m => Int -> (m () -> m ()) -> Int -> (Int -> e -> m ()) -> m ())
   -> Array DL ix e
-makeLoadArray comp sz f = DLArray comp sz f
+makeLoadArray = DLArray
 {-# INLINE makeLoadArray #-}
 
 -- | Convert any `Load`able array into `DL` representation.

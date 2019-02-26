@@ -88,7 +88,7 @@ instance (VS.Storable e, Index ix) => Source S ix e where
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
 
-instance Index ix => Resize Array S ix where
+instance Index ix => Resize S ix where
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
 

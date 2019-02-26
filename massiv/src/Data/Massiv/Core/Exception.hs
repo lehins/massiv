@@ -35,6 +35,6 @@ instance Exception Uninitialized where
 
 
 guardNumberOfElements :: (MonadThrow m, Index ix, Index ix') => Sz ix -> Sz ix' -> m ()
-guardNumberOfElements sz sz' = do
+guardNumberOfElements sz sz' =
   unless (totalElem sz == totalElem sz) $ throwM $ SizeElementsMismatchException sz sz'
 {-# INLINE guardNumberOfElements #-}

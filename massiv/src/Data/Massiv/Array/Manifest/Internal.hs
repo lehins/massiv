@@ -20,7 +20,6 @@ module Data.Massiv.Array.Manifest.Internal
   ( M
   , Manifest(..)
   , Array(..)
-  , makeBoxedVector
   , toManifest
   , compute
   , computeS
@@ -111,11 +110,6 @@ instance Index ix => Construct M ix e where
       pure $ MArray comp sz (V.unsafeIndex v)
   {-# INLINE makeArrayLinear #-}
 
--- | Create a boxed from usual size and index to element function
-makeBoxedVector :: Index ix => Sz ix -> (ix -> a) -> V.Vector a
-makeBoxedVector !sz f = V.generate (totalElem sz) (f . fromLinearIndex sz)
-{-# INLINE makeBoxedVector #-}
-
 
 -- | /O(1)/ - Conversion of `Manifest` arrays to `M` representation.
 toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
@@ -157,7 +151,7 @@ instance Index ix => Manifest M ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance Index ix => Resize Array M ix where
+instance Index ix => Resize M ix where
   unsafeResize !sz !arr = arr { mSize = sz }
   {-# INLINE unsafeResize #-}
 

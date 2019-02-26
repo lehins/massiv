@@ -97,7 +97,7 @@ instance (Prim e, Index ix) => Source P ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Resize Array P ix where
+instance Index ix => Resize P ix where
   unsafeResize !sz !arr = arr { pSize = sz }
   {-# INLINE unsafeResize #-}
 

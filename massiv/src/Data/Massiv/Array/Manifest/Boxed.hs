@@ -29,7 +29,6 @@ module Data.Massiv.Array.Manifest.Boxed
   , unwrapNormalFormMutableArray
   , evalNormalFormMutableArray
   , castArrayToVector
-  , vectorToArray
   , castVectorToArray
   , seqArray
   , deepseqArray
@@ -119,7 +118,7 @@ instance Index ix => Source B ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Resize Array B ix where
+instance Index ix => Resize B ix where
   unsafeResize !sz !arr = arr { bSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -287,7 +286,7 @@ instance (Index ix, NFData e) => Source N ix e where
   {-# INLINE unsafeLinearIndex #-}
 
 
-instance Index ix => Resize Array N ix where
+instance Index ix => Resize N ix where
   unsafeResize !sz = NArray . unsafeResize sz . bArray
   {-# INLINE unsafeResize #-}
 
@@ -525,18 +524,6 @@ castArrayToVector arr = runST $ do
   marr <- A.unsafeThawArray arr
   VB.unsafeFreeze $ VB.MVector 0 (sizeofArray arr) marr
 {-# INLINE castArrayToVector #-}
-
--- | Covert boxed `VB.Vector` into an `A.Array`. Sliced vectors will indure copying.
-vectorToArray :: VB.Vector a -> A.Array a
-vectorToArray v =
-  runST $ do
-    VB.MVector start len marr <- VB.unsafeThaw v
-    marr' <-
-      if start == 0
-        then return marr
-        else A.cloneMutableArray marr start len
-    A.unsafeFreezeArray marr'
-{-# INLINE vectorToArray #-}
 
 
 -- | Cast a Boxed Vector into an Array, but only if it wasn't previously sliced.

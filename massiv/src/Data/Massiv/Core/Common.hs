@@ -2,11 +2,9 @@
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UnboxedTuples         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 -- |
 -- Module      : Data.Massiv.Core.Common
@@ -166,10 +164,10 @@ class (Typeable r, Index ix) => Construct r ix e where
 
 
 
-class Index ix => Resize array r ix where
+class Index ix => Resize r ix where
   -- | /O(1)/ - Change the size of an array. Total number of elements should be the same, but it is
   -- not validated.
-  unsafeResize :: Index ix' => Sz ix' -> array r ix e -> array r ix' e
+  unsafeResize :: Index ix' => Sz ix' -> Array r ix e -> Array r ix' e
 
 
 class Load r ix e => Extract r ix e where
@@ -200,31 +198,30 @@ class Load r ix e => Source r ix e where
 class (Typeable r, Index ix) => Load r ix e where
 
   -- | Get computation strategy of this array
-  
+
   getComp :: Array r ix e -> Comp
 
   -- | Get the size of an immutabe array
   size :: Array r ix e -> Sz ix
 
-  -- | Load an array into memory. Default implementation will respect the scheduler and use `Source`
-  -- instance to do loading in row-major fashion in parallel as well as sequentially.
+  -- | Load an array into memory.
   loadArrayM
     :: Monad m =>
        Int -- ^ Total number of workers (for `Seq` it's always 1)
-    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
-                      -- always `id`)
+    -> (m () -> m ())
+    -- ^ A monadic action that will schedule work for the workers (for `Seq` it's always `id`)
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
 
 class Load r ix e => StrideLoad r ix e where
-  -- | Load an array into memory with stride. Default implementation can only handle the sequential
-  -- case and only if there is an instance of `Source`.
+  -- | Load an array into memory with stride. Default implementation requires an instance of
+  -- `Source`.
   loadArrayWithStrideM
     :: Monad m =>
        Int -- ^ Total number of workers (for `Seq` it's always 1)
-    -> (m () -> m ()) -- ^ A monadic action that will schedule work for the workers (for `Seq` it's
-                      -- always `id`)
+    -> (m () -> m ())
+    -- ^ A monadic action that will schedule work for the workers (for `Seq` it's always `id`)
     -> Stride ix -- ^ Stride to use
     -> Sz ix -- ^ Size of the target array affected by the stride.
     -> Array r ix e -- ^ Array that is being loaded

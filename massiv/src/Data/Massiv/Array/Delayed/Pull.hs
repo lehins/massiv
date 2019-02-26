@@ -47,7 +47,7 @@ instance (Ragged L ix e, Show e) => Show (Array D ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
 
-instance Index ix => Resize Array D ix where
+instance Index ix => Resize D ix where
   unsafeResize !sz !arr =
     DArray (dComp arr) sz $ \ !ix ->
       unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
