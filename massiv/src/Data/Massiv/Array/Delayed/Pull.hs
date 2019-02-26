@@ -226,7 +226,7 @@ eq f arr1 arr2 =
 ord :: (Source r1 ix e1, Source r2 ix e2) =>
        (e1 -> e2 -> Ordering) -> Array r1 ix e1 -> Array r2 ix e2 -> Ordering
 ord f arr1 arr2 =
-  (compare (size arr1) (size arr2)) <>
+  compare (size arr1) (size arr2) <>
   A.fold
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
@@ -247,7 +247,7 @@ liftArray2
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2 f !arr1 !arr2
   | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
-  | sz2 == oneSz = liftArray (`f` (unsafeIndex arr2 zeroIndex)) arr1
+  | sz2 == oneSz = liftArray (`f` unsafeIndex arr2 zeroIndex) arr1
   | sz1 == sz2 =
     DArray (getComp arr1 <> getComp arr2) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
   | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)

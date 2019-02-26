@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE BangPatterns          #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -77,22 +78,38 @@ infixr 8  .^, .^^
 infixl 7  .*, ./, `quotA`, `remA`, `divA`, `modA`
 infixl 6  .+, .-
 
+liftArray2Matching
+  :: (Source r1 ix a, Source r2 ix b)
+  => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
+liftArray2Matching f !arr1 !arr2
+  | sz1 == sz2 =
+    makeArray
+      (getComp arr1 <> getComp arr2)
+      sz1
+      (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
+  where
+    sz1 = size arr1
+    sz2 = size arr2
+{-# INLINE liftArray2Matching #-}
+
+
 (.+)
   :: (Source r1 ix e, Source r2 ix e, Num e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.+) = liftArray2 (+)
+(.+) = liftArray2Matching (+)
 {-# INLINE (.+) #-}
 
 (.-)
   :: (Source r1 ix e, Source r2 ix e, Num e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.-) = liftArray2 (-)
+(.-) = liftArray2Matching (-)
 {-# INLINE (.-) #-}
 
 (.*)
   :: (Source r1 ix e, Source r2 ix e, Num e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.*) = liftArray2 (*)
+(.*) = liftArray2Matching (*)
 {-# INLINE (.*) #-}
 
 (.^)
@@ -191,7 +208,7 @@ fromIntegerA = singleton . fromInteger
 (./)
   :: (Source r1 ix e, Source r2 ix e, Fractional e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(./) = liftArray2 (/)
+(./) = liftArray2Matching (/)
 {-# INLINE (./) #-}
 
 (.^^)
@@ -240,13 +257,13 @@ logA = liftArray log
 logBaseA
   :: (Source r1 ix e, Source r2 ix e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-logBaseA = liftArray2 logBase
+logBaseA = liftArray2Matching logBase
 {-# INLINE logBaseA #-}
 
 (.**)
   :: (Source r1 ix e, Source r2 ix e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.**) = liftArray2 (**)
+(.**) = liftArray2Matching (**)
 {-# INLINE (.**) #-}
 
 
@@ -327,26 +344,26 @@ atanhA = liftArray atanh
 quotA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-quotA = liftArray2 (quot)
+quotA = liftArray2Matching (quot)
 {-# INLINE quotA #-}
 
 
 remA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-remA = liftArray2 (rem)
+remA = liftArray2Matching (rem)
 {-# INLINE remA #-}
 
 divA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-divA = liftArray2 (div)
+divA = liftArray2Matching (div)
 {-# INLINE divA #-}
 
 modA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-modA = liftArray2 (mod)
+modA = liftArray2Matching (mod)
 {-# INLINE modA #-}
 
 
@@ -354,14 +371,14 @@ modA = liftArray2 (mod)
 quotRemA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-quotRemA arr1 = A.unzip . liftArray2 (quotRem) arr1
+quotRemA arr1 = A.unzip . liftArray2Matching (quotRem) arr1
 {-# INLINE quotRemA #-}
 
 
 divModA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-divModA arr1 = A.unzip . liftArray2 (divMod) arr1
+divModA arr1 = A.unzip . liftArray2Matching (divMod) arr1
 {-# INLINE divModA #-}
 
 
@@ -396,6 +413,6 @@ floorA = liftArray floor
 atan2A
   :: (Source r ix e, RealFloat e)
   => Array r ix e -> Array r ix e -> Array D ix e
-atan2A = liftArray2 atan2
+atan2A = liftArray2Matching atan2
 {-# INLINE atan2A #-}
 
