@@ -71,8 +71,33 @@ stencilCorners ::
      (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Ix2 -> Array r Ix2 a -> Array U Ix2 a
 stencilCorners ixC ix = computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) ixC $ \f -> f ix)
 
+
+stencilConvolution :: Spec
+stencilConvolution = do
+  let xs3 :: Array U Ix1 Int
+      xs3 = [1, 2, 3]
+      xs4 :: Array U Ix1 Int
+      xs4 = [1, 2, 3, 4]
+      ys :: Array U Ix1 Int
+      ys = [1, 2, 3, 4, 5]
+      applyStencil s = computeAs U . mapStencil (Fill 0) s
+  describe "makeConvolutionStencilFromKernel" $ do
+    let stencil = makeConvolutionStencilFromKernel
+    it "1x3" $ applyStencil (stencil xs3) ys `shouldBe` [8, 14, 20, 26, 14]
+    it "1x4" $ applyStencil (stencil xs4) ys `shouldBe` [10, 20, 30, 34, 31]
+  describe "makeConvolutionStencil" $ do
+    let stencil1x3 = makeConvolutionStencil (Sz1 3) 1 $ \f -> f (-1) 1 . f 0 2 . f 1 3
+    let stencil1x4 = makeConvolutionStencil (Sz1 4) 2 $ \f -> f (-2) 1 . f (-1) 2 . f 0 3 . f 1 4
+    it "1x3" $ applyStencil stencil1x3 ys `shouldBe` [8, 14, 20, 26, 14]
+    it "1x4" $ applyStencil stencil1x4 ys `shouldBe` [10, 20, 30, 34, 31]
+  describe "makeStencil" $ do
+    let stencil1x3 = makeStencil (Sz1 3) 1 $ \f -> f (-1) * 1 + f 0 * 2 + f 1 * 3
+    let stencil1x4 = makeStencil (Sz1 4) 2 $ \f -> f (-2) * 1 + f (-1) * 2 + f 0 * 3 + f 1 * 4
+    it "1x3" $ applyStencil stencil1x3 ys `shouldBe` [8, 14, 20, 26, 14]
+    it "1x4" $ applyStencil stencil1x4 ys `shouldBe` [10, 20, 30, 34, 31]
+
 spec :: Spec
-spec =
+spec = do
   describe "Stencil" $ do
     stencilSpec
     let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
@@ -99,8 +124,10 @@ spec =
           stride = Stride 2
       it "map stencil with stride on small array" $
         let strideArr = mapStencil (Fill 0) stencil arr
-         in computeWithStrideAs U stride strideArr `shouldBe` [[-4, 8],[2, 14]]
+         in computeWithStrideAs U stride strideArr `shouldBe` [[-4, 8], [2, 14]]
       it "map stencil with stride on larger array" $
         let largeArr = makeArrayR U Seq (Sz 5) (succ . toLinearIndex (Sz 5))
             strideArr = mapStencil (Fill 0) stencil largeArr
-         in computeWithStrideAs U stride strideArr `shouldBe` [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
+         in computeWithStrideAs U stride strideArr `shouldBe`
+            [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
+  stencilConvolution

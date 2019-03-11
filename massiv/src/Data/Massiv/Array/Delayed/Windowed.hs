@@ -24,6 +24,7 @@ module Data.Massiv.Array.Delayed.Windowed
   , makeWindowedArray
   ) where
 
+import           Control.Exception                   (Exception(..))
 import           Control.Monad                       (when)
 import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Manifest.Boxed
@@ -136,8 +137,14 @@ zeroWindow :: Index ix => Window ix e
 zeroWindow = Window zeroIndex zeroSz windowError
 {-# INLINE zeroWindow #-}
 
+data EmptyWindowException = EmptyWindowException deriving (Eq, Show)
+
+instance Exception EmptyWindowException where
+
+  displayException _ = "Index of zero size Window"
+
 windowError :: a
-windowError = error "Impossible: index of zeroWindow"
+windowError = throwImpossible EmptyWindowException
 {-# NOINLINE windowError #-}
 
 
@@ -146,13 +153,13 @@ loadWithIx1 ::
   => (m () -> m ())
   -> Array DW Ix1 e
   -> (Ix1 -> e -> m a)
-  -> m ((Ix1, Ix1) -> m (), (Ix1, Ix1))
+  -> m (Ix1 -> Ix1 -> m (), Ix1, Ix1)
 loadWithIx1 with (DWArray (DArray _ sz indexB) _ window) uWrite = do
   let Window it wk indexW = fromMaybe zeroWindow window
       wEnd = it + unSz wk
   with $ iterM_ 0 it 1 (<) $ \ !i -> uWrite i (indexB i)
   with $ iterM_ wEnd (unSz sz) 1 (<) $ \ !i -> uWrite i (indexB i)
-  return (\(from, to) -> with $ iterM_ from to 1 (<) $ \ !i -> uWrite i (indexW i), (it, wEnd))
+  return (\from to -> with $ iterM_ from to 1 (<) $ \ !i -> uWrite i (indexW i), it, wEnd)
 {-# INLINE loadWithIx1 #-}
 
 
@@ -162,26 +169,26 @@ instance Load DW Ix1 e where
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
   loadArrayM numWorkers scheduleWork arr uWrite = do
-    (loadWindow, (wStart, wEnd)) <- loadWithIx1 scheduleWork arr uWrite
-    let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers
+    (loadWindow, wStart, wEnd) <- loadWithIx1 scheduleWork arr uWrite
+    let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers
     loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
-      let !it' = wid * chunkHeight + wStart
-       in loadWindow (it', it' + chunkHeight)
-    when (slackHeight > 0) $
-      let !itSlack = numWorkers * chunkHeight + wStart
-       in loadWindow (itSlack, itSlack + slackHeight)
+      let !it' = wid * chunkWidth + wStart
+       in loadWindow it' (it' + chunkWidth)
+    when (slackWidth > 0) $
+      let !itSlack = numWorkers * chunkWidth + wStart
+       in loadWindow itSlack (itSlack + slackWidth)
   {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix1 e where
   loadArrayWithStrideM numWorkers scheduleWork stride sz arr uWrite = do
       (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 scheduleWork arr stride sz uWrite
-      let (chunkHeight, slackHeight) = (wEnd - wStart) `quotRem` numWorkers
+      let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers
       loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
-        let !it' = wid * chunkHeight + wStart
-         in loadWindow (it', it' + chunkHeight)
-      when (slackHeight > 0) $
-        let !itSlack = numWorkers * chunkHeight + wStart
-         in loadWindow (itSlack, itSlack + slackHeight)
+        let !it' = wid * chunkWidth + wStart
+         in loadWindow (it', it' + chunkWidth)
+      when (slackWidth > 0) $
+        let !itSlack = numWorkers * chunkWidth + wStart
+         in loadWindow (itSlack, itSlack + slackWidth)
   {-# INLINE loadArrayWithStrideM #-}
 
 loadArrayWithIx1 ::

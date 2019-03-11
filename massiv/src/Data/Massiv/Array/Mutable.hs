@@ -3,7 +3,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -221,18 +220,19 @@ loadArray arr = liftIO $ do
 
 
 
--- | Compute an Array while loading the results into the supplied mutable target array. Sizes of
--- both arrays must agree, otherwise error.
+-- | Compute an Array while loading the results into the supplied mutable target array. Number of
+-- elements for arrays must agree, otherwise `SizeElementsMismatchException` exception is thrown.
 --
 -- @since 0.1.3
 computeInto ::
-     (Load r' ix e, Mutable r ix e, MonadIO m)
+     (Load r' ix' e, Mutable r ix e, MonadIO m)
   => MArray RealWorld r ix e -- ^ Target Array
-  -> Array r' ix e -- ^ Array to load
+  -> Array r' ix' e -- ^ Array to load
   -> m ()
 computeInto !mArr !arr =
   liftIO $ do
-    unless (msize mArr == size arr) $ throwM $ SizeMismatchException (msize mArr) (size arr)
+    unless (totalElem (msize mArr) == totalElem (size arr)) $
+      throwM $ SizeElementsMismatchException (msize mArr) (size arr)
     withScheduler_ (getComp arr) $ \scheduler ->
       loadArrayM (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
@@ -345,7 +345,7 @@ createArray comp sz action = do
 
 
 -- | Create a new array by supplying an action that will fill the new blank mutable array. Use
--- `createArray` if you'd like to keep the result of the filling function.
+-- `createArrayS` if you'd like to keep the result of the filling function.
 --
 -- ====__Examples__
 --
@@ -825,7 +825,7 @@ swap marr ix1 ix2 = do
 -- | /O(1)/ - Same as `reaswap`, but throws an `IndexOutOfBoundsException` on invalid indices.
 swap' ::
      (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
-swap' marr ix1 ix2 = do
+swap' marr ix1 ix2 =
   swap marr ix1 ix2 >>=
     (`unless` if isSafeIndex (msize marr) ix1
                 then throwM $ IndexOutOfBoundsException (msize marr) ix2

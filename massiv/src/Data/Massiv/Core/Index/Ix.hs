@@ -59,10 +59,10 @@ import           GHC.TypeLits
 infixr 5 :>, :.
 
 
--- | 2-dimensional index. This also a base index for higher dimensions.
+-- | 2-dimensional index. This is also a base index for higher dimensions.
 --
 -- @since 0.1.0
-data Ix2 = (:.) {-# UNPACK #-} !Int {-# UNPACK #-} !Int
+data Ix2 = {-# UNPACK #-} !Int :. {-# UNPACK #-} !Int
 
 -- | 2-dimensional index constructor. Useful when @TypeOperators@ extension isn't enabled, or simply
 -- infix notation is inconvenient. @(Ix2 i j) == (i :. j)@.
@@ -152,7 +152,7 @@ pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
 --
 -- @since 0.1.0
-data IxN (n :: Nat) = (:>) {-# UNPACK #-} !Int !(Ix (n - 1))
+data IxN (n :: Nat) = {-# UNPACK #-} !Int :> !(Ix (n - 1))
 
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 --

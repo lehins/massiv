@@ -186,6 +186,8 @@ handleBorderIndex border !sz getVal !ix =
 --
 -- ==== __Examples__
 --
+-- >>> zeroIndex :: Ix4
+-- 0 :> 0 :> 0 :. 0
 --
 -- @since 0.1.0
 zeroIndex :: Index ix => ix
@@ -203,6 +205,8 @@ oneIndex = pureIndex 1
 --
 -- ==== __Examples__
 --
+-- >>> isNonEmpty (Sz3 1 0 2)
+-- False
 --
 -- @since 0.1.0
 isNonEmpty :: Index ix => Sz ix -> Bool

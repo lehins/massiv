@@ -240,6 +240,8 @@ unconsSz (SafeSz sz) = coerce (unconsDim sz)
 
 -- | Same as `unsnocDim`, but for `Sz`
 --
+-- ==== __Example__
+--
 -- >>> import Data.Massiv.Core.Index
 -- >>> unsnocSz $ Sz3 1 2 3
 -- (Sz (1 :. 2),Sz1 3)
