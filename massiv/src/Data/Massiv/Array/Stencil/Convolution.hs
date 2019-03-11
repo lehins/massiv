@@ -61,7 +61,7 @@ makeConvolutionStencilFromKernel kArr = Stencil sz sCenter stencil
     !sCenter = liftIndex (`div` 2) $ unSz sz
     stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
       accum !acc !kIx !kVal =
-        unValue (getVal (liftIndex2 (+) ix (liftIndex2 (-) sCenter kIx))) * kVal + acc
+        unValue (getVal (liftIndex2 (+) ix (liftIndex2 (-) kIx sCenter))) * kVal + acc
       {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE makeConvolutionStencilFromKernel #-}
