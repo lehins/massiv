@@ -17,7 +17,7 @@ module Data.Massiv.Array.Stencil.Unsafe
   ) where
 
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Delayed.Windowed (Window(..), DW, Array(..))
+import           Data.Massiv.Array.Delayed.Windowed (Window(..), DW, Array(..), insertWindow)
 import           GHC.Exts                           (inline)
 import           Data.Massiv.Array.Stencil.Internal
 
@@ -37,24 +37,22 @@ forStencilUnsafe ::
   -- retrieve values of cells in the source array with respect to the center of
   -- the stencil. Stencil function must return a value that will be assigned to
   -- the cell in the result array. Offset supplied to the "get" function
-  -- cannot go outside the boundaries of the stencil, otherwise an error will be
-  -- raised during stencil creation.
+  -- cannot go outside the boundaries of the stencil.
   -> Array DW ix a
 forStencilUnsafe !arr !sSz !sCenter relStencil =
-  DWArray
-    (DArray (getComp arr) sz (stencil (index arr)))
-    (Just sSz)
-    (Just window)
+  insertWindow (DArray (getComp arr) sz (stencil (index arr))) window
   where
     !window =
       Window
-        { windowStart = liftIndex2 min sCenter (unSz (Sz (liftIndex (subtract 1) (unSz sz))))
-        , windowSize = Sz (liftIndex2 (-) (unSz sz) (liftIndex2 (-) (unSz sSz) (pureIndex 1)))
+        { windowStart = sCenter
+        , windowSize = windowSz
         , windowIndex = stencil (Just . unsafeIndex arr)
+        , windowUnrollIx2 = unSz . fst <$> pullOutSzM windowSz 2
         }
+    !sz = size arr
+    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
     stencil getVal !ix = inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
-    !sz = size arr
 {-# INLINE forStencilUnsafe #-}
 
 

@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
@@ -24,13 +24,13 @@ module Data.Massiv.Array.Stencil
   , module Data.Massiv.Array.Stencil.Convolution
   ) where
 
-import           Data.Default.Class                    (Default (def))
-import           Data.Massiv.Array.Delayed.Windowed
-import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Stencil.Convolution
-import           Data.Massiv.Array.Stencil.Internal
-import           Data.Massiv.Core.Common
-import           GHC.Exts                              (inline)
+import Data.Default.Class (Default(def))
+import Data.Massiv.Array.Delayed.Windowed
+import Data.Massiv.Array.Manifest
+import Data.Massiv.Array.Stencil.Convolution
+import Data.Massiv.Array.Stencil.Internal
+import Data.Massiv.Core.Common
+import GHC.Exts (inline)
 
 
 -- | Map a constructed stencil over an array. Resulting array must be `compute`d in order to be
@@ -43,22 +43,15 @@ mapStencil ::
   -> Stencil ix e a -- ^ Stencil to map over the array
   -> Array r ix e -- ^ Source array
   -> Array DW ix a
-mapStencil b (Stencil sSz sCenter stencilF) !arr =
-  -- makeWindowedArray --TODO handle unrollAndJam
-  -- (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
-  -- sCenter
-  -- windowSz
-  -- (unValue . stencilF (Value . unsafeIndex arr))
-  DWArray
-    (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
-    (Just sSz)
-    (Just window)
+mapStencil b (Stencil sSz sCenter stencilF) !arr = insertWindow warr window
   where
+    !warr = DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr))
     !window =
       Window
-        { windowStart = liftIndex2 min sCenter (unSz (Sz (liftIndex (subtract 1) (unSz sz))))
-        , windowSize = Sz (liftIndex2 min (unSz windowSz) (liftIndex2 (-) (unSz sz) sCenter))
+        { windowStart = sCenter
+        , windowSize = windowSz
         , windowIndex = unValue . stencilF (Value . unsafeIndex arr)
+        , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
         }
     !sz = size arr
     !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))

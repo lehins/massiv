@@ -23,7 +23,22 @@
 * Addition of `unsafeArrayToForeignPtr`, `unsafeMArrayToForeignPtr`, `unsafeArrayFromForeignPtr` `unsafeArrayFromForeignPtr0`, `unsafeMArrayFromForeignPtr` and `unsafeMArrayFromForeignPtr0`
 * Addition of `castToByteString`, `castFromByteString`
 * Addition of `makeUnsafeStencil`
+* `Window` now has an `windowUnrollIx2` field.
+* Addition of `insertWindow` and `dropWindow`
 
+# 0.2.8
+
+* Fixed a problem where convolution stencil size was not inverted, causing out of bounds memory
+  read: [#72](https://github.com/lehins/massiv/issues/72)
+* Fixed an issue with windowed array where a stencil size is smaller than the array it is applied to
+* Fixed incorrect cross-correlation stencil construction
+
+# 0.2.7
+
+* Fixed a serious performance regression in `Stencil`'s `Functor` instance, which was introduced in
+  version `0.2.3`
+* Added type and pattern synonyms `Sz` for future compatibility with version `0.3`. Could be useful
+  for migration.
 
 # 0.2.6
 
