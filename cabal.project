@@ -1,0 +1,5 @@
+packages:   */*.cabal
+optimization: 2
+
+package    massiv-bench
+  benchmarks: True

@@ -26,7 +26,7 @@ prop_ConcatAppend
   :: (Show (Array P ix Int), Index ix)
   => DimIx ix -> Comp -> Sz ix -> NonEmptyList (Fun ix Int) -> Property
 prop_ConcatAppend (DimIx dim) comp sz (NonEmpty fns) =
-  foldl (\arr -> computeAs P . append' dim arr) (head arrs) (tail arrs) ===
+  foldl1 (\arr -> computeAs P . append' dim arr) arrs ===
   computeAs P (concat' dim arrs)
   where
     arrs = P.map (makeArrayR P comp sz . apply) fns

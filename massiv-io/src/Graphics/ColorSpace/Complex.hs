@@ -40,12 +40,12 @@ infix 6 +:
 
 -- | Extracts the real part of a complex pixel.
 realPart :: (ColorSpace cs e, RealFloat e) => Pixel cs (Complex e) -> Pixel cs e
-realPart = liftA C.realPart
+realPart = fmap C.realPart
 {-# INLINE realPart #-}
 
 -- | Extracts the imaginary part of a complex pixel.
 imagPart :: (ColorSpace cs e, RealFloat e) => Pixel cs (Complex e) -> Pixel cs e
-imagPart = liftA C.imagPart
+imagPart = fmap C.imagPart
 {-# INLINE imagPart #-}
 
 -- | Form a complex pixel from polar components of magnitude and phase.
@@ -56,7 +56,7 @@ mkPolar = liftA2 C.mkPolar
 
 -- | @'cis' t@ is a complex pixel with magnitude 1 and phase t (modulo @2*'pi'@).
 cis :: (ColorSpace cs e, RealFloat e) => Pixel cs e -> Pixel cs (Complex e)
-cis = liftA C.cis
+cis = fmap C.cis
 {-# INLINE cis #-}
 
 -- | The function @'polar'@ takes a complex pixel and returns a (magnitude, phase)
@@ -68,18 +68,18 @@ polar !zPx = (magnitude zPx, phase zPx)
 
 -- | The nonnegative magnitude of a complex pixel.
 magnitude :: (ColorSpace cs e, RealFloat e) => Pixel cs (Complex e) -> Pixel cs e
-magnitude = liftA C.magnitude
+magnitude = fmap C.magnitude
 {-# INLINE magnitude #-}
 
 -- | The phase of a complex pixel, in the range @(-'pi', 'pi']@. If the
 -- magnitude is zero, then so is the phase.
 phase :: (ColorSpace cs e, RealFloat e) => Pixel cs (Complex e) -> Pixel cs e
-phase = liftA C.phase
+phase = fmap C.phase
 {-# INLINE phase #-}
 
 -- | The conjugate of a complex pixel.
 conjugate :: (ColorSpace cs e, RealFloat e) => Pixel cs (Complex e) -> Pixel cs (Complex e)
-conjugate = liftA C.conjugate
+conjugate = fmap C.conjugate
 {-# INLINE conjugate #-}
 
 

@@ -167,7 +167,7 @@ main = do
 
 toLinearIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-toLinearIndexGroup groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
+toLinearIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (toLinearIndex sz1) i1
@@ -178,7 +178,7 @@ toLinearIndexGroup groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
 
 fromLinearIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-fromLinearIndexGroup groupName !((sz1, _), (sz2, _), (sz3, _)) =
+fromLinearIndexGroup groupName ((sz1, _), (sz2, _), (sz3, _)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (fromLinearIndex sz1) 100
@@ -189,7 +189,7 @@ fromLinearIndexGroup groupName !((sz1, _), (sz2, _), (sz3, _)) =
 
 toFromLinearIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-toFromLinearIndexGroup groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
+toFromLinearIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (fromLinearIndex sz1 . toLinearIndex sz1) i1
@@ -200,7 +200,7 @@ toFromLinearIndexGroup groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
 
 totalElemGroup :: (Index ix1, Index ix2, R.Shape sh) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-totalElemGroup groupName !((_, i1), (_, i2), (_, i3)) =
+totalElemGroup groupName ((_, i1), (_, i2), (_, i3)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf totalElem i1
@@ -212,7 +212,7 @@ totalElemGroup groupName !((_, i1), (_, i2), (_, i3)) =
 
 isSafeIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-isSafeIndexGroup groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
+isSafeIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (isSafeIndex sz1) i1
@@ -224,7 +224,7 @@ isSafeIndexGroup groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
 
 handleBorderIndexGroup :: (Index ix1, Index ix2) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-handleBorderIndexGroup groupName !((sz1, i1), (sz2, i2), _) =
+handleBorderIndexGroup groupName ((sz1, i1), (sz2, i2), _) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (handleBorderIndex Edge sz1 id) i1
@@ -236,7 +236,7 @@ unconsConsDimGroup :: forall ix1 ix2 a. (Index (Lower ix1), Index ix1, Index (Lo
   => String
   -> ((ix1, ix1), (ix2, ix2), a)
   -> Benchmark
-unconsConsDimGroup groupName !((_, i1), (_, i2), _) =
+unconsConsDimGroup groupName ((_, i1), (_, i2), _) =
   bgroup
     groupName
     [ bench "Ix" $ whnf ((consDim 8 . snd . unconsDim) :: ix1 -> ix1) i1
@@ -256,7 +256,7 @@ unsnocSnocDimGroup ::
   => String
   -> ((ix1, ix1), (ix2, ix2), (sh, sh))
   -> Benchmark
-unsnocSnocDimGroup groupName !((_, i1), (_, i2), (_, i3)) =
+unsnocSnocDimGroup groupName ((_, i1), (_, i2), (_, i3)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (((`snocDim` 8) . fst . unsnocDim) :: ix1 -> ix1) i1
@@ -267,7 +267,7 @@ unsnocSnocDimGroup groupName !((_, i1), (_, i2), (_, i3)) =
 
 liftIndexGroup :: (Index ix1, Index ix2, ExtraShape sh) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-liftIndexGroup groupName !((_, i1), (_, i2), (_, i3)) =
+liftIndexGroup groupName ((_, i1), (_, i2), (_, i3)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (liftIndex succ) i1
@@ -279,7 +279,7 @@ liftIndexGroup groupName !((_, i1), (_, i2), (_, i3)) =
 
 liftIndex2Group :: (Index ix1, Index ix2, ExtraShape sh) =>
   String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
-liftIndex2Group groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
+liftIndex2Group groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
     [ bench "Ix" $ whnf (liftIndex2 (+) sz1) i1
@@ -292,7 +292,7 @@ liftIndex2Group groupName !((sz1, i1), (sz2, i2), (sz3, i3)) =
 
 getIndexGroup :: (Index ix1, Index ix2) =>
   String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
-getIndexGroup groupName !((_, i1), (_, i2), _) =
+getIndexGroup groupName ((_, i1), (_, i2), _) =
   bgroup
     groupName
     [ bgroup
@@ -310,7 +310,7 @@ getIndexGroup groupName !((_, i1), (_, i2), _) =
 
 setIndexGroup :: (Index ix1, Index ix2) =>
   String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
-setIndexGroup groupName !((_, i1), (_, i2), _) =
+setIndexGroup groupName ((_, i1), (_, i2), _) =
   bgroup
     groupName
     [ bgroup
@@ -328,7 +328,7 @@ setIndexGroup groupName !((_, i1), (_, i2), _) =
 
 dropDimGroup :: (Index ix1, Index (Lower ix2), Index ix2) =>
   String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
-dropDimGroup groupName !((_, i1), (_, i2), _) =
+dropDimGroup groupName ((_, i1), (_, i2), _) =
   bgroup
     groupName
     [ bgroup
@@ -347,7 +347,7 @@ dropDimGroup groupName !((_, i1), (_, i2), _) =
 
 iterGroup :: (Index ix1, Index ix2) =>
   String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
-iterGroup groupName !((sz1, i1), (sz2, i2), _) =
+iterGroup groupName ((sz1, i1), (sz2, i2), _) =
   bgroup
     groupName
     [ bench "Ix" $
@@ -359,7 +359,7 @@ iterGroup groupName !((sz1, i1), (sz2, i2), _) =
 
 iterMGroup :: (Index ix1, Index ix2) =>
   String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
-iterMGroup groupName !((sz1, i1), (sz2, i2), _) =
+iterMGroup groupName ((sz1, i1), (sz2, i2), _) =
   bgroup
     groupName
     [ bench "Ix" $

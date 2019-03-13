@@ -441,7 +441,7 @@ expandWithin ::
   -> (a -> Int -> e)
   -> Array r (Lower ix) a
   -> Array D ix e
-expandWithin dim k f arr = do
+expandWithin dim k f arr =
   makeArray (getComp arr) sz $ \ix ->
     let (i, ixl) = pullOutDimension ix dim
      in f (unsafeIndex arr ixl) i

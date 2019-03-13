@@ -38,6 +38,7 @@ import           Control.DeepSeq                     (NFData (..), deepseq)
 import           Control.Exception
 import           Control.Monad.Primitive
 import           Control.Monad.ST                    (runST)
+import           Control.Monad                       ((>=>))
 import qualified Data.Foldable                       as F (Foldable (..))
 import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
 import           Data.Massiv.Array.Delayed.Push      (DL)
@@ -494,7 +495,7 @@ fromMutableArraySeq ::
   -> m (MArray (PrimState m) B Ix1 e)
 fromMutableArraySeq with mbarr = do
   let !sz = sizeofMutableArray mbarr
-  loopM_ 0 (< sz) (+ 1) $ \i -> A.readArray mbarr i >>= (`with` return ())
+  loopM_ 0 (< sz) (+ 1) (A.readArray mbarr >=> (`with` return ()))
   return $! MBArray (Sz sz) mbarr
 {-# INLINE fromMutableArraySeq #-}
 

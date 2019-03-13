@@ -290,8 +290,7 @@ foldrInner = foldrWithin' 1
 --
 -- @since 0.3.0
 maximumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
-maximumM =
-  \arr ->
+maximumM arr =
     if isEmpty arr
       then throwM (SizeEmptyException (size arr))
       else let e0 = unsafeIndex arr zeroIndex
@@ -319,8 +318,7 @@ maximum' = either throw id . maximumM
 --
 -- @since 0.3.0
 minimumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
-minimumM =
-  \arr ->
+minimumM arr =
     if isEmpty arr
       then throwM (SizeEmptyException (size arr))
       else let e0 = unsafeIndex arr zeroIndex

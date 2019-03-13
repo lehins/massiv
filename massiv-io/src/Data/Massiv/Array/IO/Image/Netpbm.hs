@@ -171,7 +171,7 @@ fromNetpbmImageUnsafe m n v = do
 
 
 showNetpbmCS :: Netpbm.PPM -> String
-showNetpbmCS Netpbm.PPM {ppmData} = do
+showNetpbmCS Netpbm.PPM {ppmData} =
   case ppmData of
     PbmPixelData _      -> "Image S X Bit"
     PgmPixelData8 _     -> "Image S Y Word8"

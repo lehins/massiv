@@ -399,7 +399,7 @@ palettizeRGB :: forall r e . (ColorSpace RGB e, Source r Ix2 (Pixel RGB e))
           => JP.PaletteOptions
           -> Image r RGB e
           -> Maybe (JP.Image JP.Pixel8, JP.Palette)
-palettizeRGB pal img = do
+palettizeRGB pal img =
   msum
     [ do Refl <- eqT :: Maybe (e :~: Word8)
          return $ palettize' img
@@ -817,7 +817,7 @@ fromDynamicImage jpDynImg =
 
 fromAnyDynamicImage :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
                        JP.DynamicImage -> Maybe (Image r cs e)
-fromAnyDynamicImage jpDynImg = do
+fromAnyDynamicImage jpDynImg = 
   case jpDynImg of
     JP.ImageY8 jimg     -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word8))     >>= toAnyCS
     JP.ImageY16 jimg    -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word16))    >>= toAnyCS
@@ -849,7 +849,7 @@ toAnyCS
   => Image r' cs' e' -> Maybe (Image r cs e)
 toAnyCS img =
   msum
-    [ (\Refl -> computeSource img) <$>
+    [ (\Refl -> convert img) <$>
       (eqT :: Maybe (Pixel cs' e' :~: Pixel cs e))
     , do Refl <- eqT :: Maybe (cs :~: Y)
          compute <$> elevate (M.map toPixelY img)
@@ -903,7 +903,7 @@ toJPImageUnsafe
   => Image r cs (JP.PixelBaseComponent a)
   -> JP.Image a
 toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toVector arrS where
-  !arrS = computeSource img :: Image S cs (JP.PixelBaseComponent a)
+  !arrS = convert img :: Image S cs (JP.PixelBaseComponent a)
   (m :. n) = unSz $ size img
 {-# INLINE toJPImageUnsafe #-}
 

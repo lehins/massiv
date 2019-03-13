@@ -9,7 +9,7 @@ import           Prelude                    as P
 import qualified Data.Massiv.Scheduler as S
 
 main :: IO ()
-main = do
+main = 
   defaultMain $ map (mkBench "return" return) [100, 10000, 100000]
 
 

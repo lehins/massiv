@@ -98,7 +98,7 @@ prop_KillBlockedCoworker :: Comp -> Property
 prop_KillBlockedCoworker comp =
   assertExceptionIO
     (== DivideByZero)
-    (withScheduler_ comp $ \scheduler -> do
+    (withScheduler_ comp $ \scheduler ->
        if numWorkers scheduler < 2
          then scheduleWork scheduler $ return ((1 :: Int) `div` (0 :: Int))
          else do
@@ -125,12 +125,12 @@ prop_ExpectAsyncException comp =
         case comp of
           Seq -> asyncExceptionFromException
           _ -> fromWorkerAsyncException
-   in (monadicIO $
-       run $
-       didAWorkerDie $
+   in (monadicIO .
+       run .
+       didAWorkerDie .
        withScheduler comp $ \s -> scheduleWork s (myThreadId >>= killThread >> pure False)) .&&.
-      (monadicIO $
-       run $ fmap not $ didAWorkerDie $ withScheduler Par $ \s -> scheduleWork s $ pure False)
+      (monadicIO .
+       run . fmap not . didAWorkerDie . withScheduler Par $ \s -> scheduleWork s $ pure False)
 
 spec :: Spec
 spec = do

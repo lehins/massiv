@@ -45,7 +45,7 @@ instance Show e => Show (Pixel YCbCr e) where
 instance Elevator e => ColorSpace YCbCr e where
   type Components YCbCr e = (e, e, e)
 
-  fromComponents !(y, b, r) = PixelYCbCr y b r
+  fromComponents (y, b, r) = PixelYCbCr y b r
   {-# INLINE fromComponents #-}
   toComponents (PixelYCbCr y b r) = (y, b, r)
   {-# INLINE toComponents #-}
@@ -88,14 +88,14 @@ instance Storable e => Storable (Pixel YCbCr e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let q = castPtr p
     y <- peek q
     b <- peekElemOff q 1
     r <- peekElemOff q 2
     return (PixelYCbCr y b r)
   {-# INLINE poke #-}
   poke !p (PixelYCbCr y b r) = do
-    q <- return $ castPtr p
+    let q = castPtr p
     pokeElemOff q 0 y
     pokeElemOff q 1 b
     pokeElemOff q 2 r
@@ -124,7 +124,7 @@ instance Show e => Show (Pixel YCbCrA e) where
 instance Elevator e => ColorSpace YCbCrA e where
   type Components YCbCrA e = (e, e, e, e)
 
-  fromComponents !(y, b, r, a) = PixelYCbCrA y b r a
+  fromComponents (y, b, r, a) = PixelYCbCrA y b r a
   {-# INLINE fromComponents #-}
   toComponents (PixelYCbCrA y b r a) = (y, b, r, a)
   {-# INLINE toComponents #-}
@@ -181,7 +181,7 @@ instance Storable e => Storable (Pixel YCbCrA e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let q = castPtr p
     y <- peekElemOff q 0
     b <- peekElemOff q 1
     r <- peekElemOff q 2
@@ -189,7 +189,7 @@ instance Storable e => Storable (Pixel YCbCrA e) where
     return (PixelYCbCrA y b r a)
   {-# INLINE peek #-}
   poke !p (PixelYCbCrA y b r a) = do
-    q <- return $ castPtr p
+    let q = castPtr p
     poke q y
     pokeElemOff q 1 b
     pokeElemOff q 2 r

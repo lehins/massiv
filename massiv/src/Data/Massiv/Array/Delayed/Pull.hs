@@ -92,7 +92,7 @@ instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e wher
 
 instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e where
 
-  unsafeInnerSlice !arr !(szL, _) !i =
+  unsafeInnerSlice !arr (szL, _) !i =
     DArray (dComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i))
   {-# INLINE unsafeInnerSlice #-}
 

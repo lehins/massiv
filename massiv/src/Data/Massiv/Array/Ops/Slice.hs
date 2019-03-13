@@ -144,7 +144,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 -- @since 0.1.0
 (<!?>) :: (MonadThrow m, Slice r ix e) => Array r ix e -> (Dim, Int) -> m (Elt r ix e)
-(<!?>) !arr !(dim, i) = do
+(<!?>) !arr (dim, i) = do
   (m, szl) <- pullOutSzM (size arr) dim
   unless (isSafeIndex m i) $ throwM $ IndexOutOfBoundsException m i
   start <- setDimM zeroIndex dim i

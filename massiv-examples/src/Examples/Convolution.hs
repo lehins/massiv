@@ -11,7 +11,7 @@ import           Data.Massiv.Array.Stencil
 
 
 arrLightIx2 :: Comp -> Ix2 -> Array D Ix2 Double
-arrLightIx2 comp arrSz = makeArray comp arrSz lightFunc
+arrLightIx2 comp arrSz = makeArray comp (Sz arrSz) lightFunc
     where lightFunc (i :. j) = sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Double)
 {-# INLINE arrLightIx2 #-}
 
