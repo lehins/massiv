@@ -29,9 +29,9 @@ import           GHC.Exts                           (inline)
 --
 -- > sobelX :: Num e => Stencil Ix2 e e
 -- > sobelX = makeConvolutionStencil (Sz2 3 3) (1 :. 1) $
--- >            \f -> f (-1 :. -1) 1 . f (-1 :. 1) (-1) .
--- >                  f ( 0 :. -1) 2 . f ( 0 :. 1) (-2) .
--- >                  f ( 1 :. -1) 1 . f ( 1 :. 1) (-1)
+-- >            \f -> f (-1 :. -1) (-1) . f (-1 :. 1) 1 .
+-- >                  f ( 0 :. -1) (-2) . f ( 0 :. 1) 2 .
+-- >                  f ( 1 :. -1) (-1) . f ( 1 :. 1) 1
 -- > {-# INLINE sobelX #-}
 --
 -- @since 0.1.0

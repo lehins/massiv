@@ -183,12 +183,14 @@ spec = do
   stencilConvolution
 
 sobelX :: Num e => (Ix2 -> e -> e -> e) -> e -> e
-sobelX f = f (-1 :. -1) 1 . f (-1 :. 1) (-1) .
-           f ( 0 :. -1) 2 . f ( 0 :. 1) (-2) .
-           f ( 1 :. -1) 1 . f ( 1 :. 1) (-1)
+sobelX f = f (-1 :. -1) (-1) . f (-1 :. 1) 1 .
+           f ( 0 :. -1) (-2) . f ( 0 :. 1) 2 .
+           f ( 1 :. -1) (-1) . f ( 1 :. 1) 1
 
 sobelKernelX :: Array U Ix2 Int
-sobelKernelX = [[1, 0, -1], [2, 0, -2], [1, 0, -1]]
+sobelKernelX = [ [-1, 0, 1]
+               , [-2, 0, 2]
+               , [-1, 0, 1] ]
 
 rotate180 :: (Num ix, Index ix) => Array U ix Int -> Array U ix Int
 rotate180 = computeAs U . transform' (\sz -> (sz, sz)) (\(Sz sz) f ix -> f (sz - 1 - ix))
