@@ -48,7 +48,7 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
   where
     !window =
       Window
-        { windowStart = sCenter
+        { windowStart = liftIndex2 min sCenter (unSz (Sz (liftIndex (subtract 1) (unSz sz))))
         , windowSize = Sz (liftIndex2 (-) (unSz sz) (liftIndex2 (-) (unSz sSz) (pureIndex 1)))
         , windowIndex = stencil (Just . unsafeIndex arr)
         }
@@ -60,7 +60,8 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
 
 
 -- | Similar to `Data.Massiv.Array.Stencil.makeStencil`, but there are no guarantees that the
--- stencil will not read out of bounds memory. This stencil is also a bit more powerful in that it gets an extar peice of information, namely the exact index for the element it is constructing.
+-- stencil will not read out of bounds memory. This stencil is also a bit more powerful in sense it
+-- gets an extra peice of information, namely the exact index for the element it is constructing.
 --
 -- @since 0.3.0
 makeUnsafeStencil

@@ -93,15 +93,15 @@ instance Functor (Array DW ix) where
 -- very usful for stencil mapping, where interior function does not perform
 -- boundary checks, thus significantly speeding up computation process.
 --
--- @since 0.1.3
-makeWindowedArray
+-- @since 0.3.0
+makeWindowedArrayM
   :: Source r ix e
   => Array r ix e -- ^ Source array that will have a window inserted into it
   -> ix -- ^ Start index for the window
   -> Sz ix -- ^ Size of the window
   -> (ix -> e) -- ^ Inside window indexing function
   -> Array DW ix e
-makeWindowedArray !arr !windowStart !windowSize windowIndex
+makeWindowedArrayM !arr !windowStart !windowSize windowIndex
   | not (isSafeIndex sz windowStart) =
     error $
     "makeWindowedArray: Incorrect window starting index: (" ++
@@ -122,8 +122,35 @@ makeWindowedArray !arr !windowStart !windowSize windowIndex
     DWArray {dwArray = delay arr, dwStencilSize = Nothing, dwWindow = Just $! Window {..}}
   where
     sz = size arr
-{-# INLINE makeWindowedArray #-}
+{-# INLINE makeWindowedArrayM #-}
 
+-- | Just like `makeWindowedArrayM`, but instead of failing it will scale down the window if it
+-- doesn't fit inside the array.
+makeWindowedArray
+  :: Source D ix e
+  => Array D ix e -- ^ Source array that will have a window inserted into it
+  -> ix -- ^ Start index for the window
+  -> Sz ix -- ^ Size of the window
+  -> (ix -> e) -- ^ Inside window indexing function
+  -> Array DW ix e
+makeWindowedArray !arr !wStart (Sz wSize) wIndex =
+  -- | not (isSafeIndex sz wStart) =
+  --   DWArray {dwArray = delay arr, dwStencilSize = Nothing, dwWindow = Nothing}
+  -- | otherwise =
+    DWArray
+      { dwArray = arr --delay arr
+      , dwStencilSize = Nothing
+      , dwWindow =
+          Just $!
+          Window
+            { windowStart = liftIndex2 min wStart (unSz (Sz (liftIndex (subtract 1) sz)))
+            , windowSize = Sz (liftIndex2 min wSize (liftIndex2 (-) sz wStart))
+            , windowIndex = wIndex
+            }
+      }
+  where
+    (Sz sz) = size arr
+{-# INLINE makeWindowedArray #-}
 
 -- | Get the `Window` from the Windowed array.
 --
@@ -289,7 +316,7 @@ loadArrayWithIx2 with arr stride sz uWrite = do
   let ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight =
         case mStencilSize of
-          Just (Sz (i :. _)) -> min (max 1 i) 7
+          Just (Sz (i :. _)) -> min i 7
           _                  -> 1
       strideIx@(is :. js) = unStride stride
       writeB !ix = uWrite (toLinearIndexStride stride sz ix) (indexB ix)
@@ -301,7 +328,7 @@ loadArrayWithIx2 with arr stride sz uWrite = do
   with $ iterM_ (strideStart stride (it :. 0)) (ib :. jt) strideIx (<) writeB
   with $ iterM_ (strideStart stride (it :. jb)) (ib :. n) strideIx (<) writeB
   f <-
-    if is > 1 -- Turn off unrolling for vertical strides
+    if is > 1 || blockHeight <= 1 -- Turn off unrolling for vertical strides
       then return $ \(it' :. ib') ->
              iterM_ (strideStart stride (it' :. jt)) (ib' :. jb) strideIx (<) writeW
       else return $ \(it' :. ib') ->

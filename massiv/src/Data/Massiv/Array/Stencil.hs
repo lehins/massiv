@@ -42,6 +42,11 @@ mapStencil ::
   -> Array r ix e -- ^ Source array
   -> Array DW ix a
 mapStencil b (Stencil sSz sCenter stencilF) !arr =
+  -- makeWindowedArray --TODO handle unrollAndJam
+  -- (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
+  -- sCenter
+  -- windowSz
+  -- (unValue . stencilF (Value . unsafeIndex arr))
   DWArray
     (DArray (getComp arr) sz (unValue . stencilF (Value . borderIndex b arr)))
     (Just sSz)
@@ -49,13 +54,13 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   where
     !window =
       Window
-        { windowStart = sCenter
-        , windowSize = windowSz
+        { windowStart = liftIndex2 min sCenter (unSz (Sz (liftIndex (subtract 1) (unSz sz))))
+        , windowSize = Sz (liftIndex2 min (unSz windowSz) (liftIndex2 (-) (unSz sz) sCenter))
         , windowIndex = unValue . stencilF (Value . unsafeIndex arr)
         }
     !sz = size arr
-    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex2 (-) (unSz sSz) (pureIndex 1)))
-{-# INLINE mapStencil #-}
+    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
+{-# inline mapStencil #-}
 
 
 -- | Construct a stencil from a function, which describes how to calculate the
