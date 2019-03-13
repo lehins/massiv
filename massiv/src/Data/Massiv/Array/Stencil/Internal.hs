@@ -136,7 +136,9 @@ instance Functor (Stencil ix e) where
 
 -- Profunctor
 
-
+-- | A Profunctor dimap. Same caviat applies as in `lmapStencil`
+--
+-- @since 0.2.3
 dimapStencil :: (c -> d) -> (a -> b) -> Stencil ix d a -> Stencil ix c b
 dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
@@ -144,7 +146,14 @@ dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'
     {-# INLINE sf' #-}
 {-# INLINE dimapStencil #-}
 
-
+-- | A contravariant map of a second type parameter. In other words map a function over each element
+-- of the array, that the stencil will be applied to.
+--
+-- __Note__: This map can be very inefficient, since for stencils larger than 1 element in size, the
+-- supllied function will be repetedly applied to the same element. It is better to simply map that
+-- function over the source array instead.
+--
+-- @since 0.2.3
 lmapStencil :: (c -> d) -> Stencil ix d a -> Stencil ix c a
 lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
@@ -152,6 +161,11 @@ lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
     {-# INLINE sf' #-}
 {-# INLINE lmapStencil #-}
 
+-- | A covariant map over the right most type argument. In other words a usual Functor `fmap`:
+--
+-- > fmap == rmapStencil
+--
+-- @since 0.2.3
 rmapStencil :: (a -> b) -> Stencil ix e a -> Stencil ix e b
 rmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where

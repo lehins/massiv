@@ -35,6 +35,8 @@ import           GHC.Exts                              (inline)
 
 -- | Map a constructed stencil over an array. Resulting array must be `compute`d in order to be
 -- useful.
+--
+-- @since 0.1.0
 mapStencil ::
      (Source r ix e, Manifest r ix e)
   => Border e -- ^ Border resolution technique
@@ -83,6 +85,7 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
 -- >      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
 -- > {-# INLINE average3x3Stencil #-}
 --
+-- @since 0.1.0
 makeStencil
   :: (Index ix, Default e)
   => Sz ix -- ^ Size of the stencil
@@ -99,6 +102,8 @@ makeStencil = makeStencilDef def
 {-# INLINE makeStencil #-}
 
 -- | Same as `makeStencil`, but with ability to specify default value for stencil validation.
+--
+-- @since 0.2.3
 makeStencilDef
   :: Index ix
   => e
