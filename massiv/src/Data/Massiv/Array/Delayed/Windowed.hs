@@ -94,14 +94,14 @@ instance Functor (Array DW ix) where
 -- boundary checks, thus significantly speeding up computation process.
 --
 -- @since 0.3.0
-makeWindowedArrayM
+_makeWindowedArrayM
   :: Source r ix e
   => Array r ix e -- ^ Source array that will have a window inserted into it
   -> ix -- ^ Start index for the window
   -> Sz ix -- ^ Size of the window
   -> (ix -> e) -- ^ Inside window indexing function
   -> Array DW ix e
-makeWindowedArrayM !arr !windowStart !windowSize windowIndex
+_makeWindowedArrayM !arr !windowStart !windowSize windowIndex
   | not (isSafeIndex sz windowStart) =
     error $
     "makeWindowedArray: Incorrect window starting index: (" ++
@@ -122,32 +122,31 @@ makeWindowedArrayM !arr !windowStart !windowSize windowIndex
     DWArray {dwArray = delay arr, dwStencilSize = Nothing, dwWindow = Just $! Window {..}}
   where
     sz = size arr
-{-# INLINE makeWindowedArrayM #-}
+{-# INLINE _makeWindowedArrayM #-}
 
--- | Just like `makeWindowedArrayM`, but instead of failing it will scale down the window if it
+-- Just like `makeWindowedArrayM`, but instead of failing it will scale down the window if it
 -- doesn't fit inside the array.
+--
+-- @since 0.1.3
 makeWindowedArray
-  :: Source D ix e
-  => Array D ix e -- ^ Source array that will have a window inserted into it
+  :: Source r ix e
+  => Array r ix e -- ^ Source array that will have a window inserted into it
   -> ix -- ^ Start index for the window
   -> Sz ix -- ^ Size of the window
   -> (ix -> e) -- ^ Inside window indexing function
   -> Array DW ix e
 makeWindowedArray !arr !wStart (Sz wSize) wIndex =
-  -- | not (isSafeIndex sz wStart) =
-  --   DWArray {dwArray = delay arr, dwStencilSize = Nothing, dwWindow = Nothing}
-  -- | otherwise =
-    DWArray
-      { dwArray = arr --delay arr
-      , dwStencilSize = Nothing
-      , dwWindow =
-          Just $!
-          Window
-            { windowStart = liftIndex2 min wStart (unSz (Sz (liftIndex (subtract 1) sz)))
-            , windowSize = Sz (liftIndex2 min wSize (liftIndex2 (-) sz wStart))
-            , windowIndex = wIndex
-            }
-      }
+  DWArray
+    { dwArray = delay arr
+    , dwStencilSize = Nothing
+    , dwWindow =
+        Just $!
+        Window
+          { windowStart = liftIndex2 min wStart (unSz (Sz (liftIndex (subtract 1) sz)))
+          , windowSize = Sz (liftIndex2 min wSize (liftIndex2 (-) sz wStart))
+          , windowIndex = wIndex
+          }
+    }
   where
     (Sz sz) = size arr
 {-# INLINE makeWindowedArray #-}

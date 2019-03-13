@@ -62,7 +62,7 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
         }
     !sz = size arr
     !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
-{-# inline mapStencil #-}
+{-# INLINE mapStencil #-}
 
 
 -- | Construct a stencil from a function, which describes how to calculate the

@@ -822,7 +822,7 @@ swap marr ix1 ix2 = do
 {-# INLINE swap #-}
 
 
--- | /O(1)/ - Same as `reaswap`, but throws an `IndexOutOfBoundsException` on invalid indices.
+-- | /O(1)/ - Same as `swap`, but throws an `IndexOutOfBoundsException` on invalid indices.
 swap' ::
      (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
 swap' marr ix1 ix2 =
