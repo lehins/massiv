@@ -48,10 +48,11 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
   where
     !window =
       Window
-        { windowStart = sCenter
-        , windowSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
+        { windowStart = liftIndex2 min sCenter (liftIndex (max 0) (liftIndex (subtract 1) sz))
+        , windowSize = liftIndex (max 0) (liftIndex2 min windowSz (liftIndex2 (-) sz sCenter))
         , windowIndex = stencil (Just . unsafeIndex arr)
         }
+    !windowSz = liftIndex (max 0) (liftIndex2 (-) sz (liftIndex (subtract 1) sSz))
     stencil getVal !ix = inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
     !sz = size arr

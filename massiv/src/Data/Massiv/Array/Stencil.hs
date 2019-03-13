@@ -49,10 +49,11 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr =
   where
     !window =
       Window
-        { windowStart = sCenter
-        , windowSize = liftIndex2 (-) sz (liftIndex2 (-) sSz (pureIndex 1))
+        { windowStart = liftIndex2 min sCenter (liftIndex (max 0) (liftIndex (subtract 1) sz))
+        , windowSize = liftIndex (max 0) (liftIndex2 min windowSz (liftIndex2 (-) sz sCenter))
         , windowIndex = unValue . stencilF (Value . unsafeIndex arr)
         }
+    !windowSz = liftIndex (max 0) (liftIndex2 (-) sz (liftIndex (subtract 1) sSz))
     !sz = size arr
 {-# INLINE mapStencil #-}
 
