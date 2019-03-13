@@ -37,13 +37,13 @@ instance (Index ix, Arbitrary ix) => Arbitrary (SzNE ix) where
 instance (Index ix, Arbitrary ix) => Arbitrary (Stride ix) where
   arbitrary = do
     Positive (Small x) <- arbitrary
-    Stride <$> liftIndex ((+1) . (`mod` (min 6 x))) <$> arbitrary
+    Stride . liftIndex ((+1) . (`mod` (min 6 x))) <$> arbitrary
 
 instance (Index ix, Arbitrary ix) => Arbitrary (SzIx ix) where
   arbitrary = do
     SzNE sz <- arbitrary
     -- Make sure index is within bounds:
-    SzIx sz <$> flip (liftIndex2 mod) (unSz sz) <$> arbitrary
+    SzIx sz . flip (liftIndex2 mod) (unSz sz) <$> arbitrary
 
 
 instance Arbitrary e => Arbitrary (Border e) where

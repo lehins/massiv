@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -130,9 +129,9 @@ instance ColorSpace cs e => Num (Pixel cs e) where
   {-# INLINE (-) #-}
   (*)         = liftA2 (*)
   {-# INLINE (*) #-}
-  abs         = liftA abs
+  abs         = fmap abs
   {-# INLINE abs #-}
-  signum      = liftA signum
+  signum      = fmap signum
   {-# INLINE signum #-}
   fromInteger = promote . fromInteger
   {-# INLINE fromInteger #-}
@@ -141,7 +140,7 @@ instance ColorSpace cs e => Num (Pixel cs e) where
 instance (ColorSpace cs e, Fractional e) => Fractional (Pixel cs e) where
   (/)          = liftA2 (/)
   {-# INLINE (/) #-}
-  recip        = liftA recip
+  recip        = fmap recip
   {-# INLINE recip #-}
   fromRational = promote . fromRational
   {-# INLINE fromRational #-}
@@ -150,29 +149,29 @@ instance (ColorSpace cs e, Fractional e) => Fractional (Pixel cs e) where
 instance (ColorSpace cs e, Floating e) => Floating (Pixel cs e) where
   pi      = promote pi
   {-# INLINE pi #-}
-  exp     = liftA exp
+  exp     = fmap exp
   {-# INLINE exp #-}
-  log     = liftA log
+  log     = fmap log
   {-# INLINE log #-}
-  sin     = liftA sin
+  sin     = fmap sin
   {-# INLINE sin #-}
-  cos     = liftA cos
+  cos     = fmap cos
   {-# INLINE cos #-}
-  asin    = liftA asin
+  asin    = fmap asin
   {-# INLINE asin #-}
-  atan    = liftA atan
+  atan    = fmap atan
   {-# INLINE atan #-}
-  acos    = liftA acos
+  acos    = fmap acos
   {-# INLINE acos #-}
-  sinh    = liftA sinh
+  sinh    = fmap sinh
   {-# INLINE sinh #-}
-  cosh    = liftA cosh
+  cosh    = fmap cosh
   {-# INLINE cosh #-}
-  asinh   = liftA asinh
+  asinh   = fmap asinh
   {-# INLINE asinh #-}
-  atanh   = liftA atanh
+  atanh   = fmap atanh
   {-# INLINE atanh #-}
-  acosh   = liftA acosh
+  acosh   = fmap acosh
   {-# INLINE acosh #-}
 
 instance (ColorSpace cs e, Bounded e) => Bounded (Pixel cs e) where

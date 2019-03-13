@@ -46,7 +46,7 @@ instance Elevator e => ColorSpace HSI e where
 
   toComponents (PixelHSI h s i) = (h, s, i)
   {-# INLINE toComponents #-}
-  fromComponents !(h, s, i) = PixelHSI h s i
+  fromComponents (h, s, i) = PixelHSI h s i
   {-# INLINE fromComponents #-}
   getPxC (PixelHSI h _ _) HueHSI = h
   getPxC (PixelHSI _ s _) SatHSI = s
@@ -89,14 +89,14 @@ instance Storable e => Storable (Pixel HSI e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     r <- peek q
     g <- peekElemOff q 1
     b <- peekElemOff q 2
     return (PixelHSI r g b)
   {-# INLINE peek #-}
   poke !p (PixelHSI r g b) = do
-    q <- return $ castPtr p
+    let !q =  castPtr p
     poke q r
     pokeElemOff q 1 g
     pokeElemOff q 2 b
@@ -126,7 +126,7 @@ instance Elevator e => ColorSpace HSIA e where
 
   toComponents (PixelHSIA h s i a) = (h, s, i, a)
   {-# INLINE toComponents #-}
-  fromComponents !(h, s, i, a) = PixelHSIA h s i a
+  fromComponents (h, s, i, a) = PixelHSIA h s i a
   {-# INLINE fromComponents #-}
   getPxC (PixelHSIA h _ _ _) HueHSIA   = h
   getPxC (PixelHSIA _ s _ _) SatHSIA   = s
@@ -180,7 +180,7 @@ instance Storable e => Storable (Pixel HSIA e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     h <- peek q
     s <- peekElemOff q 1
     i <- peekElemOff q 2
@@ -188,7 +188,7 @@ instance Storable e => Storable (Pixel HSIA e) where
     return (PixelHSIA h s i a)
   {-# INLINE peek #-}
   poke !p (PixelHSIA h s i a) = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     poke q h
     pokeElemOff q 1 s
     pokeElemOff q 2 i

@@ -338,7 +338,7 @@ fromRaggedArrayM arr =
    in either (\(e :: ShapeException) -> throwM e) pure $
       unsafePerformIO $
       try $
-      createArray_ (getComp arr) sz $ \_numWorkers scheduleWork' marr -> do
+      createArray_ (getComp arr) sz $ \_numWorkers scheduleWork' marr ->
         loadRagged scheduleWork' (unsafeLinearWrite marr) 0 (totalElem sz) sz arr
 {-# INLINE fromRaggedArrayM #-}
 

@@ -177,7 +177,7 @@ instance (Index ix, Prim e) => Mutable P ix e where
           !eSize = sizeOf (undefined :: e)
   {-# INLINE unsafeNew #-}
 
-  initialize (MPArray sz mba) = do
+  initialize (MPArray sz mba) =
     fillByteArray mba 0 (totalElem sz * sizeOf (undefined :: e)) 0
   {-# INLINE initialize #-}
 

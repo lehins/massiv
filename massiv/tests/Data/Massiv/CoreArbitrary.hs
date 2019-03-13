@@ -122,8 +122,7 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
          Arbitrary (ArrS r ix e) where
   arbitrary = do
     SzNE sz <- arbitrary
-    func <- arbitrary
-    return $ ArrS $ makeArray Seq sz func
+    ArrS . makeArray Seq sz <$> arbitrary
 
 instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary e) =>
          Arbitrary (ArrP r ix e) where

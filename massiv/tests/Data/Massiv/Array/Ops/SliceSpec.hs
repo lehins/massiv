@@ -9,7 +9,7 @@ module Data.Massiv.Array.Ops.SliceSpec (spec) where
 import           Data.Massiv.Array.Unsafe
 import           Data.Massiv.CoreArbitrary
 import           Control.Exception
-
+import           Control.Applicative ((<|>))
 -----------
 -- Size --
 -----------
@@ -26,7 +26,7 @@ prop_ExtractEqualsExtractFromTo ::
   -> Array r ix e
   -> Property
 prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
-  maybe Nothing Just (extractFromToM sIx eIx arr) === extractM sIx (Sz (liftIndex2 (-) eIx sIx)) arr
+  (extractFromToM sIx eIx arr <|> Nothing) === extractM sIx (Sz (liftIndex2 (-) eIx sIx)) arr
 
 
 specSizeN ::

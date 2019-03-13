@@ -166,13 +166,13 @@ instance Storable e => Storable (Pixel YA e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let q = castPtr p
     y <- peekElemOff q 0
     a <- peekElemOff q 1
     return (PixelYA y a)
   {-# INLINE peek #-}
   poke !p (PixelYA y a) = do
-    q <- return $ castPtr p
+    let q = castPtr p
     pokeElemOff q 0 y
     pokeElemOff q 1 a
   {-# INLINE poke #-}

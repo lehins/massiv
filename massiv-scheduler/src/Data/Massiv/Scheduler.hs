@@ -176,7 +176,7 @@ withScheduler comp submitWork = do
   sWorkersCounterRef <- liftIO $ newIORef sNumWorkers
   sJQueue <- newJQueue
   sJobsCountRef <- liftIO $ newIORef 0
-  workDoneMVar <- liftIO $ newEmptyMVar
+  workDoneMVar <- liftIO newEmptyMVar
   let scheduler = Scheduler {..}
       onRetire = dropCounterOnZero sWorkersCounterRef $ liftIO (putMVar workDoneMVar Nothing)
   -- / Wait for the initial jobs to get scheduled before spawining off the workers, otherwise it would
@@ -233,7 +233,7 @@ withScheduler_ comp = void . withScheduler comp
 -- | Specialized exception handler for the work scheduler.
 handleWorkerException ::
   MonadIO m => JQueue m a -> MVar (Maybe SomeException) -> Int -> SomeException -> m ()
-handleWorkerException jQueue workDoneMVar nWorkers exc = do
+handleWorkerException jQueue workDoneMVar nWorkers exc =
   case fromException exc of
     Just wexc | WorkerTerminateException <- wexc -> return ()
       -- \ some co-worker died, we can just move on with our death.

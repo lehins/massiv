@@ -76,14 +76,14 @@ newtype JQueue m a =
 
 newJQueue :: MonadIO m => m (JQueue m a)
 newJQueue = do
-  newBaton <- liftIO $ newEmptyMVar
+  newBaton <- liftIO newEmptyMVar
   queueRef <- liftIO $ newIORef (emptyQueue, [], newBaton)
   return $ JQueue queueRef
 
 
 pushJQueue :: MonadIO m => JQueue m a -> Job m a -> m ()
 pushJQueue (JQueue jQueueRef) job = do
-  newBaton <- liftIO $ newEmptyMVar
+  newBaton <- liftIO newEmptyMVar
   join $
     liftIO $ atomicModifyIORefCAS
       jQueueRef
@@ -97,7 +97,7 @@ pushJQueue (JQueue jQueueRef) job = do
 
 
 popJQueue :: MonadIO m => JQueue m a -> m (Maybe (m ()))
-popJQueue (JQueue jQueueRef) = liftIO $ inner
+popJQueue (JQueue jQueueRef) = liftIO inner
   where
     inner =
       join $

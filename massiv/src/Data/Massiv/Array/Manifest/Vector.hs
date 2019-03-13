@@ -31,6 +31,7 @@ import           Data.Massiv.Array.Manifest.Storable
 import           Data.Massiv.Array.Manifest.Unboxed
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core.Common
+import           Data.Maybe                             (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                            as VB
 import qualified Data.Vector.Generic                    as VG
@@ -189,8 +190,8 @@ toVector ::
   => Array r ix e
   -> v e
 toVector arr =
-  case castToVector (convert arr :: Array (ARepr v) ix e) of
-    Just v  -> v
-    Nothing -> VG.generate (totalElem (size arr)) (unsafeLinearIndex arr)
+  fromMaybe
+    (VG.generate (totalElem (size arr)) (unsafeLinearIndex arr))
+    (castToVector (convert arr :: Array (ARepr v) ix e))
 {-# NOINLINE toVector #-}
 

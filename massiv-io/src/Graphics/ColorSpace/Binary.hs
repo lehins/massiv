@@ -92,11 +92,11 @@ instance Bits (Pixel X Bit) where
   {-# INLINE (.|.) #-}
   xor = liftA2 xor
   {-# INLINE xor #-}
-  complement = liftA complement
+  complement = fmap complement
   {-# INLINE complement #-}
-  shift !b !n = liftA (`shift` n) b
+  shift !b !n = fmap (`shift` n) b
   {-# INLINE shift #-}
-  rotate !b !n = liftA (`rotate` n) b
+  rotate !b !n = fmap (`rotate` n) b
   {-# INLINE rotate #-}
   zeroBits = pure zeroBits
   {-# INLINE zeroBits #-}
@@ -236,12 +236,12 @@ instance Storable Bit where
   alignment _ = alignment (undefined :: Word8)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     b <- peek q
     return (Bit b)
   {-# INLINE peek #-}
   poke !p (Bit b) = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     poke q b
   {-# INLINE poke #-}
 

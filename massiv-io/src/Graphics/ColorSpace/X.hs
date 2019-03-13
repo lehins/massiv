@@ -92,12 +92,12 @@ instance Storable e => Storable (Pixel X e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let q = castPtr p
     g <- peek q
     return (PixelX g)
   {-# INLINE peek #-}
   poke !p (PixelX g) = do
-    q <- return $ castPtr p
+    let q = castPtr p
     poke q g
   {-# INLINE poke #-}
 

@@ -44,7 +44,7 @@ instance Elevator e => ColorSpace RGB e where
 
   toComponents (PixelRGB r g b) = (r, g, b)
   {-# INLINE toComponents #-}
-  fromComponents !(r, g, b) = PixelRGB r g b
+  fromComponents (r, g, b) = PixelRGB r g b
   {-# INLINE fromComponents #-}
   getPxC (PixelRGB r _ _) RedRGB   = r
   getPxC (PixelRGB _ g _) GreenRGB = g
@@ -117,7 +117,7 @@ instance Elevator e => ColorSpace RGBA e where
 
   toComponents (PixelRGBA r g b a) = (r, g, b, a)
   {-# INLINE toComponents #-}
-  fromComponents !(r, g, b, a) = PixelRGBA r g b a
+  fromComponents (r, g, b, a) = PixelRGBA r g b a
   {-# INLINE fromComponents #-}
   getPxC (PixelRGBA r _ _ _) RedRGBA   = r
   getPxC (PixelRGBA _ g _ _) GreenRGBA = g
@@ -167,14 +167,14 @@ instance Storable e => Storable (Pixel RGBA e) where
   sizeOf _ = 4 * sizeOf (undefined :: e)
   alignment _ = alignment (undefined :: e)
   peek p = do
-    q <- return $ castPtr p
+    let q = castPtr p
     r <- peek q
     g <- peekElemOff q 1
     b <- peekElemOff q 2
     a <- peekElemOff q 3
     return (PixelRGBA r g b a)
   poke p (PixelRGBA r g b a) = do
-    q <- return $ castPtr p
+    let q = castPtr p
     poke q r
     pokeElemOff q 1 g
     pokeElemOff q 2 b

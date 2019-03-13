@@ -45,7 +45,7 @@ data instance Pixel CMYK e = PixelCMYK !e !e !e !e deriving (Eq, Ord)
 instance Elevator e => ColorSpace CMYK e where
   type Components CMYK e = (e, e, e, e)
 
-  fromComponents !(c, m, y, k) = PixelCMYK c m y k
+  fromComponents (c, m, y, k) = PixelCMYK c m y k
   {-# INLINE fromComponents #-}
   toComponents (PixelCMYK c m y k) = (c, m, y, k)
   {-# INLINE toComponents #-}
@@ -133,7 +133,7 @@ instance Show e => Show (Pixel CMYKA e) where
 instance Elevator e => ColorSpace CMYKA e where
   type Components CMYKA e = (e, e, e, e, e)
 
-  fromComponents !(c, m, y, k, a) = PixelCMYKA c m y k a
+  fromComponents (c, m, y, k, a) = PixelCMYKA c m y k a
   {-# INLINE fromComponents #-}
   toComponents (PixelCMYKA c m y k a) = (c, m, y, k, a)
   {-# INLINE toComponents #-}
@@ -195,7 +195,7 @@ instance Storable e => Storable (Pixel CMYKA e) where
   alignment _ = alignment (undefined :: e)
   {-# INLINE alignment #-}
   peek !p = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     c <- peek q
     m <- peekElemOff q 1
     y <- peekElemOff q 2
@@ -204,7 +204,7 @@ instance Storable e => Storable (Pixel CMYKA e) where
     return (PixelCMYKA c m y k a)
   {-# INLINE peek #-}
   poke !p (PixelCMYKA c m y k a) = do
-    q <- return $ castPtr p
+    let !q = castPtr p
     poke q c
     pokeElemOff q 1 m
     pokeElemOff q 2 y
