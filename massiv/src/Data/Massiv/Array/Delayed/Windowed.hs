@@ -91,39 +91,39 @@ instance Functor (Array DW ix) where
   {-# INLINE fmap #-}
 
 
--- |
+--
 --
 -- @since 0.3.0
-_makeWindowedArrayM
-  :: Source r ix e
-  => Array r ix e -- ^ Source array that will have a window inserted into it
-  -> ix -- ^ Start index for the window
-  -> Sz ix -- ^ Size of the window
-  -> (ix -> e) -- ^ Inside window indexing function
-  -> Array DW ix e
-_makeWindowedArrayM !arr !windowStart !windowSize windowIndex
-  | not (isSafeIndex sz windowStart) =
-    error $
-    "makeWindowedArray: Incorrect window starting index: (" ++
-    show windowStart ++ ") for array size: (" ++ show (size arr) ++ ")"
-  | totalElem windowSize == 0 =
-    error $
-    "makeWindowedArray: Window can't hold any elements with this size: (" ++ show windowSize ++ ")"
-  | not
-     (isSafeIndex
-        (Sz (liftIndex (+ 1) (unSz sz)))
-        (liftIndex2 (+) windowStart (unSz windowSize))) =
-    error $
-    "makeWindowedArray: Incorrect window size: (" ++
-    show windowSize ++
-    ") and/or starting index: (" ++
-    show windowStart ++ ") for array size: (" ++ show (size arr) ++ ")"
-  | otherwise =
-    DWArray {dwArray = delay arr, dwWindow = Just $! Window {..}}
-  where
-    windowUnrollIx2 = Nothing
-    sz = size arr
-{-# INLINE _makeWindowedArrayM #-}
+-- _makeWindowedArrayM
+--   :: Source r ix e
+--   => Array r ix e -- ^ Source array that will have a window inserted into it
+--   -> ix -- ^ Start index for the window
+--   -> Sz ix -- ^ Size of the window
+--   -> (ix -> e) -- ^ Inside window indexing function
+--   -> Array DW ix e
+-- _makeWindowedArrayM !arr !windowStart !windowSize windowIndex
+--   | not (isSafeIndex sz windowStart) =
+--     error $
+--     "makeWindowedArray: Incorrect window starting index: (" ++
+--     show windowStart ++ ") for array size: (" ++ show (size arr) ++ ")"
+--   | totalElem windowSize == 0 =
+--     error $
+--     "makeWindowedArray: Window can't hold any elements with this size: (" ++ show windowSize ++ ")"
+--   | not
+--      (isSafeIndex
+--         (Sz (liftIndex (+ 1) (unSz sz)))
+--         (liftIndex2 (+) windowStart (unSz windowSize))) =
+--     error $
+--     "makeWindowedArray: Incorrect window size: (" ++
+--     show windowSize ++
+--     ") and/or starting index: (" ++
+--     show windowStart ++ ") for array size: (" ++ show (size arr) ++ ")"
+--   | otherwise =
+--     DWArray {dwArray = delay arr, dwWindow = Just $! Window {..}}
+--   where
+--     windowUnrollIx2 = Nothing
+--     sz = size arr
+-- {-# INLINE _makeWindowedArrayM #-}
 
 -- | Construct a delayed windowed array by supply a separate element producing function for the
 -- interior of an array. This is very usful for stencil mapping, where interior function does not

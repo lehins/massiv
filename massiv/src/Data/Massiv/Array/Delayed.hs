@@ -7,18 +7,25 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Delayed
-  ( D(..)
+  ( -- * Delayed
+  -- ** Delayed Pull Array
+    D(..)
   , delay
+  -- ** Delayed Push Array
   , DL(..)
   , toLoadArray
   , makeLoadArray
   , fromStrideLoad
+  -- ** Delayed Interleaved Array
   , DI(..)
   , toInterleaved
   , fromInterleaved
+  -- ** Delayed Windowed Array
   , DW(..)
   , Window(..)
+  , insertWindow
   , getWindow
+  , dropWindow
   , makeWindowedArray
   ) where
 

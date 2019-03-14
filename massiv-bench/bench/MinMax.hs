@@ -17,13 +17,13 @@ main = do
         [ env (return (arrRLightIx2 U Seq sz)) $ \arr ->
             bgroup
               "Seq"
-              [ bench "minimum" $ whnf A.minimum arr
+              [ bench "minimum" $ whnf A.minimum' arr
               , bench "foldSemi" $ whnf (getMin . foldSemi Min (Min (arr ! 0))) arr
               ]
         , env (return (arrRLightIx2 U Par sz)) $ \arr ->
             bgroup
               "Par"
-              [ bench "minimum" $ whnf A.minimum arr
+              [ bench "minimum" $ whnf A.minimum' arr
               , bench "foldSemi" $ whnf (getMin . foldSemi Min (Min (arr ! 0))) arr
               ]
         ]
@@ -32,13 +32,13 @@ main = do
         [ env (return (arrRLightIx2 U Seq sz)) $ \arr ->
             bgroup
               "Seq"
-              [ bench "maximum" $ whnf A.maximum arr
+              [ bench "maximum" $ whnf A.maximum' arr
               , bench "foldSemi" $ whnf (getMax . foldSemi Max (Max (arr ! 0))) arr
               ]
         , env (return (arrRLightIx2 U Par sz)) $ \arr ->
             bgroup
               "Par"
-              [ bench "maximum" $ whnf A.maximum arr
+              [ bench "maximum" $ whnf A.maximum' arr
               , bench "foldSemi" $ whnf (getMax . foldSemi Max (Max (arr ! 0))) arr
               ]
         ]

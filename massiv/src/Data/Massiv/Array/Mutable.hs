@@ -48,17 +48,18 @@ module Data.Massiv.Array.Mutable
   , generateArrayS
   , generateArrayLinearS
   -- *** Unfold
-  , unfoldrPrim_
-  , iunfoldrPrim_
-  , unfoldrPrim
-  , iunfoldrPrim
-  , unfoldlPrim_
-  , iunfoldlPrim_
-  , unfoldlPrim
-  , iunfoldlPrim
+  , unfoldrPrimM_
+  , iunfoldrPrimM_
+  , unfoldrPrimM
+  , iunfoldrPrimM
+  , unfoldlPrimM_
+  , iunfoldlPrimM_
+  , unfoldlPrimM
+  , iunfoldlPrimM
   -- *** Mapping
-  , forPrim_
-  , iforPrim_
+  , forPrimM_
+  , iforPrimM_
+  , iforLinearPrimM_
   -- *** Modify
   , withMArray
   , withMArrayST
@@ -497,7 +498,7 @@ generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
 -- each element of the array.
 --
 -- >>> import Data.Massiv.Array
--- >>> unfoldrPrim_ Seq  (Sz1 10) (\a@(f0, f1) -> let fn = f0 + f1 in print a >> return (f0, (f1, fn))) (0, 1) :: IO (Array P Ix1 Int)
+-- >>> unfoldrPrimM_ Seq  (Sz1 10) (\a@(f0, f1) -> let fn = f0 + f1 in print a >> return (f0, (f1, fn))) (0, 1) :: IO (Array P Ix1 Int)
 -- (0,1)
 -- (1,1)
 -- (1,2)
@@ -513,68 +514,68 @@ generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
 --
 -- @since 0.3.0
 --
-unfoldrPrim_ ::
+unfoldrPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
-unfoldrPrim_ comp sz gen acc0 = snd <$> unfoldrPrim comp sz gen acc0
-{-# INLINE unfoldrPrim_ #-}
+unfoldrPrimM_ comp sz gen acc0 = snd <$> unfoldrPrimM comp sz gen acc0
+{-# INLINE unfoldrPrimM_ #-}
 
 -- | Same as `unfoldrPrim_` but do the unfolding with index aware function.
 --
 -- @since 0.3.0
 --
-iunfoldrPrim_ ::
+iunfoldrPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
-iunfoldrPrim_ comp sz gen acc0 = snd <$> iunfoldrPrim comp sz gen acc0
-{-# INLINE iunfoldrPrim_ #-}
+iunfoldrPrimM_ comp sz gen acc0 = snd <$> iunfoldrPrimM comp sz gen acc0
+{-# INLINE iunfoldrPrimM_ #-}
 
 
 -- | Just like `iunfoldrPrim_`, but also returns the final value of the accumulator.
 --
 -- @since 0.3.0
-iunfoldrPrim ::
+iunfoldrPrimM ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)
-iunfoldrPrim comp sz gen acc0 =
+iunfoldrPrimM comp sz gen acc0 =
   createArrayS comp sz $ \marr ->
     let sz' = msize marr
      in iterLinearM sz' 0 (totalElem sz') 1 (<) acc0 $ \i ix acc -> do
           (e, acc') <- gen acc ix
           unsafeLinearWrite marr i e
           return acc'
-{-# INLINE iunfoldrPrim #-}
+{-# INLINE iunfoldrPrimM #-}
 
--- | Just like `iunfoldrPrim`, but do the unfolding with index aware function.
+-- | Just like `iunfoldrPrimM`, but do the unfolding with index aware function.
 --
 -- @since 0.3.0
-unfoldrPrim ::
+unfoldrPrimM ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)
-unfoldrPrim comp sz gen acc0 =
+unfoldrPrimM comp sz gen acc0 =
   createArrayS comp sz $ \marr ->
     let sz' = msize marr
      in loopM 0 (< totalElem sz') (+1) acc0 $ \i acc -> do
           (e, acc') <- gen acc
           unsafeLinearWrite marr i e
           return acc'
-{-# INLINE unfoldrPrim #-}
+{-# INLINE unfoldrPrimM #-}
 
 -- | Sequentially unfold an array from the left.
 --
@@ -584,7 +585,7 @@ unfoldrPrim comp sz gen acc0 =
 -- the accumulator for each element of the array.
 --
 -- >>> import Data.Massiv.Array
--- >>> unfoldlPrim_ Seq  (Sz1 10) (\a@(f0, f1) -> let fn = f0 + f1 in print a >> return ((f1, fn), f0)) (0, 1) :: IO (Array P Ix1 Int)
+-- >>> unfoldlPrimM_ Seq  (Sz1 10) (\a@(f0, f1) -> let fn = f0 + f1 in print a >> return ((f1, fn), f0)) (0, 1) :: IO (Array P Ix1 Int)
 -- (0,1)
 -- (1,1)
 -- (1,2)
@@ -600,95 +601,95 @@ unfoldrPrim comp sz gen acc0 =
 --
 -- @since 0.3.0
 --
-unfoldlPrim_ ::
+unfoldlPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
-unfoldlPrim_ comp sz gen acc0 = snd <$> unfoldlPrim comp sz gen acc0
-{-# INLINE unfoldlPrim_ #-}
+unfoldlPrimM_ comp sz gen acc0 = snd <$> unfoldlPrimM comp sz gen acc0
+{-# INLINE unfoldlPrimM_ #-}
 
--- | Same as `unfoldlPrim_` but do the unfolding with index aware function.
+-- | Same as `unfoldlPrimM_` but do the unfolding with index aware function.
 --
 -- @since 0.3.0
 --
-iunfoldlPrim_ ::
+iunfoldlPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (Array r ix e)
-iunfoldlPrim_ comp sz gen acc0 = snd <$> iunfoldlPrim comp sz gen acc0
-{-# INLINE iunfoldlPrim_ #-}
+iunfoldlPrimM_ comp sz gen acc0 = snd <$> iunfoldlPrimM comp sz gen acc0
+{-# INLINE iunfoldlPrimM_ #-}
 
 
--- | Just like `iunfoldlPrim_`, but also returns the final value of the accumulator.
+-- | Just like `iunfoldlPrimM_`, but also returns the final value of the accumulator.
 --
 -- @since 0.3.0
-iunfoldlPrim ::
+iunfoldlPrimM ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)
-iunfoldlPrim comp sz gen acc0 =
+iunfoldlPrimM comp sz gen acc0 =
   createArrayS comp sz $ \marr ->
     let sz' = msize marr
      in iterLinearM sz' (totalElem sz' - 1) 0 (negate 1) (>=) acc0 $ \i ix acc -> do
           (acc', e) <- gen acc ix
           unsafeLinearWrite marr i e
           return acc'
-{-# INLINE iunfoldlPrim #-}
+{-# INLINE iunfoldlPrimM #-}
 
--- | Just like `iunfoldlPrim`, but do the unfolding with index aware function.
+-- | Just like `iunfoldlPrimM`, but do the unfolding with index aware function.
 --
 -- @since 0.3.0
-unfoldlPrim ::
+unfoldlPrimM ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Comp -- ^ Computation strategy (ignored during initial creation)
   -> Sz ix -- ^ Size of the desired array
   -> (a -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
   -> m (a, Array r ix e)
-unfoldlPrim comp sz gen acc0 =
+unfoldlPrimM comp sz gen acc0 =
   createArrayS comp sz $ \marr ->
     let sz' = msize marr
      in loopDeepM 0 (< totalElem sz') (+1) acc0 $ \i acc -> do
           (acc', e) <- gen acc
           unsafeLinearWrite marr i e
           return acc'
-{-# INLINE unfoldlPrim #-}
+{-# INLINE unfoldlPrimM #-}
 
 
 -- | Sequentially loop over a mutable array while modifying each element with an action.
 --
 -- @since 0.3.0
-forPrim_ :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
-forPrim_ marr f =
+forPrimM_ :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
+forPrimM_ marr f =
   loopM_ 0 (< totalElem (msize marr)) (+1) (unsafeLinearModify marr (const f))
-{-# INLINE forPrim_ #-}
+{-# INLINE forPrimM_ #-}
 
 
 -- | Sequentially loop over a mutable array while modifying each element with an index aware action.
 --
 -- @since 0.3.0
-iforPrim_ ::
+iforPrimM_ ::
      (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (ix -> e -> m e) -> m ()
-iforPrim_ marr f = iforLinearPrim_ marr (f . fromLinearIndex (msize marr))
-{-# INLINE iforPrim_ #-}
+iforPrimM_ marr f = iforLinearPrimM_ marr (f . fromLinearIndex (msize marr))
+{-# INLINE iforPrimM_ #-}
 
 
 -- | Sequentially loop over a mutable array while modifying each element with an index aware action.
 --
 -- @since 0.3.0
-iforLinearPrim_ ::
+iforLinearPrimM_ ::
      (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (Int -> e -> m e) -> m ()
-iforLinearPrim_ marr f = loopM_ 0 (< totalElem (msize marr)) (+ 1) (unsafeLinearModify marr f)
-{-# INLINE iforLinearPrim_ #-}
+iforLinearPrimM_ marr f = loopM_ 0 (< totalElem (msize marr)) (+ 1) (unsafeLinearModify marr f)
+{-# INLINE iforLinearPrimM_ #-}
 
 
 -- | Create a copy of a pure array, mutate it in place and return its frozen version. The big

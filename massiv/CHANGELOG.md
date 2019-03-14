@@ -20,7 +20,13 @@
 * `loadArray` is renamed to `loadArrayM` and there is a new separate function (not part of `Load`
   class) with the name `loadArray` that actually uses `loadArrayM`
 * Moved `unsafeWithPtr` into `Data.Massiv.Array.Unsafe`
-* Addition of `unsafeArrayToForeignPtr`, `unsafeMArrayToForeignPtr`, `unsafeArrayFromForeignPtr` `unsafeArrayFromForeignPtr0`, `unsafeMArrayFromForeignPtr` and `unsafeMArrayFromForeignPtr0`
+* Addition of:
+  * `unsafeArrayToForeignPtr`,
+  * `unsafeMArrayToForeignPtr`,
+  * `unsafeArrayFromForeignPtr`,
+  * `unsafeArrayFromForeignPtr0`,
+  * `unsafeMArrayFromForeignPtr`,
+  * `unsafeMArrayFromForeignPtr0`
 * Addition of `castToByteString`, `castFromByteString`
 * Addition of `makeUnsafeStencil`
 * `Window` now has an `windowUnrollIx2` field.

@@ -85,13 +85,13 @@ prop_unfoldrList sz1 f i =
   conjoin $
   L.zipWith
     (===)
-    (A.toList (runST $ unfoldrPrim_ @P Seq sz1 (pure . apply f) i))
+    (A.toList (runST $ unfoldrPrimM_ @P Seq sz1 (pure . apply f) i))
     (L.unfoldr (Just . apply f) i)
 
 prop_unfoldrReverseUnfoldl :: Sz1 -> Fun Word (Int, Word) -> Word -> Property
 prop_unfoldrReverseUnfoldl sz1 f i =
-  runST (unfoldrPrim_ @P Seq sz1 (pure . apply f) i) ===
-  rev (runST (unfoldlPrim_ @P Seq sz1 (pure . swapTuple . apply f) i))
+  runST (unfoldrPrimM_ @P Seq sz1 (pure . apply f) i) ===
+  rev (runST (unfoldlPrimM_ @P Seq sz1 (pure . swapTuple . apply f) i))
     where swapTuple (x, y) = (y, x)
           rev a = computeAs P $ backpermute' sz1 (\ix1 -> unSz sz1 - ix1 - 1) a
 

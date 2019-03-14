@@ -48,8 +48,8 @@ delayedSpec ::
      (Arbitrary ix, CoArbitrary ix, StrideLoad DW ix Int, Ragged L ix Int)
   => String
   -> proxy ix
-  -> SpecWith ()
-delayedSpec dimName proxy = do
+  -> Spec
+delayedSpec dimName proxy =
   describe dimName $ do
     it "computeWithStrideEqDownsample" $ property $ prop_computeWithStrideEqDownsample proxy
     it "computeWithStrideInterleavedEqDownsample" $

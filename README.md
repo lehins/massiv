@@ -28,6 +28,8 @@ from the end, are:
     * `D` - delayed array, which is simply a function from an index to an element: `(ix ->
       e)`. Therefore indexing of this type of array is not possible, although elements can be
       computed with the `evaluateAt` function.
+    * A few more extravagant delayed arrays, which are described in more depth in haddock: `DI`, `DL`
+      and `DW`
     * `P` - Array with elements that are an instance of `Prim` type class, i.e. common Haskell
       primitive types: `Int`, `Word`, `Char`, etc. Backed by the usual `ByteArray`.
     * `U` - Unboxed arrays. The elements are instances of the `Unbox` type class. Just as fast as
@@ -50,43 +52,41 @@ from the end, are:
 
 ## Construct
 
-Creating a delayed type of array allows us to fuse any future operation we decide
-to perform on it. Let's look at this example:
+Creating a delayed type of array allows us to fuse any future operation we decide to perform on
+it. Let's look at this example:
 
 ```haskell
 λ> import Data.Massiv.Array as A
-λ> let vec = makeVectorR D Seq 10 id
-λ> vec
-(Array D Seq (10)
-  [ 0,1,2,3,4,5,6,7,8,9 ])
+λ> makeVectorR D Seq 10 id
+Array D Seq (Sz1 10)
+  [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 ```
 
-Here we created a delayed vector of size 10, which is in reality just an `id`
-function from its index to an element (see the [Computation](#computation)
-section for the meaning of `Seq`). So let's go ahead and square its elements
+Here we created a delayed vector of size 10, which is in reality just an `id` function from its
+index to an element (see the [Computation](#computation) section for the meaning of `Seq`). So let's
+go ahead and square its elements
 
 ```haskell
-λ> evaluateAt vec 4
+λ> vec = makeVectorR D Seq 10 id
+λ> evaluate' vec 4
 4
-λ> let vec2 = fmap (^ (2::Int)) vec
-λ> evaluateAt vec2 4
+λ> let vec2 = A.map (^ (2::Int)) vec
+λ> evaluate' vec2 4
 16
 ```
 
-It's not that exciting, since every time we call `evaluateAt` it will recompute
-the element, __every time__, therefore this function should be avoided at all
-costs. Instead we can use all of the functions that take `Source` like arrays
-and then fuse that computation together by calling `compute`, or a handy
-`computeAs` function and only afterwards apply an `index'` function or its
-synonym: `(!)`. Any delayed array can also be reduced using one of the folding
-functions, thus completely avoiding any memory allocation, or converted to a
-list, if that's what you need:
+It's not that exciting, since every time we call `evaluate'` it will recompute the element, __every
+time__, therefore this function should be avoided at all costs. Instead we can use all of the
+functions that take `Source` like arrays and then fuse that computation together by calling
+`compute`, or a handy `computeAs` function and only afterwards apply an `index'` function or its
+synonym: `(!)`. Any delayed array can also be reduced using one of the folding functions, thus
+completely avoiding any memory allocation, or converted to a list, if that's what you need:
 
 ```haskell
 λ> let vec2U = computeAs U vec2
 λ> vec2U
-(Array U Seq (10)
-  [ 0,1,4,9,16,25,36,49,64,81 ])
+Array U Seq (Sz1 10)
+  [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
 λ> vec2U ! 4
 16
 λ> toList vec2U
@@ -95,28 +95,32 @@ list, if that's what you need:
 285
 ```
 
-Other means of constructing arrays are through conversion from lists, vectors from the `vector`
-library and using a few other helper functions as `range`, `enumFromN`, etc. It's worth noting that, in the
-next example, nested lists will be loaded into an unboxed manifest array and the sum of its elements
-will be computed in parallel on all available cores.
+There is a whole multitude of ways to construct arrays:
+ * by using one of many helper functions: `makeArray`, `range`, `rangeStepFrom`, `enumFromN`, etc.
+ * through conversion: from lists, from `Vector`s in `vector` library, from `ByteString`s in
+   `bytestring`;
+ * with a help of mutable interface in `PrimMonad` (`IO`, `ST`, etc.), eg: `makeMArray`,
+   `generateArray`, `unfoldrPrim`, etc.
+
+It's worth noting that, in the next example, nested lists will be loaded into an unboxed manifest
+array and the sum of its elements will be computed in parallel on all available cores.
 
 ```haskell
 λ> A.sum (fromLists' Par [[0,0,0,0,0],[0,1,2,3,4],[0,2,4,6,8]] :: Array U Ix2 Double)
 30.0
 ```
 
-The above wouldn't run in parallel in ghci of course, as the program would have
-to be compiled with ghc and `-threaded -with-rtsopts=-N` flags in order to use
-all available cores. Alternatively we could do compile with the `-threaded`
-flag and then pass the number of capabilities directly to the runtime with
-`+RTS -N<n>`, where `<n>` is the number of cores you'd like to utilize.
+The above wouldn't run in parallel in ghci of course, as the program would have to be compiled with
+`ghc` using `-threaded -with-rtsopts=-N` flags in order to use all available cores. Alternatively we
+could do compile with the `-threaded` flag and then pass the number of capabilities directly to the
+runtime with `+RTS -N<n>`, where `<n>` is the number of cores you'd like to utilize.
 
 ## Index
 
-The main `Ix n` closed type family can be somewhat confusing, but there is no
-need to fully understand how it is implemented in order to start using it. GHC
-might ask you for the `DataKinds` language extension if `IxN n` is used in a
-type signature.
+The main `Ix n` closed type family can be somewhat confusing, but there is no need to fully
+understand how it works in order to start using it. GHC might ask you for the `DataKinds` language
+extension if `IxN n` is used in a type signature, but there are type and pattern synonyms for the
+first five dimensions: `Ix1`, `Ix2`, `Ix3`, `Ix4` and `Ix5`.
 
 There are three distinguishable constructors for the index:
 
@@ -125,25 +129,64 @@ There are three distinguishable constructors for the index:
 * The second one is `Ix2` for operating on 2-dimensional arrays and has a constructor `:.`
 
 ```haskell
-λ> makeArrayR D Seq (3 :. 5) (\ (i :. j) -> i * j)
-(Array D Seq (3 :. 5)
-  [ [ 0,0,0,0,0 ]
-  , [ 0,1,2,3,4 ]
-  , [ 0,2,4,6,8 ]
-  ])
+λ> makeArrayR D Seq (Sz (3 :. 5)) (\ (i :. j) -> i * j)
+Array D Seq (Sz (3 :. 5))
+  [ [ 0, 0, 0, 0, 0 ]
+  , [ 0, 1, 2, 3, 4 ]
+  , [ 0, 2, 4, 6, 8 ]
+  ]
 ```
 
-* The third one is `IxN n` and is for working with N-dimensional arrays, and has a similar looking
-  constructor `:>`, except that it can be chained indefinitely on top of `:.`
+* The third one is `IxN n` and is designed for working with N-dimensional arrays, and has a similar
+  looking constructor `:>`, except that it can be chained indefinitely on top of `:.`
 
 ```haskell
-λ> :t makeArrayR D Seq (10 :> 20 :. 30) $ \ (i :> j :. k) -> i * j + k
-makeArrayR D Seq (10 :> 20 :. 30) $ \ (i :> j :. k) -> i * j + k
-  :: Array D (IxN 3) Int
-λ> :t (10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1) -- 10-dimensional index
-(10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1) -- 10-dimensional index
-  :: IxN 10
+λ> arr3 = makeArrayR D Seq (Sz (3 :> 2 :. 5)) (\ (i :> j :. k) -> i * j + k)
+λ> :t arr3
+arr3 :: Array D (IxN 3) Int
+λ> arr3
+Array D Seq (Sz (3 :> 2 :. 5))
+  [ [ [ 0, 1, 2, 3, 4 ]
+    , [ 0, 1, 2, 3, 4 ]
+    ]
+  , [ [ 0, 1, 2, 3, 4 ]
+    , [ 1, 2, 3, 4, 5 ]
+    ]
+  , [ [ 0, 1, 2, 3, 4 ]
+    , [ 2, 3, 4, 5, 6 ]
+    ]
+  ]
+λ> :t (10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1)
+λ> :t ix10
+ix10 :: IxN 10
+λ> ix10 -- 10-dimensional index
+10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1
 ```
+
+There are quite a few helper functions that can operate on indicies, but these are only needed when
+writing functions that work for arrays of arbitrary dimension, as such they are scarcely used:
+
+```haskell
+λ> pullOutDim' ix10 5
+(5,10 :> 9 :> 8 :> 7 :> 6 :> 4 :> 3 :> 2 :. 1)
+λ> unconsDim ix10
+(10,9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1)
+λ> unsnocDim ix10
+(10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :. 2,1)
+```
+
+It is important to note that the size type is distinct from index by the newtype wrapper `Sz
+ix`. There is a constructor `Sz`, which will make sure that none of the dimensions are negative:
+
+```haskell
+λ> Sz (2 :> 3 :. 4)
+Sz (2 :> 3 :. 4)
+λ> Sz (10 :> 2 :> -30 :. 4)
+Sz (10 :> 2 :> 0 :. 4)
+```
+
+Same as with indicies, there are helper constructors and type synonyms: `Sz1`, `Sz2`, `Sz3`, `Sz4`
+and `Sz5`
 
 Here is how to construct a 4-dimensional array and sum its elements in constant
 memory:

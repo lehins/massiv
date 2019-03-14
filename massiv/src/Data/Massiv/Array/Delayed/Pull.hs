@@ -206,8 +206,11 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 -- | /O(1)/ Conversion from a source array to `D` representation.
 delay :: Source r ix e => Array r ix e -> Array D ix e
 delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
-{-# INLINE delay #-}
+{-# INLINE [1] delay #-}
 
+{-# RULES
+"delay" [~1] forall (arr :: Array D ix e) . delay arr = arr
+ #-}
 
 -- TODO: switch to zipWith
 -- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
