@@ -62,7 +62,7 @@ import           Data.Massiv.Array.Delayed.Pull
 import           Data.Massiv.Array.Delayed.Push
 import           Data.Massiv.Core.Common
 import           Prelude                        as P hiding (enumFromTo,
-                                                      replicate)
+                                                             replicate)
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.

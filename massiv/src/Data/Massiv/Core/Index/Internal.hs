@@ -97,6 +97,7 @@ type Sz1 = Sz Ix1
 pattern Sz1 :: Ix1 -> Sz1
 pattern Sz1 ix  <- SafeSz ix where
         Sz1 ix = SafeSz (max 0 ix)
+{-# COMPLETE Sz1 #-}
 
 
 instance Index ix => Show (Sz ix) where

@@ -20,7 +20,7 @@ mkGaussian2 :: Int -> Int -> Array M Ix2 Double
 mkGaussian2 n side  =
   let f scale (i :. j) = gaussian2 (1 :: Double) (scale i) (scale j)
       {-# INLINE f #-}
-      sz = (side :. side)
+      sz = Sz (side :. side)
       a = fromIntegral side / 2 - fromIntegral side
       d = 1
   in simpsonsRule Par P f a d sz n
@@ -33,7 +33,7 @@ mkGaussian1 n side  =
       {-# INLINE f #-}
       a = fromIntegral side / 2 - fromIntegral side
       d = 1
-  in resize' (1 :. side) $ simpsonsRule Par P f a d side n
+  in resize' (Sz (1 :. side)) $ simpsonsRule Par P f a d (Sz side) n
 {-# INLINE mkGaussian1 #-}
 
 

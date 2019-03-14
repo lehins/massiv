@@ -53,7 +53,6 @@ import           Data.Massiv.Core.Index.Internal
 --
 
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
-{-# COMPLETE Stride #-}
 
 
 -- | A safe bidirectional pattern synonym for `Stride` construction that will make sure stride
@@ -61,6 +60,7 @@ newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
 pattern Stride :: Index ix => ix -> Stride ix
 pattern Stride ix <- SafeStride ix where
         Stride ix = SafeStride (liftIndex (max 1) ix)
+{-# COMPLETE Stride #-}
 
 
 instance Index ix => Show (Stride ix) where

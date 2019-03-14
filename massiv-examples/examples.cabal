@@ -27,8 +27,9 @@ library
               , data-default
               , vector
               , vector-algorithms
-              , massiv
+              , massiv >= 0.3.0
               , massiv-io
+              , massiv-scheduler
   exposed-modules:
                   Examples.Convolution
                 , Examples.SortRows

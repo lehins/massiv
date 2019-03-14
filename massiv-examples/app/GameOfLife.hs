@@ -8,7 +8,7 @@ import           Data.Massiv.Array        as A hiding (windowSize)
 import           Data.Massiv.Array.Unsafe as A
 import           Data.Word
 import           Graphics.UI.GLUT         as G
-import           System.Exit              (ExitCode (..), exitWith)
+import           System.Exit              (ExitCode (..), exitWith, exitSuccess)
 import           Text.Read                (readMaybe)
 
 lifeRules :: Word8 -> Word8 -> Word8
@@ -18,21 +18,21 @@ lifeRules 1 3 = 1
 lifeRules _ _ = 0
 
 lifeStencil :: Stencil Ix2 Word8 Word8
-lifeStencil = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
-  lifeRules <$> get (0 :. 0) <*>
-  (get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
-   get ( 0 :. -1)         +         get ( 0 :. 1) +
-   get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1))
+lifeStencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ f ->
+  lifeRules <$> f (0 :. 0) <*>
+  (f (-1 :. -1) + f (-1 :. 0) + f (-1 :. 1) +
+   f ( 0 :. -1) +               f ( 0 :. 1) +
+   f ( 1 :. -1) + f ( 1 :. 0) + f ( 1 :. 1))
 
 life :: Array S Ix2 Word8 -> Array S Ix2 Word8
 life = compute . A.mapStencil Wrap lifeStencil
 
-initLife :: Ix2 -> Array S Ix2 Word8 -> Array S Ix2 Word8
+initLife :: Sz2 -> Array S Ix2 Word8 -> Array S Ix2 Word8
 initLife sz arr =
   compute $
-  makeWindowedArray (makeArrayR D Par sz (const 0)) ix0 (size arr) (index' arr . subtract ix0)
+  insertWindow (A.replicate Par sz 0) (Window ix0 (size arr) (index' arr . subtract ix0) Nothing)
   where
-    ix0 = liftIndex (`div` 2) (sz - size arr)
+    ix0 = liftIndex (`div` 2) (unSz (sz - size arr))
 
 
 blinker :: Array S Ix2 Word8
@@ -58,15 +58,15 @@ pixelGrid :: Int -> Array S Ix2 Word8 -> Array D Ix2 Word8
 pixelGrid k8 arr = A.makeArray (getComp arr) sz' getNewElt
   where
     k = succ k8
-    (n :. m) = size arr
-    sz' = (1 + m * k :. 1 + n * k)
+    Sz (n :. m) = size arr
+    sz' = Sz (1 + m * k :. 1 + n * k)
     getNewElt (j :. i) =
       if i `mod` k == 0 || j `mod` k == 0
         then 128
         else (1 - A.unsafeIndex arr ((i - 1) `div` k :. (j - 1) `div` k)) * 255
 
-sizeFromIx2 :: Ix2 -> G.Size
-sizeFromIx2 (m :. n) = Size (fromIntegral n) (fromIntegral m)
+sizeFromSz2 :: Sz2 -> G.Size
+sizeFromSz2 (Sz2 m n) = Size (fromIntegral n) (fromIntegral m)
 
 main :: IO ()
 main = do
@@ -77,7 +77,7 @@ main = do
                 \ * HEIGHT - number of cells vertically (default 70)\n\
                 \ * SCALE - scaling factor, or how many pixels one cell should take on a screen\n"
   (_progName, args) <- getArgsAndInitialize
-  when (args == ["--help"]) $ putStrLn helpTxt >> exitWith ExitSuccess
+  when (args == ["--help"]) $ putStrLn helpTxt >> exitSuccess
   (m, n, s) <- case fmap readMaybe args of
     [Just m, Just n, Just s]
       | m > 0 && n > 0 && s > 0 -> return (m, n, s)
@@ -89,16 +89,16 @@ main = do
       putStrLn helpTxt
       exitWith $ ExitFailure 1
   _w <- createWindow "Game of Life"
-  startGameOfLife (m :. n) s
+  startGameOfLife (Sz2 m n) s
   mainLoop
 
 
-startGameOfLife :: Ix2 -> Int -> IO ()
+startGameOfLife :: Sz2 -> Int -> IO ()
 startGameOfLife sz s = do
   rowAlignment Unpack $= 1
   let iLife = initLife sz inf2
       wSz = size (pixelGrid s iLife)
-  G.windowSize $= sizeFromIx2 wSz
+  G.windowSize $= sizeFromSz2 wSz
   mArr <- new wSz
   displayCallback $= clear [ColorBuffer]
   drawLife s mArr iLife
@@ -109,19 +109,19 @@ drawLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
 drawLife s mArr arr = do
   computeInto mArr $ pixelGrid s arr
   A.withPtr mArr $ \ptr ->
-    drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
+    drawPixels (sizeFromSz2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
 
 
 drawLifeStep :: Int -> MArray RealWorld S Ix2 Word8 -> Array D Ix2 (Word8, Word8) -> IO ()
 drawLifeStep s mArr arr = do
   imapM_ updateCellLife arr
   A.withPtr mArr $ \ptr ->
-    drawPixels (sizeFromIx2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
+    drawPixels (sizeFromSz2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
   where
     k = s + 1
     updateCellLife (i :. j) (prev, next) =
       when (prev /= next) $ do
-        let ixArr = makeArrayR D Seq (s :. s) $ \(jc :. ic) -> (1 + jc + j * k) :. (1 + ic + i * k)
+        let ixArr = makeArrayR D Seq (Sz2 s s) $ \(jc :. ic) -> (1 + jc + j * k) :. (1 + ic + i * k)
             nVal = (1 - next) * 255
         A.forM_ ixArr $ \ix -> write mArr ix nVal
 

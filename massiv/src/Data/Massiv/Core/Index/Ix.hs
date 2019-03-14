@@ -81,6 +81,7 @@ type Sz2 = Sz Ix2
 -- @since 0.3.0
 pattern Sz2 :: Int -> Int -> Sz2
 pattern Sz2 i2 i1 = Sz (i2 :. i1)
+{-# COMPLETE Sz2 #-}
 
 -- | 3-dimensional type synonym. Useful as a alternative to enabling @DataKinds@ and using type
 -- level Nats.
@@ -104,6 +105,7 @@ type Sz3 = Sz Ix3
 -- @since 0.3.0
 pattern Sz3 :: Int -> Int -> Int -> Sz3
 pattern Sz3 i3 i2 i1 = Sz (i3 :> i2 :. i1)
+{-# COMPLETE Sz3 #-}
 
 -- | 4-dimensional type synonym.
 --
@@ -126,6 +128,7 @@ type Sz4 = Sz Ix4
 -- @since 0.3.0
 pattern Sz4 :: Int -> Int -> Int -> Int -> Sz4
 pattern Sz4 i4 i3 i2 i1 = Sz (i4 :> i3 :> i2 :. i1)
+{-# COMPLETE Sz4 #-}
 
 -- | 5-dimensional type synonym.
 --
@@ -148,6 +151,7 @@ type Sz5 = Sz Ix5
 -- @since 0.3.0
 pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz5
 pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
+{-# COMPLETE Sz5 #-}
 
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
 --
