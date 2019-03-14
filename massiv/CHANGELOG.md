@@ -59,6 +59,7 @@
   * `generateArray`/`generateArrayIO`
   * `unfoldlPrim`/`unfoldlPrim_`
   * `makeArrayA`, `makeArrayAR`
+* Addition of cute synonyms: `(...)` and `(..:)`
 
 # 0.2.5
 

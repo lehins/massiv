@@ -22,6 +22,8 @@ module Data.Massiv.Array.Stencil
   , rmapStencil
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
+  -- * Re-export
+  , Default(def)
   ) where
 
 import Data.Default.Class (Default(def))

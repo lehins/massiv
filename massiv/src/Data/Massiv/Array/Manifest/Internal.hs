@@ -257,7 +257,7 @@ computeProxy _ = compute
 {-# INLINE computeProxy #-}
 
 
--- | This is just like `compute`, but can be applied to `Source` arrays and will be a noop if
+-- | This is just like `convert`, but restricted to `Source` arrays. Will be a noop if
 -- resulting type is the same as the input.
 --
 -- @since 0.1.0
@@ -265,7 +265,6 @@ computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr = maybe (compute arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
-{-# DEPRECATED computeSource "In favor of less restrictive `convert`" #-}
 
 
 -- | /O(n)/ - Make an exact immutable copy of an Array.

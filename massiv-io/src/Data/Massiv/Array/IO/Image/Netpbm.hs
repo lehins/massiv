@@ -7,6 +7,8 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image.Netpbm
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -39,6 +41,11 @@ import           Graphics.ColorSpace
 import           Graphics.Netpbm                        as Netpbm hiding (PPM)
 import qualified Graphics.Netpbm                        as Netpbm (PPM (..))
 import           Prelude                                as P
+
+#if !MIN_VERSION_massiv(0, 2, 7)
+pattern Sz :: ix -> ix
+pattern Sz ix = ix
+#endif
 
 -- | Netpbm: portable bitmap image with @.pbm@ extension.
 data PBM = PBM deriving Show

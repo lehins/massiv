@@ -2,6 +2,7 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE BangPatterns          #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -293,7 +294,7 @@ maximumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
 maximumM arr =
     if isEmpty arr
       then throwM (SizeEmptyException (size arr))
-      else let e0 = unsafeIndex arr zeroIndex
+      else let !e0 = unsafeIndex arr zeroIndex
             in pure $ foldlInternal max e0 max e0 arr
 {-# INLINE maximumM #-}
 
@@ -304,7 +305,7 @@ maximumM arr =
 maximum :: (Source r ix e, Ord e) => Array r ix e -> e
 maximum = maximum'
 {-# INLINE maximum #-}
-{-# DEPRECATED maximum "In favor of a safee `maximumM` or an equivalent `maximum'`" #-}
+{-# DEPRECATED maximum "In favor of a safer `maximumM` or an equivalent `maximum'`" #-}
 
 -- | /O(n)/ - Compute maximum of all elements.
 --
@@ -321,7 +322,7 @@ minimumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
 minimumM arr =
     if isEmpty arr
       then throwM (SizeEmptyException (size arr))
-      else let e0 = unsafeIndex arr zeroIndex
+      else let !e0 = unsafeIndex arr zeroIndex
             in pure $ foldlInternal min e0 min e0 arr
 {-# INLINE minimumM #-}
 

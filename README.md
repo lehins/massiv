@@ -163,6 +163,16 @@ ix10 :: IxN 10
 10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :> 2 :. 1
 ```
 
+Here is how we can construct a 4-dimensional array and sum its elements in constant memory:
+
+```haskell
+λ> let arr = makeArrayR D Seq (Sz (10 :> 20 :> 30 :. 40)) $ \ (i :> j :> k :. l) -> (i * j + k) * k + l
+λ> :t arr -- a 4-dimensional array
+arr :: Array D (IxN 4) Int
+λ> A.sum arr
+221890000
+```
+
 There are quite a few helper functions that can operate on indicies, but these are only needed when
 writing functions that work for arrays of arbitrary dimension, as such they are scarcely used:
 
@@ -175,6 +185,15 @@ writing functions that work for arrays of arbitrary dimension, as such they are 
 (10 :> 9 :> 8 :> 7 :> 6 :> 5 :> 4 :> 3 :. 2,1)
 ```
 
+All of the `Ix n` indices are instances of `Num` so basic numeric operations are made easier:
+
+```haskell
+λ> (1 :> 2 :. 3) + (4 :> 5 :. 6)
+5 :> 7 :. 9
+λ> 5 :: Ix4
+5 :> 5 :> 5 :. 5
+```
+
 It is important to note that the size type is distinct from index by the newtype wrapper `Sz
 ix`. There is a constructor `Sz`, which will make sure that none of the dimensions are negative:
 
@@ -185,23 +204,18 @@ Sz (2 :> 3 :. 4)
 Sz (10 :> 2 :> 0 :. 4)
 ```
 
-Same as with indicies, there are helper constructors and type synonyms: `Sz1`, `Sz2`, `Sz3`, `Sz4`
-and `Sz5`
-
-Here is how to construct a 4-dimensional array and sum its elements in constant
-memory:
+Same as with indicies, there are helper pattern synonyms: `Sz1`, `Sz2`, `Sz3`, `Sz4` and `Sz5`.
 
 ```haskell
-λ> let arr = makeArrayR D Seq (10 :> 20 :> 30 :. 40) $ \ (i :> j :> k :. l) -> (i * j + k) * k + l
-λ> :t arr -- a 4-dimensional array
-arr :: Array D (IxN 4) Int
-λ> A.sum arr
-221890000
+λ> Sz3 2 3 4
+Sz (2 :> 3 :. 4)
+λ> Sz4 10 2 (-30) 4
+Sz (10 :> 2 :> 0 :. 4)
 ```
 
-Alternatively tuples of `Int`s can be used for working with Arrays, up to and
-including 5-tuples (type synonyms: `Ix2T` - `Ix5T`), but since tuples are
-polymorphic it is necessary to restrict the resulting array type:
+Alternatively tuples of `Int`s can be used for working with Arrays, up to and including 5-tuples
+(type synonyms: `Ix2T` - `Ix5T`), but since tuples are polymorphic it is necessary to restrict the
+resulting array type:
 
 ```haskell
 λ> makeArray Seq (4, 20) (uncurry (*)) :: Array P Ix2T Int
@@ -215,100 +229,106 @@ polymorphic it is necessary to restrict the resulting array type:
 type Ix2T = (Int, Int)
 ```
 
-There are helper functions that can go back and forth between indices. Also `Ix n` is an instance of `Num` so basic numeric operations are made easier:
+There are helper functions that can go back and forth between tuples and `Ix n` indices.
 
 ```haskell
 λ> fromIx4 (3 :> 4 :> 5 :. 6)
 (3,4,5,6)
-λ> toIx5 (3,4,5,6,7)
+λ> toIx5 (3, 4, 5, 6, 7)
 3 :> 4 :> 5 :> 6 :. 7
-λ> (1 :> 2 :. 3) + (3 :> 2 :. 1)
-4 :> 4 :. 4
 ```
 
 ## Slicing
 
-In order to get a subsection of an array there is no need to recompute it,
-unless we want to free up the extra memory, of course. So, there are a few
-slicing, resizing and extraction operators that can do it all in constant time,
-modulo the index manipulation:
+In order to get a subsection of an array there is no need to recompute it, unless we want to free up
+the no longer memory, of course. So, there are a few slicing, resizing and extraction operators that
+can do it all in constant time, modulo the index manipulation:
 
 ```haskell
-λ> let arr = makeArrayR U Seq (4 :> 2 :. 6) fromIx3
+λ> let arr = makeArrayR U Seq (Sz (4 :> 2 :. 6)) fromIx3
 λ> arr !> 3 !> 1
-(Array M Seq (6)
-  [ (3,1,0),(3,1,1),(3,1,2),(3,1,3),(3,1,4),(3,1,5) ])
+Array M Seq (Sz1 6)
+  [ (3,1,0), (3,1,1), (3,1,2), (3,1,3), (3,1,4), (3,1,5) ]
 ```
 
-As you might suspect all of the slicing, indexing, extracting, resizing operations are partial,
-and those are frowned upon in Haskell. So there are matching functions that can do the same
-operations safely by returning `Nothing` on failure.
+As you might suspect all of the slicing, indexing, extracting, resizing operations are partial, and
+those are frowned upon in Haskell. So there are matching functions that can do the same operations
+safely by using `MonadThrow` and thus returning `Nothing`, `Left SomeException` or throwing an
+exception in case of `IO` on failure for example
 
 ```haskell
 λ> arr !?> 3 ??> 1
-Just (Array M Seq (6)
-  [ (3,1,0),(3,1,1),(3,1,2),(3,1,3),(3,1,4),(3,1,5) ])
-λ> arr !?> 3 ??> 1 ??> 0
+Array M Seq (Sz1 6)
+  [ (3,1,0), (3,1,1), (3,1,2), (3,1,3), (3,1,4), (3,1,5) ]
+λ> arr !?> 3 ??> 1 ??> 0 :: Maybe (Int, Int, Int)
 Just (3,1,0)
 ```
 
-
-In above examples we first take a slice at the 3rd page, then another one at the 1st row (both counts start
-at 0). While in the last example we also take 0th element. Pretty neat, huh? Naturally, by doing a
-slice we always reduce dimension by one. We can do slicing from the outside as well as from the
-inside:
+In above examples we first take a slice at the 4th page (index 3, since we start at 0), then another
+one at the 2nd row (index 1). While in the last example we also take 1st element at
+position 0. Pretty neat, huh?  Naturally, by doing a slice we always reduce dimension by one. We can
+do slicing from the outside as well as from the inside:
 
 ```haskell
-λ> let a = resize' (3 :. 3) $ range Seq 1 10
+λ> 1 ... 10
+Array D Seq (Sz1 10)
+  [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+λ> a <- resizeM (Sz (3 :. 3)) $ 1 ... 10
 λ> a
-(Array D Seq (3 :. 3)
-  [ [ 1,2,3 ]
-  , [ 4,5,6 ]
-  , [ 7,8,9 ]
-  ])
+Array D Seq (Sz (3 :. 3))
+  [ [ 1, 2, 3 ]
+  , [ 4, 5, 6 ]
+  , [ 7, 8, 9 ]
+  ]
 λ> a !> 0
-(Array D Seq (3)
-  [ 1,2,3 ])
+Array D Seq (Sz1 3)
+  [ 1, 2, 3 ]
 λ> a <! 0
-(Array D Seq (3)
-  [ 1,4,7 ])
+Array D Seq (Sz1 3)
+  [ 1, 4, 7 ]
+λ>
 ```
 
-Or we can slice along any dimension:
+Or we can slice along any other available dimension:
 
 ```haskell
 λ> a <!> (2, 0)
-(Array D Seq (3)
-  [ 1,2,3 ])
+Array D Seq (Sz1 3)
+  [ 1, 2, 3 ]
 λ> a <!> (1, 0)
-(Array D Seq (3)
-  [ 1,4,7 ])
+Array D Seq (Sz1 3)
+  [ 1, 4, 7 ]
+λ> a <!> (1, 2)
+Array D Seq (Sz1 3)
+  [ 3, 6, 9 ]
 ```
 
 In order to extract sub-array while preserving dimensionality we can use `extract` or `extractFromTo`.
 
 ```haskell
-λ> extract' 0 (1 :. 3) a
-(Array D Seq (1 :. 3)
-  [ [ 1,2,3 ]
-  ])
-λ> extract' 0 (3 :. 1) a
-(Array D Seq (3 :. 1)
+λ> extractM 0 (Sz (1 :. 3)) a
+Array D Seq (Sz (1 :. 3))
+  [ [ 1, 2, 3 ]
+  ]
+λ> extractM 0 (Sz (3 :. 1)) a
+Array D Seq (Sz (3 :. 1))
   [ [ 1 ]
   , [ 4 ]
   , [ 7 ]
-  ])
+  ]
 ```
 
 ## Computation
 
 There is a data type `Comp` that controls how elements will be computed when calling the `compute`
-function. It has two constructors:
+function. It has a few constructors, although most of the time either `Seq` or `Par` will be
+sufficient:
 
-* `Seq` - computation will be done sequentially on one core.
+* `Seq` - computation will be done sequentially on one core (capability in ghc).
 * `ParOn [Int]` - perform computation in parallel while pinning the workers to particular
   cores. Providing an empty list will result in the computation being distributed over all available
   cores, or better known in Haskell as capabilities.
+* `ParN Word16` - similar to ParOn, except it simply specifies the number of cores to use.
 * `Par` - isn't really a constructor but a `pattern` for constructing `ParOn []`, thus should be
   used instead of `ParOn`.
 
@@ -325,12 +345,11 @@ while reading its neighboring elements (as you would do in an imperative languag
 language it is much more efficient to apply a stencil function and let the library take care of all
 of bounds checking and iterating in a cache friendly manner.
 
-What's a [stencil](https://en.wikipedia.org/wiki/Stencil_code)? It is a
-declarative way of specifying a pattern for how elements of an array in a
-neighborhood will be used in order to update each element of that array. In
-massiv a stencil is a function that can read the neighboring elements of the
-stencil's _center_ (the zero index), and only those, and then outputs a new
-value for the center element.
+What's a [stencil](https://en.wikipedia.org/wiki/Stencil_code)? It is a declarative way of
+specifying a pattern for how elements of an array in a neighborhood will be used in order to update
+each element of that array. In massiv a `Stencil` is a function that can read the neighboring elements
+of the stencil's _center_ (the zero index), and only those, and then outputs a new value for the
+center element.
 
 ![stencil](massiv-examples/files/stencil.png)
 
@@ -341,25 +360,24 @@ neighborhood](https://en.wikipedia.org/wiki/Moore_neighborhood) and
 divides the result by 9, i.e. finds the average of a 3 by 3 square.
 
 ```haskell
-arrLightIx2 :: Comp -> Ix2 -> Array D Ix2 Double
-arrLightIx2 comp arrSz = makeArray comp arrSz lightFunc
-    where lightFunc (i :. j) = sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Double)
+arrLightIx2 :: Comp -> Sz Ix2 -> Array D Ix2 Double
+arrLightIx2 comp arrSz =
+  makeArray comp arrSz $ \ (i :. j) -> sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Double)
 {-# INLINE arrLightIx2 #-}
 
 average3x3Filter :: (Default a, Fractional a) => Stencil Ix2 a a
-average3x3Filter = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
+average3x3Filter = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
 {-# INLINE average3x3Filter #-}
 ```
 
-Here is what it would look like in GHCi. We create a delayed array with some
-funky periodic function, and make sure it is computed prior to mapping an
-average stencil over it:
+Here is what it would look like in GHCi. We create a delayed array with some funky periodic
+function, and make sure it is computed prior to mapping an average stencil over it:
 
 ```haskell
-λ> let arr = computeAs U $ arrLightIx2 Par (600 :. 800)
+λ> let arr = computeAs U $ arrLightIx2 Par (Sz (600 :. 800))
 λ> :t arr
 arr :: Array U Ix2 Double
 λ> :t mapStencil Edge average3x3Filter arr
@@ -375,26 +393,27 @@ manifest representation.
 
 This example will be continued in the next section, but before that I would like to mention that
 some might notice that it looks very much like convolution, and in fact convolution can be
-implemented with a stencil. There is a helper function `mkConvolutionStencil` that lets
+implemented with a stencil. There is a helper function `makeConvolutionStencil` that lets
 you do just that. For the sake of example we'll do a sum of all neighbors by hand instead:
 
 ```haskell
 sum3x3Filter :: Fractional a => Stencil Ix2 a a
-sum3x3Filter = mkConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
+sum3x3Filter = makeConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
   get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
   get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
   get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
 {-# INLINE sum3x3Filter #-}
 ```
 
-There is not a single plus sign, that is because convolutions is actually summation of elements
-multiplied by a kernel element, so instead we have composition of functions applied to an offset
-index and a multiplier. After we map that stencil, we can further divide each element of the array
-by 9 in order to get the average. Yeah, I lied a bit, `Array DW ix` is an instance of `Functor`
-class, so we can map functions over it, which will be fused as with a regular `D`elayed array:
+There is not a single plus or multiplication sign, that is because convolutions is actually
+summation of elements multiplied by a kernel element, so instead we have composition of functions
+applied to an offset index and a multiplier. After we map that stencil, we can further divide each
+element of the array by 9 in order to get the average. Yeah, I lied a bit, `Array DW ix` is an
+instance of `Functor` class, so we can map functions over it, which will be fused as with a regular
+`D`elayed array:
 
 ```haskell
-computeAs U $ fmap (/9) . mapStencil Edge sum3x3Filter arr
+computeAs U $ fmap (/9) $ mapStencil Edge sum3x3Filter arr
 ```
 
 If you are still confused of what a stencil is, but you are familiar with [Conway's Game of
@@ -409,7 +428,7 @@ lifeRules 1 3 = 1
 lifeRules _ _ = 0
 
 lifeStencil :: Stencil Ix2 Word8 Word8
-lifeStencil = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
+lifeStencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
   lifeRules <$> get (0 :. 0) <*>
   (get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
    get ( 0 :. -1)         +         get ( 0 :. 1) +
@@ -419,15 +438,17 @@ life :: Array S Ix2 Word8 -> Array S Ix2 Word8
 life = compute . mapStencil Wrap lifeStencil
 ```
 
+<!-- TODO: add a gif with a few iterations -->
+
 The full working example that uses GLUT and OpenGL is located in
 [massiv-examples](massiv-examples/app/GameOfLife.hs)
 
 # massiv-io
 
-In order to do anything useful with arrays we need to be able to read some data
-from a file. Considering that most common array-like files are images,
-[massiv-io](massiv-io) provides an interface to read, write and display images in common
-formats using Haskell native JuicyPixels and Netpbm packages.
+In order to do anything useful with arrays we need to be able to read some data from a
+file. Considering that most common array-like files are images, [massiv-io](massiv-io) provides an
+interface to read, write and display images in common formats using Haskell native JuicyPixels and
+Netpbm packages.
 
 There is also a variety of colorspaces (or rather color models) and pixel types
 that are currently included in this package, which will likely find a separate
@@ -444,7 +465,7 @@ import Graphics.ColorSpace
 
 main :: IO ()
 main = do
-  let arr = arrLightIx2 Par (600 :. 800)
+  let arr = arrLightIx2 Par (Sz (600 :. 800))
       img = computeAs S $ fmap PixelY arr -- convert an array into a grayscale image
   writeImage "files/light.png" img
   writeImage "files/light_avg.png" $ computeAs S $ mapStencil Edge average3x3Filter img
@@ -469,21 +490,21 @@ $ cd massiv-examples/ && stack build && stack exec -- examples
 # Other libraries
 
 A natural question might come to mind: Why even bother with a new array library when we already have
-a few really good ones in the Haskell world? The main reasons for me are performance and usability. I
-personally felt like there was much room for improvement even before I started work on this package,
-and it seems as it turned out to be true. For example, the most common goto library for dealing with
-multidimensional arrays and parallel computation is [Repa](https://hackage.haskell.org/package/repa), which I personally was a big fan of for
-the longest time, to the point that I even wrote a [Haskell Image
-Processing](https://hackage.haskell.org/package/hip) library based on it.
+a few really good ones in the Haskell world? The main reasons for me are performance and
+usability. I personally felt like there was much room for improvement even before I started work on
+this package, and it seems as it turned out to be true. For example, the most common goto library
+for dealing with multidimensional arrays and parallel computation is
+[Repa](https://hackage.haskell.org/package/repa), which I personally was a big fan of for quite some
+time, to the point that I even wrote a [Haskell Image
+Processing](https://hackage.haskell.org/package/hip) library based on top of it.
 
 Here is a quick summary of how `massiv` compares to Repa so far:
 
 * Better scheduler, that is capable of handling nested parallel computation.
-* Still shape polymorphic, but with improved default indexing data types.
-* Safe stencils for arbitrary dimensions, not only convolution. Stencils are composable through an
+* Also shape polymorphic, but with improved default indexing data types.
+* Safe stencils for arbitrary dimensions, not only 2D convolution. Stencils are composable through an
   instance of Applicative
-* Improved performance on almost all operations. (I might be wrong here, but so far it looks
-  promising and rigorous benchmarks are coming to prove the claim)
+* Improved performance on almost all operations.
 * Structural parallel folds (i.e. left/right - direction is preserved)
 * Super easy slicing.
 * Delayed arrays aren't indexable, only Manifest are (saving user from common pitfall in Repa of

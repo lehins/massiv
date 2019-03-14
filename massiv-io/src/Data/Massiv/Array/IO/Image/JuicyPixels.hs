@@ -7,6 +7,8 @@
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image.JuicyPixels
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -88,6 +90,12 @@ import           Data.Typeable
 import qualified Data.Vector.Storable              as V
 import           Foreign.Storable                  (Storable (sizeOf))
 import           Graphics.ColorSpace
+
+#if !MIN_VERSION_massiv(0, 2, 7)
+pattern Sz :: ix -> ix
+pattern Sz ix = ix
+#endif
+
 --------------------------------------------------------------------------------
 -- BMP Format ------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -817,7 +825,7 @@ fromDynamicImage jpDynImg =
 
 fromAnyDynamicImage :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
                        JP.DynamicImage -> Maybe (Image r cs e)
-fromAnyDynamicImage jpDynImg = 
+fromAnyDynamicImage jpDynImg =
   case jpDynImg of
     JP.ImageY8 jimg     -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word8))     >>= toAnyCS
     JP.ImageY16 jimg    -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word16))    >>= toAnyCS
@@ -849,7 +857,7 @@ toAnyCS
   => Image r' cs' e' -> Maybe (Image r cs e)
 toAnyCS img =
   msum
-    [ (\Refl -> convert img) <$>
+    [ (\Refl -> computeSource img) <$>
       (eqT :: Maybe (Pixel cs' e' :~: Pixel cs e))
     , do Refl <- eqT :: Maybe (cs :~: Y)
          compute <$> elevate (M.map toPixelY img)
@@ -903,8 +911,8 @@ toJPImageUnsafe
   => Image r cs (JP.PixelBaseComponent a)
   -> JP.Image a
 toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toVector arrS where
-  !arrS = convert img :: Image S cs (JP.PixelBaseComponent a)
-  (m :. n) = unSz $ size img
+  !arrS = computeSource img :: Image S cs (JP.PixelBaseComponent a)
+  Sz (m :. n) = size img
 {-# INLINE toJPImageUnsafe #-}
 
 toJPImageY8 :: Source r Ix2 (Pixel Y Word8) => Image r Y Word8 -> JP.Image JP.Pixel8
@@ -971,4 +979,3 @@ fromJPImageUnsafe (JP.Image n m !v) = do
   guard (n * m * sizeOf (undefined :: Pixel cs e) == V.length v)
   return $ fromVector Par (Sz (m :. n)) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
-

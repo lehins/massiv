@@ -36,6 +36,8 @@ module Data.Massiv.Array.Ops.Construct
   , makeArrayA
   , makeArrayAR
     -- ** Enumeration
+  , (...)
+  , (..:)
   , range
   , rangeStepM
   , rangeStep'
@@ -234,6 +236,30 @@ iunfoldlS_ comp sz f acc0 =
             pure acc'
     }
 {-# INLINE iunfoldlS_ #-}
+
+
+-- | Handy synonym for `rangeInclusive` `Seq`
+--
+-- >>> 4 ... 10
+-- Array D Seq (Sz1 7)
+--   [ 4, 5, 6, 7, 8, 9, 10 ]
+--
+-- @since 0.3.0
+(...) :: Int -> Int -> Array D Ix1 Int
+(...) = rangeInclusive Seq
+{-# INLINE (...) #-}
+
+-- | Handy synonym for `rangeInclusive` `Seq`
+--
+-- >>> 4 ..: 10
+-- Array D Seq (Sz1 6)
+--   [ 4, 5, 6, 7, 8, 9 ]
+--
+-- @since 0.3.0
+(..:) :: Int -> Int -> Array D Ix1 Int
+(..:) = range Seq
+{-# INLINE (..:) #-}
+
 
 -- prop> range comp from to == rangeStep comp from 1 to
 --
