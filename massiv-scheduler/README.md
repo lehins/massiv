@@ -1,7 +1,7 @@
 # massiv-scheduler
 
 Primary focus of this package is to provide work stealing scheduler for the array processing library
-[massiv](https://github.com/lehins/massiv). But it can be used for any other project that can
+[massiv](https://www.stackage.org/package/massiv). But it can be used for any other project that can
 benefit from parallelization of computation.
 
 ## QuickStart
@@ -13,14 +13,13 @@ A few examples in order to get up and running quickly.
 Work scheduling that does some side effecty stuff and discards the results:
 
 ```haskell
-
 interleaveFooBar :: IO ()
 interleaveFooBar = do
-  withScheduler_ (ParN 2) $ \ s -> do
+  withScheduler_ (ParN 2) $ \ scheduler -> do
     putStrLn "Scheduling 1st job"
-    scheduleWork_ s (putStr "foo")
+    scheduleWork_ scheduler (putStr "foo")
     putStrLn "Scheduling 2nd job"
-    scheduleWork_ s (putStr "bar")
+    scheduleWork_ scheduler (putStr "bar")
     putStrLn "Awaiting for jobs to be executed:"
   putStrLn "\nDone"
 ```
@@ -29,7 +28,7 @@ In the example above two workers will be scheduled that will handle the only two
 scheduled. Priniting iwith `putStr` is not thread safe, so you will notice that the output might get
 interleaved:
 
-```
+```haskell
 λ> interleaveFooBar
 Scheduling 1st job
 Scheduling 2nd job
@@ -50,12 +49,12 @@ core.
 ```haskell
 scheduleSums :: IO [Int]
 scheduleSums =
-  withScheduler (ParOn [1..4]) $ \ s -> do
-    scheduleWork s $ pure (10 + 1)
-    scheduleWork s $ pure (20 + 2)
-    scheduleWork s $ pure (30 + 3)
-    scheduleWork s $ pure (40 + 4)
-    scheduleWork s $ pure (50 + 5)
+  withScheduler (ParOn [1..4]) $ \ scheduler -> do
+    scheduleWork scheduler $ pure (10 + 1)
+    scheduleWork scheduler $ pure (20 + 2)
+    scheduleWork scheduler $ pure (30 + 3)
+    scheduleWork scheduler $ pure (40 + 4)
+    scheduleWork scheduler $ pure (50 + 5)
 ```
 
 Despite that the fact that sums are computed in parallel, the results of computation will appear in
@@ -74,12 +73,12 @@ exception will get re-thrown in the scheduling thread:
 ```haskell
 infiniteJobs :: IO ()
 infiniteJobs = do
-  withScheduler_ (ParN 5) $ \ s -> do
-    scheduleWork_ s $ putStrLn $ repeat 'a'
-    scheduleWork_ s $ putStrLn $ repeat 'b'
-    scheduleWork_ s $ putStrLn $ repeat 'c'
-    scheduleWork_ s $ pure (4 `div` (0 :: Int))
-    scheduleWork_ s $ putStrLn $ repeat 'd'
+  withScheduler_ (ParN 5) $ \ scheduler -> do
+    scheduleWork_ scheduler $ putStrLn $ repeat 'a'
+    scheduleWork_ scheduler $ putStrLn $ repeat 'b'
+    scheduleWork_ scheduler $ putStrLn $ repeat 'c'
+    scheduleWork_ scheduler $ pure (4 `div` (0 :: Int))
+    scheduleWork_ scheduler $ putStrLn $ repeat 'd'
   putStrLn "\nDone"
 ```
 
@@ -96,7 +95,7 @@ exception. If for some reason you need to recover the original async exception y
 `fromWorkerAsyncException`. See function documentation for an example.
 
 
-### Nested parallelism
+### Nested jobs
 
 Scheduling actions can themselves schedule actions indefinitely. That of course means that order of
 results produced is no longer deterministic, which is to be expected.
@@ -104,15 +103,15 @@ results produced is no longer deterministic, which is to be expected.
 ```haskell
 nestedJobs :: IO ()
 nestedJobs = do
-  withScheduler_ (ParN 5) $ \ s -> do
-    scheduleWork_ s $ putStr $ replicate 10 'a'
-    scheduleWork_ s $ do
+  withScheduler_ (ParN 5) $ \ scheduler -> do
+    scheduleWork_ scheduler $ putStr $ replicate 10 'a'
+    scheduleWork_ scheduler $ do
       putStr $ replicate 10 'b'
-      scheduleWork_ s $ do
+      scheduleWork_ scheduler $ do
         putStr $ replicate 10 'c'
-        scheduleWork_ s $ putStr $ replicate 10 'e'
-      scheduleWork_ s $ putStr $ replicate 10 'd'
-    scheduleWork_ s $ putStr $ replicate 10 'f'
+        scheduleWork_ scheduler $ putStr $ replicate 10 'e'
+      scheduleWork_ scheduler $ putStr $ replicate 10 'd'
+    scheduleWork_ scheduler $ putStr $ replicate 10 'f'
   putStrLn "\nDone"
 ```
 
@@ -127,3 +126,70 @@ order in which jobs are being scheduled:
 abbafbafbafbafbafbafbafbafbaffcdcdcdcdcdcdcdcdcdcdeeeeeeeeee
 Done
 ```
+
+### Nested parallelism
+
+Nothing really prevents you from having a scheduler within a scheduler. Of course, having multiple
+schedulers at the same time seems like an unnecessary overhead, which it is, but if you do have a
+use case for it, then is OK to go that route.
+
+```haskell
+nestedSchedulers :: IO ()
+nestedSchedulers = do
+  withScheduler_ (ParN 2) $ \ outerScheduler -> do
+    scheduleWork_ outerScheduler $ putStr $ replicate 10 'a'
+    scheduleWork_ outerScheduler $ do
+      putStr $ replicate 10 'b'
+      withScheduler_ (ParN 2) $ \ innerScheduler -> do
+        scheduleWork_ innerScheduler $ do
+          putStr $ replicate 10 'c'
+          scheduleWork_ outerScheduler $ putStr $ replicate 10 'e'
+        scheduleWork_ innerScheduler $ putStr $ replicate 10 'd'
+    scheduleWork_ outerScheduler $ putStr $ replicate 10 'f'
+  putStrLn "\nDone"
+```
+
+Note that inner scheduler's job schedules a job for the outer scheduler, which a bit crazy, but
+totally safe.
+
+```haskell
+λ> nestedSchedulers
+aabababababababababbffffffffffcccccccdcdcdcdddededededeeeeee
+Done
+```
+
+### Single worker schedulers
+
+If we only have one worker, than everyting becomes sequential and derterministic. Consider the saem
+example from before, but with `Seq` computation strategy.
+
+```haskell
+nestedSequentialSchedulers :: IO ()
+nestedSequentialSchedulers = do
+  withScheduler_ Seq $ \ outerScheduler -> do
+    scheduleWork_ outerScheduler $ putStr $ replicate 10 'a'
+    scheduleWork_ outerScheduler $ do
+      putStr $ replicate 10 'b'
+      withScheduler_ Seq $ \ innerScheduler -> do
+        scheduleWork_ innerScheduler $ do
+          putStr $ replicate 10 'c'
+          scheduleWork_ outerScheduler $ putStr $ replicate 10 'e'
+        scheduleWork_ innerScheduler $ putStr $ replicate 10 'd'
+    scheduleWork_ outerScheduler $ putStr $ replicate 10 'f'
+  putStrLn "\nDone"
+```
+
+No more interleaving, everything is done in the same order each time the function is invoked.
+
+```haskell
+λ> nestedSchedulers
+aaaaaaaaaabbbbbbbbbbccccccccccddddddddddffffffffffeeeeeeeeee
+Done
+```
+
+## Avoiding deadlocks
+
+Any sort of concurrency primitives such as mutual exclusion, semaphors, etc. can easily lead to
+deadlocks, starvation and other common problems. Try to avoid them and be careful if you do end up
+using them.
+
