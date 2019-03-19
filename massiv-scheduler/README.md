@@ -24,9 +24,9 @@ interleaveFooBar = do
   putStrLn "\nDone"
 ```
 
-In the example above two workers will be scheduled that will handle the only two jobs that have been
-scheduled. Priniting iwith `putStr` is not thread safe, so you will notice that the output might get
-interleaved:
+In the example above two workers will be created to handle the only two jobs that have been
+scheduled. Printing with `putStr` is not thread safe, so the output that you would get with above
+function is likely be interleaved:
 
 ```haskell
 λ> interleaveFooBar
@@ -42,8 +42,8 @@ scheduler start executing scheduled jobs.
 
 ### Keeping the results of computation
 
-Another comon scenario is to schedule some jobs that produce useful results. In the example below
-four works will be spawed off. Due to `ParOn` each of the workers will be pinned to a praticular
+Another common scenario is to schedule some jobs that produce useful results. In the example below
+four works will be spawned off. Due to `ParOn` each of the workers will be pinned to a particular
 core.
 
 ```haskell
@@ -82,17 +82,17 @@ infiniteJobs = do
   putStrLn "\nDone"
 ```
 
-Note, that if there was no exception, priniting would never stop.
+Note, that if there was no exception, printing would never stop.
 
 ```haskell
 λ> infiniteJobs
 aaaaaaaaabcdd*** Exception: divide by zero
 ```
 
-A special case is when a thread is killed by an async exception. Whenever that happens that
-exception will be rethrown in a scheduling thread wrapped in a custom `WorkerAsyncException`
-exception. If for some reason you need to recover the original async exception you can use
-`fromWorkerAsyncException`. See function documentation for an example.
+A special case is when a thread is killed by an async exception. Whenever that happens than the
+exception will be re-thrown in a scheduling thread, but it will be wrapped in a custom
+`WorkerAsyncException` exception. If for some reason you need to recover the original async
+exception you can use `fromWorkerAsyncException`. See function documentation for an example.
 
 
 ### Nested jobs
@@ -115,8 +115,8 @@ nestedJobs = do
   putStrLn "\nDone"
 ```
 
-The order of how characters appear is important, since it actually shines a light on the actual
-order in which jobs are being scheduled:
+The order in which characters appear is important, since it directly relates to the actual order in
+which jobs are being scheduled and executed:
 
 * `c`, `d` and `e` characters will always appear after `b`
 * `e` will always appear after `c`
@@ -131,7 +131,7 @@ Done
 
 Nothing really prevents you from having a scheduler within a scheduler. Of course, having multiple
 schedulers at the same time seems like an unnecessary overhead, which it is, but if you do have a
-use case for it, then is OK to go that route.
+use case for it, don't make me stop you, it is OK to go that route.
 
 ```haskell
 nestedSchedulers :: IO ()
@@ -149,8 +149,8 @@ nestedSchedulers = do
   putStrLn "\nDone"
 ```
 
-Note that inner scheduler's job schedules a job for the outer scheduler, which a bit crazy, but
-totally safe.
+Note that the inner scheduler's job schedules a job for the outer scheduler, which is a bit crazy,
+but totally safe.
 
 ```haskell
 λ> nestedSchedulers
@@ -160,7 +160,7 @@ Done
 
 ### Single worker schedulers
 
-If we only have one worker, than everyting becomes sequential and derterministic. Consider the saem
+If we only have one worker, than everything becomes sequential and deterministic. Consider the same
 example from before, but with `Seq` computation strategy.
 
 ```haskell
@@ -189,7 +189,7 @@ Done
 
 ## Avoiding deadlocks
 
-Any sort of concurrency primitives such as mutual exclusion, semaphors, etc. can easily lead to
+Any sort of concurrency primitives such as mutual exclusion, semaphores, etc. can easily lead to
 deadlocks, starvation and other common problems. Try to avoid them and be careful if you do end up
 using them.
 
