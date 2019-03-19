@@ -9,7 +9,7 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 
 | Language | Travis | AppVeyor | Gitter.im |
 |:--------:|:------:|:--------:|:---------:|
-| [!GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg?label=Linux%20%26%20OS%20X)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv/master.svg?label=Windows)](https://ci.appveyor.com/project/lehins/massiv) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg?label=Linux%20%26%20OS%20X)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv/master.svg?label=Windows)](https://ci.appveyor.com/project/lehins/massiv) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 |      Package       | Hackage | Nightly | LTS |
 |:------------------:|:-------:|:-------:|:---:|
