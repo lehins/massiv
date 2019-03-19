@@ -94,3 +94,36 @@ A special case is when a thread is killed by an async exception. Whenever that h
 exception will be rethrown in a scheduling thread wrapped in a custom `WorkerAsyncException`
 exception. If for some reason you need to recover the original async exception you can use
 `fromWorkerAsyncException`. See function documentation for an example.
+
+
+### Nested parallelism
+
+Scheduling actions can themselves schedule actions indefinitely. That of course means that order of
+results produced is no longer deterministic, which is to be expected.
+
+```haskell
+nestedJobs :: IO ()
+nestedJobs = do
+  withScheduler_ (ParN 5) $ \ s -> do
+    scheduleWork_ s $ putStr $ replicate 10 'a'
+    scheduleWork_ s $ do
+      putStr $ replicate 10 'b'
+      scheduleWork_ s $ do
+        putStr $ replicate 10 'c'
+        scheduleWork_ s $ putStr $ replicate 10 'e'
+      scheduleWork_ s $ putStr $ replicate 10 'd'
+    scheduleWork_ s $ putStr $ replicate 10 'f'
+  putStrLn "\nDone"
+```
+
+The order of how characters appear is important, since it actually shines a light on the actual
+order in which jobs are being scheduled:
+
+* `c`, `d` and `e` characters will always appear after `b`
+* `e` will always appear after `c`
+
+```haskell
+λ> nestedJobs
+abbafbafbafbafbafbafbafbafbaffcdcdcdcdcdcdcdcdcdcdeeeeeeeeee
+Done
+```
