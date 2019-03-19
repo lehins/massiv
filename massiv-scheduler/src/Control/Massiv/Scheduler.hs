@@ -1,22 +1,21 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE NamedFieldPuns      #-}
-{-# LANGUAGE PatternSynonyms     #-}
-{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
--- Module      : Data.Massiv.Scheduler
+-- Module      : Control.Massiv.Scheduler
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Scheduler
+module Control.Massiv.Scheduler
   ( -- * Scheduler and strategies
-    Scheduler
-  , Comp(..)
-  , pattern Par
+    Comp(..)
+  , Scheduler
   , numWorkers
   -- * Initialize Scheduler
   , withScheduler
@@ -26,24 +25,24 @@ module Data.Massiv.Scheduler
   , scheduleWork_
   , fromWorkerAsyncException
   -- * Helper functions
-  , traverse_
   , mapConcurrently
+  , mapConcurrently_
+  , traverse_
   ) where
 
-import           Control.Exception
-import           Control.Concurrent
-import           Control.Monad
-import           Data.Atomics                      (atomicModifyIORefCAS,
-                                                    atomicModifyIORefCAS_)
-import           Data.Foldable                     as F (foldl')
-import           Data.IORef
-import           Data.Massiv.Scheduler.Computation
-import           Data.Massiv.Scheduler.Queue
-import           Control.Monad.IO.Unlift
+import Control.Concurrent
+import Control.Exception
+import Control.Massiv.Scheduler.Computation
+import Control.Massiv.Scheduler.Queue
+import Control.Monad
+import Control.Monad.IO.Unlift
+import Data.Atomics (atomicModifyIORefCAS, atomicModifyIORefCAS_)
+import Data.Foldable as F (foldl')
+import Data.IORef
 
 
--- | Main type for scheduling work. See `withScheduler` for the only way to get access to such data
--- type.
+-- | Main type for scheduling work. See `withScheduler` or `withScheduler_` for the only ways to get
+-- access to such data type.
 --
 -- @since 0.1.0
 data Scheduler m a = Scheduler
@@ -77,6 +76,12 @@ traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
 -- @since 0.1.0
 mapConcurrently :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m [b]
 mapConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
+
+-- | Just like `mapConcurrently`, but discard the results of computation.
+--
+-- @since 0.1.0
+mapConcurrently_ :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m ()
+mapConcurrently_ comp f xs = withScheduler_ comp $ \s -> traverse_ (scheduleWork_ s . f) xs
 
 -- | Schedule an action to be picked up and computed by a worker from a pool. See `withScheduler` to
 -- initialize a scheduler. Use `scheduleWork_` if you do not intend to keep the result of the
@@ -168,11 +173,11 @@ withScheduler ::
 withScheduler comp submitWork = do
   sNumWorkers <-
     case comp of
-      Seq -> return 1
-      Par -> liftIO getNumCapabilities
+      Seq      -> return 1
+      Par      -> liftIO getNumCapabilities
       ParOn ws -> return $ length ws
-      ParN 0 -> liftIO getNumCapabilities
-      ParN n -> return $ fromIntegral n
+      ParN 0   -> liftIO getNumCapabilities
+      ParN n   -> return $ fromIntegral n
   sWorkersCounterRef <- liftIO $ newIORef sNumWorkers
   sJQueue <- newJQueue
   sJobsCountRef <- liftIO $ newIORef 0
@@ -285,10 +290,14 @@ instance Exception WorkerException where
 -- directly.
 --
 -- >>> let didAWorkerDie = handleJust fromWorkerAsyncException (return . (== ThreadKilled)) . fmap or
+-- >>> :t didAWorkerDie
+-- didAWorkerDie :: Foldable t => IO (t Bool) -> IO Bool
 -- >>> didAWorkerDie $ withScheduler Par $ \ s -> scheduleWork s $ pure False
 -- False
 -- >>> didAWorkerDie $ withScheduler Par $ \ s -> scheduleWork s $ myThreadId >>= killThread >> pure False
 -- True
+-- >>> withScheduler Par $ \ s -> scheduleWork s $ myThreadId >>= killThread >> pure False
+-- *** Exception: WorkerAsyncException thread killed
 --
 -- @since 0.1.0
 fromWorkerAsyncException :: Exception e => SomeException -> Maybe e

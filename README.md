@@ -7,12 +7,15 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 
 ## Status
 
-__Disclaimer__: The current status of this library is still under development, but it is already at
-a rather stable point, so no significant API changes should happen.
+| Language | Travis | AppVeyor | Gitter.im |
+|:--------:|:------:|:--------:|:---------:|
+| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg?label=Linux%20%26%20OS%20X)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv/master.svg?label=Windows)](https://ci.appveyor.com/project/lehins/massiv) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-| Language | `massiv` | `massiv-io` | Travis | AppVeyor | Gitter.im
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv) | [![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)](https://hackage.haskell.org/package/massiv-io) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg?label=Linux%20%26%20OS%20X)](https://travis-ci.org/lehins/massiv) | [![AppVeyor](https://img.shields.io/appveyor/ci/lehins/massiv/master.svg?label=Windows)](https://ci.appveyor.com/project/lehins/massiv) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+|      Package       | Hackage | Nightly | LTS |
+|:------------------:|:-------:|:-------:|:---:|
+|  [`massiv`](https://github.com/lehins/massiv/tree/master/massiv)|                                       [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv)|                                                                                                        [![Nightly](https://www.stackage.org/package/massiv/badge/nightly)](https://www.stackage.org/nightly/package/massiv)|                                                                                         [![Nightly](https://www.stackage.org/package/massiv/badge/lts)](https://www.stackage.org/lts/package/massiv)|
+|  [`massiv-io`]](https://github.com/lehins/massiv/tree/master/massiv-io)|                                [![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)](https://hackage.haskell.org/package/massiv-io)|                                                                                                  [![Nightly](https://www.stackage.org/package/massiv-io/badge/nightly)](https://www.stackage.org/nightly/package/massiv-io)|                                                                                   [![Nightly](https://www.stackage.org/package/massiv-io/badge/lts)](https://www.stackage.org/lts/package/massiv-io)|
+|  [`massiv-scheduler`](https://github.com/lehins/massiv/tree/master/massiv-scheduler)|                   [![Hackage](https://img.shields.io/hackage/v/massiv-scheduler.svg)](https://hackage.haskell.org/package/massiv-scheduler)|                                                                                    [![Nightly](https://www.stackage.org/package/massiv-scheduler/badge/nightly)](https://www.stackage.org/nightly/package/massiv-scheduler)|                                                                     [![Nightly](https://www.stackage.org/package/massiv-scheduler/badge/lts)](https://www.stackage.org/lts/package/massiv-scheduler)|
 
 ## Introduction
 
@@ -211,6 +214,17 @@ Same as with indicies, there are helper pattern synonyms: `Sz1`, `Sz2`, `Sz3`, `
 Sz (2 :> 3 :. 4)
 λ> Sz4 10 2 (-30) 4
 Sz (10 :> 2 :> 0 :. 4)
+```
+
+As well as the `Num` instance:
+
+```haskell
+λ> 4 :: Sz5
+Sz (4 :> 4 :> 4 :> 4 :. 4)
+λ> (Sz2 1 2) + 3
+Sz (4 :. 5)
+λ> (Sz2 1 2) - 3
+Sz (0 :. 0)
 ```
 
 Alternatively tuples of `Int`s can be used for working with Arrays, up to and including 5-tuples

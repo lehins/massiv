@@ -51,12 +51,6 @@
 # - ignore: {name: Use let}
 # - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
 
-
- - ignore: {name: Eta reduce}
- - ignore: {name: Redundant bracket}
- - ignore: {name: Use camelCase}
- - ignore: {name: Unused LANGUAGE pragma}
-
 # Define some custom infix operators
 # - fixity: infixr 3 ~^#^~
 

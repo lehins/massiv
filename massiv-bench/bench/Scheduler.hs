@@ -3,13 +3,11 @@ module Main where
 
 import           Criterion.Main
 import           Control.DeepSeq
-import           Data.Massiv.Bench          as A
-import           Data.Massiv.Core.Index
-import           Prelude                    as P
-import qualified Data.Massiv.Scheduler as S
+import           Prelude                  as P
+import           Control.Massiv.Scheduler as S
 
 main :: IO ()
-main = 
+main =
   defaultMain $ map (mkBench "return" return) [100, 10000, 100000]
 
 

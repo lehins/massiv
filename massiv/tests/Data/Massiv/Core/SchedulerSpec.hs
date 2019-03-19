@@ -1,7 +1,5 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
 import           Control.Concurrent
@@ -9,7 +7,7 @@ import           Control.Exception.Base    (ArithException (DivideByZero),
                                             AsyncException (ThreadKilled),
                                             displayException)
 import           Data.Massiv.CoreArbitrary as A
-import           Data.Massiv.Scheduler
+import           Control.Massiv.Scheduler
 import           Prelude                   as P
 
 

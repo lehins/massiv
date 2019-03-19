@@ -28,6 +28,7 @@ module Data.Massiv.Core.Common
   , InnerSlice(..)
   , Manifest(..)
   , Mutable(..)
+  , Comp(..)
   , unsafeRead
   , unsafeWrite
   , unsafeLinearModify
@@ -55,7 +56,6 @@ module Data.Massiv.Core.Common
   , module Data.Massiv.Core.Index
   -- * Common Operations
   , imapM_
-  , module Data.Massiv.Scheduler.Computation
   , Semigroup((<>))
   -- * Exceptions
   , MonadThrow(..)
@@ -76,7 +76,7 @@ import           Control.Exception (throw)
 import           Control.Monad.Catch (MonadThrow(..))
 import           Control.Monad.IO.Unlift (MonadUnliftIO, MonadIO(liftIO))
 import           Control.Monad.Primitive
-import           Data.Massiv.Scheduler.Computation
+import           Control.Massiv.Scheduler (Comp(..))
 import           Data.Massiv.Core.Exception
 import           Data.Massiv.Core.Index
 import           Data.Typeable

@@ -79,7 +79,7 @@ import           Prelude                             hiding (mapM, read)
 import           Control.Monad                       (unless)
 import           Control.Monad.ST
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Scheduler
+import           Control.Massiv.Scheduler
 
 -- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
 -- boxed arrays in will be a thunk with `Uninitialized` exception, while for others it will be
@@ -177,7 +177,11 @@ thawS arr = makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
 --   ]
 --
 -- @since 0.1.0
-freeze :: (Mutable r ix e, MonadIO m) => Comp -> MArray RealWorld r ix e -> m (Array r ix e)
+freeze ::
+     forall r ix e m. (Mutable r ix e, MonadIO m)
+  => Comp
+  -> MArray RealWorld r ix e
+  -> m (Array r ix e)
 freeze comp marr = liftIO $ generateArrayLinear comp (msize marr) (unsafeLinearRead marr)
 {-# INLINE freeze #-}
 
@@ -186,7 +190,10 @@ freeze comp marr = liftIO $ generateArrayLinear comp (msize marr) (unsafeLinearR
 -- that has to be done in `IO`, `freezeS` can be used with `ST`.
 --
 -- @since 0.3.0
-freezeS :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> m (Array r ix e)
+freezeS ::
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
+  => MArray (PrimState m) r ix e
+  -> m (Array r ix e)
 freezeS marr = generateArrayLinearS Seq (msize marr) (unsafeLinearRead marr)
 {-# INLINE freezeS #-}
 

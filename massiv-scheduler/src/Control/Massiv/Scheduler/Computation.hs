@@ -1,26 +1,25 @@
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE PatternSynonyms     #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
--- Module      : Data.Massiv.Scheduler.Computation
+-- Module      : Control.Massiv.Scheduler.Computation
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Scheduler.Computation
-  ( Comp(..)
-  , pattern Par
+module Control.Massiv.Scheduler.Computation
+  ( Comp(.., Par)
   ) where
 
-import           Control.DeepSeq (NFData (..), deepseq)
+import Control.DeepSeq (NFData(..), deepseq)
 #if !MIN_VERSION_base(4,11,0)
-import           Data.Semigroup
+import Data.Semigroup
 #endif
-import           Data.Word
+import Data.Word
 
--- | Computation type to use.
+-- | Computation type to use when scheduling work.
 data Comp
   = Seq -- ^ Sequential computation
   | ParOn ![Int]
@@ -47,8 +46,8 @@ instance Show Comp where
   show Par        = "Par"
   show (ParOn ws) = "ParOn " ++ show ws
   show (ParN n)   = "ParN " ++ show n
-  showsPrec _ Seq = ("Seq" ++)
-  showsPrec _ Par = ("Par" ++)
+  showsPrec _ Seq  = ("Seq" ++)
+  showsPrec _ Par  = ("Par" ++)
   showsPrec 0 comp = (show comp ++)
   showsPrec _ comp = (("(" ++ show comp ++ ")") ++)
 
@@ -77,14 +76,14 @@ joinComp x y =
     Par -> Par
     ParOn xs ->
       case y of
-        Seq -> x
-        Par -> Par
+        Seq      -> x
+        Par      -> Par
         ParOn ys -> ParOn (xs ++ ys)
-        ParN n2 -> ParN (max (fromIntegral (length xs)) n2)
+        ParN n2  -> ParN (max (fromIntegral (length xs)) n2)
     ParN n1 ->
       case y of
-        Seq -> x
-        Par -> Par
+        Seq      -> x
+        Par      -> Par
         ParOn ys -> ParN (max n1 (fromIntegral (length ys)))
-        ParN n2 -> ParN (max n1 n2)
+        ParN n2  -> ParN (max n1 n2)
 {-# NOINLINE joinComp #-}

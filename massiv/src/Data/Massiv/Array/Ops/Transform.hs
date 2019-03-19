@@ -68,7 +68,7 @@ import           Data.Massiv.Array.Ops.Construct
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
-import           Data.Massiv.Scheduler           (traverse_)
+import           Control.Massiv.Scheduler        (traverse_)
 import           Prelude                         as P hiding (concat, splitAt,
                                                        traverse)
 

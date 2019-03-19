@@ -8,17 +8,17 @@ license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
 copyright:           2018-2019 Alexey Kuleshevich
-category:            Data, Data Structures
+category:            Parallelism, Concurrency
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.Massiv.Scheduler
-                     , Data.Massiv.Scheduler.Computation
+  exposed-modules:     Control.Massiv.Scheduler
 
-  other-modules:       Data.Massiv.Scheduler.Queue
+  other-modules:       Control.Massiv.Scheduler.Computation
+                     , Control.Massiv.Scheduler.Queue
   build-depends:       base            >= 4.8 && < 5
                      , atomic-primops
                      , deepseq
@@ -35,7 +35,7 @@ test-suite tests
   hs-source-dirs:     tests
   main-is:            Main.hs
   other-modules:      Spec
-                    , Data.Massiv.SchedulerSpec
+                    , Control.Massiv.SchedulerSpec
   build-depends:      base            >= 4.8 && < 5
                     , deepseq
                     , massiv-scheduler

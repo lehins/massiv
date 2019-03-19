@@ -1,14 +1,13 @@
-{-# LANGUAGE BangPatterns   #-}
 {-# LANGUAGE NamedFieldPuns #-}
 -- |
--- Module      : Data.Massiv.Scheduler.Queue
+-- Module      : Control.Massiv.Scheduler.Queue
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Scheduler.Queue
+module Control.Massiv.Scheduler.Queue
   ( -- * Queue
     -- ** Pure queue
     Queue
@@ -27,11 +26,11 @@ module Data.Massiv.Scheduler.Queue
   -- , isDeadlock
   ) where
 
-import           Control.Concurrent.MVar
-import           Control.Monad           (join, void)
-import           Data.Atomics            (atomicModifyIORefCAS)
-import           Data.IORef
-import           Control.Monad.IO.Unlift
+import Control.Concurrent.MVar
+import Control.Monad (join, void)
+import Control.Monad.IO.Unlift
+import Data.Atomics (atomicModifyIORefCAS)
+import Data.IORef
 
 
 -- | Pure functional Okasaki queue with total length
@@ -109,7 +108,7 @@ popJQueue (JQueue jQueueRef) = liftIO inner
             , case job of
                 Job _ action -> return $ Just (void action)
                 Job_ action_ -> return $ Just action_
-                Retire -> return Nothing)
+                Retire       -> return Nothing)
 
 flushResults :: MonadIO m => JQueue m a -> m [a]
 flushResults (JQueue jQueueRef) =

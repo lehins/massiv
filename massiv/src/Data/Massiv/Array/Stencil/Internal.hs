@@ -150,7 +150,7 @@ dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'
 -- of the array, that the stencil will be applied to.
 --
 -- __Note__: This map can be very inefficient, since for stencils larger than 1 element in size, the
--- supllied function will be repetedly applied to the same element. It is better to simply map that
+-- supllied function will be repeatedly applied to the same element. It is better to simply map that
 -- function over the source array instead.
 --
 -- @since 0.2.3

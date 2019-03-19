@@ -33,7 +33,7 @@ import           Data.Foldable                   (foldr')
 import qualified Data.List                       as L
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal
-import           Data.Massiv.Scheduler
+import           Control.Massiv.Scheduler
 import           Data.Proxy
 import           Data.Typeable
 import           GHC.Exts

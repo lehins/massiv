@@ -48,7 +48,7 @@ import           Data.Massiv.Array.Ops.Fold.Internal
 import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.List
-import           Data.Massiv.Scheduler
+import           Control.Massiv.Scheduler
 import           Data.Maybe                          (fromMaybe)
 import           Data.Typeable
 import qualified Data.Vector                         as V
@@ -215,11 +215,11 @@ instance Index ix => StrideLoad M ix e
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
-compute :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
+compute :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -> Array r ix e
 compute !arr = unsafePerformIO $ loadArray arr >>= unsafeFreeze (getComp arr)
 {-# INLINE compute #-}
 
-computeS :: (Load r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
+computeS :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -> Array r ix e
 computeS !arr = runST $ loadArrayS arr >>= unsafeFreeze (getComp arr)
 {-# INLINE computeS #-}
 
@@ -232,7 +232,7 @@ computeS !arr = runST $ loadArrayS arr >>= unsafeFreeze (getComp arr)
 -- Array P Seq (Sz1 10)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 --
-computeAs :: (Load r' ix e, Mutable r ix e) => r -> Array r' ix e -> Array r ix e
+computeAs :: (Mutable r ix e, Load r' ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
 {-# INLINE computeAs #-}
 
@@ -252,7 +252,7 @@ computeAs _ = compute
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
 --
 -- @since 0.1.1
-computeProxy :: (Load r' ix e, Mutable r ix e) => proxy r -> Array r' ix e -> Array r ix e
+computeProxy :: (Mutable r ix e, Load r' ix e) => proxy r -> Array r' ix e -> Array r ix e
 computeProxy _ = compute
 {-# INLINE computeProxy #-}
 
@@ -261,7 +261,7 @@ computeProxy _ = compute
 -- resulting type is the same as the input.
 --
 -- @since 0.1.0
-computeSource :: forall r' r ix e . (Source r' ix e, Mutable r ix e)
+computeSource :: forall r ix e r' . (Mutable r ix e, Source r' ix e)
               => Array r' ix e -> Array r ix e
 computeSource arr = maybe (compute arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
@@ -276,7 +276,7 @@ clone arr = unsafePerformIO $ thaw arr >>= unsafeFreeze (getComp arr)
 
 
 -- | /O(1)/ - Cast over Array representation
-gcastArr :: forall r' r ix e. (Typeable r, Typeable r')
+gcastArr :: forall r ix e r' . (Typeable r, Typeable r')
        => Array r' ix e -> Maybe (Array r ix e)
 gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 
@@ -285,7 +285,7 @@ gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 -- result arrays are of the same representation, in which case it is an /O(1)/ operation.
 --
 -- @since 0.1.0
-convert :: (Load r' ix e, Mutable r ix e)
+convert :: forall r ix e r' . (Mutable r ix e, Load r' ix e)
         => Array r' ix e -> Array r ix e
 convert arr = fromMaybe (compute arr) (gcastArr arr)
 {-# INLINE convert #-}
@@ -293,7 +293,7 @@ convert arr = fromMaybe (compute arr) (gcastArr arr)
 -- | Same as `convert`, but let's you supply resulting representation type as an argument.
 --
 -- @since 0.1.0
-convertAs :: (Load r' ix e, Mutable r ix e)
+convertAs :: (Mutable r ix e, Load r' ix e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
 {-# INLINE convertAs #-}
@@ -303,14 +303,14 @@ convertAs _ = convert
 -- proxy argument.
 --
 -- @since 0.1.1
-convertProxy :: (Load r' ix e, Mutable r ix e)
+convertProxy :: (Mutable r ix e, Load r' ix e)
              => proxy r -> Array r' ix e -> Array r ix e
 convertProxy _ = convert
 {-# INLINE convertProxy #-}
 
 
 -- | Convert a ragged array into a usual rectangular shaped one.
-fromRaggedArray :: (Ragged r' ix e, Load r' ix e, Mutable r ix e) =>
+fromRaggedArray :: (Mutable r ix e, Ragged r' ix e, Load r' ix e) =>
                    Array r' ix e -> Either ShapeException (Array r ix e)
 fromRaggedArray arr =
   unsafePerformIO $ do
@@ -329,7 +329,7 @@ fromRaggedArray arr =
 --
 -- @since 0.3.0
 fromRaggedArrayM ::
-     (Ragged r' ix e, Load r' ix e, Mutable r ix e, MonadThrow m)
+     forall r ix e r' m . (Mutable r ix e, Ragged r' ix e, Load r' ix e, MonadThrow m)
   => Array r' ix e
   -> m (Array r ix e)
 fromRaggedArrayM arr =
@@ -344,7 +344,10 @@ fromRaggedArrayM arr =
 
 -- | Same as `fromRaggedArray`, but will throw an error if its shape is not
 -- rectangular.
-fromRaggedArray' :: (Load r' ix e, Ragged r' ix e, Mutable r ix e) => Array r' ix e -> Array r ix e
+fromRaggedArray' ::
+     forall r ix e r'. (Mutable r ix e, Load r' ix e, Ragged r' ix e)
+  => Array r' ix e
+  -> Array r ix e
 fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
 {-# INLINE fromRaggedArray' #-}
 
@@ -356,7 +359,7 @@ fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
 --
 -- @since 0.3.0
 computeWithStride ::
-     (StrideLoad r' ix e, Mutable r ix e)
+     forall r ix e r'. (Mutable r ix e, StrideLoad r' ix e)
   => Stride ix
   -> Array r' ix e
   -> Array r ix e
@@ -372,6 +375,6 @@ computeWithStride stride !arr =
 --
 -- @since 0.3.0
 computeWithStrideAs ::
-     (StrideLoad r' ix e, Mutable r ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
+     (Mutable r ix e, StrideLoad r' ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
 computeWithStrideAs _ = computeWithStride
 {-# INLINE computeWithStrideAs #-}

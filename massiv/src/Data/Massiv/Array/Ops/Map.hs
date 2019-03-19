@@ -76,7 +76,7 @@ import           Data.Massiv.Array.Mutable
 import           Data.Massiv.Array.Ops.Construct     (makeArrayA)
 import           Data.Massiv.Core.Common
 import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Data.Massiv.Scheduler
+import           Control.Massiv.Scheduler
 import           Prelude                             hiding (map, mapM, mapM_,
                                                       traverse, unzip, unzip3,
                                                       zip, zip3, zipWith,

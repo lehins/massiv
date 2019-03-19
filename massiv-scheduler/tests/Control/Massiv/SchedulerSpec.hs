@@ -1,15 +1,15 @@
-module Data.Massiv.SchedulerSpec (spec) where
+module Control.Massiv.SchedulerSpec (spec) where
 
-import           Control.Concurrent      (killThread, myThreadId, threadDelay)
-import           Control.Concurrent.MVar
-import           Control.DeepSeq
-import           Control.Exception       hiding (assert)
-import           Control.Exception.Base  (ArithException (DivideByZero))
-import           Data.List               (sort)
-import           Data.Massiv.Scheduler
-import           Test.Hspec
-import           Test.QuickCheck
-import           Test.QuickCheck.Monadic
+import Control.Concurrent (killThread, myThreadId, threadDelay)
+import Control.Concurrent.MVar
+import Control.DeepSeq
+import Control.Exception hiding (assert)
+import Control.Exception.Base (ArithException(DivideByZero))
+import Control.Massiv.Scheduler
+import Data.List (sort)
+import Test.Hspec
+import Test.QuickCheck
+import Test.QuickCheck.Monadic
 
 
 instance Arbitrary Comp where
@@ -124,7 +124,7 @@ prop_ExpectAsyncException comp =
       fromWorkerAsyncException' =
         case comp of
           Seq -> asyncExceptionFromException
-          _ -> fromWorkerAsyncException
+          _   -> fromWorkerAsyncException
    in (monadicIO .
        run .
        didAWorkerDie .

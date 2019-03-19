@@ -128,6 +128,18 @@ benchmark append
                      , dlist
   default-language:    Haskell2010
 
+benchmark filter
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Filter.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+                     , vector
+  default-language:    Haskell2010
+
 -- benchmark fuse-seq
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench

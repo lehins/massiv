@@ -47,7 +47,7 @@ import           Control.Monad           (void, when)
 import qualified Data.Foldable           as F
 import           Data.Functor.Identity   (runIdentity)
 import           Data.Massiv.Core.Common
-import           Data.Massiv.Scheduler
+import           Control.Massiv.Scheduler
 import           Prelude                 hiding (foldl, foldr)
 import           System.IO.Unsafe        (unsafePerformIO)
 
