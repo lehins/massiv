@@ -15,16 +15,12 @@
 module Control.Massiv.Scheduler
   ( -- * Scheduler and strategies
     Comp(..)
-  , Scheduler
-  , numWorkers
+  , Scheduler(..)
   -- * Initialize Scheduler
   , withScheduler
   , withScheduler_
-  -- * Schedule work
-  , scheduleWork
-  , scheduleWork_
-  , fromWorkerAsyncException
   -- * Helper functions
+  , fromWorkerAsyncException
   , mapConcurrently
   , mapConcurrently_
   , traverse_
@@ -40,29 +36,26 @@ import Data.Atomics (atomicModifyIORefCAS, atomicModifyIORefCAS_)
 import Data.Foldable as F (foldl')
 import Data.IORef
 
-import System.Timeout
+data Jobs m a = Jobs
+  { jobsNumWorkers :: {-# UNPACK #-} !Int
+  , jobsQueue      :: !(JQueue m a)
+  , jobsCountRef   :: !(IORef Int)
+  }
+  -- TODO: Make Jobs a sum type with: ?
+                       -- ParScheduler
+                       -- SeqScheduler
+  --                     sSeqResRef :: !(Maybe (IORef [a]))
 
 -- | Main type for scheduling work. See `withScheduler` or `withScheduler_` for the only ways to get
 -- access to such data type.
 --
 -- @since 0.1.0
 data Scheduler m a = Scheduler
-  { sNumWorkers        :: {-# UNPACK #-} !Int
-  , sWorkersCounterRef :: !(IORef Int)
-  , sJQueue            :: !(JQueue m a)
-  , sJobsCountRef      :: !(IORef Int)
+  { numWorkers :: {-# UNPACK #-} !Int
+  -- ^ Get the number of workers.
+  , scheduleWork :: m a -> m ()
+  -- ^ Schedule an action to be picked up and computed by a worker from a pool.
   }
-  -- TODO: Make Scheduler a sum type with: ?
-                       -- ParScheduler
-                       -- SeqScheduler
-  --                     sSeqResRef :: !(Maybe (IORef [a]))
-
--- | Get number of workers from the scheduler
---
--- @since 0.1.0
-numWorkers :: Scheduler m a -> Int
-numWorkers = sNumWorkers
-
 
 -- | This is generally a faster way to traverse while ignoring the result rather than using `mapM_`.
 --
@@ -82,35 +75,30 @@ mapConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s
 --
 -- @since 0.1.0
 mapConcurrently_ :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m ()
-mapConcurrently_ comp f xs = withScheduler_ comp $ \s -> traverse_ (scheduleWork_ s . f) xs
+mapConcurrently_ comp f xs = withScheduler_ comp $ \s -> traverse_ (scheduleWork s . f) xs
 
--- | Schedule an action to be picked up and computed by a worker from a pool. See `withScheduler` to
--- initialize a scheduler. Use `scheduleWork_` if you do not intend to keep the result of the
--- computation, as it will result in faster code.
---
--- @since 0.1.0
-scheduleWork :: MonadIO m => Scheduler m a -> m a -> m ()
-scheduleWork = scheduleWorkInternal mkJob
+scheduleJobs :: MonadIO m => Jobs m a -> m a -> m ()
+scheduleJobs = scheduleJobsWith mkJob
 
 -- | Similarly to `scheduleWork`, but ignores the result of computation, thus having less overhead.
 --
 -- @since 0.1.0
-scheduleWork_ :: MonadIO m => Scheduler m a -> m b -> m ()
-scheduleWork_ = scheduleWorkInternal (return . Job_ . void)
+scheduleJobs_ :: MonadIO m => Jobs m a -> m b -> m ()
+scheduleJobs_ = scheduleJobsWith (return . Job_ . void)
 
-scheduleWorkInternal :: MonadIO m => (m b -> m (Job m a)) -> Scheduler m a -> m b -> m ()
-scheduleWorkInternal mkJob' Scheduler {sJQueue, sJobsCountRef, sNumWorkers} action = do
-  liftIO $ atomicModifyIORefCAS_ sJobsCountRef (+ 1)
+scheduleJobsWith :: MonadIO m => (m b -> m (Job m a)) -> Jobs m a -> m b -> m ()
+scheduleJobsWith mkJob' Jobs {jobsQueue, jobsCountRef, jobsNumWorkers} action = do
+  liftIO $ atomicModifyIORefCAS_ jobsCountRef (+ 1)
   job <-
     mkJob' $ do
       res <- action
-      res `seq` dropCounterOnZero sJobsCountRef $ retireWorkersN sJQueue sNumWorkers
+      res `seq` dropCounterOnZero jobsCountRef $ retireWorkersN jobsQueue jobsNumWorkers
       return res
-  pushJQueue sJQueue job
+  pushJQueue jobsQueue job
 
 -- | Helper function to place `Retire` instructions on the job queue.
 retireWorkersN :: MonadIO m => JQueue m a -> Int -> m ()
-retireWorkersN sJQueue n = traverse_ (pushJQueue sJQueue) $ replicate n Retire
+retireWorkersN jobsQueue n = traverse_ (pushJQueue jobsQueue) $ replicate n Retire
 
 -- | Decrease a counter by one and perform an action when it drops down to zero.
 dropCounterOnZero :: MonadIO m => IORef Int -> m () -> m ()
@@ -169,47 +157,71 @@ withScheduler ::
      MonadUnliftIO m
   => Comp -- ^ Computation strategy
   -> (Scheduler m a -> m b)
-              -- ^ Action that will be scheduling all the work.
+     -- ^ Action that will be scheduling all the work.
   -> m [a]
-withScheduler comp submitWork = do
-  sNumWorkers <-
+withScheduler comp = withSchedulerInternal comp scheduleJobs flushResults
+
+
+-- | Same as `withScheduler`, but discards results of submitted jobs.
+--
+-- @since 0.1.0
+withScheduler_ ::
+     MonadUnliftIO m
+  => Comp -- ^ Computation strategy
+  -> (Scheduler m a -> m b)
+              -- ^ Action that will be scheduling all the work.
+  -> m ()
+withScheduler_ comp = withSchedulerInternal comp scheduleJobs_ (const (pure ()))
+
+
+withSchedulerInternal ::
+     MonadUnliftIO m
+  => Comp -- ^ Computation strategy
+  -> (Jobs m a -> m a -> m ()) -- ^ How to schedule work
+  -> (JQueue m a -> m c) -- ^ How to collect results
+  -> (Scheduler m a -> m b)
+     -- ^ Action that will be scheduling all the work.
+  -> m c
+withSchedulerInternal comp submitWork collect onScheduler = do
+  jobsNumWorkers <-
     case comp of
       Seq -> return 1
       Par -> liftIO getNumCapabilities
       ParOn ws -> return $ length ws
       ParN 0 -> liftIO getNumCapabilities
       ParN n -> return $ fromIntegral n
-  sWorkersCounterRef <- liftIO $ newIORef sNumWorkers
-  sJQueue <- newJQueue
-  sJobsCountRef <- liftIO $ newIORef 0
+  sWorkersCounterRef <- liftIO $ newIORef jobsNumWorkers
+  jobsQueue <- newJQueue
+  jobsCountRef <- liftIO $ newIORef 0
   workDoneMVar <- liftIO newEmptyMVar
-  let scheduler = Scheduler {..}
+  let jobs = Jobs {..}
+      scheduler = Scheduler {numWorkers = jobsNumWorkers, scheduleWork = submitWork jobs}
       onRetire = dropCounterOnZero sWorkersCounterRef $ liftIO (putMVar workDoneMVar Nothing)
   -- / Wait for the initial jobs to get scheduled before spawining off the workers, otherwise it would
   -- be trickier to identify the beginning and the end of a job pool.
-  _ <- submitWork scheduler
+  _ <- onScheduler scheduler
   -- / Ensure at least something gets scheduled, so retirement can be triggered
-  jc <- liftIO $ readIORef sJobsCountRef
-  when (jc == 0) $ scheduleWork_ scheduler (pure ())
+  jc <- liftIO $ readIORef jobsCountRef
+  when (jc == 0) $ scheduleJobs_ jobs (pure ())
   let spawnWorkersWith fork ws =
         forM ws $ \w ->
           withRunInIO $ \run ->
             mask_ $
             fork w $ \unmask ->
               catch
-                (unmask $ run $ runWorker sJQueue onRetire)
-                (unmask . run . handleWorkerException sJQueue workDoneMVar sNumWorkers)
+                (unmask $ run $ runWorker jobsQueue onRetire)
+                (unmask . run . handleWorkerException jobsQueue workDoneMVar jobsNumWorkers)
       {-# INLINE spawnWorkersWith #-}
       spawnWorkers =
         case comp of
-          Seq -- / no need to fork threads for a sequential computation
-           -> return []
-          Par -> spawnWorkersWith forkOnWithUnmask [1 .. sNumWorkers]
+          Seq -> return []
+            -- \ no need to fork threads for a sequential computation
+          Par -> spawnWorkersWith forkOnWithUnmask [1 .. jobsNumWorkers]
           ParOn ws -> spawnWorkersWith forkOnWithUnmask ws
-          ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. sNumWorkers]
+          ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. jobsNumWorkers]
       {-# INLINE spawnWorkers #-}
       doWork = do
-        when (comp == Seq) $ runWorker sJQueue onRetire
+        when (comp == Seq) $ runWorker jobsQueue onRetire
         mExc <- liftIO $ readMVar workDoneMVar
         -- \ wait for all worker to finish. If any one of them had a problem this MVar will
         -- contain an exception
@@ -217,7 +229,7 @@ withScheduler comp submitWork = do
           Nothing
              -- / Now we are sure all workers have done their job we can safely read all of the
              -- IORefs with results
-           -> flushResults sJQueue
+           -> collect jobsQueue
           Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the
                      -- main thread will think like it's his own
             | Just (WorkerException wexc) <- fromException exc -> liftIO $ throwIO wexc
@@ -227,19 +239,6 @@ withScheduler comp submitWork = do
     spawnWorkers
     (liftIO . traverse_ (`throwTo` WorkerTerminateException))
     (const doWork)
-
-
--- | Same as `withScheduler`, but discards results of submitted jobs. Make sure to use
--- `scheduleWork_` to get optimal performance.
---
--- @since 0.1.0
-withScheduler_ ::
-     MonadUnliftIO m
-  => Comp -- ^ Computation strategy
-  -> (Scheduler m a -> m b)
-              -- ^ Action that will be scheduling all the work.
-  -> m ()
-withScheduler_ comp = void . withScheduler comp
 
 
 -- | Specialized exception handler for the work scheduler.

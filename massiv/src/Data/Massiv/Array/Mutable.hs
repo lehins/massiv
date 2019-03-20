@@ -327,7 +327,7 @@ createArray_ ::
 createArray_ comp sz action = do
   marr <- new sz
   withScheduler_ comp $ \scheduler ->
-    action (numWorkers scheduler) (scheduleWork_ scheduler) marr
+    action (numWorkers scheduler) (scheduleWork scheduler) marr
   unsafeFreeze comp marr
 {-# INLINE createArray_ #-}
 
@@ -720,7 +720,7 @@ withMArray ::
 withMArray arr action = do
   marr <- thaw arr
   withScheduler_ (getComp arr) $ \scheduler ->
-    action (numWorkers scheduler) (scheduleWork_ scheduler) marr
+    action (numWorkers scheduler) (scheduleWork scheduler) marr
   liftIO $ unsafeFreeze (getComp arr) marr
 {-# INLINE withMArray #-}
 

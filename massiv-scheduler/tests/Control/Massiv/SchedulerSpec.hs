@@ -144,14 +144,14 @@ spec = do
     it "Recursive" $ property $ \ cs -> prop_Recursive (ParOn cs)
     it "Nested" $ property $ \ cs -> prop_Nested (ParOn cs)
     it "Serially" $ property $ \ cs -> prop_Serially (ParOn cs)
-  describe "Arbitrary Comp" $ do
+  describe "Arbitrary Comp" $
     it "ArbitraryNested" $ property prop_ArbitraryCompNested
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchDivideByZeroNested" $ property prop_CatchDivideByZeroNested
-    it "KillBlockedCoworker" $ property $ prop_KillBlockedCoworker
-    it "KillSleepingCoworker" $ property $ prop_KillSleepingCoworker
-    it "ExpectAsyncException" $ property $ prop_ExpectAsyncException
+    it "KillBlockedCoworker" $ property prop_KillBlockedCoworker
+    it "KillSleepingCoworker" $ property prop_KillSleepingCoworker
+    it "ExpectAsyncException" $ property prop_ExpectAsyncException
 
 assertExceptionIO :: (NFData a, Exception exc) =>
                      (exc -> Bool) -- ^ Return True if that is the exception that was expected

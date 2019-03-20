@@ -17,9 +17,9 @@ interleaveFooBar :: IO ()
 interleaveFooBar = do
   withScheduler_ (ParN 2) $ \ scheduler -> do
     putStrLn "Scheduling 1st job"
-    scheduleWork_ scheduler (putStr "foo")
+    scheduleWork scheduler (putStr "foo")
     putStrLn "Scheduling 2nd job"
-    scheduleWork_ scheduler (putStr "bar")
+    scheduleWork scheduler (putStr "bar")
     putStrLn "Awaiting for jobs to be executed:"
   putStrLn "\nDone"
 ```
@@ -74,11 +74,11 @@ exception will get re-thrown in the scheduling thread:
 infiniteJobs :: IO ()
 infiniteJobs = do
   withScheduler_ (ParN 5) $ \ scheduler -> do
-    scheduleWork_ scheduler $ putStrLn $ repeat 'a'
-    scheduleWork_ scheduler $ putStrLn $ repeat 'b'
-    scheduleWork_ scheduler $ putStrLn $ repeat 'c'
-    scheduleWork_ scheduler $ pure (4 `div` (0 :: Int))
-    scheduleWork_ scheduler $ putStrLn $ repeat 'd'
+    scheduleWork scheduler $ putStrLn $ repeat 'a'
+    scheduleWork scheduler $ putStrLn $ repeat 'b'
+    scheduleWork scheduler $ putStrLn $ repeat 'c'
+    scheduleWork scheduler $ pure (4 `div` (0 :: Int))
+    scheduleWork scheduler $ putStrLn $ repeat 'd'
   putStrLn "\nDone"
 ```
 
@@ -104,14 +104,14 @@ results produced is no longer deterministic, which is to be expected.
 nestedJobs :: IO ()
 nestedJobs = do
   withScheduler_ (ParN 5) $ \ scheduler -> do
-    scheduleWork_ scheduler $ putStr $ replicate 10 'a'
-    scheduleWork_ scheduler $ do
+    scheduleWork scheduler $ putStr $ replicate 10 'a'
+    scheduleWork scheduler $ do
       putStr $ replicate 10 'b'
-      scheduleWork_ scheduler $ do
+      scheduleWork scheduler $ do
         putStr $ replicate 10 'c'
-        scheduleWork_ scheduler $ putStr $ replicate 10 'e'
-      scheduleWork_ scheduler $ putStr $ replicate 10 'd'
-    scheduleWork_ scheduler $ putStr $ replicate 10 'f'
+        scheduleWork scheduler $ putStr $ replicate 10 'e'
+      scheduleWork scheduler $ putStr $ replicate 10 'd'
+    scheduleWork scheduler $ putStr $ replicate 10 'f'
   putStrLn "\nDone"
 ```
 
@@ -137,15 +137,15 @@ use case for it, don't make me stop you, it is OK to go that route.
 nestedSchedulers :: IO ()
 nestedSchedulers = do
   withScheduler_ (ParN 2) $ \ outerScheduler -> do
-    scheduleWork_ outerScheduler $ putStr $ replicate 10 'a'
-    scheduleWork_ outerScheduler $ do
+    scheduleWork outerScheduler $ putStr $ replicate 10 'a'
+    scheduleWork outerScheduler $ do
       putStr $ replicate 10 'b'
       withScheduler_ (ParN 2) $ \ innerScheduler -> do
-        scheduleWork_ innerScheduler $ do
+        scheduleWork innerScheduler $ do
           putStr $ replicate 10 'c'
-          scheduleWork_ outerScheduler $ putStr $ replicate 10 'e'
-        scheduleWork_ innerScheduler $ putStr $ replicate 10 'd'
-    scheduleWork_ outerScheduler $ putStr $ replicate 10 'f'
+          scheduleWork outerScheduler $ putStr $ replicate 10 'e'
+        scheduleWork innerScheduler $ putStr $ replicate 10 'd'
+    scheduleWork outerScheduler $ putStr $ replicate 10 'f'
   putStrLn "\nDone"
 ```
 
@@ -167,15 +167,15 @@ example from before, but with `Seq` computation strategy.
 nestedSequentialSchedulers :: IO ()
 nestedSequentialSchedulers = do
   withScheduler_ Seq $ \ outerScheduler -> do
-    scheduleWork_ outerScheduler $ putStr $ replicate 10 'a'
-    scheduleWork_ outerScheduler $ do
+    scheduleWork outerScheduler $ putStr $ replicate 10 'a'
+    scheduleWork outerScheduler $ do
       putStr $ replicate 10 'b'
       withScheduler_ Seq $ \ innerScheduler -> do
-        scheduleWork_ innerScheduler $ do
+        scheduleWork innerScheduler $ do
           putStr $ replicate 10 'c'
-          scheduleWork_ outerScheduler $ putStr $ replicate 10 'e'
-        scheduleWork_ innerScheduler $ putStr $ replicate 10 'd'
-    scheduleWork_ outerScheduler $ putStr $ replicate 10 'f'
+          scheduleWork outerScheduler $ putStr $ replicate 10 'e'
+        scheduleWork innerScheduler $ putStr $ replicate 10 'd'
+    scheduleWork outerScheduler $ putStr $ replicate 10 'f'
   putStrLn "\nDone"
 ```
 
