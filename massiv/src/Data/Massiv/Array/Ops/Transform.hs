@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExplicitForAll #-}
@@ -387,8 +388,8 @@ cons e arr =
   arr
     { dlSize = SafeSz (1 + unSz (dlSize arr))
     , dlLoad =
-        \numWorkers scheduleWith startAt uWrite ->
-          uWrite startAt e >> dlLoad arr numWorkers scheduleWith (startAt + 1) uWrite
+        \scheduler startAt uWrite ->
+          uWrite startAt e >> dlLoad arr scheduler (startAt + 1) uWrite
     }
 {-# INLINE cons #-}
 
@@ -414,8 +415,7 @@ snoc arr e =
   arr
     { dlSize = SafeSz (1 + k)
     , dlLoad =
-        \numWorkers scheduleWith startAt uWrite ->
-          dlLoad arr numWorkers scheduleWith startAt uWrite >> uWrite (k + startAt) e
+        \scheduler startAt uWrite -> dlLoad arr scheduler startAt uWrite >> uWrite (k + startAt) e
     }
   where
     !k = unSz (size arr)
@@ -487,11 +487,11 @@ appendM n !arr1 !arr2 = do
       { dlComp = getComp arr1 <> getComp arr2
       , dlSize = newSz
       , dlLoad =
-          \_numWorkers scheduleWith startAt dlWrite -> do
-            scheduleWith $
+          \Scheduler{scheduleWork} startAt dlWrite -> do
+            scheduleWork $
               iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
                 dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
-            scheduleWith $
+            scheduleWork $
               iterM_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
                 let i = getDim' ix n
                     ix' = setDim' ix n (i + k1')
@@ -550,9 +550,9 @@ concatM n !arrsF =
           { dlComp = mconcat $ P.map getComp arrs
           , dlSize = newSz
           , dlLoad =
-              \_numWorkers scheduleWith startAt dlWrite ->
+              \Scheduler{scheduleWork} startAt dlWrite ->
                 let arrayLoader !kAcc (kCur, arr) = do
-                      scheduleWith $
+                      scheduleWork $
                         iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
                           let i = getDim' ix n
                               ix' = setDim' ix n (i + kAcc)
@@ -616,10 +616,9 @@ downsample !stride arr =
     { dlComp = getComp arr
     , dlSize = resultSize
     , dlLoad =
-        \numWorkers scheduleWith startAt dlWrite ->
+        \scheduler startAt dlWrite ->
           splitLinearlyWithStartAtM_
-            numWorkers
-            scheduleWith
+            scheduler
             startAt
             (totalElem resultSize)
             (pure . unsafeLinearWriteWithStride)
@@ -644,7 +643,7 @@ upsample !fillWith !safeStride arr =
     { dlComp = getComp arr
     , dlSize = newsz
     , dlLoad =
-        \numWorkers scheduleWith startAt dlWrite -> do
+        \scheduler startAt dlWrite -> do
           unless (stride == pureIndex 1) $
             loopM_ startAt (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
           -- TODO: experiment a bit more. So far the fastest solution is to prefill the whole array
@@ -652,7 +651,7 @@ upsample !fillWith !safeStride arr =
           -- bit wasteful, nevertheless it is fastest
           --
           -- TODO: Is it possible to use fast fill operation that is available for MutableByteArray?
-          loadArrayM numWorkers scheduleWith arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
+          loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
     }
   where
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz

@@ -189,8 +189,7 @@ instance Index ix => Load B ix e where
   {-# INLINE size #-}
   getComp = bComp
   {-# INLINE getComp #-}
-  loadArrayM !numWorkers scheduleWork !arr =
-    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad B ix e
@@ -359,8 +358,7 @@ instance (Index ix, NFData e) => Load N ix e where
   {-# INLINE size #-}
   getComp = bComp . bArray
   {-# INLINE getComp #-}
-  loadArrayM !numWorkers scheduleWork !arr =
-    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
 instance (Index ix, NFData e) => StrideLoad N ix e

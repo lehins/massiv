@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -139,7 +140,8 @@ instance (Index ix, Ragged L ix e) => Load L ix e where
   {-# INLINE size #-}
   getComp = lComp
   {-# INLINE getComp #-}
-  loadArrayM _numWorkers using arr uWrite = loadRagged using uWrite 0 (totalElem sz) sz arr
+  loadArrayM Scheduler {scheduleWork} arr uWrite =
+    loadRagged scheduleWork uWrite 0 (totalElem sz) sz arr
     where !sz = edgeSize arr
   {-# INLINE loadArrayM #-}
 

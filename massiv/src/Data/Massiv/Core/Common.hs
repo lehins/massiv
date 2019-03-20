@@ -29,6 +29,7 @@ module Data.Massiv.Core.Common
   , Manifest(..)
   , Mutable(..)
   , Comp(..)
+  , Scheduler(..)
   , unsafeRead
   , unsafeWrite
   , unsafeLinearModify
@@ -73,7 +74,7 @@ module Data.Massiv.Core.Common
 import Data.Semigroup
 #endif
 import Control.Exception (throw)
-import Control.Massiv.Scheduler (Comp(..))
+import Control.Massiv.Scheduler (Comp(..), Scheduler(..))
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
@@ -207,9 +208,7 @@ class (Typeable r, Index ix) => Load r ix e where
   -- | Load an array into memory.
   loadArrayM
     :: Monad m =>
-       Int -- ^ Total number of workers (for `Seq` it's always 1)
-    -> (m () -> m ())
-    -- ^ A monadic action that will schedule work for the workers (for `Seq` it's always `id`)
+       Scheduler m ()
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
@@ -219,9 +218,7 @@ class Load r ix e => StrideLoad r ix e where
   -- `Source`.
   loadArrayWithStrideM
     :: Monad m =>
-       Int -- ^ Total number of workers (for `Seq` it's always 1)
-    -> (m () -> m ())
-    -- ^ A monadic action that will schedule work for the workers (for `Seq` it's always `id`)
+       Scheduler m ()
     -> Stride ix -- ^ Stride to use
     -> Sz ix -- ^ Size of the target array affected by the stride.
     -> Array r ix e -- ^ Array that is being loaded
@@ -229,15 +226,14 @@ class Load r ix e => StrideLoad r ix e where
     -> m ()
   default loadArrayWithStrideM
     :: (Source r ix e, Monad m) =>
-       Int
-    -> (m () -> m ())
+       Scheduler m ()
     -> Stride ix
     -> Sz ix
     -> Array r ix e
     -> (Int -> e -> m ())
     -> m ()
-  loadArrayWithStrideM numWorkers' scheduleWork' stride resultSize arr =
-    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem resultSize) unsafeLinearWriteWithStride
+  loadArrayWithStrideM scheduler stride resultSize arr =
+    splitLinearlyWith_ scheduler (totalElem resultSize) unsafeLinearWriteWithStride
     where
       !strideIx = unStride stride
       unsafeLinearWriteWithStride =

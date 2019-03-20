@@ -563,8 +563,7 @@ imapIO_ action arr = do
   let sz = size arr
   withScheduler_ (getComp arr) $ \scheduler ->
     splitLinearlyWith_
-      (numWorkers scheduler)
-      (scheduleWork scheduler)
+      scheduler
       (totalElem sz)
       (unsafeLinearIndex arr)
       (\i -> void . action (fromLinearIndex sz i))

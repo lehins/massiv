@@ -199,8 +199,8 @@ instance (Prim e, Index ix) => Load P ix e where
   {-# INLINE size #-}
   getComp = pComp
   {-# INLINE getComp #-}
-  loadArrayM !numWorkers scheduleWork !arr =
-    splitLinearlyWith_ numWorkers scheduleWork (elemsCount arr) (unsafeLinearIndex arr)
+  loadArrayM !scheduler !arr =
+    splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
 instance (Prim e, Index ix) => StrideLoad P ix e

@@ -60,11 +60,9 @@ prop_AllWorkersDied wIds (hId, ids) =
 -- | Check weather all jobs have been completed and returned order is correct
 prop_SchedulerAllJobsProcessed :: Comp -> OrderedList Int -> Property
 prop_SchedulerAllJobsProcessed comp (Ordered jobs) =
-  monadicIO $ do
-    res <-
-      run $
-      withScheduler comp $ \scheduler -> P.mapM_ (scheduleWork scheduler . return) jobs
-    return (res === jobs)
+  monadicIO
+    ((=== jobs) <$>
+          run (withScheduler comp $ \scheduler -> P.mapM_ (scheduleWork scheduler . return) jobs))
 
 
 spec :: Spec

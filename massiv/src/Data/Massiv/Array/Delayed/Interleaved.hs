@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -60,19 +61,19 @@ instance Index ix => Load DI ix e where
   {-# INLINE size #-}
   getComp = dComp . diArray
   {-# INLINE getComp #-}
-  loadArrayM numWorkers' scheduleWork' (DIArray (DArray _ sz f)) uWrite =
-    loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
-      scheduleWork' $
-      iterLinearM_ sz start (totalElem sz) numWorkers' (<) $ \ !k -> uWrite k . f
+  loadArrayM Scheduler {numWorkers, scheduleWork} (DIArray (DArray _ sz f)) uWrite =
+    loopM_ 0 (< numWorkers) (+ 1) $ \ !start ->
+      scheduleWork $
+      iterLinearM_ sz start (totalElem sz) numWorkers (<) $ \ !k -> uWrite k . f
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad DI ix e where
-  loadArrayWithStrideM numWorkers' scheduleWork' stride resultSize arr uWrite =
+  loadArrayWithStrideM Scheduler {numWorkers, scheduleWork} stride resultSize arr uWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
-    in loopM_ 0 (< numWorkers') (+ 1) $ \ !start ->
-          scheduleWork' $
-          iterLinearM_ resultSize start (totalElem resultSize) numWorkers' (<) $
+    in loopM_ 0 (< numWorkers) (+ 1) $ \ !start ->
+          scheduleWork $
+          iterLinearM_ resultSize start (totalElem resultSize) numWorkers (<) $
             \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
   {-# INLINE loadArrayWithStrideM #-}
 

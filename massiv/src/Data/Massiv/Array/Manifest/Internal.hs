@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -101,8 +102,8 @@ instance Index ix => Construct M ix e where
     unsafePerformIO $ do
       let !k = totalElem sz
       mv <- MV.unsafeNew k
-      withScheduler_ comp $ \s ->
-        splitLinearlyWithM_ (numWorkers s) (scheduleWork s) k (pure . f) (MV.unsafeWrite mv)
+      withScheduler_ comp $ \scheduler ->
+        splitLinearlyWithM_ scheduler k (pure . f) (MV.unsafeWrite mv)
       v <- V.unsafeFreeze mv
       pure $ MArray comp sz (V.unsafeIndex v)
   {-# INLINE makeArrayLinear #-}
@@ -202,8 +203,7 @@ instance Index ix => Load M ix e where
   {-# INLINE size #-}
   getComp = mComp
   {-# INLINE getComp #-}
-  loadArrayM numWorkers' scheduleWork' (MArray _ sz f) =
-    splitLinearlyWith_ numWorkers' scheduleWork' (totalElem sz) f
+  loadArrayM scheduler (MArray _ sz f) = splitLinearlyWith_ scheduler (totalElem sz) f
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad M ix e
@@ -321,7 +321,7 @@ fromRaggedArray arr =
 {-# INLINE fromRaggedArray #-}
 {-# DEPRECATED fromRaggedArray "In favor of a more general `fromRaggedArrayM`" #-}
 
--- | Convert a ragged array into a common array with rectangular shaped. Throws `ShapeException`
+-- | Convert a ragged array into a common array with rectangular shape. Throws `ShapeException`
 -- whenever supplied ragged array does not have a rectangular shape.
 --
 -- @since 0.3.0
@@ -332,10 +332,11 @@ fromRaggedArrayM ::
 fromRaggedArrayM arr =
   let sz = edgeSize arr
    in either (\(e :: ShapeException) -> throwM e) pure $
-      unsafePerformIO $
-      try $
-      createArray_ (getComp arr) sz $ \_numWorkers scheduleWork' marr ->
-        loadRagged scheduleWork' (unsafeLinearWrite marr) 0 (totalElem sz) sz arr
+      unsafePerformIO $ do
+        marr <- unsafeNew sz
+        traverse (\_ -> unsafeFreeze (getComp arr) marr) =<<
+          try (withScheduler_ (getComp arr) $ \Scheduler {scheduleWork} ->
+                  loadRagged scheduleWork (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
 {-# INLINE fromRaggedArrayM #-}
 
 
@@ -363,8 +364,8 @@ computeWithStride ::
 computeWithStride stride !arr =
   unsafePerformIO $ do
     let !sz = strideSize stride (size arr)
-    createArray_ (getComp arr) sz $ \numWorkers' scheduleWork' marr ->
-      loadArrayWithStrideM numWorkers' scheduleWork' stride sz arr (unsafeLinearWrite marr)
+    createArray_ (getComp arr) sz $ \scheduler marr ->
+      loadArrayWithStrideM scheduler stride sz arr (unsafeLinearWrite marr)
 {-# INLINE computeWithStride #-}
 
 

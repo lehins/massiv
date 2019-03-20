@@ -169,7 +169,7 @@ withScheduler_ ::
      MonadUnliftIO m
   => Comp -- ^ Computation strategy
   -> (Scheduler m a -> m b)
-              -- ^ Action that will be scheduling all the work.
+     -- ^ Action that will be scheduling all the work.
   -> m ()
 withScheduler_ comp = withSchedulerInternal comp scheduleJobs_ (const (pure ()))
 

@@ -207,7 +207,7 @@ loadArrayS ::
   -> m (MArray (PrimState m) r ix e)
 loadArrayS arr = do
   marr <- unsafeNew (size arr)
-  loadArrayM 1 id arr (unsafeLinearWrite marr)
+  loadArrayM (Scheduler 1 id) arr (unsafeLinearWrite marr)
   pure marr
 {-# INLINE loadArrayS #-}
 
@@ -219,11 +219,11 @@ loadArray ::
      forall r ix e r' m. (Load r' ix e, Mutable r ix e, MonadIO m)
   => Array r' ix e
   -> m (MArray RealWorld r ix e)
-loadArray arr = liftIO $ do
-  marr <- unsafeNew (size arr)
-  withScheduler_ (getComp arr) $ \s ->
-    loadArrayM (numWorkers s) (scheduleWork s) arr (unsafeLinearWrite marr)
-  pure marr
+loadArray arr =
+  liftIO $ do
+    marr <- unsafeNew (size arr)
+    withScheduler_ (getComp arr) $ \scheduler -> loadArrayM scheduler arr (unsafeLinearWrite marr)
+    pure marr
 {-# INLINE loadArray #-}
 
 
@@ -241,8 +241,7 @@ computeInto !mArr !arr =
   liftIO $ do
     unless (totalElem (msize mArr) == totalElem (size arr)) $
       throwM $ SizeElementsMismatchException (msize mArr) (size arr)
-    withScheduler_ (getComp arr) $ \scheduler ->
-      loadArrayM (numWorkers scheduler) (scheduleWork scheduler) arr (unsafeLinearWrite mArr)
+    withScheduler_ (getComp arr) $ \scheduler -> loadArrayM scheduler arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
 
 
@@ -296,8 +295,8 @@ makeMArrayLinear ::
   -> m (MArray (PrimState m) r ix e)
 makeMArrayLinear comp sz f = do
   marr <- unsafeNew sz
-  withScheduler_ comp $ \s ->
-    splitLinearlyWithM_ (numWorkers s) (scheduleWork s) (totalElem sz) f (unsafeLinearWrite marr)
+  withScheduler_ comp $ \scheduler ->
+    splitLinearlyWithM_ scheduler (totalElem sz) f (unsafeLinearWrite marr)
   return marr
 {-# INLINE makeMArrayLinear #-}
 
@@ -311,7 +310,7 @@ makeMArrayLinear comp sz f = do
 --
 -- >>> :set -XTypeApplications
 -- >>> import Data.Massiv.Array
--- >>> createArray_ @P @_ @Int Seq (Sz1 2) (\ _ schedule marr -> schedule (write' marr 0 10) >> schedule (write' marr 1 11))
+-- >>> createArray_ @P @_ @Int Seq (Sz1 2) (\ s marr -> scheduleWork s (write' marr 0 10) >> scheduleWork s (write' marr 1 11))
 -- Array P Seq (Sz1 2)
 --   [ 10, 11 ]
 --
@@ -321,13 +320,12 @@ createArray_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Int -> (m () -> m ()) -> MArray (PrimState m) r ix e -> m a)
+  -> (Scheduler m () -> MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
 createArray_ comp sz action = do
   marr <- new sz
-  withScheduler_ comp $ \scheduler ->
-    action (numWorkers scheduler) (scheduleWork scheduler) marr
+  withScheduler_ comp (`action` marr)
   unsafeFreeze comp marr
 {-# INLINE createArray_ #-}
 
@@ -340,13 +338,12 @@ createArray ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Int -> (m a -> m ()) -> MArray (PrimState m) r ix e -> m [a])
+  -> (Scheduler m a -> MArray (PrimState m) r ix e -> m [a])
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m ([a], Array r ix e)
 createArray comp sz action = do
   marr <- new sz
-  a <- withScheduler comp $ \scheduler ->
-    action (numWorkers scheduler) (scheduleWork scheduler) marr
+  a <- withScheduler comp (`action` marr)
   arr <- unsafeFreeze comp marr
   return (a, arr)
 {-# INLINE createArray #-}

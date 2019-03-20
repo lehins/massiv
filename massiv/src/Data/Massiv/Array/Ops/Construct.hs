@@ -200,8 +200,9 @@ iunfoldrS_ comp sz f acc0 =
     { dlComp = comp
     , dlSize = sz
     , dlLoad =
-        \_numWorkers _scheduleWith startAt dlWrite ->
-          void $ loopM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
+        \_ startAt dlWrite ->
+          void $
+          loopM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
             let (e, acc') = f acc $ fromLinearIndex sz (i - startAt)
             dlWrite i e
             pure acc'
@@ -228,7 +229,7 @@ iunfoldlS_ comp sz f acc0 =
     { dlComp = comp
     , dlSize = sz
     , dlLoad =
-        \_numWorkers _scheduleWith startAt dlWrite ->
+        \ _ startAt dlWrite ->
           void $ loopDeepM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
             let (acc', e) = f (fromLinearIndex sz (i - startAt)) acc
             dlWrite i e

@@ -39,8 +39,7 @@ data instance Array DL ix e = DLArray
   { dlComp    :: !Comp
   , dlSize    :: !(Sz ix)
   , dlLoad    :: forall m . Monad m
-              => Int -- number of workers
-              -> (m () -> m ()) -- how to schedule the work
+              => Scheduler m ()
               -> Int -- start loading at this linear index
               -> (Int -> e -> m ()) -- linear element writing action
               -> m ()
@@ -52,8 +51,8 @@ instance Index ix => Construct DL ix e where
   setComp c arr = arr {dlComp = c}
   {-# INLINE setComp #-}
   makeArrayLinear comp sz f =
-    DLArray comp sz $ \numWorkers scheduleWith startAt dlWrite ->
-      splitLinearlyWithStartAtM_ numWorkers scheduleWith startAt (totalElem sz) (pure . f) dlWrite
+    DLArray comp sz $ \scheduler startAt dlWrite ->
+      splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
   {-# INLINE makeArrayLinear #-}
 
 instance Index ix => Resize DL ix where
@@ -65,10 +64,10 @@ instance Semigroup (Array DL Ix1 e) where
     DLArray {dlComp = c1 <> c2, dlSize = SafeSz (k + unSz sz2), dlLoad = load}
     where
       !k = unSz sz1
-      load :: Monad m => Int -> (m () -> m ()) -> Int -> (Int -> e -> m ()) -> m ()
-      load numWorkers scheduleWith startAt dlWrite = do
-        load1 numWorkers scheduleWith startAt dlWrite
-        load2 numWorkers scheduleWith (startAt + k) dlWrite
+      load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+      load scheduler startAt dlWrite = do
+        load1 scheduler startAt dlWrite
+        load2 scheduler (startAt + k) dlWrite
       {-# INLINE load #-}
   {-# INLINE (<>) #-}
 
@@ -87,7 +86,7 @@ instance Monoid (Array DL Ix1 e) where
 makeLoadArray ::
      Comp
   -> Sz ix
-  -> (forall m. Monad m => Int -> (m () -> m ()) -> Int -> (Int -> e -> m ()) -> m ())
+  -> (forall m. Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ())
   -> Array DL ix e
 makeLoadArray = DLArray
 {-# INLINE makeLoadArray #-}
@@ -97,8 +96,8 @@ makeLoadArray = DLArray
 -- @since 0.3.0
 toLoadArray :: Load r ix e => Array r ix e -> Array DL ix e
 toLoadArray arr =
-  DLArray (getComp arr) (size arr) $ \numWorkers scheduleWith startAt dlWrite ->
-    loadArrayM numWorkers scheduleWith arr (\ !i -> dlWrite (i + startAt))
+  DLArray (getComp arr) (size arr) $ \scheduler startAt dlWrite ->
+    loadArrayM scheduler arr (\ !i -> dlWrite (i + startAt))
 {-# INLINE toLoadArray #-}
 
 -- | Convert an array that can be loaded with stride into `DL` representation.
@@ -107,9 +106,10 @@ toLoadArray arr =
 fromStrideLoad
   :: StrideLoad r ix e => Stride ix -> Array r ix e -> Array DL ix e
 fromStrideLoad stride arr =
-  DLArray (getComp arr) newsz $ \numWorkers scheduleWith startAt dlWrite ->
-    loadArrayWithStrideM numWorkers scheduleWith stride newsz arr (\ !i -> dlWrite (i + startAt))
-  where newsz = strideSize stride (size arr)
+  DLArray (getComp arr) newsz $ \scheduler startAt dlWrite ->
+    loadArrayWithStrideM scheduler stride newsz arr (\ !i -> dlWrite (i + startAt))
+  where
+    newsz = strideSize stride (size arr)
 {-# INLINE fromStrideLoad #-}
 
 instance Index ix => Load DL ix e where
@@ -117,15 +117,13 @@ instance Index ix => Load DL ix e where
   {-# INLINE size #-}
   getComp = dlComp
   {-# INLINE getComp #-}
-  loadArrayM numWorkers scheduleWith DLArray {dlLoad} = dlLoad numWorkers scheduleWith 0
+  loadArrayM scheduler DLArray {dlLoad} = dlLoad scheduler 0
   {-# INLINE loadArrayM #-}
 
 instance Functor (Array DL ix) where
   fmap f arr =
     arr
       { dlLoad =
-          \numWorkers scheduleWork startAt uWrite ->
-            dlLoad arr numWorkers scheduleWork startAt (\ !i e -> uWrite i (f e))
+          \scheduler startAt uWrite -> dlLoad arr scheduler startAt (\ !i e -> uWrite i (f e))
       }
   {-# INLINE fmap #-}
-

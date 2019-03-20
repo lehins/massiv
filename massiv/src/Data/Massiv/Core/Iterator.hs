@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Data.Massiv.Core.Iterator
@@ -19,6 +20,7 @@ module Data.Massiv.Core.Iterator
   , splitLinearlyWithStartAtM_
   ) where
 
+import Control.Massiv.Scheduler (Scheduler(..))
 
 -- | Efficient loop with an accumulator
 --
@@ -112,9 +114,9 @@ splitLinearly numChunks totalLength action = action chunkLength slackStart
 --
 -- @since 0.2.1
 splitLinearlyWith_ ::
-     Monad m => Int -> (m () -> m ()) -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m ()
-splitLinearlyWith_ numChunks with totalLength index =
-  splitLinearlyWithM_ numChunks with totalLength (pure . index)
+     Monad m => Scheduler m () -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m ()
+splitLinearlyWith_ scheduler totalLength index =
+  splitLinearlyWithM_ scheduler totalLength (pure . index)
 {-# INLINE splitLinearlyWith_ #-}
 
 
@@ -122,12 +124,12 @@ splitLinearlyWith_ numChunks with totalLength index =
 --
 -- @since 0.2.6.0
 splitLinearlyWithM_ ::
-     Monad m => Int -> (m () -> m ()) -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
-splitLinearlyWithM_ numChunks with totalLength make write =
-  splitLinearly numChunks totalLength  $ \chunkLength slackStart -> do
+     Monad m => Scheduler m () -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
+splitLinearlyWithM_ Scheduler {numWorkers, scheduleWork} totalLength make write =
+  splitLinearly numWorkers totalLength $ \chunkLength slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
-    with $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
+      scheduleWork $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
+    scheduleWork $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithM_ #-}
 
 
@@ -135,12 +137,13 @@ splitLinearlyWithM_ numChunks with totalLength make write =
 --
 -- @since 0.2.6.0
 splitLinearlyWithStartAtM_ ::
-     Monad m => Int -> (m () -> m ()) -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
-splitLinearlyWithStartAtM_ numChunks with startAt totalLength make write =
-  splitLinearly numChunks totalLength  $ \chunkLength slackStart -> do
+     Monad m => Scheduler m () -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
+splitLinearlyWithStartAtM_ Scheduler {numWorkers, scheduleWork} startAt totalLength make write =
+  splitLinearly numWorkers totalLength $ \chunkLength slackStart -> do
     loopM_ startAt (< (slackStart + startAt)) (+ chunkLength) $ \ !start ->
-      with $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
-    with $ loopM_ (slackStart + startAt) (< (totalLength + startAt)) (+ 1) $ \ !k -> make k >>= write k
+      scheduleWork $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
+    scheduleWork $
+      loopM_ (slackStart + startAt) (< (totalLength + startAt)) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithStartAtM_ #-}
 
 
