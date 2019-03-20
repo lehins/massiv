@@ -1,13 +1,13 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -40,31 +40,28 @@ module Data.Massiv.Array.Manifest.Internal
   , sizeofMutableArray
   ) where
 
-import           Control.Exception                   (try)
-import           Control.Monad.ST
-import qualified Data.Foldable                       as F (Foldable (..))
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import           Control.Massiv.Scheduler
-import           Data.Maybe                          (fromMaybe)
-import           Data.Typeable
-import qualified Data.Vector                         as V
-import qualified Data.Vector.Mutable                 as MV
-import           GHC.Base                            hiding (ord)
-import           System.IO.Unsafe                    (unsafePerformIO)
+import Control.Exception (try)
+import Control.Massiv.Scheduler
+import Control.Monad.ST
+import qualified Data.Foldable as F (Foldable(..))
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Ops.Fold.Internal
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.List
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as MV
+import GHC.Base hiding (ord)
+import System.IO.Unsafe (unsafePerformIO)
 
 #if MIN_VERSION_primitive(0,6,2)
-import           Data.Primitive.Array                (sizeofArray,
-                                                      sizeofMutableArray)
+import Data.Primitive.Array (sizeofArray, sizeofMutableArray)
 
 #else
-import qualified Data.Primitive.Array                as A (Array (..),
-                                                           MutableArray (..))
-import           GHC.Exts                            (sizeofArray#,
-                                                      sizeofMutableArray#)
+import qualified Data.Primitive.Array as A (Array(..), MutableArray(..))
+import GHC.Exts (sizeofArray#, sizeofMutableArray#)
 
 sizeofArray :: A.Array a -> Int
 sizeofArray (A.Array a) = I# (sizeofArray# a)

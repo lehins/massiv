@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -43,15 +43,13 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldrIO
   ) where
 
-import           Control.Monad           (void, when)
-import qualified Data.Foldable           as F
-import           Data.Functor.Identity   (runIdentity)
-import           Data.Massiv.Core.Common
-import           Control.Massiv.Scheduler
-import           Prelude                 hiding (foldl, foldr)
-import           System.IO.Unsafe        (unsafePerformIO)
-
-
+import Control.Massiv.Scheduler
+import Control.Monad (void, when)
+import qualified Data.Foldable as F
+import Data.Functor.Identity (runIdentity)
+import Data.Massiv.Core.Common
+import Prelude hiding (foldl, foldr)
+import System.IO.Unsafe (unsafePerformIO)
 
 
 -- | /O(n)/ - Unstructured fold of an array.

@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -75,11 +75,11 @@ module Data.Massiv.Array.Mutable
   , loadArrayS
   ) where
 
-import           Prelude                             hiding (mapM, read)
-import           Control.Monad                       (unless)
-import           Control.Monad.ST
-import           Data.Massiv.Core.Common
-import           Control.Massiv.Scheduler
+import Control.Massiv.Scheduler
+import Control.Monad (unless)
+import Control.Monad.ST
+import Data.Massiv.Core.Common
+import Prelude hiding (mapM, read)
 
 -- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
 -- boxed arrays in will be a thunk with `Uninitialized` exception, while for others it will be
@@ -771,7 +771,7 @@ read' :: (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r i
 read' marr ix = do
   mval <- read marr ix
   case mval of
-    Just e -> pure e
+    Just e  -> pure e
     Nothing -> throwM $ IndexOutOfBoundsException (msize marr) ix
 {-# INLINE read' #-}
 

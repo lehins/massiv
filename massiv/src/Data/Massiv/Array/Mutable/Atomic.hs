@@ -1,9 +1,9 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable.Atomic
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -26,9 +26,9 @@ module Data.Massiv.Array.Mutable.Atomic
   , casIntArray
   ) where
 
-import           Control.Monad.Primitive
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Manifest.Primitive
+import Control.Monad.Primitive
+import Data.Massiv.Array.Manifest.Primitive
+import Data.Massiv.Core.Common
 
 -- Atomic operations
 

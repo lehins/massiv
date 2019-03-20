@@ -1,9 +1,9 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -21,11 +21,11 @@ module Data.Massiv.Array.Stencil.Internal
   , validateStencil
   ) where
 
-import           Control.Applicative
-import           Control.DeepSeq
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal
+import Control.Applicative
+import Control.DeepSeq
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and

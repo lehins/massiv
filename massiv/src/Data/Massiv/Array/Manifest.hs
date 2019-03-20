@@ -1,11 +1,11 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -66,19 +66,19 @@ module Data.Massiv.Array.Manifest
   , toBuilder
   ) where
 
-import           Data.ByteString                      as S
-import           Data.ByteString.Internal
-import           Data.ByteString.Builder
-import           Data.ByteString.Unsafe               as SU
-import           Data.Massiv.Array.Manifest.Boxed
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Manifest.Primitive
-import           Data.Massiv.Array.Manifest.Storable
-import           Data.Massiv.Array.Manifest.Unboxed
-import           Data.Massiv.Array.Ops.Fold
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal      (Sz (..))
-import           Data.Word                            (Word8)
+import Data.ByteString as S
+import Data.ByteString.Builder
+import Data.ByteString.Internal
+import Data.ByteString.Unsafe as SU
+import Data.Massiv.Array.Manifest.Boxed
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Manifest.Primitive
+import Data.Massiv.Array.Manifest.Storable
+import Data.Massiv.Array.Manifest.Unboxed
+import Data.Massiv.Array.Ops.Fold
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal (Sz(..))
+import Data.Word (Word8)
 
 
 -- | /O(1)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length

@@ -1,10 +1,10 @@
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Data.Massiv.CoreArbitrary
   ( Arr(..)
   , ArrTiny(..)
@@ -25,17 +25,17 @@ module Data.Massiv.CoreArbitrary
   , module X
   ) where
 
-import           Control.DeepSeq            (NFData, deepseq)
-import           Control.Exception          (Exception, SomeException, catch)
-import           Data.Massiv.Array          as X
-import           Data.Massiv.Core.IndexSpec hiding (spec)
-import           Data.Typeable
-import           Test.Hspec                 as X
-import           Test.QuickCheck            as X hiding (resize)
-import           Test.QuickCheck.Monadic    as X
-import           Test.QuickCheck.Function   as X
+import Control.DeepSeq (NFData, deepseq)
+import Control.Exception (Exception, SomeException, catch)
+import Data.Massiv.Array as X
+import Data.Massiv.Core.IndexSpec hiding (spec)
+import Data.Typeable
+import Test.Hspec as X
+import Test.QuickCheck as X hiding (resize)
+import Test.QuickCheck.Function as X
+import Test.QuickCheck.Monadic as X
 #if !MIN_VERSION_base(4,11,0)
-import           Data.Semigroup
+import Data.Semigroup
 #endif
 applyFun2Compat :: Fun (a, b) c -> (a -> b -> c)
 #if MIN_VERSION_QuickCheck(2,10,0)
@@ -180,4 +180,4 @@ assertExceptionIO isExc action =
     assert hasFailed
 
 assertSomeExceptionIO :: NFData a => IO a -> Property
-assertSomeExceptionIO = assertExceptionIO (\exc -> const True (exc :: SomeException))
+assertSomeExceptionIO = assertExceptionIO (\(_exc :: SomeException) -> True)

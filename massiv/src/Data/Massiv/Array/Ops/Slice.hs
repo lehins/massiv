@@ -23,8 +23,8 @@ module Data.Massiv.Array.Ops.Slice
   , (<??>)
   ) where
 
-import           Control.Monad           (unless)
-import           Data.Massiv.Core.Common
+import Control.Monad (unless)
+import Data.Massiv.Core.Common
 
 
 infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
@@ -128,7 +128,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 (<!) !arr !ix =
   case arr <!? ix of
     Right res -> res
-    Left exc -> throw exc
+    Left exc  -> throw exc
 {-# INLINE (<!) #-}
 
 
@@ -164,7 +164,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 (<!>) !arr !dix =
   case arr <!?> dix of
     Right res -> res
-    Left exc -> throw exc
+    Left exc  -> throw exc
 {-# INLINE (<!>) #-}
 
 

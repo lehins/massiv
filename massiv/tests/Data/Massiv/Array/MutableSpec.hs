@@ -1,19 +1,19 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MonoLocalBinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 module Data.Massiv.Array.MutableSpec (spec) where
 
-import           Control.Concurrent.Async
-import           Control.Monad.ST
-import           Data.Functor.Identity
-import           Data.List                        as L
-import           Data.Massiv.Array.Mutable.Atomic
-import           Data.Massiv.Array.Unsafe
-import           Data.Massiv.CoreArbitrary        as A
-import           Data.Proxy
+import Control.Concurrent.Async
+import Control.Monad.ST
+import Data.Functor.Identity
+import Data.List as L
+import Data.Massiv.Array.Mutable.Atomic
+import Data.Massiv.Array.Unsafe
+import Data.Massiv.CoreArbitrary as A
+import Data.Proxy
 
 
 prop_MapMapM :: (Show (Array r ix Int), Eq (Array r ix Int), Mutable r ix Int) =>

@@ -1,9 +1,9 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Interleaved
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -18,9 +18,9 @@ module Data.Massiv.Array.Delayed.Interleaved
   , fromInterleaved
   ) where
 
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List          (L, showsArrayPrec, showArrayList)
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 
 
 -- | Delayed array that will be loaded in an interleaved fasion during parallel

@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -91,15 +91,13 @@ module Data.Massiv.Array.Ops.Fold
   , ifoldrIO
   ) where
 
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Core
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Prelude                             hiding (all, and, any,
-                                                      foldl, foldr, map,
-                                                      maximum, minimum, or,
-                                                      product, sum)
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Ops.Fold.Internal
+import Data.Massiv.Core
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal (Sz(..))
+import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or,
+                product, sum)
 
 -- | /O(n)/ - Monoidal fold over an array with an index aware function. Also known as reduce.
 --

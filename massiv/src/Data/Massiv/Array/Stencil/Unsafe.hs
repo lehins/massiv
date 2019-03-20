@@ -1,6 +1,6 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Unsafe
@@ -16,10 +16,11 @@ module Data.Massiv.Array.Stencil.Unsafe
   , forStencilUnsafe
   ) where
 
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Delayed.Windowed (Window(..), DW, Array(..), insertWindow)
-import           GHC.Exts                           (inline)
-import           Data.Massiv.Array.Stencil.Internal
+import Data.Massiv.Array.Delayed.Windowed (Array(..), DW, Window(..),
+                                           insertWindow)
+import Data.Massiv.Array.Stencil.Internal
+import Data.Massiv.Core.Common
+import GHC.Exts (inline)
 
 
 -- | This is an unsafe version of the stencil computation. There are no bounds checking further from

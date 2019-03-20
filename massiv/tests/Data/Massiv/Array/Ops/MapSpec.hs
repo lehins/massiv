@@ -1,15 +1,15 @@
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 module Data.Massiv.Array.Ops.MapSpec (spec) where
 
-import           Control.Monad.ST
-import           Data.Foldable             as F
-import           Data.Massiv.Array.Unsafe
-import           Data.Massiv.CoreArbitrary as A
-import           Prelude                   as P
+import Control.Monad.ST
+import Data.Foldable as F
+import Data.Massiv.Array.Unsafe
+import Data.Massiv.CoreArbitrary as A
+import Prelude as P
 
 
 

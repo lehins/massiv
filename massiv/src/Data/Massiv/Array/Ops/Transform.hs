@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE ExplicitForAll        #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Transform
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -58,19 +58,18 @@ module Data.Massiv.Array.Ops.Transform
   , traverse2
   ) where
 
-import           Control.Monad                   as M (foldM_, unless)
-import           Data.Bifunctor                  (bimap)
-import           Data.Foldable                   as F (foldl', foldrM, toList)
-import qualified Data.List                       as L (uncons)
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Delayed.Push
-import           Data.Massiv.Array.Ops.Construct
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal (Sz (SafeSz))
-import           Control.Massiv.Scheduler        (traverse_)
-import           Prelude                         as P hiding (concat, splitAt,
-                                                       traverse)
+import Control.Massiv.Scheduler (traverse_)
+import Control.Monad as M (foldM_, unless)
+import Data.Bifunctor (bimap)
+import Data.Foldable as F (foldl', foldrM, toList)
+import qualified Data.List as L (uncons)
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Push
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Ops.Construct
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
+import Prelude as P hiding (concat, splitAt, traverse)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be

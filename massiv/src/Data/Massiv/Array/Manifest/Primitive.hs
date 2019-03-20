@@ -1,13 +1,13 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UnboxedTuples         #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -38,22 +38,21 @@ module Data.Massiv.Array.Manifest.Primitive
   , unsafeAtomicXorIntArray
   ) where
 
-import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Control.Monad.Primitive             (PrimMonad (primitive),
-                                                      PrimState, primitive_)
-import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Manifest.List     as A
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import           Data.Primitive                      (sizeOf)
-import           Data.Primitive.ByteArray
-import           Data.Primitive.Types
-import           GHC.Base                            (Int (..))
-import           GHC.Exts                            as GHC
-import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
+import Control.DeepSeq (NFData(..), deepseq)
+import Control.Monad.Primitive (PrimMonad(primitive), PrimState, primitive_)
+import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Manifest.List as A
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.List
+import Data.Primitive (sizeOf)
+import Data.Primitive.ByteArray
+import Data.Primitive.Types
+import GHC.Base (Int(..))
+import GHC.Exts as GHC
+import Prelude hiding (mapM)
+import System.IO.Unsafe (unsafePerformIO)
 
 #include "massiv.h"
 
@@ -351,7 +350,7 @@ unsafeAtomicModifyIntArray _mpa@(MPArray sz mba) ix f =
                   (# s'#, o'# #) ->
                     case o# ==# o'# of
                       0# -> go s# o'#
-                      _ -> (# s'#, I# o# #)
+                      _  -> (# s'#, I# o# #)
        in primitive $ \s# ->
             case atomicReadIntArray# mba# i# s# of
               (# s'#, o# #) -> go s'# o#

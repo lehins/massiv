@@ -1,13 +1,13 @@
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 
-import           Data.List                 as L
-import           Data.Massiv.CoreArbitrary as A
-import           Data.Proxy
-import qualified GHC.Exts                  as GHC (IsList (..))
-import           Prelude                   as P
+import Data.List as L
+import Data.Massiv.CoreArbitrary as A
+import Data.Proxy
+import qualified GHC.Exts as GHC (IsList(..))
+import Prelude as P
 
 prop_rangeEqRangeStep1 :: Int -> Int -> Property
 prop_rangeEqRangeStep1 from to = range Seq from to === rangeStep' Par from 1 to
@@ -57,7 +57,7 @@ prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
 prop_excFromToListIx3 comp ls3
   | P.null (P.concat (P.concat ls3)) =
     classify True "Expected Success" $ counterexample (show arr) $ totalElem (size arr) === 0
-  | P.all (head lsL ==) lsL && P.and (P.map (P.all (head (head lsLL) ==)) lsLL) =
+  | P.all (head lsL ==) lsL && P.all (P.all (head (head lsLL) ==)) lsLL =
     classify True "Expected Success" $ counterexample (show arr) $ resultLs === ls3
   | otherwise = classify True "Expected Failure" $ assertSomeException resultLs
   where

@@ -29,7 +29,7 @@ module Data.Massiv.Array.Delayed
   , makeWindowedArray
   ) where
 
-import           Data.Massiv.Array.Delayed.Interleaved
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Delayed.Push
-import           Data.Massiv.Array.Delayed.Windowed
+import Data.Massiv.Array.Delayed.Interleaved
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Push
+import Data.Massiv.Array.Delayed.Windowed

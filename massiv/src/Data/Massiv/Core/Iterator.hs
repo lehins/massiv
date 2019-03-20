@@ -26,10 +26,9 @@ module Data.Massiv.Core.Iterator
 loop :: Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> a) -> a
 loop !init' condition increment !initAcc f = go init' initAcc
   where
-    go !step !acc =
-      case condition step of
-        False -> acc
-        True  -> go (increment step) (f step acc)
+    go !step !acc
+      | condition step = go (increment step) (f step acc)
+      | otherwise = acc
 {-# INLINE loop #-}
 
 
@@ -42,10 +41,9 @@ loop !init' condition increment !initAcc f = go init' initAcc
 loopM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
 loopM !init' condition increment !initAcc f = go init' initAcc
   where
-    go !step !acc =
-      case condition step of
-        False -> return acc
-        True  -> f step acc >>= go (increment step)
+    go !step !acc
+      | condition step = f step acc >>= go (increment step)
+      | otherwise = return acc
 {-# INLINE loopM #-}
 
 
@@ -55,10 +53,10 @@ loopM !init' condition increment !initAcc f = go init' initAcc
 loopM_ :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> m a) -> m ()
 loopM_ !init' condition increment f = go init'
   where
-    go !step =
-      case condition step of
-        False -> return ()
-        True  -> f step >> go (increment step)
+    go !step
+      | condition step = f step >> go (increment step)
+      | otherwise = pure ()
+
 {-# INLINE loopM_ #-}
 
 
@@ -68,10 +66,9 @@ loopM_ !init' condition increment f = go init'
 loopA_ :: Applicative f => Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> f a) -> f ()
 loopA_ !init' condition increment f = go init'
   where
-    go !step =
-      case condition step of
-        False -> pure ()
-        True  -> f step *> go (increment step)
+    go !step
+      | condition step = f step *> go (increment step)
+      | otherwise = pure ()
 {-# INLINE loopA_ #-}
 
 
@@ -90,10 +87,9 @@ loopA_ !init' condition increment f = go init'
 loopDeepM :: Monad m => Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> a -> m a) -> m a
 loopDeepM !init' condition increment !initAcc f = go init' initAcc
   where
-    go !step !acc =
-      case condition step of
-        False -> return acc
-        True  -> go (increment step) acc >>= f step
+    go !step !acc
+      | condition step = go (increment step) acc >>= f step
+      | otherwise = return acc
 {-# INLINE loopDeepM #-}
 
 

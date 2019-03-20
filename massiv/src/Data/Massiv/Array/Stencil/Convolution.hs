@@ -1,5 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE BangPatterns     #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Convolution
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -15,10 +15,10 @@ module Data.Massiv.Array.Stencil.Convolution
   , makeCorrelationStencilFromKernel
   ) where
 
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Array.Ops.Fold         (ifoldlS)
-import           Data.Massiv.Array.Stencil.Internal
-import           GHC.Exts                           (inline)
+import Data.Massiv.Array.Ops.Fold (ifoldlS)
+import Data.Massiv.Array.Stencil.Internal
+import Data.Massiv.Core.Common
+import GHC.Exts (inline)
 
 -- | Create a convolution stencil by specifying border resolution technique and
 -- an accumulator function.

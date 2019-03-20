@@ -1,19 +1,19 @@
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE TypeOperators #-}
 module Data.Massiv.Core.IndexSpec (SzNE(..), SzIx(..), DimIx(..), spec) where
 
-import           Test.QuickCheck.Function
-import           Control.Monad
-import           Data.Functor.Identity
-import           Data.Massiv.Core.Index
-import           Data.Proxy
-import           Test.Hspec
-import           Test.QuickCheck
+import Control.Monad
+import Data.Functor.Identity
+import Data.Massiv.Core.Index
+import Data.Proxy
+import Test.Hspec
+import Test.QuickCheck
+import Test.QuickCheck.Function
 
 -- | Size that will result in a non-empty array
 newtype SzNE ix = SzNE (Sz ix) deriving Show
@@ -37,7 +37,7 @@ instance (Index ix, Arbitrary ix) => Arbitrary (SzNE ix) where
 instance (Index ix, Arbitrary ix) => Arbitrary (Stride ix) where
   arbitrary = do
     Positive (Small x) <- arbitrary
-    Stride . liftIndex ((+1) . (`mod` (min 6 x))) <$> arbitrary
+    Stride . liftIndex ((+1) . (`mod` min 6 x)) <$> arbitrary
 
 instance (Index ix, Arbitrary ix) => Arbitrary (SzIx ix) where
   arbitrary = do
@@ -60,7 +60,7 @@ instance Arbitrary e => Arbitrary (Border e) where
 instance Index ix => Arbitrary (DimIx ix) where
   arbitrary = do
     n <- arbitrary
-    return $ DimIx (1 + (Dim n `mod` (dimensions (Proxy :: Proxy ix))))
+    return $ DimIx (1 + (Dim n `mod` dimensions (Proxy :: Proxy ix)))
 
 arbitraryIntIx :: Gen Int
 arbitraryIntIx = sized (\s -> resize (floor $ (sqrt :: Double -> Double) $ fromIntegral s) arbitrary)
@@ -104,21 +104,6 @@ instance Function Ix5 where
   function = functionMap fromIx5 toIx5
 
 
-
--- instance Arbitrary Ix2 where
---   arbitrary = (:.) <$> arbitrary <*> arbitrary
-
--- instance (Arbitrary (Ix (n - 1))) => Arbitrary (IxN n) where
---   arbitrary = (:>) <$> arbitrary <*> arbitrary
-
--- instance CoArbitrary Ix2 where
---   coarbitrary (i :. j) = coarbitrary i . coarbitrary j
-
--- instance CoArbitrary (Ix (n - 1)) => CoArbitrary (IxN n) where
---   coarbitrary (i :> ix) = coarbitrary i . coarbitrary ix
-
-
-
 prop_IsSafeIx :: Index ix => proxy ix -> SzIx ix -> Bool
 prop_IsSafeIx _ (SzIx sz ix) = isSafeIndex sz ix
 
@@ -143,7 +128,7 @@ prop_FromToLinearIndex _ (SzNE sz) (NonNegative i) =
 prop_CountElements :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_CountElements _ thresh sz =
   totalElem sz < thresh ==> totalElem sz ==
-  iter zeroIndex (unSz sz) (pureIndex 1) (<) 0 (\_ acc -> (acc + 1))
+  iter zeroIndex (unSz sz) (pureIndex 1) (<) 0 (const (+ 1))
 
 prop_IterMonotonic :: Index ix => proxy ix -> Int -> Sz ix -> Property
 prop_IterMonotonic _ thresh sz =
@@ -218,8 +203,6 @@ prop_LiftLift2 _ ix delta = liftIndex2 (+) ix (liftIndex (+delta) zeroIndex) ==
                             liftIndex (+delta) ix
 
 
-
-
 prop_BorderRepairSafe :: Index ix => proxy ix -> Border ix -> SzNE ix -> ix -> Property
 prop_BorderRepairSafe _ border@(Fill defIx) (SzNE sz) ix =
   not (isSafeIndex sz ix) ==> handleBorderIndex border sz id ix == defIx
@@ -271,7 +254,7 @@ prop_SetGet _ ix (DimIx dim) n = Just n == (setDimM ix dim n >>= (`getDimM` dim)
 prop_BorderIx1 :: Positive Int -> Border Char -> Fun Ix1 Char -> SzNE Ix1 -> Ix1 -> Bool
 prop_BorderIx1 (Positive period) border getVal (SzNE sz) ix =
   if isSafeIndex sz ix
-    then (apply getVal) ix == val
+    then apply getVal ix == val
     else case border of
            Fill defVal -> defVal == val
            Wrap ->
@@ -283,9 +266,9 @@ prop_BorderIx1 (Positive period) border getVal (SzNE sz) ix =
                (liftIndex2 (+) (liftIndex (* period) (unSz sz)) ix)
            Edge ->
              if ix < 0
-               then val == (apply getVal) (liftIndex (max 0) ix)
+               then val == apply getVal (liftIndex (max 0) ix)
                else val ==
-                    (apply getVal) (liftIndex2 min (liftIndex (subtract 1) (unSz sz)) ix)
+                    apply getVal (liftIndex2 min (liftIndex (subtract 1) (unSz sz)) ix)
            Reflect ->
              val ==
              handleBorderIndex
@@ -310,18 +293,18 @@ specDimN proxy = do
   describe "Safety" $ do
     it "isSafeIndex" $ property $ prop_IsSafeIx proxy
     it "RepairSafeIx" $ property $ prop_RepairSafeIx proxy
-  describe "Lifting" $ do
+  describe "Lifting" $
     it "Lift/Lift2" $ property $ prop_LiftLift2 proxy
   describe "Linear" $ do
     it "ToFromLinearIndex" $ property $ prop_ToFromLinearIndex proxy
     it "FromToLinearIndex" $ property $ prop_FromToLinearIndex proxy
   describe "Iterator" $ do
-    it "CountElements" $ property $ prop_CountElements proxy (2000000)
-    it "Monotonic" $ property $ prop_IterMonotonic proxy (2000000)
-    it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards proxy (2000000)
-    it "MonotonicM" $ property $ prop_IterMonotonicM proxy (2000000)
-    it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM proxy (2000000)
-  describe "Border" $ do
+    it "CountElements" $ property $ prop_CountElements proxy 2000000
+    it "Monotonic" $ property $ prop_IterMonotonic proxy 2000000
+    it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards proxy 2000000
+    it "MonotonicM" $ property $ prop_IterMonotonicM proxy 2000000
+    it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM proxy 2000000
+  describe "Border" $
     it "BorderRepairSafe" $ property $ prop_BorderRepairSafe proxy
   describe "SetGetDrop" $ do
     it "SetAll" $ property $ prop_SetAll proxy
@@ -332,7 +315,7 @@ specDimN proxy = do
 specDim2AndUp
   :: (Index ix, Index (Lower ix), Arbitrary ix)
   => proxy ix -> Spec
-specDim2AndUp proxy = do
+specDim2AndUp proxy =
   describe "Higher/Lower" $ do
     it "UnconsCons" $ property $ prop_UnconsCons proxy
     it "UnsnocSnoc" $ property $ prop_UnsnocSnoc proxy
@@ -345,7 +328,7 @@ spec = do
   describe "Tuple based indices" $ do
     describe "Ix1T" $ do
       specDimN (Nothing :: Maybe Ix1T)
-      it "prop_BorderIx1" $ property $ prop_BorderIx1
+      it "prop_BorderIx1" $ property prop_BorderIx1
     describe "Ix2T" $ do
       specDimN (Nothing :: Maybe Ix2T)
       specDim2AndUp (Nothing :: Maybe Ix2T)
@@ -362,9 +345,9 @@ spec = do
     describe "Ix2" $ do
       -- These can be used to quickly debug monotonicity
       it "Monotonic'" $
-        property $ prop_IterMonotonic' (Nothing :: Maybe Ix2) (20000)
+        property $ prop_IterMonotonic' (Nothing :: Maybe Ix2) 20000
       it "MonotonicBackwards'" $
-        property $ prop_IterMonotonicBackwards' (Nothing :: Maybe Ix2) (20000)
+        property $ prop_IterMonotonicBackwards' (Nothing :: Maybe Ix2)20000
       specDimN (Nothing :: Maybe Ix2)
       specDim2AndUp (Nothing :: Maybe Ix2)
     describe "Ix3" $ do

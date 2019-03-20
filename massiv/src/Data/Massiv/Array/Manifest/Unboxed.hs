@@ -1,12 +1,12 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Unboxed
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -23,19 +23,19 @@ module Data.Massiv.Array.Manifest.Unboxed
   , toUnboxedMVector
   ) where
 
-import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
-import           Data.Massiv.Array.Manifest.Internal (M, toManifest)
-import           Data.Massiv.Array.Manifest.List     as A
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import qualified Data.Vector.Generic.Mutable         as VGM
-import qualified Data.Vector.Unboxed                 as VU
-import qualified Data.Vector.Unboxed.Mutable         as MVU
-import           GHC.Exts                            as GHC (IsList (..))
-import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
+import Control.DeepSeq (NFData(..), deepseq)
+import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Manifest.Internal (M, toManifest)
+import Data.Massiv.Array.Manifest.List as A
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.List
+import qualified Data.Vector.Generic.Mutable as VGM
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed.Mutable as MVU
+import GHC.Exts as GHC (IsList(..))
+import Prelude hiding (mapM)
+import System.IO.Unsafe (unsafePerformIO)
 
 #include "massiv.h"
 

@@ -1,17 +1,17 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MonoLocalBinds        #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Data.Massiv.Array.Delayed.WindowedSpec (spec) where
 
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Unsafe
-import           Data.Massiv.CoreArbitrary as A
-import           Data.Typeable
+import Data.Massiv.Array.Delayed
+import Data.Massiv.Array.Unsafe
+import Data.Massiv.CoreArbitrary as A
+import Data.Typeable
 
 
 data ArrDW ix e = ArrDW (Array D ix e) (Array DW ix e)

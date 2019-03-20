@@ -32,7 +32,7 @@ module Data.Massiv.Core
   , MonadUnliftIO
   ) where
 
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import           Data.Massiv.Core.Index
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index
+import Data.Massiv.Core.List
 

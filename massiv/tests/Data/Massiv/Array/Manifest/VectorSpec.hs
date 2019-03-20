@@ -1,19 +1,19 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 module Data.Massiv.Array.Manifest.VectorSpec (spec) where
 
-import           Data.Massiv.CoreArbitrary
-import           Data.Massiv.Array.Manifest.Vector
-import           Data.Proxy
-import           Data.Typeable
-import qualified Data.Vector                  as VB
-import qualified Data.Vector.Generic          as VG
-import qualified Data.Vector.Primitive        as VP
-import qualified Data.Vector.Storable         as VS
-import qualified Data.Vector.Unboxed          as VU
+import Data.Massiv.Array.Manifest.Vector
+import Data.Massiv.CoreArbitrary
+import Data.Proxy
+import Data.Typeable
+import qualified Data.Vector as VB
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
 
 prop_castToFromVector
   :: ( VG.Vector (VRepr r) Int
@@ -47,9 +47,20 @@ prop_toFromVector ::
 prop_toFromVector _ _ _ (Arr arr) =
   arr === fromVector' (getComp arr) (size arr) (toVector arr :: v Int)
 
+
 toFromVectorSpec :: Spec
-toFromVectorSpec  = do
-  let it_prop name r = describe name $ do
+toFromVectorSpec = do
+  it_prop "Unboxed" U
+  it_prop "Primitive" P
+  it_prop "Storable" S
+  it_prop "BoxedStrict" B
+  where
+    it_prop name r =
+      describe name $ do
+        describe "CastToFrom" $ do
+          it "Ix1" $ property $ prop_castToFromVector (Proxy :: Proxy Ix1) r
+          it "Ix2" $ property $ prop_castToFromVector (Proxy :: Proxy Ix2) r
+          it "Ix3" $ property $ prop_castToFromVector (Proxy :: Proxy Ix3) r
         describe "Through Boxed Vector" $ do
           it "Ix1" $ property $ prop_toFromVector (Proxy :: Proxy VB.Vector) (Proxy :: Proxy Ix1) r
           it "Ix2" $ property $ prop_toFromVector (Proxy :: Proxy VB.Vector) (Proxy :: Proxy Ix2) r
@@ -62,25 +73,7 @@ toFromVectorSpec  = do
         describe "Through Storable Vector" $ do
           it "Ix1" $ property $ prop_toFromVector (Proxy :: Proxy VS.Vector) (Proxy :: Proxy Ix1) r
           it "Ix2" $ property $ prop_toFromVector (Proxy :: Proxy VS.Vector) (Proxy :: Proxy Ix2) r
-  it_prop "Unboxed" U
-  it_prop "Primitive" P
-  it_prop "Storable" S
-  it_prop "BoxedStrict" B
-
-
-castToFromVectorSpec :: Spec
-castToFromVectorSpec  = do
-  let it_prop name r = describe name $ do
-        it "Ix1" $ property $ prop_castToFromVector (Proxy :: Proxy Ix1) r
-        it "Ix2" $ property $ prop_castToFromVector (Proxy :: Proxy Ix2) r
-        it "Ix3" $ property $ prop_castToFromVector (Proxy :: Proxy Ix3) r
-  it_prop "Unboxed" U
-  it_prop "Primitive" P
-  it_prop "Storable" S
-  it_prop "BoxedStrict" B
 
 
 spec :: Spec
-spec = do
-  describe "toFromVector" toFromVectorSpec
-  describe "castToFromVector" castToFromVectorSpec
+spec = describe "toFromVector" toFromVectorSpec

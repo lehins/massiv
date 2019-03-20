@@ -1,13 +1,13 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Windowed
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -26,28 +26,28 @@ module Data.Massiv.Array.Delayed.Windowed
   , makeWindowedArray
   ) where
 
-import           Control.Exception                   (Exception(..))
-import           Control.Monad                       (when)
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Manifest.Boxed
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Core
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Data.Massiv.Core.List               (L, showsArrayPrec, showArrayList)
-import           Data.Maybe                          (fromMaybe)
-import           GHC.TypeLits
+import Control.Exception (Exception(..))
+import Control.Monad (when)
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Manifest.Boxed
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Core
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal (Sz(..))
+import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
+import Data.Maybe (fromMaybe)
+import GHC.TypeLits
 
 -- | Delayed Windowed Array representation.
 data DW = DW
 
 type instance EltRepr DW ix = D
 
-data Window ix e = Window { windowStart :: !ix
+data Window ix e = Window { windowStart     :: !ix
                           -- ^ Index of where window will start at.
-                          , windowSize  :: !(Sz ix)
+                          , windowSize      :: !(Sz ix)
                           -- ^ Size of the window
-                          , windowIndex :: ix -> e
+                          , windowIndex     :: ix -> e
                           -- ^ Indexing function for the window
                           , windowUnrollIx2 :: !(Maybe Int)
                           -- ^ Setting this value during stencil application improves cache

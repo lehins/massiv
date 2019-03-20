@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Vector
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -23,36 +23,36 @@ module Data.Massiv.Array.Manifest.Vector
   , VRepr
   ) where
 
-import           Control.Monad                          (guard, join, msum)
-import           Data.Massiv.Array.Manifest.Boxed
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Manifest.Primitive
-import           Data.Massiv.Array.Manifest.Storable
-import           Data.Massiv.Array.Manifest.Unboxed
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core.Common
-import           Data.Maybe                             (fromMaybe)
-import           Data.Typeable
-import qualified Data.Vector                            as VB
-import qualified Data.Vector.Generic                    as VG
-import qualified Data.Vector.Primitive                  as VP
-import qualified Data.Vector.Storable                   as VS
-import qualified Data.Vector.Unboxed                    as VU
+import Control.Monad (guard, join, msum)
+import Data.Massiv.Array.Manifest.Boxed
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Manifest.Primitive
+import Data.Massiv.Array.Manifest.Storable
+import Data.Massiv.Array.Manifest.Unboxed
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Core.Common
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import qualified Data.Vector as VB
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
 
 -- | Match vector type to array representation
-type family ARepr (v :: * -> *) :: *
--- | Match array representation to a vector type
-type family VRepr r :: * -> *
+type family ARepr (v :: * -> *) :: * where
+  ARepr VU.Vector = U
+  ARepr VS.Vector = S
+  ARepr VP.Vector = P
+  ARepr VB.Vector = B
 
-type instance ARepr VU.Vector = U
-type instance ARepr VS.Vector = S
-type instance ARepr VP.Vector = P
-type instance ARepr VB.Vector = B
-type instance VRepr U = VU.Vector
-type instance VRepr S = VS.Vector
-type instance VRepr P = VP.Vector
-type instance VRepr B = VB.Vector
-type instance VRepr N = VB.Vector
+-- | Match array representation to a vector type
+type family VRepr r :: * -> * where
+  VRepr U = VU.Vector
+  VRepr S = VS.Vector
+  VRepr P = VP.Vector
+  VRepr B = VB.Vector
+  VRepr N = VB.Vector
 
 
 -- | /O(1)/ - conversion from vector to an array with a corresponding

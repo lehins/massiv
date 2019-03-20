@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -34,29 +34,29 @@ module Data.Massiv.Array.Manifest.Boxed
   , deepseqArray
   ) where
 
-import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Control.Exception
-import           Control.Monad.Primitive
-import           Control.Monad.ST                    (runST)
-import           Control.Monad                       ((>=>))
-import qualified Data.Foldable                       as F (Foldable (..))
-import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
-import           Data.Massiv.Array.Delayed.Push      (DL)
-import           Data.Massiv.Array.Manifest.Internal (M, toManifest, computeAs)
-import           Data.Massiv.Array.Manifest.List     as L
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Fold
-import           Data.Massiv.Array.Ops.Fold.Internal
-import           Data.Massiv.Array.Ops.Map           (traverseA)
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import qualified Data.Primitive.Array                as A
-import qualified Data.Vector                         as VB
-import qualified Data.Vector.Mutable                 as VB
-import           GHC.Base                            (build)
-import           GHC.Exts                            as GHC
-import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
+import Control.DeepSeq (NFData(..), deepseq)
+import Control.Exception
+import Control.Monad ((>=>))
+import Control.Monad.Primitive
+import Control.Monad.ST (runST)
+import qualified Data.Foldable as F (Foldable(..))
+import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Push (DL)
+import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
+import Data.Massiv.Array.Manifest.List as L
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Ops.Fold
+import Data.Massiv.Array.Ops.Fold.Internal
+import Data.Massiv.Array.Ops.Map (traverseA)
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.List
+import qualified Data.Primitive.Array as A
+import qualified Data.Vector as VB
+import qualified Data.Vector.Mutable as VB
+import GHC.Base (build)
+import GHC.Exts as GHC
+import Prelude hiding (mapM)
+import System.IO.Unsafe (unsafePerformIO)
 
 #include "massiv.h"
 

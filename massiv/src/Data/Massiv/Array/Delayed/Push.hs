@@ -1,13 +1,13 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Push
 -- Copyright   : (c) Alexey Kuleshevich 2019
@@ -24,10 +24,10 @@ module Data.Massiv.Array.Delayed.Push
   , fromStrideLoad
   ) where
 
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal     (Sz (SafeSz))
-import qualified Data.Semigroup                      as Semigroup
-import           Prelude                             hiding (map, zipWith)
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
+import qualified Data.Semigroup as Semigroup
+import Prelude hiding (map, zipWith)
 
 #include "massiv.h"
 

@@ -6,10 +6,10 @@ module Data.Massiv.Core.Exception
   , guardNumberOfElements
   ) where
 
-import           Control.Exception
-import           Control.Monad
-import           Control.Monad.Catch
-import           Data.Massiv.Core.Index.Internal
+import Control.Exception
+import Control.Monad
+import Control.Monad.Catch
+import Data.Massiv.Core.Index.Internal
 
 newtype ImpossibleException =
   ImpossibleException SomeException

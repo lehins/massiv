@@ -1,14 +1,13 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
-import           Control.Concurrent
-import           Control.Exception.Base    (ArithException (DivideByZero),
-                                            AsyncException (ThreadKilled),
-                                            displayException)
-import           Data.Massiv.CoreArbitrary as A
-import           Control.Massiv.Scheduler
-import           Prelude                   as P
+import Control.Concurrent
+import Control.Exception.Base (ArithException(DivideByZero),
+                               AsyncException(ThreadKilled), displayException)
+import Control.Massiv.Scheduler
+import Data.Massiv.CoreArbitrary as A
+import Prelude as P
 
 
 -- | Ensure proper exception handling.
@@ -59,16 +58,17 @@ prop_AllWorkersDied wIds (hId, ids) =
 
 
 -- | Check weather all jobs have been completed and returned order is correct
-prop_SchedulerAllJobsProcessed :: [Int] -> OrderedList Int -> Property
-prop_SchedulerAllJobsProcessed wIds (Ordered jobs) =
+prop_SchedulerAllJobsProcessed :: Comp -> OrderedList Int -> Property
+prop_SchedulerAllJobsProcessed comp (Ordered jobs) =
   monadicIO $ do
-    res <- (run $ withScheduler (ParOn wIds) $ \scheduler ->
-               P.mapM_ (scheduleWork scheduler . return) jobs)
+    res <-
+      run $
+      withScheduler comp $ \scheduler -> P.mapM_ (scheduleWork scheduler . return) jobs
     return (res === jobs)
 
 
 spec :: Spec
-spec = do
+spec =
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchNested" $ property prop_CatchNested

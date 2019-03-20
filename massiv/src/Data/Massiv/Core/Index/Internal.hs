@@ -1,16 +1,17 @@
-{-# LANGUAGE TypeSynonymInstances       #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE ConstraintKinds            #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DefaultSignatures          #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE KindSignatures             #-}
-{-# LANGUAGE PatternSynonyms            #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 #if __GLASGOW_HASKELL__ < 820
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
@@ -56,13 +57,13 @@ module Data.Massiv.Core.Index.Internal
   , ShapeException(..)
   ) where
 
-import           Control.Exception (Exception(..))
-import           Control.Monad.Catch (MonadThrow(..))
-import           Control.DeepSeq
-import           Data.Coerce
-import           Data.Massiv.Core.Iterator
-import           GHC.TypeLits
-import           Data.Typeable
+import Control.DeepSeq
+import Control.Exception (Exception(..))
+import Control.Monad.Catch (MonadThrow(..))
+import Data.Coerce
+import Data.Massiv.Core.Iterator
+import Data.Typeable
+import GHC.TypeLits
 
 -- | `Sz` provides type safety guarantees preventing mixup with index, which is used for looking into
 -- array cells, from the size, that describes total number of elements along each dimension in the

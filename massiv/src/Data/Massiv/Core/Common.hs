@@ -1,11 +1,11 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Core.Common
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -70,16 +70,16 @@ module Data.Massiv.Core.Common
   ) where
 
 #if !MIN_VERSION_base(4,11,0)
-import           Data.Semigroup
+import Data.Semigroup
 #endif
-import           Control.Exception (throw)
-import           Control.Monad.Catch (MonadThrow(..))
-import           Control.Monad.IO.Unlift (MonadUnliftIO, MonadIO(liftIO))
-import           Control.Monad.Primitive
-import           Control.Massiv.Scheduler (Comp(..))
-import           Data.Massiv.Core.Exception
-import           Data.Massiv.Core.Index
-import           Data.Typeable
+import Control.Exception (throw)
+import Control.Massiv.Scheduler (Comp(..))
+import Control.Monad.Catch (MonadThrow(..))
+import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
+import Control.Monad.Primitive
+import Data.Massiv.Core.Exception
+import Data.Massiv.Core.Index
+import Data.Typeable
 
 #include "massiv.h"
 
@@ -318,7 +318,7 @@ class Manifest r ix e => Mutable r ix e where
     marr <- unsafeNew sz
     case mdef of
       Just val -> unsafeLinearSet marr 0 (totalElem sz) val
-      Nothing -> initialize marr
+      Nothing  -> initialize marr
     return marr
   {-# INLINE initializeNew #-}
 

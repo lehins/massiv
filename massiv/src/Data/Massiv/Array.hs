@@ -133,37 +133,23 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Numeric
   ) where
 
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Manifest
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Manifest.List
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Numeric
-import           Data.Massiv.Array.Ops.Construct
-import           Data.Massiv.Array.Ops.Fold
-import           Data.Massiv.Array.Ops.Map
-import           Data.Massiv.Array.Ops.Slice
-import           Data.Massiv.Array.Ops.Transform
-import           Data.Massiv.Array.Stencil
-import           Data.Massiv.Core
-import           Data.Massiv.Core.Common
-import           Prelude as P hiding ( all
-                                     , and
-                                     , any
-                                     , foldl
-                                     , foldr
-                                     , mapM
-                                     , mapM_
-                                     , maximum
-                                     , minimum
-                                     , or
-                                     , product
-                                     , splitAt
-                                     , sum
-                                     , zip
-                                     , replicate
-                                     , enumFromTo
-                                     )
+import Data.Massiv.Array.Delayed
+import Data.Massiv.Array.Manifest
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Manifest.List
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Numeric
+import Data.Massiv.Array.Ops.Construct
+import Data.Massiv.Array.Ops.Fold
+import Data.Massiv.Array.Ops.Map
+import Data.Massiv.Array.Ops.Slice
+import Data.Massiv.Array.Ops.Transform
+import Data.Massiv.Array.Stencil
+import Data.Massiv.Core
+import Data.Massiv.Core.Common
+import Prelude as P hiding (all, and, any, enumFromTo, foldl, foldr, mapM,
+                     mapM_, maximum, minimum, or, product, replicate, splitAt,
+                     sum, zip)
 
 {- $folding
 

@@ -1,11 +1,11 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -30,22 +30,22 @@ module Data.Massiv.Array.Manifest.Storable
   , unsafeMArrayFromForeignPtr0
   ) where
 
-import           Control.DeepSeq                     (NFData (..), deepseq)
-import           Control.Monad.IO.Unlift
-import           Data.Massiv.Array.Delayed.Pull      (eq, ord)
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Manifest.List     as A
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import qualified Data.Vector.Generic.Mutable         as VGM
-import qualified Data.Vector.Storable                as VS
-import qualified Data.Vector.Storable.Mutable        as MVS
-import           Foreign.Ptr
-import           Foreign.ForeignPtr
-import           GHC.Exts                            as GHC (IsList (..))
-import           Prelude                             hiding (mapM)
-import           System.IO.Unsafe                    (unsafePerformIO)
+import Control.DeepSeq (NFData(..), deepseq)
+import Control.Monad.IO.Unlift
+import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Manifest.List as A
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.List
+import qualified Data.Vector.Generic.Mutable as VGM
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Storable.Mutable as MVS
+import Foreign.ForeignPtr
+import Foreign.Ptr
+import GHC.Exts as GHC (IsList(..))
+import Prelude hiding (mapM)
+import System.IO.Unsafe (unsafePerformIO)
 
 #include "massiv.h"
 

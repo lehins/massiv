@@ -1,20 +1,17 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MonoLocalBinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeFamilies #-}
 module Data.Massiv.Array.Ops.SliceSpec (spec) where
 
-import           Data.Massiv.Array.Unsafe
-import           Data.Massiv.CoreArbitrary
-import           Control.Exception
-import           Control.Applicative ((<|>))
+import Control.Applicative ((<|>))
+import Control.Exception
+import Data.Massiv.Array.Unsafe
+import Data.Massiv.CoreArbitrary
 -----------
 -- Size --
 -----------
-
--- extract
 
 prop_ExtractEqualsExtractFromTo ::
      ( Eq (Array (EltRepr r ix) ix e)
@@ -39,8 +36,8 @@ specSizeN ::
      )
   => proxy (r, ix, e)
   -> Spec
-specSizeN proxy = do
-  describe "extract" $ do
+specSizeN proxy =
+  describe "extract" $
     it "ExtractEqualsExtractFromTo" $ property $ prop_ExtractEqualsExtractFromTo proxy
 
 
@@ -206,7 +203,7 @@ specSliceN :: ( Arbitrary (Array r ix e)
               , Show (Elt r ix e)
               )
            => proxy (r, ix, e) -> Spec
-specSliceN proxy = do
+specSliceN proxy =
   describe "Slice" $ do
     it "SliceRight" $ property $ prop_SliceRight proxy
     it "SliceLeft" $ property $ prop_SliceLeft proxy
@@ -215,29 +212,29 @@ specSliceN proxy = do
 
 spec :: Spec
 spec = do
-  describe "Ix1" $ do
+  describe "Ix1" $
     specSizeN (Nothing :: Maybe (D, Ix1, Int))
   describe "Ix2" $ do
     specSizeN (Nothing :: Maybe (D, Ix2, Int))
     specSliceN (Nothing :: Maybe (D, Ix2, Int))
     describe "SliceIndex" $ do
-      it "Delayed" $ property $ prop_SliceIndexDim2D
-      it "Rank - Delayed" $ property $ prop_SliceIndexDim2RankD
-      it "Manifest" $ property $ prop_SliceIndexDim2M
-      it "Rank - Manifest" $ property $ prop_SliceIndexDim2RankM
+      it "Delayed" $ property prop_SliceIndexDim2D
+      it "Rank - Delayed" $ property prop_SliceIndexDim2RankD
+      it "Manifest" $ property prop_SliceIndexDim2M
+      it "Rank - Manifest" $ property prop_SliceIndexDim2RankM
   describe "Ix3" $ do
     specSizeN (Nothing :: Maybe (D, Ix3, Int))
     specSliceN (Nothing :: Maybe (D, Ix3, Int))
     describe "SliceIndex" $ do
-      it "Delayed" $ property $ prop_SliceIndexDim3D
-      it "Rank - Delayed" $ property $ prop_SliceIndexDim3RankD
-      it "Manifest" $ property $ prop_SliceIndexDim3M
-      it "Rank - Manifest" $ property $ prop_SliceIndexDim3RankM
+      it "Delayed" $ property prop_SliceIndexDim3D
+      it "Rank - Delayed" $ property prop_SliceIndexDim3RankD
+      it "Manifest" $ property prop_SliceIndexDim3M
+      it "Rank - Manifest" $ property prop_SliceIndexDim3RankM
   describe "Ix4" $ do
     specSizeN (Nothing :: Maybe (D, Ix4, Int))
     specSliceN (Nothing :: Maybe (D, Ix4, Int))
     describe "SliceIndex" $ do
-      it "Delayed" $ property $ prop_SliceIndexDim4D
-      it "Rank - Delayed" $ property $ prop_SliceIndexDim4RankD
-      it "Manifest" $ property $ prop_SliceIndexDim4M
-      it "Rank - Manifest" $ property $ prop_SliceIndexDim4RankM
+      it "Delayed" $ property prop_SliceIndexDim4D
+      it "Rank - Delayed" $ property prop_SliceIndexDim4RankD
+      it "Manifest" $ property prop_SliceIndexDim4M
+      it "Rank - Manifest" $ property prop_SliceIndexDim4RankM

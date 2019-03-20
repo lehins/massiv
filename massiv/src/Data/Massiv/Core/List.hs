@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Core.List
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -26,18 +26,18 @@ module Data.Massiv.Core.List
   , ListItem
   ) where
 
-import           Control.Exception
-import           Control.Monad                   (unless, when)
-import           Data.Coerce
-import           Data.Foldable                   (foldr')
-import qualified Data.List                       as L
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal
-import           Control.Massiv.Scheduler
-import           Data.Proxy
-import           Data.Typeable
-import           GHC.Exts
-import           System.IO.Unsafe                (unsafePerformIO)
+import Control.Exception
+import Control.Massiv.Scheduler
+import Control.Monad (unless, when)
+import Data.Coerce
+import Data.Foldable (foldr')
+import qualified Data.List as L
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal
+import Data.Proxy
+import Data.Typeable
+import GHC.Exts
+import System.IO.Unsafe (unsafePerformIO)
 
 data LN
 
@@ -332,8 +332,8 @@ showArrayList
   :: Show arr => [arr] -> String -> String
 showArrayList arrs = ('[':) . go arrs . (']':)
   where
-    go [] = id
-    go [x] = (' ':) . shows x . ('\n':)
+    go []     = id
+    go [x]    = (' ':) . shows x . ('\n':)
     go (x:xs) = (' ':) . shows x . ("\n," ++) . go xs
 
 

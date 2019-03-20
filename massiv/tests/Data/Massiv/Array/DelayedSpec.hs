@@ -1,13 +1,13 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.DelayedSpec (spec) where
 
-import           Data.Massiv.Array.Delayed
-import           Data.Massiv.Array.Unsafe
-import           Data.Massiv.Array
-import           Data.Massiv.CoreArbitrary as A
-import           Data.Proxy
+import Data.Massiv.Array
+import Data.Massiv.Array.Delayed
+import Data.Massiv.Array.Unsafe
+import Data.Massiv.CoreArbitrary as A
+import Data.Proxy
 
 
 downsampleArr :: Source r ix e => Stride ix -> Array r ix e -> Array D ix e

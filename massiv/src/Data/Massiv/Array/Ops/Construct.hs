@@ -1,12 +1,12 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE ExplicitForAll        #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Construct
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -55,14 +55,13 @@ module Data.Massiv.Array.Ops.Construct
   , expandInner
   ) where
 
-import           Control.Applicative            hiding (empty)
-import           Control.Monad                  (void)
-import           Control.Monad.ST
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Delayed.Push
-import           Data.Massiv.Core.Common
-import           Prelude                        as P hiding (enumFromTo,
-                                                             replicate)
+import Control.Applicative hiding (empty)
+import Control.Monad (void)
+import Control.Monad.ST
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Push
+import Data.Massiv.Core.Common
+import Prelude as P hiding (enumFromTo, replicate)
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.

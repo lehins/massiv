@@ -1,7 +1,7 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Map
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -68,19 +68,17 @@ module Data.Massiv.Array.Ops.Map
   , izipWith3A
   ) where
 
-import           Control.Monad                       (void)
-import           Control.Monad.Primitive             (PrimMonad)
-import           Data.Coerce
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Mutable
-import           Data.Massiv.Array.Ops.Construct     (makeArrayA)
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.Index.Internal     (Sz (..))
-import           Control.Massiv.Scheduler
-import           Prelude                             hiding (map, mapM, mapM_,
-                                                      traverse, unzip, unzip3,
-                                                      zip, zip3, zipWith,
-                                                      zipWith3, sequenceA)
+import Control.Massiv.Scheduler
+import Control.Monad (void)
+import Control.Monad.Primitive (PrimMonad)
+import Data.Coerce
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Ops.Construct (makeArrayA)
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal (Sz(..))
+import Prelude hiding (map, mapM, mapM_, sequenceA, traverse, unzip, unzip3,
+                zip, zip3, zipWith, zipWith3)
 
 --------------------------------------------------------------------------------
 -- map -------------------------------------------------------------------------

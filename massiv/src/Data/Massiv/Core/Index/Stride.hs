@@ -1,6 +1,6 @@
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 #if __GLASGOW_HASKELL__ < 820
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
@@ -23,8 +23,8 @@ module Data.Massiv.Core.Index.Stride
   , strideSize
   ) where
 
-import           Control.DeepSeq
-import           Data.Massiv.Core.Index.Internal
+import Control.DeepSeq
+import Data.Massiv.Core.Index.Internal
 
 -- | Stride provides a way to ignore elements of an array if an index is divisible by a
 -- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be

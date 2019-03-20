@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -63,15 +63,15 @@ module Data.Massiv.Array.Numeric
   , atan2A
   ) where
 
-import           Data.Massiv.Array.Delayed.Pull
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Ops.Fold         as A
-import           Data.Massiv.Array.Ops.Map          as A
-import           Data.Massiv.Array.Ops.Transform    as A
-import           Data.Massiv.Core
-import           Data.Massiv.Core.Index.Internal    (Sz (SafeSz))
-import           Data.Massiv.Core.Common
-import           Prelude                            as P
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Ops.Fold as A
+import Data.Massiv.Array.Ops.Map as A
+import Data.Massiv.Array.Ops.Transform as A
+import Data.Massiv.Core
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
+import Prelude as P
 
 
 infixr 8  .^, .^^

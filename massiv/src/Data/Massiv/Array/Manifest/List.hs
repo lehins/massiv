@@ -1,10 +1,10 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.List
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -27,12 +27,12 @@ module Data.Massiv.Array.Manifest.List
   , toLists4
   ) where
 
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Ops.Fold          (foldrInner)
-import           Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List
-import           GHC.Base                            (build)
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Ops.Fold (foldrInner)
+import Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.List
+import GHC.Base (build)
 
 -- | Convert a flat list into a vector
 --

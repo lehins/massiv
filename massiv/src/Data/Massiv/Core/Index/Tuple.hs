@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Tuple
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -34,9 +34,10 @@ module Data.Massiv.Core.Index.Tuple
   , fromIx5
   ) where
 
-import           Control.Monad.Catch             (MonadThrow(..))
-import           Data.Massiv.Core.Index.Ix
-import           Data.Massiv.Core.Index.Internal (Index (..), Lower, Sz(..), IndexException(..))
+import Control.Monad.Catch (MonadThrow(..))
+import Data.Massiv.Core.Index.Internal (Index(..), IndexException(..), Lower,
+                                        Sz(..))
+import Data.Massiv.Core.Index.Ix
 
 -- | Another 1-dimensional index type synonym for `Int`, same as `Ix1` and is here just for
 -- consistency.
@@ -183,7 +184,7 @@ instance Index Ix2T where
   {-# INLINE [1] getDimM #-}
   setDimM (_, i1) 2 i2 = pure (i2, i1)
   setDimM (i2, _) 1 i1 = pure (i2, i1)
-  setDimM ix      d _   = throwM $ IndexDimensionException ix d
+  setDimM ix      d _  = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   pullOutDimM (i2, i1) 2 = pure (i2, i1)
   pullOutDimM (i2, i1) 1 = pure (i1, i2)

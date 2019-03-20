@@ -1,12 +1,12 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Pull
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -25,13 +25,13 @@ module Data.Massiv.Array.Delayed.Pull
   , liftArray2
   ) where
 
-import qualified Data.Foldable                        as F
-import           Data.Massiv.Array.Ops.Fold.Internal as A
-import           Data.Massiv.Core.Index.Internal
-import           Data.Massiv.Core.Common
-import           Data.Massiv.Core.List               (L, showsArrayPrec, showArrayList)
-import           GHC.Base                            (build)
-import           Prelude                             hiding (zipWith)
+import qualified Data.Foldable as F
+import Data.Massiv.Array.Ops.Fold.Internal as A
+import Data.Massiv.Core.Common
+import Data.Massiv.Core.Index.Internal
+import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
+import GHC.Base (build)
+import Prelude hiding (zipWith)
 
 #include "massiv.h"
 
