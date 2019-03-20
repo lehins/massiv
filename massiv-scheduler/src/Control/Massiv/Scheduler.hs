@@ -40,6 +40,7 @@ import Data.Atomics (atomicModifyIORefCAS, atomicModifyIORefCAS_)
 import Data.Foldable as F (foldl')
 import Data.IORef
 
+import System.Timeout
 
 -- | Main type for scheduling work. See `withScheduler` or `withScheduler_` for the only ways to get
 -- access to such data type.
@@ -173,11 +174,11 @@ withScheduler ::
 withScheduler comp submitWork = do
   sNumWorkers <-
     case comp of
-      Seq      -> return 1
-      Par      -> liftIO getNumCapabilities
+      Seq -> return 1
+      Par -> liftIO getNumCapabilities
       ParOn ws -> return $ length ws
-      ParN 0   -> liftIO getNumCapabilities
-      ParN n   -> return $ fromIntegral n
+      ParN 0 -> liftIO getNumCapabilities
+      ParN n -> return $ fromIntegral n
   sWorkersCounterRef <- liftIO $ newIORef sNumWorkers
   sJQueue <- newJQueue
   sJobsCountRef <- liftIO $ newIORef 0
@@ -199,28 +200,34 @@ withScheduler comp submitWork = do
                 (unmask $ run $ runWorker sJQueue onRetire)
                 (unmask . run . handleWorkerException sJQueue workDoneMVar sNumWorkers)
       {-# INLINE spawnWorkersWith #-}
-  tids <-
-    case comp of
-      Seq -- / no need to fork threads for a sequential computation
-       -> runWorker sJQueue onRetire >> return []
-      Par -> spawnWorkersWith forkOnWithUnmask [1 .. sNumWorkers]
-      ParOn ws -> spawnWorkersWith forkOnWithUnmask ws
-      ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. sNumWorkers]
-  -- / wait for all worker to finish. If any one of them had a problem this MVar will contain an
-  -- exception
-  mExc <- liftIO $ readMVar workDoneMVar
-  case mExc of
-    Nothing
-     -- / Now we are sure all workers have done their job we can safely read all of the IORefs eith
-     -- results
-     -> flushResults sJQueue
-    Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the main thread
-             -- will think like it's his own
-      | Just (WorkerException wexc) <- fromException exc ->
-        liftIO $ do
-          traverse_ (`throwTo` WorkerTerminateException) tids
-          throwIO wexc
-    Just exc -> liftIO $ throwIO exc -- Somethig funky is happening, propagate it.
+      spawnWorkers =
+        case comp of
+          Seq -- / no need to fork threads for a sequential computation
+           -> return []
+          Par -> spawnWorkersWith forkOnWithUnmask [1 .. sNumWorkers]
+          ParOn ws -> spawnWorkersWith forkOnWithUnmask ws
+          ParN _ -> spawnWorkersWith (\_ -> forkIOWithUnmask) [1 .. sNumWorkers]
+      {-# INLINE spawnWorkers #-}
+      doWork = do
+        when (comp == Seq) $ runWorker sJQueue onRetire
+        mExc <- liftIO $ readMVar workDoneMVar
+        -- \ wait for all worker to finish. If any one of them had a problem this MVar will
+        -- contain an exception
+        case mExc of
+          Nothing
+             -- / Now we are sure all workers have done their job we can safely read all of the
+             -- IORefs with results
+           -> flushResults sJQueue
+          Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the
+                     -- main thread will think like it's his own
+            | Just (WorkerException wexc) <- fromException exc -> liftIO $ throwIO wexc
+          Just exc -> liftIO $ throwIO exc -- Somethig funky is happening, propagate it.
+      {-# INLINE doWork #-}
+  safeBracketOnError
+    spawnWorkers
+    (liftIO . traverse_ (`throwTo` WorkerTerminateException))
+    (const doWork)
+
 
 -- | Same as `withScheduler`, but discards results of submitted jobs. Make sure to use
 -- `scheduleWork_` to get optimal performance.
@@ -240,7 +247,7 @@ handleWorkerException ::
   MonadIO m => JQueue m a -> MVar (Maybe SomeException) -> Int -> SomeException -> m ()
 handleWorkerException jQueue workDoneMVar nWorkers exc =
   case fromException exc of
-    Just wexc | WorkerTerminateException <- wexc -> return ()
+    Just WorkerTerminateException -> return ()
       -- \ some co-worker died, we can just move on with our death.
     _ ->
       case fromException exc of
@@ -305,3 +312,17 @@ fromWorkerAsyncException exc =
   case fromException exc of
     Just (WorkerAsyncException asyncExc) -> asyncExceptionFromException (toException asyncExc)
     _                                    -> Nothing
+
+
+-- Copy from unliftio:
+safeBracketOnError :: MonadUnliftIO m => m a -> (a -> m b) -> (a -> m c) -> m c
+safeBracketOnError before after thing = withRunInIO $ \run -> mask $ \restore -> do
+  x <- run before
+  res1 <- try $ restore $ run $ thing x
+  case res1 of
+    Left (e1 :: SomeException) -> do
+      -- ignore the exception, see bracket for explanation
+      _ :: Either SomeException b <-
+        try $ uninterruptibleMask_ $ run $ after x
+      throwIO e1
+    Right y -> return y
