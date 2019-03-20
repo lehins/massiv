@@ -112,6 +112,7 @@ test-suite tests
   build-depends:      base             >= 4.8 && < 5
                     , async
                     , bytestring
+                    , containers
                     , data-default
                     , deepseq
                     , massiv

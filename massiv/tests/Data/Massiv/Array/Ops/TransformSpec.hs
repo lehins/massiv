@@ -1,12 +1,15 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE MonoLocalBinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeApplications #-}
 module Data.Massiv.Array.Ops.TransformSpec (spec) where
 
-import           Data.Massiv.CoreArbitrary as A
-import           Prelude                   as P
-
+import Data.Massiv.CoreArbitrary as A
+import Data.Sequence as S
+import Prelude as P
+import Data.Foldable as F (foldl', toList)
+import Data.Maybe
 
 prop_transposeOuterInner :: Arr D Ix2 Int -> Property
 prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
@@ -39,7 +42,7 @@ prop_AppendMappend arr1 arr2 =
 prop_ConcatMconcat
   :: [Array D Ix1 Int] -> Property
 prop_ConcatMconcat arrs =
-  computeAs P (concat' 1 (empty : arrs)) === computeAs P (mconcat (fmap toLoadArray arrs))
+  computeAs P (concat' 1 (A.empty : arrs)) === computeAs P (mconcat (fmap toLoadArray arrs))
 
 
 spec :: Spec
@@ -63,3 +66,47 @@ spec = do
   describe "Monoid" $ do
     it "Ix1" $ property prop_AppendMappend
     it "Ix1" $ property prop_ConcatMconcat
+  describe "Sequence" $ do
+    it "ConsSnoc" $ property prop_ConsSnoc
+    it "UnconsUnsnoc" $ property prop_UnconsUnsnoc
+
+prop_UnconsUnsnoc :: Array D Ix1 Int -> Bool -> Property
+prop_UnconsUnsnoc arr unconsFirst =
+  preJust $ do
+    (arr', u, s) <-
+      if unconsFirst
+        then do
+          (u, au) <- unconsM arr
+          (as, s) <- unsnocM au
+          pure (as, u, s)
+        else do
+          (as, s) <- unsnocM arr
+          (u, au) <- unconsM as
+          pure (au, u, s)
+    pure (computeAs U (A.snoc (A.cons u (toLoadArray (computeAs U arr'))) s) === compute arr)
+
+preJust :: Testable prop => Maybe prop -> Property
+preJust m = isJust m ==> fromJust m
+
+prop_ConsSnoc :: Array D Ix1 Int -> [SeqOp Int] -> Property
+prop_ConsSnoc arr ops =
+  A.toList (computeAs U (foldl' applyArraySeqOp (toLoadArray arr) ops)) ===
+  F.toList (foldl' applySequenceSeqOp (S.fromList (A.toList arr)) ops)
+
+data SeqOp e = Cons e | Snoc e deriving (Eq, Show)
+
+instance Arbitrary e => Arbitrary (SeqOp e) where
+  arbitrary = do
+    e <- arbitrary
+    elements [Cons e, Snoc e]
+
+applyArraySeqOp :: Array DL Ix1 e -> SeqOp e -> Array DL Ix1 e
+applyArraySeqOp arr = \case
+  Cons x -> A.cons x arr
+  Snoc x -> A.snoc arr x
+
+
+applySequenceSeqOp :: Seq a -> SeqOp a -> Seq a
+applySequenceSeqOp arr = \case
+  Cons x -> x <| arr
+  Snoc x -> arr |> x
