@@ -78,7 +78,7 @@ prop_CatchDivideByZero :: Comp -> Int -> [Positive Int] -> Property
 prop_CatchDivideByZero comp k xs =
   assertExceptionIO
     (== DivideByZero)
-    (mapConcurrently
+    (traverseConcurrently
        comp
        (\i -> return (k `div` i))
        (map getPositive xs ++ [0] ++ map getPositive xs))

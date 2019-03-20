@@ -21,8 +21,8 @@ module Control.Massiv.Scheduler
   , withScheduler_
   -- * Helper functions
   , fromWorkerAsyncException
-  , mapConcurrently
-  , mapConcurrently_
+  , traverseConcurrently
+  , traverseConcurrently_
   , traverse_
   ) where
 
@@ -68,14 +68,14 @@ traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
 -- strategy.
 --
 -- @since 0.1.0
-mapConcurrently :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m [b]
-mapConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
+traverseConcurrently :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m [b]
+traverseConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
 
--- | Just like `mapConcurrently`, but discard the results of computation.
+-- | Just like `traverseConcurrently`, but discard the results of computation.
 --
 -- @since 0.1.0
-mapConcurrently_ :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m ()
-mapConcurrently_ comp f xs = withScheduler_ comp $ \s -> traverse_ (scheduleWork s . f) xs
+traverseConcurrently_ :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m ()
+traverseConcurrently_ comp f xs = withScheduler_ comp $ \s -> traverse_ (scheduleWork s . f) xs
 
 scheduleJobs :: MonadIO m => Jobs m a -> m a -> m ()
 scheduleJobs = scheduleJobsWith mkJob
@@ -132,22 +132,23 @@ runWorker jQueue onRetire = go
 -- Here are some cool properties about the `withScheduler`:
 --
 -- * This function will block until all of the submitted jobs have finished or at least one of them
---   resulted in an exception, which will be re-thrown here.
+--   resulted in an exception, which will be re-thrown at the callsite.
 --
--- * It is totally fine for nested jobs to submit more jobs for the same scheduler
+-- * It is totally fine for nested jobs to submit more jobs for the same or other scheduler
 --
--- * It is ok to initialize new schedulers, although tht will likely result in suboptimal computation
---   time, unless they do not share the same capabilities.
+-- * It is ok to initialize multiple schedulers at the same time, although that will likely result
+--   in suboptimal performance, unless workers are pinned to different capabilities.
 --
 -- * __Warning__ It is very dangerous to schedule jobs that do blocking `IO`, since it can lead to a
 --   deadlock very quickly, if you are not careful. Consider this example. First execution works fine,
---   since there are two scheduled workers, and one can unblock another one, but the second scenario
+--   since there are two scheduled workers, and one can unblock the other, but the second scenario
 --   immediately results in a deadlock.
 --
 -- >>> withScheduler (ParOn [1,2]) $ \s -> newEmptyMVar >>= (\ mv -> scheduleWork s (readMVar mv) >> scheduleWork s (putMVar mv ()))
 -- [(),()]
--- >>> withScheduler (ParOn [1]) $ \s -> newEmptyMVar >>= (\ mv -> scheduleWork s (readMVar mv) >> scheduleWork s (putMVar mv ()))
--- Interrupted.
+-- >>> import System.Timeout
+-- >>> timeout 1000000 $ withScheduler (ParOn [1]) $ \s -> newEmptyMVar >>= (\ mv -> scheduleWork s (readMVar mv) >> scheduleWork s (putMVar mv ()))
+-- Nothing
 --
 -- __Important__: In order to get work done truly in parallel, program needs to be compiled with
 -- @-threaded@ GHC flag and executed with @+RTS -N -RTS@ to use all available cores.
