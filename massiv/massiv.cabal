@@ -9,7 +9,6 @@ author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
 copyright:           2018-2019 Alexey Kuleshevich
 category:            Data, Data Structures
---build-type:          Simple
 build-type:          Custom
 extra-source-files:  README.md
 cabal-version:       >=1.10
