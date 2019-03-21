@@ -1,10 +1,11 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE NamedFieldPuns             #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE UndecidableInstances       #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Interleaved
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -30,7 +31,9 @@ data DI = DI
 
 type instance EltRepr DI ix = DI
 
-newtype instance Array DI ix e = DIArray { diArray :: Array D ix e }
+newtype instance Array DI ix e = DIArray
+  { diArray :: Array D ix e
+  } deriving (Eq, Ord, Functor, Applicative, Foldable, Num, Floating, Fractional)
 
 instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
   showsPrec = showsArrayPrec diArray
@@ -42,10 +45,6 @@ instance Index ix => Construct DI ix e where
 
   makeArray c sz = DIArray . makeArray c sz
   {-# INLINE makeArray #-}
-
-instance Functor (Array DI ix) where
-  fmap f (DIArray arr) = DIArray (fmap f arr)
-
 
 instance Index ix => Resize DI ix where
   unsafeResize sz = DIArray . unsafeResize sz . diArray

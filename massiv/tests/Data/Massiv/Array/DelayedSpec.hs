@@ -4,7 +4,6 @@
 module Data.Massiv.Array.DelayedSpec (spec) where
 
 import Data.Massiv.Array
-import Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Unsafe
 import Data.Massiv.CoreArbitrary as A
 import Data.Proxy

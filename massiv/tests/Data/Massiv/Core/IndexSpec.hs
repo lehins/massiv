@@ -1,9 +1,12 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+--{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Data.Massiv.Core.IndexSpec (SzNE(..), SzIx(..), DimIx(..), spec) where
 
@@ -14,6 +17,7 @@ import Data.Proxy
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Function
+--import Data.Typeable
 
 -- | Size that will result in a non-empty array
 newtype SzNE ix = SzNE (Sz ix) deriving Show
@@ -322,6 +326,29 @@ specDim2AndUp proxy =
     it "UnconsGetDrop" $ property $ prop_UnconsGetDrop proxy
     it "UnsnocGetDrop" $ property $ prop_UnsnocGetDrop proxy
 
+-- prop_BinaryNumIx ::
+--   (Num ix, Index ix) => (forall n . Num n => n -> n -> n) -> SzIx ix -> ix -> Property
+-- prop_BinaryNumIx f (SzIx sz ix1) ix2 =
+--   fromLinearIndex sz (f (toLinearIndex sz ix1) (toLinearIndex sz ix2')) ===
+--   f ix1 ix2'
+--   where ix2' = liftIndex2 mod ix2 (unSz sz)
+
+-- prop_UnaryNumIx ::
+--   (Num ix, Index ix) => (forall n . Num n => n -> n) -> SzIx ix -> Property
+-- prop_UnaryNumIx f (SzIx sz ix) =
+--   fromLinearIndex sz (f (toLinearIndex sz ix)) === f ix
+
+-- specClasses :: forall ix . (Num ix, Index ix, Arbitrary ix) => Spec
+-- specClasses =
+--   describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy Ix3)) ")") $ do
+--     it "(+)" $ property $ prop_BinaryNumIx @ix (+)
+--     it "(-)" $ property $ prop_BinaryNumIx @ix (-)
+--     it "(*)" $ property $ prop_BinaryNumIx @ix (*)
+--     it "negate" $ property $ prop_UnaryNumIx @ix negate
+--     it "abs" $ property $ prop_UnaryNumIx @ix abs
+--     it "signum" $ property $ prop_UnaryNumIx @ix signum
+--     it "fromInteger" $ property $ \ (i :: Int) ->
+--       (fromIntegral i :: ix) === liftIndex (const i) zeroIndex
 
 spec :: Spec
 spec = do
@@ -347,7 +374,7 @@ spec = do
       it "Monotonic'" $
         property $ prop_IterMonotonic' (Nothing :: Maybe Ix2) 20000
       it "MonotonicBackwards'" $
-        property $ prop_IterMonotonicBackwards' (Nothing :: Maybe Ix2)20000
+        property $ prop_IterMonotonicBackwards' (Nothing :: Maybe Ix2) 20000
       specDimN (Nothing :: Maybe Ix2)
       specDim2AndUp (Nothing :: Maybe Ix2)
     describe "Ix3" $ do
@@ -359,3 +386,8 @@ spec = do
     describe "Ix5" $ do
       specDimN (Nothing :: Maybe Ix5)
       specDim2AndUp (Nothing :: Maybe Ix5)
+  -- specClasses @Ix1
+  -- specClasses @Ix2
+  -- specClasses @Ix3
+  -- specClasses @Ix4
+  -- specClasses @Ix5

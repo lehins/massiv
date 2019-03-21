@@ -8,7 +8,7 @@ license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
 copyright:           2018-2019 Alexey Kuleshevich
-category:            Data, Data Structures
+category:            Data, Data Structures, Parallelism
 build-type:          Custom
 extra-source-files:  README.md
 cabal-version:       >=1.10
@@ -67,7 +67,7 @@ library
                      , Data.Massiv.Core.Index.Tuple
                      , Data.Massiv.Core.Iterator
                      , Data.Massiv.Core.List
-  build-depends:       base            >= 4.8 && < 5
+  build-depends:       base            >= 4.9 && < 5
                      , bytestring
                      , data-default-class
                      , deepseq
@@ -92,7 +92,9 @@ test-suite tests
   type:               exitcode-stdio-1.0
   hs-source-dirs:     tests
   main-is:            Main.hs
-  other-modules:      Data.Massiv.Array.DelayedSpec
+  other-modules:      Data.Massiv.ArraySpec
+                    , Data.Massiv.Array.DelayedSpec
+                    , Data.Massiv.Array.Delayed.InterleavedSpec
                     , Data.Massiv.Array.Delayed.WindowedSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
@@ -108,7 +110,7 @@ test-suite tests
                     , Data.Massiv.Core.IndexSpec
                     , Data.Massiv.Core.SchedulerSpec
                     , Spec
-  build-depends:      base             >= 4.8 && < 5
+  build-depends:      base
                     , async
                     , bytestring
                     , containers

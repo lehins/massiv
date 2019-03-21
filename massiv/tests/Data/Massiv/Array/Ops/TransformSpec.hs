@@ -54,7 +54,7 @@ spec = do
     it "Ix3" $ property (prop_upsampleDownsample @Ix3)
     it "Ix4" $ property (prop_upsampleDownsample @Ix4)
   describe "ExtractAppend" $ do
-    it "Ix1" $ property (prop_ExtractAppend @Ix1)
+    it "Ix1" $ property (prop_ExtractAppend @Ix1) -- modifyMaxSuccess (`div` 10)
     it "Ix2" $ property (prop_ExtractAppend @Ix2)
     it "Ix3" $ property (prop_ExtractAppend @Ix3)
     it "Ix4" $ property (prop_ExtractAppend @Ix4)

@@ -227,12 +227,11 @@ withSchedulerInternal comp submitWork collect onScheduler = do
         -- \ wait for all worker to finish. If any one of them had a problem this MVar will
         -- contain an exception
         case mExc of
-          Nothing
-             -- / Now we are sure all workers have done their job we can safely read all of the
-             -- IORefs with results
-           -> collect jobsQueue
+          Nothing -> collect jobsQueue
+            -- \ Now we are sure all workers have done their job we can safely read all of the
+            -- IORefs with results
           Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the
-                     -- main thread will think like it's his own
+                   -- main thread will think like it's his own
             | Just (WorkerException wexc) <- fromException exc -> liftIO $ throwIO wexc
           Just exc -> liftIO $ throwIO exc -- Somethig funky is happening, propagate it.
       {-# INLINE doWork #-}

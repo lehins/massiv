@@ -1,7 +1,9 @@
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -16,10 +18,12 @@ module Data.Massiv.CoreArbitrary
   , SzIx(..)
   , SzNE(..)
   , DimIx(..)
+  , toIx
   , assertException
   , assertSomeException
   , assertExceptionIO
   , assertSomeExceptionIO
+  , toStringException
   , Semigroup((<>))
   , applyFun2Compat
   , module X
@@ -27,6 +31,7 @@ module Data.Massiv.CoreArbitrary
 
 import Control.DeepSeq (NFData, deepseq)
 import Control.Exception (Exception, SomeException, catch)
+import Data.Foldable as F
 import Data.Massiv.Array as X
 import Data.Massiv.Core.IndexSpec hiding (spec)
 import Data.Typeable
@@ -154,6 +159,11 @@ instance (CoArbitrary ix, Arbitrary ix, Typeable e, Construct r ix e, Arbitrary 
     return $ ArrIxP (setComp Par arrIx) ix
 
 
+toIx :: (Dimensions ix' ~ Dimensions ix, Index ix', Index ix) => ix -> ix'
+toIx ix = F.foldl' setEachIndex zeroIndex [1.. dimensions (Sz ix)]
+  where setEachIndex ix' d = setDim' ix' d (getDim' ix d)
+
+
 assertException :: (NFData a, Exception exc) =>
                    (exc -> Bool) -- ^ Return True if that is the exception that was expected
                 -> a -- ^ Value that should throw an exception, when fully evaluated
@@ -181,3 +191,8 @@ assertExceptionIO isExc action =
 
 assertSomeExceptionIO :: NFData a => IO a -> Property
 assertSomeExceptionIO = assertExceptionIO (\(_exc :: SomeException) -> True)
+
+
+
+toStringException :: Either SomeException a -> Either String a
+toStringException = either (Left . displayException) Right

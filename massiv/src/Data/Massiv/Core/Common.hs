@@ -65,6 +65,7 @@ module Data.Massiv.Core.Common
   , SizeException(..)
   , ShapeException(..)
   , module Data.Massiv.Core.Exception
+  -- * Stateful Monads
   , MonadUnliftIO
   , MonadIO(liftIO)
   , PrimMonad(PrimState)

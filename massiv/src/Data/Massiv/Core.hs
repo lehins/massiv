@@ -29,10 +29,24 @@ module Data.Massiv.Core
   , ListItem
   , Comp(Seq, Par, ParOn, ParN)
   , module Data.Massiv.Core.Index
+  -- * Exceptions
+  , MonadThrow(..)
+  , throw
+  , Exception(..)
+  , SomeException
+  , IndexException(..)
+  , SizeException(..)
+  , ShapeException(..)
+  , module Data.Massiv.Core.Exception
+  -- * Stateful Monads
   , MonadUnliftIO
+  , MonadIO(liftIO)
+  , PrimMonad(PrimState)
   ) where
 
+import Control.Exception (Exception(..), SomeException)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Exception
 
