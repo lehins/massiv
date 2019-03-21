@@ -78,7 +78,7 @@ matrix:
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
 
-  - env: BUILD=stack ARGS="--resolver lts-7.24 --stack-yaml stack-ghc-8.0.yaml --ghc-options '-fsimpl-tick-factor=200'"
+  - env: BUILD=stack ARGS="--resolver lts-7.24 --stack-yaml stack-ghc-8.0.yaml --ghc-options \"-fsimpl-tick-factor=200\""
     compiler: ": #stack GHC-8.0.1 (lts-7.24)"
     addons:
       apt:
