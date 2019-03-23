@@ -6,7 +6,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
---{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Data.Massiv.Core.IndexSpec (SzNE(..), SzIx(..), DimIx(..), spec) where
 
@@ -17,7 +17,7 @@ import Data.Proxy
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Function
---import Data.Typeable
+import Data.Typeable
 
 -- | Size that will result in a non-empty array
 newtype SzNE ix = SzNE (Sz ix) deriving Show
@@ -326,29 +326,49 @@ specDim2AndUp proxy =
     it "UnconsGetDrop" $ property $ prop_UnconsGetDrop proxy
     it "UnsnocGetDrop" $ property $ prop_UnsnocGetDrop proxy
 
--- prop_BinaryNumIx ::
---   (Num ix, Index ix) => (forall n . Num n => n -> n -> n) -> SzIx ix -> ix -> Property
--- prop_BinaryNumIx f (SzIx sz ix1) ix2 =
---   fromLinearIndex sz (f (toLinearIndex sz ix1) (toLinearIndex sz ix2')) ===
---   f ix1 ix2'
---   where ix2' = liftIndex2 mod ix2 (unSz sz)
+ixToList :: Index ix => ix -> [Int]
+ixToList = reverse . foldlIndex (flip (:)) []
 
--- prop_UnaryNumIx ::
---   (Num ix, Index ix) => (forall n . Num n => n -> n) -> SzIx ix -> Property
--- prop_UnaryNumIx f (SzIx sz ix) =
---   fromLinearIndex sz (f (toLinearIndex sz ix)) === f ix
+prop_BinaryNumIx ::
+  (Num ix, Index ix) => (forall n . Num n => n -> n -> n) -> ix -> ix -> Property
+prop_BinaryNumIx f ix1 ix2 = zipWith f (ixToList ix1) (ixToList ix2) === ixToList (f ix1 ix2)
 
--- specClasses :: forall ix . (Num ix, Index ix, Arbitrary ix) => Spec
--- specClasses =
---   describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy Ix3)) ")") $ do
---     it "(+)" $ property $ prop_BinaryNumIx @ix (+)
---     it "(-)" $ property $ prop_BinaryNumIx @ix (-)
---     it "(*)" $ property $ prop_BinaryNumIx @ix (*)
---     it "negate" $ property $ prop_UnaryNumIx @ix negate
---     it "abs" $ property $ prop_UnaryNumIx @ix abs
---     it "signum" $ property $ prop_UnaryNumIx @ix signum
---     it "fromInteger" $ property $ \ (i :: Int) ->
---       (fromIntegral i :: ix) === liftIndex (const i) zeroIndex
+prop_UnaryNumIx ::
+  (Num ix, Index ix) => (forall n . Num n => n -> n) -> ix -> Property
+prop_UnaryNumIx f ix = map f (ixToList ix) === ixToList (f ix)
+
+prop_BinaryNumSz ::
+  (Num ix, Index ix) => (forall n . Num n => n -> n -> n) -> Sz ix -> Sz ix -> Property
+prop_BinaryNumSz f sz1 sz2 =
+  zipWith f' (ixToList (unSz sz1)) (ixToList (unSz sz2)) === ixToList (unSz (f sz1 sz2))
+  where
+    f' x y = max 0 (f x y)
+
+prop_UnaryNumSz ::
+  (Num ix, Index ix) => (forall n . Num n => n -> n) -> Sz ix -> Property
+prop_UnaryNumSz f sz = map f (ixToList (unSz sz)) === ixToList (unSz (f sz))
+
+specClasses :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
+specClasses = do
+  describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy ix)) ")") $ do
+    it "(+)" $ property $ prop_BinaryNumIx @ix (+)
+    it "(-)" $ property $ prop_BinaryNumIx @ix (-)
+    it "(*)" $ property $ prop_BinaryNumIx @ix (*)
+    it "negate" $ property $ prop_UnaryNumIx @ix negate
+    it "abs" $ property $ prop_UnaryNumIx @ix abs
+    it "signum" $ property $ prop_UnaryNumIx @ix signum
+    it "fromInteger" $ property $ \ (i :: Int) ->
+      (fromIntegral i :: ix) === liftIndex (const i) zeroIndex
+  describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy (Sz ix))) ")") $ do
+    it "(+)" $ property $ prop_BinaryNumSz @ix (+)
+    it "(-)" $ property $ prop_BinaryNumSz @ix (-)
+    it "(*)" $ property $ prop_BinaryNumSz @ix (*)
+    it "negate" $ property $ prop_UnaryNumSz @ix negate
+    it "abs" $ property $ prop_UnaryNumSz @ix abs
+    it "signum" $ property $ prop_UnaryNumSz @ix signum
+    it "fromInteger" $ property $ \ (i :: Int) ->
+      (fromIntegral i :: ix) === liftIndex (const i) zeroIndex
+    it "fromIx" $ property $ \ (ix :: ix) -> unSz (Sz ix) == liftIndex (max 0) ix
 
 spec :: Spec
 spec = do
@@ -386,8 +406,8 @@ spec = do
     describe "Ix5" $ do
       specDimN (Nothing :: Maybe Ix5)
       specDim2AndUp (Nothing :: Maybe Ix5)
-  -- specClasses @Ix1
-  -- specClasses @Ix2
-  -- specClasses @Ix3
-  -- specClasses @Ix4
-  -- specClasses @Ix5
+  specClasses @Ix1
+  specClasses @Ix2
+  specClasses @Ix3
+  specClasses @Ix4
+  specClasses @Ix5
