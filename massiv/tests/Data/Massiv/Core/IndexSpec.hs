@@ -346,7 +346,9 @@ prop_BinaryNumSz f sz1 sz2 =
 
 prop_UnaryNumSz ::
   (Num ix, Index ix) => (forall n . Num n => n -> n) -> Sz ix -> Property
-prop_UnaryNumSz f sz = map f (ixToList (unSz sz)) === ixToList (unSz (f sz))
+prop_UnaryNumSz f sz = map f' (ixToList (unSz sz)) === ixToList (unSz (f sz))
+  where
+    f' = max 0 . f
 
 specClasses :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
 specClasses = do

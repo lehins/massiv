@@ -122,7 +122,7 @@ instance (Num ix, Index ix) => Num (Sz ix) where
   {-# INLINE (*) #-}
   abs !x = x
   {-# INLINE abs #-}
-  negate !x = x
+  negate !_x = 0
   {-# INLINE negate #-}
   signum x = SafeSz (signum (coerce x))
   {-# INLINE signum #-}
