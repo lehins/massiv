@@ -94,6 +94,16 @@ import           Graphics.ColorSpace
 #if !MIN_VERSION_massiv(0, 2, 7)
 pattern Sz :: ix -> ix
 pattern Sz ix = ix
+type Sz ix = ix
+#endif
+#if !MIN_VERSION_massiv(0, 3, 0)
+fromVectorM ::
+     (Construct S ix a, Mutable S ix a, Storable a)
+  => Comp
+  -> Sz ix
+  -> V.Vector a
+  -> Maybe (Array S ix a)
+fromVectorM comp sz = pure . fromVector comp sz
 #endif
 
 --------------------------------------------------------------------------------
@@ -756,8 +766,7 @@ encodeAuto f enc toLuma toLumaA toColor toColorA img =
 
 elevate
   :: forall cs e' e.
-     ( Functor (Pixel cs)
-     , ColorSpace cs e'
+     ( ColorSpace cs e'
      , ColorSpace cs e
      , Source D Ix2 (Pixel cs e')
      )
@@ -777,7 +786,7 @@ elevate img =
          return $ M.map toDouble img
     ]
 
-fromDynamicImage :: forall cs e . (ColorSpace cs e, Source S Ix2 (Pixel cs e))
+fromDynamicImage :: forall cs e . ColorSpace cs e
                  => JP.DynamicImage -> Maybe (Image S cs e)
 fromDynamicImage jpDynImg =
   case jpDynImg of
@@ -846,7 +855,6 @@ toAnyCS
   :: forall r' cs' e' r cs e.
      ( Source r' Ix2 (Pixel cs' e')
      , Mutable r Ix2 (Pixel cs e)
-     , Storable (Pixel cs e)
      , ColorSpace cs e
      , ToYA cs' e'
      , ToRGBA cs' e'
@@ -903,11 +911,9 @@ showJP (JP.ImageCMYK16 _) = "Image S CMYK Word16"
 
 -- Encoding
 
--- | TODO: Validate size
 toJPImageUnsafe
   :: forall r cs a . (JP.Pixel a, Source r Ix2 (Pixel cs (JP.PixelBaseComponent a)),
-                      ColorSpace cs (JP.PixelBaseComponent a),
-                      Storable (Pixel cs (JP.PixelBaseComponent a)))
+                      ColorSpace cs (JP.PixelBaseComponent a))
   => Image r cs (JP.PixelBaseComponent a)
   -> JP.Image a
 toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toVector arrS where
@@ -977,5 +983,5 @@ fromJPImageUnsafe :: forall jpx cs e . (Storable (Pixel cs e), JP.Pixel jpx) =>
                      JP.Image jpx -> Maybe (Image S cs e)
 fromJPImageUnsafe (JP.Image n m !v) = do
   guard (n * m * sizeOf (undefined :: Pixel cs e) == V.length v)
-  return $ fromVector Par (Sz (m :. n)) $ V.unsafeCast v
+  fromVectorM Par (Sz (m :. n)) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}

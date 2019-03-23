@@ -15,7 +15,8 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.IO
-  ( -- * Reading
+  ( -- $supported
+    -- * Reading
     readArray
   , readImage
   , readImageAuto
@@ -37,7 +38,6 @@ module Data.Massiv.Array.IO
   -- * Supported Image Formats
   , module Data.Massiv.Array.IO.Base
   , module Data.Massiv.Array.IO.Image
-  -- $supported
   ) where
 
 import           Control.Concurrent         (forkIO)
@@ -262,7 +262,7 @@ conversion:
 
     * __read__: ('RGB' 'Word8'), ('RGBA' 'Word8')
     * __write__: ('RGB' 'Word8')
-    * Also supports reading and writing animated images, when used as @'GIFA'@
+    * Also supports reading and writing animated images
 
 * 'HDR':
 

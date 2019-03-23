@@ -1,3 +1,7 @@
+# 0.1.6
+
+* Made it compatible with new `massiv >= 0.3` as well as the old ones.
+
 # 0.1.5
 
 * All decoded images will be read in sequentially, but will have default computation set to `Par`.

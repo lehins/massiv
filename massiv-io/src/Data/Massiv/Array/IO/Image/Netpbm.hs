@@ -45,6 +45,16 @@ import           Prelude                                as P
 #if !MIN_VERSION_massiv(0, 2, 7)
 pattern Sz :: ix -> ix
 pattern Sz ix = ix
+type Sz ix = ix
+#endif
+#if !MIN_VERSION_massiv(0, 3, 0)
+fromVectorM ::
+     (Construct S ix a, Mutable S ix a, Storable a)
+  => Comp
+  -> Sz ix
+  -> V.Vector a
+  -> Maybe (Array S ix a)
+fromVectorM comp sz = pure . fromVector comp sz
 #endif
 
 -- | Netpbm: portable bitmap image with @.pbm@ extension.
@@ -150,7 +160,7 @@ decodePPMs :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
            -> Array B Ix1 (Image r cs e)
 decodePPMs f converter bs =
   either (throw . DecodeError) (fromList Seq) $
-  (P.map (fromEitherDecode f showNetpbmCS converter . Right) . fst) <$>
+  P.map (fromEitherDecode f showNetpbmCS converter . Right) . fst <$>
   parsePPM bs
 {-# INLINE decodePPMs #-}
 
@@ -173,7 +183,7 @@ fromNetpbmImageUnsafe
   => Int -> Int -> V.Vector a -> Maybe (Image S cs e)
 fromNetpbmImageUnsafe m n v = do
   guard (n * m == V.length v)
-  return $ fromVector Par (Sz (m :. n)) $ V.unsafeCast v
+  fromVectorM Par (Sz (m :. n)) $ V.unsafeCast v
 
 
 
@@ -188,7 +198,7 @@ showNetpbmCS Netpbm.PPM {ppmData} =
 
 
 fromNetpbmImage
-  :: forall cs e . (ColorSpace cs e, V.Storable (Pixel cs e)) =>
+  :: forall cs e . ColorSpace cs e =>
      Netpbm.PPM -> Maybe (Image S cs e)
 fromNetpbmImage Netpbm.PPM {..} = do
   let m = ppmHeight ppmHeader
@@ -207,7 +217,7 @@ fromNetpbmImage Netpbm.PPM {..} = do
 
 
 fromNetpbmImageAuto
-  :: forall cs e r . (Mutable r Ix2 (Pixel cs e), ColorSpace cs e, V.Storable (Pixel cs e)) =>
+  :: forall cs e r . (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
      Netpbm.PPM -> Maybe (Image r cs e)
 fromNetpbmImageAuto Netpbm.PPM {..} = do
   let m = ppmHeight ppmHeader
