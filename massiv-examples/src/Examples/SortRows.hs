@@ -1,16 +1,16 @@
-{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeFamilies #-}
 module Examples.SortRows where
 
-import           Data.Massiv.Array                 as A
-import           Data.Massiv.Array.Manifest.Vector as A
-import           Data.Massiv.Scheduler
-import           Data.Typeable
-import           Data.Vector.Algorithms.Merge
-import           Data.Vector.Generic               as VG
-import           Data.Vector.Generic.Mutable       as VGM
-import           System.IO.Unsafe
+import Data.Massiv.Array as A
+import Data.Massiv.Array.Manifest.Vector as A
+import Data.Massiv.Scheduler
+import Data.Typeable
+import Data.Vector.Algorithms.Merge
+import Data.Vector.Generic as VG
+import Data.Vector.Generic.Mutable as VGM
+import System.IO.Unsafe
 
 sortRows ::
      forall r e v.

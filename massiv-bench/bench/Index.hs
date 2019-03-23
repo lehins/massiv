@@ -1,19 +1,19 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 module Main where
 
 
 
-import           Criterion.Main
-import           Data.Array.Repa                  as R
-import           Data.Array.Repa.Specialised.Dim2 as R
-import           Data.Massiv.Core                 as M
-import           Prelude                          as P
+import Criterion.Main
+import Data.Array.Repa as R
+import Data.Array.Repa.Specialised.Dim2 as R
+import Data.Massiv.Core as M
+import Prelude as P
 
 
 class R.Shape sh => ExtraShape sh where

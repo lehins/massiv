@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 #if __GLASGOW_HASKELL__ >= 800
   {-# OPTIONS_GHC -Wno-redundant-constraints #-}
@@ -17,13 +17,13 @@ module Graphics.ColorSpace.Elevator (
   , clamp01
   ) where
 
-import qualified Data.Complex         as C
-import           Data.Int
-import           Data.Typeable
-import           Data.Vector.Storable (Storable)
-import           Data.Vector.Unboxed  (Unbox)
-import           Data.Word
-import           GHC.Float
+import qualified Data.Complex as C
+import Data.Int
+import Data.Typeable
+import Data.Vector.Storable (Storable)
+import Data.Vector.Unboxed (Unbox)
+import Data.Word
+import GHC.Float
 
 
 -- | A class with a set of convenient functions that allow for changing precision of

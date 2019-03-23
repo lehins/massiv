@@ -2,18 +2,18 @@
 {-# LANGUAGE TypeApplications #-}
 module Main where
 
-import           Bench.Massiv.Array       as A
-import           Bench.Repa
-import           Bench.Vector
-import           Control.Concurrent
-import           Criterion.Main
-import           Data.Array.Repa          as R
-import           Data.Functor.Identity
-import           Data.Massiv.Array.Unsafe as A
-import           Data.Monoid
-import qualified Data.Vector.Unboxed      as VU
-import           GHC.Exts                 as GHC
-import           Prelude                  as P
+import Bench.Massiv.Array as A
+import Bench.Repa
+import Bench.Vector
+import Control.Concurrent
+import Criterion.Main
+import Data.Array.Repa as R
+import Data.Functor.Identity
+import Data.Massiv.Array.Unsafe as A
+import Data.Monoid
+import qualified Data.Vector.Unboxed as VU
+import GHC.Exts as GHC
+import Prelude as P
 
 main :: IO ()
 main = do

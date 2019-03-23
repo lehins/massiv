@@ -1,15 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedLists  #-}
-{-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE TypeFamilies #-}
 module Main where
 
-import           Control.Monad
-import           Data.Massiv.Array        as A hiding (windowSize)
-import           Data.Massiv.Array.Unsafe as A
-import           Data.Word
-import           Graphics.UI.GLUT         as G
-import           System.Exit              (ExitCode (..), exitWith, exitSuccess)
-import           Text.Read                (readMaybe)
+import Control.Monad
+import Data.Massiv.Array as A hiding (windowSize)
+import Data.Massiv.Array.Unsafe as A
+import Data.Word
+import Graphics.UI.GLUT as G
+import System.Exit (ExitCode(..), exitSuccess, exitWith)
+import Text.Read (readMaybe)
 
 lifeRules :: Word8 -> Word8 -> Word8
 lifeRules 0 3 = 1

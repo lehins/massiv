@@ -1,15 +1,15 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 #if __GLASGOW_HASKELL__ >= 800
   {-# OPTIONS_GHC -Wno-redundant-constraints #-}
-  {-# LANGUAGE MonoLocalBinds          #-}
+{-# LANGUAGE MonoLocalBinds #-}
 #endif
 -- |
 -- Module      : Graphics.ColorSpace
@@ -123,16 +123,16 @@ module Graphics.ColorSpace (
   Word8, Word16, Word32, Word64
   ) where
 
-import           Data.Word
-import           Graphics.ColorSpace.Binary
-import           Graphics.ColorSpace.CMYK
-import           Graphics.ColorSpace.Complex
-import           Graphics.ColorSpace.HSI
-import           Graphics.ColorSpace.Internal
-import           Graphics.ColorSpace.RGB
-import           Graphics.ColorSpace.X
-import           Graphics.ColorSpace.Y
-import           Graphics.ColorSpace.YCbCr
+import Data.Word
+import Graphics.ColorSpace.Binary
+import Graphics.ColorSpace.CMYK
+import Graphics.ColorSpace.Complex
+import Graphics.ColorSpace.HSI
+import Graphics.ColorSpace.Internal
+import Graphics.ColorSpace.RGB
+import Graphics.ColorSpace.X
+import Graphics.ColorSpace.Y
+import Graphics.ColorSpace.YCbCr
 
 
 -- -- Binary:

@@ -1,20 +1,20 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE GADTs #-}
 module Main where
 
 --import           Bench
-import           Bench.Massiv.Array          as A
+import Bench.Massiv.Array as A
 -- import           Bench.Massiv.Auto                      as M hiding (tupleToIx2)
 --import           Data.Massiv.Array.Manifest  as A
-import           Bench.Repa
-import           Bench.Vector
-import           Criterion.Main
-import           Data.Array.Repa             as R
-import qualified Data.Vector.Unboxed         as VU
+import Bench.Repa
+import Bench.Vector
+import Criterion.Main
+import Data.Array.Repa as R
+import Data.Functor.Identity
+import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as MVU
-import           GHC.Exts                    as GHC
-import           Data.Functor.Identity
-import           Prelude                     as P
+import GHC.Exts as GHC
+import Prelude as P
 
 
 main :: IO ()

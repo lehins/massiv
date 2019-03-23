@@ -4,8 +4,8 @@ module Examples.Convolution
     , sum3x3Filter
     ) where
 
-import           Data.Default
-import           Data.Massiv.Array
+import Data.Default
+import Data.Massiv.Array
 
 
 arrLightIx2 :: Comp -> Ix2 -> Array D Ix2 Double

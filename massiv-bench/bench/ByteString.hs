@@ -1,19 +1,19 @@
 {-# LANGUAGE BangPatterns #-}
 module Main where
 
-import           Criterion.Main
-import qualified Data.Array.Repa                 as R
+import Criterion.Main
+import qualified Data.Array.Repa as R
 import qualified Data.Array.Repa.Repr.ByteString as R
-import           Data.Bits                       as Bits
-import qualified Data.ByteString                 as S
-import           Data.ByteString.Builder         as S
-import qualified Data.ByteString.Lazy            as SL
-import qualified Data.ByteString.Unsafe          as SU
-import           Data.Functor.Identity
-import           Data.Int
-import           Data.Massiv.Array               as A
-import           Data.Massiv.Array.Unsafe        as A
-import           System.Random                   (mkStdGen, randoms)
+import Data.Bits as Bits
+import qualified Data.ByteString as S
+import Data.ByteString.Builder as S
+import qualified Data.ByteString.Lazy as SL
+import qualified Data.ByteString.Unsafe as SU
+import Data.Functor.Identity
+import Data.Int
+import Data.Massiv.Array as A
+import Data.Massiv.Array.Unsafe as A
+import System.Random (mkStdGen, randoms)
 
 
 convertWords :: Int16 -> Int16 -> Int16

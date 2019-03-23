@@ -1,11 +1,11 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE BangPatterns     #-}
 module Main where
 
-import           Criterion.Main
-import           Data.Massiv.Array as A
-import           Data.Massiv.Array.Numeric.Integral
-import           Prelude           as P
+import Criterion.Main
+import Data.Massiv.Array as A
+import Data.Massiv.Array.Numeric.Integral
+import Prelude as P
 
 
 gaussian2 :: Floating a => a -> a -> a -> a

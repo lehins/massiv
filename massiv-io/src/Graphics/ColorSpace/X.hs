@@ -1,10 +1,10 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Graphics.ColorSpace.X
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -20,12 +20,12 @@ module Graphics.ColorSpace.X
   , fromPixelsX
   ) where
 
-import           Data.Foldable
-import           Data.Typeable                (Typeable)
-import           Foreign.Ptr
-import           Foreign.Storable
-import           Graphics.ColorSpace.Internal
-import           Prelude                      as P
+import Data.Foldable
+import Data.Typeable (Typeable)
+import Foreign.Ptr
+import Foreign.Storable
+import Graphics.ColorSpace.Internal
+import Prelude as P
 
 -- ^ This is a single channel colorspace, that is designed to separate Gray
 -- level values from other types of colorspace, hence it is not convertible to
@@ -51,7 +51,7 @@ instance Elevator e => ColorSpace X e where
   {-# INLINE toComponents #-}
   getPxC (PixelX g) X = g
   {-# INLINE getPxC #-}
-  setPxC (PixelX _) X g = PixelX g
+  setPxC (PixelX _) X = PixelX
   {-# INLINE setPxC #-}
   mapPxC f (PixelX g) = PixelX (f X g)
   {-# INLINE mapPxC #-}

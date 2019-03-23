@@ -1,10 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 module Main where
 
-import           Criterion.Main
-import           Control.DeepSeq
-import           Prelude                  as P
-import           Control.Massiv.Scheduler as S
+import Control.DeepSeq
+import Control.Massiv.Scheduler as S
+import Criterion.Main
+import Prelude as P
 
 main :: IO ()
 main =

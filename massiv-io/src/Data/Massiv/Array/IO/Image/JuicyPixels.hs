@@ -1,14 +1,14 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TupleSections         #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image.JuicyPixels
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -71,25 +71,25 @@ module Data.Massiv.Array.IO.Image.JuicyPixels
   , fromAnyDynamicImage
   ) where
 
-import           Prelude                           as P
+import Prelude as P
 
-import qualified Codec.Picture                     as JP
-import qualified Codec.Picture.ColorQuant          as JP
-import qualified Codec.Picture.Gif                 as JP
-import qualified Codec.Picture.Jpg                 as JP
-import           Control.Exception
-import           Control.Monad                     (guard, msum)
-import           Data.Bifunctor
-import qualified Data.ByteString                   as B
-import qualified Data.ByteString.Lazy              as BL (ByteString)
-import           Data.Default                      (Default (..))
-import           Data.Massiv.Array                 as M
-import           Data.Massiv.Array.IO.Base
-import           Data.Massiv.Array.Manifest.Vector
-import           Data.Typeable
-import qualified Data.Vector.Storable              as V
-import           Foreign.Storable                  (Storable (sizeOf))
-import           Graphics.ColorSpace
+import qualified Codec.Picture as JP
+import qualified Codec.Picture.ColorQuant as JP
+import qualified Codec.Picture.Gif as JP
+import qualified Codec.Picture.Jpg as JP
+import Control.Exception
+import Control.Monad (guard, msum)
+import Data.Bifunctor
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL (ByteString)
+import Data.Default (Default(..))
+import Data.Massiv.Array as M
+import Data.Massiv.Array.IO.Base
+import Data.Massiv.Array.Manifest.Vector
+import Data.Typeable
+import qualified Data.Vector.Storable as V
+import Foreign.Storable (Storable(sizeOf))
+import Graphics.ColorSpace
 
 #if !MIN_VERSION_massiv(0, 2, 7)
 pattern Sz :: ix -> ix

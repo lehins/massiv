@@ -1,11 +1,11 @@
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -40,23 +40,21 @@ module Data.Massiv.Array.IO
   , module Data.Massiv.Array.IO.Image
   ) where
 
-import           Control.Concurrent         (forkIO)
-import           Control.Exception          (bracket)
-import           Control.Monad              (void)
-import qualified Data.ByteString            as B
-import qualified Data.ByteString.Lazy       as BL
-import           Data.Massiv.Array          as A
-import           Data.Massiv.Array.IO.Base  hiding (convertEither,
-                                             fromEitherDecode, fromMaybeEncode,
-                                             toProxy)
-import           Data.Massiv.Array.IO.Image
-import           Graphics.ColorSpace
-import           Prelude                    as P hiding (readFile, writeFile)
-import           System.Directory           (createDirectoryIfMissing,
-                                             getTemporaryDirectory)
-import           System.FilePath
-import           System.IO                  (hClose, openBinaryTempFile)
-import           System.Process             (readProcess)
+import Control.Concurrent (forkIO)
+import Control.Exception (bracket)
+import Control.Monad (void)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+import Data.Massiv.Array as A
+import Data.Massiv.Array.IO.Base hiding (convertEither, fromEitherDecode,
+                                  fromMaybeEncode, toProxy)
+import Data.Massiv.Array.IO.Image
+import Graphics.ColorSpace
+import Prelude as P hiding (readFile, writeFile)
+import System.Directory (createDirectoryIfMissing, getTemporaryDirectory)
+import System.FilePath
+import System.IO (hClose, openBinaryTempFile)
+import System.Process (readProcess)
 
 
 

@@ -1,8 +1,8 @@
 module Main where
 
-import System.Environment
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Numeric.Integral
+import System.Environment
 
 gaussian2 :: Floating a => a -> a -> a -> a
 gaussian2 stdDev y x = exp (-(x ^ (2 :: Int) + y ^ (2 :: Int)) / var2) / (var2 * pi)

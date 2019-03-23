@@ -1,7 +1,7 @@
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Graphics.ColorSpace.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -17,17 +17,17 @@ module Graphics.ColorSpace.Internal
   , module Graphics.ColorSpace.Elevator
   ) where
 
-import           Control.Applicative
-import           Control.DeepSeq              (NFData (rnf), deepseq)
-import           Control.Monad                (liftM)
-import           Data.Default
-import           Data.Foldable
-import           Data.Typeable
-import qualified Data.Vector.Generic          as V
-import qualified Data.Vector.Generic.Mutable  as VM
-import qualified Data.Vector.Storable         as VS
-import qualified Data.Vector.Unboxed          as VU
-import           Graphics.ColorSpace.Elevator
+import Control.Applicative
+import Control.DeepSeq (NFData(rnf), deepseq)
+import Control.Monad (liftM)
+import Data.Default
+import Data.Foldable
+import Data.Typeable
+import qualified Data.Vector.Generic as V
+import qualified Data.Vector.Generic.Mutable as VM
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
+import Graphics.ColorSpace.Elevator
 
 
 -- | A Pixel family with a color space and a precision of elements.

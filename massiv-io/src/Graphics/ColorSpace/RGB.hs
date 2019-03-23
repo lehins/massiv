@@ -1,10 +1,10 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Graphics.ColorSpace.RGB
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -17,11 +17,11 @@ module Graphics.ColorSpace.RGB (
   RGB(..), RGBA(..), Pixel(..)
   ) where
 
-import           Data.Typeable                (Typeable)
-import           Foreign.Ptr
-import           Foreign.Storable
-import           Graphics.ColorSpace.Internal
-import           Prelude                      hiding (map)
+import Data.Typeable (Typeable)
+import Foreign.Ptr
+import Foreign.Storable
+import Graphics.ColorSpace.Internal
+import Prelude hiding (map)
 
 -----------
 --- RGB ---

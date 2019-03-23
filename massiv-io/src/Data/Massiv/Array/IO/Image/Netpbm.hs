@@ -1,14 +1,14 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image.Netpbm
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -27,20 +27,20 @@ module Data.Massiv.Array.IO.Image.Netpbm
   , PPM(..)
   ) where
 
-import           Control.Exception
-import           Control.Monad                          (guard)
-import qualified Data.ByteString                        as B (ByteString)
-import           Data.Massiv.Array                      as M
-import           Data.Massiv.Array.IO.Base
-import           Data.Massiv.Array.IO.Image.JuicyPixels (toAnyCS)
-import           Data.Massiv.Array.Manifest.Vector
-import           Data.Typeable
-import qualified Data.Vector.Storable                   as V
-import           Foreign.Storable                       (Storable)
-import           Graphics.ColorSpace
-import           Graphics.Netpbm                        as Netpbm hiding (PPM)
-import qualified Graphics.Netpbm                        as Netpbm (PPM (..))
-import           Prelude                                as P
+import Control.Exception
+import Control.Monad (guard)
+import qualified Data.ByteString as B (ByteString)
+import Data.Massiv.Array as M
+import Data.Massiv.Array.IO.Base
+import Data.Massiv.Array.IO.Image.JuicyPixels (toAnyCS)
+import Data.Massiv.Array.Manifest.Vector
+import Data.Typeable
+import qualified Data.Vector.Storable as V
+import Foreign.Storable (Storable)
+import Graphics.ColorSpace
+import Graphics.Netpbm as Netpbm hiding (PPM)
+import qualified Graphics.Netpbm as Netpbm (PPM(..))
+import Prelude as P
 
 #if !MIN_VERSION_massiv(0, 2, 7)
 pattern Sz :: ix -> ix

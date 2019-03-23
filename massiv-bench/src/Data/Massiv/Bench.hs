@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 module Data.Massiv.Bench where
 
-import           Data.Massiv.Array
+import Data.Massiv.Array
 
 lightFunc :: Int -> Int -> Double
 lightFunc !i !j =

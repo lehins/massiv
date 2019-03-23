@@ -1,11 +1,11 @@
-{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE BangPatterns #-}
 module Main where
 
-import           Criterion.Main
-import           Data.Massiv.Array as A
-import           Data.Massiv.Array.Unsafe as A
-import           Data.Massiv.Bench as A
-import           Prelude           as P
+import Criterion.Main
+import Data.Massiv.Array as A
+import Data.Massiv.Array.Unsafe as A
+import Data.Massiv.Bench as A
+import Prelude as P
 
 
 

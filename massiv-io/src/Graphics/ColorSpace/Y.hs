@@ -1,10 +1,10 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Graphics.ColorSpace.Y
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -17,12 +17,12 @@ module Graphics.ColorSpace.Y (
   Y(..), YA(..), Pixel(..)
   ) where
 
-import           Data.Foldable
-import           Data.Typeable                (Typeable)
-import           Foreign.Ptr
-import           Foreign.Storable
-import           Graphics.ColorSpace.Internal
-import           Prelude                      hiding (map)
+import Data.Foldable
+import Data.Typeable (Typeable)
+import Foreign.Ptr
+import Foreign.Storable
+import Graphics.ColorSpace.Internal
+import Prelude hiding (map)
 
 ---------
 --- Y ---
@@ -45,7 +45,7 @@ instance Elevator e => ColorSpace Y e where
   {-# INLINE toComponents #-}
   getPxC (PixelY y) LumaY = y
   {-# INLINE getPxC #-}
-  setPxC _ LumaY y = PixelY y
+  setPxC _ LumaY = PixelY
   {-# INLINE setPxC #-}
   mapPxC f (PixelY y) = PixelY (f LumaY y)
   {-# INLINE mapPxC #-}

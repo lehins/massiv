@@ -1,12 +1,12 @@
-{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE GADTs #-}
 module Main where
 
-import           Bench
-import           Bench.Massiv                 as A
-import           Criterion.Main
-import           Prelude                      as P
+import Bench
+import Bench.Massiv as A
+import Criterion.Main
+import Prelude as P
 
 
 

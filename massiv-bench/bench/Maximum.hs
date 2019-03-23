@@ -1,21 +1,21 @@
 {-# LANGUAGE BangPatterns #-}
 module Main where
 
-import           Criterion.Main
+import Criterion.Main
 import qualified Data.Array.Repa as Repa
-import qualified Data.Array.Repa.Repr.ByteString   as Repa
-import           Data.Bits                         as Bits
-import qualified Data.ByteString                   as Bytes
-import qualified Data.ByteString.Unsafe            as Bytes
-import           Data.Int
-import           Data.Massiv.Array                 as Massiv
-import           Data.Massiv.Array.Manifest.Vector
-import           Data.Massiv.Array.Unsafe          as Massiv
-import qualified Data.Vector.Primitive             as Vector
-import           Data.Word
-import qualified Data.Word                         as Word
-import           Prelude                           as Prelude
-import           Data.Functor.Identity
+import qualified Data.Array.Repa.Repr.ByteString as Repa
+import Data.Bits as Bits
+import qualified Data.ByteString as Bytes
+import qualified Data.ByteString.Unsafe as Bytes
+import Data.Functor.Identity
+import Data.Int
+import Data.Massiv.Array as Massiv
+import Data.Massiv.Array.Manifest.Vector
+import Data.Massiv.Array.Unsafe as Massiv
+import qualified Data.Vector.Primitive as Vector
+import Data.Word
+import qualified Data.Word as Word
+import Prelude as Prelude
 
 
 convertWords :: Int16 -> Int16 -> Int16

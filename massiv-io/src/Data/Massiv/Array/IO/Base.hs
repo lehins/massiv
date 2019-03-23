@@ -1,10 +1,10 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Base
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -31,14 +31,14 @@ module Data.Massiv.Array.IO.Base
   , convertEither
   ) where
 
-import           Control.Exception    (Exception, throw)
-import qualified Data.ByteString      as B (ByteString)
+import Control.Exception (Exception, throw)
+import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
-import           Data.Default         (Default (..))
-import           Data.Massiv.Array
-import           Data.Maybe           (fromMaybe)
-import           Data.Typeable
-import           Graphics.ColorSpace  (ColorSpace, Pixel)
+import Data.Default (Default(..))
+import Data.Massiv.Array
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import Graphics.ColorSpace (ColorSpace, Pixel)
 
 type Image r cs e = Array r Ix2 (Pixel cs e)
 

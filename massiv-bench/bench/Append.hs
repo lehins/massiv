@@ -1,13 +1,13 @@
-{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-import           Criterion.Main
-import qualified Data.DList               as DL
-import           Data.Massiv.Array        as A
-import           Data.Massiv.Bench        as A
-import qualified Data.Vector.Primitive    as VP
-import           Prelude                  as P
+import Criterion.Main
+import qualified Data.DList as DL
+import Data.Massiv.Array as A
+import Data.Massiv.Bench as A
+import qualified Data.Vector.Primitive as VP
+import Prelude as P
 
 main :: IO ()
 main = do
@@ -36,22 +36,22 @@ main = do
     ]
   where
     consList :: Int -> [Int] -> [Int]
-    consList 0 !acc = acc
+    consList 0 !acc  = acc
     consList !n !acc = consList (n - 1) (n : acc)
     consArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
-    consArray 0 !acc = acc
+    consArray 0 !acc  = acc
     consArray !n !acc = consArray (n - 1) (n `cons` acc)
     consVector :: Int -> VP.Vector Int -> VP.Vector Int
-    consVector 0 !acc = acc
+    consVector 0 !acc  = acc
     consVector !n !acc = consVector (n - 1) (n `VP.cons` acc)
     snocList :: Int -> DL.DList Int -> [Int]
-    snocList 0 !acc = DL.toList acc
+    snocList 0 !acc  = DL.toList acc
     snocList !n !acc = snocList (n - 1) (acc `DL.snoc` n)
     snocArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
-    snocArray 0 !acc = acc
+    snocArray 0 !acc  = acc
     snocArray !n !acc = snocArray (n - 1) (acc `snoc` n)
     snocVector :: Int -> VP.Vector Int -> VP.Vector Int
-    snocVector 0 !acc = acc
+    snocVector 0 !acc  = acc
     snocVector !n !acc = snocVector (n - 1) (acc `VP.snoc` n)
 
 mkAppendBenchGroup :: String -> Dim -> Sz2 -> Benchmark

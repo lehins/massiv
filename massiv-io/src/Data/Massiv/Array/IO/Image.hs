@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -24,17 +24,17 @@ module Data.Massiv.Array.IO.Image
   , module Data.Massiv.Array.IO.Image.Netpbm
   ) where
 
-import           Control.Exception                      (throw)
-import           Data.Massiv.Array
-import           Data.Massiv.Array.IO.Base
-import           Data.Massiv.Array.IO.Image.JuicyPixels
-import           Data.Massiv.Array.IO.Image.Netpbm
-import qualified Data.ByteString                        as B (ByteString)
-import qualified Data.ByteString.Lazy                   as BL (ByteString)
-import           Data.Char                              (toLower)
-import           Graphics.ColorSpace
-import           Prelude                                as P
-import           System.FilePath                        (takeExtension)
+import Control.Exception (throw)
+import qualified Data.ByteString as B (ByteString)
+import qualified Data.ByteString.Lazy as BL (ByteString)
+import Data.Char (toLower)
+import Data.Massiv.Array
+import Data.Massiv.Array.IO.Base
+import Data.Massiv.Array.IO.Image.JuicyPixels
+import Data.Massiv.Array.IO.Image.Netpbm
+import Graphics.ColorSpace
+import Prelude as P
+import System.FilePath (takeExtension)
 
 
 

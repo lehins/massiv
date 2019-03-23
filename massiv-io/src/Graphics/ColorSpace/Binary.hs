@@ -1,11 +1,11 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Graphics.ColorSpace.Binary
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -18,19 +18,19 @@ module Graphics.ColorSpace.Binary (
   Bit, on, off, isOn, isOff, fromBool, zero, one, bit2bool, bool2bit, toNum, fromNum
   ) where
 
-import           Control.Applicative
-import           Control.Monad
-import           Data.Bits
-import           Data.Typeable                (Typeable)
-import qualified Data.Vector.Generic          as V
-import qualified Data.Vector.Generic.Mutable  as M
-import qualified Data.Vector.Unboxed          as U
-import           Data.Word                    (Word8)
-import           Foreign.Ptr
-import           Foreign.Storable
-import           Graphics.ColorSpace.Internal
-import           Graphics.ColorSpace.X
-import           Prelude                      hiding (map)
+import Control.Applicative
+import Control.Monad
+import Data.Bits
+import Data.Typeable (Typeable)
+import qualified Data.Vector.Generic as V
+import qualified Data.Vector.Generic.Mutable as M
+import qualified Data.Vector.Unboxed as U
+import Data.Word (Word8)
+import Foreign.Ptr
+import Foreign.Storable
+import Graphics.ColorSpace.Internal
+import Graphics.ColorSpace.X
+import Prelude hiding (map)
 
 
 -- | Under the hood, binary pixels are represented as `Word8`, but can only take

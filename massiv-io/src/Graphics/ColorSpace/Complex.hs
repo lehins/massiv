@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns     #-}
-{-# LANGUAGE CPP              #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 #if __GLASGOW_HASKELL__ >= 800
   {-# OPTIONS_GHC -Wno-redundant-constraints #-}
@@ -21,10 +21,10 @@ module Graphics.ColorSpace.Complex (
   conjugate
   ) where
 
-import           Control.Applicative
-import           Data.Complex                 (Complex (..))
-import qualified Data.Complex                 as C hiding (Complex (..))
-import           Graphics.ColorSpace.Internal
+import Control.Applicative
+import Data.Complex (Complex(..))
+import qualified Data.Complex as C hiding (Complex(..))
+import Graphics.ColorSpace.Internal
 
 
 

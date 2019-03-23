@@ -1,9 +1,9 @@
 module Main where
 
-import           Data.Massiv.Array
-import           Data.Massiv.Array.IO
-import           Examples.Convolution
-import           Graphics.ColorSpace
+import Data.Massiv.Array
+import Data.Massiv.Array.IO
+import Examples.Convolution
+import Graphics.ColorSpace
 
 
 main :: IO ()

@@ -1,17 +1,17 @@
-{-# LANGUAGE BangPatterns     #-}
-{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications #-}
 module Main where
 
-import           Bench
-import           Bench.Massiv.Array           as A
-import           Criterion.Main
-import           Data.Array.Repa              as R
-import           Data.Array.Repa.Stencil      as R
-import           Data.Array.Repa.Stencil.Dim2 as R
-import           Data.Functor.Identity
-import           Prelude                      as P
+import Bench
+import Bench.Massiv.Array as A
+import Criterion.Main
+import Data.Array.Repa as R
+import Data.Array.Repa.Stencil as R
+import Data.Array.Repa.Stencil.Dim2 as R
+import Data.Functor.Identity
+import Prelude as P
 
 
 
