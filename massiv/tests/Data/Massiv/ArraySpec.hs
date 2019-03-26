@@ -80,35 +80,56 @@ prop_IxUnbox comp sz f =
   makeArrayLinearR D comp sz (apply f) ===
   delay (makeArrayLinear comp sz (apply f) :: Array U ix ix)
 
+prop_computeWithStride ::
+     forall r ix. (Load D ix Int, Ragged L ix Int, StrideLoad r ix Int, Construct r ix Int)
+  => Comp
+  -> Sz ix
+  -> Fun Int Int
+  -> Stride ix
+  -> Property
+prop_computeWithStride comp sz f stride =
+  arr === computeWithStride stride arrL .&&.
+  arr === compute (fromStrideLoad stride arrL)
+  where
+    arrL = makeArrayLinear comp sz (apply f) :: Array r ix Int
+    arr = computeWithStrideAs P stride (makeArrayLinearR D comp sz (apply f))
+
 
 specCommon ::
      forall ix.
-     (Arbitrary ix, Load D ix Int, Load DW ix Int, Ragged L ix Int, Ragged L ix ix, Unbox ix)
+     (Arbitrary ix, Load D ix Int, StrideLoad DW ix Int, Ragged L ix Int, Ragged L ix ix, Unbox ix)
   => Spec
 specCommon =
   describe "Construct" $ do
-    it "prop_Construct_makeArray B" $ property $ prop_Construct_makeArray_Manifest @B @ix
-    it "prop_Construct_makeArray N" $ property $ prop_Construct_makeArray_Manifest @N @ix
-    it "prop_Construct_makeArray S" $ property $ prop_Construct_makeArray_Manifest @S @ix
-    it "prop_Construct_makeArray P" $ property $ prop_Construct_makeArray_Manifest @P @ix
-    it "prop_Construct_makeArray U" $ property $ prop_Construct_makeArray_Manifest @U @ix
-    it "prop_Construct_makeArray M" $ property $ prop_Construct_makeArray_Manifest @M @ix
-    it "prop_Construct_makeArray_Delayed DI" $ property $ prop_Construct_makeArray_Delayed @DI @ix
-    it "prop_Construct_makeArray_Delayed DL" $ property $ prop_Construct_makeArray_Delayed @DL @ix
-    it "prop_Construct_makeArray_Delayed DW" $ property $ prop_Construct_makeArray_Delayed @DW @ix
-    it "prop_Construct_makeArray_Delayed M" $ property $ prop_Construct_makeArray_Delayed @M @ix
-    it "prop_Functor D" $ property $ prop_Functor @D @ix
-    it "prop_Functor DI" $ property $ prop_Functor @DI @ix
-    it "prop_Functor DL" $ property $ prop_Functor @DL @ix
-    it "prop_Functor DW" $ property $ prop_Functor @DW @ix
-    it "prop_Extract DI" $ property $ prop_Extract @DI @ix
-    it "prop_Extract D" $ property $ prop_Extract @D @ix
-    it "prop_Extract B" $ property $ prop_Extract @B @ix
-    it "prop_Extract N" $ property $ prop_Extract @N @ix
-    it "prop_Extract S" $ property $ prop_Extract @S @ix
-    it "prop_Extract U" $ property $ prop_Extract @U @ix
-    it "prop_Extract M" $ property $ prop_Extract @M @ix
-    it "prop_IxUnbox" $ property $ prop_IxUnbox @ix
+    it "Construct_makeArray B" $ property $ prop_Construct_makeArray_Manifest @B @ix
+    it "Construct_makeArray N" $ property $ prop_Construct_makeArray_Manifest @N @ix
+    it "Construct_makeArray S" $ property $ prop_Construct_makeArray_Manifest @S @ix
+    it "Construct_makeArray P" $ property $ prop_Construct_makeArray_Manifest @P @ix
+    it "Construct_makeArray U" $ property $ prop_Construct_makeArray_Manifest @U @ix
+    it "Construct_makeArray M" $ property $ prop_Construct_makeArray_Manifest @M @ix
+    it "Construct_makeArray_Delayed DI" $ property $ prop_Construct_makeArray_Delayed @DI @ix
+    it "Construct_makeArray_Delayed DL" $ property $ prop_Construct_makeArray_Delayed @DL @ix
+    it "Construct_makeArray_Delayed DW" $ property $ prop_Construct_makeArray_Delayed @DW @ix
+    it "Construct_makeArray_Delayed M" $ property $ prop_Construct_makeArray_Delayed @M @ix
+    it "Functor D" $ property $ prop_Functor @D @ix
+    it "Functor DI" $ property $ prop_Functor @DI @ix
+    it "Functor DL" $ property $ prop_Functor @DL @ix
+    it "Functor DW" $ property $ prop_Functor @DW @ix
+    it "Extract DI" $ property $ prop_Extract @DI @ix
+    it "Extract D" $ property $ prop_Extract @D @ix
+    it "Extract B" $ property $ prop_Extract @B @ix
+    it "Extract N" $ property $ prop_Extract @N @ix
+    it "Extract S" $ property $ prop_Extract @S @ix
+    it "Extract U" $ property $ prop_Extract @U @ix
+    it "Extract M" $ property $ prop_Extract @M @ix
+    it "computeWithStride DI" $ property $ prop_computeWithStride @DI @ix
+    it "computeWithStride DW" $ property $ prop_computeWithStride @DW @ix
+    it "computeWithStride B" $ property $ prop_computeWithStride @B @ix
+    it "computeWithStride N" $ property $ prop_computeWithStride @N @ix
+    it "computeWithStride S" $ property $ prop_computeWithStride @S @ix
+    it "computeWithStride U" $ property $ prop_computeWithStride @U @ix
+    it "computeWithStride M" $ property $ prop_computeWithStride @M @ix
+    it "IxUnbox" $ property $ prop_IxUnbox @ix
 
 
 spec :: Spec

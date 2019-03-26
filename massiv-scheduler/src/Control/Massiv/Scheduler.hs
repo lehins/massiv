@@ -96,7 +96,7 @@ scheduleJobsWith mkJob' Jobs {jobsQueue, jobsCountRef, jobsNumWorkers} action = 
       return res
   pushJQueue jobsQueue job
 
--- | Helper function to place `Retire` instructions on the job queue.
+-- | Helper function to place required number of `Retire` instructions on the job queue.
 retireWorkersN :: MonadIO m => JQueue m a -> Int -> m ()
 retireWorkersN jobsQueue n = traverse_ (pushJQueue jobsQueue) $ replicate n Retire
 
@@ -205,13 +205,13 @@ withSchedulerInternal comp submitWork collect onScheduler = do
   jc <- liftIO $ readIORef jobsCountRef
   when (jc == 0) $ scheduleJobs_ jobs (pure ())
   let spawnWorkersWith fork ws =
-        forM ws $ \w ->
-          withRunInIO $ \run ->
-            mask_ $
+        withRunInIO $ \run ->
+          mask_ $
+          forM ws $ \w ->
             fork w $ \unmask ->
               catch
                 (unmask $ run $ runWorker jobsQueue onRetire)
-                (unmask . run . handleWorkerException jobsQueue workDoneMVar jobsNumWorkers)
+                (run . handleWorkerException jobsQueue workDoneMVar jobsNumWorkers)
       {-# INLINE spawnWorkersWith #-}
       spawnWorkers =
         case comp of
@@ -228,37 +228,27 @@ withSchedulerInternal comp submitWork collect onScheduler = do
         -- contain an exception
         case mExc of
           Nothing -> collect jobsQueue
-            -- \ Now we are sure all workers have done their job we can safely read all of the
-            -- IORefs with results
-          Just exc -- / Here we need to unwrap the legit worker exception and rethrow it, so the
-                   -- main thread will think like it's his own
-            | Just (WorkerException wexc) <- fromException exc -> liftIO $ throwIO wexc
-          Just exc -> liftIO $ throwIO exc -- Somethig funky is happening, propagate it.
+          -- \ Now we are sure all workers have done their job we can safely read all of the
+          -- IORefs with results
+          Just (WorkerException exc) -> liftIO $ throwIO exc
+          -- \ Here we need to unwrap the legit worker exception and rethrow it, so the main thread
+          -- will think like it's his own
       {-# INLINE doWork #-}
   safeBracketOnError
     spawnWorkers
-    (liftIO . traverse_ (`throwTo` WorkerTerminateException))
+    (liftIO . traverse_ (`throwTo` SomeAsyncException WorkerTerminateException))
     (const doWork)
 
 
 -- | Specialized exception handler for the work scheduler.
 handleWorkerException ::
-  MonadIO m => JQueue m a -> MVar (Maybe SomeException) -> Int -> SomeException -> m ()
+  MonadIO m => JQueue m a -> MVar (Maybe WorkerException) -> Int -> SomeException -> m ()
 handleWorkerException jQueue workDoneMVar nWorkers exc =
-  case fromException exc of
+  case asyncExceptionFromException exc of
     Just WorkerTerminateException -> return ()
       -- \ some co-worker died, we can just move on with our death.
-    _ ->
-      case fromException exc of
-        Just asyncExc -> do
-          liftIO $ putMVar workDoneMVar $ Just $ toException $ WorkerAsyncException asyncExc
-          -- \ Let the main thread know about this terrible async exception.
-          -- / Do the co-worker cleanup
-          retireWorkersN jQueue (nWorkers - 1)
-          liftIO $ throwIO asyncExc
-          -- \ do not recover from an async exception
-        Nothing -> do
-          liftIO $ putMVar workDoneMVar $ Just $ toException $ WorkerException exc
+    _ -> do
+          liftIO $ putMVar workDoneMVar $ Just $ WorkerException exc
           -- \ Main thread must know how we died
           -- / Do the co-worker cleanup
           retireWorkersN jQueue (nWorkers - 1)
@@ -267,27 +257,26 @@ handleWorkerException jQueue workDoneMVar nWorkers exc =
 
 -- | This exception should normally be not seen in the wild. The only one that could possibly pop up
 -- is the `WorkerAsyncException`.
-data WorkerException
-  = WorkerException !SomeException
+newtype WorkerException =
+  WorkerException SomeException
   -- ^ One of workers experienced an exception, main thread will receive the same `SomeException`.
-  | WorkerAsyncException !SomeAsyncException
-  -- ^ If a worker recieves an async exception, something is utterly wrong. This exception in
-  -- particular would mean that one of the workers have died of an asyncronous exception. We don't
-  -- want to raise that async exception synchronously in the main thread, therefore it will receive
-  -- this wrapper exception instead.
-  | WorkerTerminateException
-  -- ^ When a brother worker dies of some exception, all the other ones will be terminated
-  -- asynchronously with this one.
-  deriving Show
+  deriving (Show)
 
 instance Exception WorkerException where
   displayException workerExc =
     case workerExc of
       WorkerException exc ->
         "A worker handled a job that ended with exception: " ++ displayException exc
-      WorkerAsyncException exc ->
-        "A worker was killed with an async exception: " ++ displayException exc
-      WorkerTerminateException -> "A worker was terminated by the scheduler"
+
+data WorkerTerminateException =
+  WorkerTerminateException
+  -- ^ When a brother worker dies of some exception, all the other ones will be terminated
+  -- asynchronously with this one.
+  deriving (Show)
+
+
+instance Exception WorkerTerminateException where
+  displayException WorkerTerminateException = "A worker was terminated by the scheduler"
 
 
 -- | If any one of the workers dies with an async exception, it is possible to recover that
@@ -303,14 +292,11 @@ instance Exception WorkerException where
 -- >>> didAWorkerDie $ withScheduler Par $ \ s -> scheduleWork s $ myThreadId >>= killThread >> pure False
 -- True
 -- >>> withScheduler Par $ \ s -> scheduleWork s $ myThreadId >>= killThread >> pure False
--- *** Exception: WorkerAsyncException thread killed
+-- *** Exception: thread killed
 --
 -- @since 0.1.0
 fromWorkerAsyncException :: Exception e => SomeException -> Maybe e
-fromWorkerAsyncException exc =
-  case fromException exc of
-    Just (WorkerAsyncException asyncExc) -> asyncExceptionFromException (toException asyncExc)
-    _                                    -> Nothing
+fromWorkerAsyncException = asyncExceptionFromException
 
 
 -- Copy from unliftio:

@@ -89,12 +89,6 @@ Note, that if there was no exception, printing would never stop.
 aaaaaaaaabcdd*** Exception: divide by zero
 ```
 
-A special case is when a thread is killed by an async exception. Whenever that happens than the
-exception will be re-thrown in a scheduling thread, but it will be wrapped in a custom
-`WorkerAsyncException` exception. If for some reason you need to recover the original async
-exception you can use `fromWorkerAsyncException`. See function documentation for an example.
-
-
 ### Nested jobs
 
 Scheduling actions can themselves schedule actions indefinitely. That of course means that order of

@@ -3,13 +3,16 @@ module Control.Massiv.SchedulerSpec (spec) where
 import Control.Concurrent (killThread, myThreadId, threadDelay)
 import Control.Concurrent.MVar
 import Control.DeepSeq
-import Control.Exception hiding (assert)
+import qualified Control.Exception as EUnsafe
 import Control.Exception.Base (ArithException(DivideByZero))
 import Control.Massiv.Scheduler
+import Control.Monad
 import Data.List (sort)
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
+import UnliftIO.Async
+import UnliftIO.Exception hiding (assert)
 
 
 instance Arbitrary Comp where
@@ -120,17 +123,40 @@ prop_KillSleepingCoworker comp =
 
 prop_ExpectAsyncException :: Comp -> Property
 prop_ExpectAsyncException comp =
-  let didAWorkerDie = handleJust fromWorkerAsyncException' (return . (== ThreadKilled)) . fmap or
-      fromWorkerAsyncException' =
-        case comp of
-          Seq -> asyncExceptionFromException
-          _   -> fromWorkerAsyncException
-   in (monadicIO .
-       run .
-       didAWorkerDie .
-       withScheduler comp $ \s -> scheduleWork s (myThreadId >>= killThread >> pure False)) .&&.
-      (monadicIO .
-       run . fmap not . didAWorkerDie . withScheduler Par $ \s -> scheduleWork s $ pure False)
+  let didAWorkerDie =
+        EUnsafe.handleJust EUnsafe.asyncExceptionFromException (return . (== EUnsafe.ThreadKilled)) .
+        fmap or
+      -- fromWorkerAsyncException' =
+      --   case comp of
+      --     Seq -> EUnsafe.asyncExceptionFromException
+      --     _   -> fromWorkerAsyncException
+   in (monadicIO . run . didAWorkerDie . withScheduler comp $ \s ->
+         scheduleWork s (myThreadId >>= killThread >> pure False)) .&&.
+      (monadicIO . run . fmap not . didAWorkerDie . withScheduler Par $ \s ->
+         scheduleWork s $ pure False)
+
+prop_WorkerCaughtAsyncException :: Positive Int -> Property
+prop_WorkerCaughtAsyncException (Positive n) =
+  assertExceptionIO (== DivideByZero) $ do
+    lock <- newEmptyMVar
+    result <-
+      race (readMVar lock) $
+      withScheduler_ (ParN 2) $ \scheduler -> do
+        scheduleWork scheduler $ do
+          threadDelay (n `mod` 1000000)
+          EUnsafe.throwIO DivideByZero
+        scheduleWork scheduler $ do
+          e <- tryAny $ replicateM_ 5 $ threadDelay 1000000
+          case e of
+            Right _ -> throwString "Impossible, shouldn't have waited for so long"
+            Left exc -> do
+              putMVar lock exc
+              throwString $
+                "I should not have survived: " ++ displayException (exc :: SomeException)
+    void $ throwString $
+      case result of
+        Left innerError -> "Scheduled job cought async exception: " <> displayException innerError
+        Right () -> "Scheduler terminated properly. Should not have happened"
 
 spec :: Spec
 spec = do
@@ -152,7 +178,10 @@ spec = do
     it "KillBlockedCoworker" $ property prop_KillBlockedCoworker
     it "KillSleepingCoworker" $ property prop_KillSleepingCoworker
     it "ExpectAsyncException" $ property prop_ExpectAsyncException
+    it "WorkerCaughtAsyncException" $ property prop_WorkerCaughtAsyncException
 
+
+-- | Assert a synchronous exception
 assertExceptionIO :: (NFData a, Exception exc) =>
                      (exc -> Bool) -- ^ Return True if that is the exception that was expected
                   -> IO a -- ^ IO Action that should throw an exception
@@ -166,11 +195,3 @@ assertExceptionIO isExc action =
                res `deepseq` return False) $ \exc ->
            displayException exc `deepseq` return (isExc exc))
     assert hasFailed
-
-
-
-
-
-
-
-

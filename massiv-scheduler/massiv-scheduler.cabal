@@ -46,6 +46,7 @@ test-suite tests
                     , massiv-scheduler
                     , hspec
                     , QuickCheck
+                    , unliftio
 
   default-language:   Haskell2010
   ghc-options:        -Wall -fno-warn-orphans -threaded -with-rtsopts=-N
