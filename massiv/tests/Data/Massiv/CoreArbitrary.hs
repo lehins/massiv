@@ -23,6 +23,7 @@ module Data.Massiv.CoreArbitrary
   , assertSomeException
   , assertExceptionIO
   , assertSomeExceptionIO
+  , assertAsyncExceptionIO
   , toStringException
   , Semigroup((<>))
   , applyFun2Compat
@@ -30,7 +31,8 @@ module Data.Massiv.CoreArbitrary
   ) where
 
 import Control.DeepSeq (NFData, deepseq)
-import Control.Exception (Exception, SomeException, catch)
+import qualified Control.Exception as E
+import UnliftIO.Exception (Exception, SomeException, catch, catchAny)
 import Data.Foldable as F
 import Data.Massiv.Array as X
 import Data.Massiv.Core.IndexSpec hiding (spec)
@@ -168,11 +170,11 @@ assertException :: (NFData a, Exception exc) =>
                    (exc -> Bool) -- ^ Return True if that is the exception that was expected
                 -> a -- ^ Value that should throw an exception, when fully evaluated
                 -> Property
-assertException isExc action = assertExceptionIO isExc (return action)
+assertException isExc = assertExceptionIO isExc . pure
 
 
 assertSomeException :: NFData a => a -> Property
-assertSomeException = assertSomeExceptionIO . return
+assertSomeException = assertSomeExceptionIO . pure
 
 
 assertExceptionIO :: (NFData a, Exception exc) =>
@@ -181,16 +183,36 @@ assertExceptionIO :: (NFData a, Exception exc) =>
                   -> Property
 assertExceptionIO isExc action =
   monadicIO $ do
-    hasFailed <-
+    assert =<<
       run
         (catch
            (do res <- action
-               res `deepseq` return False) $ \exc ->
-           show exc `deepseq` return (isExc exc))
-    assert hasFailed
+               res `deepseq` return False)
+           (\exc -> displayException exc `deepseq` return (isExc exc)))
 
 assertSomeExceptionIO :: NFData a => IO a -> Property
-assertSomeExceptionIO = assertExceptionIO (\(_exc :: SomeException) -> True)
+assertSomeExceptionIO action =
+  monadicIO $ do
+    assert =<<
+      run
+        (catchAny
+           (do res <- action
+               res `deepseq` return False)
+           (\exc -> displayException exc `deepseq` return True))
+
+assertAsyncExceptionIO :: (Exception e, NFData a) => (e -> Bool) -> IO a -> Property
+assertAsyncExceptionIO isAsyncExc action =
+  monadicIO $ do
+    assert =<<
+      run
+        (E.catch
+           (do res <- action
+               res `deepseq` return False)
+           (\exc ->
+              case E.asyncExceptionFromException exc of
+                Just asyncExc
+                  | isAsyncExc asyncExc -> displayException asyncExc `deepseq` pure True
+                _ -> E.throwIO exc))
 
 
 

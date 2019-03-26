@@ -45,11 +45,8 @@ prop_CatchNested (ArrIx arr ix) caps =
 -- | Make sure there is no deadlock if all workers get killed
 prop_AllWorkersDied :: [Int] -> (Int, [Int]) -> Property
 prop_AllWorkersDied wIds (hId, ids) =
-  assertExceptionIO
-    (\exc ->
-       case fromWorkerAsyncException exc of
-         Just ThreadKilled -> True
-         _ -> error $ "Received unexpected exception: " ++ displayException exc)
+  assertAsyncExceptionIO
+    (== ThreadKilled)
     (withScheduler_ Par $ \scheduler1 ->
        scheduleWork
          scheduler1

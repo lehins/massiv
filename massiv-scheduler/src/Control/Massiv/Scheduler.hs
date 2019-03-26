@@ -35,6 +35,7 @@ import Control.Monad.IO.Unlift
 import Data.Atomics (atomicModifyIORefCAS, atomicModifyIORefCAS_)
 import Data.Foldable as F (foldl')
 import Data.IORef
+import Data.Traversable
 
 data Jobs m a = Jobs
   { jobsNumWorkers :: {-# UNPACK #-} !Int
@@ -51,7 +52,7 @@ data Jobs m a = Jobs
 --
 -- @since 0.1.0
 data Scheduler m a = Scheduler
-  { numWorkers :: {-# UNPACK #-} !Int
+  { numWorkers   :: {-# UNPACK #-} !Int
   -- ^ Get the number of workers.
   , scheduleWork :: m a -> m ()
   -- ^ Schedule an action to be picked up and computed by a worker from a pool.
@@ -60,7 +61,7 @@ data Scheduler m a = Scheduler
 -- | This is generally a faster way to traverse while ignoring the result rather than using `mapM_`.
 --
 -- @since 0.1.0
-traverse_ :: (Foldable t, Applicative f) => (a -> f ()) -> t a -> f ()
+traverse_ :: (Applicative f, Foldable t) => (a -> f ()) -> t a -> f ()
 traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
 
 
@@ -68,8 +69,16 @@ traverse_ f = F.foldl' (\c a -> c *> f a) (pure ())
 -- strategy.
 --
 -- @since 0.1.0
-traverseConcurrently :: (MonadUnliftIO m, Foldable t) => Comp -> (a -> m b) -> t a -> m [b]
-traverseConcurrently comp f xs = withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
+traverseConcurrently :: (MonadUnliftIO m, Traversable t) => Comp -> (a -> m b) -> t a -> m (t b)
+traverseConcurrently comp f xs = do
+  ys <- withScheduler comp $ \s -> traverse_ (scheduleWork s . f) xs
+  pure $ transList ys xs
+
+transList :: Traversable t => [a] -> t b -> t a
+transList xs' = snd . mapAccumL withR xs'
+  where
+    withR (x:xs) _ = (xs, x)
+    withR _      _ = error "Impossible<traverseConcurrently> - Mismatched sizes"
 
 -- | Just like `traverseConcurrently`, but discard the results of computation.
 --
@@ -186,11 +195,11 @@ withSchedulerInternal ::
 withSchedulerInternal comp submitWork collect onScheduler = do
   jobsNumWorkers <-
     case comp of
-      Seq -> return 1
-      Par -> liftIO getNumCapabilities
+      Seq      -> return 1
+      Par      -> liftIO getNumCapabilities
       ParOn ws -> return $ length ws
-      ParN 0 -> liftIO getNumCapabilities
-      ParN n -> return $ fromIntegral n
+      ParN 0   -> liftIO getNumCapabilities
+      ParN n   -> return $ fromIntegral n
   sWorkersCounterRef <- liftIO $ newIORef jobsNumWorkers
   jobsQueue <- newJQueue
   jobsCountRef <- liftIO $ newIORef 0
@@ -206,7 +215,6 @@ withSchedulerInternal comp submitWork collect onScheduler = do
   when (jc == 0) $ scheduleJobs_ jobs (pure ())
   let spawnWorkersWith fork ws =
         withRunInIO $ \run ->
-          mask_ $
           forM ws $ \w ->
             fork w $ \unmask ->
               catch
@@ -227,7 +235,7 @@ withSchedulerInternal comp submitWork collect onScheduler = do
         -- \ wait for all worker to finish. If any one of them had a problem this MVar will
         -- contain an exception
         case mExc of
-          Nothing -> collect jobsQueue
+          Nothing                    -> collect jobsQueue
           -- \ Now we are sure all workers have done their job we can safely read all of the
           -- IORefs with results
           Just (WorkerException exc) -> liftIO $ throwIO exc
@@ -248,11 +256,10 @@ handleWorkerException jQueue workDoneMVar nWorkers exc =
     Just WorkerTerminateException -> return ()
       -- \ some co-worker died, we can just move on with our death.
     _ -> do
-          liftIO $ putMVar workDoneMVar $ Just $ WorkerException exc
-          -- \ Main thread must know how we died
-          -- / Do the co-worker cleanup
-          retireWorkersN jQueue (nWorkers - 1)
-          -- / As to one self, gracefully leave off into the outer world
+      liftIO $ putMVar workDoneMVar $ Just $ WorkerException exc
+      -- \ Main thread must know how we died
+      -- / Do the co-worker cleanup
+      retireWorkersN jQueue (nWorkers - 1)
 
 
 -- | This exception should normally be not seen in the wild. The only one that could possibly pop up
@@ -306,7 +313,6 @@ safeBracketOnError before after thing = withRunInIO $ \run -> mask $ \restore ->
   res1 <- try $ restore $ run $ thing x
   case res1 of
     Left (e1 :: SomeException) -> do
-      -- ignore the exception, see bracket for explanation
       _ :: Either SomeException b <-
         try $ uninterruptibleMask_ $ run $ after x
       throwIO e1

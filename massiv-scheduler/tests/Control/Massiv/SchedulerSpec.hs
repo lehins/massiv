@@ -10,6 +10,7 @@ import Control.Monad
 import Data.List (sort)
 import Test.Hspec
 import Test.QuickCheck
+import Test.QuickCheck.Function
 import Test.QuickCheck.Monadic
 import UnliftIO.Async
 import UnliftIO.Exception hiding (assert)
@@ -50,7 +51,7 @@ prop_Serially comp xs =
   where
     schedule [] = return []
     schedule (y:ys) = do
-      y' <- withScheduler comp (\s -> scheduleWork s (return y))
+      y' <- withScheduler comp (`scheduleWork` pure y)
       ys' <- schedule ys
       return (y':ys')
 
@@ -64,6 +65,12 @@ prop_Nested comp xs =
     schedule [] = return []
     schedule (y:ys) =
       withScheduler comp (\s -> scheduleWork s (schedule ys >>= \ys' -> return (y : concat ys')))
+
+prop_Traversable :: Comp -> [Int] -> Fun Int Int -> Property
+prop_Traversable comp xs f =
+  monadicIO $ run $ (===) <$> traverse f' xs <*> traverseConcurrently comp f' xs
+  where
+    f' = pure . apply f
 
 prop_ArbitraryCompNested :: [(Comp, Int)] -> Property
 prop_ArbitraryCompNested xs =
@@ -126,10 +133,6 @@ prop_ExpectAsyncException comp =
   let didAWorkerDie =
         EUnsafe.handleJust EUnsafe.asyncExceptionFromException (return . (== EUnsafe.ThreadKilled)) .
         fmap or
-      -- fromWorkerAsyncException' =
-      --   case comp of
-      --     Seq -> EUnsafe.asyncExceptionFromException
-      --     _   -> fromWorkerAsyncException
    in (monadicIO . run . didAWorkerDie . withScheduler comp $ \s ->
          scheduleWork s (myThreadId >>= killThread >> pure False)) .&&.
       (monadicIO . run . fmap not . didAWorkerDie . withScheduler Par $ \s ->
@@ -170,8 +173,9 @@ spec = do
     it "Recursive" $ property $ \ cs -> prop_Recursive (ParOn cs)
     it "Nested" $ property $ \ cs -> prop_Nested (ParOn cs)
     it "Serially" $ property $ \ cs -> prop_Serially (ParOn cs)
-  describe "Arbitrary Comp" $
+  describe "Arbitrary Comp" $ do
     it "ArbitraryNested" $ property prop_ArbitraryCompNested
+    it "traverseConcurrently == traverse" $ property prop_Traversable
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchDivideByZeroNested" $ property prop_CatchDivideByZeroNested

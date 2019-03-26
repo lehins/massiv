@@ -120,6 +120,7 @@ test-suite tests
                     , massiv-scheduler
                     , hspec
                     , QuickCheck
+                    , unliftio
                     , vector
 
   default-language:   Haskell2010

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 
@@ -22,7 +23,11 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertSomeException (computeAs U (rangeStep' Seq from 0 to))
+  assertException
+    (\case
+       IndexZeroException _ -> True
+       _ -> False)
+    (computeAs U (rangeStep' Seq from 0 to))
 
 prop_toFromListIsList ::
      (Show (Array U ix Int), GHC.IsList (Array U ix Int), Index ix)
