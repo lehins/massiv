@@ -155,7 +155,7 @@ prop_WorkerCaughtAsyncException (Positive n) =
                 "I should not have survived: " ++ displayException (exc :: SomeException)
     void $ throwString $
       case result of
-        Left innerError -> "Scheduled job cought async exception: " <> displayException innerError
+        Left innerError -> "Scheduled job cought async exception: " ++ displayException innerError
         Right () -> "Scheduler terminated properly. Should not have happened"
 
 spec :: Spec
