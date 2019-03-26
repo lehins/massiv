@@ -27,12 +27,10 @@ module Data.Massiv.Array.IO.Image.Netpbm
   , PPM(..)
   ) where
 
-import Control.Exception
 import Control.Monad (guard)
 import qualified Data.ByteString as B (ByteString)
 import Data.Massiv.Array as M
 import Data.Massiv.Array.IO.Base
-import Data.Massiv.Array.IO.Image.JuicyPixels (toAnyCS)
 import Data.Massiv.Array.Manifest.Vector
 import Data.Typeable
 import qualified Data.Vector.Storable as V
@@ -73,18 +71,18 @@ instance FileFormat (Sequence (Auto PBM)) where
 
 
 instance ColorSpace cs e => Readable PBM (Image S cs e) where
-  decode f _ = decodePPM f fromNetpbmImage
+  decodeM f _ = decodePPM f fromNetpbmImage
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Auto PBM) (Image r cs e) where
-  decode f _ = decodePPM f fromNetpbmImageAuto
+  decodeM f _ = decodePPM f fromNetpbmImageAuto
 
 instance ColorSpace cs e => Readable (Sequence PBM) (Array B Ix1 (Image S cs e)) where
-  decode f _ = decodePPMs f fromNetpbmImage
+  decodeM f _ = decodePPMs f fromNetpbmImage
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Sequence (Auto PBM)) (Array B Ix1 (Image r cs e)) where
-  decode f _ = decodePPMs f fromNetpbmImageAuto
+  decodeM f _ = decodePPMs f fromNetpbmImageAuto
 
 
 
@@ -104,21 +102,21 @@ instance FileFormat (Sequence (Auto PGM)) where
 
 
 instance ColorSpace cs e => Readable PGM (Image S cs e) where
-  decode f _ = decodePPM f fromNetpbmImage
+  decodeM f _ = decodePPM f fromNetpbmImage
 
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Auto PGM) (Image r cs e) where
-  decode f _ = decodePPM f fromNetpbmImageAuto
+  decodeM f _ = decodePPM f fromNetpbmImageAuto
 
 
 instance ColorSpace cs e => Readable (Sequence PGM) (Array B Ix1 (Image S cs e)) where
-  decode f _ = decodePPMs f fromNetpbmImage
+  decodeM f _ = decodePPMs f fromNetpbmImage
 
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Sequence (Auto PGM)) (Array B Ix1 (Image r cs e)) where
-  decode f _ = decodePPMs f fromNetpbmImageAuto
+  decodeM f _ = decodePPMs f fromNetpbmImageAuto
 
 
 -- | Netpbm: portable pixmap image with @.ppm@ extension.
@@ -138,43 +136,50 @@ instance FileFormat (Sequence (Auto PPM)) where
 
 
 instance ColorSpace cs e => Readable PPM (Image S cs e) where
-  decode f _ = decodePPM f fromNetpbmImage
+  decodeM f _ = decodePPM f fromNetpbmImage
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Auto PPM) (Image r cs e) where
-  decode f _ = decodePPM f fromNetpbmImageAuto
+  decodeM f _ = decodePPM f fromNetpbmImageAuto
 
 instance ColorSpace cs e => Readable (Sequence PPM) (Array B Ix1 (Image S cs e)) where
-  decode f _ = decodePPMs f fromNetpbmImage
+  decodeM f _ = decodePPMs f fromNetpbmImage
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Sequence (Auto PPM)) (Array B Ix1 (Image r cs e)) where
-  decode f _ = decodePPMs f fromNetpbmImageAuto
+  decodeM f _ = decodePPMs f fromNetpbmImageAuto
 
 
 
-decodePPMs :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
+decodePPMs :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs e, MonadThrow m) =>
               f
            -> (Netpbm.PPM -> Maybe (Image r cs e))
            -> B.ByteString
-           -> Array B Ix1 (Image r cs e)
+           -> m (Array B Ix1 (Image r cs e), Maybe B.ByteString)
 decodePPMs f converter bs =
-  either (throw . DecodeError) (fromList Seq) $
-  P.map (fromEitherDecode f showNetpbmCS converter . Right) . fst <$>
-  parsePPM bs
+  case parsePPM bs of
+    Left err -> throwM $ DecodeError err
+    Right ([], Nothing) -> throwM $ DecodeError "PNM image is empty"
+    Right ([], _) -> throwM $ DecodeError "Cannot parse PNM image"
+    Right (ppms, leftOver) -> do
+      imgs <- P.traverse (fromEitherDecode f showNetpbmCS converter) ppms
+      pure (fromList Seq imgs, leftOver)
 {-# INLINE decodePPMs #-}
 
 
-decodePPM :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
+decodePPM :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs e, MonadThrow m) =>
              f
           -> (Netpbm.PPM -> Maybe (Image r cs e))
           -> B.ByteString
-          -> Image r cs e
-decodePPM f decoder bs = fromEitherDecode f showNetpbmCS decoder $ do
-  (ppms, _) <- parsePPM bs
-  case ppms of
-    []      -> Left "Cannot parse PNM image"
-    (ppm:_) -> Right ppm
+          -> m (Image r cs e, Maybe B.ByteString)
+decodePPM f decoder bs =
+  case parsePPM bs of
+    Left err -> throwM $ DecodeError err
+    Right ([], Nothing) -> throwM $ DecodeError "PNM image is empty"
+    Right ([], _) -> throwM $ DecodeError "Cannot parse PNM image"
+    Right (ppm:_, leftOver) -> do
+      img <- fromEitherDecode f showNetpbmCS decoder ppm
+      pure (img, leftOver)
 {-# INLINE decodePPM #-}
 
 

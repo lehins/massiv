@@ -40,9 +40,11 @@ module Data.Massiv.Array.IO
   , module Data.Massiv.Array.IO.Image
   ) where
 
+import Prelude
 import Control.Concurrent (forkIO)
 import Control.Exception (bracket)
 import Control.Monad (void)
+import Control.Monad.IO.Unlift
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.Massiv.Array as A
@@ -53,9 +55,9 @@ import Graphics.ColorSpace
 import Prelude as P hiding (readFile, writeFile)
 import System.Directory (createDirectoryIfMissing, getTemporaryDirectory)
 import System.FilePath
-import System.IO (hClose, openBinaryTempFile)
+import System.IO (hClose, openBinaryTempFile, IOMode(..))
 import System.Process (readProcess)
-
+import UnliftIO.IO.File
 
 
 
@@ -73,21 +75,30 @@ data ExternalViewer =
 
 
 -- | Read an array from one of the supported file formats.
-readArray :: Readable f arr =>
+readArray :: (Readable f arr, MonadIO m) =>
              f -- ^ File format that should be used while decoding the file
           -> ReadOptions f -- ^ Any file format related decoding options. Use `def` for default.
           -> FilePath -- ^ Path to the file
-          -> IO arr
-readArray format opts path = decode format opts <$> B.readFile path
+          -> m arr
+readArray format opts path = liftIO $ do
+  bs <- B.readFile path
+  fst <$> decodeM format opts bs
 {-# INLINE readArray #-}
 
+writeLazyAtomically :: FilePath -> BL.ByteString -> IO ()
+writeLazyAtomically filepath bss =
+  withBinaryFileDurableAtomic filepath WriteMode $ \h -> Prelude.mapM_ (B.hPut h) (BL.toChunks bss)
 
-writeArray :: Writable f arr =>
+-- | Write an array to disk atomically (on non-Windows OSs)
+writeArray :: (Writable f arr, MonadIO m) =>
               f -- ^ Format to use while encoding the array
            -> WriteOptions f -- ^ Any file format related encoding options. Use `def` for default.
            -> FilePath
-           -> arr -> IO ()
-writeArray format opts path arr = BL.writeFile path (encode format opts arr)
+           -> arr
+           -> m ()
+writeArray format opts filepath arr =
+  liftIO $ do
+    writeLazyAtomically filepath =<< encodeM format opts arr
 {-# INLINE writeArray #-}
 
 
@@ -116,20 +127,25 @@ writeArray format opts path arr = BL.writeFile path (encode format opts arr)
 -- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S CMYK Double)
 -- >>> displayImage frogCMYK
 --
-readImage :: (Source S Ix2 (Pixel cs e), ColorSpace cs e) =>
+readImage :: (Source S Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) =>
               FilePath -- ^ File path for an image
-           -> IO (Image S cs e)
-readImage path = decodeImage imageReadFormats path <$> B.readFile path
+           -> m (Image S cs e)
+readImage path =
+  liftIO $ do
+    bs <- B.readFile path
+    fst <$> decodeImageM imageReadFormats path bs
 {-# INLINE readImage #-}
 
 
 -- | Same as `readImage`, but will perform any possible color space and
 -- precision conversions in order to match the result image type. Very useful
 -- whenever image format isn't known at compile time.
-readImageAuto :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
+readImageAuto :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) =>
                   FilePath -- ^ File path for an image
-               -> IO (Image r cs e)
-readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
+               -> m (Image r cs e)
+readImageAuto path = liftIO $ do
+  bs <- B.readFile path
+  fst <$> decodeImageM imageReadAutoFormats path bs
 {-# INLINE readImageAuto #-}
 
 
@@ -143,9 +159,10 @@ readImageAuto path = decodeImage imageReadAutoFormats path <$> B.readFile path
 --
 -- Can throw `ConvertError`, `EncodeError` and other usual IO errors.
 --
-writeImage :: (Source r Ix2 (Pixel cs e), ColorSpace cs e) =>
-               FilePath -> Image r cs e -> IO ()
-writeImage path = BL.writeFile path . encodeImage imageWriteFormats path
+writeImage :: (Source r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) =>
+               FilePath -> Image r cs e -> m ()
+writeImage path img = liftIO $ do
+  writeLazyAtomically path =<< encodeImageM imageWriteFormats path img
 
 
 -- | Write an image to file while performing all necessary precisiona and color space conversions.
@@ -156,49 +173,53 @@ writeImageAuto
      , ToRGBA cs e
      , ToYCbCr cs e
      , ToCMYK cs e
+     , MonadIO m
      )
-  => FilePath -> Image r cs e -> IO ()
-writeImageAuto path = BL.writeFile path . encodeImage imageWriteAutoFormats path
+  => FilePath -> Image r cs e -> m ()
+writeImageAuto path img = liftIO $ do
+  writeLazyAtomically path =<< encodeImageM imageWriteAutoFormats path img
 
 
 
 -- | An image is written as a @.tiff@ file into an operating system's temporary
 -- directory and passed as an argument to the external viewer program.
 displayImageUsing ::
-     Writable (Auto TIF) (Image r cs e)
+     (Writable (Auto TIF) (Image r cs e), MonadIO m)
   => ExternalViewer -- ^ Image viewer program
-  -> Bool -- ^ Should the function block the current thread until viewer is closed.
-  -> Image r cs e
-  -> IO ()
+  -> Bool -- ^ Should this function block the current thread until viewer is closed.
+  -> Image r cs e -- ^ Image to display
+  -> m ()
 displayImageUsing viewer block img =
-  if block
-    then display
-    else img `seq` void (forkIO display)
+  liftIO $ do
+    bs <- encodeM (Auto TIF) () img
+    if block
+      then display bs
+      else void (forkIO (display bs))
   where
-    display = do
+    display bs = do
       tmpDir <- fmap (</> "massiv-io") getTemporaryDirectory
       createDirectoryIfMissing True tmpDir
       bracket
         (openBinaryTempFile tmpDir "tmp-img.tiff")
         (hClose . snd)
         (\(imgPath, imgHandle) -> do
-           BL.hPut imgHandle (encode (Auto TIF) () img)
+           BL.hPut imgHandle bs
            hClose imgHandle
            displayImageFile viewer imgPath)
 
 
 
 -- | Displays an image file by calling an external image viewer.
-displayImageFile :: ExternalViewer -> FilePath -> IO ()
+displayImageFile :: MonadIO m => ExternalViewer -> FilePath -> m ()
 displayImageFile (ExternalViewer exe args ix) imgPath =
-  void $ readProcess exe (argsBefore ++ [imgPath] ++ argsAfter) ""
+  void $ liftIO $ readProcess exe (argsBefore ++ [imgPath] ++ argsAfter) ""
   where (argsBefore, argsAfter) = P.splitAt ix args
 
 
 -- | Makes a call to an external viewer that is set as a default image viewer by
 -- the OS. This is a non-blocking function call, so it might take some time
 -- before an image will appear.
-displayImage :: Writable (Auto TIF) (Image r cs e) => Image r cs e -> IO ()
+displayImage :: (Writable (Auto TIF) (Image r cs e), MonadIO m) => Image r cs e -> m ()
 displayImage = displayImageUsing defaultViewer False
 
 -- | Default viewer is inferred from the operating system.
@@ -290,10 +311,14 @@ conversion:
 
 * 'TIF':
 
-    * __read__: ('Y' 'Word8'), ('Y' 'Word16'), ('YA' 'Word8'), ('YA' 'Word16'),
+    * __read__:
+    ('Y' 'Word8'), ('Y' 'Word16'), ('Y' 'Word32'), ('Y' 'Float'),
+    ('YA' 'Word8'), ('YA' 'Word16'),
     ('RGB' 'Word8'), ('RGB' 'Word16'), ('RGBA' 'Word8'), ('RGBA' 'Word16'),
     ('CMYK' 'Word8'), ('CMYK' 'Word16')
-    * __write__: ('Y' 'Word8'), ('Y' 'Word16'), ('YA' 'Word8'), ('YA' 'Word16'),
+    * __write__:
+    ('Y' 'Word8'), ('Y' 'Word16'), ('Y' 'Word32'), ('Y' 'Float'),
+    ('YA' 'Word8'), ('YA' 'Word16'),
     ('RGB' 'Word8'), ('RGB' 'Word16'), ('RGBA' 'Word8'), ('RGBA' 'Word16')
     ('CMYK' 'Word8'), ('CMYK' 'Word16'), ('YCbCr' 'Word8')
 
