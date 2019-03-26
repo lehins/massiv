@@ -4,7 +4,8 @@ import Control.Concurrent (killThread, myThreadId, threadDelay)
 import Control.Concurrent.MVar
 import Control.DeepSeq
 import qualified Control.Exception as EUnsafe
-import Control.Exception.Base (ArithException(DivideByZero))
+import Control.Exception.Base (ArithException(DivideByZero),
+                               AsyncException(ThreadKilled))
 import Control.Massiv.Scheduler
 import Control.Monad
 import Data.List (sort)
@@ -161,6 +162,19 @@ prop_WorkerCaughtAsyncException (Positive n) =
         Left innerError -> "Scheduled job cought async exception: " ++ displayException innerError
         Right () -> "Scheduler terminated properly. Should not have happened"
 
+-- | Make sure there is no problems if sub-schedules worker get killed
+prop_AllWorkersDied :: Comp -> Comp -> Positive Int -> Property
+prop_AllWorkersDied comp1 comp (Positive n) =
+  assertAsyncExceptionIO
+    (== ThreadKilled)
+    (withScheduler_ comp1 $ \scheduler1 ->
+       scheduleWork
+         scheduler1
+         (withScheduler_ comp $ \scheduler ->
+            replicateM_ n (scheduleWork scheduler (myThreadId >>= killThread))))
+
+
+
 spec :: Spec
 spec = do
   describe "Seq" $ do
@@ -183,6 +197,7 @@ spec = do
     it "KillSleepingCoworker" $ property prop_KillSleepingCoworker
     it "ExpectAsyncException" $ property prop_ExpectAsyncException
     it "WorkerCaughtAsyncException" $ property prop_WorkerCaughtAsyncException
+    it "AllWorkersDied" $ property prop_AllWorkersDied
 
 
 -- | Assert a synchronous exception
@@ -193,9 +208,23 @@ assertExceptionIO :: (NFData a, Exception exc) =>
 assertExceptionIO isExc action =
   monadicIO $ do
     hasFailed <-
-      run
-        (catch
-           (do res <- action
-               res `deepseq` return False) $ \exc ->
-           displayException exc `deepseq` return (isExc exc))
+      run $
+      catch
+        (do res <- action
+            res `deepseq` return False) $ \exc -> displayException exc `deepseq` return (isExc exc)
+    assert hasFailed
+
+assertAsyncExceptionIO :: (Exception e, NFData a) => (e -> Bool) -> IO a -> Property
+assertAsyncExceptionIO isAsyncExc action =
+  monadicIO $ do
+    hasFailed <-
+      run $
+      EUnsafe.catch
+        (do res <- action
+            res `deepseq` return False)
+        (\exc ->
+           case EUnsafe.asyncExceptionFromException exc of
+             Just asyncExc
+               | isAsyncExc asyncExc -> displayException asyncExc `deepseq` pure True
+             _ -> EUnsafe.throwIO exc)
     assert hasFailed

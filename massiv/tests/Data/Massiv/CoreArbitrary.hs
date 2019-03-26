@@ -31,7 +31,6 @@ module Data.Massiv.CoreArbitrary
   ) where
 
 import Control.DeepSeq (NFData, deepseq)
-import qualified Control.Exception as E
 import UnliftIO.Exception (Exception, SomeException, catch, catchAny)
 import Data.Foldable as F
 import Data.Massiv.Array as X
@@ -199,21 +198,6 @@ assertSomeExceptionIO action =
            (do res <- action
                res `deepseq` return False)
            (\exc -> displayException exc `deepseq` return True))
-
-assertAsyncExceptionIO :: (Exception e, NFData a) => (e -> Bool) -> IO a -> Property
-assertAsyncExceptionIO isAsyncExc action =
-  monadicIO $ do
-    assert =<<
-      run
-        (E.catch
-           (do res <- action
-               res `deepseq` return False)
-           (\exc ->
-              case E.asyncExceptionFromException exc of
-                Just asyncExc
-                  | isAsyncExc asyncExc -> displayException asyncExc `deepseq` pure True
-                _ -> E.throwIO exc))
-
 
 
 toStringException :: Either SomeException a -> Either String a

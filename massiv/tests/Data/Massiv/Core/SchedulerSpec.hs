@@ -3,8 +3,7 @@
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
 import Control.Concurrent
-import Control.Exception.Base (ArithException(DivideByZero),
-                               AsyncException(ThreadKilled), displayException)
+import Control.Exception.Base (ArithException(DivideByZero))
 import Control.Massiv.Scheduler
 import Data.Massiv.CoreArbitrary as A
 import Prelude as P
@@ -42,17 +41,6 @@ prop_CatchNested (ArrIx arr ix) caps =
             else iarr)
        (setComp (ParOn caps) arr))
 
--- | Make sure there is no deadlock if all workers get killed
-prop_AllWorkersDied :: [Int] -> (Int, [Int]) -> Property
-prop_AllWorkersDied wIds (hId, ids) =
-  assertAsyncExceptionIO
-    (== ThreadKilled)
-    (withScheduler_ Par $ \scheduler1 ->
-       scheduleWork
-         scheduler1
-         (withScheduler_ (ParOn wIds) $ \scheduler ->
-            P.mapM_ (\_ -> scheduleWork scheduler (myThreadId >>= killThread)) (hId : ids)))
-
 
 -- | Check weather all jobs have been completed and returned order is correct
 prop_SchedulerAllJobsProcessed :: Comp -> OrderedList Int -> Property
@@ -67,5 +55,4 @@ spec =
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchNested" $ property prop_CatchNested
-    it "AllWorkersDied" $ property prop_AllWorkersDied
     it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed
