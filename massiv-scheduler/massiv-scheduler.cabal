@@ -1,5 +1,5 @@
 name:                massiv-scheduler
-version:             0.1.0.0
+version:             0.1.1.0
 synopsis:            Work stealing scheduler for Massiv (Массив) and other parallel applications.
 description:         A work stealing scheduler that is used by [massiv](https://www.stackage.org/package/massiv) array librarry, but can be useful for any other library or application that fits such model of computation.
 homepage:            https://github.com/lehins/massiv
