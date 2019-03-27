@@ -28,7 +28,7 @@ module Data.Massiv.Core.List
   ) where
 
 import Control.Exception
-import Control.Massiv.Scheduler
+import Control.Scheduler
 import Control.Monad (unless, when)
 import Data.Coerce
 import Data.Foldable (foldr')

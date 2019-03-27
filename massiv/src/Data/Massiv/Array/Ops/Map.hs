@@ -68,9 +68,9 @@ module Data.Massiv.Array.Ops.Map
   , izipWith3A
   ) where
 
-import Control.Massiv.Scheduler
 import Control.Monad (void)
 import Control.Monad.Primitive (PrimMonad)
+import Control.Scheduler
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable

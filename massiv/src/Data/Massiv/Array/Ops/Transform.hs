@@ -1,10 +1,10 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Transform
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -59,7 +59,7 @@ module Data.Massiv.Array.Ops.Transform
   , traverse2
   ) where
 
-import Control.Massiv.Scheduler (traverse_)
+import Control.Scheduler (traverse_)
 import Control.Monad as M (foldM_, unless)
 import Data.Bifunctor (bimap)
 import Data.Foldable as F (foldl', foldrM, toList)

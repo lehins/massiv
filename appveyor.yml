@@ -28,12 +28,10 @@ init:
 cache:
 - "%STACK_ROOT_NO_PR%"
 - "%WORK_DIR_NO_PR%\\massiv\\%STACK_WORK%"
-- "%WORK_DIR_NO_PR%\\massiv-scheduler\\%STACK_WORK%"
 - "%LOCALAPPDATA%\\Programs\\stack"
 
 before_test:
 # Avoid long paths not to each MAX_PATH of 260 chars
-- xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv "%WORK_DIR%"
 - xcopy /q /s /e /r /k /i /v /h /y C:\projects\massiv "%WORK_DIR%"
 - cd "%WORK_DIR%"
 # Setup cache dirs
@@ -50,11 +48,6 @@ before_test:
 test_script:
   - cd "%WORK_DIR%"
   - stack %ARGS% --verbosity warn setup --no-reinstall > nul
-  - stack %ARGS% test massiv-scheduler:tests massiv-scheduler:doctests
-      -j 2
-      --no-terminal
-      --haddock
-      --no-haddock-deps
   - stack %ARGS% test massiv:tests massiv:doctests
       -j 2
       --flag massiv:unsafe-checks

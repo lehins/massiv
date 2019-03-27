@@ -43,7 +43,7 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldrIO
   ) where
 
-import Control.Massiv.Scheduler
+import Control.Scheduler
 import Control.Monad (void, when)
 import qualified Data.Foldable as F
 import Data.Functor.Identity (runIdentity)

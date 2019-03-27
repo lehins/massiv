@@ -75,10 +75,10 @@ module Data.Massiv.Core.Common
 import Data.Semigroup
 #endif
 import Control.Exception (throw)
-import Control.Massiv.Scheduler (Comp(..), Scheduler(..))
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
+import Control.Scheduler (Comp(..), Scheduler(..))
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Typeable

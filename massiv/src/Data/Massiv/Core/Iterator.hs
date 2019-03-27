@@ -20,7 +20,7 @@ module Data.Massiv.Core.Iterator
   , splitLinearlyWithStartAtM_
   ) where
 
-import Control.Massiv.Scheduler (Scheduler(..))
+import Control.Scheduler (Scheduler(..))
 
 -- | Efficient loop with an accumulator
 --

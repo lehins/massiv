@@ -2,7 +2,7 @@ resolver: lts-12.26
 packages:
 - 'massiv/'
 - 'massiv-io/'
-- 'massiv-scheduler/'
-extra-deps: []
+extra-deps:
+- scheduler-1.0.0
 flags: {}
 extra-package-dbs: []

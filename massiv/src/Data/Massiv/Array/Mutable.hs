@@ -75,7 +75,7 @@ module Data.Massiv.Array.Mutable
   , loadArrayS
   ) where
 
-import Control.Massiv.Scheduler
+import Control.Scheduler
 import Control.Monad (unless)
 import Control.Monad.ST
 import Data.Massiv.Core.Common

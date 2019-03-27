@@ -1,10 +1,10 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -42,8 +42,8 @@ module Data.Massiv.Array.Manifest.Internal
   ) where
 
 import Control.Exception (try)
-import Control.Massiv.Scheduler
 import Control.Monad.ST
+import Control.Scheduler
 import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable

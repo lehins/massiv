@@ -20,7 +20,6 @@ cache:
   #- $HOME/.cabal
   - $HOME/.stack
   - $TRAVIS_BUILD_DIR/massiv/.stack-work
-  - $TRAVIS_BUILD_DIR/massiv-scheduler/.stack-work
   timeout: 360
 
 # The different configurations we want to test. We have BUILD=cabal which uses
@@ -203,19 +202,11 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack $ARGS test massiv-scheduler:tests massiv-scheduler:doctests --haddock --no-haddock-deps
       stack $ARGS test massiv:tests massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       ;;
     cabal)
 
       ORIGDIR=$(pwd)
-
-      cd "$MASSIV_SCHEDULER"
-      cabal check || [ "$CABALVER" == "1.16" ]
-      cabal sandbox init
-      cabal install --only-dependencies --enable-tests --force-reinstalls --reorder-goals --max-backjumps=-1 $CABALARGS
-      cabal configure --enable-tests
-      cabal test --show-details=streaming --log=/dev/stdout
 
       cd "$MASSIV"
       cabal check || [ "$CABALVER" == "1.16" ]
