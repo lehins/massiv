@@ -256,7 +256,7 @@ handleWorkerException jQueue workDoneMVar nWorkers exc =
     Just WorkerTerminateException -> return ()
       -- \ some co-worker died, we can just move on with our death.
     _ -> do
-      liftIO $ putMVar workDoneMVar $ Just $ WorkerException exc
+      _ <- liftIO $ tryPutMVar workDoneMVar $ Just $ WorkerException exc
       -- \ Main thread must know how we died
       -- / Do the co-worker cleanup
       retireWorkersN jQueue (nWorkers - 1)
@@ -286,12 +286,10 @@ instance Exception WorkerTerminateException where
   displayException WorkerTerminateException = "A worker was terminated by the scheduler"
 
 
--- | If any one of the workers dies with an async exception, it is possible to recover that
--- exception in the main thread with this function. This does not apply to `Seq`uential computation,
--- since no workers are created in such case and async exception will be received by the main thread
--- directly.
+-- | If any one of the workers dies with any exception, even the async exception, it will be
+-- re-thrown in the main thread.
 --
--- >>> let didAWorkerDie = handleJust fromWorkerAsyncException (return . (== ThreadKilled)) . fmap or
+-- >>> let didAWorkerDie = handleJust asyncExceptionFromException (return . (== ThreadKilled)) . fmap or
 -- >>> :t didAWorkerDie
 -- didAWorkerDie :: Foldable t => IO (t Bool) -> IO Bool
 -- >>> didAWorkerDie $ withScheduler Par $ \ s -> scheduleWork s $ pure False
@@ -304,6 +302,7 @@ instance Exception WorkerTerminateException where
 -- @since 0.1.0
 fromWorkerAsyncException :: Exception e => SomeException -> Maybe e
 fromWorkerAsyncException = asyncExceptionFromException
+{-# DEPRECATED fromWorkerAsyncException "In favor of `asyncExceptionFromException`" #-}
 
 
 -- Copy from unliftio:

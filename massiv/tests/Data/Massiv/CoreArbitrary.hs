@@ -23,7 +23,6 @@ module Data.Massiv.CoreArbitrary
   , assertSomeException
   , assertExceptionIO
   , assertSomeExceptionIO
-  , assertAsyncExceptionIO
   , toStringException
   , Semigroup((<>))
   , applyFun2Compat

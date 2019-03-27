@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
-import Control.Concurrent
 import Control.Exception.Base (ArithException(DivideByZero))
 import Control.Massiv.Scheduler
 import Data.Massiv.CoreArbitrary as A
