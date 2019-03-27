@@ -3,7 +3,7 @@
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
 import Control.Exception.Base (ArithException(DivideByZero))
-import Control.Massiv.Scheduler
+import Control.Scheduler
 import Data.Massiv.CoreArbitrary as A
 import Prelude as P
 
