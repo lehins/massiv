@@ -528,7 +528,7 @@ unfoldrPrimM_ ::
 unfoldrPrimM_ comp sz gen acc0 = snd <$> unfoldrPrimM comp sz gen acc0
 {-# INLINE unfoldrPrimM_ #-}
 
--- | Same as `unfoldrPrim_` but do the unfolding with index aware function.
+-- | Same as `unfoldrPrimM_` but do the unfolding with index aware function.
 --
 -- @since 0.3.0
 --
@@ -543,7 +543,7 @@ iunfoldrPrimM_ comp sz gen acc0 = snd <$> iunfoldrPrimM comp sz gen acc0
 {-# INLINE iunfoldrPrimM_ #-}
 
 
--- | Just like `iunfoldrPrim_`, but also returns the final value of the accumulator.
+-- | Just like `iunfoldrPrimM_`, but also returns the final value of the accumulator.
 --
 -- @since 0.3.0
 iunfoldrPrimM ::

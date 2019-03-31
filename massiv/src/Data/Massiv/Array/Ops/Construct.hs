@@ -212,7 +212,7 @@ iunfoldrS_ comp sz f acc0 =
 
 -- | Unfold sequentially from the end. There is no way to save the accumulator after unfolding is
 -- done, since resulting array is delayed, but it's possible to use
--- `Data.Massiv.Array.Mutable.unfoldlPrim` to achive such effect.
+-- `Data.Massiv.Array.Mutable.unfoldlPrimM` to achive such effect.
 --
 -- @since 0.3.0
 unfoldlS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
@@ -249,7 +249,7 @@ iunfoldlS_ comp sz f acc0 =
 (...) = rangeInclusive Seq
 {-# INLINE (...) #-}
 
--- | Handy synonym for `rangeInclusive` `Seq`
+-- | Handy synonym for `range` `Seq`
 --
 -- >>> 4 ..: 10
 -- Array D Seq (Sz1 6)
@@ -264,7 +264,7 @@ iunfoldlS_ comp sz f acc0 =
 -- prop> range comp from to == rangeStep comp from 1 to
 --
 -- | Create an array of indices with a range from start to finish (not-including), where indices are
--- incrimeted by one.
+-- incremeted by one.
 --
 -- ==== __Examples__
 --
