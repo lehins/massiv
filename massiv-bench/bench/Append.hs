@@ -23,35 +23,53 @@ main = do
         ]
     , bgroup
         "cons"
-        [ bench "Array DL Ix1 Int (10000)" $ nf (A.computeAs P . consArray 10000) empty
-        , bench "VP.Vector Int (10000)" $ nf (consVector 10000) VP.empty
-        , bench "[Int] (10000)" $ nf (consList 10000) []
+        [ bench ("Array DL Ix1 Int (" ++ show kSmall ++ ")") $
+          nf (A.computeAs P . consArray kSmall) empty
+        , bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (consVector kSmall) VP.empty
+        , bench ("[Int] (" ++ show kSmall ++ ")") $ nf (consList kSmall) []
         ]
     , bgroup
         "snoc"
-        [ bench "Array DL Ix1 Int (10000)" $ nf (A.computeAs P . snocArray 10000) empty
-        , bench "VP.Vector Int (10000)" $ nf (snocVector 10000) VP.empty
-        , bench "DList Int (10000)" $ nf (snocList 10000) DL.empty
+        [ bench ("Array DL Ix1 Int (" ++ show kSmall ++ ")") $
+          nf (A.computeAs P . snocArray kSmall) empty
+        , bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (snocVector kSmall) VP.empty
+        , bench ("DList Int (" ++ show kSmall ++ ")") $ nf (snocList kSmall) DL.empty
+        ]
+    , bgroup
+        "unfoldr"
+        [ bench "Array" $ whnf (A.computeAs P . unfoldrA firstK) 0
+        , bench "Vector" $ whnf (VP.unfoldr firstK) 0
+        ]
+    , bgroup
+        "unfoldrN"
+        [ bench "Array" $ whnf (A.computeAs P . unfoldrS_ Seq (Sz k) (\i -> (i :: Int, i + 1))) 0
+        , bench "Vector" $ whnf (VP.unfoldrN k (\i -> Just (i :: Int, i + 1))) 0
         ]
     ]
   where
+    !k = 1000000 :: Int
+    !kSmall = 10000 :: Int
+    firstK i =
+      if i < k
+        then Just (i, i + 1)
+        else Nothing
     consList :: Int -> [Int] -> [Int]
-    consList 0 !acc  = acc
+    consList 0 !acc = acc
     consList !n !acc = consList (n - 1) (n : acc)
     consArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
-    consArray 0 !acc  = acc
+    consArray 0 !acc = acc
     consArray !n !acc = consArray (n - 1) (n `cons` acc)
     consVector :: Int -> VP.Vector Int -> VP.Vector Int
-    consVector 0 !acc  = acc
+    consVector 0 !acc = acc
     consVector !n !acc = consVector (n - 1) (n `VP.cons` acc)
     snocList :: Int -> DL.DList Int -> [Int]
-    snocList 0 !acc  = DL.toList acc
+    snocList 0 !acc = DL.toList acc
     snocList !n !acc = snocList (n - 1) (acc `DL.snoc` n)
     snocArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
-    snocArray 0 !acc  = acc
+    snocArray 0 !acc = acc
     snocArray !n !acc = snocArray (n - 1) (acc `snoc` n)
     snocVector :: Int -> VP.Vector Int -> VP.Vector Int
-    snocVector 0 !acc  = acc
+    snocVector 0 !acc = acc
     snocVector !n !acc = snocVector (n - 1) (acc `VP.snoc` n)
 
 mkAppendBenchGroup :: String -> Dim -> Sz2 -> Benchmark
@@ -76,3 +94,9 @@ mkAppendBenchGroup gname dim sz =
           ]
     ]
 
+unfoldrA :: (b -> Maybe (a, b)) -> b -> Array DL Ix1 a
+unfoldrA f = go A.empty
+  where go !arr !b =
+          case f b of
+            Nothing -> arr
+            Just (e, b') -> go (A.snoc arr e) b'
