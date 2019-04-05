@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE NamedFieldPuns             #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 -- |
@@ -60,19 +59,19 @@ instance Index ix => Load DI ix e where
   {-# INLINE size #-}
   getComp = dComp . diArray
   {-# INLINE getComp #-}
-  loadArrayM Scheduler {numWorkers, scheduleWork} (DIArray (DArray _ sz f)) uWrite =
-    loopM_ 0 (< numWorkers) (+ 1) $ \ !start ->
-      scheduleWork $
-      iterLinearM_ sz start (totalElem sz) numWorkers (<) $ \ !k -> uWrite k . f
+  loadArrayM scheduler (DIArray (DArray _ sz f)) uWrite =
+    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
+      scheduleWork scheduler $
+      iterLinearM_ sz start (totalElem sz) (numWorkers scheduler) (<) $ \ !k -> uWrite k . f
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad DI ix e where
-  loadArrayWithStrideM Scheduler {numWorkers, scheduleWork} stride resultSize arr uWrite =
+  loadArrayWithStrideM scheduler stride resultSize arr uWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
-    in loopM_ 0 (< numWorkers) (+ 1) $ \ !start ->
-          scheduleWork $
-          iterLinearM_ resultSize start (totalElem resultSize) numWorkers (<) $
+    in loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
+          scheduleWork scheduler $
+          iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
             \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
   {-# INLINE loadArrayWithStrideM #-}
 

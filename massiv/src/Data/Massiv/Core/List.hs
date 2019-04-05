@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -9,6 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Massiv.Core.List
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -28,8 +27,8 @@ module Data.Massiv.Core.List
   ) where
 
 import Control.Exception
-import Control.Scheduler
 import Control.Monad (unless, when)
+import Control.Scheduler
 import Data.Coerce
 import Data.Foldable (foldr')
 import qualified Data.List as L
@@ -140,8 +139,8 @@ instance (Index ix, Ragged L ix e) => Load L ix e where
   {-# INLINE size #-}
   getComp = lComp
   {-# INLINE getComp #-}
-  loadArrayM Scheduler {scheduleWork} arr uWrite =
-    loadRagged scheduleWork uWrite 0 (totalElem sz) sz arr
+  loadArrayM scheduler arr uWrite =
+    loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arr
     where !sz = edgeSize arr
   {-# INLINE loadArrayM #-}
 

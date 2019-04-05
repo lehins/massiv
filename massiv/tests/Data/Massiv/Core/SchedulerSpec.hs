@@ -3,7 +3,6 @@
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
 import Control.Exception.Base (ArithException(DivideByZero))
-import Control.Scheduler
 import Data.Massiv.CoreArbitrary as A
 import Prelude as P
 
@@ -41,17 +40,8 @@ prop_CatchNested (ArrIx arr ix) caps =
        (setComp (ParOn caps) arr))
 
 
--- | Check weather all jobs have been completed and returned order is correct
-prop_SchedulerAllJobsProcessed :: Comp -> OrderedList Int -> Property
-prop_SchedulerAllJobsProcessed comp (Ordered jobs) =
-  monadicIO
-    ((=== jobs) <$>
-          run (withScheduler comp $ \scheduler -> P.mapM_ (scheduleWork scheduler . return) jobs))
-
-
 spec :: Spec
 spec =
   describe "Exceptions" $ do
     it "CatchDivideByZero" $ property prop_CatchDivideByZero
     it "CatchNested" $ property prop_CatchNested
-    it "SchedulerAllJobsProcessed" $ property prop_SchedulerAllJobsProcessed

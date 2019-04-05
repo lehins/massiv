@@ -2,7 +2,6 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 -- |
@@ -487,11 +486,11 @@ appendM n !arr1 !arr2 = do
       { dlComp = getComp arr1 <> getComp arr2
       , dlSize = newSz
       , dlLoad =
-          \Scheduler{scheduleWork} startAt dlWrite -> do
-            scheduleWork $
+          \scheduler startAt dlWrite -> do
+            scheduleWork scheduler $
               iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
                 dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
-            scheduleWork $
+            scheduleWork scheduler $
               iterM_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
                 let i = getDim' ix n
                     ix' = setDim' ix n (i + k1')
@@ -550,9 +549,9 @@ concatM n !arrsF =
           { dlComp = mconcat $ P.map getComp arrs
           , dlSize = newSz
           , dlLoad =
-              \Scheduler{scheduleWork} startAt dlWrite ->
+              \scheduler startAt dlWrite ->
                 let arrayLoader !kAcc (kCur, arr) = do
-                      scheduleWork $
+                      scheduleWork scheduler $
                         iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
                           let i = getDim' ix n
                               ix' = setDim' ix n (i + kAcc)

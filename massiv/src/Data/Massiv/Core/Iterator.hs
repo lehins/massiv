@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      : Data.Massiv.Core.Iterator
@@ -125,11 +124,11 @@ splitLinearlyWith_ scheduler totalLength index =
 -- @since 0.2.6.0
 splitLinearlyWithM_ ::
      Monad m => Scheduler m () -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
-splitLinearlyWithM_ Scheduler {numWorkers, scheduleWork} totalLength make write =
-  splitLinearly numWorkers totalLength $ \chunkLength slackStart -> do
+splitLinearlyWithM_ scheduler totalLength make write =
+  splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      scheduleWork $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
-    scheduleWork $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
+      scheduleWork scheduler $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
+    scheduleWork scheduler $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithM_ #-}
 
 
@@ -138,11 +137,12 @@ splitLinearlyWithM_ Scheduler {numWorkers, scheduleWork} totalLength make write 
 -- @since 0.2.6.0
 splitLinearlyWithStartAtM_ ::
      Monad m => Scheduler m () -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
-splitLinearlyWithStartAtM_ Scheduler {numWorkers, scheduleWork} startAt totalLength make write =
-  splitLinearly numWorkers totalLength $ \chunkLength slackStart -> do
+splitLinearlyWithStartAtM_ scheduler startAt totalLength make write =
+  splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopM_ startAt (< (slackStart + startAt)) (+ chunkLength) $ \ !start ->
-      scheduleWork $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
-    scheduleWork $
+      scheduleWork scheduler $
+      loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
+    scheduleWork scheduler $
       loopM_ (slackStart + startAt) (< (totalLength + startAt)) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithStartAtM_ #-}
 

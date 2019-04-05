@@ -4,7 +4,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -335,8 +334,8 @@ fromRaggedArrayM arr =
       unsafePerformIO $ do
         marr <- unsafeNew sz
         traverse (\_ -> unsafeFreeze (getComp arr) marr) =<<
-          try (withScheduler_ (getComp arr) $ \Scheduler {scheduleWork} ->
-                  loadRagged scheduleWork (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
+          try (withScheduler_ (getComp arr) $ \scheduler ->
+                  loadRagged (scheduleWork scheduler) (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
 {-# INLINE fromRaggedArrayM #-}
 
 

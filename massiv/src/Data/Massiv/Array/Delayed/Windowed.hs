@@ -27,6 +27,7 @@ module Data.Massiv.Array.Delayed.Windowed
   ) where
 
 import Control.Exception (Exception(..))
+import Control.Scheduler (trivialScheduler_)
 import Control.Monad (when)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Manifest.Boxed
@@ -223,26 +224,26 @@ instance Load DW Ix1 e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArrayM Scheduler {numWorkers, scheduleWork} arr uWrite = do
-    (loadWindow, wStart, wEnd) <- loadWithIx1 scheduleWork arr uWrite
-    let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers
-    loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
+  loadArrayM scheduler arr uWrite = do
+    (loadWindow, wStart, wEnd) <- loadWithIx1 (scheduleWork scheduler) arr uWrite
+    let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
+    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
       let !it' = wid * chunkWidth + wStart
        in loadWindow it' (it' + chunkWidth)
     when (slackWidth > 0) $
-      let !itSlack = numWorkers * chunkWidth + wStart
+      let !itSlack = numWorkers scheduler * chunkWidth + wStart
        in loadWindow itSlack (itSlack + slackWidth)
   {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix1 e where
-  loadArrayWithStrideM Scheduler {numWorkers, scheduleWork} stride sz arr uWrite = do
-      (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 scheduleWork arr stride sz uWrite
-      let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers
-      loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
+  loadArrayWithStrideM scheduler stride sz arr uWrite = do
+      (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 (scheduleWork scheduler) arr stride sz uWrite
+      let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
+      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
         let !it' = wid * chunkWidth + wStart
          in loadWindow (it', it' + chunkWidth)
       when (slackWidth > 0) $
-        let !itSlack = numWorkers * chunkWidth + wStart
+        let !itSlack = numWorkers scheduler * chunkWidth + wStart
          in loadWindow (itSlack, itSlack + slackWidth)
   {-# INLINE loadArrayWithStrideM #-}
 
@@ -347,13 +348,15 @@ instance Load DW Ix2 e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArrayM Scheduler {numWorkers, scheduleWork} arr uWrite =
-    loadWithIx2 scheduleWork arr uWrite >>= uncurry (loadWindowIx2 numWorkers)
+  loadArrayM scheduler arr uWrite =
+    loadWithIx2 (scheduleWork scheduler) arr uWrite >>=
+    uncurry (loadWindowIx2 (numWorkers scheduler))
   {-# INLINE loadArrayM #-}
 
 instance StrideLoad DW Ix2 e where
-  loadArrayWithStrideM Scheduler {numWorkers, scheduleWork} stride sz arr uWrite =
-    loadArrayWithIx2 scheduleWork arr stride sz uWrite >>= uncurry (loadWindowIx2 numWorkers)
+  loadArrayWithStrideM scheduler stride sz arr uWrite =
+    loadArrayWithIx2 (scheduleWork scheduler) arr stride sz uWrite >>=
+    uncurry (loadWindowIx2 (numWorkers scheduler))
   {-# INLINE loadArrayWithStrideM #-}
 
 
@@ -362,7 +365,7 @@ instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArrayM Scheduler {scheduleWork} = loadWithIxN scheduleWork
+  loadArrayM scheduler = loadWithIxN (scheduleWork scheduler)
   {-# INLINE loadArrayM #-}
 
 instance (Index (IxN n), StrideLoad DW (Ix (n - 1)) e) => StrideLoad DW (IxN n) e where
@@ -442,7 +445,7 @@ loadWithIxN with arr uWrite = do
                 { dwArray = DArray Seq szL (indexBorder . consDim i)
                 , dwWindow = Just lowerWindow
                 }
-         in with $ loadArrayM (Scheduler 1 id) lowerArr (\k -> uWrite (k + pageElements * i))
+         in with $ loadArrayM trivialScheduler_ lowerArr (\k -> uWrite (k + pageElements * i))
       {-# NOINLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ 1) loadLower
   loopM_ t (< headDim windowEnd) (+ 1) loadLower

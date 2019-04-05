@@ -207,7 +207,7 @@ loadArrayS ::
   -> m (MArray (PrimState m) r ix e)
 loadArrayS arr = do
   marr <- unsafeNew (size arr)
-  loadArrayM (Scheduler 1 id) arr (unsafeLinearWrite marr)
+  loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
   pure marr
 {-# INLINE loadArrayS #-}
 
