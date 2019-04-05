@@ -3,6 +3,6 @@ packages:
 - 'massiv/'
 - 'massiv-io/'
 extra-deps:
-- scheduler-1.0.0
+- scheduler-1.1.0
 flags: {}
 extra-package-dbs: []
