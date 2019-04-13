@@ -89,7 +89,8 @@ extractM !sIx !newSz !arr
     eIx = liftIndex2 (+) sIx $ unSz newSz
 {-# INLINE extractM #-}
 
--- | Same as `extract`, but will throw an error if supplied dimensions are incorrect.
+-- | Same as `extractM`, but will throw a runtime exception from pure code if supplied dimensions
+-- are incorrect.
 --
 -- @since 0.1.0
 extract' :: Extract r ix e

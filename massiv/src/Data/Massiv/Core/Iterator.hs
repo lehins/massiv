@@ -121,20 +121,21 @@ splitLinearlyWith_ scheduler totalLength index =
 
 -- | Interator that can be used to split computation jobs
 --
--- @since 0.2.6.0
+-- @since 0.2.6
 splitLinearlyWithM_ ::
      Monad m => Scheduler m () -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
 splitLinearlyWithM_ scheduler totalLength make write =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      scheduleWork scheduler $ loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
+      scheduleWork scheduler $
+      loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
     scheduleWork scheduler $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithM_ #-}
 
 
 -- | Interator that can be used to split computation jobs
 --
--- @since 0.2.6.0
+-- @since 0.3.0
 splitLinearlyWithStartAtM_ ::
      Monad m => Scheduler m () -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
 splitLinearlyWithStartAtM_ scheduler startAt totalLength make write =

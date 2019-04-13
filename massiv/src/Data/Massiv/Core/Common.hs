@@ -273,33 +273,27 @@ class Manifest r ix e => Mutable r ix e where
   -- | Convert immutable array into a mutable array without copy.
   --
   -- @since 0.1.0
-  unsafeThaw :: PrimMonad m =>
-                Array r ix e -> m (MArray (PrimState m) r ix e)
+  unsafeThaw :: PrimMonad m => Array r ix e -> m (MArray (PrimState m) r ix e)
 
   -- | Convert mutable array into an immutable array without copy.
   --
   -- @since 0.1.0
-  unsafeFreeze :: PrimMonad m =>
-                  Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
+  unsafeFreeze :: PrimMonad m => Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
 
-  -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated
-  -- either.
+  -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated either.
   --
   -- @since 0.1.0
-  unsafeNew :: PrimMonad m =>
-               Sz ix -> m (MArray (PrimState m) r ix e)
+  unsafeNew :: PrimMonad m => Sz ix -> m (MArray (PrimState m) r ix e)
 
   -- | Read an element at linear row-major index
   --
   -- @since 0.1.0
-  unsafeLinearRead :: PrimMonad m =>
-                      MArray (PrimState m) r ix e -> Int -> m e
+  unsafeLinearRead :: PrimMonad m => MArray (PrimState m) r ix e -> Int -> m e
 
   -- | Write an element into mutable array with linear row-major index
   --
   -- @since 0.1.0
-  unsafeLinearWrite :: PrimMonad m =>
-                       MArray (PrimState m) r ix e -> Int -> e -> m ()
+  unsafeLinearWrite :: PrimMonad m => MArray (PrimState m) r ix e -> Int -> e -> m ()
 
   -- | Initialize mutable array to some default value.
   --
