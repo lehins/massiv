@@ -114,7 +114,7 @@ instance Index ix => Show (Sz ix) where
           _ -> " (" ++ show usz ++ ")"
 
 instance (Num ix, Index ix) => Num (Sz ix) where
-  (+) x y = SafeSz (coerce x + coerce y)
+  (+) x y = Sz (coerce x + coerce y)
   {-# INLINE (+) #-}
   (-) x y = Sz (coerce x - coerce y)
   {-# INLINE (-) #-}

@@ -114,8 +114,8 @@ instance {-# OVERLAPPING #-} Ragged L Ix1 e where
       Nothing      -> Nothing
       Just (x, xs) -> Just (x, LArray lComp (coerce xs))
   {-# INLINE unconsR #-}
-  flatten = id
-  {-# INLINE flatten #-}
+  flattenRagged = id
+  {-# INLINE flattenRagged #-}
   generateRaggedM !comp !k f = do
     xs <- loopDeepM 0 (< coerce k) (+ 1) [] $ \i acc -> do
       e <- f i
@@ -187,15 +187,15 @@ instance ( Index ix
   --     return (cons e acc)
   generateRaggedM = unsafeGenerateParM
   {-# INLINE generateRaggedM #-}
-  flatten arr = LArray {lComp = lComp arr, lData = coerce xs}
+  flattenRagged arr = LArray {lComp = lComp arr, lData = coerce xs}
     where
-      xs = concatMap (unList . lData . flatten . LArray (lComp arr)) (unList (lData arr))
-  {-# INLINE flatten #-}
+      xs = concatMap (unList . lData . flattenRagged . LArray (lComp arr)) (unList (lData arr))
+  {-# INLINE flattenRagged #-}
   loadRagged using uWrite start end sz xs = do
     let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
-    when (isZero && not (isNull (flatten xs))) (return $! throw DimTooLongException)
+    when (isZero && not (isNull (flattenRagged xs))) (return $! throw DimTooLongException)
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->

@@ -1,3 +1,13 @@
+# 0.3.1
+
+* Addition of `rangeStepInclusive'`
+* Addition of `flatten`
+* `makeLoadArray` has been deprecated into `unsafeMakeLoadArray`.
+* A new safe `makeLoadArrayS` has been aded.
+* Fix `infix 4` for `(...)` and `(..:)` range functions, so they can be easily composed with
+  numeric operations
+* Addition of `imapSchedulerM_` and `iforSchedulerM_`
+
 # 0.3.0
 
 * Class hierarchy an associated methods:
@@ -16,6 +26,8 @@
   be a monoid
 * `singleton` does not accept computation strategy any more and creates `Seq` array by default
 * New function `empty`.
+* `Ragged` functions are no longer exported, until the interface stabilizes and proper
+  implementation of ragged arrays is in place.
 * Partial functions `read'`, `write'` and `swap'` now live in IO and throw proper exceptions.
 * `loadArray` is renamed to `loadArrayM` and there is a new separate function (not part of `Load`
   class) with the name `loadArray` that actually uses `loadArrayM`

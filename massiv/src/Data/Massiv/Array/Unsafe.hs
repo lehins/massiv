@@ -13,28 +13,27 @@
 --
 module Data.Massiv.Array.Unsafe
   ( -- * Creation
-  -- , unsafeGenerateArray
-  -- , unsafeGenerateArrayP
-  -- * Indexing
-    Sz(SafeSz)
+    unsafeMakeLoadArray
+    -- * Indexing
+  , Sz(SafeSz)
   , Stride(SafeStride)
   , unsafeIndex
   , unsafeLinearIndex
   , unsafeLinearIndexM
-  -- * Manipulations
+    -- * Manipulations
   , unsafeBackpermute
   , unsafeResize
   , unsafeExtract
   , unsafeTransform
   , unsafeTransform2
-  -- ** Deprecated
+    -- ** Deprecated
   , unsafeTraverse
   , unsafeTraverse2
-  -- * Slicing
+    -- * Slicing
   , unsafeSlice
   , unsafeOuterSlice
   , unsafeInnerSlice
-  -- * Mutable interface
+    -- * Mutable interface
   , unsafeThaw
   , unsafeFreeze
   , unsafeNew
@@ -43,7 +42,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeWrite
   , unsafeLinearWrite
   , unsafeLinearSet
-  -- * Pointer access
+    -- * Pointer access
   , unsafeWithPtr
   , unsafeArrayToForeignPtr
   , unsafeMArrayToForeignPtr
@@ -51,7 +50,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeArrayFromForeignPtr0
   , unsafeMArrayFromForeignPtr
   , unsafeMArrayFromForeignPtr0
-  -- ** Atomic Operations
+    -- ** Atomic Operations
   , unsafeAtomicReadIntArray
   , unsafeAtomicWriteIntArray
   , unsafeAtomicModifyIntArray
@@ -65,6 +64,7 @@ module Data.Massiv.Array.Unsafe
   ) where
 
 import Data.Massiv.Array.Delayed.Pull (D)
+import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray)
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
 import Data.Massiv.Core.Common

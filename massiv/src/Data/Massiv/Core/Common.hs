@@ -214,6 +214,11 @@ class (Typeable r, Index ix) => Load r ix e where
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
 
+  defaultElement :: Array r ix e -> Maybe e
+  defaultElement _ = Nothing
+  {-# INLINE defaultElement #-}
+
+
 class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
   -- `Source`.
@@ -348,7 +353,6 @@ class Nested r ix e where
 
   toNested :: Array r ix e -> NestedStruct r ix e
 
-
 class Construct r ix e => Ragged r ix e where
 
   emptyR :: Comp -> Array r ix e
@@ -363,7 +367,7 @@ class Construct r ix e => Ragged r ix e where
 
   edgeSize :: Array r ix e -> Sz ix
 
-  flatten :: Array r ix e -> Array r Ix1 e
+  flattenRagged :: Array r ix e -> Array r Ix1 e
 
   loadRagged ::
     Monad m => (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Sz ix -> Array r ix e -> m ()

@@ -44,6 +44,7 @@ module Data.Massiv.Array.Ops.Construct
   , rangeStep
   , rangeInclusive
   , rangeStepInclusiveM
+  , rangeStepInclusive'
   , rangeSize
   , rangeStepSize
   , enumFromN
@@ -199,6 +200,7 @@ iunfoldrS_ comp sz f acc0 =
   DLArray
     { dlComp = comp
     , dlSize = sz
+    , dlDefault = Nothing
     , dlLoad =
         \_ startAt dlWrite ->
           void $
@@ -228,6 +230,7 @@ iunfoldlS_ comp sz f acc0 =
   DLArray
     { dlComp = comp
     , dlSize = sz
+    , dlDefault = Nothing
     , dlLoad =
         \ _ startAt dlWrite ->
           void $ loopDeepM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
@@ -237,26 +240,27 @@ iunfoldlS_ comp sz f acc0 =
     }
 {-# INLINE iunfoldlS_ #-}
 
+infix 4 ..., ..:
 
 -- | Handy synonym for `rangeInclusive` `Seq`
 --
--- >>> 4 ... 10
+-- >>> Ix1 4 ... 10
 -- Array D Seq (Sz1 7)
 --   [ 4, 5, 6, 7, 8, 9, 10 ]
 --
 -- @since 0.3.0
-(...) :: Int -> Int -> Array D Ix1 Int
+(...) :: Index ix => ix -> ix -> Array D ix ix
 (...) = rangeInclusive Seq
 {-# INLINE (...) #-}
 
 -- | Handy synonym for `range` `Seq`
 --
--- >>> 4 ..: 10
+-- >>> Ix1 4 ..: 10
 -- Array D Seq (Sz1 6)
 --   [ 4, 5, 6, 7, 8, 9 ]
 --
 -- @since 0.3.0
-(..:) :: Int -> Int -> Array D Ix1 Int
+(..:) :: Index ix => ix -> ix -> Array D ix ix
 (..:) = range Seq
 {-# INLINE (..:) #-}
 
@@ -320,7 +324,7 @@ rangeStepM comp !from !step !to
      in pure $ rangeStepSize comp from step (Sz (liftIndex2 (+) sz r))
 {-# INLINE rangeStepM #-}
 
--- | Same as `rangeStep`, but will throw an error whenever @step@ contains zeros.
+-- | Same as `rangeStepM`, but will throw an error whenever @step@ contains zeros.
 --
 -- ==== __Example__
 --
@@ -349,6 +353,13 @@ rangeInclusive comp ixFrom ixTo =
 rangeStepInclusiveM :: (MonadThrow m, Index ix) => Comp -> ix -> ix -> ix -> m (Array D ix ix)
 rangeStepInclusiveM comp ixFrom step ixTo = rangeStepM comp ixFrom step (liftIndex (1 +) ixTo)
 {-# INLINE rangeStepInclusiveM #-}
+
+-- | Just like `range`, except the finish index is included.
+--
+-- @since 0.3.1
+rangeStepInclusive' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
+rangeStepInclusive' comp ixFrom step = either throw id  . rangeStepInclusiveM comp ixFrom step
+{-# INLINE rangeStepInclusive' #-}
 
 
 -- | Create an array of specified size with indices starting with some index at position @0@ and

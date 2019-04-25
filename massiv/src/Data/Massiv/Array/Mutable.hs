@@ -197,6 +197,15 @@ freezeS ::
 freezeS marr = generateArrayLinearS Seq (msize marr) (unsafeLinearRead marr)
 {-# INLINE freezeS #-}
 
+newMaybeInitialized ::
+     (Load r' ix e, Mutable r ix e, PrimMonad m) => Array r' ix e -> m (MArray (PrimState m) r ix e)
+newMaybeInitialized !arr = do
+  let !sz = size arr
+  marr <- unsafeNew sz
+  mapM_ (unsafeLinearSet marr 0 (totalElem sz)) $ defaultElement arr
+  pure marr
+{-# INLINE newMaybeInitialized #-}
+
 
 -- | Load sequentially a pure array into the newly created mutable array.
 --
@@ -206,7 +215,7 @@ loadArrayS ::
   => Array r' ix e
   -> m (MArray (PrimState m) r ix e)
 loadArrayS arr = do
-  marr <- unsafeNew (size arr)
+  marr <- newMaybeInitialized arr
   loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
   pure marr
 {-# INLINE loadArrayS #-}
@@ -221,7 +230,7 @@ loadArray ::
   -> m (MArray RealWorld r ix e)
 loadArray arr =
   liftIO $ do
-    marr <- unsafeNew (size arr)
+    marr <- newMaybeInitialized arr
     withScheduler_ (getComp arr) $ \scheduler -> loadArrayM scheduler arr (unsafeLinearWrite marr)
     pure marr
 {-# INLINE loadArray #-}

@@ -25,6 +25,7 @@ module Data.Massiv.Array.Ops.Transform
   , resizeM
   , resize'
   , resize
+  , flatten
   -- ** Extract
   , extractM
   , extract
@@ -48,6 +49,8 @@ module Data.Massiv.Array.Ops.Transform
   -- ** Upsample/Downsample
   , upsample
   , downsample
+  -- ** Zoom
+  , zoomWithGrid
   -- ** Transform
   , transformM
   , transform'
@@ -67,9 +70,10 @@ import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
+import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
-import Prelude as P hiding (concat, splitAt, traverse)
+import Prelude as P hiding (concat, splitAt, traverse, mapM_)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
@@ -183,6 +187,12 @@ resizeM sz arr = guardNumberOfElements (size arr) sz >> pure (unsafeResize sz ar
 resize' :: (Index ix', Load r ix e, Resize r ix) => Sz ix' -> Array r ix e -> Array r ix' e
 resize' sz = either throw id . resizeM sz
 {-# INLINE resize' #-}
+
+-- | /O(1)/ - Reduce a multi-dimensional array into a flat vector
+-- @since 0.3.1
+flatten :: (Load r ix e, Resize r ix) => Array r ix e -> Array r Ix1 e
+flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
+{-# INLINE flatten #-}
 
 
 -- | Transpose a 2-dimensional array
@@ -486,6 +496,7 @@ appendM n !arr1 !arr2 = do
     DLArray
       { dlComp = getComp arr1 <> getComp arr2
       , dlSize = newSz
+      , dlDefault = Nothing
       , dlLoad =
           \scheduler startAt dlWrite -> do
             scheduleWork scheduler $
@@ -542,13 +553,14 @@ concatM n !arrsF =
       -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
       traverse_
         (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
-        (dropWhile ((== szl) . snd) $ zip szs szls)
+        (dropWhile ((== szl) . snd) $ P.zip szs szls)
       let kTotal = SafeSz $ F.foldl' (+) k ks
       newSz <- insertSzM (SafeSz szl) n kTotal
       return $
         DLArray
           { dlComp = mconcat $ P.map getComp arrs
           , dlSize = newSz
+          , dlDefault = Nothing
           , dlLoad =
               \scheduler startAt dlWrite ->
                 let arrayLoader !kAcc (kCur, arr) = do
@@ -615,6 +627,7 @@ downsample !stride arr =
   DLArray
     { dlComp = getComp arr
     , dlSize = resultSize
+    , dlDefault = Nothing
     , dlLoad =
         \scheduler startAt dlWrite ->
           splitLinearlyWithStartAtM_
@@ -642,6 +655,7 @@ upsample !fillWith !safeStride arr =
   DLArray
     { dlComp = getComp arr
     , dlSize = newsz
+    , dlDefault = Nothing
     , dlLoad =
         \scheduler startAt dlWrite -> do
           unless (stride == pureIndex 1) $
@@ -761,3 +775,45 @@ transform2' getSz get arr1 arr2 =
   where
     (sz, a) = getSz (size arr1) (size arr2)
 {-# INLINE transform2' #-}
+
+
+
+-- | Replicate each element of the array by a factor in stride along each dimension and surround each
+-- such group with a box of supplied grid value. It will essentially zoom up an array and create a
+-- grid around each element from the original array. Very useful for zooming up images to inspect
+-- individual pixels.
+--
+-- ==== __Example__
+--
+-- >>> zoomWithGrid 0 (Stride (2 :. 3)) $ resize' (Sz2 3 2) (1 ... 6)
+-- Array DL Seq (Sz (10 :. 9))
+--   [ [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 1, 1, 1, 0, 2, 2, 2, 0 ]
+--   , [ 0, 1, 1, 1, 0, 2, 2, 2, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 3, 3, 3, 0, 4, 4, 4, 0 ]
+--   , [ 0, 3, 3, 3, 0, 4, 4, 4, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 5, 5, 5, 0, 6, 6, 6, 0 ]
+--   , [ 0, 5, 5, 5, 0, 6, 6, 6, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   ]
+--
+-- @since 0.3.1
+zoomWithGrid ::
+     Source r ix e
+  => e -- ^ Value to use for the grid
+  -> Stride ix -- ^ Scaling factor
+  -> Array r ix e -- ^ Source array
+  -> Array DL ix e
+zoomWithGrid gridVal (Stride zoomFactor) arr =
+  unsafeMakeLoadArray Seq newSz (Just gridVal) $ \scheduler _ writeElement ->
+    iforSchedulerM_ scheduler arr $ \ !ix !e -> do
+      let !kix = liftIndex2 (*) ix kx
+      mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
+        range Seq (liftIndex (+1) kix) (liftIndex2 (+) kix kx)
+  where
+    !kx = liftIndex (+1) zoomFactor
+    !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
+    !newSz = Sz (liftIndex (+1) lastNewIx)
+{-# INLINE zoomWithGrid #-}

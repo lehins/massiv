@@ -14,6 +14,7 @@ module Data.Massiv.Array.Delayed
   -- ** Delayed Push Array
   , DL(..)
   , toLoadArray
+  , makeLoadArrayS
   , makeLoadArray
   , fromStrideLoad
   -- ** Delayed Interleaved Array

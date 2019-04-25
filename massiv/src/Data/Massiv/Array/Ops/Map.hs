@@ -51,6 +51,8 @@ module Data.Massiv.Array.Ops.Map
   , forIO_
   , iforIO
   , iforIO_
+  , imapSchedulerM_
+  , iforSchedulerM_
   -- ** Zipping
   , zip
   , zip3
@@ -568,6 +570,29 @@ imapIO_ action arr = do
       (unsafeLinearIndex arr)
       (\i -> void . action (fromLinearIndex sz i))
 {-# INLINE imapIO_ #-}
+
+-- | Same as `imapM_`, but will use the supplied scheduler.
+--
+-- @since 0.3.1
+imapSchedulerM_ ::
+     (Source r ix e, Monad m) => Scheduler m () -> (ix -> e -> m a) -> Array r ix e -> m ()
+imapSchedulerM_ scheduler action arr = do
+  let sz = size arr
+  splitLinearlyWith_
+    scheduler
+    (totalElem sz)
+    (unsafeLinearIndex arr)
+    (\i -> void . action (fromLinearIndex sz i))
+{-# INLINE imapSchedulerM_ #-}
+
+-- | Same as `imapM_`, but will use the supplied scheduler.
+--
+-- @since 0.3.1
+iforSchedulerM_ ::
+     (Source r ix e, Monad m) => Scheduler m () -> Array r ix e -> (ix -> e -> m a) -> m ()
+iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
+{-# INLINE iforSchedulerM_ #-}
+
 
 
 -- | Same as `mapIO` but map an index aware action instead.

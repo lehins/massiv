@@ -3,4 +3,5 @@ packages:
 - '.'
 - '../massiv/'
 extra-deps:
-- scheduler-1.0.0
+- scheduler-1.1.0@sha256:6d16a793b18fc3cbeb32767370d4960260afc9ecbf8f967000e2718c288d5f76
+
