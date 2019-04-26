@@ -785,7 +785,8 @@ transform2' getSz get arr1 arr2 =
 --
 -- ==== __Example__
 --
--- >>> zoomWithGrid 0 (Stride (2 :. 3)) $ resize' (Sz2 3 2) (1 ... 6)
+-- >>> import Data.Massiv.Array as A
+-- >>> zoomWithGrid 0 (Stride (2 :. 3)) $ resize' (Sz2 3 2) (Ix1 1 ... 6)
 -- Array DL Seq (Sz (10 :. 9))
 --   [ [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 1, 1, 1, 0, 2, 2, 2, 0 ]
