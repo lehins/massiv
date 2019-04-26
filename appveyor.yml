@@ -10,7 +10,7 @@ environment:
     STACK_WORK: ".w"
     WORK_DIR: "c:\\m"
   matrix:
-  - ARGS: "--resolver lts-9 --stack-yaml stack-ghc-8.0.yaml"
+  # - ARGS: "--resolver lts-9 --stack-yaml stack-ghc-8.0.yaml"
   - ARGS: "--resolver lts-11 --stack-yaml stack-ghc-8.0.yaml"
   - ARGS: "--resolver lts-12"
   - ARGS: "--resolver lts-13.10" # FIXME (appveyor/ghc-8.6.4 haddock issue?)
