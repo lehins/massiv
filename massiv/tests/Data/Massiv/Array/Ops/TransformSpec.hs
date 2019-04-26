@@ -69,6 +69,22 @@ spec = do
   describe "Sequence" $ do
     it "ConsSnoc" $ property prop_ConsSnoc
     it "UnconsUnsnoc" $ property prop_UnconsUnsnoc
+  describe "zoomWithGrid" $ do
+    it "Ix1" $ property (prop_zoomWithGridStrideCompute @Ix1)
+    it "Ix2" $ property (prop_zoomWithGridStrideCompute @Ix2)
+    it "Ix3" $ property (prop_zoomWithGridStrideCompute @Ix3)
+    it "Ix4" $ property (prop_zoomWithGridStrideCompute @Ix4)
+
+prop_zoomWithGridStrideCompute :: (Show (Array P ix Int), Index ix) => Array D ix Int -> Stride ix -> Int -> Property
+prop_zoomWithGridStrideCompute arr stride defVal =
+  (computeWithStrideAs P stride' arr' ===
+   A.replicate Seq (Sz (liftIndex (+ 1) $ unSz (size arr))) defVal) .&&.
+  (computeWithStrideAs P stride' (extract' (pureIndex 1) sz' arr') === compute arr)
+  where
+    arr' = computeAs P (zoomWithGrid defVal stride arr)
+    sz' = Sz (liftIndex (subtract 1) $ unSz (size arr'))
+    stride' = Stride (liftIndex (+ 1) $ unStride stride)
+
 
 prop_UnconsUnsnoc :: Array D Ix1 Int -> Bool -> Property
 prop_UnconsUnsnoc arr unconsFirst =
