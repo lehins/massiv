@@ -1,8 +1,8 @@
 # 0.3.2
 
 * Exported `withMArrayS`
-* Addition of `readM`, `writeM`, `modifyM` and `swapM`
-* Switch to pure exception throwing for `read'`, `write'`, `modify'` and `swap'`
+* Switch to pure exception throwing for `read'`, `write'`, `modify'` and `swap'`. `MonadThrow`
+  constraint prevented those functions to be used in `ST` monad.
 * Addition of `quicksort`, `quicksortM_`, `unstablePartitionRegionM` and
   `unsafeUnstablePartitionRegionM`
 

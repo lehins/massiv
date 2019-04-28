@@ -18,17 +18,13 @@ module Data.Massiv.Array.Mutable
     -- ** Element-wise mutation
   , read
   , read'
-  , readM
   , write
   , write'
-  , writeM
   , modify
   , modify'
-  , modifyM
   , swap
   , swap'
-  , swapM
-  -- ** Operate over `MArray`
+  -- ** Operations on @MArray@
   -- *** Immutable conversion
   , new
   , thaw
@@ -791,16 +787,6 @@ read' marr ix =
     Nothing -> throw $ IndexOutOfBoundsException (msize marr) ix
 {-# INLINE read' #-}
 
--- | /O(1)/ - Same as `read`, but throws `IndexOutOfBoundsException` on an invalid index.
---
--- @since 0.1.0
-readM :: (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> m e
-readM marr ix =
-  read marr ix >>= \case
-    Just e  -> pure e
-    Nothing -> throwM $ IndexOutOfBoundsException (msize marr) ix
-{-# INLINE readM #-}
-
 
 -- | /O(1)/ - Write an element into the cell of a mutable array. Returns `False` when index is out
 -- of bounds.
@@ -820,15 +806,6 @@ write' ::
      (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
 write' marr ix e = write marr ix e >>= (`unless` throw (IndexOutOfBoundsException (msize marr) ix))
 {-# INLINE write' #-}
-
--- | /O(1)/ - Same as `write`, but lives in IO and throws `IndexOutOfBoundsException` on invalid
--- index.
---
--- @since 0.3.2
-writeM ::
-     (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
-writeM marr ix e = write marr ix e >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
-{-# INLINE writeM #-}
 
 -- TODO: switch to `... -> m (Maybe e)`
 -- | /O(1)/ - Modify an element in the cell of a mutable array with a supplied function. Returns
@@ -854,15 +831,6 @@ modify' :: (Mutable r ix e, PrimMonad m) =>
 modify' marr f ix =
   modify marr f ix >>= (`unless` throw (IndexOutOfBoundsException (msize marr) ix))
 {-# INLINE modify' #-}
-
--- | /O(1)/ - Same as `modify`, but throws `IndexOutOfBoundsException` if index is out of bounds.
---
--- @since 0.3.2
-modifyM :: (Mutable r ix e, MonadThrow m, PrimMonad m) =>
-        MArray (PrimState m) r ix e -> (e -> e) -> ix -> m ()
-modifyM marr f ix =
-  modify marr f ix >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
-{-# INLINE modifyM #-}
 
 
 -- | /O(1)/ - Swap two elements in a mutable array by supplying their indices. Returns `False` when
@@ -893,16 +861,3 @@ swap' marr ix1 ix2 =
                 then throw $ IndexOutOfBoundsException (msize marr) ix2
                 else throw $ IndexOutOfBoundsException (msize marr) ix1)
 {-# INLINE swap' #-}
-
-
--- | /O(1)/ - Same as `swap`, but throws an `IndexOutOfBoundsException` on invalid indices.
---
--- @since 0.3.2
-swapM ::
-     (Mutable r ix e, MonadThrow m, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
-swapM marr ix1 ix2 =
-  swap marr ix1 ix2 >>=
-    (`unless` if isSafeIndex (msize marr) ix1
-                then throwM $ IndexOutOfBoundsException (msize marr) ix2
-                else throwM $ IndexOutOfBoundsException (msize marr) ix1)
-{-# INLINE swapM #-}
