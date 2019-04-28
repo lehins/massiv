@@ -15,7 +15,6 @@ module Data.Massiv.Array.Mutable.Algorithms
 
 import Data.Massiv.Array.Ops.Sort
 import Data.Massiv.Core.Common
-import Prelude hiding (mapM, read)
 
 
 -- | Partition elements of the supplied mutable vector according to the predicate.

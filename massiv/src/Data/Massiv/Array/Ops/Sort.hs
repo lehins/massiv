@@ -97,7 +97,7 @@ quicksortM_ scheduler marr =
     qsort !n !lo !hi =
       when (lo < hi) $ do
         p <- getPivot lo hi
-        l <- unsafeUnstablePartitionRegionM marr (< p) lo hi
+        l <- unsafeUnstablePartitionRegionM marr (< p) lo (hi - 1)
         h <- unsafeUnstablePartitionRegionM marr (== p) l hi
         if n > 0
           then do
