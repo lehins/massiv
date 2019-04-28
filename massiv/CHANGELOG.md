@@ -1,3 +1,11 @@
+# 0.3.2
+
+* Exported `withMArrayS`
+* Addition of `readM`, `writeM`, `modifyM` and `swapM`
+* Switch to pure exception throwing for `read'`, `write'`, `modify'` and `swap'`
+* Addition of `quicksort`, `quicksortM_`, `unstablePartitionRegionM` and
+  `unsafeUnstablePartitionRegionM`
+
 # 0.3.1
 
 * Addition of `rangeStepInclusive'`
@@ -20,7 +28,7 @@
   * `Extract` with `unsafeExtract` from old `Size`
   * `StrideLoad`, child of `Load`
 * `ifoldlIO` and related no longer take list of capabilities, but instead respect the inner
-  computation strategy. FOr that reason these folds have been removed: `foldlOnP`, `ifoldlOnP`,
+  computation strategy. For that reason these folds have been removed: `foldlOnP`, `ifoldlOnP`,
   `foldrOnP`, `ifoldrOnP`
 * `fold` now is just like the one from `Data.Foldable` takes no arguments and requires elements to
   be a monoid

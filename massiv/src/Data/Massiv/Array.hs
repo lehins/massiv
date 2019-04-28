@@ -118,6 +118,8 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Ops.Transform
   -- * Slicing
   , module Data.Massiv.Array.Ops.Slice
+  -- * Sorting
+  , quicksort
   -- * Conversion
   , module Data.Massiv.Array.Manifest.List
   -- * Mutable
@@ -143,6 +145,7 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Array.Ops.Slice
+import Data.Massiv.Array.Ops.Sort (quicksort)
 import Data.Massiv.Array.Ops.Transform
 import Data.Massiv.Array.Stencil
 import Data.Massiv.Core
