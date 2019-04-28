@@ -77,17 +77,19 @@ matrix:
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
 
-  # - env: BUILD=stack ARGS="--resolver lts-7.24 --stack-yaml stack-ghc-8.0.yaml"
-  #   compiler: ": #stack GHC-8.0.1 (lts-7.24)"
-  #   addons:
-  #     apt:
-  #       packages: [libgmp-dev]
+  # A few test cases hit bugs in ghc causing the test suite failure. Make sure it at least compiles
+  # for ghc-8.0
+  - env: BUILD=stack ARGS="--resolver lts-7.24 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
+    compiler: ": #stack GHC-8.0.1 (lts-7.24)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
-  # - env: BUILD=stack ARGS="--resolver lts-8.24 --stack-yaml stack-ghc-8.0.yaml"
-  #   compiler: ": #stack GHC-8.0.2 (lts-8.24)"
-  #   addons:
-  #     apt:
-  #       packages: [libgmp-dev]
+  - env: BUILD=stack ARGS="--resolver lts-8.24 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
+    compiler: ": #stack GHC-8.0.2 (lts-8.24)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
 
   # - env: BUILD=stack ARGS="--resolver lts-9.21 --stack-yaml stack-ghc-8.0.yaml"
   #   compiler: ": #stack GHC-8.0.2 (lts-9.21)"
