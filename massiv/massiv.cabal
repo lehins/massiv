@@ -11,6 +11,7 @@ copyright:           2018-2019 Alexey Kuleshevich
 category:            Data, Data Structures, Parallelism
 build-type:          Custom
 extra-source-files:  README.md
+                   , CHANGELOG.md
 cabal-version:       >=1.10
 
 flag unsafe-checks

@@ -681,7 +681,9 @@ unfoldlPrimM comp sz gen acc0 =
           return acc'
 {-# INLINE unfoldlPrimM #-}
 
-
+--TODO: in 0.4.0:
+--  * forPrimM_  does not modify each element, but simply iterates over
+--  * forPrimM - does what forPrimM_ does now.
 -- | Sequentially loop over a mutable array while modifying each element with an action.
 --
 -- @since 0.3.0

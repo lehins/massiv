@@ -73,7 +73,7 @@ go ahead and square its elements
 λ> vec = makeVectorR D Seq 10 id
 λ> evaluate' vec 4
 4
-λ> let vec2 = A.map (^ (2::Int)) vec
+λ> vec2 = A.map (^ (2::Int)) vec
 λ> evaluate' vec2 4
 16
 ```
@@ -86,7 +86,7 @@ synonym: `(!)`. Any delayed array can also be reduced using one of the folding f
 completely avoiding any memory allocation, or converted to a list, if that's what you need:
 
 ```haskell
-λ> let vec2U = computeAs U vec2
+λ> vec2U = computeAs U vec2
 λ> vec2U
 Array U Seq (Sz1 10)
   [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
@@ -169,7 +169,7 @@ ix10 :: IxN 10
 Here is how we can construct a 4-dimensional array and sum its elements in constant memory:
 
 ```haskell
-λ> let arr = makeArrayR D Seq (Sz (10 :> 20 :> 30 :. 40)) $ \ (i :> j :> k :. l) -> (i * j + k) * k + l
+λ> arr = makeArrayR D Seq (Sz (10 :> 20 :> 30 :. 40)) $ \ (i :> j :> k :. l) -> (i * j + k) * k + l
 λ> :t arr -- a 4-dimensional array
 arr :: Array D (IxN 4) Int
 λ> A.sum arr
@@ -259,7 +259,7 @@ the no longer memory, of course. So, there are a few slicing, resizing and extra
 can do it all in constant time, modulo the index manipulation:
 
 ```haskell
-λ> let arr = makeArrayR U Seq (Sz (4 :> 2 :. 6)) fromIx3
+λ> arr = makeArrayR U Seq (Sz (4 :> 2 :. 6)) fromIx3
 λ> arr !> 3 !> 1
 Array M Seq (Sz1 6)
   [ (3,1,0), (3,1,1), (3,1,2), (3,1,3), (3,1,4), (3,1,5) ]
@@ -391,7 +391,7 @@ Here is what it would look like in GHCi. We create a delayed array with some fun
 function, and make sure it is computed prior to mapping an average stencil over it:
 
 ```haskell
-λ> let arr = computeAs U $ arrLightIx2 Par (Sz (600 :. 800))
+λ> arr = computeAs U $ arrLightIx2 Par (Sz (600 :. 800))
 λ> :t arr
 arr :: Array U Ix2 Double
 λ> :t mapStencil Edge average3x3Filter arr
