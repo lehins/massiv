@@ -245,7 +245,7 @@ expA = liftArray exp
 sqrtA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-sqrtA = liftArray exp
+sqrtA = liftArray sqrt
 {-# INLINE sqrtA #-}
 
 logA
