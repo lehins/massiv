@@ -1,3 +1,7 @@
+# 0.3.2.1
+
+* Fix `sqrtA` implementation
+
 # 0.3.2
 
 * Exported `withMArrayS`

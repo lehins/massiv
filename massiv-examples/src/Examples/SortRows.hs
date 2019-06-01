@@ -5,7 +5,7 @@ module Examples.SortRows where
 
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Manifest.Vector as A
-import Data.Massiv.Scheduler
+import Control.Scheduler
 import Data.Typeable
 import Data.Vector.Algorithms.Merge
 import Data.Vector.Generic as VG

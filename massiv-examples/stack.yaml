@@ -1,9 +1,8 @@
-resolver: lts-12.26
+resolver: nightly-2019-05-28
 packages:
 - '.'
 - '../massiv/'
 - '../massiv-io/'
-- '../massiv-scheduler/'
 extra-deps: []
 flags: {}
 extra-package-dbs: []

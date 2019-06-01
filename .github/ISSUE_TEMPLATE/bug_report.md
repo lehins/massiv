@@ -3,8 +3,7 @@ name: Bug Report
 about: Report a bug in massiv and related
 ---
 
-Before reporting a bug, please, make sure the issue has not been reported yet and that you are
-using the newest version of the library: https://hackage.haskell.org/package/massiv
+Before reporting a bug, please, make sure the issue has not been reported yet and that you are using the newest version of the library: https://hackage.haskell.org/package/massiv
 
 In a perfect scenario a bug report would include:
 
