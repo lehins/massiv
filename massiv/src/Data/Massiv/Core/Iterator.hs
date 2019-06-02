@@ -19,7 +19,7 @@ module Data.Massiv.Core.Iterator
   , splitLinearlyWithStartAtM_
   ) where
 
-import Control.Scheduler (Scheduler, numWorkers, scheduleWork, scheduleWork_)
+import Control.Scheduler (Scheduler, numWorkers, scheduleWork_)
 
 -- | Efficient loop with an accumulator
 --
