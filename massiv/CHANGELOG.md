@@ -1,6 +1,6 @@
 # 0.3.2.1
 
-* Fix `sqrtA` implementation
+* Fix `sqrtA` function: [#76](https://github.com/lehins/massiv/pull/76)
 
 # 0.3.2
 
@@ -55,6 +55,10 @@
 * Addition of `makeUnsafeStencil`
 * `Window` now has an `windowUnrollIx2` field.
 * Addition of `insertWindow` and `dropWindow`
+
+# 0.2.8.1
+
+* Fix `sqrtA` function. Backport of [#76](https://github.com/lehins/massiv/pull/76)
 
 # 0.2.8
 
