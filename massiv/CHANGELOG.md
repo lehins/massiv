@@ -1,3 +1,8 @@
+# 0.3.3
+
+* Fix type signature for `createArray`.
+* Support for new version of `scheduler`
+
 # 0.3.2.1
 
 * Fix `sqrtA` function: [#76](https://github.com/lehins/massiv/pull/76)

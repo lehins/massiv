@@ -348,10 +348,10 @@ createArray_ comp sz action = do
 -- @since 0.3.0
 --
 createArray ::
-     forall r ix e a m. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m b. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Scheduler m a -> MArray (PrimState m) r ix e -> m [a])
+  -> (Scheduler m a -> MArray (PrimState m) r ix e -> m b)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m ([a], Array r ix e)
 createArray comp sz action = do

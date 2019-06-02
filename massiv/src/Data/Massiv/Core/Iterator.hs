@@ -19,7 +19,7 @@ module Data.Massiv.Core.Iterator
   , splitLinearlyWithStartAtM_
   ) where
 
-import Control.Scheduler (Scheduler(..))
+import Control.Scheduler (Scheduler, numWorkers, scheduleWork, scheduleWork_)
 
 -- | Efficient loop with an accumulator
 --
@@ -127,9 +127,9 @@ splitLinearlyWithM_ ::
 splitLinearlyWithM_ scheduler totalLength make write =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-      scheduleWork scheduler $
+      scheduleWork_ scheduler $
       loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
-    scheduleWork scheduler $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
+    scheduleWork_ scheduler $ loopM_ slackStart (< totalLength) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithM_ #-}
 
 
@@ -141,12 +141,8 @@ splitLinearlyWithStartAtM_ ::
 splitLinearlyWithStartAtM_ scheduler startAt totalLength make write =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopM_ startAt (< (slackStart + startAt)) (+ chunkLength) $ \ !start ->
-      scheduleWork scheduler $
+      scheduleWork_ scheduler $
       loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
-    scheduleWork scheduler $
+    scheduleWork_ scheduler $
       loopM_ (slackStart + startAt) (< (totalLength + startAt)) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithStartAtM_ #-}
-
-
-
-

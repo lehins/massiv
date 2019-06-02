@@ -561,14 +561,8 @@ mapIO_ action = imapIO_ (const action)
 --
 -- @since 0.2.6
 imapIO_ :: (Source r ix e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
-imapIO_ action arr = do
-  let sz = size arr
-  withScheduler_ (getComp arr) $ \scheduler ->
-    splitLinearlyWith_
-      scheduler
-      (totalElem sz)
-      (unsafeLinearIndex arr)
-      (\i -> void . action (fromLinearIndex sz i))
+imapIO_ action arr =
+  withScheduler_ (getComp arr) $ \scheduler -> imapSchedulerM_ scheduler action arr
 {-# INLINE imapIO_ #-}
 
 -- | Same as `imapM_`, but will use the supplied scheduler.
