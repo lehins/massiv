@@ -26,12 +26,16 @@ module Data.Massiv.Array.Ops.Construct
   , makeArrayR
   , makeArrayLinearR
   , makeVectorR
+    -- *** Iterating
   , iterateN
   , iiterateN
+    -- *** Unfolding
   , unfoldlS_
   , iunfoldlS_
   , unfoldrS_
   , iunfoldrS_
+    -- *** Random
+  , randomArray
     -- *** Applicative
   , makeArrayA
   , makeArrayAR
@@ -57,7 +61,7 @@ module Data.Massiv.Array.Ops.Construct
   ) where
 
 import Control.Applicative hiding (empty)
-import Control.Monad (void)
+import Control.Monad (when, void)
 import Control.Monad.ST
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
@@ -239,6 +243,59 @@ iunfoldlS_ comp sz f acc0 =
             pure acc'
     }
 {-# INLINE iunfoldlS_ #-}
+
+
+-- | Create an array with random values by using a pure splittable random number generator
+-- such as the one provided by [random](https://www.stackage.org/package/random) or
+-- [splitmix](https://www.stackage.org/package/splitmix) packages.
+--
+-- Because of the pure nature of the generator and its splitability we are not only able
+-- to parallelize the random value generation, but also guarantee that it will be
+-- deterministic, granted none of the arguments are changed.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> import System.Random as System
+-- >>> gen = System.mkStdGen 217
+-- >>> randomArray gen System.split System.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
+-- Array DL (ParN 2) (Sz (2 :. 3))
+--   [ [ 0.15191527341922206, 0.2045537167404079, 0.9635356052820256 ]
+--   , [ 9.308278528094238e-2, 0.7200934018606843, 0.23173694193083583 ]
+--   ]
+--
+-- @since 0.3.3
+randomArray ::
+     Index ix
+  => g -- ^ Initial random value generator
+  -> (g -> (g, g))
+     -- ^ A function that can split a generator in two independent generators
+  -> (g -> (e, g))
+     -- ^ A function that produces a random value and the next generator
+  -> Comp -- ^ Computation strategy.
+  -> Sz ix -- ^ Resulting size of the array.
+  -> Array DL ix e
+randomArray gen splitGen nextRandom comp sz =
+  unsafeMakeLoadArray comp sz Nothing $ \scheduler startAt writeAt ->
+    splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+      let slackStartAt = slackStart + startAt
+          writeRandom k genII = do
+            let (e, genII') = nextRandom genII
+            writeAt k e
+            pure genII'
+      genForSlack <-
+        loopM startAt (< slackStartAt) (+ chunkLength) gen $ \start genI -> do
+          let (genI0, genI1) = splitGen genI
+          scheduleWork_ scheduler $
+            void $ loopM start (< (start + chunkLength)) (+ 1) genI0 writeRandom
+          pure genI1
+      when (slackStartAt < totalLength + startAt) $
+        scheduleWork_ scheduler $
+        void $
+        loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
+  where
+    totalLength = totalElem sz
+
 
 infix 4 ..., ..:
 

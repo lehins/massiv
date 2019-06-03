@@ -2,6 +2,7 @@
 
 * Fix type signature for `createArray`.
 * Support for new version of `scheduler`
+* Addition of `randomArray`
 
 # 0.3.2.1
 
