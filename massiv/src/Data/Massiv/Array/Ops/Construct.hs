@@ -294,7 +294,8 @@ randomArray gen splitGen nextRandom comp sz =
         void $
         loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
   where
-    totalLength = totalElem sz
+    !totalLength = totalElem sz
+{-# INLINE randomArray #-}
 
 
 infix 4 ..., ..:
