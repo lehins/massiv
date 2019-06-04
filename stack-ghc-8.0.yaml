@@ -3,7 +3,7 @@ packages:
 - 'massiv/'
 - 'massiv-io/'
 extra-deps:
-- scheduler-1.1.0
+- scheduler-1.4.0@sha256:b182be9a7b84e1dba02dac761c3f4e204521d0f779d72d86040789d5aaadf92a,2833
 - unliftio-0.2.10@sha256:ed8bc7f9c38361aebd5481efbbbe6e3ee9468d07fffd1a7f0670f0fbbe28bb4f
 - unliftio-core-0.1.2.0@sha256:49d43dc863d14d89d91a676a968cea8d9f0030ad6ac95768747a44d0d273dd68
 - cabal-doctest-1.0.6@sha256:c0b4a5b1ff38d2867e7003b4be59f3bd7e8e204ab8c988d96d3a77472ae671cd
