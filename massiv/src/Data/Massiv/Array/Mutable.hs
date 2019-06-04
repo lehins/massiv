@@ -510,7 +510,7 @@ generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
 {-# INLINE generateArrayLinear #-}
 
 
--- | Same as `generateArrayStateful`, but use linear indexing instead.
+-- | Same as `generateArrayWS`, but use linear indexing instead.
 --
 -- @since 0.3.4
 generateArrayLinearWS ::
@@ -531,7 +531,7 @@ generateArrayLinearWS states sz make = do
 {-# INLINE generateArrayLinearWS #-}
 
 -- | Use per worker thread state while generating elements of the array. Very useful for
--- thing that are not thread safe.
+-- things that are not thread safe.
 --
 -- @since 0.3.4
 generateArrayWS ::
