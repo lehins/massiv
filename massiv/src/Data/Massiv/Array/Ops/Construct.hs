@@ -388,7 +388,7 @@ randomArrayS gen sz nextRandom =
 -- @since 0.3.4
 randomArrayWS ::
      forall r ix e g m. (Mutable r ix e, MonadUnliftIO m, PrimMonad m)
-  => WorkerStates g -- ^ Use `initWorkerStates` to initilize you per thread generators
+  => WorkerStates g -- ^ Use `initWorkerStates` to initialize you per thread generators
   -> Sz ix -- ^ Resulting size of the array
   -> (g -> m e) -- ^ Generate the value using the per thread generator.
   -> m (Array r ix e)
