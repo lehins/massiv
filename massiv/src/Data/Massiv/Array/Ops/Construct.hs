@@ -368,8 +368,9 @@ randomArrayS gen sz nextRandom =
 --
 -- ==== __Examples__
 --
--- In the example below we take a stateful random generator that is not thread safe and
--- safely parallelize it by giving each thread it's own generator:
+-- In the example below we take a stateful random generator from
+-- [wmc-random](https://www.stackage.org/package/mwc-random), which is not thread safe,
+-- and safely parallelize it by giving each thread it's own generator:
 --
 -- > λ> import Data.Massiv.Array
 -- > λ> import System.Random.MWC as MWC (createSystemRandom, uniformR)
@@ -383,7 +384,6 @@ randomArrayS gen sz nextRandom =
 -- > λ> randomArrayWS gens (Sz1 10) (MWC.uniformR (0, 9)) :: IO (Array P Ix1 Int)
 -- > Array P Par (Sz1 10)
 -- >   [ 3, 6, 1, 2, 1, 7, 6, 0, 8, 8 ]
-
 --
 -- @since 0.3.4
 randomArrayWS ::
