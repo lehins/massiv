@@ -358,13 +358,32 @@ randomArrayS gen sz nextRandom =
 {-# INLINE randomArrayS #-}
 
 -- | This is a stateful approach of generating random values. If your generator is pure
--- and splittable, using `randomArray` instead, which will give you a pure, deterministic
--- and parallelizable generation of arrays. On the other hand, if your generator is not
--- thread safe, which is most likely it is not, instead of using some sort of global
--- mutex, `WorkerStates` allows you to keep track of individual state per worker, which
--- fits parallelization of random value generation perfectly. All that needs to be done is
--- generators need to be initialized once per worker and then they can be reused as many
--- times as necessary.
+-- and splittable, it is better to use `randomArray` instead, which will give you a pure,
+-- deterministic and parallelizable generation of arrays. On the other hand, if your
+-- generator is not thread safe, which is most likely the case, instead of using some sort
+-- of global mutex, `WorkerStates` allows you to keep track of individual state per worker
+-- (thread), which fits parallelization of random value generation perfectly. All that
+-- needs to be done is generators need to be initialized once per worker and then they can
+-- be reused as many times as necessary.
+--
+-- ==== __Examples__
+--
+-- In the example below we take a stateful random generator that is not thread safe and
+-- safely parallelize it by giving each thread it's own generator:
+--
+-- > λ> import Data.Massiv.Array
+-- > λ> import System.Random.MWC as MWC (createSystemRandom, uniformR)
+-- > λ> import System.Random.MWC.Distributions as MWC (standard)
+-- > λ> gens <- initWorkerStates Par (\_ -> createSystemRandom)
+-- > λ> randomArrayWS gens (Sz2 2 3) standard :: IO (Array P Ix2 Double)
+-- > Array P Par (Sz (2 :. 3))
+-- >   [ [ -0.9066144845415213, 0.5264323240310042, -1.320943607597422 ]
+-- >   , [ -0.6837929005619592, -0.3041255565826211, 6.53353089112833e-2 ]
+-- >   ]
+-- > λ> randomArrayWS gens (Sz1 10) (MWC.uniformR (0, 9)) :: IO (Array P Ix1 Int)
+-- > Array P Par (Sz1 10)
+-- >   [ 3, 6, 1, 2, 1, 7, 6, 0, 8, 8 ]
+
 --
 -- @since 0.3.4
 randomArrayWS ::
