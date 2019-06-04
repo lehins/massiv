@@ -145,7 +145,7 @@ test-suite doctests
                , massiv
                , mersenne-random-pure64
                , random
-               , splitmix
+               , splitmix >= 0.0.1
                , template-haskell
   default-language:    Haskell2010
 

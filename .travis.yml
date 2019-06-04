@@ -115,8 +115,14 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
+  - env: BUILD=stack ARGS="--resolver lts-13.19"
+    compiler: ": #stack GHC-8.6.4 (lts-13.19)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
+
   - env: BUILD=stack ARGS="--resolver lts-13"
-    compiler: ": #stack GHC-8.6.4 (lts-13)"
+    compiler: ": #stack GHC-8.6.5 (lts-13)"
     addons:
       apt:
         packages: [libgmp-dev]
@@ -142,7 +148,7 @@ matrix:
     os: osx
 
   - env: BUILD=stack ARGS="--resolver lts-13"
-    compiler: ": #stack GHC-8.6.4 (lts-13)"
+    compiler: ": #stack GHC-8.6.5 (lts-13)"
     os: osx
 
   allow_failures:

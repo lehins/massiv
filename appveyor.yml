@@ -12,8 +12,8 @@ environment:
   matrix:
   # - ARGS: "--resolver lts-9 --stack-yaml stack-ghc-8.0.yaml"
   - ARGS: "--resolver lts-11 --stack-yaml stack-ghc-8.0.yaml"
-  - ARGS: "--resolver lts-12"
-  - ARGS: "--resolver lts-13.10" # FIXME (appveyor/ghc-8.6.4 haddock issue?)
+  - ARGS: "--resolver lts-12.26"
+  - ARGS: "--resolver lts-13" # FIXME (appveyor/ghc-8.6.4 haddock issue?)
   - ARGS: "--resolver nightly"
 matrix:
   allow_failures:
@@ -59,7 +59,7 @@ test_script:
 notifications:
   - provider: Email
     to:
-      - lehins@yandex.ru
+      - alexey@kuleshevi.ch
     on_build_success: false
     on_build_failure: false
     on_build_status_changed: true

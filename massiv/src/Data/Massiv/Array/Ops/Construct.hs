@@ -37,7 +37,7 @@ module Data.Massiv.Array.Ops.Construct
     -- *** Random
   , randomArray
   , randomArrayS
-  , randomArrayIO
+  , randomArrayWS
     -- *** Applicative
   , makeArrayA
   , makeArrayAR
@@ -367,14 +367,14 @@ randomArrayS gen sz nextRandom =
 -- times as necessary.
 --
 -- @since 0.3.4
-randomArrayIO ::
+randomArrayWS ::
      forall r ix e g m. (Mutable r ix e, MonadUnliftIO m, PrimMonad m)
   => WorkerStates g -- ^ Use `initWorkerStates` to initilize you per thread generators
   -> Sz ix -- ^ Resulting size of the array
   -> (g -> m e) -- ^ Generate the value using the per thread generator.
   -> m (Array r ix e)
-randomArrayIO states sz genRandom = generateArrayLinearStateful states sz (const genRandom)
-{-# INLINE randomArrayIO #-}
+randomArrayWS states sz genRandom = generateArrayLinearWS states sz (const genRandom)
+{-# INLINE randomArrayWS #-}
 
 infix 4 ..., ..:
 

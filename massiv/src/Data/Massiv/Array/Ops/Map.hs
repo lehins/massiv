@@ -44,12 +44,16 @@ module Data.Massiv.Array.Ops.Map
   , iforM_
   -- *** Parallelizable
   , mapIO
+  , mapWS
   , mapIO_
   , imapIO
+  , imapWS
   , imapIO_
   , forIO
+  , forWS
   , forIO_
   , iforIO
+  , iforWS
   , iforIO_
   , imapSchedulerM_
   , iforSchedulerM_
@@ -579,6 +583,7 @@ imapSchedulerM_ scheduler action arr = do
     (\i -> void . action (fromLinearIndex sz i))
 {-# INLINE imapSchedulerM_ #-}
 
+
 -- | Same as `imapM_`, but will use the supplied scheduler.
 --
 -- @since 0.3.1
@@ -586,7 +591,6 @@ iforSchedulerM_ ::
      (Source r ix e, Monad m) => Scheduler m () -> Array r ix e -> (ix -> e -> m a) -> m ()
 iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 {-# INLINE iforSchedulerM_ #-}
-
 
 
 -- | Same as `mapIO` but map an index aware action instead.
@@ -610,6 +614,60 @@ forIO ::
   -> m (Array r ix b)
 forIO = flip mapIO
 {-# INLINE forIO #-}
+
+
+
+-- | Same as `imapIO`, but ignores the inner computation strategy and uses stateful
+-- workers during computation instead.
+--
+-- @since 0.3.4
+imapWS ::
+     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates s
+  -> (ix -> a -> s -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+imapWS states f arr = generateArrayWS states (size arr) (\ix s -> f ix (unsafeIndex arr ix) s)
+{-# INLINE imapWS #-}
+
+-- | Same as `imapWS`, but without the index.
+--
+-- @since 0.3.4
+mapWS ::
+     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates s
+  -> (a -> s -> m b)
+  -> Array r' ix a
+  -> m (Array r ix b)
+mapWS states f = imapWS states (\ _ -> f)
+{-# INLINE mapWS #-}
+
+
+-- | Same as `imapWS`, but with source array and mapping action arguments flipped.
+--
+-- @since 0.3.4
+iforWS ::
+     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates s
+  -> Array r' ix a
+  -> (ix -> a -> s -> m b)
+  -> m (Array r ix b)
+iforWS states f arr = imapWS states arr f
+{-# INLINE iforWS #-}
+
+-- | Same as `iforWS`, but without the index.
+--
+-- @since 0.3.4
+forWS ::
+     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates s
+  -> Array r' ix a
+  -> (a -> s -> m b)
+  -> m (Array r ix b)
+forWS states arr f = imapWS states (\ _ -> f) arr
+{-# INLINE forWS #-}
+
+
 
 -- | Same as `mapIO_` but with arguments flipped.
 --
