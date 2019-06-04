@@ -618,7 +618,8 @@ forIO = flip mapIO
 
 
 -- | Same as `imapIO`, but ignores the inner computation strategy and uses stateful
--- workers during computation instead.
+-- workers during computation instead. Use `initWorkerStates` for the `WorkerStates`
+-- initialization.
 --
 -- @since 0.3.4
 imapWS ::

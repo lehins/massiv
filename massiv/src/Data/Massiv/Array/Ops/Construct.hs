@@ -373,15 +373,15 @@ randomArrayS gen sz nextRandom =
 -- and safely parallelize it by giving each thread it's own generator:
 --
 -- > λ> import Data.Massiv.Array
--- > λ> import System.Random.MWC as MWC (createSystemRandom, uniformR)
--- > λ> import System.Random.MWC.Distributions as MWC (standard)
+-- > λ> import System.Random.MWC (createSystemRandom, uniformR)
+-- > λ> import System.Random.MWC.Distributions (standard)
 -- > λ> gens <- initWorkerStates Par (\_ -> createSystemRandom)
 -- > λ> randomArrayWS gens (Sz2 2 3) standard :: IO (Array P Ix2 Double)
 -- > Array P Par (Sz (2 :. 3))
 -- >   [ [ -0.9066144845415213, 0.5264323240310042, -1.320943607597422 ]
 -- >   , [ -0.6837929005619592, -0.3041255565826211, 6.53353089112833e-2 ]
 -- >   ]
--- > λ> randomArrayWS gens (Sz1 10) (MWC.uniformR (0, 9)) :: IO (Array P Ix1 Int)
+-- > λ> randomArrayWS gens (Sz1 10) (uniformR (0, 9)) :: IO (Array P Ix1 Int)
 -- > Array P Par (Sz1 10)
 -- >   [ 3, 6, 1, 2, 1, 7, 6, 0, 8, 8 ]
 --

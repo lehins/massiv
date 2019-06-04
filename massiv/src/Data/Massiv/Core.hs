@@ -27,7 +27,9 @@ module Data.Massiv.Core
   , L(..)
   , LN
   , ListItem
-  , Comp(Seq, Par, ParOn, ParN)
+  , Comp(Seq, Par, Par', ParOn, ParN)
+  , WorkerStates
+  , initWorkerStates
   , module Data.Massiv.Core.Index
   -- * Exceptions
   , MonadThrow(..)
@@ -42,8 +44,6 @@ module Data.Massiv.Core
   , MonadUnliftIO
   , MonadIO(liftIO)
   , PrimMonad(PrimState)
-  , WorkerStates
-  , initWorkerStates
   ) where
 
 import Control.Exception (Exception(..), SomeException)
