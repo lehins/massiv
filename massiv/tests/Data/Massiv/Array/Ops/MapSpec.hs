@@ -5,13 +5,13 @@
 {-# LANGUAGE TypeApplications #-}
 module Data.Massiv.Array.Ops.MapSpec (spec) where
 
+import Data.IORef
 import Control.Monad.ST
 import Data.Foldable as F
 import Data.Massiv.Array.Unsafe
 import Data.Massiv.CoreArbitrary as A
 import Prelude as P
-
-
+import Control.Scheduler.Internal
 
 prop_zipUnzip ::
      (Index ix, Show (Array D ix Int))
@@ -82,6 +82,8 @@ mapSpec = do
     it "zipFlip3" $ property $ prop_zipFlip3 @ix
   describe "Traversing" $ do
     it "itraverseA" $ property $ prop_itraverseA @ix
+  describe "StatefulMapping" $ do
+    it "mapWS" $ property $ prop_MapWS @ix
 
 spec :: Spec
 spec = do
@@ -107,3 +109,17 @@ alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWit
 zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
 zipWithIndex arr = A.zip (range Seq zeroIndex (unSz (size arr))) arr
 {-# INLINE zipWithIndex #-}
+
+
+prop_MapWS :: (Show (Array U ix Int), Index ix) => Array U ix Int -> Property
+prop_MapWS arr =
+  monadicIO $
+  run $ do
+    states <- initWorkerStates (getComp arr) (\_ -> newIORef 0)
+    arr' <-
+      forWS states arr $ \e ref -> do
+        acc <- readIORef ref
+        writeIORef ref (acc + e)
+        pure e
+    accsArr <- A.mapM @P readIORef (evalArray Seq (_workerStatesArray states))
+    pure (A.sum arr' === A.sum accsArr .&&. arr === arr')
