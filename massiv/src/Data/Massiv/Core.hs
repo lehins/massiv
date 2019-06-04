@@ -42,9 +42,12 @@ module Data.Massiv.Core
   , MonadUnliftIO
   , MonadIO(liftIO)
   , PrimMonad(PrimState)
+  , WorkerStates
+  , initWorkerStates
   ) where
 
 import Control.Exception (Exception(..), SomeException)
+import Control.Scheduler (WorkerStates, initWorkerStates)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.List

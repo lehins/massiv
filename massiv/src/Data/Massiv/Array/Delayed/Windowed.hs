@@ -332,13 +332,13 @@ loadArrayWithIx2 with arr stride sz uWrite = do
 
 
 loadWindowIx2 :: Monad m => Int -> (Ix2 -> m ()) -> Ix2 -> m ()
-loadWindowIx2 numWorkers loadWindow (it :. ib) = do
-  let !(chunkHeight, slackHeight) = (ib - it) `quotRem` numWorkers
-  loopM_ 0 (< numWorkers) (+ 1) $ \ !wid ->
+loadWindowIx2 nWorkers loadWindow (it :. ib) = do
+  let !(chunkHeight, slackHeight) = (ib - it) `quotRem` nWorkers
+  loopM_ 0 (< nWorkers) (+ 1) $ \ !wid ->
     let !it' = wid * chunkHeight + it
      in loadWindow (it' :. (it' + chunkHeight))
   when (slackHeight > 0) $
-    let !itSlack = numWorkers * chunkHeight + it
+    let !itSlack = nWorkers * chunkHeight + it
      in loadWindow (itSlack :. (itSlack + slackHeight))
 {-# INLINE loadWindowIx2 #-}
 

@@ -2,6 +2,6 @@ resolver: lts-12.26
 packages:
 - '.'
 extra-deps:
-- scheduler-1.1.0
+- '../../haskell-scheduler/scheduler'
 flags: {}
 extra-package-dbs: []

@@ -48,6 +48,9 @@ module Data.Massiv.Array.Mutable
   , generateArrayLinear
   , generateArrayS
   , generateArrayLinearS
+  -- *** Stateful worker threads
+  , generateArrayStateful
+  , generateArrayLinearStateful
   -- *** Unfold
   , unfoldrPrimM_
   , iunfoldrPrimM_
@@ -505,6 +508,41 @@ generateArrayLinear ::
   -> m (Array r ix e)
 generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
 {-# INLINE generateArrayLinear #-}
+
+
+-- | Same as `generateArrayStateful`, but use linear indexing instead.
+--
+-- @since 0.3.4
+generateArrayLinearStateful ::
+     forall r ix e s m. (Mutable r ix e, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates s
+  -> Sz ix
+  -> (Int -> s -> m e)
+  -> m (Array r ix e)
+generateArrayLinearStateful states sz make = do
+  marr <- unsafeNew sz
+  withSchedulerWS_ states $ \schedulerWS ->
+    splitLinearlyWithStatefulM_
+      schedulerWS
+      (totalElem sz)
+      make
+      (unsafeLinearWrite marr)
+  unsafeFreeze (workerStatesComp states) marr
+{-# INLINE generateArrayLinearStateful #-}
+
+-- | Use per worker thread state while generating elements of the array. Very useful for
+-- thing that are not thread safe.
+--
+-- @since 0.3.4
+generateArrayStateful ::
+     forall r ix e s m. (Mutable r ix e, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates s
+  -> Sz ix
+  -> (ix -> s -> m e)
+  -> m (Array r ix e)
+generateArrayStateful states sz make =
+  generateArrayLinearStateful states sz (\ix -> make (fromLinearIndex sz ix))
+{-# INLINE generateArrayStateful #-}
 
 
 -- | Sequentially unfold an array from the left.

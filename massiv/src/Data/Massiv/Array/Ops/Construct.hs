@@ -36,6 +36,8 @@ module Data.Massiv.Array.Ops.Construct
   , iunfoldrS_
     -- *** Random
   , randomArray
+  , randomArrayS
+  , randomArrayIO
     -- *** Applicative
   , makeArrayA
   , makeArrayAR
@@ -65,6 +67,7 @@ import Control.Monad (when, void)
 import Control.Monad.ST
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
+import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Prelude as P hiding (enumFromTo, replicate)
 
@@ -246,14 +249,24 @@ iunfoldlS_ comp sz f acc0 =
 
 
 -- | Create an array with random values by using a pure splittable random number generator
--- such as the one provided by [random](https://www.stackage.org/package/random) or
--- [splitmix](https://www.stackage.org/package/splitmix) packages.
+-- such as one provided by either [splitmix](https://www.stackage.org/package/splitmix) or
+-- [random](https://www.stackage.org/package/random) packages. If you don't have a
+-- splittable generator consider using `randomArrayS` or `randomArrayIO` instead.
 --
 -- Because of the pure nature of the generator and its splitability we are not only able
 -- to parallelize the random value generation, but also guarantee that it will be
--- deterministic, granted none of the arguments are changed.
+-- deterministic, granted none of the arguments have changed.
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> import System.Random.SplitMix as SplitMix
+-- >>> gen = SplitMix.mkSMGen 217
+-- >>> randomArray gen SplitMix.splitSMGen SplitMix.nextDouble (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
+-- Array DL (ParN 2) (Sz (2 :. 3))
+--   [ [ 0.7383156058619669, 0.39904053166835896, 0.5617584038393628 ]
+--   , [ 0.7218718218678238, 0.7006722805067258, 0.7225894731396042 ]
+--   ]
 --
 -- >>> import Data.Massiv.Array
 -- >>> import System.Random as System
@@ -266,11 +279,11 @@ iunfoldlS_ comp sz f acc0 =
 --
 -- @since 0.3.3
 randomArray ::
-     Index ix
+     forall ix e g. Index ix
   => g -- ^ Initial random value generator
   -> (g -> (g, g))
      -- ^ A function that can split a generator in two independent generators
-  -> (g -> (e, g))
+  -> (g -> (e, g)) -- TODO: move this argument after the sz, to keep ot consistent.
      -- ^ A function that produces a random value and the next generator
   -> Comp -- ^ Computation strategy.
   -> Sz ix -- ^ Resulting size of the array.
@@ -285,18 +298,83 @@ randomArray gen splitGen nextRandom comp sz =
             pure genII'
       genForSlack <-
         loopM startAt (< slackStartAt) (+ chunkLength) gen $ \start genI -> do
-          let (genI0, genI1) = splitGen genI
+          let (genI0, genI1) =
+                if numWorkers scheduler == 1
+                  then (genI, genI)
+                  else splitGen genI
           scheduleWork_ scheduler $
             void $ loopM start (< (start + chunkLength)) (+ 1) genI0 writeRandom
           pure genI1
       when (slackStartAt < totalLength + startAt) $
         scheduleWork_ scheduler $
-        void $
-        loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
+        void $ loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
   where
     !totalLength = totalElem sz
 {-# INLINE randomArray #-}
 
+-- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
+-- require splitability property. Another consequence is that it returns the new generator
+-- together with /manifest/ array of random values.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> import System.Random.SplitMix as SplitMix
+-- >>> gen = SplitMix.mkSMGen 217
+-- >>> snd $ randomArrayS gen (Sz2 2 3) SplitMix.nextDouble :: Array P Ix2 Double
+-- Array P Seq (Sz (2 :. 3))
+--   [ [ 0.8878273949359751, 0.11290807610140963, 0.7383156058619669 ]
+--   , [ 0.39904053166835896, 0.5617584038393628, 0.16248374266020216 ]
+--   ]
+--
+-- >>> import Data.Massiv.Array
+-- >>> import System.Random.Mersenne.Pure64 as MT
+-- >>> gen = MT.pureMT 217
+-- >>> snd $ randomArrayS gen (Sz2 2 3) MT.randomDouble :: Array P Ix2 Double
+-- Array P Seq (Sz (2 :. 3))
+--   [ [ 0.5504018416543631, 0.22504666452851707, 0.4480480867867128 ]
+--   , [ 0.7139711572975297, 0.49401087853770953, 0.9397201599368645 ]
+--   ]
+--
+-- >>> import Data.Massiv.Array
+-- >>> import System.Random as System
+-- >>> gen = System.mkStdGen 217
+-- >>> snd $ randomArrayS gen (Sz2 2 3) System.random :: Array P Ix2 Double
+-- Array P Seq (Sz (2 :. 3))
+--   [ [ 0.7972230393466304, 0.4485860543300083, 0.257773196880671 ]
+--   , [ 0.19115043859955794, 0.33784788936970034, 3.479381605706322e-2 ]
+--   ]
+--
+-- @since 0.3.4
+randomArrayS ::
+     forall r ix e g. Mutable r ix e
+  => g -- ^ Initial random value generator
+  -> Sz ix -- ^ Resulting size of the array.
+  -> (g -> (e, g))
+     -- ^ A function that produces a random value and the next generator
+  -> (g, Array r ix e)
+randomArrayS gen sz nextRandom =
+  runST $ unfoldrPrimM Seq sz (pure . nextRandom) gen
+{-# INLINE randomArrayS #-}
+
+-- | This is a stateful approach of generating random values. If your generator is pure
+-- and splittable, using `randomArray` instead, which will give you a pure, deterministic
+-- and parallelizable generation of arrays. On the other hand, if your generator is not
+-- thread safe, which is most likely it is not, instead of using some sort of global
+-- mutex, `WorkerStates` allows you to keep track of individual state per worker, which
+-- fits parallelization of random value generation perfectly. All that needs to be done is
+-- generators need to be initialized once per worker and then they can be reused as many
+-- times as necessary.
+--
+-- @since 0.3.4
+randomArrayIO ::
+     forall r ix e g m. (Mutable r ix e, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates g -- ^ Use `initWorkerStates` to initilize you per thread generators
+  -> Sz ix -- ^ Resulting size of the array
+  -> (g -> m e) -- ^ Generate the value using the per thread generator.
+  -> m (Array r ix e)
+randomArrayIO states sz genRandom = generateArrayLinearStateful states sz (const genRandom)
+{-# INLINE randomArrayIO #-}
 
 infix 4 ..., ..:
 

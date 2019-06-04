@@ -33,6 +33,7 @@ module Data.Massiv.Core.Common
   , numWorkers
   , scheduleWork
   , scheduleWork_
+  , WorkerStates
   , unsafeRead
   , unsafeWrite
   , unsafeLinearModify
@@ -81,7 +82,8 @@ import Control.Exception (throw)
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
-import Control.Scheduler (Comp(..), Scheduler, numWorkers, scheduleWork, scheduleWork_)
+import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
+                          scheduleWork, scheduleWork_)
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Typeable

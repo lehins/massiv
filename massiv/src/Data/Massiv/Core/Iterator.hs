@@ -17,9 +17,10 @@ module Data.Massiv.Core.Iterator
   , splitLinearlyWith_
   , splitLinearlyWithM_
   , splitLinearlyWithStartAtM_
+  , splitLinearlyWithStatefulM_
   ) where
 
-import Control.Scheduler (Scheduler, numWorkers, scheduleWork_)
+import Control.Scheduler
 
 -- | Efficient loop with an accumulator
 --
@@ -146,3 +147,27 @@ splitLinearlyWithStartAtM_ scheduler startAt totalLength make write =
     scheduleWork_ scheduler $
       loopM_ (slackStart + startAt) (< (totalLength + startAt)) (+ 1) $ \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithStartAtM_ #-}
+
+
+
+-- | Interator that can be used to split computation jobs, while using a stateful scheduler.
+--
+-- @since 0.3.4
+splitLinearlyWithStatefulM_ ::
+     Monad m
+  => SchedulerWS s m ()
+  -> Int -- ^ Total linear length
+  -> (Int -> s -> m b) -- ^ Element producing action
+  -> (Int -> b -> m c) -- ^ Element storing action
+  -> m ()
+splitLinearlyWithStatefulM_ schedulerWS totalLength make store =
+  let nWorkers = numWorkers (unwrapSchedulerWS schedulerWS)
+   in splitLinearly nWorkers totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWorkState_ schedulerWS $ \s ->
+            loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
+              make k s >>= store k
+        scheduleWorkState_ schedulerWS $ \s ->
+          loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
+            make k s >>= store k
+{-# INLINE splitLinearlyWithStatefulM_ #-}

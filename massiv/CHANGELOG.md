@@ -1,3 +1,13 @@
+# 0.3.4
+
+* Use the the new stateful workers feature of `schdeuler-1.4.0`
+* Addition of:
+  * `randomArrayS`
+  * `randomArrayIO`
+  * `generateArrayStateful`
+  * `generateArrayLinearStateful`
+  * and `splitLinearlyWithStatefulM_`
+
 # 0.3.3
 
 * Fix type signature for `createArray`.
