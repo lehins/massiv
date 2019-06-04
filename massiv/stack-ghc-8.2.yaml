@@ -2,7 +2,7 @@ resolver: lts-11.22
 packages:
 - '.'
 extra-deps:
-- scheduler-1.1.0
+- scheduler-1.4.0@sha256:b182be9a7b84e1dba02dac761c3f4e204521d0f779d72d86040789d5aaadf92a,2833
 - doctest-0.16.0.1@sha256:0c8d44a0a781a6c277260788d9c1929f853cf2cb7d2ca36691222d01ddac1934
 flags: {}
 extra-package-dbs: []
