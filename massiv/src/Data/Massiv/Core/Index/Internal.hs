@@ -632,7 +632,7 @@ data IndexException where
   -- | Index contains a zero value along one of the dimensions.
   IndexZeroException :: Index ix => !ix -> IndexException
   -- | Dimension is out of reach.
-  IndexDimensionException :: (Show ix, Typeable ix) => !ix -> Dim -> IndexException
+  IndexDimensionException :: (Show ix, Typeable ix) => !ix -> !Dim -> IndexException
   -- | Index is out of bounds.
   IndexOutOfBoundsException :: Index ix => !(Sz ix) -> !ix -> IndexException
 
@@ -644,6 +644,16 @@ instance Show IndexException where
     "IndexOutOfBoundsException: " ++ showsPrec 1 ix " not safe for (" ++ show sz ++ ")"
   showsPrec 0 arr s = show arr ++ s
   showsPrec _ arr s = '(' : show arr ++ ")" ++ s
+
+instance Eq IndexException where
+  e1 == e2 =
+    case (e1, e2) of
+      (IndexZeroException i1, IndexZeroException i2) -> show i1 == show i2
+      (IndexDimensionException i1 d1, IndexDimensionException i2 d2) ->
+        show i1 == show i2 && d1 == d2
+      (IndexOutOfBoundsException sz1 i1, IndexOutOfBoundsException sz2 i2) ->
+        show sz1 == show sz2 && show i1 == show i2
+      _ -> False
 
 instance Exception IndexException
 
@@ -659,6 +669,18 @@ data SizeException where
   SizeSubregionException :: Index ix => !(Sz ix) -> !ix -> !(Sz ix) -> SizeException
   -- | An array with the size cannot contain any elements.
   SizeEmptyException :: Index ix => !(Sz ix) -> SizeException
+
+instance Eq SizeException where
+  e1 == e2 =
+    case (e1, e2) of
+      (SizeMismatchException sz1 sz1', SizeMismatchException sz2 sz2') ->
+        show sz1 == show sz2 && show sz1' == show sz2'
+      (SizeElementsMismatchException sz1 sz1', SizeElementsMismatchException sz2 sz2') ->
+        show sz1 == show sz2 && show sz1' == show sz2'
+      (SizeSubregionException sz1 i1 sz1', SizeSubregionException sz2 i2 sz2') ->
+        show sz1 == show sz2 && show i1 == show i2 && show sz1' == show sz2'
+      (SizeEmptyException sz1, SizeEmptyException sz2) -> show sz1 == show sz2
+      _ -> False
 
 instance Exception SizeException
 

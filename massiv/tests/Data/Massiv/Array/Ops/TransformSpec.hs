@@ -44,6 +44,13 @@ prop_ConcatMconcat
 prop_ConcatMconcat arrs =
   computeAs P (concat' 1 (A.empty : arrs)) === computeAs P (mconcat (fmap toLoadArray arrs))
 
+prop_ExtractSizeMismatch ::
+     Index ix => ArrTiny P ix Int -> Positive Int -> Property
+prop_ExtractSizeMismatch (ArrTiny arr) (Positive n) =
+  assertExceptionIO (SizeElementsMismatchException sz sz' ==) $ resizeM sz' arr
+  where
+    sz = size arr
+    sz' = Sz (totalElem sz + n)
 
 spec :: Spec
 spec = do
@@ -53,6 +60,11 @@ spec = do
     it "Ix2" $ property (prop_upsampleDownsample @Ix2)
     it "Ix3" $ property (prop_upsampleDownsample @Ix3)
     it "Ix4" $ property (prop_upsampleDownsample @Ix4)
+  describe "extractSizeMismatch" $ do
+    it "Ix1" $ property (prop_ExtractSizeMismatch @Ix1)
+    it "Ix2" $ property (prop_ExtractSizeMismatch @Ix2)
+    it "Ix3" $ property (prop_ExtractSizeMismatch @Ix3)
+    it "Ix4" $ property (prop_ExtractSizeMismatch @Ix4)
   describe "ExtractAppend" $ do
     it "Ix1" $ property (prop_ExtractAppend @Ix1) -- modifyMaxSuccess (`div` 10)
     it "Ix2" $ property (prop_ExtractAppend @Ix2)

@@ -85,18 +85,20 @@ module Data.Massiv.Core.Index
   , IndexException(..)
   , SizeException(..)
   , ShapeException(..)
+  , guardNumberOfElements
   ) where
 
-import           Control.Exception               (throw)
-import           Control.DeepSeq
-import           Control.Monad.Catch             (MonadThrow(..))
-import           Data.Functor.Identity           (runIdentity)
-import           Data.Massiv.Core.Index.Internal
-import           Data.Massiv.Core.Index.Tuple
-import           Data.Massiv.Core.Index.Ix
-import           Data.Massiv.Core.Index.Stride
-import           Data.Massiv.Core.Iterator
-import           GHC.TypeLits
+import Control.DeepSeq
+import Control.Exception (throw)
+import Control.Monad.Catch (MonadThrow(..))
+import Data.Functor.Identity (runIdentity)
+import Data.Massiv.Core.Exception (guardNumberOfElements)
+import Data.Massiv.Core.Index.Internal
+import Data.Massiv.Core.Index.Ix
+import Data.Massiv.Core.Index.Stride
+import Data.Massiv.Core.Index.Tuple
+import Data.Massiv.Core.Iterator
+import GHC.TypeLits
 
 -- | Approach to be used near the borders during various transformations.
 -- Whenever a function needs information not only about an element of interest, but

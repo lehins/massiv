@@ -64,8 +64,7 @@ infixr 5 :>, :.
 -- @since 0.1.0
 data Ix2 = {-# UNPACK #-} !Int :. {-# UNPACK #-} !Int
 
--- | 2-dimensional index constructor. Useful when @TypeOperators@ extension isn't enabled, or simply
--- infix notation is inconvenient. @(Ix2 i j) == (i :. j)@.
+-- | 2-dimensional index constructor. Useful when infix notation is inconvenient. @(Ix2 i j) == (i :. j)@
 --
 -- @since 0.1.0
 pattern Ix2 :: Int -> Int -> Ix2
@@ -76,7 +75,7 @@ pattern Ix2 i2 i1 = i2 :. i1
 -- @since 0.3.0
 type Sz2 = Sz Ix2
 
--- | 2-dimensional size constructor. @(Sz2 i j) == Sz (i :. j)@.
+-- | 2-dimensional size constructor. @(Sz2 i j) == Sz (i :. j)@
 --
 -- @since 0.3.0
 pattern Sz2 :: Int -> Int -> Sz2
@@ -89,7 +88,7 @@ pattern Sz2 i2 i1 = Sz (i2 :. i1)
 -- @since 0.1.0
 type Ix3 = IxN 3
 
--- | 3-dimensional index constructor. @(Ix3 i j k) == (i :> j :. k)@.
+-- | 3-dimensional index constructor. @(Ix3 i j k) == (i :> j :. k)@
 --
 -- @since 0.1.0
 pattern Ix3 :: Int -> Int -> Int -> Ix3
@@ -100,7 +99,7 @@ pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
 -- @since 0.3.0
 type Sz3 = Sz Ix3
 
--- | 3-dimensional size constructor. @(Sz3 i j k) == Sz (i :> j :. k)@.
+-- | 3-dimensional size constructor. @(Sz3 i j k) == Sz (i :> j :. k)@
 --
 -- @since 0.3.0
 pattern Sz3 :: Int -> Int -> Int -> Sz3
@@ -112,7 +111,7 @@ pattern Sz3 i3 i2 i1 = Sz (i3 :> i2 :. i1)
 -- @since 0.1.0
 type Ix4 = IxN 4
 
--- | 4-dimensional index constructor. @(Ix4 i j k l) == (i :> j :> k :. l)@.
+-- | 4-dimensional index constructor. @(Ix4 i j k l) == (i :> j :> k :. l)@
 --
 -- @since 0.1.0
 pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
@@ -123,7 +122,7 @@ pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
 -- @since 0.3.0
 type Sz4 = Sz Ix4
 
--- | 4-dimensional size constructor. @(Sz4 i j k l) == Sz (i :> j :> k :. l)@.
+-- | 4-dimensional size constructor. @(Sz4 i j k l) == Sz (i :> j :> k :. l)@
 --
 -- @since 0.3.0
 pattern Sz4 :: Int -> Int -> Int -> Int -> Sz4
@@ -135,7 +134,7 @@ pattern Sz4 i4 i3 i2 i1 = Sz (i4 :> i3 :> i2 :. i1)
 -- @since 0.1.0
 type Ix5 = IxN 5
 
--- | 5-dimensional index constructor.  @(Ix5 i j k l m) == (i :> j :> k :> l :. m)@.
+-- | 5-dimensional index constructor.  @(Ix5 i j k l m) == (i :> j :> k :> l :. m)@
 --
 -- @since 0.1.0
 pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
@@ -146,7 +145,7 @@ pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
 -- @since 0.3.0
 type Sz5 = Sz Ix5
 
--- | 5-dimensional size constructor.  @(Sz5 i j k l m) == Sz (i :> j :> k :> l :. m)@.
+-- | 5-dimensional size constructor.  @(Sz5 i j k l m) == Sz (i :> j :> k :> l :. m)@
 --
 -- @since 0.3.0
 pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz5

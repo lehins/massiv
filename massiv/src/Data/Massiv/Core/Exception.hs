@@ -34,7 +34,11 @@ instance Exception Uninitialized where
   displayException Uninitialized = "Array element is uninitialized"
 
 
+-- | Throw `SizeElementsMismatchException` whenever number of elements in both sizes do
+-- not match.
+--
+-- @since 0.3.5
 guardNumberOfElements :: (MonadThrow m, Index ix, Index ix') => Sz ix -> Sz ix' -> m ()
 guardNumberOfElements sz sz' =
-  unless (totalElem sz == totalElem sz) $ throwM $ SizeElementsMismatchException sz sz'
+  unless (totalElem sz == totalElem sz') $ throwM $ SizeElementsMismatchException sz sz'
 {-# INLINE guardNumberOfElements #-}

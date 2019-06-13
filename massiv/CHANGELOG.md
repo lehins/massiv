@@ -1,6 +1,11 @@
+# 0.3.5
+
+* Fix and export `guardNumberOfElements`
+* `Eq` instances for `IndexException` and `SizeException`
+
 # 0.3.4
 
-* Use the the new stateful workers feature of `schdeuler-1.4.0`
+* Use the the new stateful workers feature of `scheduler-1.4.0`
 * Addition of:
   * `randomArrayS`
   * `randomArrayWS`
