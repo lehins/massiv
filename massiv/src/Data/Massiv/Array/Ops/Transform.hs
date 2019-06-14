@@ -62,7 +62,7 @@ module Data.Massiv.Array.Ops.Transform
   ) where
 
 import Control.Scheduler (traverse_)
-import Control.Monad as M (foldM_, unless)
+import Control.Monad as M (foldM_, unless, forM_)
 import Data.Bifunctor (bimap)
 import Data.Foldable as F (foldl', foldrM, toList)
 import qualified Data.List as L (uncons)
@@ -189,6 +189,7 @@ resize' sz = either throw id . resizeM sz
 {-# INLINE resize' #-}
 
 -- | /O(1)/ - Reduce a multi-dimensional array into a flat vector
+--
 -- @since 0.3.1
 flatten :: (Load r ix e, Resize r ix) => Array r ix e -> Array r Ix1 e
 flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
@@ -655,16 +656,23 @@ upsample !fillWith !safeStride arr =
   DLArray
     { dlComp = getComp arr
     , dlSize = newsz
-    , dlDefault = Nothing
+    , dlDefault = Just fillWith
     , dlLoad =
-        \scheduler startAt dlWrite -> do
-          unless (stride == pureIndex 1) $
-            loopM_ startAt (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
+        \scheduler startAt dlWrite
+          -- unless (stride == pureIndex 1) $
+          --   loopM_ startAt (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
           -- TODO: experiment a bit more. So far the fastest solution is to prefill the whole array
           -- with default value and override non-stride elements afterwards.  This approach seems a
           -- bit wasteful, nevertheless it is fastest
           --
           -- TODO: Is it possible to use fast fill operation that is available for MutableByteArray?
+         -> do
+          M.forM_ (defaultElement arr) $ \prevFillWith ->
+            loopM_
+              startAt
+              (< totalElem sz)
+              (+ 1)
+              (\i -> dlWrite (adjustLinearStride (i + startAt)) prefFillWith)
           loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
     }
   where

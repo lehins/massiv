@@ -205,13 +205,18 @@ class Load r ix e => Source r ix e where
 class (Typeable r, Index ix) => Load r ix e where
 
   -- | Get computation strategy of this array
-
+  --
+  -- @since 0.1.0
   getComp :: Array r ix e -> Comp
 
   -- | Get the size of an immutabe array
+  --
+  -- @since 0.1.0
   size :: Array r ix e -> Sz ix
 
   -- | Load an array into memory.
+  --
+  -- @since 0.3.0
   loadArrayM
     :: Monad m =>
        Scheduler m ()
