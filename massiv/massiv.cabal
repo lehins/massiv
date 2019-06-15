@@ -99,6 +99,7 @@ test-suite tests
                     , Data.Massiv.Array.DelayedSpec
                     , Data.Massiv.Array.Delayed.InterleavedSpec
                     , Data.Massiv.Array.Delayed.WindowedSpec
+                    , Data.Massiv.Array.Delayed.PushSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.MutableSpec

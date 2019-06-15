@@ -9,6 +9,7 @@ import Data.Massiv.Bench as A
 import Prelude as P
 
 import Statistics.Matrix as S
+import Statistics.Matrix.Fast as SF
 
 
 multArrsAlt :: Array U Ix2 Double -> Array U Ix2 Double -> Array U Ix2 Double
@@ -31,9 +32,9 @@ main :: IO ()
 main = do
   let !sz = Sz2 200 600
       !arr = arrRLightIx2 U Seq sz
-      !mat = S.Matrix 200 200 $ toVector arr
+      !mat = S.Matrix 200 200 $ A.toVector arr
   defaultMain
-    [ env (return (computeAs U (A.transpose arr))) $ \arr' ->
+    [ env (return (computeAs U (A.transpose arr), S.transpose mat)) $ \ ~(arr', mat') ->
         bgroup
           "Mult"
           [ bgroup
@@ -42,6 +43,7 @@ main = do
               , bench "multiplyTranspose" $
                 whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr
               , bench "multArrsAlt" $ whnf (multArrsAlt (setComp Seq arr)) arr'
+              , bench "multiply (Fast)" $ whnf (SF.multiply mat) mat'
               ]
           , bgroup
               "Par"
