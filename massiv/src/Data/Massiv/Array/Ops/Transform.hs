@@ -677,16 +677,6 @@ upsample !fillWith safeStride arr =
     !newsz = SafeSz (timesStride $ unSz sz)
 {-# INLINE upsample #-}
 
-  -- This was a sample optimization, that turned out to be significantly (~ x9) slower
-  -- makeLoadArray (getComp arr) newsz $ \numWorkers scheduleWith dlWrite -> do
-  --   iterM_ zeroIndex stride (pureIndex 1) (<) $ \ixs ->
-  --     if ixs == zeroIndex
-  --       then loadArray numWorkers scheduleWith arr $ \ !i -> dlWrite (adjustLinearStride i)
-  --       else let !is = toLinearIndex newsz ixs
-  --             in scheduleWith $
-  --                loopM_ 0 (< totalElem sz) (+ 1) $ \ !i ->
-  --                  dlWrite (is + adjustLinearStride i) fillWith
-
 
 -- | Create an array by traversing a source array.
 traverse

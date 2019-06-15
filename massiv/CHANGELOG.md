@@ -2,6 +2,7 @@
 
 * Fix and export `guardNumberOfElements`
 * `Eq` instances for `IndexException` and `SizeException`
+* Fix `upsample` implementation and improve its performance.
 
 # 0.3.4
 
