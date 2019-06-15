@@ -624,22 +624,20 @@ splitAt' dim i arr = either throw id $ splitAtM dim i arr
 -- @since 0.3.0
 --
 downsample :: Source r ix e => Stride ix -> Array r ix e -> Array DL ix e
-downsample stride arr
-  | stride == oneStride = toLoadArray arr
-  | otherwise =
-    DLArray
-      { dlComp = getComp arr
-      , dlSize = resultSize
-      , dlDefault = defaultElement arr
-      , dlLoad =
-          \scheduler startAt dlWrite ->
-            splitLinearlyWithStartAtM_
-              scheduler
-              startAt
-              (totalElem resultSize)
-              (pure . unsafeLinearWriteWithStride)
-              dlWrite
-      }
+downsample stride arr =
+  DLArray
+    { dlComp = getComp arr
+    , dlSize = resultSize
+    , dlDefault = defaultElement arr
+    , dlLoad =
+        \scheduler startAt dlWrite ->
+          splitLinearlyWithStartAtM_
+            scheduler
+            startAt
+            (totalElem resultSize)
+            (pure . unsafeLinearWriteWithStride)
+            dlWrite
+    }
   where
     resultSize = strideSize stride (size arr)
     strideIx = unStride stride
@@ -654,23 +652,21 @@ downsample stride arr
 -- @since 0.3.0
 upsample
   :: Load r ix e => e -> Stride ix -> Array r ix e -> Array DL ix e
-upsample !fillWith safeStride arr
-  | safeStride == oneStride = toLoadArray arr
-  | otherwise =
-    DLArray
-      { dlComp = getComp arr
-      , dlSize = newsz
-      , dlDefault = Just fillWith
-      , dlLoad =
-          \scheduler startAt dlWrite -> do
-            M.forM_ (defaultElement arr) $ \prevFillWith ->
-              loopM_
-                startAt
-                (< totalElem sz)
-                (+ 1)
-                (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
-            loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
-      }
+upsample !fillWith safeStride arr =
+  DLArray
+    { dlComp = getComp arr
+    , dlSize = newsz
+    , dlDefault = Just fillWith
+    , dlLoad =
+        \scheduler startAt dlWrite -> do
+          M.forM_ (defaultElement arr) $ \prevFillWith ->
+            loopM_
+              startAt
+              (< totalElem sz)
+              (+ 1)
+              (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
+          loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
+    }
   where
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
     {-# INLINE adjustLinearStride #-}
@@ -680,11 +676,6 @@ upsample !fillWith safeStride arr
     !sz = size arr
     !newsz = SafeSz (timesStride $ unSz sz)
 {-# INLINE upsample #-}
-  -- unless (stride == pureIndex 1) $
-  --   loopM_ startAt (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
-  -- TODO: experiment a bit more. So far the fastest solution is to prefill the whole array
-  -- with default value and override non-stride elements afterwards.  This approach seems a
-  -- bit wasteful, nevertheless it is fastest
 
   -- This was a sample optimization, that turned out to be significantly (~ x9) slower
   -- makeLoadArray (getComp arr) newsz $ \numWorkers scheduleWith dlWrite -> do
