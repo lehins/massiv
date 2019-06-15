@@ -652,29 +652,23 @@ downsample !stride arr =
 -- @since 0.3.0
 upsample
   :: Load r ix e => e -> Stride ix -> Array r ix e -> Array DL ix e
-upsample !fillWith !safeStride arr =
-  DLArray
-    { dlComp = getComp arr
-    , dlSize = newsz
-    , dlDefault = Just fillWith
-    , dlLoad =
-        \scheduler startAt dlWrite
-          -- unless (stride == pureIndex 1) $
-          --   loopM_ startAt (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
-          -- TODO: experiment a bit more. So far the fastest solution is to prefill the whole array
-          -- with default value and override non-stride elements afterwards.  This approach seems a
-          -- bit wasteful, nevertheless it is fastest
-          --
-          -- TODO: Is it possible to use fast fill operation that is available for MutableByteArray?
-         -> do
-          M.forM_ (defaultElement arr) $ \prevFillWith ->
-            loopM_
-              startAt
-              (< totalElem sz)
-              (+ 1)
-              (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
-          loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
-    }
+upsample !fillWith !safeStride arr
+  | stride == pureIndex 1 = toLoadArray arr
+  | otherwise =
+    DLArray
+      { dlComp = getComp arr
+      , dlSize = newsz
+      , dlDefault = Just fillWith
+      , dlLoad =
+          \scheduler startAt dlWrite ->
+            M.forM_ (defaultElement arr) $ \prevFillWith -> do
+              loopM_
+                startAt
+                (< totalElem sz)
+                (+ 1)
+                (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
+              loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
+      }
   where
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
     {-# INLINE adjustLinearStride #-}
@@ -684,6 +678,11 @@ upsample !fillWith !safeStride arr =
     !sz = size arr
     !newsz = SafeSz (timesStride $ unSz sz)
 {-# INLINE upsample #-}
+  -- unless (stride == pureIndex 1) $
+  --   loopM_ startAt (< totalElem newsz) (+ 1) (`dlWrite` fillWith)
+  -- TODO: experiment a bit more. So far the fastest solution is to prefill the whole array
+  -- with default value and override non-stride elements afterwards.  This approach seems a
+  -- bit wasteful, nevertheless it is fastest
 
   -- This was a sample optimization, that turned out to be significantly (~ x9) slower
   -- makeLoadArray (getComp arr) newsz $ \numWorkers scheduleWith dlWrite -> do
@@ -694,7 +693,6 @@ upsample !fillWith !safeStride arr =
   --             in scheduleWith $
   --                loopM_ 0 (< totalElem sz) (+ 1) $ \ !i ->
   --                  dlWrite (is + adjustLinearStride i) fillWith
-
 
 
 -- | Create an array by traversing a source array.
