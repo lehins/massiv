@@ -672,7 +672,7 @@ upsample !fillWith !safeStride arr =
               startAt
               (< totalElem sz)
               (+ 1)
-              (\i -> dlWrite (adjustLinearStride (i + startAt)) prefFillWith)
+              (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
           loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
     }
   where
