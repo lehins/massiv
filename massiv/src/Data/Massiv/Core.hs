@@ -11,7 +11,7 @@ module Data.Massiv.Core
   , Elt
   , EltRepr
   , Construct
-  , Load(loadArrayM)
+  , Load(loadArrayM, defaultElement)
   , Source
   , Resize
   , Extract
