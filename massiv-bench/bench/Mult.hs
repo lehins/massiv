@@ -3,10 +3,12 @@ module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
+import Data.Massiv.Array.Manifest.Vector as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
 import Prelude as P
 
+import Statistics.Matrix as S
 
 
 multArrsAlt :: Array U Ix2 Double -> Array U Ix2 Double -> Array U Ix2 Double
@@ -21,16 +23,17 @@ multArrsAlt arr1 arr2
   where
     Sz2 m1 n1 = size arr1
     Sz2 m2 n2 = size arr2
-    arr2' = computeAs U $ transpose arr2
+    arr2' = computeAs U $ A.transpose arr2
 {-# INLINE multArrsAlt #-}
 
 
 main :: IO ()
 main = do
   let !sz = Sz2 200 600
-      arr = arrRLightIx2 U Seq sz
+      !arr = arrRLightIx2 U Seq sz
+      !mat = S.Matrix 200 200 $ toVector arr
   defaultMain
-    [ env (return (computeAs U (transpose arr))) $ \arr' ->
+    [ env (return (computeAs U (A.transpose arr))) $ \arr' ->
         bgroup
           "Mult"
           [ bgroup
@@ -43,7 +46,7 @@ main = do
           , bgroup
               "Par"
               [ bench "(|*|)" $ whnf (setComp Par arr |*|) arr'
-              , bench "fused (|*|)" $ whnf ((setComp Par arr |*|) . transpose) arr
+              , bench "fused (|*|)" $ whnf ((setComp Par arr |*|) . A.transpose) arr
               , bench "multiplyTranspose" $
                 whnf (computeAs U . multiplyTransposed (setComp Par arr)) arr
               , bench "multArrsAlt" $ whnf (multArrsAlt (setComp Par arr)) arr'
