@@ -74,7 +74,7 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr = insertWindow warr window
 -- otherwise performance will be terrible.
 --
 -- > average3x3Stencil :: (Default a, Fractional a) => Stencil Ix2 a a
--- > average3x3Stencil = makeStencil (3 :. 3) (1 :. 1) $ \ get ->
+-- > average3x3Stencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
 -- >   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
 -- >      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
 -- >      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9

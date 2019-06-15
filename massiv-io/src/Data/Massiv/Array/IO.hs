@@ -164,10 +164,12 @@ writeImageAuto path = BL.writeFile path . encodeImage imageWriteAutoFormats path
 
 -- | An image is written as a @.tiff@ file into an operating system's temporary
 -- directory and passed as an argument to the external viewer program.
-displayImageUsing :: Writable (Auto TIF) (Image r cs e) =>
-                     ExternalViewer -- ^ Image viewer program
-                  -> Bool -- ^ Should a call block the cuurrent thread untul viewer is closed.
-                  -> Image r cs e -> IO ()
+displayImageUsing ::
+     Writable (Auto TIF) (Image r cs e)
+  => ExternalViewer -- ^ Image viewer program
+  -> Bool -- ^ Should the function block the current thread until viewer is closed.
+  -> Image r cs e
+  -> IO ()
 displayImageUsing viewer block img =
   if block
     then display
