@@ -33,6 +33,7 @@ module Data.Massiv.Array.Ops.Transform
   , extractFromToM
   , extractFromTo
   , extractFromTo'
+  , popExtractM
   -- ** Append/Split
   , cons
   , unconsM
@@ -445,6 +446,29 @@ unsnocM arr
     !sz = size arr
     !k = unSz sz - 1
 {-# INLINE unsnocM #-}
+
+
+-- | Extract a sub array across a particular dimension and append the two remaining.
+--
+-- @since 0.3.5
+popExtractM ::
+     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e)
+  => Dim -- ^ Dimension along which to do the extraction
+  -> Ix1 -- ^ Start index along the dimensions that needs to be extracted
+  -> Sz Ix1 -- ^ Size of the extracted array along the dimension that it will be extracted
+  -> Array r ix e
+  -> m (Array (EltRepr r ix) ix e, Array DL ix e)
+popExtractM dim startIx1 (Sz extractSzIx1) arr = do
+  let Sz szIx = size arr
+  popStartIx <- setDimM zeroIndex dim startIx1
+  popExtractSzIx <- setDimM szIx dim extractSzIx1
+  popArr <- extractM popStartIx (Sz popExtractSzIx) arr
+  leftArrSzIx <- setDimM szIx dim startIx1
+  leftArr <- extractM zeroIndex (Sz leftArrSzIx) arr
+  rightArrStartIx <- setDimM zeroIndex dim (startIx1 + extractSzIx1)
+  rightArr <- extractFromToM rightArrStartIx szIx arr --(liftIndex (subtract 1) szIx) arr
+  leftAndRight <- appendM dim leftArr rightArr
+  pure (popArr, leftAndRight)
 
 
 -- | Append two arrays together along a particular dimension. Sizes of both arrays must match, with
