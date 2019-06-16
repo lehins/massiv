@@ -434,7 +434,7 @@ If you are still confused of what a stencil is, but you are familiar with [Conwa
 Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) this should hopefully clarify it a
 bit more. The function `life` below is a single iteration of Game of Life:
 
-```
+```haskell
 lifeRules :: Word8 -> Word8 -> Word8
 lifeRules 0 3 = 1
 lifeRules 1 2 = 1
