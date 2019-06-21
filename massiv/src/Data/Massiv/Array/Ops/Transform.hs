@@ -33,7 +33,9 @@ module Data.Massiv.Array.Ops.Transform
   , extractFromToM
   , extractFromTo
   , extractFromTo'
-  , popExtractM
+  , deleteRowsM
+  , deleteColumnsM
+  , deleteRegionM
   -- ** Append/Split
   , cons
   , unconsM
@@ -47,6 +49,7 @@ module Data.Massiv.Array.Ops.Transform
   , splitAtM
   , splitAt
   , splitAt'
+  , splitExtractM
   -- ** Upsample/Downsample
   , upsample
   , downsample
@@ -439,7 +442,7 @@ snoc arr e =
 -- @since 0.3.0
 unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
 unsnocM arr
-  | 0 == totalElem sz = throwM $ SizeEmptyException sz
+  | k < 0 = throwM $ SizeEmptyException sz
   | otherwise =
     pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
   where
@@ -447,28 +450,6 @@ unsnocM arr
     !k = unSz sz - 1
 {-# INLINE unsnocM #-}
 
-
--- | Extract a sub array across a particular dimension and append the two remaining.
---
--- @since 0.3.5
-popExtractM ::
-     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e)
-  => Dim -- ^ Dimension along which to do the extraction
-  -> Ix1 -- ^ Start index along the dimensions that needs to be extracted
-  -> Sz Ix1 -- ^ Size of the extracted array along the dimension that it will be extracted
-  -> Array r ix e
-  -> m (Array (EltRepr r ix) ix e, Array DL ix e)
-popExtractM dim startIx1 (Sz extractSzIx1) arr = do
-  let Sz szIx = size arr
-  popStartIx <- setDimM zeroIndex dim startIx1
-  popExtractSzIx <- setDimM szIx dim extractSzIx1
-  popArr <- extractM popStartIx (Sz popExtractSzIx) arr
-  leftArrSzIx <- setDimM szIx dim startIx1
-  leftArr <- extractM zeroIndex (Sz leftArrSzIx) arr
-  rightArrStartIx <- setDimM zeroIndex dim (startIx1 + extractSzIx1)
-  rightArr <- extractFromToM rightArrStartIx szIx arr --(liftIndex (subtract 1) szIx) arr
-  leftAndRight <- appendM dim leftArr rightArr
-  pure (popArr, leftAndRight)
 
 
 -- | Append two arrays together along a particular dimension. Sizes of both arrays must match, with
@@ -625,28 +606,140 @@ splitAt ::
   -> Int -- ^ Index along the dimension to split at
   -> Array r ix e -- ^ Source array
   -> Maybe (Array r' ix e, Array r' ix e)
-splitAt dim i arr = do
-  let Sz sz = size arr
-  eIx <- setDimM sz dim i
-  sIx <- setDimM zeroIndex dim i
-  arr1 <- extractFromTo zeroIndex eIx arr
-  arr2 <- extractFromTo sIx sz arr
-  return (arr1, arr2)
+splitAt = splitAtM
 {-# INLINE splitAt #-}
 {-# DEPRECATED splitAt "In favor of a more general `splitAtM`" #-}
 
 -- | Same as `splitAt`, but will throw an error instead of returning `Nothing` on wrong dimension
 -- and index out of bounds.
+--
+-- @since 0.1.0
 splitAt' :: (Extract r ix e, r' ~ EltRepr r ix) =>
            Dim -> Int -> Array r ix e -> (Array r' ix e, Array r' ix e)
 splitAt' dim i arr = either throw id $ splitAtM dim i arr
 {-# INLINE splitAt' #-}
 
 
+-- | Split an array in three parts across some dimension
+--
+-- @since 0.3.5
+splitExtractM ::
+     (MonadThrow m, Extract r ix e, Source r' ix e, r' ~ EltRepr r ix)
+  => Dim -- ^ Dimension along which to do the extraction
+  -> Ix1 -- ^ Start index along the dimension that needs to be extracted
+  -> Sz Ix1 -- ^ Size of the extracted array along the dimension that it will be extracted
+  -> Array r ix e
+  -> m (Array r' ix e, Array r' ix e, Array r' ix e)
+splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
+  let Sz szIx = size arr
+  midStartIx <- setDimM zeroIndex dim startIx1
+  midExtractSzIx <- setDimM szIx dim extractSzIx1
+  midArr <- extractM midStartIx (Sz midExtractSzIx) arr
+  leftArrSzIx <- setDimM szIx dim startIx1
+  leftArr <- extractM zeroIndex (Sz leftArrSzIx) arr
+  rightArrStartIx <- setDimM zeroIndex dim (startIx1 + extractSzIx1)
+  rightArr <- extractFromToM rightArrStartIx szIx arr
+  pure (leftArr, midArr, rightArr)
+{-# INLINE splitExtractM #-}
+
+-- | Delete a region from an array along the specified dimension.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> arr = fromIx3 <$> (0 :> 0 :. 0 ..: 3 :> 2 :. 6)
+-- >>> deleteRegionM 1 2 3 arr
+-- Array DL Seq (Sz (3 :> 2 :. 3))
+--   [ [ [ (0,0,0), (0,0,1), (0,0,5) ]
+--     , [ (0,1,0), (0,1,1), (0,1,5) ]
+--     ]
+--   , [ [ (1,0,0), (1,0,1), (1,0,5) ]
+--     , [ (1,1,0), (1,1,1), (1,1,5) ]
+--     ]
+--   , [ [ (2,0,0), (2,0,1), (2,0,5) ]
+--     , [ (2,1,0), (2,1,1), (2,1,5) ]
+--     ]
+--   ]
+-- >>> v = Ix1 0 ... 10
+-- >>> deleteRegionM 1 3 5 v
+-- Array DL Seq (Sz1 6)
+--   [ 0, 1, 2, 8, 9, 10 ]
+--
+-- @since 0.3.5
+deleteRegionM ::
+     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e)
+  => Dim -- ^ Along which axis should the removal happen
+  -> Ix1 -- ^ At which index to start dropping slices
+  -> Sz Ix1 -- ^ Number of slices to drop
+  -> Array r ix e -- ^ Array that will have it's subarray removed
+  -> m (Array DL ix e)
+deleteRegionM dim ix sz arr = do
+  (leftArr, _, rightArr) <- splitExtractM dim ix sz arr
+  appendM dim leftArr rightArr
+{-# INLINE deleteRegionM #-}
+
+-- | Similar to `deleteRegionM`, but drop a specified number of rows from an array that
+-- has at least 2 dimensions.
+--
+-- ====__Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> arr = fromIx2 <$> (0 :. 0 ..: 3 :. 6)
+-- >>> arr
+-- Array D Seq (Sz (3 :. 6))
+--   [ [ (0,0), (0,1), (0,2), (0,3), (0,4), (0,5) ]
+--   , [ (1,0), (1,1), (1,2), (1,3), (1,4), (1,5) ]
+--   , [ (2,0), (2,1), (2,2), (2,3), (2,4), (2,5) ]
+--   ]
+-- >>> deleteRowsM 1 1 arr
+-- Array DL Seq (Sz (2 :. 6))
+--   [ [ (0,0), (0,1), (0,2), (0,3), (0,4), (0,5) ]
+--   , [ (2,0), (2,1), (2,2), (2,3), (2,4), (2,5) ]
+--   ]
+--
+-- @since 0.3.5
+deleteRowsM ::
+     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e, Index (Lower ix))
+  => Ix1
+  -> Sz Ix1
+  -> Array r ix e
+  -> m (Array DL ix e)
+deleteRowsM = deleteRegionM 2
+{-# INLINE deleteRowsM #-}
+
+-- | Similar to `deleteRegionM`, but drop a specified number of columns an array.
+--
+-- ====__Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> arr = fromIx2 <$> (0 :. 0 ..: 3 :. 6)
+-- >>> arr
+-- Array D Seq (Sz (3 :. 6))
+--   [ [ (0,0), (0,1), (0,2), (0,3), (0,4), (0,5) ]
+--   , [ (1,0), (1,1), (1,2), (1,3), (1,4), (1,5) ]
+--   , [ (2,0), (2,1), (2,2), (2,3), (2,4), (2,5) ]
+--   ]
+-- >>> deleteColumnsM 2 3 arr
+-- Array DL Seq (Sz (3 :. 3))
+--   [ [ (0,0), (0,1), (0,5) ]
+--   , [ (1,0), (1,1), (1,5) ]
+--   , [ (2,0), (2,1), (2,5) ]
+--   ]
+--
+-- @since 0.3.5
+deleteColumnsM ::
+     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e)
+  => Ix1
+  -> Sz Ix1
+  -> Array r ix e
+  -> m (Array DL ix e)
+deleteColumnsM = deleteRegionM 1
+{-# INLINE deleteColumnsM #-}
+
+
 -- | Discard elements from the source array according to the stride.
 --
 -- @since 0.3.0
---
 downsample :: Source r ix e => Stride ix -> Array r ix e -> Array DL ix e
 downsample stride arr =
   DLArray

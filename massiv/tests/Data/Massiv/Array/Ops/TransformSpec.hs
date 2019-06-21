@@ -25,6 +25,18 @@ prop_ExtractAppend
 prop_ExtractAppend (DimIx dim) (ArrIx arr ix) =
   arr === compute (uncurry (append' dim) $ A.splitAt' dim (getDim' ix dim) arr)
 
+prop_SplitExtract
+  :: (Show (Array P ix Int), Show (Array M ix Int), Index ix)
+  => DimIx ix -> ArrIx P ix Int -> Positive Int -> Property
+prop_SplitExtract (DimIx dim) (ArrIx arr ix) (Positive n) =
+  (computeAs P <$> splitAt' dim i arr) === (left, computeAs P (append' dim center right)) .&&.
+  (computeAs P splitLeft, splitRight) === (computeAs P (append' dim left center), right)
+  where i = getDim' ix dim
+        k = getDim' (unSz (size arr)) dim
+        n' = n `mod` (k - i)
+        (left, center, right) = either throw id (splitExtractM dim i (Sz n') arr)
+        (splitLeft, splitRight) = splitAt' dim (i + n') arr
+
 prop_ConcatAppend
   :: (Show (Array P ix Int), Index ix)
   => DimIx ix -> Comp -> Sz ix -> NonEmptyList (Fun ix Int) -> Property
@@ -66,10 +78,15 @@ spec = do
     it "Ix3" $ property (prop_ExtractSizeMismatch @Ix3)
     it "Ix4" $ property (prop_ExtractSizeMismatch @Ix4)
   describe "ExtractAppend" $ do
-    it "Ix1" $ property (prop_ExtractAppend @Ix1) -- modifyMaxSuccess (`div` 10)
+    it "Ix1" $ property (prop_ExtractAppend @Ix1)
     it "Ix2" $ property (prop_ExtractAppend @Ix2)
     it "Ix3" $ property (prop_ExtractAppend @Ix3)
     it "Ix4" $ property (prop_ExtractAppend @Ix4)
+  describe "ExtractAppend" $ do
+    it "Ix1" $ property (prop_SplitExtract @Ix1)
+    it "Ix2" $ property (prop_SplitExtract @Ix2)
+    it "Ix3" $ property (prop_SplitExtract @Ix3)
+    it "Ix4" $ property (prop_SplitExtract @Ix4)
   describe "ConcatAppend" $ do
     it "Ix1" $ property (prop_ConcatAppend @Ix1)
     it "Ix2" $ property (prop_ConcatAppend @Ix2)

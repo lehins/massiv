@@ -36,7 +36,7 @@
 -- * `M` - General manifest array type, that any of the above representations can be converted to in
 --       constant time using `toManifest`.
 --
--- There are also array represnetation that only describe how values for its elements can be
+-- There are also array representations that only describe how values for its elements can be
 -- computed or loaded into memory, as such, they are represented by functions and do not impose the
 -- memory overhead, that is normally associated with arrays. They are needed for proper fusion and
 -- parallelization of computation.
@@ -49,7 +49,7 @@
 --         as /Push/ array. Useful for fusing various array combining functions. Use `computeAs` in
 --         order to load array into `Manifest` representation.
 --
--- * `DI` - delayed interleaved array. Same as `D`, but performes better with unbalanced
+-- * `DI` - delayed interleaved array. Same as `D`, but performs better with unbalanced
 --         computation, when evaluation of one element takes much longer than of its neighbor.
 --
 -- * `DW` - delayed windowed array. This peculiar representation allows for very fast `Stencil`
@@ -59,7 +59,7 @@
 --
 -- * `L` and `LN` - those types aren't particularly useful on their own, but because of their unique
 --       ability to be converted to and from nested lists in constant time, provide a perfect
---       intermediary for lists <-> array conversion.
+--       intermediary for lists \<-> array conversion.
 --
 -- Most of the `Manifest` arrays are capable of in-place mutation. Check out
 -- "Data.Massiv.Array.Mutable" module for available functionality.
