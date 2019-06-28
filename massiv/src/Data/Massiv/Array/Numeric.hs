@@ -186,6 +186,7 @@ multiplyTransposed arr1 arr2
 --
 -- ====___Example__
 --
+-- >>> import Data.Massiv.Array
 -- >>> identityMatrix 5
 -- Array DL Seq (Sz (5 :. 5))
 --   [ [ 1, 0, 0, 0, 0 ]
