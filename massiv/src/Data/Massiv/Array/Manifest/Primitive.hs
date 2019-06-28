@@ -26,6 +26,7 @@ module Data.Massiv.Array.Manifest.Primitive
   , toMutableByteArray
   , fromMutableByteArrayM
   , fromMutableByteArray
+  , shrinkMutableByteArray
   , unsafeAtomicReadIntArray
   , unsafeAtomicWriteIntArray
   , unsafeCasIntArray
@@ -197,11 +198,13 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearSet #-}
 
   unsafeLinearCopy (MPArray _ maFrom) iFrom (MPArray _ maTo) iTo (Sz k) =
-    copyMutableByteArray maTo iTo maFrom iFrom (k * sizeOf (undefined :: e))
+    copyMutableByteArray maTo (iTo * esz) maFrom (iFrom * esz) (k * esz)
+    where esz = sizeOf (undefined :: e)
   {-# INLINE unsafeLinearCopy #-}
 
   unsafeArrayLinearCopy (PArray _ _ aFrom) iFrom (MPArray _ maTo) iTo (Sz k) =
-    copyByteArray maTo iTo aFrom iFrom (k * sizeOf (undefined :: e))
+    copyByteArray maTo (iTo * esz) aFrom (iFrom * esz) (k * esz)
+    where esz = sizeOf (undefined :: e)
   {-# INLINE unsafeArrayLinearCopy #-}
 
   unsafeLinearShrink (MPArray _ ma) sz = do

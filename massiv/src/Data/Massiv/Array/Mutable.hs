@@ -142,23 +142,18 @@ new = initializeNew Nothing
 thaw :: forall r ix e m. (Mutable r ix e, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
 thaw arr =
   liftIO $ do
-  --   let sz = size arr
-  --       totalLength = totalElem sz
-  --   marr <- unsafeNew sz
-  --   withScheduler_ (getComp arr) $ \scheduler ->
-  --     splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-  --       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-  --         scheduleWork_ scheduler $ unsafeArrayLinearCopy arr start marr start (SafeSz chunkLength)
-  --       let slackLength = totalLength - slackStart
-  --       when (slackLength > 0) $
-  --         scheduleWork_ scheduler $
-  --         unsafeArrayLinearCopy arr slackStart marr slackStart (SafeSz slackLength)
-  --   pure marr
-    tmarr <- unsafeNew (size arr)
-    unsafeArrayLinearCopy arr 0 tmarr 0 (SafeSz (totalElem (size arr)))
-    pure tmarr
-  -- liftIO $ makeMArrayLinear (getComp arr) (size arr) (pure . unsafeLinearIndexM arr)
--- TODO: use faster memcpy
+    let sz = size arr
+        totalLength = totalElem sz
+    marr <- unsafeNew sz
+    withScheduler_ (getComp arr) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork_ scheduler $ unsafeArrayLinearCopy arr start marr start (SafeSz chunkLength)
+        let slackLength = totalLength - slackStart
+        when (slackLength > 0) $
+          scheduleWork_ scheduler $
+          unsafeArrayLinearCopy arr slackStart marr slackStart (SafeSz slackLength)
+    pure marr
 {-# INLINE thaw #-}
 
 -- | Same as `thaw`, but restrict computation to sequential only.
@@ -183,12 +178,8 @@ thawS arr = do
   tmarr <- unsafeNew (size arr)
   unsafeArrayLinearCopy arr 0 tmarr 0 (SafeSz (totalElem (size arr)))
   pure tmarr
---  makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
--- TODO: use faster memcpy
 {-# INLINE thawS #-}
 
-
--- TODO: implement and benchmark parallel `thawIO` and `freezeIO` with memcpy
 
 -- | /O(n)/ - Yield an immutable copy of the mutable array. Note that mutable representations
 -- have to be the same.
@@ -212,23 +203,18 @@ freeze ::
   -> m (Array r ix e)
 freeze comp smarr =
   liftIO $ do
-  --   let sz = msize smarr
-  --       totalLength = totalElem sz
-  --   tmarr <- unsafeNew sz
-  --   withScheduler_ comp $ \scheduler ->
-  --     splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-  --       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-  --         scheduleWork_ scheduler $ unsafeLinearCopy smarr start tmarr start (SafeSz chunkLength)
-  --       let slackLength = totalLength - slackStart
-  --       when (slackLength > 0) $
-  --         scheduleWork_ scheduler $
-  --         unsafeLinearCopy smarr slackStart tmarr slackStart (SafeSz slackLength)
-  --   unsafeFreeze comp tmarr
-  -- liftIO $ generateArrayLinear comp (msize smarr) (unsafeLinearRead smarr)
     let sz = msize smarr
+        totalLength = totalElem sz
     tmarr <- unsafeNew sz
-    unsafeLinearCopy smarr 0 tmarr 0 (SafeSz (totalElem sz))
-    unsafeFreeze Seq tmarr
+    withScheduler_ comp $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork_ scheduler $ unsafeLinearCopy smarr start tmarr start (SafeSz chunkLength)
+        let slackLength = totalLength - slackStart
+        when (slackLength > 0) $
+          scheduleWork_ scheduler $
+          unsafeLinearCopy smarr slackStart tmarr slackStart (SafeSz slackLength)
+    unsafeFreeze comp tmarr
 {-# INLINE freeze #-}
 
 
@@ -245,8 +231,8 @@ freezeS smarr = do
   tmarr <- unsafeNew sz
   unsafeLinearCopy smarr 0 tmarr 0 (SafeSz (totalElem sz))
   unsafeFreeze Seq tmarr
-  --generateArrayLinearS Seq (msize marr) (unsafeLinearRead marr)
 {-# INLINE freezeS #-}
+
 
 newMaybeInitialized ::
      (Load r' ix e, Mutable r ix e, PrimMonad m) => Array r' ix e -> m (MArray (PrimState m) r ix e)

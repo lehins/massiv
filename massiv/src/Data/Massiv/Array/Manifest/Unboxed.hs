@@ -177,6 +177,8 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
     INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
+  unsafeLinearGrow (MUArray _ mv) sz = MUArray sz <$> MVU.unsafeGrow mv (totalElem sz)
+  {-# INLINE unsafeLinearGrow #-}
 
 instance ( VU.Unbox e
          , IsList (Array L ix e)

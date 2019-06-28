@@ -1,29 +1,45 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+--{-# LANGUAGE TypeApplications #-}
 module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
-import Data.Massiv.Array.Mutable as A
+import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
-import Data.Monoid
 import Prelude as P
 
 
 main :: IO ()
 main = do
-  let !sz = Sz2 1600 1200
-  defaultMain
+  let !sz = Sz2 16000 12000
+  pGroup <- bgroup "P" <$> mkBench sz P
+  sGroup <- bgroup "S" <$> mkBench sz S
+  defaultMain [pGroup, sGroup]
+
+
+mkBench ::
+     forall r. (Construct r Ix2 Double, Mutable r Ix2 Double)
+  => Sz2
+  -> r
+  -> IO [Benchmark]
+mkBench sz r = do
+  let !arr = arrRLightIx2 r Seq sz
+  marr <- unsafeThaw arr
+  pure
     [ bgroup
         "Thaw"
-        [ env (return (arrRLightIx2 P Seq sz)) $ \arr ->
-            bgroup
-              "Seq"
-              [ bench "thawS" $ whnfIO (thawS arr)
-              ]
-        , env (return (arrRLightIx2 P Par sz)) $ \arr ->
-            bgroup
-              "Par"
-              [ bench "thaw" $ whnfIO (thaw arr)
-              ]
+        [ bench "thaw Par" $ whnfIO (thaw (setComp (ParN 2) arr))
+        , bench "thawS" $ whnfIO (thawS arr)
+        -- , bench "makeMArrayLinearS" $
+        --   whnfIO (makeMArrayLinearS @r (size arr) (pure . unsafeLinearIndexM arr))
+        ]
+    , bgroup
+        "Freeze"
+        [ bench "freeze Par" $ whnfIO (freeze (ParN 2) marr)
+        , bench "freezeS" $ whnfIO (freezeS marr)
+        -- , bench "generateArrayLinearS" $
+        --   whnfIO (generateArrayLinearS @r Seq (msize marr) (unsafeLinearRead marr))
         ]
     ]

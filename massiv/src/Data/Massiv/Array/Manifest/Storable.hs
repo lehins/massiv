@@ -2,6 +2,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -32,8 +33,11 @@ module Data.Massiv.Array.Manifest.Storable
 
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.IO.Unlift
+import Control.Monad.Primitive (unsafePrimToPrim)
 import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Manifest.Primitive (shrinkMutableByteArray)
+import Data.Primitive.ByteArray (MutableByteArray(..))
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
@@ -41,8 +45,11 @@ import Data.Massiv.Core.List
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Storable.Mutable as MVS
-import Foreign.ForeignPtr
 import Foreign.Ptr
+import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
+import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Storable
+import Foreign.Marshal.Array (copyArray, advancePtr)
 import GHC.Exts as GHC (IsList(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
@@ -155,6 +162,39 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   unsafeLinearWrite (MSArray _ mv) =
     INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", Sz . MVS.length, MVS.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
+
+  -- TODO: Try approach from `vector`, fallback on Prim for setByteArray/recursive copyArray
+  -- unsafeLinearSet (MSArray _ v) = setByteArray ma
+  -- {-# INLINE unsafeLinearSet #-}
+
+  unsafeLinearCopy marrFrom iFrom marrTo iTo (Sz k) = do
+    let MSArray _ (MVS.MVector _ fpFrom) = marrFrom
+        MSArray _ (MVS.MVector _ fpTo) = marrTo
+    unsafePrimToPrim $
+      withForeignPtr fpFrom $ \ ptrFrom ->
+        withForeignPtr fpTo $ \ ptrTo -> do
+          let ptrFrom' = advancePtr ptrFrom iFrom
+              ptrTo' = advancePtr ptrTo iTo
+          copyArray ptrTo' ptrFrom' k
+  {-# INLINE unsafeLinearCopy #-}
+
+  unsafeArrayLinearCopy arrFrom iFrom marrTo iTo sz = do
+    marrFrom <- unsafeThaw arrFrom
+    unsafeLinearCopy marrFrom iFrom marrTo iTo sz
+  {-# INLINE unsafeArrayLinearCopy #-}
+
+  unsafeLinearShrink (MSArray _ mv@(MVS.MVector _ (ForeignPtr _ fpc))) sz = do
+    let shrinkMBA :: MutableByteArray RealWorld -> IO ()
+        shrinkMBA mba = shrinkMutableByteArray mba (totalElem sz * sizeOf (undefined :: e))
+    unsafePrimToPrim $ case fpc of
+      MallocPtr mba# _ -> shrinkMBA (MutableByteArray mba#)
+      PlainPtr mba# -> shrinkMBA (MutableByteArray mba#)
+      _ -> error "Fallback on manual copy"
+    pure $ MSArray sz mv
+  {-# INLINE unsafeLinearShrink #-}
+
+  unsafeLinearGrow (MSArray _ mv) sz = MSArray sz <$> MVS.unsafeGrow mv (totalElem sz)
+  {-# INLINE unsafeLinearGrow #-}
 
 
 instance (Index ix, VS.Storable e) => Load S ix e where
