@@ -26,11 +26,12 @@ module Data.Massiv.Array.Delayed.Push
   , fromStrideLoad
   ) where
 
+import Control.Monad
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
-import qualified Data.Semigroup as Semigroup
 import Prelude hiding (map, zipWith)
-import Control.Applicative
+import Control.Scheduler as S (traverse_)
+import Data.Foldable as F
 
 #include "massiv.h"
 
@@ -64,25 +65,60 @@ instance Index ix => Resize DL ix where
   {-# INLINE unsafeResize #-}
 
 instance Semigroup (Array DL Ix1 e) where
-  (<>) (DLArray c1 sz1 def1 load1) (DLArray c2 sz2 def2 load2) =
-    DLArray
-      {dlComp = c1 <> c2, dlSize = SafeSz (k + unSz sz2), dlDefault = def1 <|> def2, dlLoad = load}
-    where
-      !k = unSz sz1
-      load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
-      load scheduler startAt dlWrite = do
-        load1 scheduler startAt dlWrite
-        load2 scheduler (startAt + k) dlWrite
-      {-# INLINE load #-}
+  (<>) = mappendDL
   {-# INLINE (<>) #-}
 
-
 instance Monoid (Array DL Ix1 e) where
-  mempty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
+  mempty =
+    DLArray
+      {dlComp = mempty, dlSize = Sz zeroIndex, dlDefault = Nothing, dlLoad = \_ _ _ -> pure ()}
   {-# INLINE mempty #-}
-
-  mappend = (Semigroup.<>)
+  mappend = mappendDL
   {-# INLINE mappend #-}
+  mconcat [] = mempty
+  mconcat [x] = x
+  mconcat [x, y] = x <> y
+  mconcat xs = mconcatDL xs
+  {-# INLINE mconcat #-}
+
+mconcatDL :: forall e . [Array DL Ix1 e] -> Array DL Ix1 e
+mconcatDL !arrs =
+  DLArray {dlComp = foldMap getComp arrs, dlSize = SafeSz k, dlDefault = Nothing, dlLoad = load}
+  where
+    !k = F.foldl' (+) 0 (unSz . size <$> arrs)
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load scheduler startAt dlWrite =
+      let loadArr !startAtCur DLArray {dlSize = SafeSz kCur, dlDefault, dlLoad} = do
+            let !endAtCur = startAtCur + kCur
+            scheduleWork_ scheduler $ do
+              S.traverse_
+                (\def -> loopM_ startAtCur (< endAtCur) (+ 1) (`dlWrite` def))
+                dlDefault
+              dlLoad scheduler startAtCur dlWrite
+            pure endAtCur
+          {-# INLINE loadArr #-}
+       in foldM_ loadArr startAt arrs
+    {-# INLINE load #-}
+{-# INLINE mconcatDL #-}
+
+
+mappendDL :: forall e . Array DL Ix1 e -> Array DL Ix1 e -> Array DL Ix1 e
+mappendDL (DLArray c1 sz1 mDef1 load1) (DLArray c2 sz2 mDef2 load2) =
+  DLArray {dlComp = c1 <> c2, dlSize = SafeSz (k1 + k2), dlDefault = Nothing, dlLoad = load}
+  where
+    !k1 = unSz sz1
+    !k2 = unSz sz2
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load scheduler startAt dlWrite = do
+      scheduleWork_ scheduler $ do
+        S.traverse_ (\def1 -> loopM_ startAt (< k1) (+ 1) (`dlWrite` def1)) mDef1
+        load1 scheduler startAt dlWrite
+      scheduleWork_ scheduler $ do
+        let startAt2 = startAt + k1
+        S.traverse_ (\def2 -> loopM_ startAt2 (< startAt2 + k2) (+ 1) (`dlWrite` def2)) mDef2
+        load2 scheduler startAt2 dlWrite
+    {-# INLINE load #-}
+{-# INLINE mappendDL #-}
 
 -- | Describe how an array should be loaded into memory
 --
