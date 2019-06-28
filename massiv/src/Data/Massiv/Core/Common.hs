@@ -37,6 +37,7 @@ module Data.Massiv.Core.Common
   , unsafeRead
   , unsafeWrite
   , unsafeLinearModify
+  , unsafeDefaultLinearShrink
   , Ragged(..)
   , Nested(..)
   , NestedStruct
@@ -376,10 +377,7 @@ class Manifest r ix e => Mutable r ix e where
   -- @since 0.3.6
   unsafeLinearShrink :: PrimMonad m =>
                      MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
-  unsafeLinearShrink marr sz = do
-    marr' <- unsafeNew sz
-    unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem sz)
-    pure marr'
+  unsafeLinearShrink = unsafeDefaultLinearShrink
   {-# INLINE unsafeLinearShrink #-}
 
   -- | Linearly increase the size of an array. Total number of elements should be larger.
@@ -392,6 +390,19 @@ class Manifest r ix e => Mutable r ix e where
     unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem (msize marr))
     pure marr'
   {-# INLINE unsafeLinearGrow #-}
+
+
+unsafeDefaultLinearShrink ::
+     (Mutable r ix e, PrimMonad m)
+  => MArray (PrimState m) r ix e
+  -> Sz ix
+  -> m (MArray (PrimState m) r ix e)
+unsafeDefaultLinearShrink marr sz = do
+  marr' <- unsafeNew sz
+  unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem sz)
+  pure marr'
+{-# INLINE unsafeDefaultLinearShrink #-}
+
 
 -- | Read an array element
 unsafeRead :: (Mutable r ix e, PrimMonad m) =>

@@ -381,7 +381,7 @@ computeWithStrideAs _ = computeWithStride
 
 
 -- | Efficiently iterate a function until a convergence condition is satisfied. If the
--- size of array doesn't change between iterations then no more than two new array will be
+-- size of array doesn't change between iterations then no more than two new arrays will be
 -- allocated, regardless of the number of iterations. If the size does change from one
 -- iteration to another, an attempt will be made to grow/shrink the intermediate mutable
 -- array instead of allocating a new one.

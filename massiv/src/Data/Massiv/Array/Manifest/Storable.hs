@@ -183,14 +183,18 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
     unsafeLinearCopy marrFrom iFrom marrTo iTo sz
   {-# INLINE unsafeArrayLinearCopy #-}
 
-  unsafeLinearShrink (MSArray _ mv@(MVS.MVector _ (ForeignPtr _ fpc))) sz = do
+  unsafeLinearShrink marr@(MSArray _ mv@(MVS.MVector _ (ForeignPtr _ fpc))) sz = do
     let shrinkMBA :: MutableByteArray RealWorld -> IO ()
         shrinkMBA mba = shrinkMutableByteArray mba (totalElem sz * sizeOf (undefined :: e))
-    unsafePrimToPrim $ case fpc of
-      MallocPtr mba# _ -> shrinkMBA (MutableByteArray mba#)
-      PlainPtr mba# -> shrinkMBA (MutableByteArray mba#)
-      _ -> error "Fallback on manual copy"
-    pure $ MSArray sz mv
+        {-# INLINE shrinkMBA #-}
+    case fpc of
+      MallocPtr mba# _ -> do
+        unsafePrimToPrim $ shrinkMBA (MutableByteArray mba#)
+        pure $ MSArray sz mv
+      PlainPtr mba# -> do
+        unsafePrimToPrim $ shrinkMBA (MutableByteArray mba#)
+        pure $ MSArray sz mv
+      _ -> unsafeDefaultLinearShrink marr sz
   {-# INLINE unsafeLinearShrink #-}
 
   unsafeLinearGrow (MSArray _ mv) sz = MSArray sz <$> MVS.unsafeGrow mv (totalElem sz)
