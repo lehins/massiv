@@ -25,7 +25,6 @@ import Control.Applicative
 import Control.DeepSeq
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of every array
 -- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and

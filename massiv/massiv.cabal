@@ -1,5 +1,5 @@
 name:                massiv
-version:             0.3.5.0
+version:             0.3.6.0
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -79,6 +79,10 @@ library
                      , primitive
                      , unliftio-core
                      , vector
+
+  if impl(ghc < 8.4)
+    build-depends: ghc-prim
+
   include-dirs: include
   install-includes: massiv.h
 

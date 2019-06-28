@@ -1,3 +1,8 @@
+# 0.3.6
+
+* Addition of `unsafeArrayLinearCopy`, `unsafeLinearCopy`, `unsafeLinearShrink`, `unsafeLinearGrow`
+* Implementation of `iterateUntil` and `iterateUntilM`
+
 # 0.3.5
 
 * Fix and export `guardNumberOfElements`

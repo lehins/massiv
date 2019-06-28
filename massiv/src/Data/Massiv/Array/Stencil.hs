@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -114,3 +115,4 @@ makeStencilDef defVal !sSz !sCenter relStencil =
       inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
 {-# INLINE makeStencilDef #-}
+

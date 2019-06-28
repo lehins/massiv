@@ -51,6 +51,9 @@ import Data.Primitive.ByteArray
 import Data.Primitive.Types
 import GHC.Base (Int(..))
 import GHC.Exts as GHC
+#if !MIN_VERSION_base(4,11,0)
+import GHC.Prim as GHC
+#endif
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -192,6 +195,23 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
   unsafeLinearSet (MPArray _ ma) = setByteArray ma
   {-# INLINE unsafeLinearSet #-}
+
+  unsafeLinearCopy (MPArray _ maFrom) iFrom (MPArray _ maTo) iTo (Sz k) =
+    copyMutableByteArray maTo iTo maFrom iFrom (k * sizeOf (undefined :: e))
+  {-# INLINE unsafeLinearCopy #-}
+
+  unsafeArrayLinearCopy (PArray _ _ aFrom) iFrom (MPArray _ maTo) iTo (Sz k) =
+    copyByteArray maTo iTo aFrom iFrom (k * sizeOf (undefined :: e))
+  {-# INLINE unsafeArrayLinearCopy #-}
+
+  unsafeLinearShrink (MPArray _ ma) sz = do
+    shrinkMutableByteArray ma (totalElem sz * sizeOf (undefined :: e))
+    pure $ MPArray sz ma
+  {-# INLINE unsafeLinearShrink #-}
+
+  unsafeLinearGrow (MPArray _ ma) sz =
+    MPArray sz <$> resizeMutableByteArray ma (totalElem sz * sizeOf (undefined :: e))
+  {-# INLINE unsafeLinearGrow #-}
 
 
 instance (Prim e, Index ix) => Load P ix e where
@@ -458,3 +478,24 @@ unsafeAtomicXorIntArray _mpa@(MPArray sz mba) ix (I# e#) =
   mba
   (toLinearIndex sz ix)
 {-# INLINE unsafeAtomicXorIntArray #-}
+
+
+
+#if !MIN_VERSION_primitive(0,6,4)
+resizeMutableByteArray ::
+     PrimMonad m => MutableByteArray (PrimState m) -> Int -> m (MutableByteArray (PrimState m))
+resizeMutableByteArray (MutableByteArray arr#) (I# n#) =
+  primitive
+    (\s# ->
+       case resizeMutableByteArray# arr# n# s# of
+         (# s'#, arr'# #) -> (# s'#, MutableByteArray arr'# #))
+{-# INLINE resizeMutableByteArray #-}
+#endif
+
+shrinkMutableByteArray :: forall m. (PrimMonad m)
+  => MutableByteArray (PrimState m)
+  -> Int -- ^ new size
+  -> m ()
+{-# INLINE shrinkMutableByteArray #-}
+shrinkMutableByteArray (MutableByteArray arr#) (I# n#)
+  = primitive_ (shrinkMutableByteArray# arr# n#)

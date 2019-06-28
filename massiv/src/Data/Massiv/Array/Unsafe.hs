@@ -42,6 +42,10 @@ module Data.Massiv.Array.Unsafe
   , unsafeWrite
   , unsafeLinearWrite
   , unsafeLinearSet
+  , unsafeLinearCopy
+  , unsafeArrayLinearCopy
+  , unsafeLinearShrink
+  , unsafeLinearGrow
     -- * Pointer access
   , unsafeWithPtr
   , unsafeArrayToForeignPtr

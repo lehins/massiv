@@ -28,7 +28,6 @@ module Data.Massiv.Array.Delayed.Pull
 import qualified Data.Foldable as F
 import Data.Massiv.Array.Ops.Fold.Internal as A
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal
 import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 import GHC.Base (build)
 import Prelude hiding (zipWith)

@@ -82,7 +82,7 @@ module Data.Massiv.Array.Mutable
 
 -- TODO: add fromListM, et al.
 
-import Control.Monad (unless)
+import Control.Monad (when, unless)
 import Control.Monad.ST
 import Control.Scheduler
 import Data.Massiv.Core.Common
@@ -140,7 +140,24 @@ new = initializeNew Nothing
 --
 -- @since 0.1.0
 thaw :: forall r ix e m. (Mutable r ix e, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
-thaw arr = liftIO $ makeMArrayLinear (getComp arr) (size arr) (pure . unsafeLinearIndexM arr)
+thaw arr =
+  liftIO $ do
+  --   let sz = size arr
+  --       totalLength = totalElem sz
+  --   marr <- unsafeNew sz
+  --   withScheduler_ (getComp arr) $ \scheduler ->
+  --     splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+  --       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+  --         scheduleWork_ scheduler $ unsafeArrayLinearCopy arr start marr start (SafeSz chunkLength)
+  --       let slackLength = totalLength - slackStart
+  --       when (slackLength > 0) $
+  --         scheduleWork_ scheduler $
+  --         unsafeArrayLinearCopy arr slackStart marr slackStart (SafeSz slackLength)
+  --   pure marr
+    tmarr <- unsafeNew (size arr)
+    unsafeArrayLinearCopy arr 0 tmarr 0 (SafeSz (totalElem (size arr)))
+    pure tmarr
+  -- liftIO $ makeMArrayLinear (getComp arr) (size arr) (pure . unsafeLinearIndexM arr)
 -- TODO: use faster memcpy
 {-# INLINE thaw #-}
 
@@ -162,7 +179,11 @@ thawS ::
      forall r ix e m. (Mutable r ix e, PrimMonad m)
   => Array r ix e
   -> m (MArray (PrimState m) r ix e)
-thawS arr = makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
+thawS arr = do
+  tmarr <- unsafeNew (size arr)
+  unsafeArrayLinearCopy arr 0 tmarr 0 (SafeSz (totalElem (size arr)))
+  pure tmarr
+--  makeMArrayLinearS (size arr) (pure . unsafeLinearIndexM arr)
 -- TODO: use faster memcpy
 {-# INLINE thawS #-}
 
@@ -189,7 +210,25 @@ freeze ::
   => Comp
   -> MArray RealWorld r ix e
   -> m (Array r ix e)
-freeze comp marr = liftIO $ generateArrayLinear comp (msize marr) (unsafeLinearRead marr)
+freeze comp smarr =
+  liftIO $ do
+  --   let sz = msize smarr
+  --       totalLength = totalElem sz
+  --   tmarr <- unsafeNew sz
+  --   withScheduler_ comp $ \scheduler ->
+  --     splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+  --       loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+  --         scheduleWork_ scheduler $ unsafeLinearCopy smarr start tmarr start (SafeSz chunkLength)
+  --       let slackLength = totalLength - slackStart
+  --       when (slackLength > 0) $
+  --         scheduleWork_ scheduler $
+  --         unsafeLinearCopy smarr slackStart tmarr slackStart (SafeSz slackLength)
+  --   unsafeFreeze comp tmarr
+  -- liftIO $ generateArrayLinear comp (msize smarr) (unsafeLinearRead smarr)
+    let sz = msize smarr
+    tmarr <- unsafeNew sz
+    unsafeLinearCopy smarr 0 tmarr 0 (SafeSz (totalElem sz))
+    unsafeFreeze Seq tmarr
 {-# INLINE freeze #-}
 
 
@@ -201,7 +240,12 @@ freezeS ::
      forall r ix e m. (Mutable r ix e, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> m (Array r ix e)
-freezeS marr = generateArrayLinearS Seq (msize marr) (unsafeLinearRead marr)
+freezeS smarr = do
+  let sz = msize smarr
+  tmarr <- unsafeNew sz
+  unsafeLinearCopy smarr 0 tmarr 0 (SafeSz (totalElem sz))
+  unsafeFreeze Seq tmarr
+  --generateArrayLinearS Seq (msize marr) (unsafeLinearRead marr)
 {-# INLINE freezeS #-}
 
 newMaybeInitialized ::

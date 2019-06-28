@@ -11,9 +11,11 @@
 module Data.Massiv.Array.Mutable.Algorithms
   ( quicksortM_
   , unstablePartitionM
+  , iterateUntilM
   ) where
 
 import Data.Massiv.Array.Ops.Sort
+import Data.Massiv.Array.Manifest.Internal (iterateUntilM)
 import Data.Massiv.Core.Common
 
 

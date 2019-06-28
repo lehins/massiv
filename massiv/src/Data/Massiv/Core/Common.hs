@@ -45,6 +45,7 @@ module Data.Massiv.Core.Common
   -- * Size
   , elemsCount
   , isEmpty
+  , Sz(SafeSz)
   -- * Indexing
   , (!?)
   , index
@@ -86,6 +87,7 @@ import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
                           scheduleWork, scheduleWork_)
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
+import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Typeable
 
 #include "massiv.h"
@@ -328,12 +330,68 @@ class Manifest r ix e => Mutable r ix e where
     return marr
   {-# INLINE initializeNew #-}
 
-
+  -- | Set all cells in the mutable array within the range to a specified value.
+  --
+  -- @since 0.3.0
   unsafeLinearSet :: PrimMonad m =>
-                     MArray (PrimState m) r ix e -> Int -> Int -> e -> m ()
+                     MArray (PrimState m) r ix e -> Ix1 -> Int -> e -> m ()
   unsafeLinearSet marr offset len e =
     loopM_ offset (< (offset + len)) (+1) (\i -> unsafeLinearWrite marr i e)
   {-# INLINE unsafeLinearSet #-}
+
+  -- | Copy part of one mutable array into another
+  --
+  -- @since 0.3.6
+  unsafeLinearCopy :: PrimMonad m =>
+                      MArray (PrimState m) r ix e -- ^ Source mutable array
+                   -> Ix1 -- ^ Starting index at source array
+                   -> MArray (PrimState m) r ix e -- ^ Target mutable array
+                   -> Ix1 -- ^ Starting index at target array
+                   -> Sz1 -- ^ Number of elements to copy
+                   -> m ()
+  unsafeLinearCopy marrFrom iFrom marrTo iTo (SafeSz k) = do
+    let delta = iTo - iFrom
+    loopM_ iFrom (< k + iFrom) (+1) $ \i ->
+      unsafeLinearRead marrFrom i >>= unsafeLinearWrite marrTo (i + delta)
+  {-# INLINE unsafeLinearCopy #-}
+
+  -- | Copy a part of a pure array into a mutable array
+  --
+  -- @since 0.3.6
+  unsafeArrayLinearCopy :: PrimMonad m =>
+                           Array r ix e -- ^ Source pure array
+                        -> Ix1 -- ^ Starting index at source array
+                        -> MArray (PrimState m) r ix e -- ^ Target mutable array
+                        -> Ix1 -- ^ Starting index at target array
+                        -> Sz1 -- ^ Number of elements to copy
+                        -> m ()
+  unsafeArrayLinearCopy arrFrom iFrom marrTo iTo (SafeSz k) = do
+    let delta = iTo - iFrom
+    loopM_ iFrom (< k + iFrom) (+1) $ \i ->
+      unsafeLinearWrite marrTo (i + delta) (unsafeLinearIndex arrFrom i)
+  {-# INLINE unsafeArrayLinearCopy #-}
+
+  -- | Linearly reduce the size of an array. Total number of elements should be smaller.
+  --
+  -- @since 0.3.6
+  unsafeLinearShrink :: PrimMonad m =>
+                     MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
+  unsafeLinearShrink marr sz = do
+    marr' <- unsafeNew sz
+    unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem sz)
+    pure marr'
+  {-# INLINE unsafeLinearShrink #-}
+
+  -- | Linearly increase the size of an array. Total number of elements should be larger.
+  --
+  -- @since 0.3.6
+  unsafeLinearGrow :: PrimMonad m =>
+                     MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
+  unsafeLinearGrow marr sz = do
+    marr' <- unsafeNew sz
+    unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem (msize marr))
+    pure marr'
+  {-# INLINE unsafeLinearGrow #-}
 
 -- | Read an array element
 unsafeRead :: (Mutable r ix e, PrimMonad m) =>

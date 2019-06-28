@@ -38,6 +38,8 @@ module Data.Massiv.Array.Manifest.Internal
   , fromRaggedArray
   , sizeofArray
   , sizeofMutableArray
+  , iterateUntil
+  , iterateUntilM
   ) where
 
 import Control.Exception (try)
@@ -375,3 +377,131 @@ computeWithStrideAs ::
      (Mutable r ix e, StrideLoad r' ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
 computeWithStrideAs _ = computeWithStride
 {-# INLINE computeWithStrideAs #-}
+
+
+
+-- | Efficiently iterate a function until a convergence condition is satisfied. If the
+-- size of array doesn't change between iterations then no more than two new array will be
+-- allocated, regardless of the number of iterations. If the size does change from one
+-- iteration to another, an attempt will be made to grow/shrink the intermediate mutable
+-- array instead of allocating a new one.
+--
+-- ====__Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> a = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> w (0 :. 0) 1 >> pure ()
+-- >>> a
+-- Array P Seq (Sz (8 :. 8))
+--   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
+--   ]
+-- >>> nextPascalRow cur above = if cur == 0 then above else cur
+-- >>> pascal = makeStencil (Sz2 2 2) 1 $ \ get -> nextPascalRow <$> get (0 :. 0) <*> get (-1 :. -1) + get (-1 :. 0)
+-- >>> iterateUntil (\_ _ a -> (a ! (7 :. 7)) /= 0) (\ _ -> mapStencil (Fill 0) pascal) a
+-- Array P Seq (Sz (8 :. 8))
+--   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
+--   , [ 1, 1, 0, 0, 0, 0, 0, 0 ]
+--   , [ 1, 2, 1, 0, 0, 0, 0, 0 ]
+--   , [ 1, 3, 3, 1, 0, 0, 0, 0 ]
+--   , [ 1, 4, 6, 4, 1, 0, 0, 0 ]
+--   , [ 1, 5, 10, 10, 5, 1, 0, 0 ]
+--   , [ 1, 6, 15, 20, 15, 6, 1, 0 ]
+--   , [ 1, 7, 21, 35, 35, 21, 7, 1 ]
+--   ]
+--
+-- @since 0.3.6
+iterateUntil ::
+     (Load r' ix e, Mutable r ix e)
+  => (Int -> Array r ix e -> Array r ix e -> Bool)
+  -- ^ Convergence condition. Accepts current iteration counter, array at the previous
+  -- state and at the current state.
+  -> (Int -> Array r ix e -> Array r' ix e)
+  -- ^ A modifying function to apply at each iteration. The size of resulting array may
+  -- differ if necessary
+  -> Array r ix e -- ^ Initial source array
+  -> Array r ix e
+iterateUntil convergence iteration initArr0
+  | convergence 0 initArr0 initArr1 = initArr1
+  | otherwise =
+    unsafePerformIO $ do
+      let loadArr = iteration 1 initArr1
+      marr <- unsafeNew (size loadArr)
+      iterateLoop
+        (\n a a' _ -> pure $ convergence n a a')
+        iteration
+        1
+        initArr1
+        loadArr
+        (asArr initArr0 marr)
+  where
+    !initArr1 = compute $ iteration 0 initArr0
+    asArr :: Array r ix e -> MArray s r ix e -> MArray s r ix e
+    asArr _ = id
+{-# INLINE iterateUntil #-}
+
+-- | Monadic version of `iterateUntil` where at each iteration mutable version of an array
+-- is available.
+--
+-- @since 0.3.6
+iterateUntilM ::
+     (Load r' ix e, Mutable r ix e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
+  => (Int -> Array r ix e -> MArray (PrimState m) r ix e -> m Bool)
+  -- ^ Convergence condition. Accepts current iteration counter, pure array at previous
+  -- state and a mutable at the current state, therefore after each iteration its contents
+  -- can be modifed if necessary.
+  -> (Int -> Array r ix e -> Array r' ix e)
+  -- ^ A modifying function to apply at each iteration.  The size of resulting array may
+  -- differ if necessary.
+  -> Array r ix e -- ^ Initial source array
+  -> m (Array r ix e)
+iterateUntilM convergence iteration initArr0 = do
+  let loadArr0 = iteration 0 initArr0
+  initMArr1 <- unsafeNew (size loadArr0)
+  computeInto initMArr1 loadArr0
+  shouldStop <- convergence 0 initArr0 initMArr1
+  initArr1 <- unsafeFreeze (getComp loadArr0) initMArr1
+  if shouldStop
+    then pure initArr1
+    else do
+      let loadArr1 = iteration 1 initArr1
+      marr <- unsafeNew (size loadArr1)
+      iterateLoop (\n a _ -> convergence n a) iteration 1 initArr1 loadArr1 marr
+{-# INLINE iterateUntilM #-}
+
+
+iterateLoop ::
+     (Load r' ix e, Mutable r ix e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
+  => (Int -> Array r ix e -> Array r ix e -> MArray (PrimState m) r ix e -> m Bool)
+  -> (Int -> Array r ix e -> Array r' ix e)
+  -> Int
+  -> Array r ix e
+  -> Array r' ix e
+  -> MArray (PrimState m) r ix e
+  -> m (Array r ix e)
+iterateLoop convergence iteration = go
+  where
+    go !n !arr !loadArr !marr = do
+      let !sz = size loadArr
+          !k = totalElem sz
+          !mk = totalElem (msize marr)
+      marr' <-
+        if k == mk
+          then pure marr
+          else if k < mk
+                 then unsafeLinearShrink marr sz
+                 else unsafeLinearGrow marr sz
+      computeInto marr' loadArr
+      arr' <- unsafeFreeze (getComp loadArr) marr'
+      shouldStop <- convergence n arr arr' marr'
+      if shouldStop
+        then pure arr'
+        else do
+          nextMArr <- unsafeThaw arr
+          go (n + 1) arr' (iteration (n + 1) arr') nextMArr
+{-# INLINE iterateLoop #-}

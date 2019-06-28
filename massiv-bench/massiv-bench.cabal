@@ -140,6 +140,17 @@ benchmark grid
                      , massiv-bench
   default-language:    Haskell2010
 
+benchmark mutable
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Sum.hs
+  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+                     , vector
+  default-language:    Haskell2010
 -- benchmark fuse-seq
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench

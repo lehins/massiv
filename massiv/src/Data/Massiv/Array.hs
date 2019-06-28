@@ -118,8 +118,11 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Ops.Transform
   -- * Slicing
   , module Data.Massiv.Array.Ops.Slice
-  -- * Sorting
+  -- * Algorithms
+  -- ** Sorting
   , quicksort
+  -- ** Iterations
+  , iterateUntil
   -- * Conversion
   , module Data.Massiv.Array.Manifest.List
   -- * Mutable
