@@ -19,6 +19,7 @@ module Data.Massiv.Array.Numeric
   , (.^)
   , (|*|)
   , multiplyTransposed
+  , identityMatrix
   , negateA
   , absA
   , signumA
@@ -64,6 +65,7 @@ module Data.Massiv.Array.Numeric
   ) where
 
 import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Ops.Fold as A
 import Data.Massiv.Array.Ops.Map as A
@@ -179,6 +181,24 @@ multiplyTransposed arr1 arr2
     SafeSz (m1 :. n1) = size arr1
     SafeSz (n2 :. m2) = size arr2
 {-# INLINE multiplyTransposed #-}
+
+-- | Create an indentity matrix.
+--
+-- ====___Example__
+--
+-- >>> identityMatrix 5
+-- Array DL Seq (Sz (5 :. 5))
+--   [ [ 1, 0, 0, 0, 0 ]
+--   , [ 0, 1, 0, 0, 0 ]
+--   , [ 0, 0, 1, 0, 0 ]
+--   , [ 0, 0, 0, 1, 0 ]
+--   , [ 0, 0, 0, 0, 1 ]
+--   ]
+--
+-- @since 0.3.6
+identityMatrix :: Int -> Array DL Ix2 Int
+identityMatrix n = makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
+{-# INLINE identityMatrix #-}
 
 
 negateA

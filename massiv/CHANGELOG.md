@@ -2,6 +2,7 @@
 
 * Addition of `unsafeArrayLinearCopy`, `unsafeLinearCopy`, `unsafeLinearShrink`, `unsafeLinearGrow`
 * Implementation of `iterateUntil` and `iterateUntilM`
+* `identityMatrix` - generation of identity matrix
 
 # 0.3.5
 

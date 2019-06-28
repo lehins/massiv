@@ -32,7 +32,7 @@ main :: IO ()
 main = do
   let !sz = Sz2 200 600
       !arr = arrRLightIx2 U Seq sz
-      !mat = S.Matrix 200 200 $ A.toVector arr
+      !mat = S.Matrix 200 600 $ A.toVector arr
   defaultMain
     [ env (return (computeAs U (A.transpose arr), S.transpose mat)) $ \ ~(arr', mat') ->
         bgroup
@@ -43,7 +43,7 @@ main = do
               , bench "multiplyTranspose" $
                 whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr
               , bench "multArrsAlt" $ whnf (multArrsAlt (setComp Seq arr)) arr'
-              , bench "multiply (Fast)" $ whnf (SF.multiply mat) mat'
+              , bench "multiply (dense-linear-algebra)" $ whnf (SF.multiply mat) mat'
               ]
           , bgroup
               "Par"
