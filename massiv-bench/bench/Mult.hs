@@ -3,10 +3,12 @@ module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
+import Data.Massiv.Array.SIMD.Double
 import Data.Massiv.Array.Manifest.Vector as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
-import Prelude as P
+import Prelude as P hiding ((<>))
+import Data.Semigroup
 
 import Statistics.Matrix as S
 import Statistics.Matrix.Fast as SF
@@ -32,7 +34,10 @@ main :: IO ()
 main = do
   let !sz = Sz2 200 600
       !arr = arrRLightIx2 U Seq sz
+      !arr2 = computeAs U arr
       !mat = S.Matrix 200 600 $ A.toVector arr
+      !arrV = arrRLightIx2 V Seq sz
+      !arrV2 = computeAs V arrV
   defaultMain
     [ env (return (computeAs U (A.transpose arr), S.transpose mat)) $ \ ~(arr', mat') ->
         bgroup
@@ -41,7 +46,9 @@ main = do
               "Seq"
               [ bench "(|*|)" $ whnf (setComp Seq arr |*|) arr'
               , bench "multiplyTranspose" $
-                whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr
+                whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr2
+              , bench "multiplyTransposeSIMD" $
+                whnf (computeAs P . multiplyTransposedSIMD arrV) arrV2
               , bench "multArrsAlt" $ whnf (multArrsAlt (setComp Seq arr)) arr'
               , bench "multiply (dense-linear-algebra)" $ whnf (SF.multiply mat) mat'
               ]
@@ -50,7 +57,9 @@ main = do
               [ bench "(|*|)" $ whnf (setComp Par arr |*|) arr'
               , bench "fused (|*|)" $ whnf ((setComp Par arr |*|) . A.transpose) arr
               , bench "multiplyTranspose" $
-                whnf (computeAs U . multiplyTransposed (setComp Par arr)) arr
+                whnf (computeAs U . multiplyTransposed (setComp Par arr)) arr2
+              , bench "multiplyTransposeSIMD" $
+                whnf (computeAs P . multiplyTransposedSIMD (setComp Par arrV)) arrV2
               , bench "multArrsAlt" $ whnf (multArrsAlt (setComp Par arr)) arr'
               ]
           ]

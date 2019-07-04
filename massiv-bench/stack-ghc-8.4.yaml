@@ -1,8 +1,9 @@
 resolver: lts-12.26
 packages:
 - '.'
-- '../massiv/'
 extra-deps:
+- '../massiv/'
+- '../../massiv-simd/'
 - scheduler-1.4.0@sha256:b182be9a7b84e1dba02dac761c3f4e204521d0f779d72d86040789d5aaadf92a,2833
 - github: lehins/dh-core
   commit: a24cd447718a23c9bb5732df5cfcc65bb91e5f2d

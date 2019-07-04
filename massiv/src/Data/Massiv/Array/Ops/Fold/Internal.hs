@@ -41,10 +41,11 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldrP
   , ifoldlIO
   , ifoldrIO
+  , splitReduce
   ) where
 
-import Control.Scheduler
 import Control.Monad (void, when)
+import Control.Scheduler
 import qualified Data.Foldable as F
 import Data.Functor.Identity (runIdentity)
 import Data.Massiv.Core.Common
@@ -326,6 +327,33 @@ ifoldlIO f !initAcc g !tAcc !arr = do
             f acc ix (unsafeLinearIndex arr i)
   F.foldlM g tAcc results
 {-# INLINE ifoldlIO #-}
+
+-- | Split an array into linear row-major vector chunks and apply an action to each of
+-- them. Number of chunks will depend on the computation strategy. Results of each action
+-- will be combined with a folding function.
+--
+-- @since 0.3.7
+splitReduce ::
+     (MonadUnliftIO m, Source r ix e, Resize r ix, Extract r Ix1 e)
+  => (Scheduler m a -> Array (EltRepr r Ix1) Ix1 e -> m a)
+  -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
+  -> b -- ^ Accumulator for chunks folding
+  -> Array r ix e
+  -> m b
+splitReduce f g !tAcc !arr = do
+  let !sz = size arr
+      !totalLength = totalElem sz
+      arrFlat = unsafeResize (SafeSz totalLength) arr
+  results <-
+    withScheduler (getComp arr) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $ f scheduler $ unsafeExtract start (SafeSz chunkLength) arrFlat
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          f scheduler $ unsafeExtract slackStart (SafeSz (totalLength - slackStart)) arrFlat
+  F.foldlM g tAcc results
+{-# INLINE splitReduce #-}
 
 
 

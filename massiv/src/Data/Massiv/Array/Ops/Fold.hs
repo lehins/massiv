@@ -28,6 +28,7 @@ module Data.Massiv.Array.Ops.Fold
   , maximum'
   , maximum
   , sum
+  , sum'
   , product
   , and
   , or
@@ -89,6 +90,7 @@ module Data.Massiv.Array.Ops.Fold
   , ifoldrP
   , ifoldlIO
   , ifoldrIO
+  , splitReduce
   ) where
 
 import Data.Massiv.Array.Delayed.Pull
@@ -338,6 +340,17 @@ minimum :: (Source r ix e, Ord e) => Array r ix e -> e
 minimum = minimum'
 {-# INLINE minimum #-}
 {-# DEPRECATED minimum "In favor of a safer `minimumM` or an equivalent `minimum'`" #-}
+
+
+-- | /O(n)/ - Compute sum of all elements.
+--
+-- @since 0.1.0
+sum' ::
+     (Source r ix e, Num e, Resize r ix, Source (EltRepr r Ix1) Ix1 e, Extract r Ix1 e)
+  => Array r ix e
+  -> IO e
+sum' = splitReduce (\_ a -> pure $ foldlS (+) 0 a) (\x y -> pure (x + y)) 0
+{-# INLINE sum' #-}
 
 -- | /O(n)/ - Compute sum of all elements.
 --

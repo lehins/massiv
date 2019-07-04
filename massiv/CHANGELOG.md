@@ -1,3 +1,8 @@
+# 0.3.7
+
+* Expose `Data.Massiv.Core.List`
+
+
 # 0.3.6
 
 * Addition of `unsafeArrayLinearCopy`, `unsafeLinearCopy`, `unsafeLinearShrink`, `unsafeLinearGrow`
