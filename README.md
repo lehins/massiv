@@ -590,7 +590,21 @@ Benchmark fold-seq: FINISH
 
 # Further resources on learning `massiv`:
 
-## Talk at [Monadic Warsaw](https://www.meetup.com/Monadic-Warsaw/events/249543097/)
+## Workshop at [Monadic Party - 2019](https://monadic.party)
 
-* [Slides](learning/slides/2018-MonadicWarsaw.pdf)
+* Video:
+  * [Haskell Arrays with Massiv 1/6](https://www.youtube.com/watch?v=euEacUD6jQQ)
+  * [Haskell Arrays with Massiv 2/6](https://www.youtube.com/watch?v=WTeaDUOrbaw)
+  * [Haskell Arrays with Massiv 3/6](https://www.youtube.com/watch?v=vTbpeugaucI)
+  <!-- * [Haskell Arrays with Massiv 4/6]() -->
+  <!-- * [Haskell Arrays with Massiv 5/6]() -->
+  <!-- * [Haskell Arrays with Massiv 6/6]() -->
+* Material Presented:
+  * [MonadicParty2019](https://github.com/lehins/MonadicParty2019)
+  * [Rock Ants](https://github.com/lehins/RockAnts)
+
+
+## Talk at [Monadic Warsaw - 2018](https://www.meetup.com/Monadic-Warsaw/events/249543097/)
+
 * [Video](https://www.youtube.com/watch?v=AAx2a0bUsxA)
+* [Slides](learning/slides/2018-MonadicWarsaw.pdf)
