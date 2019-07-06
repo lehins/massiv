@@ -1,0 +1,122 @@
+name:                massiv-test
+version:             0.1.0.0
+synopsis:            Library that contains generators, properties and tests for Massiv Array Library.
+description:         This library is designed for users of massiv library that need random generators writing custom property tests and reusing some of the predefined ones.
+homepage:            https://github.com/lehins/massiv
+license:             BSD3
+license-file:        LICENSE
+author:              Alexey Kuleshevich
+maintainer:          alexey@kuleshevi.ch
+copyright:           2018-2019 Alexey Kuleshevich
+category:            Data, Data Structures, Parallelism
+build-type:          Custom
+extra-source-files:  README.md
+                   , CHANGELOG.md
+cabal-version:       >=1.10
+
+flag unsafe-checks
+  description: Enable all the bounds checks for unsafe functions at the cost of
+               significant performance penalty
+  default: False
+  manual: True
+
+custom-setup
+  setup-depends:
+      base
+    , Cabal
+    , cabal-doctest >=1.0.6
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+                     -- Test.Massiv.Array
+                     -- , Test.Massiv.Array.DelayedSpec
+                     -- , Test.Massiv.Array.ManifestSpec
+                     -- , Test.Massiv.Array.MutableSpec
+                     -- , Test.Massiv.CoreGen
+                     -- , 
+                     Test.Massiv.Core.Index
+
+
+  build-depends:       base >= 4.9 && < 5
+                     , bytestring
+                     , data-default-class
+                     , deepseq
+                     , exceptions
+                     , QuickCheck
+                     , hspec
+                     , massiv >= 0.3.6
+                     , scheduler
+                     , primitive
+                     , unliftio-core
+                     , vector
+
+  default-language:    Haskell2010
+  ghc-options:        -Wall
+                      -Wincomplete-record-updates
+                      -Wincomplete-uni-patterns
+                      -Wredundant-constraints
+                      -fno-warn-orphans
+
+-- test-suite tests
+--   type:               exitcode-stdio-1.0
+--   hs-source-dirs:     tests
+--   main-is:            Main.hs
+--   other-modules:      Data.Massiv.ArraySpec
+--                     , Data.Massiv.Array.DelayedSpec
+--                     , Data.Massiv.Array.Delayed.InterleavedSpec
+--                     , Data.Massiv.Array.Delayed.WindowedSpec
+--                     , Data.Massiv.Array.Delayed.PushSpec
+--                     , Data.Massiv.Array.ManifestSpec
+--                     , Data.Massiv.Array.Manifest.VectorSpec
+--                     , Data.Massiv.Array.MutableSpec
+--                     , Data.Massiv.Array.Numeric.IntegralSpec
+--                     , Data.Massiv.Array.Ops.ConstructSpec
+--                     , Data.Massiv.Array.Ops.FoldSpec
+--                     , Data.Massiv.Array.Ops.SliceSpec
+--                     , Data.Massiv.Array.Ops.SortSpec
+--                     , Data.Massiv.Array.Ops.TransformSpec
+--                     , Data.Massiv.Array.Ops.MapSpec
+--                     , Data.Massiv.Array.StencilSpec
+--                     , Data.Massiv.CoreArbitrary
+--                     , Data.Massiv.Core.IndexSpec
+--                     , Data.Massiv.Core.SchedulerSpec
+--                     , Spec
+--   build-depends:      base
+--                     , bytestring
+--                     , containers
+--                     , data-default
+--                     , deepseq
+--                     , massiv
+--                     , hspec
+--                     , scheduler
+--                     , QuickCheck
+--                     , unliftio
+--                     , vector
+
+--   default-language:   Haskell2010
+--   ghc-options:       -Wall
+--                      -Wincomplete-record-updates
+--                      -Wincomplete-uni-patterns
+--                      -Wredundant-constraints
+--                      -fno-warn-orphans
+--                      -threaded
+--                      -with-rtsopts=-N2
+
+-- test-suite doctests
+--   type:             exitcode-stdio-1.0
+--   hs-source-dirs:   tests
+--   main-is:          doctests.hs
+--   build-depends: base
+--                , doctest >=0.15
+--                , QuickCheck
+--                , massiv
+--                , mersenne-random-pure64
+--                , random
+--                , splitmix >= 0.0.1
+--                , template-haskell
+--   default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/lehins/massiv
