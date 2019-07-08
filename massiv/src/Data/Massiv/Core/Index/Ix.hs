@@ -221,11 +221,13 @@ instance Num Ix3 where
   {-# INLINE [1] fromInteger #-}
 
 
-instance {-# OVERLAPPABLE #-} (4 <= n,
-          KnownNat n,
-          Index (Ix (n - 1)),
-          IxN (n - 1) ~ Ix (n - 1)
-          ) => Num (IxN n) where
+instance {-# OVERLAPPABLE #-} ( 4 <= n
+                              , KnownNat n
+                              , KnownNat (n - 1)
+                              , Index (Ix (n - 1))
+                              , IxN (n - 1) ~ Ix (n - 1)
+                              ) =>
+                              Num (IxN n) where
   (+) = liftIndex2 (+)
   {-# INLINE [1] (+) #-}
   (-) = liftIndex2 (-)
@@ -255,11 +257,13 @@ instance Bounded Ix3 where
   maxBound = pureIndex maxBound
   {-# INLINE maxBound #-}
 
-instance {-# OVERLAPPABLE #-} (4 <= n,
-          KnownNat n,
-          Index (Ix (n - 1)),
-          IxN (n - 1) ~ Ix (n - 1)
-          ) => Bounded (IxN n) where
+instance {-# OVERLAPPABLE #-} ( 4 <= n
+                              , KnownNat n
+                              , KnownNat (n - 1)
+                              , Index (Ix (n - 1))
+                              , IxN (n - 1) ~ Ix (n - 1)
+                              ) =>
+                              Bounded (IxN n) where
   minBound = pureIndex minBound
   {-# INLINE minBound #-}
   maxBound = pureIndex maxBound
@@ -387,6 +391,7 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
 
 instance {-# OVERLAPPABLE #-} (4 <= n,
           KnownNat n,
+          KnownNat (n - 1),
           Index (Ix (n - 1)),
           IxN (n - 1) ~ Ix (n - 1)
           ) => Index (IxN n) where
@@ -404,17 +409,22 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   unsnocDim (i :> ixl) = case unsnocDim ixl of
                           (ix, i1) -> (i :> ix, i1)
   {-# INLINE [1] unsnocDim #-}
-  getDimM ix@(i :> ixl) d | d == dimensions (Just ix) = pure i
-                         | otherwise = getDimM ixl d
+  getDimM ix@(i :> ixl) d
+    | d == dimensions (Just ix) = pure i
+    | otherwise = maybe (throwM $ IndexDimensionException ix d) pure (getDimM ixl d)
   {-# INLINE [1] getDimM #-}
-  setDimM ix@(i :> ixl) d di | d == dimensions (Just ix) = pure (di :> ixl)
-                            | otherwise = (i :>) <$> setDimM ixl d di
+  setDimM ix@(i :> ixl) d di
+    | d == dimensions (Just ix) = pure (di :> ixl)
+    | otherwise = maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (setDimM ixl d di)
   {-# INLINE [1] setDimM #-}
-  pullOutDimM ix@(i :> ixl) d | d == dimensions (Just ix) = pure (i, ixl)
-                             | otherwise = fmap (i :>) <$> pullOutDimM ixl d
+  pullOutDimM ix@(i :> ixl) d
+    | d == dimensions (Just ix) = pure (i, ixl)
+    | otherwise =
+      maybe (throwM $ IndexDimensionException ix d) (pure . fmap (i :>)) (pullOutDimM ixl d)
   {-# INLINE [1] pullOutDimM #-}
-  insertDimM ix@(i :> ixl) d di | d == dimensions (Just ix) + 1 = pure (di :> ix)
-                               | otherwise = (i :>) <$> insertDimM ixl d di
+  insertDimM ix@(i :> ixl) d di
+    | d == dimensions (Just ix) + 1 = pure (di :> ix)
+    | otherwise = maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (insertDimM ixl d di)
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
   {-# INLINE [1] pureIndex #-}
