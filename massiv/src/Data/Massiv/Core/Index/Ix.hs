@@ -176,20 +176,10 @@ type instance Lower (IxN n) = Ix (n - 1)
 
 
 instance Show Ix2 where
-  showsPrec n (i :. j) =
-    if n < 1
-      then inner
-      else ("(" ++) . inner . (")" ++)
-    where
-      inner = shows i . (" :. " ++) . shows j
+  showsPrec n (i :. j) = showsPrecWrapped n (shows i . (" :. " ++) . shows j)
 
 instance Show (Ix (n - 1)) => Show (IxN n) where
-  showsPrec n (i :> ix) =
-    if n < 1
-      then inner
-      else ("(" ++) . inner . (")" ++)
-    where
-      inner = shows i . (" :> " ++) . shows ix
+  showsPrec n (i :> ix) = showsPrecWrapped n (shows i . (" :> " ++) . shows ix)
 
 
 instance Num Ix2 where

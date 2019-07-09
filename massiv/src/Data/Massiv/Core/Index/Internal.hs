@@ -55,6 +55,7 @@ module Data.Massiv.Core.Index.Internal
   , IndexException(..)
   , SizeException(..)
   , ShapeException(..)
+  , showsPrecWrapped
   ) where
 
 import Control.DeepSeq
@@ -102,16 +103,13 @@ pattern Sz1 ix  <- SafeSz ix where
 
 
 instance Index ix => Show (Sz ix) where
-  showsPrec n sz@(SafeSz usz) s =
-    if n == 0
-      then str ++ s
-      else '(' : str ++ ')' : s
+  showsPrec n sz@(SafeSz usz) = showsPrecWrapped n (str ++)
     where
       str =
         "Sz" ++
         case unDim (dimensions sz) of
           1 -> "1 " ++ show usz
-          _ -> " (" ++ show usz ++ ")"
+          _ -> " (" ++ shows usz ")"
 
 instance (Num ix, Index ix) => Num (Sz ix) where
   (+) x y = Sz (coerce x + coerce y)
@@ -645,8 +643,7 @@ instance Show IndexException where
     "IndexDimensionException: " ++ show dim ++ " for " ++ show ix
   show (IndexOutOfBoundsException sz ix) =
     "IndexOutOfBoundsException: " ++ showsPrec 1 ix " not safe for (" ++ show sz ++ ")"
-  showsPrec 0 arr s = show arr ++ s
-  showsPrec _ arr s = '(' : show arr ++ ")" ++ s
+  showsPrec n exc = showsPrecWrapped n (show exc ++)
 
 instance Eq IndexException where
   e1 == e2 =
@@ -698,8 +695,7 @@ instance Show SizeException where
     show sz' ++ ") is to small for " ++ show ix ++ " (" ++ show sz ++ ")"
   show (SizeEmptyException sz) =
     "SizeEmptyException: (" ++ show sz ++ ") corresponds to an empty array"
-  showsPrec 0 arr s = show arr ++ s
-  showsPrec _ arr s = '(' : show arr ++ ")" ++ s
+  showsPrec n exc = showsPrecWrapped n (show exc ++)
 
 -- | Exception that can happen upon conversion of a ragged type array into the rectangular kind. Which
 -- means conversion from lists is susceptible to this exception.
@@ -711,11 +707,16 @@ data ShapeException
   deriving Eq
 
 instance Show ShapeException where
-  show (DimTooShortException sz sz') =
-    "DimTooShortException: expected (" ++ show sz ++ "), got (" ++ show sz' ++ ")"
-  show DimTooLongException =
-    "DimTooLongException"
-  showsPrec 0 arr s = show arr ++ s
-  showsPrec _ arr s = '(' : show arr ++ ")" ++ s
+  showsPrec _ DimTooLongException = ("DimTooLongException" ++)
+  showsPrec n (DimTooShortException sz sz') =
+    showsPrecWrapped
+      n
+      (("DimTooShortException: expected (" ++) . shows sz . ("), got (" ++) . shows sz' . (")" ++))
 
 instance Exception ShapeException
+
+
+showsPrecWrapped :: Int -> ShowS -> ShowS
+showsPrecWrapped n inner
+  | n < 1 = inner
+  | otherwise = ('(':) . inner . (")" ++)

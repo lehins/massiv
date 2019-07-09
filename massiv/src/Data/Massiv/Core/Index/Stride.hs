@@ -51,12 +51,14 @@ import Data.Massiv.Core.Index.Internal
 -- * In case of two dimensions, if what you want is to keep all rows divisible by 5, but keep every
 --   column intact then you'd use @Stride (5 :. 1)@.
 --
-
+-- @since 0.2.1
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
 
 
 -- | A safe bidirectional pattern synonym for `Stride` construction that will make sure stride
 -- elements are always positive.
+--
+-- @since 0.2.1
 pattern Stride :: Index ix => ix -> Stride ix
 pattern Stride ix <- SafeStride ix where
         Stride ix = SafeStride (liftIndex (max 1) ix)
@@ -64,15 +66,19 @@ pattern Stride ix <- SafeStride ix where
 
 
 instance Index ix => Show (Stride ix) where
-  show (SafeStride ix) = "Stride (" ++ show ix ++ ")"
+  showsPrec n (SafeStride ix) = showsPrecWrapped n (("Stride " ++) . showsPrec 1 ix)
 
 
 -- | Just a helper function for unwrapping `Stride`.
+--
+-- @since 0.2.1
 unStride :: Stride ix -> ix
 unStride (SafeStride ix) = ix
 {-# INLINE unStride #-}
 
 -- | Adjust starting index according to the stride
+--
+-- @since 0.2.1
 strideStart :: Index ix => Stride ix -> ix -> ix
 strideStart (SafeStride stride) ix =
   liftIndex2
@@ -82,14 +88,19 @@ strideStart (SafeStride stride) ix =
 {-# INLINE strideStart #-}
 
 -- | Adjust size according to the stride.
+--
+-- @since 0.2.1
 strideSize :: Index ix => Stride ix -> Sz ix -> Sz ix
 strideSize (SafeStride stride) (SafeSz sz) =
   SafeSz (liftIndex (+ 1) $ liftIndex2 div (liftIndex (subtract 1) sz) stride)
 {-# INLINE strideSize #-}
 
--- | Compute an index with stride using the original size and index
-toLinearIndexStride :: Index ix =>
-  Stride ix -- ^ Stride
+-- | Compute linear index with stride using the original size and index
+--
+-- @since 0.2.1
+toLinearIndexStride ::
+     Index ix
+  => Stride ix -- ^ Stride
   -> Sz ix -- ^ Size
   -> ix -- ^ Index
   -> Int
@@ -98,6 +109,8 @@ toLinearIndexStride (SafeStride stride) sz ix = toLinearIndex sz (liftIndex2 div
 
 
 -- | A default stride of @1@, where all elements are kept
+--
+-- @since 0.2.1
 oneStride :: Index ix => Stride ix
 oneStride = SafeStride (pureIndex 1)
 {-# INLINE oneStride #-}

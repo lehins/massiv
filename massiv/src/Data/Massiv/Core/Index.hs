@@ -38,19 +38,23 @@ module Data.Massiv.Core.Index
   , setSzM
   , insertSzM
   , pullOutSzM
+  -- ** Dimension
   , Dim(..)
   , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)
   , IsIndexDimension
-  , Lower
-  , Index(..)
+  -- ** Stride
   , Stride(Stride)
   , unStride
   , toLinearIndexStride
   , strideStart
   , strideSize
   , oneStride
+  -- ** Border
   , Border(..)
   , handleBorderIndex
+  -- ** Index functions
+  , Lower
+  , Index(..)
   , zeroIndex
   , oneIndex
   , isNonEmpty
