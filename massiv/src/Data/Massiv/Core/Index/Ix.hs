@@ -69,6 +69,7 @@ data Ix2 = {-# UNPACK #-} !Int :. {-# UNPACK #-} !Int
 -- @since 0.1.0
 pattern Ix2 :: Int -> Int -> Ix2
 pattern Ix2 i2 i1 = i2 :. i1
+{-# COMPLETE Ix2 #-}
 
 -- | 2-dimensional size type synonym.
 --
@@ -93,6 +94,7 @@ type Ix3 = IxN 3
 -- @since 0.1.0
 pattern Ix3 :: Int -> Int -> Int -> Ix3
 pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
+{-# COMPLETE Ix3 #-}
 
 -- | 3-dimensional size type synonym.
 --
@@ -116,6 +118,7 @@ type Ix4 = IxN 4
 -- @since 0.1.0
 pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
 pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
+{-# COMPLETE Ix4 #-}
 
 -- | 4-dimensional size type synonym.
 --
@@ -139,6 +142,7 @@ type Ix5 = IxN 5
 -- @since 0.1.0
 pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
 pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
+{-# COMPLETE Ix5 #-}
 
 -- | 5-dimensional size type synonym.
 --
@@ -221,7 +225,8 @@ instance Num Ix3 where
   {-# INLINE [1] fromInteger #-}
 
 
-instance {-# OVERLAPPABLE #-} ( 4 <= n
+instance {-# OVERLAPPABLE #-} ( 1 <= n
+                              , 4 <= n
                               , KnownNat n
                               , KnownNat (n - 1)
                               , Index (Ix (n - 1))
@@ -257,7 +262,8 @@ instance Bounded Ix3 where
   maxBound = pureIndex maxBound
   {-# INLINE maxBound #-}
 
-instance {-# OVERLAPPABLE #-} ( 4 <= n
+instance {-# OVERLAPPABLE #-} ( 1 <= n
+                              , 4 <= n
                               , KnownNat n
                               , KnownNat (n - 1)
                               , Index (Ix (n - 1))
@@ -389,12 +395,14 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
     repairIndex (SafeSz n) i rBelow rOver :> repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
 
-instance {-# OVERLAPPABLE #-} (4 <= n,
-          KnownNat n,
-          KnownNat (n - 1),
-          Index (Ix (n - 1)),
-          IxN (n - 1) ~ Ix (n - 1)
-          ) => Index (IxN n) where
+instance {-# OVERLAPPABLE #-} ( 1 <= n
+                              , 4 <= n
+                              , KnownNat n
+                              , KnownNat (n - 1)
+                              , Index (Ix (n - 1))
+                              , IxN (n - 1) ~ Ix (n - 1)
+                              ) =>
+                              Index (IxN n) where
   type Dimensions (IxN n) = n
   dimensions _ = fromInteger $ natVal (Proxy :: Proxy n)
   {-# INLINE [1] dimensions #-}
@@ -406,25 +414,27 @@ instance {-# OVERLAPPABLE #-} (4 <= n,
   {-# INLINE [1] unconsDim #-}
   snocDim (i :> ixl) i1 = i :> snocDim ixl i1
   {-# INLINE [1] snocDim #-}
-  unsnocDim (i :> ixl) = case unsnocDim ixl of
-                          (ix, i1) -> (i :> ix, i1)
+  unsnocDim (i :> ixl) =
+    case unsnocDim ixl of
+      (ix, i1) -> (i :> ix, i1)
   {-# INLINE [1] unsnocDim #-}
   getDimM ix@(i :> ixl) d
-    | d == dimensions (Just ix) = pure i
+    | d == dimensions (Proxy :: Proxy (IxN n)) = pure i
     | otherwise = maybe (throwM $ IndexDimensionException ix d) pure (getDimM ixl d)
   {-# INLINE [1] getDimM #-}
   setDimM ix@(i :> ixl) d di
-    | d == dimensions (Just ix) = pure (di :> ixl)
+    | d == dimensions (Proxy :: Proxy (IxN n)) = pure (di :> ixl)
     | otherwise = maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (setDimM ixl d di)
   {-# INLINE [1] setDimM #-}
   pullOutDimM ix@(i :> ixl) d
-    | d == dimensions (Just ix) = pure (i, ixl)
+    | d == dimensions (Proxy :: Proxy (IxN n)) = pure (i, ixl)
     | otherwise =
       maybe (throwM $ IndexDimensionException ix d) (pure . fmap (i :>)) (pullOutDimM ixl d)
   {-# INLINE [1] pullOutDimM #-}
   insertDimM ix@(i :> ixl) d di
-    | d == dimensions (Just ix) + 1 = pure (di :> ix)
-    | otherwise = maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (insertDimM ixl d di)
+    | d == dimensions (Proxy :: Proxy (IxN n)) = pure (di :> ix)
+    | otherwise =
+      maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (insertDimM ixl d di)
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
   {-# INLINE [1] pureIndex #-}

@@ -336,6 +336,8 @@ class ( Eq ix
       , Ord (Lower ix)
       , Show (Lower ix)
       , NFData (Lower ix)
+      , 1 <= Dimensions ix
+      , KnownNat (Dimensions ix)
       ) =>
       Index ix
   where
@@ -566,6 +568,7 @@ type Ix1 = Int
 -- @since 0.1.0
 pattern Ix1 :: Int -> Ix1
 pattern Ix1 i = i
+{-# COMPLETE Ix1 #-}
 
 type instance Lower Int = Ix0
 

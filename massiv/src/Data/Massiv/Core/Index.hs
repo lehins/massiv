@@ -216,7 +216,7 @@ isNonEmpty !sz = isSafeIndex sz zeroIndex
 {-# INLINE [1] isNonEmpty #-}
 -- TODO: benchmark against (also adjust `isEmpty` with fastest):
 -- - foldlIndex (*) 1 (unSz sz) /= 0
--- - foldlIndex ((&&) . (==0)) True (unSz sz)
+-- - foldlIndex (\a x -> a && x /= 0) True (unSz sz)
 -- - totalElem sz == 0
 
 -- | Get the outmost dimension of the index.
@@ -428,7 +428,7 @@ setDimension ix d = setDim' ix (fromDimension d)
 --
 -- @since 0.2.4
 getDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int
-getDimension ix d = getDim' ix (fromDimension d)
+getDimension ix = getDim' ix . fromDimension
 {-# INLINE [1] getDimension #-}
 
 
@@ -442,7 +442,7 @@ getDimension ix d = getDim' ix (fromDimension d)
 --
 -- @since 0.2.4
 dropDimension :: IsIndexDimension ix n => ix -> Dimension n -> Lower ix
-dropDimension ix d = dropDim' ix (fromDimension d)
+dropDimension ix = dropDim' ix . fromDimension
 {-# INLINE [1] dropDimension #-}
 
 -- | Type safe way of pulling out a particular dimension, thus lowering index
