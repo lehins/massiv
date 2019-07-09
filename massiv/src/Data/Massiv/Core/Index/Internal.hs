@@ -203,7 +203,7 @@ snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 -- >>> setSzM (Sz2 2 3) 2 (Sz1 1) :: IO Sz2
 -- Sz (1 :. 3)
 -- >>> setSzM (Sz2 2 3) 3 (Sz1 1) :: IO Sz2
--- *** Exception: IndexDimensionException: (Dim 3) for 2 :. 3
+-- *** Exception: IndexDimensionException: (Dim 3) for (2 :. 3)
 --
 -- @since 0.3.0
 setSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> Sz Int -> m (Sz ix)
@@ -218,7 +218,7 @@ setSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDimM sz dim sz1
 -- >>> insertSzM (Sz2 2 3) 3 (Sz1 1) :: IO Sz3
 -- Sz (1 :> 2 :. 3)
 -- >>> insertSzM (Sz2 2 3) 4 (Sz1 1) :: IO Sz3
--- *** Exception: IndexDimensionException: (Dim 4) for 2 :. 3
+-- *** Exception: IndexDimensionException: (Dim 4) for (2 :. 3)
 --
 -- @since 0.3.0
 insertSzM :: (MonadThrow m, Index ix) => Sz (Lower ix) -> Dim -> Sz Int -> m (Sz ix)
@@ -257,7 +257,7 @@ unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
 -- >>> pullOutSzM (Sz3 1 2 3) 3
 -- (Sz1 1,Sz (2 :. 3))
 -- >>> pullOutSzM (Sz3 1 2 3) 0
--- *** Exception: IndexDimensionException: (Dim 0) for 1 :> 2 :. 3
+-- *** Exception: IndexDimensionException: (Dim 0) for (1 :> 2 :. 3)
 --
 -- @since 0.3.0
 pullOutSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> m (Sz Ix1, Sz (Lower ix))
@@ -638,11 +638,11 @@ data IndexException where
   IndexOutOfBoundsException :: Index ix => !(Sz ix) -> !ix -> IndexException
 
 instance Show IndexException where
-  show (IndexZeroException ix) = "IndexZeroException: " ++ show ix
+  show (IndexZeroException ix) = "IndexZeroException: " ++ showsPrec 1 ix ""
   show (IndexDimensionException ix dim) =
-    "IndexDimensionException: " ++ show dim ++ " for " ++ show ix
+    "IndexDimensionException: " ++ showsPrec 1 dim " for " ++ showsPrec 1 ix ""
   show (IndexOutOfBoundsException sz ix) =
-    "IndexOutOfBoundsException: " ++ showsPrec 1 ix " not safe for (" ++ show sz ++ ")"
+    "IndexOutOfBoundsException: " ++ showsPrec 1 ix " not safe for " ++ showsPrec 1 sz ""
   showsPrec n exc = showsPrecWrapped n (show exc ++)
 
 instance Eq IndexException where

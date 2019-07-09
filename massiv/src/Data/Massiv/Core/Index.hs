@@ -300,7 +300,7 @@ setDim = setDimM
 -- >>> getDim' (2 :> 3 :> 4 :. 5) 3
 -- 3
 -- >>> getDim' (2 :> 3 :> 4 :. 5) 0
--- *** Exception: IndexDimensionException: (Dim 0) for 3 :> 4 :. 5
+-- *** Exception: IndexDimensionException: (Dim 0) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
 getDim' :: Index ix => ix -> Dim -> Int
@@ -344,7 +344,7 @@ dropDim = dropDimM
 -- >>> dropDim' (2 :> 3 :> 4 :. 5) 3
 -- 2 :> 4 :. 5
 -- >>> dropDim' (2 :> 3 :> 4 :. 5) 6
--- *** Exception: IndexDimensionException: (Dim 6) for 3 :> 4 :. 5
+-- *** Exception: IndexDimensionException: (Dim 6) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
 dropDim' :: Index ix => ix -> Dim -> Lower ix
@@ -381,7 +381,7 @@ pullOutDim = pullOutDimM
 -- >>> insertDim' (2 :> 3 :> 4 :. 5) 3 10 :: Ix5
 -- 2 :> 3 :> 10 :> 4 :. 5
 -- >>> insertDim' (2 :> 3 :> 4 :. 5) 11 10 :: Ix5
--- *** Exception: IndexDimensionException: (Dim 11) for 4 :. 5
+-- *** Exception: IndexDimensionException: (Dim 11) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
 insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix

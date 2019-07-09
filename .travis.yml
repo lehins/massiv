@@ -210,7 +210,7 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack $ARGS test massiv:tests massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      stack $ARGS test massiv-test:tests massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       ;;
     cabal)
 
