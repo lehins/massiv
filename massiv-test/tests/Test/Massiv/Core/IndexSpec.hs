@@ -43,6 +43,27 @@ specIxN = do
     it "maxBound" $ fromIntegral (maxBound :: Int) `shouldBe` (maxBound :: ix)
   eqSpecOnArbitrary @ix
   ordSpecOnArbitrary @ix
+  describe "Stride" $ do
+    it "Positive" $
+      property $ \(ix :: ix) ->
+        case Stride ix of
+          str@(Stride ix') -> foldlIndex (\a x -> a && x > 0) True ix' .&&.
+                              unStride str === liftIndex (max 1) ix
+    it "Show" $ property $ \str -> ("Just (" ++ show (str :: Stride ix) ++ ")") === show (Just str)
+    eqSpecOnArbitrary @(Stride ix)
+    ordSpecOnArbitrary @(Stride ix)
+    it "DeebpSeq" $ property $ \ (str :: Stride ix) -> rnf str `shouldBe` ()
+    it "oneStride" $ unStride oneStride `shouldBe` (1 :: ix)
+    it "toLinearIndexStride" $ property $ \ str (SzIx sz ix :: SzIx ix) ->
+      let k = toLinearIndexStride str sz ix
+          ix' = fromLinearIndex sz k
+      in ix' * unStride str + liftIndex2 mod ix (unStride str) === ix
+    it "strideSize" $ property $ \ (str :: Stride ix) sz ->
+      let sz' = Sz (unSz sz * unStride str) in strideSize str sz' === sz
+    it "strideStart" $ property $ \ (str :: Stride ix) ix ->
+      let start = strideStart str ix
+      in liftIndex2 mod start (unStride str) === zeroIndex .&&.
+         ix <= start
 
 
 specIxT ::
