@@ -5,12 +5,16 @@
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.Core.IndexSpec (spec) where
 
+import Control.DeepSeq
 import Data.Massiv.Array
 import Data.Massiv.Array.Unsafe (Sz(SafeSz))
 import Test.Massiv.Core.Index
+import Test.Massiv.Utils
 import Data.Proxy
 import Test.Hspec
 import Test.QuickCheck
+import Test.Validity.Eq (eqSpecOnArbitrary)
+import Test.Validity.Ord (ordSpecOnArbitrary)
 import Data.Typeable
 
 
@@ -33,11 +37,13 @@ specIxN = do
     ixSpec @ix
     ix2UpSpec @ix
     ixNumSpec @ix
-  describe "Show" $
-    it "prop_Show" $ property $ \ix -> ("Just (" ++ show (ix :: ix) ++ ")") === show (Just ix)
+    it "Show" $ property $ \ix -> ("Just (" ++ show (ix :: ix) ++ ")") === show (Just ix)
   describe "Bounded" $ do
     it "minBound" $ fromIntegral (minBound :: Int) `shouldBe` (minBound :: ix)
     it "maxBound" $ fromIntegral (maxBound :: Int) `shouldBe` (maxBound :: ix)
+  eqSpecOnArbitrary @ix
+  ordSpecOnArbitrary @ix
+
 
 specIxT ::
      forall ix ix'.
@@ -110,10 +116,13 @@ specSz ::
      , Arbitrary ix
      )
   => Spec
-specSz =
+specSz = do
   describe ("Sz (" ++ showsTypeRep (typeRep (Proxy :: Proxy ix)) ")") $ do
     szSpec @ix
     szNumSpec @ix
+    it "Show" $ property $ \sz -> ("Just (" ++ show (sz :: Sz ix) ++ ")") === show (Just sz)
+  eqSpecOnArbitrary @(Sz ix)
+  ordSpecOnArbitrary @(Sz ix)
 
 specIx :: Spec
 specIx = do
@@ -122,14 +131,13 @@ specIx = do
   specIxN @Ix3
   specIxN @Ix4
   specIxN @Ix5
-  describe "Dimension" $ do
+  describe "Dimension" $
     it "fromDimension" $ do
       fromDimension Dim1 `shouldBe` 1
       fromDimension Dim2 `shouldBe` 2
       fromDimension Dim3 `shouldBe` 3
       fromDimension Dim4 `shouldBe` 4
       fromDimension Dim5 `shouldBe` 5
-
 
 spec :: Spec
 spec = do
@@ -144,3 +152,8 @@ spec = do
   specSz @Ix3
   specSz @Ix4
   specSz @Ix5
+  describe "NFData Border" $ do
+    it "Fill exception" $
+      assertException (ExpectedException==) (Fill (throw ExpectedException :: Int))
+    it "rnf" $ property $ \ (b :: Border Int) -> rnf b `shouldBe` ()
+  eqSpecOnArbitrary @(Border Int)

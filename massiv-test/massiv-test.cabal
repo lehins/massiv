@@ -68,6 +68,7 @@ test-suite tests
   build-depends:      base
                     , data-default
                     , deepseq
+                    , genvalidity-hspec
                     , massiv
                     , massiv-test
                     , hspec

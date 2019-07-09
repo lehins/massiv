@@ -416,7 +416,7 @@ fromDimension = fromIntegral . natVal
 --
 -- @since 0.2.4
 setDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int -> ix
-setDimension ix d = setDim' ix (fromDimension d)
+setDimension ix = setDim' ix . fromDimension
 {-# INLINE [1] setDimension #-}
 
 -- | Type safe way to extract value of index at a particular dimension.
@@ -455,7 +455,7 @@ dropDimension ix = dropDim' ix . fromDimension
 --
 -- @since 0.2.4
 pullOutDimension :: IsIndexDimension ix n => ix -> Dimension n -> (Int, Lower ix)
-pullOutDimension ix d = pullOutDim' ix (fromDimension d)
+pullOutDimension ix = pullOutDim' ix . fromDimension
 {-# INLINE [1] pullOutDimension #-}
 
 -- | Type safe way of inserting a particular dimension, thus raising index dimensionality.
@@ -475,7 +475,7 @@ pullOutDimension ix d = pullOutDim' ix (fromDimension d)
 --
 -- @since 0.2.5
 insertDimension :: IsIndexDimension ix n => Lower ix -> Dimension n -> Int -> ix
-insertDimension ix d = insertDim' ix (fromDimension d)
+insertDimension ix = insertDim' ix . fromDimension
 {-# INLINE [1] insertDimension #-}
 
 -- | Row-major iterator for the index. Same as `iterM`, but pure.
@@ -516,10 +516,10 @@ iter sIx eIx incIx cond acc f =
 -- @since 0.1.0
 iterLinearM :: (Index ix, Monad m)
             => Sz ix -- ^ Size
-            -> Int -- ^ Linear start
-            -> Int -- ^ Linear end
-            -> Int -- ^ Increment
-            -> (Int -> Int -> Bool) -- ^ Continuation condition (continue if True)
+            -> Int -- ^ Linear start (must be non-negative)
+            -> Int -- ^ Linear end (must be less than or equal to @`totalElem` sz@)
+            -> Int -- ^ Increment (must not be zero)
+            -> (Int -> Int -> Bool) -- ^ Continuation condition (continue if @True@)
             -> a -- ^ Accumulator
             -> (Int -> ix -> a -> m a)
             -> m a
@@ -540,10 +540,10 @@ iterLinearM !sz !k0 !k1 !inc cond !acc f =
 -- @since 0.1.0
 iterLinearM_ :: (Index ix, Monad m) =>
                 Sz ix -- ^ Size
-             -> Int -- ^ Start
+             -> Int -- ^ Start (must be non-negative)
              -> Int -- ^ End
-             -> Int -- ^ Increment
-             -> (Int -> Int -> Bool) -- ^ Continuation condition
+             -> Int -- ^ Increment (must not be zero)
+             -> (Int -> Int -> Bool) -- ^ Continuation condition (continue if @True@)
              -> (Int -> ix -> m ()) -- ^ Monadic action that takes index in both forms
              -> m ()
 iterLinearM_ sz !k0 !k1 !inc cond f =

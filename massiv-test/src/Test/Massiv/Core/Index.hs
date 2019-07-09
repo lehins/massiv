@@ -32,6 +32,7 @@ module Test.Massiv.Core.Index
   , module Data.Massiv.Core.Index
   ) where
 
+import Data.IORef
 import Control.DeepSeq
 import Control.Exception (throw)
 import Control.Monad
@@ -249,14 +250,16 @@ prop_BorderRepairSafe border (SzNE sz) ix =
 
 prop_GetDropInsert :: Index ix => DimIx ix -> ix -> Property
 prop_GetDropInsert (DimIx dim) ix =
-  either throw (ix ===) $ do
+  property $
+  flip shouldReturn ix $ do
     i <- getDimM ix dim
     ixL <- dropDimM ix dim
     insertDimM ixL dim i
 
 prop_PullOutInsert :: Index ix => DimIx ix -> ix -> Property
 prop_PullOutInsert (DimIx dim) ix =
-  either throw (ix ===) $ do
+  property $
+  flip shouldReturn ix $ do
     (i, ixL) <- pullOutDimM ix dim
     insertDimM ixL dim i
 
@@ -289,21 +292,24 @@ prop_InsertDimException d ix i =
 
 prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => ix -> Property
 prop_UnconsGetDrop ix =
-  either throw (unconsDim ix ===) $ do
+  property $
+  flip shouldReturn (unconsDim ix) $ do
     i <- getDimM ix (dimensions (Just ix))
     ixL <- dropDimM ix (dimensions (Just ix))
     return (i, ixL)
 
 prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => ix -> Property
 prop_UnsnocGetDrop ix =
-  either throw (unsnocDim ix ===) $ do
+  property $
+  flip shouldReturn (unsnocDim ix) $ do
     i <- getDimM ix 1
     ixL <- dropDimM ix 1
     return (ixL, i)
 
 prop_SetAll :: Index ix => ix -> Property
-prop_SetAll ix =
-  either throw (ix ===) (replaceDims dims) .&&. either throw (ix ===) (replaceDims (reverse dims))
+prop_SetAll ix = property $ do
+  replaceDims dims `shouldReturn` ix
+  replaceDims (reverse dims) `shouldReturn` ix
   where
     replaceDims = foldM (\cix d -> getDimM ix d >>= setDimM cix d) zeroIndex
     dims = [1 .. dimensions (Just ix)] :: [Dim]
@@ -371,6 +377,24 @@ prop_UnaryNumSz ::
 prop_UnaryNumSz f sz = map f' (ixToList (unSz sz)) === ixToList (unSz (f sz))
   where
     f' = max 0 . f
+
+
+
+prop_IterLinearM :: Index ix => Sz ix -> NonNegative Int -> Positive Int -> Property
+prop_IterLinearM sz (NonNegative start) (Positive increment) = property $ do
+  xs <- iterLinearM sz start (totalElem sz) increment (<) [] $ \i ix acc -> do
+    toLinearIndex sz ix `shouldBe` i
+    pure (i:acc)
+  reverse xs `shouldBe` [start, start + increment .. totalElem sz - 1]
+
+prop_IterLinearM_ :: Index ix => Sz ix -> NonNegative Int -> Positive Int -> Property
+prop_IterLinearM_ sz (NonNegative start) (Positive increment) = property $ do
+  ref <- newIORef []
+  iterLinearM_ sz start (totalElem sz) increment (<) $ \i ix -> do
+    toLinearIndex sz ix `shouldBe` i
+    modifyIORef' ref (i:)
+  xs <- readIORef ref
+  reverse xs `shouldBe` [start, start + increment .. totalElem sz - 1]
 
 -----------
 -- Specs --
@@ -501,8 +525,13 @@ szSpec = do
     it "UnconsCons" $ property $ \ (sz :: Sz ix) -> sz === uncurry consSz (unconsSz sz)
     it "UnsnocSnoc" $ property $ \ (sz :: Sz ix) -> sz === uncurry snocSz (unsnocSz sz)
     it "PullOutInsert" $ property $ prop_PullOutInsertSize @ix
+    it "SetSzInnerSnoc" $ property $
+      \ (sz :: Sz ix) i -> setSzM sz 1 i `shouldReturn` snocSz (fst $ unsnocSz sz) i
   describe "Number of Elements" $ do
     it "TotalElem" $ property $
       \(sz :: Sz ix) -> totalElem sz === foldlIndex (*) 1 (unSz sz)
     it "IsNonEmpty" $ property $
       \(sz :: Sz ix) -> isNonEmpty sz === foldlIndex (\a x -> a && x > 0) True (unSz sz)
+  describe "Iterators" $ do
+    it "IterLinearM" $ property $ prop_IterLinearM @ix
+    it "IterLinearM_" $ property $ prop_IterLinearM_ @ix
