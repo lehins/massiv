@@ -1,11 +1,15 @@
+{-# LANGUAGE DataKinds #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.Core.Index
@@ -14,24 +18,39 @@ module Test.Massiv.Core.Index
   , SzIx(..)
   , ixToList
   , arbitraryIx1
+  , toIx
+  -- * Specs
+  -- ** Index
+  , specIx1
   , ixSpec
+  , ix2UpSpec
   , ixNumSpec
+  -- ** Size
   , szNumSpec
+  , szSpec
+  -- * Re-exports
   , module Data.Massiv.Core.Index
   ) where
 
+import Control.DeepSeq
+import Control.Exception (throw)
 import Control.Monad
+import Data.Foldable as F
 import Data.Functor.Identity
+import Data.Massiv.Array.Unsafe (Sz(SafeSz))
 import Data.Massiv.Core.Index
 import Data.Proxy
+import Data.Typeable
 import Test.Hspec
+import Test.Massiv.Utils
 import Test.QuickCheck
 import Test.QuickCheck.Function
-import Data.Typeable
 
 
 -- | Dimension that is always within bounds of an index
 newtype DimIx ix = DimIx Dim deriving Show
+
+deriving instance Arbitrary Dim
 
 -- | Size that will result in a non-empty array.
 --
@@ -99,6 +118,19 @@ arbitraryIx1 = sized (\s -> resize (floor $ (sqrt :: Double -> Double) $ fromInt
 ixToList :: Index ix => ix -> [Int]
 ixToList = reverse . foldlIndex (flip (:)) []
 
+-- | A fairly slow way to convert from one arbitrary index to another of the same dimension
+--
+-- @since 0.1.0
+toIx ::
+     forall ix' ix. (Dimensions ix' ~ Dimensions ix, Index ix', Index ix)
+  => ix
+  -> ix'
+toIx ix = F.foldl' setEachIndex zeroIndex [1 .. dimensions (Sz ix)]
+  where
+    setEachIndex ix' d = setDim' ix' d (getDim' ix d)
+
+instance Arbitrary Ix0 where
+  arbitrary = pure Ix0
 
 instance Arbitrary Ix2 where
   arbitrary = (:.) <$> arbitraryIx1 <*> arbitraryIx1
@@ -137,31 +169,37 @@ instance Function Ix5 where
   function = functionMap fromIx5 toIx5
 
 
-prop_RepairSafeIx :: Index ix => proxy ix -> SzIx ix -> Bool
-prop_RepairSafeIx _ (SzIx sz ix) =
-  ix == repairIndex sz ix (error "Impossible") (error "Impossible")
+prop_IsSafeIndex :: Index ix => SzIx ix -> Bool
+prop_IsSafeIndex (SzIx sz ix) = isSafeIndex sz ix
 
-prop_UnconsCons :: Index ix => proxy ix -> ix -> Bool
-prop_UnconsCons _ ix = ix == uncurry consDim (unconsDim ix)
+prop_RepairSafeIx :: Index ix => SzIx ix -> Property
+prop_RepairSafeIx (SzIx sz ix) =
+  ix === repairIndex sz ix (errorImpossible "below zero") (errorImpossible "above zero")
+  where
+    errorImpossible msg sz1 ix1 =
+      error $ "Impossible <" ++ msg ++ ">: " ++ show sz1 ++ " and " ++ show ix1
 
-prop_UnsnocSnoc :: Index ix => proxy ix -> ix -> Bool
-prop_UnsnocSnoc _ ix = ix == uncurry snocDim (unsnocDim ix)
+prop_UnconsCons :: Index ix => ix -> Property
+prop_UnconsCons ix = ix === uncurry consDim (unconsDim ix)
 
-prop_ToFromLinearIndex :: Index ix => proxy ix -> SzIx ix -> Property
-prop_ToFromLinearIndex _ (SzIx sz ix) =
+prop_UnsnocSnoc :: Index ix => ix -> Property
+prop_UnsnocSnoc ix = ix === uncurry snocDim (unsnocDim ix)
+
+prop_ToFromLinearIndex :: Index ix => SzIx ix -> Property
+prop_ToFromLinearIndex (SzIx sz ix) =
   isSafeIndex sz ix ==> ix == fromLinearIndex sz (toLinearIndex sz ix)
 
-prop_FromToLinearIndex :: Index ix => proxy ix -> SzNE ix -> NonNegative Int -> Property
-prop_FromToLinearIndex _ (SzNE sz) (NonNegative i) =
+prop_FromToLinearIndex :: Index ix => SzNE ix -> NonNegative Int -> Property
+prop_FromToLinearIndex (SzNE sz) (NonNegative i) =
   totalElem sz >= i ==> i == toLinearIndex sz (fromLinearIndex sz i)
 
-prop_CountElements :: Index ix => proxy ix -> Int -> Sz ix -> Property
-prop_CountElements _ thresh sz =
+prop_CountElements :: Index ix => Int -> Sz ix -> Property
+prop_CountElements thresh sz =
   totalElem sz < thresh ==> totalElem sz ==
   iter zeroIndex (unSz sz) (pureIndex 1) (<) 0 (const (+ 1))
 
-prop_IterMonotonic :: Index ix => proxy ix -> Int -> Sz ix -> Property
-prop_IterMonotonic _ thresh sz =
+prop_IterMonotonic :: Index ix => Int -> Sz ix -> Property
+prop_IterMonotonic thresh sz =
   totalElem sz < thresh ==> fst $
   iter (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono
   where
@@ -169,39 +207,8 @@ prop_IterMonotonic _ thresh sz =
       let isMono = prevMono && prevIx < curIx
        in isMono `seq` (isMono, curIx)
 
-
-prop_IterMonotonic' :: Index ix => proxy ix -> Int -> Sz ix -> Property
-prop_IterMonotonic' _ thresh sz =
-  totalElem sz <
-  thresh ==>
-  if isM
-    then isM
-    else error (show a)
-  where
-    (isM, a, _) =
-      iter (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, [], zeroIndex) mono
-    mono curIx (prevMono, acc, prevIx) =
-      let nAcc = (prevIx, curIx, prevIx < curIx) : acc
-          isMono = prevMono && prevIx < curIx
-       in isMono `seq` (isMono, nAcc, curIx)
-
-
-prop_IterMonotonicBackwards' :: Index ix => proxy ix -> Int -> Sz ix -> Property
-prop_IterMonotonicBackwards' _ thresh sz@(Sz szix) =
-  totalElem sz <
-  thresh ==>
-  if isM
-    then isM
-    else error (show a)
-  where
-    (isM, a, _) = iter (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, [], szix) mono
-    mono curIx (prevMono, acc, prevIx) =
-      let isMono = prevMono && prevIx > curIx
-          nAcc = (prevIx, curIx, prevIx > curIx) : acc
-       in isMono `seq` (isMono, nAcc, curIx)
-
-prop_IterMonotonicM :: Index ix => proxy ix -> Int -> Sz ix -> Property
-prop_IterMonotonicM _ thresh sz =
+prop_IterMonotonicM :: Index ix => Int -> Sz ix -> Property
+prop_IterMonotonicM thresh sz =
   totalElem sz < thresh ==> fst $
   runIdentity $ iterM (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono
   where
@@ -210,8 +217,8 @@ prop_IterMonotonicM _ thresh sz =
        in return $ isMono `seq` (isMono, curIx)
 
 
-prop_IterMonotonicBackwards :: Index ix => proxy ix -> Int -> Sz ix -> Property
-prop_IterMonotonicBackwards _ thresh sz@(Sz szix) =
+prop_IterMonotonicBackwards :: Index ix => Int -> Sz ix -> Property
+prop_IterMonotonicBackwards thresh sz@(Sz szix) =
   totalElem sz < thresh ==> fst $
   iter (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono
   where
@@ -219,8 +226,8 @@ prop_IterMonotonicBackwards _ thresh sz@(Sz szix) =
       let isMono = prevMono && prevIx > curIx
        in isMono `seq` (isMono, curIx)
 
-prop_IterMonotonicBackwardsM :: Index ix => proxy ix -> Int -> Sz ix -> Property
-prop_IterMonotonicBackwardsM _ thresh sz@(Sz szix) =
+prop_IterMonotonicBackwardsM :: Index ix => Int -> Sz ix -> Property
+prop_IterMonotonicBackwardsM thresh sz@(Sz szix) =
   totalElem sz < thresh ==> fst $
   runIdentity $ iterM (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono
   where
@@ -228,67 +235,93 @@ prop_IterMonotonicBackwardsM _ thresh sz@(Sz szix) =
       let isMono = prevMono && prevIx > curIx
        in return $ isMono `seq` (isMono, curIx)
 
-prop_LiftLift2 :: Index ix => proxy ix -> ix -> Int -> Bool
-prop_LiftLift2 _ ix delta = liftIndex2 (+) ix (liftIndex (+delta) zeroIndex) ==
+prop_LiftLift2 :: Index ix => ix -> Int -> Bool
+prop_LiftLift2 ix delta = liftIndex2 (+) ix (liftIndex (+delta) zeroIndex) ==
                             liftIndex (+delta) ix
 
 
-prop_BorderRepairSafe :: Index ix => proxy ix -> Border ix -> SzNE ix -> ix -> Property
-prop_BorderRepairSafe _ border@(Fill defIx) (SzNE sz) ix =
+prop_BorderRepairSafe :: Index ix => Border ix -> SzNE ix -> ix -> Property
+prop_BorderRepairSafe border@(Fill defIx) (SzNE sz) ix =
   not (isSafeIndex sz ix) ==> handleBorderIndex border sz id ix == defIx
-prop_BorderRepairSafe _ border (SzNE sz) ix =
+prop_BorderRepairSafe border (SzNE sz) ix =
   not (isSafeIndex sz ix) ==> isSafeIndex sz (handleBorderIndex border sz id ix)
 
 
-prop_GetDropInsert :: Index ix => proxy ix -> NonNegative Int -> ix -> Property
-prop_GetDropInsert _ (NonNegative d) ix =
-  expected === do
+prop_GetDropInsert :: Index ix => DimIx ix -> ix -> Property
+prop_GetDropInsert (DimIx dim) ix =
+  either throw (ix ===) $ do
     i <- getDimM ix dim
     ixL <- dropDimM ix dim
     insertDimM ixL dim i
-  where expected = if d >= 1 && dim <= dimensions (Just ix) then Just ix else Nothing
-        dim = Dim d
 
-prop_PullOutInsert :: Index ix => proxy ix -> NonNegative Int -> ix -> Property
-prop_PullOutInsert _ (NonNegative d) ix =
-  expected === do
+prop_PullOutInsert :: Index ix => DimIx ix -> ix -> Property
+prop_PullOutInsert (DimIx dim) ix =
+  either throw (ix ===) $ do
     (i, ixL) <- pullOutDimM ix dim
     insertDimM ixL dim i
-  where expected = if d >= 1 && dim <= dimensions (Just ix) then Just ix else Nothing
-        dim = Dim d
 
-prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Property
-prop_UnconsGetDrop _ ix =
-  Just (unconsDim ix) === do
+prop_getDimException :: (Typeable ix, Index ix) => Dim -> ix -> Property
+prop_getDimException d ix =
+  (d <= 0 || d > dimensions (Just ix)) ==>
+  assertExceptionIO (== IndexDimensionException ix d) (getDimM ix d)
+
+prop_setDimException :: (Typeable ix, Index ix) => Dim -> ix -> Int -> Property
+prop_setDimException d ix i =
+  (d <= 0 || d > dimensions (Just ix)) ==>
+  assertExceptionIO (== IndexDimensionException ix d) (setDimM ix d i)
+
+prop_PullOutDimException :: (Typeable ix, Index ix) => Dim -> ix -> Property
+prop_PullOutDimException d ix =
+  (d <= 0 || d > dimensions (Just ix)) ==>
+  assertExceptionIO (== IndexDimensionException ix d) (pullOutDimM ix d)
+
+prop_InsertDimException ::
+     forall ix. (Typeable (Lower ix), Index ix)
+  => Dim
+  -> Lower ix
+  -> Int
+  -> Property
+prop_InsertDimException d ix i =
+  (d <= 0 || d > dimensions resIO) ==> assertExceptionIO (== IndexDimensionException ix d) resIO
+  where
+    resIO = insertDimM ix d i :: IO ix
+
+
+prop_UnconsGetDrop :: (Index (Lower ix), Index ix) => ix -> Property
+prop_UnconsGetDrop ix =
+  either throw (unconsDim ix ===) $ do
     i <- getDimM ix (dimensions (Just ix))
     ixL <- dropDimM ix (dimensions (Just ix))
     return (i, ixL)
 
-prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => proxy ix -> ix -> Property
-prop_UnsnocGetDrop _ ix =
-  Just (unsnocDim ix) === do
+prop_UnsnocGetDrop :: (Index (Lower ix), Index ix) => ix -> Property
+prop_UnsnocGetDrop ix =
+  either throw (unsnocDim ix ===) $ do
     i <- getDimM ix 1
     ixL <- dropDimM ix 1
     return (ixL, i)
 
-prop_SetAll :: Index ix => proxy ix -> ix -> Int -> Bool
-prop_SetAll _ ix i =
-  foldM (\cix d -> setDimM cix d i) ix ([1 .. dimensions (Just ix)] :: [Dim]) ==
-  Just (pureIndex i)
+prop_SetAll :: Index ix => ix -> Property
+prop_SetAll ix =
+  either throw (ix ===) (replaceDims dims) .&&. either throw (ix ===) (replaceDims (reverse dims))
+  where
+    replaceDims = foldM (\cix d -> getDimM ix d >>= setDimM cix d) zeroIndex
+    dims = [1 .. dimensions (Just ix)] :: [Dim]
 
 
-prop_SetGet :: Index ix => proxy ix -> ix -> DimIx ix -> Int -> Bool
-prop_SetGet _ ix (DimIx dim) n = Just n == (setDimM ix dim n >>= (`getDimM` dim))
+prop_SetGet :: Index ix => ix -> DimIx ix -> Int -> Property
+prop_SetGet ix (DimIx dim) n = n === getDim' (setDim' ix dim n) dim
 
 
-prop_BorderIx1 :: Positive Int -> Border Char -> Fun Ix1 Char -> SzNE Ix1 -> Ix1 -> Bool
+
+prop_BorderIx1 :: Positive Int -> Border Char -> Fun Ix1 Char -> SzNE Ix1 -> Ix1 -> Property
 prop_BorderIx1 (Positive period) border getVal (SzNE sz) ix =
   if isSafeIndex sz ix
-    then apply getVal ix == val
+    then val === apply getVal ix
     else case border of
-           Fill defVal -> defVal == val
+           Fill defVal -> val === defVal
            Wrap ->
-             val ==
+             val ===
              handleBorderIndex
                border
                sz
@@ -296,18 +329,17 @@ prop_BorderIx1 (Positive period) border getVal (SzNE sz) ix =
                (liftIndex2 (+) (liftIndex (* period) (unSz sz)) ix)
            Edge ->
              if ix < 0
-               then val == apply getVal (liftIndex (max 0) ix)
-               else val ==
-                    apply getVal (liftIndex2 min (liftIndex (subtract 1) (unSz sz)) ix)
+               then val === apply getVal (liftIndex (max 0) ix)
+               else val === apply getVal (liftIndex2 min (liftIndex (subtract 1) (unSz sz)) ix)
            Reflect ->
-             val ==
+             val ===
              handleBorderIndex
                border
                sz
                (apply getVal)
                (liftIndex2 (+) (liftIndex (* (2 * signum ix * period)) (unSz sz)) ix)
            Continue ->
-             val ==
+             val ===
              handleBorderIndex
                Reflect
                sz
@@ -317,41 +349,6 @@ prop_BorderIx1 (Positive period) border getVal (SzNE sz) ix =
                   else ix + 1)
   where
     val = handleBorderIndex border sz (apply getVal) ix
-
-ixSpec :: forall ix . (Index ix, Arbitrary ix) => Spec
-ixSpec = do
-  let proxy = Proxy :: Proxy ix
-  describe "Safety" $
-    it "RepairSafeIx" $ property $ prop_RepairSafeIx proxy
-  describe "Lifting" $
-    it "Lift/Lift2" $ property $ prop_LiftLift2 proxy
-  describe "Linear" $ do
-    it "ToFromLinearIndex" $ property $ prop_ToFromLinearIndex proxy
-    it "FromToLinearIndex" $ property $ prop_FromToLinearIndex proxy
-  describe "Iterator" $ do
-    it "CountElements" $ property $ prop_CountElements proxy 2000000
-    it "Monotonic" $ property $ prop_IterMonotonic proxy 2000000
-    it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards proxy 2000000
-    it "MonotonicM" $ property $ prop_IterMonotonicM proxy 2000000
-    it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM proxy 2000000
-  describe "Border" $
-    it "BorderRepairSafe" $ property $ prop_BorderRepairSafe proxy
-  describe "SetGetDrop" $ do
-    it "SetAll" $ property $ prop_SetAll proxy
-    it "SetGet" $ property $ prop_SetGet proxy
-    it "GetDropInsert" $ property $ prop_GetDropInsert proxy
-    it "PullOutInsert" $ property $ prop_PullOutInsert proxy
-
-specDim2AndUp
-  :: (Index ix, Index (Lower ix), Arbitrary ix)
-  => proxy ix -> Spec
-specDim2AndUp proxy =
-  describe "Higher/Lower" $ do
-    it "UnconsCons" $ property $ prop_UnconsCons proxy
-    it "UnsnocSnoc" $ property $ prop_UnsnocSnoc proxy
-    it "UnconsGetDrop" $ property $ prop_UnconsGetDrop proxy
-    it "UnsnocGetDrop" $ property $ prop_UnsnocGetDrop proxy
-
 
 
 prop_BinaryNumIx ::
@@ -379,9 +376,85 @@ prop_UnaryNumSz f sz = map f' (ixToList (unSz sz)) === ixToList (unSz (f sz))
 -- Specs --
 -----------
 
+specIx1 :: Spec
+specIx1 = describe "Ix1" $ do
+  ixSpec @Ix1
+  ixNumSpec @Ix1
+  it "Border" $ property prop_BorderIx1
+
+
+ixSpec ::
+     forall ix. (Typeable (Lower ix), Arbitrary (Lower ix), Typeable ix, Index ix, Arbitrary ix)
+  => Spec
+ixSpec = do
+  describe "Safety" $ do
+    it "IsSafeIndex" $ property $ prop_IsSafeIndex @ix
+    it "RepairSafeIx" $ property $ prop_RepairSafeIx @ix
+  describe "Lifting" $
+    it "Lift/Lift2" $ property $ prop_LiftLift2 @ix
+  describe "Linear" $ do
+    it "ToFromLinearIndex" $ property $ prop_ToFromLinearIndex @ix
+    it "FromToLinearIndex" $ property $ prop_FromToLinearIndex @ix
+  describe "Iterator" $ do
+    it "CountElements" $ property $ prop_CountElements @ix 2000000
+    it "Monotonic" $ property $ prop_IterMonotonic @ix 2000000
+    it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards @ix 2000000
+    it "MonotonicM" $ property $ prop_IterMonotonicM @ix 2000000
+    it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM @ix 2000000
+  describe "Border" $
+    it "BorderRepairSafe" $ property $ prop_BorderRepairSafe @ix
+  describe "SetGetDrop" $ do
+    it "SetAll" $ property $ prop_SetAll @ix
+    it "SetGet" $ property $ prop_SetGet @ix
+    it "GetDropInsert" $ property $ prop_GetDropInsert @ix
+    it "PullOutInsert" $ property $ prop_PullOutInsert @ix
+    it "UnconsCons" $ property $ prop_UnconsCons @ix
+    it "UnsnocSnoc" $ property $ prop_UnsnocSnoc @ix
+  describe "IndexDimensionException" $ do
+    it "getDimException" $ property $ prop_getDimException @ix
+    it "setDimException" $ property $ prop_setDimException @ix
+    it "PullOutDimException" $ property $ prop_PullOutDimException @ix
+    it "InsertDimException" $ property $ prop_InsertDimException @ix
+  describe "Dimension" $ do
+    it "GetInnerDimension" $ property $ \(ix :: ix) -> lastDim ix === getDimension ix Dim1
+    it "GetOuterDimension" $ property $
+      \(ix :: ix) -> headDim ix === getDimension ix (DimN :: Dimension (Dimensions ix))
+    it "SetInnerDimension" $ property $
+      \(ix :: ix) i -> snocDim (initDim ix) i === setDimension ix Dim1 i
+    it "SetOuterDimension" $ property $
+      \(ix :: ix) i -> consDim i (tailDim ix) === setDimension ix (DimN :: Dimension (Dimensions ix)) i
+    it "DropInnerDimension" $ property $ \(ix :: ix) -> initDim ix === dropDimension ix Dim1
+    it "DropOuterDimension" $ property $
+      \(ix :: ix) -> tailDim ix === dropDimension ix (DimN :: Dimension (Dimensions ix))
+    it "InsertInnerDimension" $ property $
+      \(ixl :: Lower ix) i -> (snocDim ixl i :: ix) === insertDimension ixl Dim1 i
+    it "InsertOuterDimension" $ property $
+      \(ixl :: Lower ix) i -> (consDim i ixl :: ix) ===
+                               insertDimension ixl (DimN :: Dimension (Dimensions ix)) i
+    it "PullOutInnerDimension" $ property $
+      \(ix :: ix) -> unsnocDim ix === uncurry (flip (,)) (pullOutDimension ix Dim1)
+    it "PullInnerOuterDimension" $ property $
+      \(ix :: ix) -> unconsDim ix ===
+                               pullOutDimension ix (DimN :: Dimension (Dimensions ix))
+
+  describe "NFData" $ do
+    it "rnf" $ property $ \ (ix :: ix) -> rnf ix `shouldBe` ()
+    it "throws exception" $ property $ \ (DimIx d :: DimIx ix) (ix :: ix) ->
+      assertException (== ExpectedException) (setDim' ix d (throw ExpectedException))
+
+
+ix2UpSpec ::
+     forall ix. (Index ix, Index (Lower ix), Arbitrary ix, Arbitrary (Lower ix), Typeable (Lower ix))
+  => Spec
+ix2UpSpec =
+  describe "Higher/Lower" $ do
+    it "UnconsGetDrop" $ property $ prop_UnconsGetDrop @ix
+    it "UnsnocGetDrop" $ property $ prop_UnsnocGetDrop @ix
+
+
 -- | Spec that validates the Num instance for any `Index ix => ix`
 ixNumSpec :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
-ixNumSpec =
+ixNumSpec = do
   describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy ix)) ")") $ do
     it "(+)" $ property $ prop_BinaryNumIx @ix (+)
     it "(-)" $ property $ prop_BinaryNumIx @ix (-)
@@ -391,10 +464,13 @@ ixNumSpec =
     it "signum" $ property $ prop_UnaryNumIx @ix signum
     it "fromInteger" $ property $ \ (i :: Int) ->
       (fromIntegral i :: ix) === liftIndex (const i) zeroIndex
+  describe "Constants" $ do
+    it "zeroIndex" $ (zeroIndex :: ix) `shouldBe` 0
+    it "oneIndex" $ (oneIndex :: ix) `shouldBe` 1
 
 -- | Spec that validates the Num instance for any `Index ix => Sz ix`
 szNumSpec :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
-szNumSpec =
+szNumSpec = do
   describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy (Sz ix))) ")") $ do
     it "(+)" $ property $ prop_BinaryNumSz @ix (+)
     it "(-)" $ property $ prop_BinaryNumSz @ix (-)
@@ -403,5 +479,30 @@ szNumSpec =
     it "abs" $ property $ prop_UnaryNumSz @ix abs
     it "signum" $ property $ prop_UnaryNumSz @ix signum
     it "fromInteger" $ property $ \ (i :: Int) ->
-      (fromIntegral i :: ix) === liftIndex (const i) zeroIndex
-    it "fromIx" $ property $ \ (ix :: ix) -> unSz (Sz ix) == liftIndex (max 0) ix
+      (fromIntegral i :: Sz ix) === SafeSz (pureIndex (max 0 i))
+    it "fromIx" $ property $ \ (ix :: ix) -> unSz (Sz ix) === liftIndex (max 0) ix
+  describe "Constants" $ do
+    it "zeroSz" $ (zeroSz :: Sz ix) `shouldBe` 0
+    it "oneSz" $ (oneSz :: Sz ix) `shouldBe` 1
+
+
+prop_PullOutInsertSize :: Index ix => DimIx ix -> Sz ix -> Property
+prop_PullOutInsertSize (DimIx dim) sz =
+  either throw (sz ===) $ do
+    (i, szL) <- pullOutSzM sz dim
+    insertSzM szL dim i
+
+
+szSpec ::
+     forall ix. (Index ix, Arbitrary ix)
+  => Spec
+szSpec = do
+  describe "Higher/Lower" $ do
+    it "UnconsCons" $ property $ \ (sz :: Sz ix) -> sz === uncurry consSz (unconsSz sz)
+    it "UnsnocSnoc" $ property $ \ (sz :: Sz ix) -> sz === uncurry snocSz (unsnocSz sz)
+    it "PullOutInsert" $ property $ prop_PullOutInsertSize @ix
+  describe "Number of Elements" $ do
+    it "TotalElem" $ property $
+      \(sz :: Sz ix) -> totalElem sz === foldlIndex (*) 1 (unSz sz)
+    it "IsNonEmpty" $ property $
+      \(sz :: Sz ix) -> isNonEmpty sz === foldlIndex (\a x -> a && x > 0) True (unSz sz)

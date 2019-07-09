@@ -36,6 +36,7 @@ library
                      -- , Test.Massiv.CoreGen
                      -- , 
                      Test.Massiv.Core.Index
+                     Test.Massiv.Utils
 
 
   build-depends:       base >= 4.9 && < 5
@@ -48,7 +49,7 @@ library
                      , massiv >= 0.3.6
                      , scheduler
                      , primitive
-                     , unliftio-core
+                     , unliftio
                      , vector
 
   default-language:    Haskell2010
@@ -58,50 +59,28 @@ library
                       -Wredundant-constraints
                       -fno-warn-orphans
 
--- test-suite tests
---   type:               exitcode-stdio-1.0
---   hs-source-dirs:     tests
---   main-is:            Main.hs
---   other-modules:      Data.Massiv.ArraySpec
---                     , Data.Massiv.Array.DelayedSpec
---                     , Data.Massiv.Array.Delayed.InterleavedSpec
---                     , Data.Massiv.Array.Delayed.WindowedSpec
---                     , Data.Massiv.Array.Delayed.PushSpec
---                     , Data.Massiv.Array.ManifestSpec
---                     , Data.Massiv.Array.Manifest.VectorSpec
---                     , Data.Massiv.Array.MutableSpec
---                     , Data.Massiv.Array.Numeric.IntegralSpec
---                     , Data.Massiv.Array.Ops.ConstructSpec
---                     , Data.Massiv.Array.Ops.FoldSpec
---                     , Data.Massiv.Array.Ops.SliceSpec
---                     , Data.Massiv.Array.Ops.SortSpec
---                     , Data.Massiv.Array.Ops.TransformSpec
---                     , Data.Massiv.Array.Ops.MapSpec
---                     , Data.Massiv.Array.StencilSpec
---                     , Data.Massiv.CoreArbitrary
---                     , Data.Massiv.Core.IndexSpec
---                     , Data.Massiv.Core.SchedulerSpec
---                     , Spec
---   build-depends:      base
---                     , bytestring
---                     , containers
---                     , data-default
---                     , deepseq
---                     , massiv
---                     , hspec
---                     , scheduler
---                     , QuickCheck
---                     , unliftio
---                     , vector
+test-suite tests
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     tests
+  main-is:            Main.hs
+  other-modules:      Test.Massiv.Core.IndexSpec
+                    , Spec
+  build-depends:      base
+                    , data-default
+                    , deepseq
+                    , massiv
+                    , massiv-test
+                    , hspec
+                    , QuickCheck
 
---   default-language:   Haskell2010
---   ghc-options:       -Wall
---                      -Wincomplete-record-updates
---                      -Wincomplete-uni-patterns
---                      -Wredundant-constraints
---                      -fno-warn-orphans
---                      -threaded
---                      -with-rtsopts=-N2
+  default-language:   Haskell2010
+  ghc-options:       -Wall
+                     -Wincomplete-record-updates
+                     -Wincomplete-uni-patterns
+                     -Wredundant-constraints
+                     -fno-warn-orphans
+                     -threaded
+                     -with-rtsopts=-N2
 
 -- test-suite doctests
 --   type:             exitcode-stdio-1.0
