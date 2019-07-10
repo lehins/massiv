@@ -343,8 +343,8 @@ class Manifest r ix e => Mutable r ix e where
   -- | Copy part of one mutable array into another
   --
   -- @since 0.3.6
-  unsafeLinearCopy :: PrimMonad m =>
-                      MArray (PrimState m) r ix e -- ^ Source mutable array
+  unsafeLinearCopy :: (Mutable r ix' e, PrimMonad m) =>
+                      MArray (PrimState m) r ix' e -- ^ Source mutable array
                    -> Ix1 -- ^ Starting index at source array
                    -> MArray (PrimState m) r ix e -- ^ Target mutable array
                    -> Ix1 -- ^ Starting index at target array
@@ -359,8 +359,8 @@ class Manifest r ix e => Mutable r ix e where
   -- | Copy a part of a pure array into a mutable array
   --
   -- @since 0.3.6
-  unsafeArrayLinearCopy :: PrimMonad m =>
-                           Array r ix e -- ^ Source pure array
+  unsafeArrayLinearCopy :: (Mutable r ix' e, PrimMonad m) =>
+                           Array r ix' e -- ^ Source pure array
                         -> Ix1 -- ^ Starting index at source array
                         -> MArray (PrimState m) r ix e -- ^ Target mutable array
                         -> Ix1 -- ^ Starting index at target array
