@@ -8,6 +8,7 @@ module Test.Massiv.Utils
   , module X
   ) where
 
+import Control.Monad.ST as X
 import Data.Typeable as X
 import Test.QuickCheck as X
 import Test.QuickCheck.Monadic as X
