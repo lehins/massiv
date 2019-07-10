@@ -52,7 +52,7 @@ import Data.Primitive.ByteArray
 import Data.Primitive.Types
 import GHC.Base (Int(..))
 import GHC.Exts as GHC
-#if !MIN_VERSION_base(4,11,0)
+#if !MIN_VERSION_base(4,11,0) && !MIN_VERSION_primitive(0,6,4)
 import GHC.Prim as GHC
 #endif
 import Prelude hiding (mapM)

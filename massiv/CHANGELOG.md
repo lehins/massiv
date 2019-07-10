@@ -1,6 +1,8 @@
 # 0.3.7
 
 * Expose `Data.Massiv.Core.List`
+* Addition of `liftSz`
+* Bunch of minor fixes to `Show` instances
 
 
 # 0.3.6

@@ -32,6 +32,7 @@ module Data.Massiv.Core.Index.Internal
   , unSz
   , zeroSz
   , oneSz
+  , liftSz
   , consSz
   , unconsSz
   , snocSz
@@ -166,6 +167,20 @@ zeroSz = SafeSz (pureIndex 0)
 oneSz :: Index ix => Sz ix
 oneSz = SafeSz (pureIndex 1)
 {-# INLINE oneSz #-}
+
+
+-- | Same as `consDim`, but for `Sz`
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
+-- >>> liftSz succ (Sz2 2 3)
+-- Sz (3 :. 4)
+--
+-- @since 0.3.7
+liftSz :: Index ix => (Int -> Int) -> Sz ix -> Sz ix
+liftSz f (SafeSz ix) = Sz (liftIndex f ix)
+{-# INLINE liftSz #-}
 
 
 -- | Same as `consDim`, but for `Sz`

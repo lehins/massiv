@@ -31,6 +31,7 @@ module Data.Massiv.Core.Index
   , unSz
   , zeroSz
   , oneSz
+  , liftSz
   , consSz
   , unconsSz
   , snocSz
