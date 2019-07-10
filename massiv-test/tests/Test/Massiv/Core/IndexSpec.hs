@@ -10,12 +10,8 @@ import Data.Massiv.Array
 import Data.Massiv.Array.Unsafe (Sz(SafeSz))
 import Test.Massiv.Core.Index
 import Test.Massiv.Utils
-import Data.Proxy
-import Test.Hspec
-import Test.QuickCheck
 import Test.Validity.Eq (eqSpecOnArbitrary)
 import Test.Validity.Ord (ordSpecOnArbitrary)
-import Data.Typeable
 
 
 

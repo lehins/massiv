@@ -1,6 +1,5 @@
-{-# LANGUAGE DataKinds #-}
-{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -12,6 +11,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 module Test.Massiv.Core.Index
   ( DimIx(..)
   , SzNE(..)
@@ -32,20 +32,17 @@ module Test.Massiv.Core.Index
   , module Data.Massiv.Core.Index
   ) where
 
-import Data.IORef
 import Control.DeepSeq
 import Control.Exception (throw)
 import Control.Monad
 import Data.Foldable as F
 import Data.Functor.Identity
+import Data.IORef
 import Data.Massiv.Array.Unsafe (Sz(SafeSz))
 import Data.Massiv.Core.Index
 import Data.Proxy
 import Data.Typeable
-import Test.Hspec
 import Test.Massiv.Utils
-import Test.QuickCheck
-import Test.QuickCheck.Function
 
 
 -- | Dimension that is always within bounds of an index
@@ -522,6 +519,7 @@ szSpec ::
   => Spec
 szSpec = do
   describe "Higher/Lower" $ do
+    it "LiftSzNegate" $ property $ \ (sz :: Sz ix) -> liftSz negate sz === zeroSz
     it "UnconsCons" $ property $ \ (sz :: Sz ix) -> sz === uncurry consSz (unconsSz sz)
     it "UnsnocSnoc" $ property $ \ (sz :: Sz ix) -> sz === uncurry snocSz (unsnocSz sz)
     it "PullOutInsert" $ property $ prop_PullOutInsertSize @ix
