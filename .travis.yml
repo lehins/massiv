@@ -103,32 +103,32 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-12.26"
+  - env: BUILD=stack ARGS="--resolver lts-12.26" DOCTEST_ARGS="--resolver lts-12.26"
     compiler: ": #stack GHC-8.4.3 (lts-12.26)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.10"
-    compiler: ": #stack GHC-8.6.3 (lts-13.10)"
+  - env: BUILD=stack ARGS="--resolver lts-13.9" DOCTEST_ARGS="--resolver lts-13.9"
+    compiler: ": #stack GHC-8.6.3 (lts-13.9)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.19"
+  - env: BUILD=stack ARGS="--resolver lts-13.19" DOCTEST_ARGS="--resolver lts-13.19"
     compiler: ": #stack GHC-8.6.4 (lts-13.19)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13"
+  - env: BUILD=stack ARGS="--resolver lts-13" DOCTEST_ARGS="--resolver lts-13"
     compiler: ": #stack GHC-8.6.5 (lts-13)"
     addons:
       apt:
         packages: [libgmp-dev]
 
   # Nightly builds are allowed to fail
-  - env: BUILD=stack ARGS="--resolver nightly"
+  - env: BUILD=stack ARGS="--resolver nightly" DOCTEST_ARGS="--resolver nightly"
     compiler: ": #stack nightly"
     addons:
       apt:
@@ -143,11 +143,11 @@ matrix:
     compiler: ": #stack GHC-8.2.2 (lts-11.22)"
     os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-12.26"
+  - env: BUILD=stack ARGS="--resolver lts-12.26" DOCTEST_ARGS="--resolver lts-12.26"
     compiler: ": #stack GHC-8.4.3 (lts-12.26)"
     os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-13"
+  - env: BUILD=stack ARGS="--resolver lts-13" DOCTEST_ARGS="--resolver lts-13"
     compiler: ": #stack GHC-8.6.5 (lts-13)"
     os: osx
 
@@ -210,7 +210,10 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack $ARGS test massiv-test:tests massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      if [ "${DOCTEST_ARGS}" ]; then
+         stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      fi
+      stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       ;;
     cabal)
 

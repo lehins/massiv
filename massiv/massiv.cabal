@@ -147,9 +147,9 @@ test-suite doctests
   main-is:          doctests.hs
   build-depends: base
                , doctest >=0.15
-               , QuickCheck
+               -- , QuickCheck
                , massiv
-               , massiv-test
+               -- , massiv-test
                , mersenne-random-pure64
                , random
                , splitmix >= 0.0.1

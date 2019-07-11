@@ -217,7 +217,7 @@ fromFunction ::
   -> Int -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
   -> Array D ix e
 fromFunction comp f a d (Sz sz) n =
-  (f scale) <$> rangeInclusive comp zeroIndex (liftIndex (n *) sz)
+  f scale <$> rangeInclusive comp zeroIndex (liftIndex (n *) sz)
   where
     nFrac = fromIntegral n
     scale i = a + d * fromIntegral i / nFrac
@@ -244,7 +244,7 @@ fromFunctionMidpoint
   :: (Index ix, Fractional a) =>
      Comp -> ((Int -> a) -> ix -> e) -> a -> a -> Sz ix -> Int -> Array D ix e
 fromFunctionMidpoint comp f a d (Sz sz) n =
-  (\ix -> f scale ix) <$> rangeInclusive comp zeroIndex (liftIndex (\i -> n * i - 1) sz)
+  f scale <$> rangeInclusive comp zeroIndex (liftIndex (\i -> n * i - 1) sz)
   where
     nFrac = fromIntegral n
     dx2 = d / nFrac / 2

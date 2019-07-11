@@ -13,7 +13,7 @@ environment:
   # - ARGS: "--resolver lts-9 --stack-yaml stack-ghc-8.0.yaml"
   - ARGS: "--resolver lts-11 --stack-yaml stack-ghc-8.0.yaml"
   - ARGS: "--resolver lts-12.26"
-  - ARGS: "--resolver lts-13" # FIXME (appveyor/ghc-8.6.4 haddock issue?)
+  - ARGS: "--resolver lts-13"
   - ARGS: "--resolver nightly"
 matrix:
   allow_failures:
@@ -48,7 +48,7 @@ before_test:
 test_script:
   - cd "%WORK_DIR%"
   - stack %ARGS% --verbosity warn setup --no-reinstall > nul
-  - stack %ARGS% test massiv-tests:tests massiv:doctests
+  - stack %ARGS% test massiv-test:tests massiv:doctests
       -j 2
       --flag massiv:unsafe-checks
       --no-terminal
