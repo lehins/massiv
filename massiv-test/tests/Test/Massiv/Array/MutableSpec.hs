@@ -23,9 +23,10 @@ type MutableSpec r ix e
      , Construct r ix e)
 
 specMutableR ::
-     forall e r.
-     ( Show r
-     , Show e
+     forall r e.
+     ( Show e
+     , Eq e
+     , Typeable e
      , Arbitrary e
      , MutableSpec r Ix1 e
      , MutableSpec r Ix2 e
@@ -33,20 +34,42 @@ specMutableR ::
      , MutableSpec r Ix4 e
      , MutableSpec r Ix5 e
      )
-  => r
-  -> Spec
-specMutableR r =
-  describe (show r) $ do
-    mutableSpec @r @Ix1 @e
-    mutableSpec @r @Ix2 @e
-    mutableSpec @r @Ix3 @e
-    mutableSpec @r @Ix4 @e
-    mutableSpec @r @Ix5 @e
+  => Spec
+specMutableR = do
+  mutableSpec @r @Ix1 @e
+  mutableSpec @r @Ix2 @e
+  mutableSpec @r @Ix3 @e
+  mutableSpec @r @Ix4 @e
+  mutableSpec @r @Ix5 @e
+
+
+specUnboxedMutableR ::
+     forall r e.
+     ( Show e
+     , Eq e
+     , Typeable e
+     , Arbitrary e
+     , MutableSpec r Ix1 e
+     , MutableSpec r Ix2 e
+     , MutableSpec r Ix3 e
+     , MutableSpec r Ix4 e
+     , MutableSpec r Ix5 e
+     )
+  => Spec
+specUnboxedMutableR = do
+  specMutableR @r @e
+  mutableUnboxedSpec @r @Ix1 @e
+  mutableUnboxedSpec @r @Ix2 @e
+  mutableUnboxedSpec @r @Ix3 @e
+  mutableUnboxedSpec @r @Ix4 @e
+  mutableUnboxedSpec @r @Ix5 @e
+
+
 
 spec :: Spec
 spec = do
-  specMutableR @Int B
-  specMutableR @Int N
-  specMutableR @Int S
-  specMutableR @Int P
-  specMutableR @Int U
+  specMutableR @B @Int
+  specMutableR @N @Int
+  specUnboxedMutableR @S @Int
+  specUnboxedMutableR @P @Int
+  specUnboxedMutableR @U @Int

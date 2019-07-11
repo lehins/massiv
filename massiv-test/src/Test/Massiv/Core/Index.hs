@@ -476,7 +476,7 @@ ix2UpSpec =
 -- | Spec that validates the Num instance for any `Index ix => ix`
 ixNumSpec :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
 ixNumSpec = do
-  describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy ix)) ")") $ do
+  describe ("Num (" ++ showsType @ix ")") $ do
     it "(+)" $ property $ prop_BinaryNumIx @ix (+)
     it "(-)" $ property $ prop_BinaryNumIx @ix (-)
     it "(*)" $ property $ prop_BinaryNumIx @ix (*)
@@ -492,7 +492,7 @@ ixNumSpec = do
 -- | Spec that validates the Num instance for any `Index ix => Sz ix`
 szNumSpec :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
 szNumSpec = do
-  describe ("Num (" ++ showsTypeRep (typeRep (Proxy :: Proxy (Sz ix))) ")") $ do
+  describe ("Num (" ++ showsType @(Sz ix) ")") $ do
     it "(+)" $ property $ prop_BinaryNumSz @ix (+)
     it "(-)" $ property $ prop_BinaryNumSz @ix (-)
     it "(*)" $ property $ prop_BinaryNumSz @ix (*)

@@ -321,8 +321,7 @@ class Manifest r ix e => Mutable r ix e where
   -- | Create new mutable array while initializing all elements to some default value.
   --
   -- @since 0.3.0
-  initializeNew :: PrimMonad m =>
-                   Maybe e -> Sz ix -> m (MArray (PrimState m) r ix e)
+  initializeNew :: PrimMonad m => Maybe e -> Sz ix -> m (MArray (PrimState m) r ix e)
   initializeNew mdef sz = do
     marr <- unsafeNew sz
     case mdef of
@@ -372,19 +371,23 @@ class Manifest r ix e => Mutable r ix e where
       unsafeLinearWrite marrTo (i + delta) (unsafeLinearIndex arrFrom i)
   {-# INLINE unsafeArrayLinearCopy #-}
 
-  -- | Linearly reduce the size of an array. Total number of elements should be smaller.
+  -- | Linearly reduce the size of an array. Total number of elements should be smaller or
+  -- equal. There is no guarantee that the original array is left unchanged, so it should
+  -- no longer be used.
   --
   -- @since 0.3.6
   unsafeLinearShrink :: PrimMonad m =>
-                     MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
+                        MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
   unsafeLinearShrink = unsafeDefaultLinearShrink
   {-# INLINE unsafeLinearShrink #-}
 
-  -- | Linearly increase the size of an array. Total number of elements should be larger.
+  -- | Linearly increase the size of an array. Total number of elements should be larger
+  -- or equal. There is no guarantee that the original array is left unchanged, so it
+  -- should no longer be used.
   --
   -- @since 0.3.6
   unsafeLinearGrow :: PrimMonad m =>
-                     MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
+                      MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
   unsafeLinearGrow marr sz = do
     marr' <- unsafeNew sz
     unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem (msize marr))

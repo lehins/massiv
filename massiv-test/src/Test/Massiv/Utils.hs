@@ -1,5 +1,10 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 module Test.Massiv.Utils
-  ( assertException
+  ( showsType
+  , showsArrayType
+  , assertException
   , assertExceptionIO
   , assertSomeException
   , assertSomeExceptionIO
@@ -8,6 +13,7 @@ module Test.Massiv.Utils
   , module X
   ) where
 
+import Control.Monad as X
 import Control.Monad.ST as X
 import Data.Typeable as X
 import Test.QuickCheck as X
@@ -16,6 +22,16 @@ import Test.Hspec as X
 import Test.QuickCheck.Function as X
 import Control.DeepSeq (NFData, deepseq)
 import UnliftIO.Exception (Exception(..), SomeException, catch, catchAny)
+
+-- | Use Typeable to show the type.
+showsType :: forall t . Typeable t => ShowS
+showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
+
+-- | Use Typeable to show the array type
+showsArrayType :: forall r ix e . (Typeable r, Typeable ix, Typeable e) => ShowS
+showsArrayType =
+  ("Array " ++) . showsType @r . (" (" ++) . showsType @ix . (") " ++) . showsType @e
+
 
 assertException ::
      (Testable b, NFData a, Exception exc)

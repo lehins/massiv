@@ -1,10 +1,16 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Test.Massiv.Core.Common where
+module Test.Massiv.Core.Common
+  ( ArrNE(..)
+  , ArrTiny(..)
+  , ArrTinyNE(..)
+  , ArrIx(..)
+  , module X
+  ) where
 
 import Data.Massiv.Array
-import Test.Massiv.Core.Index
+import Test.Massiv.Core.Index as X
 import Test.Massiv.Utils
 
 
