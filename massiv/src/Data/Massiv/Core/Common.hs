@@ -36,6 +36,7 @@ module Data.Massiv.Core.Common
   , WorkerStates
   , unsafeRead
   , unsafeWrite
+  , unsafeModify
   , unsafeLinearModify
   , unsafeDefaultLinearShrink
   , Ragged(..)
@@ -408,26 +409,47 @@ unsafeDefaultLinearShrink marr sz = do
 
 
 -- | Read an array element
+--
+-- @since 0.1.0
 unsafeRead :: (Mutable r ix e, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> m e
 unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeRead #-}
 
 -- | Write an element into array
+--
+-- @since 0.1.0
 unsafeWrite :: (Mutable r ix e, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> e -> m ()
 unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeWrite #-}
 
 
--- | Modify an element in the array with an index aware action.
+-- | Modify an element in the array with a linear index aware action. Returns the previous
+-- value.
+--
+-- @since 0.3.7
 unsafeLinearModify :: (Mutable r ix e, PrimMonad m) =>
-                      MArray (PrimState m) r ix e -> (Int -> e -> m e) -> Int -> m ()
+                      MArray (PrimState m) r ix e -> (Int -> e -> m e) -> Int -> m e
 unsafeLinearModify !marr f !i = do
   v <- unsafeLinearRead marr i
   v' <- f i v
   unsafeLinearWrite marr i v'
+  pure v
 {-# INLINE unsafeLinearModify #-}
+
+-- | Modify an element in the array with an index aware action. Returns the previous value.
+--
+-- @since 0.3.7
+unsafeModify :: (Mutable r ix e, PrimMonad m) =>
+                MArray (PrimState m) r ix e -> (ix -> e -> m e) -> ix -> m e
+unsafeModify !marr f !ix = do
+  let i = toLinearIndex (msize marr) ix
+  v <- unsafeLinearRead marr i
+  v' <- f ix v
+  unsafeLinearWrite marr i v'
+  pure v
+{-# INLINE unsafeModify #-}
 
 
 class Nested r ix e where

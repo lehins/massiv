@@ -1,9 +1,0 @@
-resolver: lts-11.22
-packages:
-- '.'
-extra-deps:
-- scheduler-1.4.0@sha256:b182be9a7b84e1dba02dac761c3f4e204521d0f779d72d86040789d5aaadf92a,2833
-- doctest-0.16.1@sha256:69307edfc5629310d72d30be5f72fbf475d5fae0c27c4cb426438f85ffc87f97,6908
-- splitmix-0.0.2@sha256:e1c4d1202757d63cd4b4498d5fa600a792f2a315d2fdc6cf772f4679113c1819,3298
-flags: {}
-extra-package-dbs: []

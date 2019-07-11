@@ -1,9 +1,10 @@
 # 0.3.7
 
 * Expose `Data.Massiv.Core.List`
+* Expose `unsafeLinearModify` and `unsafeModify`
 * Addition of `liftSz`
 * Bunch of minor fixes to `Show` instances
-
+* Extracted test-suite into it's own package.
 
 # 0.3.6
 

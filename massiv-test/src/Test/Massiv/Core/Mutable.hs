@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
@@ -34,12 +35,13 @@ prop_UnsafeNewLinearWriteRead ::
      forall r ix e.
      (Eq e, Show e, Mutable r ix e, Arbitrary ix, Arbitrary e)
   => Property
-prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e -> do
+prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
   let i = toLinearIndex sz ix
-  unsafeLinearWrite marr i e
-  unsafeLinearRead marr i `shouldReturn` e
-
+  unsafeLinearWrite marr i e1
+  unsafeLinearRead marr i `shouldReturn` e1
+  unsafeLinearModify marr (\ !_ !_ -> pure e2) i `shouldReturn` e1
+  unsafeLinearRead marr i `shouldReturn` e2
 
 
 prop_UnsafeThawFreeze ::

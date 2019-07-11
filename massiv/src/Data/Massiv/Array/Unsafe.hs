@@ -37,13 +37,20 @@ module Data.Massiv.Array.Unsafe
   , unsafeThaw
   , unsafeFreeze
   , unsafeNew
+    -- ** Read
   , unsafeRead
   , unsafeLinearRead
+    -- ** Write
   , unsafeWrite
   , unsafeLinearWrite
+    -- ** Modify
+  , unsafeModify
+  , unsafeLinearModify
+    -- ** Range modification
   , unsafeLinearSet
   , unsafeLinearCopy
   , unsafeArrayLinearCopy
+    -- ** Resizing
   , unsafeLinearShrink
   , unsafeLinearGrow
     -- * Pointer access
