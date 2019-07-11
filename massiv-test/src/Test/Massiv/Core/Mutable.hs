@@ -6,13 +6,13 @@
 {-# LANGUAGE TypeApplications #-}
 module Test.Massiv.Core.Mutable
   ( -- * Spec for Mutable instance
-    mutableSpec
+    unsafeMutableSpec
   , prop_UnsafeNewMsize
   , prop_UnsafeThawFreeze
   , prop_UnsafeInitializeNew
   , prop_UnsafeArrayLinearCopy
   -- ** Properties that aren't valid for boxed
-  , mutableUnboxedSpec
+  , unsafeMutableUnboxedSpec
   , prop_UnsafeInitialize
   ) where
 
@@ -250,7 +250,7 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
         (,) <$> unsafeFreeze (getComp arr) marrCopied <*> unsafeFreeze (getComp arr) marrGrown
 
 
-mutableSpec ::
+unsafeMutableSpec ::
      forall r ix e.
      ( Eq (Array (EltRepr r Ix1) Ix1 e)
      , Show (Array (EltRepr r Ix1) Ix1 e)
@@ -269,7 +269,7 @@ mutableSpec ::
      , Resize r ix
      )
   => Spec
-mutableSpec = do
+unsafeMutableSpec = do
   describe ("Mutable " ++ showsArrayType @r @ix @e " (Unsafe)") $ do
     it "UnsafeNewMsize" $ prop_UnsafeNewMsize @r @ix @e
     it "UnsafeNewLinearWriteRead" $ prop_UnsafeNewLinearWriteRead @r @ix @e
@@ -283,10 +283,10 @@ mutableSpec = do
     it "UnsafeLinearShrink" $ property $ prop_UnsafeLinearShrink @r @ix @e
     it "UnsafeLinearGrow" $ property $ prop_UnsafeLinearGrow @r @ix @e
 
-mutableUnboxedSpec ::
+unsafeMutableUnboxedSpec ::
      forall r ix e.
      (Typeable e, Typeable ix, Eq (Array r ix e), Show (Array r ix e), Arbitrary ix, Mutable r ix e)
   => Spec
-mutableUnboxedSpec =
+unsafeMutableUnboxedSpec =
   describe ("Mutable Unboxed" ++ showsArrayType @r @ix @e " (Unsafe)") $
     it "UnsafeInitialize" $ prop_UnsafeInitialize @r @ix @e

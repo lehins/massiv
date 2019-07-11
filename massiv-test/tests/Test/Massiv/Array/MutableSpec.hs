@@ -10,8 +10,9 @@ module Test.Massiv.Array.MutableSpec (spec) where
 import Data.Massiv.Array
 import Test.Massiv.Core
 import Test.Massiv.Core.Mutable
+import Test.Massiv.Array.Mutable
 
-type MutableSpec r ix e
+type MutableArraySpec r ix e
    = ( Eq (Array r ix e)
      , Show (Array r ix e)
      , Eq (Array (EltRepr r Ix1) Ix1 e)
@@ -22,20 +23,26 @@ type MutableSpec r ix e
      , Mutable r ix e
      , Construct r ix e)
 
-specMutableR ::
-     forall r e.
-     ( Show e
+type MutableSpec r e
+   = ( Show e
      , Eq e
      , Typeable e
      , Arbitrary e
-     , MutableSpec r Ix1 e
-     , MutableSpec r Ix2 e
-     , MutableSpec r Ix3 e
-     , MutableSpec r Ix4 e
-     , MutableSpec r Ix5 e
-     )
-  => Spec
+     , CoArbitrary e
+     , Function e
+     , MutableArraySpec r Ix1 e
+     , MutableArraySpec r Ix2 e
+     , MutableArraySpec r Ix3 e
+     , MutableArraySpec r Ix4 e
+     , MutableArraySpec r Ix5 e)
+
+specMutableR :: forall r e. MutableSpec r e => Spec
 specMutableR = do
+  unsafeMutableSpec @r @Ix1 @e
+  unsafeMutableSpec @r @Ix2 @e
+  unsafeMutableSpec @r @Ix3 @e
+  unsafeMutableSpec @r @Ix4 @e
+  unsafeMutableSpec @r @Ix5 @e
   mutableSpec @r @Ix1 @e
   mutableSpec @r @Ix2 @e
   mutableSpec @r @Ix3 @e
@@ -43,26 +50,14 @@ specMutableR = do
   mutableSpec @r @Ix5 @e
 
 
-specUnboxedMutableR ::
-     forall r e.
-     ( Show e
-     , Eq e
-     , Typeable e
-     , Arbitrary e
-     , MutableSpec r Ix1 e
-     , MutableSpec r Ix2 e
-     , MutableSpec r Ix3 e
-     , MutableSpec r Ix4 e
-     , MutableSpec r Ix5 e
-     )
-  => Spec
+specUnboxedMutableR :: forall r e. MutableSpec r e => Spec
 specUnboxedMutableR = do
   specMutableR @r @e
-  mutableUnboxedSpec @r @Ix1 @e
-  mutableUnboxedSpec @r @Ix2 @e
-  mutableUnboxedSpec @r @Ix3 @e
-  mutableUnboxedSpec @r @Ix4 @e
-  mutableUnboxedSpec @r @Ix5 @e
+  unsafeMutableUnboxedSpec @r @Ix1 @e
+  unsafeMutableUnboxedSpec @r @Ix2 @e
+  unsafeMutableUnboxedSpec @r @Ix3 @e
+  unsafeMutableUnboxedSpec @r @Ix4 @e
+  unsafeMutableUnboxedSpec @r @Ix5 @e
 
 
 
