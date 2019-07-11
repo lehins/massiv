@@ -80,9 +80,6 @@ library
                      , unliftio-core
                      , vector
 
-  if impl(ghc < 8.4)
-    build-depends: ghc-prim
-
   include-dirs: include
   install-includes: massiv.h
 
