@@ -9,7 +9,8 @@ import Data.IORef
 import Control.Monad.ST
 import Data.Foldable as F
 import Data.Massiv.Array.Unsafe
-import Data.Massiv.CoreArbitrary as A
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 import Prelude as P
 import Control.Scheduler.Internal
 

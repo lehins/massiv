@@ -5,14 +5,15 @@
 {-# LANGUAGE TypeApplications #-}
 module Data.Massiv.Array.Ops.TransformSpec (spec) where
 
-import Data.Massiv.CoreArbitrary as A
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 import Data.Sequence as S
 import Prelude as P
 import Data.Foldable as F (foldl', toList)
 import Data.Maybe
 
-prop_transposeOuterInner :: Arr D Ix2 Int -> Property
-prop_transposeOuterInner (Arr arr) = transposeOuter arr === transpose arr
+prop_transposeOuterInner :: Array D Ix2 Int -> Property
+prop_transposeOuterInner arr = transposeOuter arr === transpose arr
 
 prop_upsampleDownsample ::
      (Show (Array P ix Int), Index ix) => ArrTiny P ix Int -> Stride ix -> Int -> Property

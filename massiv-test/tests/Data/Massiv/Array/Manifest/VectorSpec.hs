@@ -6,9 +6,8 @@
 module Data.Massiv.Array.Manifest.VectorSpec (spec) where
 
 import Data.Massiv.Array.Manifest.Vector
-import Data.Massiv.CoreArbitrary
-import Data.Proxy
-import Data.Typeable
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 import qualified Data.Vector as VB
 import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Primitive as VP
@@ -23,8 +22,8 @@ prop_castToFromVector
      , Eq (Array r ix Int)
      , Show (Array r ix Int)
      )
-  => proxy ix -> r -> Arr r ix Int -> Property
-prop_castToFromVector _ _ (Arr arr) =
+  => proxy ix -> r -> ArrNE r ix Int -> Property
+prop_castToFromVector _ _ (ArrNE arr) =
   Just arr === (castToVector arr >>= castFromVector (getComp arr) (size arr))
 
 
@@ -42,9 +41,9 @@ prop_toFromVector ::
   => Proxy v
   -> Proxy ix
   -> r
-  -> Arr r ix Int
+  -> ArrNE r ix Int
   -> Property
-prop_toFromVector _ _ _ (Arr arr) =
+prop_toFromVector _ _ _ (ArrNE arr) =
   arr === fromVector' (getComp arr) (size arr) (toVector arr :: v Int)
 
 

@@ -3,7 +3,8 @@
 module Data.Massiv.Core.SchedulerSpec (spec) where
 
 import Control.Exception.Base (ArithException(DivideByZero))
-import Data.Massiv.CoreArbitrary as A
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 import Prelude as P
 
 
@@ -21,14 +22,14 @@ prop_CatchDivideByZero (ArrIx arr ix) caps =
        (setComp (ParOn caps) arr))
 
 -- | Ensure proper exception handling in nested parallel computation
-prop_CatchNested :: ArrIx D Ix1 (ArrIxP D Ix1 Int) -> [Int] -> Property
+prop_CatchNested :: ArrIx D Ix1 (ArrIx D Ix1 Int) -> [Int] -> Property
 prop_CatchNested (ArrIx arr ix) caps =
   assertException
     (== DivideByZero)
     (computeAs U $
      A.map A.sum $
      A.imap
-       (\ix' (ArrIxP iarr ixi) ->
+       (\ix' (ArrIx iarr ixi) ->
           if ix == ix'
             then A.imap
                    (\ixi' e ->

@@ -5,7 +5,8 @@ module Data.Massiv.Array.Delayed.InterleavedSpec
   ( spec
   ) where
 
-import Data.Massiv.CoreArbitrary as A
+import Data.Massiv.Array
+import Test.Massiv.Core
 
 
 prop_EqDelayed ::

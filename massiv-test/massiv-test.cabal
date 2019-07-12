@@ -64,14 +64,36 @@ test-suite tests
   other-modules:      Spec
                     , Test.Massiv.Core.IndexSpec
                     , Test.Massiv.Array.MutableSpec
+                      -- TODO: Below should be moved to Test.Massiv.Array
+                    , Data.Massiv.Array.Delayed.InterleavedSpec
+                    , Data.Massiv.Array.Delayed.PushSpec
+                    , Data.Massiv.Array.Delayed.WindowedSpec
+                    , Data.Massiv.Array.DelayedSpec
+                    , Data.Massiv.Array.Manifest.VectorSpec
+                    , Data.Massiv.Array.ManifestSpec
+                    , Data.Massiv.Array.Numeric.IntegralSpec
+                    , Data.Massiv.Array.Ops.ConstructSpec
+                    , Data.Massiv.Array.Ops.FoldSpec
+                    , Data.Massiv.Array.Ops.MapSpec
+                    , Data.Massiv.Array.Ops.SliceSpec
+                    , Data.Massiv.Array.Ops.SortSpec
+                    , Data.Massiv.Array.Ops.TransformSpec
+                    , Data.Massiv.Array.StencilSpec
+                    , Data.Massiv.ArraySpec
+                    , Data.Massiv.Core.IndexSpec
+                    , Data.Massiv.Core.SchedulerSpec
   build-depends:      base
+                    , bytestring
+                    , containers
                     , data-default
                     , deepseq
                     , genvalidity-hspec
                     , massiv
                     , massiv-test
                     , hspec
+                    , scheduler
                     , QuickCheck
+                    , vector
 
   default-language:   Haskell2010
   ghc-options:       -Wall

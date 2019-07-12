@@ -8,7 +8,9 @@ module Data.Massiv.Array.Ops.SliceSpec (spec) where
 import Control.Applicative ((<|>))
 import Control.Exception
 import Data.Massiv.Array.Unsafe
-import Data.Massiv.CoreArbitrary
+import Data.Massiv.Array as A
+import Test.Massiv.Core
+
 -----------
 -- Size --
 -----------

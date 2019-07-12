@@ -8,7 +8,8 @@ module Data.Massiv.Array.ManifestSpec (spec) where
 import Data.ByteString as S
 import Data.ByteString.Builder as S
 import Data.ByteString.Lazy as SL
-import Data.Massiv.CoreArbitrary as A
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 import Data.Word (Word8)
 
 

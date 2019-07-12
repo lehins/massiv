@@ -3,10 +3,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Massiv.Array.DelayedSpec (spec) where
 
-import Data.Massiv.Array
 import Data.Massiv.Array.Unsafe
-import Data.Massiv.CoreArbitrary as A
-import Data.Proxy
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 
 
 downsampleArr :: Source r ix e => Stride ix -> Array r ix e -> Array D ix e
@@ -46,7 +45,7 @@ prop_computeWithStrideWindowedEqDownsample _ stride (ArrIx arr _) =
 
 
 delayedSpec ::
-     (Arbitrary ix, CoArbitrary ix, StrideLoad DW ix Int, Ragged L ix Int)
+     (Arbitrary ix, StrideLoad DW ix Int, Ragged L ix Int)
   => String
   -> proxy ix
   -> Spec

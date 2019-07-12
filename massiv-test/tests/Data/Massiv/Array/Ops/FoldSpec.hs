@@ -5,7 +5,8 @@
 module Data.Massiv.Array.Ops.FoldSpec (spec) where
 
 import qualified Data.Foldable as F
-import Data.Massiv.CoreArbitrary as A
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 import Data.Semigroup
 import Prelude hiding (map, product, sum)
 
@@ -23,7 +24,7 @@ prop_NestedFoldP arr = sum (setComp Par (map sum $ setComp Par arr)) == sum (map
 
 
 specFold ::
-     (Arbitrary ix, CoArbitrary ix, Index ix, Show (Array D ix Int))
+     (Arbitrary ix, Index ix, Show (Array D ix Int))
   => proxy ix
   -> String
   -> Spec
@@ -32,8 +33,8 @@ specFold proxy dimStr =
     it "sumS Eq sumP" $ property $ prop_SumSEqSumP proxy
     it "prodS Eq prodP" $ property $ prop_ProdSEqProdP proxy
 
-foldOpsProp :: (Source P ix Int) => proxy ix -> Fun Int Bool -> ArrTiny1 P ix Int -> Property
-foldOpsProp _ f (ArrTiny1 arr) =
+foldOpsProp :: (Source P ix Int) => proxy ix -> Fun Int Bool -> ArrTinyNE P ix Int -> Property
+foldOpsProp _ f (ArrTinyNE arr) =
   (A.maximum' arr === getMax (foldMono Max arr)) .&&.
   (A.minimum' arr === getMin (foldSemi Min maxBound arr)) .&&.
   (A.sum arr === F.sum ls) .&&.

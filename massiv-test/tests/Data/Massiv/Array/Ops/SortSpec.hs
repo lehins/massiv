@@ -3,7 +3,8 @@
 module Data.Massiv.Array.Ops.SortSpec (spec) where
 
 import Data.List as L
-import Data.Massiv.CoreArbitrary as A
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 
 
 prop_IsSorted :: (b -> b) -> ([Int] -> b) -> (b -> [Int]) -> [Int] -> Property

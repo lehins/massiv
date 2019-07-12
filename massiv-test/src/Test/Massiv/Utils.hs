@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 module Test.Massiv.Utils
@@ -10,6 +11,7 @@ module Test.Massiv.Utils
   , assertSomeExceptionIO
   , toStringException
   , ExpectedException(..)
+  , applyFun2Compat
   , module X
   ) where
 
@@ -76,3 +78,13 @@ toStringException = either (Left . displayException) Right
 data ExpectedException = ExpectedException deriving (Show, Eq)
 
 instance Exception ExpectedException
+
+
+applyFun2Compat :: Fun (a, b) c -> (a -> b -> c)
+#if MIN_VERSION_QuickCheck(2,10,0)
+applyFun2Compat = applyFun2
+#else
+applyFun2Compat (Fun _ f) a b = f (a, b)
+instance Function Word where
+  function = functionMap fromIntegral fromInteger
+#endif

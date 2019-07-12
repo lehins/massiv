@@ -3,10 +3,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Data.Massiv.Array.Delayed.PushSpec (spec) where
 
-import Data.Massiv.Array.Delayed
-import Data.Massiv.Array.Unsafe
-import Data.Massiv.CoreArbitrary as A
-import Data.Typeable
+-- import Data.Massiv.Array.Delayed
+-- import Data.Massiv.Array.Unsafe
+-- import Data.Massiv.Array as A
+import Test.Massiv.Core
 
 
 -- prop_upsampleDifferentDefault ::
@@ -25,7 +25,7 @@ spec = pure ()
   --   it "Ix5" $ property $ prop_upsampleDifferentDefault (Proxy :: Proxy Ix5)
 
 
-identityDL :: Int -> Array DL Ix2 Int
-identityDL n = makeLoadArrayS (Sz2 n n) 0 $ \ writeCell -> do
-  let f i = writeCell (i :. i) 1
-  A.mapM_ f (0 ... n - 1)
+-- identityDL :: Int -> Array DL Ix2 Int
+-- identityDL n = makeLoadArrayS (Sz2 n n) 0 $ \ writeCell -> do
+--   let f i = writeCell (i :. i) 1
+--   A.mapM_ f (0 ... n - 1)

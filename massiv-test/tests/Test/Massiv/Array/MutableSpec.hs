@@ -48,7 +48,7 @@ specMutableR = do
   mutableSpec @r @Ix2 @e
   mutableSpec @r @Ix3 @e
   mutableSpec @r @Ix4 @e
-  mutableSpec @r @Ix5 @e
+  --mutableSpec @r @Ix5 @e -- slows down the test suite
 
 
 specUnboxedMutableR :: forall r e. MutableSpec r e => Spec

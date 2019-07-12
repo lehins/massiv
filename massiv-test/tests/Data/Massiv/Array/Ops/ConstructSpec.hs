@@ -5,8 +5,8 @@
 module Data.Massiv.Array.Ops.ConstructSpec (spec) where
 
 import Data.List as L
-import Data.Massiv.CoreArbitrary as A
-import Data.Proxy
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 import qualified GHC.Exts as GHC (IsList(..))
 import Prelude as P
 
@@ -32,17 +32,17 @@ prop_rangeStepExc from to =
 prop_toFromListIsList ::
      (Show (Array U ix Int), GHC.IsList (Array U ix Int), Index ix)
   => Proxy ix
-  -> Arr U ix Int
+  -> ArrNE U ix Int
   -> Property
-prop_toFromListIsList _ (Arr arr) = arr === GHC.fromList (GHC.toList arr)
+prop_toFromListIsList _ (ArrNE arr) = arr === GHC.fromList (GHC.toList arr)
 
 
 prop_toFromList ::
   forall ix . (Show (Array U ix Int), Nested LN ix Int, Ragged L ix Int)
   => Proxy ix
-  -> Arr U ix Int
+  -> ArrNE U ix Int
   -> Property
-prop_toFromList _ (Arr arr) = comp === comp' .&&. arr === arr'
+prop_toFromList _ (ArrNE arr) = comp === comp' .&&. arr === arr'
   where comp = getComp arr
         arr' = fromLists' comp (toLists arr)
         comp' = getComp arr'
@@ -72,8 +72,8 @@ prop_excFromToListIx3 comp ls3
     lsLL = P.map (P.map P.length) ls3
 
 
-specIx1 :: Spec
-specIx1 = do
+specConstructIx1 :: Spec
+specConstructIx1 = do
   it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix1))
   it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix1))
   it "rangeEqRangeStep1" $ property prop_rangeEqRangeStep1
@@ -81,14 +81,14 @@ specIx1 = do
   it "rangeStepEqEnumFromStepN" $ property prop_rangeStepEqEnumFromStepN
   it "rangeStepExc" $ property prop_rangeStepExc
 
-specIx2 :: Spec
-specIx2 = do
+specConstructIx2 :: Spec
+specConstructIx2 = do
   it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix2))
   it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix2))
   it "excFromToListIx2" $ property prop_excFromToListIx2
 
-specIx3 :: Spec
-specIx3 = do
+specConstructIx3 :: Spec
+specConstructIx3 = do
   it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix3))
   it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
   it "excFromToListIx3" $ property prop_excFromToListIx3
@@ -123,8 +123,8 @@ specExpand = do
 
 spec :: Spec
 spec = do
-  describe "Ix1" specIx1
-  describe "Ix2" specIx2
-  describe "Ix3" specIx3
+  describe "Ix1" specConstructIx1
+  describe "Ix2" specConstructIx2
+  describe "Ix3" specConstructIx3
   describe "Expand" specExpand
   describe "Unfolding" $ it "unfoldrS_" $ property prop_unfoldrList

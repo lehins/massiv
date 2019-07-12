@@ -10,8 +10,8 @@ module Data.Massiv.Array.Delayed.WindowedSpec (spec) where
 
 import Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Unsafe
-import Data.Massiv.CoreArbitrary as A
-import Data.Typeable
+import Data.Massiv.Array as A
+import Test.Massiv.Core
 
 
 data ArrDW ix e = ArrDW (Array D ix e) (Array DW ix e)
