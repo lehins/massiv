@@ -17,7 +17,8 @@ type MutableArraySpec r ix e
      , Show (Array r ix e)
      , Eq (Array (EltRepr r Ix1) Ix1 e)
      , Show (Array (EltRepr r Ix1) Ix1 e)
-     , Extract r Ix1 e
+     , Load (EltRepr r ix) ix e
+     , Extract r ix e
      , Resize r ix
      , Arbitrary (Array r ix e)
      , Mutable r ix e
@@ -68,3 +69,8 @@ spec = do
   specUnboxedMutableR @S @Int
   specUnboxedMutableR @P @Int
   specUnboxedMutableR @U @Int
+  atomicIntSpec @Ix1
+  atomicIntSpec @Ix2
+  atomicIntSpec @Ix3
+  atomicIntSpec @Ix4
+  atomicIntSpec @Ix5

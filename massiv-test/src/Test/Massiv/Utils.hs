@@ -15,6 +15,7 @@ module Test.Massiv.Utils
 
 import Control.Monad as X
 import Control.Monad.ST as X
+import Data.Maybe as X (fromMaybe)
 import Data.Typeable as X
 import Test.QuickCheck as X
 import Test.QuickCheck.Monadic as X

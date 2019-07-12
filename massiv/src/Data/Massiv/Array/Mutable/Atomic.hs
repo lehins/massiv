@@ -71,7 +71,8 @@ casIntArray marr ix e n
 {-# INLINE casIntArray #-}
 
 
--- | Atomically modify an `Int` element of the array. Returns the old value.
+-- | Atomically modify an `Int` element of the array. Returns the old value, unless the
+-- supplied index was out of bounds.
 --
 -- @since 0.3.0
 atomicModifyIntArray ::

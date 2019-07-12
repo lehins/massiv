@@ -269,7 +269,7 @@ unsafeMutableSpec ::
      , Resize r ix
      )
   => Spec
-unsafeMutableSpec = do
+unsafeMutableSpec =
   describe ("Mutable " ++ showsArrayType @r @ix @e " (Unsafe)") $ do
     it "UnsafeNewMsize" $ prop_UnsafeNewMsize @r @ix @e
     it "UnsafeNewLinearWriteRead" $ prop_UnsafeNewLinearWriteRead @r @ix @e

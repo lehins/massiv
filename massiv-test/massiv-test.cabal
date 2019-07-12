@@ -37,6 +37,7 @@ library
 
 
   build-depends:       base >= 4.9 && < 5
+                     , async
                      , bytestring
                      , data-default-class
                      , deepseq
