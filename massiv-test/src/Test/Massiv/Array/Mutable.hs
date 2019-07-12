@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 module Test.Massiv.Array.Mutable
@@ -13,13 +14,14 @@ module Test.Massiv.Array.Mutable
   ) where
 
 import Control.Concurrent.Async
+import Data.Bits
 import Data.Functor.Identity
 import Data.List as L
 import Data.Massiv.Array as A
-import Data.Massiv.Array.Unsafe
 import Data.Massiv.Array.Mutable.Atomic
+import Data.Massiv.Array.Unsafe
 import Test.Massiv.Core.Common
-import Test.Massiv.Utils
+import Test.Massiv.Utils as T
 
 
 -- prop_MapMapM :: forall r ix(Show (Array r ix Word), Eq (Array r ix Word), Mutable r ix Word) =>
@@ -54,9 +56,9 @@ prop_GenerateArray =
     let arr = makeArray comp sz f :: Array r ix e
         arrST = runST (generateArrayS (getComp arr) (size arr) (return . evaluate' arr))
         f = apply f'
-    arr `shouldBe` arrST
-    arrIO <- generateArray (getComp arr) (size arr) (return . evaluate' arr)
-    arr `shouldBe` arrIO
+    arrST `shouldBe` arr
+    arrIO <- generateArray (getComp arr) (size arr) (evaluateM arr)
+    arrIO `shouldBe` arr
 
 prop_Shrink ::
      forall r ix e.
@@ -106,13 +108,33 @@ prop_GrowShrink =
 
 
 prop_unfoldrList ::
-  forall r ix e . (Arbitrary ix, Arbitrary e, Eq e, Show e, Mutable r ix e) => Property
-prop_unfoldrList = property $ \ sz f (i :: Word) ->
-  conjoin $
-  L.zipWith
-    (===)
-    (A.toList (runST (unfoldrPrimM_ Seq sz (pure . apply f) i) :: Array r ix e))
-    (L.unfoldr (Just . apply f) i)
+     forall r ix e.
+     ( Show (Array r Ix1 e)
+     , Eq (Array r Ix1 e)
+     , Arbitrary ix
+     , Arbitrary e
+     , Eq e
+     , Show e
+     , Resize r ix
+     , Mutable r ix e
+     , Mutable r Ix1 e
+     )
+  => Property
+prop_unfoldrList = property $ \ comp sz f (i :: Word) ->
+    let xs = runST (unfoldrPrimM_ Seq sz (pure . apply f) i) :: Array r ix e
+        ys = A.fromList comp (L.take (totalElem sz) (L.unfoldr (Just . apply f) i))
+    in flatten xs === ys
+
+
+-- prop_unfoldrList ::
+--   forall r ix e . (Arbitrary ix, Arbitrary e, Eq e, Show e, Mutable r ix e) => Property
+-- prop_unfoldrList = property $ \ sz f (i :: Word) ->
+--   L.and $
+--   L.zipWith
+--     (==)
+--     (A.toList (runST (unfoldrPrimM_ Seq sz (pure . apply f) i) :: Array r ix e))
+--     (L.unfoldr (Just . apply f) i)
+
 
 prop_unfoldrReverseUnfoldl ::
      forall r ix e.
@@ -126,12 +148,12 @@ prop_unfoldrReverseUnfoldl ::
      )
   => Property
 prop_unfoldrReverseUnfoldl =
-  property $ \sz f (i :: Word) ->
+  property $ \ comp sz f (i :: Word) ->
     let swapTuple (x, y) = (y, x)
         rev a =
-          compute @r (backpermute' sz (\ix1 -> liftIndex pred $ liftIndex2 (-) (unSz sz) ix1) a)
-     in do a1 :: Array r ix e <- unfoldrPrimM_ @r Seq sz (pure . apply f) i
-           a2 <- unfoldlPrimM_ @r Seq sz (pure . swapTuple . apply f) i
+          compute @r (backpermute' sz (liftIndex pred . liftIndex2 (-) (unSz sz)) a)
+     in do a1 :: Array r ix e <- unfoldrPrimM_ @r comp sz (pure . apply f) i
+           a2 <- unfoldlPrimM_ @r comp sz (pure . swapTuple . apply f) i
            rev a1 `shouldBe` a2
 
 
@@ -139,15 +161,17 @@ mutableSpec ::
      forall r ix e.
      ( Show (Array D ix e)
      , Show (Array r ix e)
+     , Show (Array r Ix1 e)
+     , Eq (Array r Ix1 e)
      , Load (EltRepr r ix) ix e
      , Eq (Array r ix e)
      , Typeable e
      , Show e
      , Eq e
      , Mutable r ix e
+     , Mutable r Ix1 e
      , Construct r ix e
      , Extract r ix e
-     , Source r Ix1 e
      , Resize r ix
      , CoArbitrary ix
      , Arbitrary e
@@ -178,16 +202,73 @@ prop_atomicModifyIntArrayMany ::
 prop_atomicModifyIntArrayMany =
   property $ \(ArrIx arr ix) (ys :: Array B Ix1 Int)  -> do
     marr <- thaw arr
+    atomicModifyIntArray marr (liftIndex negate ix) succ `shouldReturn` Nothing
     mys <- mapConcurrently (atomicModifyIntArray marr ix . const) ys
     my <- A.read marr (ix :: ix)
     let xs = fromMaybe (error "atomicModifyIntArray read'") $ Prelude.sequenceA (my : toList mys)
     y <- indexM arr ix
     L.sort (y : toList ys) `shouldBe` L.sort xs
 
+prop_atomicReadIntArray ::
+     forall ix. (Show (Array P ix Int), Arbitrary ix, Index ix)
+  => Property
+prop_atomicReadIntArray =
+  property $ \arr (ix :: ix) -> do
+    marr <- unsafeThaw arr
+    mx <- A.read marr ix
+    atomicReadIntArray marr ix `shouldReturn` mx
+
+prop_atomicWriteIntArray ::
+     forall ix. (Show (Array P ix Int), Arbitrary ix, Index ix)
+  => Property
+prop_atomicWriteIntArray =
+  property $ \arr (ix :: ix) (e :: Int) -> do
+    marr <- unsafeThaw arr
+    mx <- A.read marr ix
+    atomicWriteIntArray marr ix e `shouldReturn` isJust mx
+    T.forM_ mx $ \ _ ->
+      A.read marr ix `shouldReturn` Just e
+
+prop_atomicOpIntArray ::
+     forall ix. (Show (Array P ix Int), Arbitrary ix, Index ix)
+  => (Int -> Int -> Int)
+  -> (forall m. PrimMonad m =>
+                  MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int))
+  -> Property
+prop_atomicOpIntArray f atomicAction =
+  property $ \arr (ix :: ix) (e :: Int) -> do
+    marr <- unsafeThaw arr
+    mx <- A.read marr ix
+    atomicAction marr ix e `shouldReturn` mx
+    T.forM_ mx $ \x -> A.read' marr ix `shouldReturn` f x e
+
+prop_casIntArray ::
+     forall ix. (Show (Array P ix Int), Arbitrary ix, Index ix)
+  => Property
+prop_casIntArray =
+  property $ \arr (ix :: ix) (e :: Int) -> do
+    marr <- unsafeThaw arr
+    mx <- A.read marr ix
+    case mx of
+      Nothing -> casIntArray marr ix e e `shouldReturn` Nothing
+      Just x -> do
+        casIntArray marr ix x e `shouldReturn` mx
+        A.read' marr ix `shouldReturn` e
+
 
 atomicIntSpec ::
      forall ix. (Show (Array P ix Int), Arbitrary ix, Index ix)
   => Spec
-atomicIntSpec = do
+atomicIntSpec =
   describe "Atomic Int Operations" $ do
     it "atomicModifyIntArrayMany" $ prop_atomicModifyIntArrayMany @ix
+    it "atomicReadIntArray" $ prop_atomicReadIntArray @ix
+    it "atomicWriteIntArray" $ prop_atomicWriteIntArray @ix
+    it "atomicAddIntArray" $ prop_atomicOpIntArray @ix (+) atomicAddIntArray
+    it "atomicSubIntArray" $ prop_atomicOpIntArray @ix (-) atomicSubIntArray
+    it "atomicAndIntArray" $ prop_atomicOpIntArray @ix (.&.) atomicAndIntArray
+    it "atomicNandIntArray" $
+      prop_atomicOpIntArray @ix (\x y -> complement (x .&. y)) atomicNandIntArray
+    it "atomicOrIntArray" $ prop_atomicOpIntArray @ix (.|.) atomicOrIntArray
+    it "atomicXorIntArray" $ prop_atomicOpIntArray @ix xor atomicXorIntArray
+    it "casIntArray" $ prop_casIntArray @ix
