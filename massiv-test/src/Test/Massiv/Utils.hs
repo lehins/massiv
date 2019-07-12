@@ -25,6 +25,10 @@ import Test.Hspec as X
 import Test.QuickCheck.Function as X
 import Control.DeepSeq (NFData, deepseq)
 import UnliftIO.Exception (Exception(..), SomeException, catch, catchAny)
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup as X
+#endif
+
 
 -- | Use Typeable to show the type.
 showsType :: forall t . Typeable t => ShowS
