@@ -10,8 +10,6 @@ environment:
     STACK_WORK: ".w"
     WORK_DIR: "c:\\m"
   matrix:
-  # - ARGS: "--resolver lts-9 --stack-yaml stack-ghc-8.0.yaml"
-  - ARGS: "--resolver lts-11 --stack-yaml stack-ghc-8.0.yaml"
   - ARGS: "--resolver lts-12.26"
   - ARGS: "--resolver lts-13"
   - ARGS: "--resolver nightly"
