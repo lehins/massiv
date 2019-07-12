@@ -84,7 +84,6 @@ prop_GrowShrink ::
      , Mutable r ix e
      , Construct r ix e
      , Extract r ix e
-     , Source r Ix1 e
      , Arbitrary ix
      , Arbitrary e
      , Show e
@@ -103,6 +102,37 @@ prop_GrowShrink =
     garr <- compute . extract' zeroIndex sz <$> unsafeFreeze (getComp arr) grownMarr
     sarr <- freezeS =<< unsafeLinearShrink grownMarr sz
     pure (garr === arr .&&. sarr === arr)
+
+
+
+prop_unfoldrList ::
+  forall r ix e . (Arbitrary ix, Arbitrary e, Eq e, Show e, Mutable r ix e) => Property
+prop_unfoldrList = property $ \ sz f (i :: Word) ->
+  conjoin $
+  L.zipWith
+    (===)
+    (A.toList (runST (unfoldrPrimM_ Seq sz (pure . apply f) i) :: Array r ix e))
+    (L.unfoldr (Just . apply f) i)
+
+prop_unfoldrReverseUnfoldl ::
+     forall r ix e.
+     ( Show (Array r ix e)
+     , Eq (Array r ix e)
+     , Arbitrary ix
+     , Arbitrary e
+     , Show e
+     , Source r ix e
+     , Mutable r ix e
+     )
+  => Property
+prop_unfoldrReverseUnfoldl =
+  property $ \sz f (i :: Word) ->
+    let swapTuple (x, y) = (y, x)
+        rev a =
+          compute @r (backpermute' sz (\ix1 -> liftIndex pred $ liftIndex2 (-) (unSz sz) ix1) a)
+     in do a1 :: Array r ix e <- unfoldrPrimM_ @r Seq sz (pure . apply f) i
+           a2 <- unfoldlPrimM_ @r Seq sz (pure . swapTuple . apply f) i
+           rev a1 `shouldBe` a2
 
 
 mutableSpec ::
@@ -128,12 +158,15 @@ mutableSpec ::
      , Function e
      )
   => Spec
-mutableSpec =
+mutableSpec = do
   describe ("Mutable " ++ showsArrayType @r @ix @e " (Safe)") $ do
     it "GenerateArray" $ property $ prop_GenerateArray @r @ix @e
     it "Shrink" $ property $ prop_Shrink @r @ix @e
     it "GrowShrink" $ property $ prop_GrowShrink @r @ix @e
     it "map == mapM" $ property $ prop_iMapiMapM @r @ix @e
+  describe "Unfolding" $ do
+    it "unfoldrList" $ prop_unfoldrList @r @ix @e
+    it "unfoldrReverseUnfoldl" $ prop_unfoldrReverseUnfoldl @r @ix @e
 
 
 
