@@ -113,27 +113,17 @@ prop_unfoldrList ::
      , Eq (Array r Ix1 e)
      , Arbitrary ix
      , Arbitrary e
-     , Eq e
      , Show e
      , Resize r ix
      , Mutable r ix e
      , Mutable r Ix1 e
      )
   => Property
-prop_unfoldrList = property $ \ comp sz f (i :: Word) ->
-    let xs = runST (unfoldrPrimM_ Seq sz (pure . apply f) i) :: Array r ix e
+prop_unfoldrList =
+  property $ \comp sz f (i :: Word) ->
+    let xs = runST (unfoldrPrimM_ comp sz (pure . apply f) i) :: Array r ix e
         ys = A.fromList comp (L.take (totalElem sz) (L.unfoldr (Just . apply f) i))
-    in flatten xs === ys
-
-
--- prop_unfoldrList ::
---   forall r ix e . (Arbitrary ix, Arbitrary e, Eq e, Show e, Mutable r ix e) => Property
--- prop_unfoldrList = property $ \ sz f (i :: Word) ->
---   L.and $
---   L.zipWith
---     (==)
---     (A.toList (runST (unfoldrPrimM_ Seq sz (pure . apply f) i) :: Array r ix e))
---     (L.unfoldr (Just . apply f) i)
+     in flatten xs === ys
 
 
 prop_unfoldrReverseUnfoldl ::
@@ -183,7 +173,7 @@ mutableSpec ::
      )
   => Spec
 mutableSpec = do
-  describe ("Mutable " ++ showsArrayType @r @ix @e " (Safe)") $ do
+  describe ("Mutable (" ++ showsArrayType @r @ix @e ") (Safe)") $ do
     it "GenerateArray" $ property $ prop_GenerateArray @r @ix @e
     it "Shrink" $ property $ prop_Shrink @r @ix @e
     it "GrowShrink" $ property $ prop_GrowShrink @r @ix @e
@@ -202,7 +192,7 @@ prop_atomicModifyIntArrayMany ::
 prop_atomicModifyIntArrayMany =
   property $ \(ArrIx arr ix) (ys :: Array B Ix1 Int)  -> do
     marr <- thaw arr
-    atomicModifyIntArray marr (liftIndex negate ix) succ `shouldReturn` Nothing
+    atomicModifyIntArray marr (liftIndex (subtract 1 . negate) ix) succ `shouldReturn` Nothing
     mys <- mapConcurrently (atomicModifyIntArray marr ix . const) ys
     my <- A.read marr (ix :: ix)
     let xs = fromMaybe (error "atomicModifyIntArray read'") $ Prelude.sequenceA (my : toList mys)

@@ -270,7 +270,7 @@ unsafeMutableSpec ::
      )
   => Spec
 unsafeMutableSpec =
-  describe ("Mutable " ++ showsArrayType @r @ix @e " (Unsafe)") $ do
+  describe ("Mutable (" ++ showsArrayType @r @ix @e ") (Unsafe)") $ do
     it "UnsafeNewMsize" $ prop_UnsafeNewMsize @r @ix @e
     it "UnsafeNewLinearWriteRead" $ prop_UnsafeNewLinearWriteRead @r @ix @e
     it "UnsafeThawFreeze" $ property $ prop_UnsafeThawFreeze @r @ix @e

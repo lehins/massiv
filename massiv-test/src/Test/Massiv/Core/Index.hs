@@ -68,7 +68,7 @@ data SzIx ix = SzIx (Sz ix) ix deriving Show
 instance (Index ix, Arbitrary ix) => Arbitrary (Sz ix) where
   arbitrary = do
     sz <- Sz . liftIndex abs <$> arbitrary
-    if totalElem sz > 200000
+    if totalElem sz > 50000
       then arbitrary
       else return sz
 
@@ -408,6 +408,7 @@ ixSpec ::
      forall ix. (Typeable (Lower ix), Arbitrary (Lower ix), Typeable ix, Index ix, Arbitrary ix)
   => Spec
 ixSpec = do
+  let threshold = 50000
   describe "Safety" $ do
     it "IsSafeIndex" $ property $ prop_IsSafeIndex @ix
     it "RepairSafeIx" $ property $ prop_RepairSafeIx @ix
@@ -417,11 +418,11 @@ ixSpec = do
     it "ToFromLinearIndex" $ property $ prop_ToFromLinearIndex @ix
     it "FromToLinearIndex" $ property $ prop_FromToLinearIndex @ix
   describe "Iterator" $ do
-    it "CountElements" $ property $ prop_CountElements @ix 2000000
-    it "Monotonic" $ property $ prop_IterMonotonic @ix 2000000
-    it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards @ix 2000000
-    it "MonotonicM" $ property $ prop_IterMonotonicM @ix 2000000
-    it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM @ix 2000000
+    it "CountElements" $ property $ prop_CountElements @ix threshold
+    it "Monotonic" $ property $ prop_IterMonotonic @ix threshold
+    it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards @ix threshold
+    it "MonotonicM" $ property $ prop_IterMonotonicM @ix threshold
+    it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM @ix threshold
   describe "Border" $
     it "BorderRepairSafe" $ property $ prop_BorderRepairSafe @ix
   describe "SetGetDrop" $ do
