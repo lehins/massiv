@@ -26,7 +26,7 @@ import Test.QuickCheck.Function as X
 import Control.DeepSeq (NFData, deepseq)
 import UnliftIO.Exception (Exception(..), SomeException, catch, catchAny)
 #if !MIN_VERSION_base(4,11,0)
-import Data.Semigroup as X
+import Data.Semigroup as X ((<>))
 #endif
 
 
