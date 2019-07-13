@@ -149,39 +149,39 @@ stencilConvolution = do
 
 spec :: Spec
 spec = do
-  describe "Stencil" $ do
-    stencilSpec
-    let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
-    describe "Unit tests Ix2" $ do
-      it "Direction Left" $
-        stencilDirection (0 :. 1) arr `shouldBe` [[2, 3, 0], [5, 6, 0], [8, 9, 0]]
-      it "Direction Right" $
-        stencilDirection (0 :. -1) arr `shouldBe` [[0, 1, 2], [0, 4, 5], [0, 7, 8]]
-      it "Direction Down" $
-        stencilDirection (1 :. 0) arr `shouldBe` [[4, 5, 6], [7, 8, 9], [0, 0, 0]]
-      it "Direction Up" $
-        stencilDirection (-1 :. 0) arr `shouldBe` [[0, 0, 0], [1, 2, 3], [4, 5, 6]]
-      it "Direction Left/Top Corner" $
-        stencilCorners (0 :. 0) (2 :. 2) arr `shouldBe` [[9, 0, 0], [0, 0, 0], [0, 0, 0]]
-      it "Direction Right/Top Corner" $
-        stencilCorners (0 :. 2) (2 :. -2) arr `shouldBe` [[0, 0, 7], [0, 0, 0], [0, 0, 0]]
-      it "Direction Right/Bottom Corner" $
-        stencilCorners (2 :. 2) (-2 :. -2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [0, 0, 1]]
-      it "Direction Left/Bottom Corner" $
-        stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
-    describe "mapStencil with stride" $ do
-      let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
-          stencil = makeConvolutionStencilFromKernel kernel
-          stride = Stride 2
-      it "map stencil with stride on small array" $
-        let strideArr = mapStencil (Fill 0) stencil arr
-         in computeWithStrideAs U stride strideArr `shouldBe` [[-4, 8], [2, 14]]
-      it "map stencil with stride on larger array" $
-        let largeArr = makeArrayR U Seq (Sz 5) (succ . toLinearIndex (Sz 5))
-            strideArr = mapStencil (Fill 0) stencil largeArr
-         in computeWithStrideAs U stride strideArr `shouldBe`
-            [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
-  stencilConvolution
+  -- describe "Stencil" $ do
+  --   stencilSpec
+  --   let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
+  --   describe "Unit tests Ix2" $ do
+  --     it "Direction Left" $
+  --       stencilDirection (0 :. 1) arr `shouldBe` [[2, 3, 0], [5, 6, 0], [8, 9, 0]]
+  --     it "Direction Right" $
+  --       stencilDirection (0 :. -1) arr `shouldBe` [[0, 1, 2], [0, 4, 5], [0, 7, 8]]
+  --     it "Direction Down" $
+  --       stencilDirection (1 :. 0) arr `shouldBe` [[4, 5, 6], [7, 8, 9], [0, 0, 0]]
+  --     it "Direction Up" $
+  --       stencilDirection (-1 :. 0) arr `shouldBe` [[0, 0, 0], [1, 2, 3], [4, 5, 6]]
+  --     it "Direction Left/Top Corner" $
+  --       stencilCorners (0 :. 0) (2 :. 2) arr `shouldBe` [[9, 0, 0], [0, 0, 0], [0, 0, 0]]
+  --     it "Direction Right/Top Corner" $
+  --       stencilCorners (0 :. 2) (2 :. -2) arr `shouldBe` [[0, 0, 7], [0, 0, 0], [0, 0, 0]]
+  --     it "Direction Right/Bottom Corner" $
+  --       stencilCorners (2 :. 2) (-2 :. -2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [0, 0, 1]]
+  --     it "Direction Left/Bottom Corner" $
+  --       stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
+  --   describe "mapStencil with stride" $ do
+  --     let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+  --         stencil = makeConvolutionStencilFromKernel kernel
+  --         stride = Stride 2
+  --     it "map stencil with stride on small array" $
+  --       let strideArr = mapStencil (Fill 0) stencil arr
+  --        in computeWithStrideAs U stride strideArr `shouldBe` [[-4, 8], [2, 14]]
+  --     it "map stencil with stride on larger array" $
+  --       let largeArr = makeArrayR U Seq (Sz 5) (succ . toLinearIndex (Sz 5))
+  --           strideArr = mapStencil (Fill 0) stencil largeArr
+  --        in computeWithStrideAs U stride strideArr `shouldBe`
+  --           [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
+  -- stencilConvolution
   pure ()
 
 sobelX :: Num e => (Ix2 -> e -> e -> e) -> e -> e
