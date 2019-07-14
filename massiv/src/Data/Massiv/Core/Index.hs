@@ -91,6 +91,7 @@ module Data.Massiv.Core.Index
   , SizeException(..)
   , ShapeException(..)
   , guardNumberOfElements
+  , indexWith
   ) where
 
 import Control.DeepSeq
@@ -554,3 +555,33 @@ iterLinearM_ :: (Index ix, Monad m) =>
 iterLinearM_ sz !k0 !k1 !inc cond f =
   loopM_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
+
+
+-- | This is used by @INDEX_CHECK@ macro and thus used whenever the @unsafe-checks@ cabal
+-- flag is on.
+--
+-- @since 0.3.7
+indexWith ::
+     Index ix
+  => String -- ^ Source file name, eg. __FILE__
+  -> Int -- ^ Line number in th source file, eg. __LINE__
+  -> String
+  -> (arr -> Sz ix) -- ^ Get size of the array
+  -> (arr -> ix -> e) -- ^ Indexing function
+  -> arr -- ^ Array
+  -> ix -- ^ Index
+  -> e
+indexWith fileName lineNo funName getSize f arr ix
+  | isSafeIndex sz ix = f arr ix
+  | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) sz ix
+  where
+    sz = getSize arr
+
+-- | Helper function for throwing out of bounds error. Used by `indexWith`
+errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
+errorIx fName sz ix =
+  error $
+  fName ++
+  ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
+{-# NOINLINE errorIx #-}
+

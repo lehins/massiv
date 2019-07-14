@@ -288,5 +288,5 @@ unsafeMutableUnboxedSpec ::
      (Typeable e, Typeable ix, Eq (Array r ix e), Show (Array r ix e), Arbitrary ix, Mutable r ix e)
   => Spec
 unsafeMutableUnboxedSpec =
-  describe ("Mutable Unboxed" ++ showsArrayType @r @ix @e " (Unsafe)") $
+  describe ("Mutable Unboxed (" ++ showsArrayType @r @ix @e ") (Unsafe)") $
     it "UnsafeInitialize" $ prop_UnsafeInitialize @r @ix @e

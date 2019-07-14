@@ -2,6 +2,7 @@
 
 * Expose `Data.Massiv.Core.List`
 * Expose `unsafeLinearModify` and `unsafeModify`
+* Expose `indexWith`, so macro `INDEX_CHECK` from `massiv.h` could be used outside massiv.
 * Addition of `liftSz`
 * Bunch of minor fixes to `Show` instances
 * Extracted test-suite into it's own package.

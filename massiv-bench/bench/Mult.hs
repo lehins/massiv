@@ -3,7 +3,7 @@ module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
-import Data.Massiv.Array.SIMD.Double
+import Data.Massiv.Array.SIMD
 import Data.Massiv.Array.Manifest.Vector as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
@@ -32,10 +32,10 @@ multArrsAlt arr1 arr2
 
 main :: IO ()
 main = do
-  let !sz = Sz2 200 600
+  let !sz@(Sz2 m n) = Sz2 600 600
       !arr = arrRLightIx2 U Seq sz
       !arr2 = computeAs U arr
-      !mat = S.Matrix 200 600 $ A.toVector arr
+      !mat = S.Matrix m n $ A.toVector arr
       !arrV = arrRLightIx2 V Seq sz
       !arrV2 = computeAs V arrV
   defaultMain

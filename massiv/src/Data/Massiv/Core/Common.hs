@@ -52,7 +52,6 @@ module Data.Massiv.Core.Common
   , (!?)
   , index
   , indexM
-  , indexWith
   , (!)
   , index'
   , (??)
@@ -730,31 +729,6 @@ evaluateAt :: Source r ix e => Array r ix e -> ix -> e
 evaluateAt = evaluate'
 {-# INLINE evaluateAt #-}
 {-# DEPRECATED evaluateAt "In favor of a safe `evaluateM` or an equivalent `evaluate'`" #-}
-
-
--- | This is only used together with the @unsafe-checks@ cabal flag
-indexWith ::
-     Index ix
-  => String -- ^ Source file name, eg. __FILE__
-  -> Int -- ^ Line number in th source file, eg. __LINE__
-  -> String
-  -> (arr -> Sz ix) -- ^ Get size of the array
-  -> (arr -> ix -> e) -- ^ Indexing function
-  -> arr -- ^ Array
-  -> ix -- ^ Index
-  -> e
-indexWith fileName lineNo funName getSize' f arr ix
-  | isSafeIndex (getSize' arr) ix = f arr ix
-  | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) (getSize' arr) ix
-{-# NOINLINE indexWith #-}
-
--- | Helper function for throwing out of bounds error. Used by `indexWith`
-errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
-errorIx fName sz ix =
-  error $
-  fName ++
-  ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
-{-# NOINLINE errorIx #-}
 
 
 -- | Map a monadic index aware function over an array sequentially, while discarding the result.
