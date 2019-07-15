@@ -16,8 +16,8 @@ import Test.Massiv.Core
 -----------
 
 prop_ExtractEqualsExtractFromTo ::
-     ( Eq (Array (EltRepr r ix) ix e)
-     , Show (Array (EltRepr r ix) ix e)
+     ( Eq (Array (R r) ix e)
+     , Show (Array (R r) ix e)
      , Extract r ix e
      )
   => proxy (r, ix, e)
@@ -29,8 +29,8 @@ prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
 
 
 specSizeN ::
-     ( Eq (Array (EltRepr r ix) ix e)
-     , Show (Array (EltRepr r ix) ix e)
+     ( Eq (Array (R r) ix e)
+     , Show (Array (R r) ix e)
      , Arbitrary (Array r ix e)
      , Show (Array r ix e)
      , Arbitrary ix

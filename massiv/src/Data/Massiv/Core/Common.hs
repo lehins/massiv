@@ -16,7 +16,6 @@
 module Data.Massiv.Core.Common
   ( Array
   , Elt
-  , EltRepr
   , Construct(..)
   , Source(..)
   , Load(..)
@@ -70,6 +69,7 @@ module Data.Massiv.Core.Common
   , SizeException(..)
   , ShapeException(..)
   , module Data.Massiv.Core.Exception
+  , Proxy(..)
   -- * Stateful Monads
   , MonadUnliftIO
   , MonadIO(liftIO)
@@ -98,11 +98,9 @@ import Data.Typeable
 -- nested fashion, depth of which is controlled by @`Rank` ix@.
 data family Array r ix e :: *
 
-type family EltRepr r ix :: *
-
 type family Elt r ix e :: * where
   Elt r Ix1 e = e
-  Elt r ix  e = Array (EltRepr r ix) (Lower ix) e
+  Elt r ix  e = Array (R r) (Lower ix) e
 
 type family NestedStruct r ix e :: *
 
@@ -182,15 +180,17 @@ class Index ix => Resize r ix where
 class Load r ix e => Extract r ix e where
   -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
   -- not validated.
-  unsafeExtract :: ix -> Sz ix -> Array r ix e -> Array (EltRepr r ix) ix e
+  unsafeExtract :: ix -> Sz ix -> Array r ix e -> Array (R r) ix e
 
 
 -- | Arrays that can be used as source to practically any manipulation function.
 class Load r ix e => Source r ix e where
-  {-# MINIMAL (unsafeIndex|unsafeLinearIndex) #-}
+  {-# MINIMAL (unsafeIndex|unsafeLinearIndex), unsafeLinearSlice #-}
 
   -- | Lookup element in the array. No bounds check is performed and access of
   -- arbitrary memory is possible when invalid index is supplied.
+  --
+  -- @since 0.1.0
   unsafeIndex :: Array r ix e -> ix -> e
   unsafeIndex =
     INDEX_CHECK("(Source r ix e).unsafeIndex",
@@ -199,12 +199,25 @@ class Load r ix e => Source r ix e where
 
   -- | Lookup element in the array using flat index in a row-major fashion. No
   -- bounds check is performed
+  --
+  -- @since 0.1.0
   unsafeLinearIndex :: Array r ix e -> Int -> e
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
+  -- | Source arrays also give us ability to look at their linear slices
+  --
+  -- @since 0.4.0
+  unsafeLinearSlice :: Array r ix e -> Ix1 -> Sz1 -> Array (R r) Ix1 e
+  default unsafeLinearSlice :: (Extract r Ix1 e, Resize r ix) =>
+    Array r ix e -> Ix1 -> Sz1 -> Array (R r) Ix1 e
+  unsafeLinearSlice arr ix sz =
+    unsafeExtract ix sz (unsafeResize (SafeSz (totalElem sz)) arr)
+
 -- | Any array that can be computed and loaded into memory
 class (Typeable r, Index ix) => Load r ix e where
+  type family R r :: *
+  type instance R r = r
 
   -- | Get computation strategy of this array
   --

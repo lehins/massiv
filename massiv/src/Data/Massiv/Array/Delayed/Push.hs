@@ -50,8 +50,6 @@ data instance Array DL ix e = DLArray
               -> m ()
   }
 
-type instance EltRepr DL ix = DL
-
 instance Index ix => Construct DL ix e where
   setComp c arr = arr {dlComp = c}
   {-# INLINE setComp #-}

@@ -80,7 +80,6 @@ data M
 data instance Array M ix e = MArray { mComp :: !Comp
                                     , mSize :: !(Sz ix)
                                     , mLinearIndex :: Int -> e }
-type instance EltRepr M ix = M
 
 instance (Ragged L ix e, Show e) => Show (Array M ix e) where
   showsPrec = showsArrayPrec id

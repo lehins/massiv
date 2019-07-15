@@ -48,7 +48,7 @@ prop_Extract ::
      forall r ix.
      ( Load D ix Int
      , Ragged L ix Int
-     , Load (EltRepr r ix) ix Int
+     , Load (R r) ix Int
      , Construct r ix Int
      , Extract r ix Int
      )

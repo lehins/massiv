@@ -15,9 +15,9 @@ import Test.Massiv.Array.Mutable
 type MutableArraySpec r ix e
    = ( Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array (EltRepr r Ix1) Ix1 e)
-     , Show (Array (EltRepr r Ix1) Ix1 e)
-     , Load (EltRepr r ix) ix e
+     , Eq (Array (R r) Ix1 e)
+     , Show (Array (R r) Ix1 e)
+     , Load (R r) ix e
      , Extract r ix e
      , Resize r ix
      , Arbitrary (Array r ix e)

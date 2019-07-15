@@ -103,8 +103,8 @@ prop_UnsafeLinearCopyPart ::
      forall r ix e.
      ( Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array (EltRepr r Ix1) Ix1 e)
-     , Show (Array (EltRepr r Ix1) Ix1 e)
+     , Eq (Array (R r) Ix1 e)
+     , Show (Array (R r) Ix1 e)
      , Mutable r ix e
      , Mutable r Ix1 e
      , Extract r Ix1 e
@@ -145,8 +145,8 @@ prop_UnsafeArrayLinearCopy arr =
 
 prop_UnsafeArrayLinearCopyPart ::
      forall r ix e.
-     ( Eq (Array (EltRepr r Ix1) Ix1 e)
-     , Show (Array (EltRepr r Ix1) Ix1 e)
+     ( Eq (Array (R r) Ix1 e)
+     , Show (Array (R r) Ix1 e)
      , Mutable r ix e
      , Mutable r Ix1 e
      , Extract r Ix1 e
@@ -172,8 +172,8 @@ prop_UnsafeArrayLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
 
 prop_UnsafeLinearSet ::
      forall r ix e.
-     ( Eq (Array (EltRepr r Ix1) Ix1 e)
-     , Show (Array (EltRepr r Ix1) Ix1 e)
+     ( Eq (Array (R r) Ix1 e)
+     , Show (Array (R r) Ix1 e)
      , Mutable r ix e
      , Construct r ix e
      , Extract r Ix1 e
@@ -198,8 +198,8 @@ prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
 
 prop_UnsafeLinearShrink ::
      forall r ix e.
-     ( Eq (Array (EltRepr r Ix1) Ix1 e)
-     , Show (Array (EltRepr r Ix1) Ix1 e)
+     ( Eq (Array (R r) Ix1 e)
+     , Show (Array (R r) Ix1 e)
      , Mutable r ix e
      , Extract r Ix1 e
      , Resize r ix
@@ -222,8 +222,8 @@ prop_UnsafeLinearGrow ::
      forall r ix e.
      ( Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array (EltRepr r Ix1) Ix1 e)
-     , Show (Array (EltRepr r Ix1) Ix1 e)
+     , Eq (Array (R r) Ix1 e)
+     , Show (Array (R r) Ix1 e)
      , Mutable r ix e
      , Extract r Ix1 e
      , Resize r ix
@@ -252,8 +252,8 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
 
 unsafeMutableSpec ::
      forall r ix e.
-     ( Eq (Array (EltRepr r Ix1) Ix1 e)
-     , Show (Array (EltRepr r Ix1) Ix1 e)
+     ( Eq (Array (R r) Ix1 e)
+     , Show (Array (R r) Ix1 e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
      , Mutable r ix e

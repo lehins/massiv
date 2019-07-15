@@ -42,8 +42,6 @@ import System.IO.Unsafe (unsafePerformIO)
 -- | Representation for `Unbox`ed elements
 data U = U deriving Show
 
-type instance EltRepr U ix = M
-
 data instance Array U ix e = UArray { uComp :: !Comp
                                     , uSize :: !(Sz ix)
                                     , uData :: !(VU.Vector e)
@@ -90,6 +88,7 @@ instance (VU.Unbox e, Index ix) => Extract U ix e where
   {-# INLINE unsafeExtract #-}
 
 instance (VU.Unbox e, Index ix) => Load U ix e where
+  type R U = M
   size = uSize
   {-# INLINE size #-}
   getComp = uComp

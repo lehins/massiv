@@ -78,8 +78,6 @@ sizeofMutableArray (A.MutableArray ma#) = I# (sizeofMutableArray# ma#)
 -- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
 data B = B deriving Show
 
-type instance EltRepr B ix = M
-
 data instance Array B ix e = BArray { bComp :: !Comp
                                     , bSize :: !(Sz ix)
                                     , bData :: {-# UNPACK #-} !(A.Array e)
@@ -185,6 +183,7 @@ instance Index ix => Mutable B ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where
+  type R B = M
   size = bSize
   {-# INLINE size #-}
   getComp = bComp
@@ -245,8 +244,6 @@ instance ( IsList (Array L ix e)
 -- spine strict, and elements are always in Normal Form (NF), therefore `NFData`
 -- instance is required.
 data N = N deriving Show
-
-type instance EltRepr N ix = M
 
 newtype instance Array N ix e = NArray { bArray :: Array B ix e }
 
@@ -354,6 +351,7 @@ instance (Index ix, NFData e) => Mutable N ix e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance (Index ix, NFData e) => Load N ix e where
+  type R N = M
   size = bSize . bArray
   {-# INLINE size #-}
   getComp = bComp . bArray

@@ -40,8 +40,6 @@ import System.IO.Unsafe (unsafePerformIO)
 
 data LN
 
-type instance EltRepr LN ix = LN
-
 type family ListItem ix e :: * where
   ListItem Ix1 e = e
   ListItem ix  e = [ListItem (Lower ix) e]
@@ -77,7 +75,6 @@ instance Nested LN ix e => IsList (Array LN ix e) where
 
 
 data L = L
-type instance EltRepr L ix = L
 
 type instance NestedStruct L ix e = Array LN ix e
 
@@ -141,6 +138,19 @@ instance (Index ix, Ragged L ix e) => Load L ix e where
   loadArrayM scheduler arr uWrite =
     loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arr
     where !sz = edgeSize arr
+  {-# INLINE loadArrayM #-}
+
+
+instance (Index ix, Load L ix e, Ragged L ix e) => Load LN ix e where
+  size = edgeSize . LArray Seq
+  {-# INLINE size #-}
+  getComp _ = Seq
+  {-# INLINE getComp #-}
+  loadArrayM scheduler arr uWrite =
+    loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arrL
+    where
+      !arrL = LArray Seq arr
+      !sz = size arrL
   {-# INLINE loadArrayM #-}
 
 

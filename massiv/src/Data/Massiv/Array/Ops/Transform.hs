@@ -77,7 +77,7 @@ extractM :: (MonadThrow m, Extract r ix e)
          => ix -- ^ Starting index
          -> Sz ix -- ^ Size of the resulting array
          -> Array r ix e -- ^ Source array
-         -> m (Array (EltRepr r ix) ix e)
+         -> m (Array (R r) ix e)
 extractM !sIx !newSz !arr
   | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
     pure $ unsafeExtract sIx newSz arr
@@ -96,7 +96,7 @@ extract' :: Extract r ix e
         => ix -- ^ Starting index
         -> Sz ix -- ^ Size of the resulting array
         -> Array r ix e -- ^ Source array
-        -> Array (EltRepr r ix) ix e
+        -> Array (R r) ix e
 extract' sIx newSz = either throw id . extractM sIx newSz
 {-# INLINE extract' #-}
 
@@ -109,7 +109,7 @@ extractFromToM :: (MonadThrow m, Extract r ix e) =>
                   ix -- ^ Starting index
                -> ix -- ^ Index up to which elements should be extracted.
                -> Array r ix e -- ^ Source array.
-               -> m (Array (EltRepr r ix) ix e)
+               -> m (Array (R r) ix e)
 extractFromToM sIx eIx = extractM sIx (Sz (liftIndex2 (-) eIx sIx))
 {-# INLINE extractFromToM #-}
 
@@ -120,7 +120,7 @@ extractFromTo' :: Extract r ix e =>
                  ix -- ^ Starting index
               -> ix -- ^ Index up to which elmenets should be extracted.
               -> Array r ix e -- ^ Source array.
-              -> Array (EltRepr r ix) ix e
+              -> Array (R r) ix e
 extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 {-# INLINE extractFromTo' #-}
 
@@ -518,11 +518,11 @@ concatM n !arrsF =
 --
 -- @since 0.3.0
 splitAtM ::
-     (MonadThrow m, Extract r ix e, r' ~ EltRepr r ix)
+     (MonadThrow m, Extract r ix e)
   => Dim -- ^ Dimension along which to split
   -> Int -- ^ Index along the dimension to split at
   -> Array r ix e -- ^ Source array
-  -> m (Array r' ix e, Array r' ix e)
+  -> m (Array (R r) ix e, Array (R r) ix e)
 splitAtM dim i arr = do
   let Sz sz = size arr
   eIx <- setDimM sz dim i
@@ -536,8 +536,8 @@ splitAtM dim i arr = do
 -- and index out of bounds.
 --
 -- @since 0.1.0
-splitAt' :: (Extract r ix e, r' ~ EltRepr r ix) =>
-           Dim -> Int -> Array r ix e -> (Array r' ix e, Array r' ix e)
+splitAt' :: Extract r ix e =>
+            Dim -> Int -> Array r ix e -> (Array (R r) ix e, Array (R r) ix e)
 splitAt' dim i arr = either throw id $ splitAtM dim i arr
 {-# INLINE splitAt' #-}
 
@@ -546,12 +546,12 @@ splitAt' dim i arr = either throw id $ splitAtM dim i arr
 --
 -- @since 0.3.5
 splitExtractM ::
-     (MonadThrow m, Extract r ix e, Source r' ix e, r' ~ EltRepr r ix)
+     (MonadThrow m, Extract r ix e, Source (R r) ix e)
   => Dim -- ^ Dimension along which to do the extraction
   -> Ix1 -- ^ Start index along the dimension that needs to be extracted
   -> Sz Ix1 -- ^ Size of the extracted array along the dimension that it will be extracted
   -> Array r ix e
-  -> m (Array r' ix e, Array r' ix e, Array r' ix e)
+  -> m (Array (R r) ix e, Array (R r) ix e, Array (R r) ix e)
 splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
   let Sz szIx = size arr
   midStartIx <- setDimM zeroIndex dim startIx1
@@ -589,7 +589,7 @@ splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
 --
 -- @since 0.3.5
 deleteRegionM ::
-     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e)
+     (MonadThrow m, Extract r ix e, Source (R r) ix e)
   => Dim -- ^ Along which axis should the removal happen
   -> Ix1 -- ^ At which index to start dropping slices
   -> Sz Ix1 -- ^ Number of slices to drop
@@ -621,7 +621,7 @@ deleteRegionM dim ix sz arr = do
 --
 -- @since 0.3.5
 deleteRowsM ::
-     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e, Index (Lower ix))
+     (MonadThrow m, Extract r ix e, Source (R r) ix e, Index (Lower ix))
   => Ix1
   -> Sz Ix1
   -> Array r ix e
@@ -650,7 +650,7 @@ deleteRowsM = deleteRegionM 2
 --
 -- @since 0.3.5
 deleteColumnsM ::
-     (MonadThrow m, Extract r ix e, Source (EltRepr r ix) ix e)
+     (MonadThrow m, Extract r ix e, Source (R r) ix e)
   => Ix1
   -> Sz Ix1
   -> Array r ix e

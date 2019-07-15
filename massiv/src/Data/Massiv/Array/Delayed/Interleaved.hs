@@ -28,8 +28,6 @@ import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 -- computation.
 data DI = DI
 
-type instance EltRepr DI ix = DI
-
 newtype instance Array DI ix e = DIArray
   { diArray :: Array D ix e
   } deriving (Eq, Ord, Functor, Applicative, Foldable, Num, Floating, Fractional)

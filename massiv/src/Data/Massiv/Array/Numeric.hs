@@ -72,6 +72,7 @@ import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Transform as A
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
+import Data.Massiv.Core.Operations
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Prelude as P
 
@@ -95,6 +96,9 @@ liftArray2Matching f !arr1 !arr2
     sz2 = size arr2
 {-# INLINE liftArray2Matching #-}
 
+(.+.) :: Source (R r) ix e => Numeric r e => Array r ix e -> Array r ix e -> Array D ix e
+(.+.) a1 a2 = delay $ additionPointwise a1 a2
+{-# INLINE (.+.) #-}
 
 (.+)
   :: (Source r1 ix e, Source r2 ix e, Num e)
@@ -122,7 +126,7 @@ liftArray2Matching f !arr1 !arr2
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
-     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (EltRepr r Ix2) Ix1 e, Num e)
+     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (R r) Ix1 e, Num e)
   => Array r Ix2 e
   -> Array r' Ix2 e
   -> Array r Ix2 e
@@ -137,7 +141,7 @@ liftArray2Matching f !arr1 !arr2
 multiplyTransposedFused ::
      ( Mutable r Ix2 e
      , OuterSlice r Ix2 e
-     , Source (EltRepr r Ix2) Ix1 e
+     , Source (R r) Ix1 e
      , Num e
      )
   => Array r Ix2 e
@@ -151,7 +155,7 @@ multArrs :: forall r r' e.
             ( Mutable r Ix2 e
             , Source r' Ix2 e
             , OuterSlice r Ix2 e
-            , Source (EltRepr r Ix2) Ix1 e
+            , Source (R r) Ix1 e
             , Num e
             )
          => Array r Ix2 e -> Array r' Ix2 e -> Array D Ix2 e
@@ -166,7 +170,7 @@ multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
 multiplyTransposed ::
      ( Manifest r Ix2 e
      , OuterSlice r Ix2 e
-     , Source (EltRepr r Ix2) Ix1 e
+     , Source (R r) Ix1 e
      , Num e
      )
   => Array r Ix2 e

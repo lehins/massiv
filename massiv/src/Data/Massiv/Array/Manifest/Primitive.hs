@@ -60,8 +60,6 @@ import System.IO.Unsafe (unsafePerformIO)
 -- | Representation for `Prim`itive elements
 data P = P deriving Show
 
-type instance EltRepr P ix = M
-
 data instance Array P ix e = PArray { pComp :: !Comp
                                     , pSize :: !(Sz ix)
                                     , pData :: {-# UNPACK #-} !ByteArray
@@ -215,6 +213,7 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
 
 instance (Prim e, Index ix) => Load P ix e where
+  type R P = M
   size = pSize
   {-# INLINE size #-}
   getComp = pComp

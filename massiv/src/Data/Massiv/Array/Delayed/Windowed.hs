@@ -42,8 +42,6 @@ import GHC.TypeLits
 -- | Delayed Windowed Array representation.
 data DW = DW
 
-type instance EltRepr DW ix = D
-
 data Window ix e = Window { windowStart     :: !ix
                           -- ^ Index of where window will start at.
                           , windowSize      :: !(Sz ix)

@@ -9,9 +9,8 @@
 module Data.Massiv.Core
   ( Array(List, unList)
   , Elt
-  , EltRepr
   , Construct
-  , Load(loadArrayM, defaultElement)
+  , Load(R, loadArrayM, defaultElement)
   , Source
   , Resize
   , Extract

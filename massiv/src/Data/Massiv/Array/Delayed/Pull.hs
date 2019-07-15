@@ -28,6 +28,7 @@ module Data.Massiv.Array.Delayed.Pull
 import qualified Data.Foldable as F
 import Data.Massiv.Array.Ops.Fold.Internal as A
 import Data.Massiv.Core.Common
+import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 import GHC.Base (build)
 import Prelude hiding (zipWith)
@@ -40,7 +41,6 @@ data D = D deriving Show
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !(Sz ix)
                                     , dIndex :: ix -> e }
-type instance EltRepr D ix = D
 
 instance (Ragged L ix e, Show e) => Show (Array D ix e) where
   showsPrec = showsArrayPrec id
@@ -70,6 +70,8 @@ instance Index ix => Construct D ix e where
 instance Index ix => Source D ix e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
+  unsafeLinearSlice arr ix sz = unsafeExtract ix sz (unsafeResize (SafeSz (totalElem sz)) arr)
+  {-# INLINE unsafeLinearSlice #-}
 
 
 instance ( Index ix
@@ -114,7 +116,7 @@ instance Index ix => Applicative (Array D ix) where
   {-# INLINE pure #-}
   (<*>) (DArray c1 (SafeSz sz1) uIndex1) (DArray c2 (SafeSz sz2) uIndex2) =
     DArray (c1 <> c2) (SafeSz (liftIndex2 min sz1 sz2)) $ \ !ix ->
-      (uIndex1 ix) (uIndex2 ix)
+      uIndex1 ix (uIndex2 ix)
   {-# INLINE (<*>) #-}
 
 
@@ -158,9 +160,9 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE (-) #-}
   (*)         = liftArray2 (*)
   {-# INLINE (*) #-}
-  abs         = liftArray abs
+  abs         = liftDArray abs
   {-# INLINE abs #-}
-  signum      = liftArray signum
+  signum      = liftDArray signum
   {-# INLINE signum #-}
   fromInteger = singleton . fromInteger
   {-# INLINE fromInteger #-}
@@ -175,32 +177,78 @@ instance (Index ix, Fractional e) => Fractional (Array D ix e) where
 instance (Index ix, Floating e) => Floating (Array D ix e) where
   pi    = singleton pi
   {-# INLINE pi #-}
-  exp   = liftArray exp
+  exp   = liftDArray exp
   {-# INLINE exp #-}
-  log   = liftArray log
+  log   = liftDArray log
   {-# INLINE log #-}
-  sin   = liftArray sin
+  sin   = liftDArray sin
   {-# INLINE sin #-}
-  cos   = liftArray cos
+  cos   = liftDArray cos
   {-# INLINE cos #-}
-  asin  = liftArray asin
+  asin  = liftDArray asin
   {-# INLINE asin #-}
-  atan  = liftArray atan
+  atan  = liftDArray atan
   {-# INLINE atan #-}
-  acos  = liftArray acos
+  acos  = liftDArray acos
   {-# INLINE acos #-}
-  sinh  = liftArray sinh
+  sinh  = liftDArray sinh
   {-# INLINE sinh #-}
-  cosh  = liftArray cosh
+  cosh  = liftDArray cosh
   {-# INLINE cosh #-}
-  asinh = liftArray asinh
+  asinh = liftDArray asinh
   {-# INLINE asinh #-}
-  atanh = liftArray atanh
+  atanh = liftDArray atanh
   {-# INLINE atanh #-}
-  acosh = liftArray acosh
+  acosh = liftDArray acosh
   {-# INLINE acosh #-}
 
 
+instance Num e => Numeric D e where
+  plusElementArray arr e = liftDArray (+ e) arr
+  {-# INLINE plusElementArray #-}
+  minusElementArray arr e = liftDArray (subtract e) arr
+  {-# INLINE minusElementArray #-}
+  multiplyElementArray arr e = liftDArray (* e) arr
+  {-# INLINE multiplyElementArray #-}
+  absPointwise = liftDArray abs
+  {-# INLINE absPointwise #-}
+  additionPointwise = liftDArray2 (+)
+  {-# INLINE additionPointwise #-}
+  multiplicationPointwise = liftDArray2 (*)
+  {-# INLINE multiplicationPointwise #-}
+  powerPointwise arr pow = liftDArray (^ pow) arr
+  {-# INLINE powerPointwise #-}
+  powerSumArray p arr = sumArray p . powerPointwise arr
+  {-# INLINE powerSumArray #-}
+  dotProduct p a1 a2 = sumArray p (multiplicationPointwise a1 a2)
+  {-# INLINE dotProduct #-}
+
+instance (Floating e, RealFrac e) => FloatingPoint D e where
+  recipPointwise = liftDArray recip
+  {-# INLINE recipPointwise #-}
+  sqrtPointwise = liftDArray sqrt
+  {-# INLINE sqrtPointwise #-}
+  floorPointwise = liftDArray floor
+  {-# INLINE floorPointwise #-}
+  ceilingPointwise = liftDArray ceiling
+  {-# INLINE ceilingPointwise #-}
+  divisionPointwise = liftDArray2 (/)
+  {-# INLINE divisionPointwise #-}
+  divideElementArray arr e= liftDArray (/e) arr
+  {-# INLINE divideElementArray #-}
+
+
+-- | The usual map.
+liftDArray :: (b -> e) -> Array D ix b -> Array D ix e
+liftDArray f arr = arr { dIndex = f . dIndex arr }
+{-# INLINE liftDArray #-}
+
+-- | The usual zipWith, except the size of the second array is completely ignored and Seq
+-- computation strategy is set for the result
+liftDArray2 :: (a -> b -> e) -> Array D ix a -> Array D ix b -> Array D ix e
+liftDArray2 f a1 a2 =
+  DArray (dComp a1 <> dComp a2) (dSize a1) $ \i -> f (dIndex a1 i) (dIndex a2 i)
+{-# INLINE liftDArray2 #-}
 
 -- | /O(1)/ Conversion from a source array to `D` representation.
 delay :: Source r ix e => Array r ix e -> Array D ix e
@@ -233,6 +281,7 @@ ord f arr1 arr2 =
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE ord #-}
+
 
 -- | The usual map.
 liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e

@@ -59,8 +59,6 @@ import System.IO.Unsafe (unsafePerformIO)
 -- | Representation for `Storable` elements
 data S = S deriving Show
 
-type instance EltRepr S ix = M
-
 data instance Array S ix e = SArray { sComp :: !Comp
                                     , sSize :: !(Sz ix)
                                     , sData :: !(VS.Vector e)
@@ -202,6 +200,7 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
 
 
 instance (Index ix, VS.Storable e) => Load S ix e where
+  type R S = M
   size = sSize
   {-# INLINE size #-}
   getComp = sComp

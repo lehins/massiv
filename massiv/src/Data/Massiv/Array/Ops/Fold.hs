@@ -95,6 +95,7 @@ import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
+import Data.Massiv.Core.Operations
 import Data.Massiv.Core.Index.Internal (Sz(..))
 import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or,
                 product, sum)
@@ -328,10 +329,10 @@ minimum' = either throw id . minimumM
 --
 -- @since 0.1.0
 sum' ::
-     (Source r ix e, Num e, Resize r ix, Source (EltRepr r Ix1) Ix1 e, Extract r Ix1 e)
+     forall r ix e. (Source r ix e, Numeric r e)
   => Array r ix e
   -> IO e
-sum' = splitReduce (\_ a -> pure $ foldlS (+) 0 a) (\x y -> pure (x + y)) 0
+sum' = splitReduce (\_ -> pure . sumArray (Proxy :: Proxy r)) (\x y -> pure (x + y)) 0
 {-# INLINE sum' #-}
 
 -- | /O(n)/ - Compute sum of all elements.
