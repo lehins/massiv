@@ -62,6 +62,8 @@ module Data.Massiv.Array.Numeric
   , floorA
   -- * RealFloat
   , atan2A
+
+  , (.+.)
   ) where
 
 import Data.Massiv.Array.Delayed.Pull
@@ -96,32 +98,80 @@ liftArray2Matching f !arr1 !arr2
     sz2 = size arr2
 {-# INLINE liftArray2Matching #-}
 
-(.+.) :: Source (R r) ix e => Numeric r e => Array r ix e -> Array r ix e -> Array D ix e
-(.+.) a1 a2 = delay $ additionPointwise a1 a2
+liftArray2M ::
+     (Load r ix e, MonadThrow m)
+  => (Array r ix e -> Array r ix e -> a)
+  -> Array r ix e
+  -> Array r ix e
+  -> m a
+liftArray2M f a1 a2
+  | size a1 == size a2 = pure $ f a1 a2
+  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
+{-# INLINE liftArray2M #-}
+
+
+-- | Add two arrays together pointwise. Throws `SizeMismatchException` if arrays sizes do
+-- not match.
+--
+-- @since 0.4.0
+(.+.) ::
+     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.+.) = liftArray2M additionPointwise
 {-# INLINE (.+.) #-}
 
-(.+)
-  :: (Source r1 ix e, Source r2 ix e, Num e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.+) = liftArray2Matching (+)
+-- | Add an element to each element of the array. Array is on the left.
+--
+-- @since 0.1.0
+(.+) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
+(.+) = plusScalar
 {-# INLINE (.+) #-}
 
-(.-)
-  :: (Source r1 ix e, Source r2 ix e, Num e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.-) = liftArray2Matching (-)
+-- | Add an element to each element of the array. Array is on the right.
+--
+-- @since 0.4.0
+(+.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
+(+.) = flip plusScalar
+{-# INLINE (+.) #-}
+
+-- | Subtract two arrays pointwise. Throws `SizeMismatchException` if arrays sizes do not
+-- match.
+--
+-- @since 0.4.0
+(.-.) ::
+     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.-.) = liftArray2M subtractionPointwise
+{-# INLINE (.-.) #-}
+
+
+-- | Add an element to each element of the array. Array is on the left.
+--
+-- @since 0.1.0
+(.-) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
+(.-) = minusScalar
 {-# INLINE (.-) #-}
 
-(.*)
-  :: (Source r1 ix e, Source r2 ix e, Num e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.*) = liftArray2Matching (*)
+-- | Add an element to each element of the array. Array is on the right.
+--
+-- @since 0.4.0
+(-.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
+(-.) = flip minusScalar
+{-# INLINE (-.) #-}
+
+
+-- | Multiply two arrays together pointwise.
+--
+-- @since 0.4.0
+(.*.) ::
+     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.*.) = liftArray2M multiplicationPointwise
+{-# INLINE (.*.) #-}
+
+(.*) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
+(.*) = multiplyScalar
 {-# INLINE (.*) #-}
 
-(.^)
-  :: (Source r ix e, Num e, Integral b)
-  => Array r ix e -> b -> Array D ix e
-(.^) arr n = liftArray (^ n) arr
+(.^) :: (Index ix, Numeric r e) => Array r ix e -> Int -> Array r ix e
+(.^) = powerPointwise
 {-# INLINE (.^) #-}
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
@@ -209,19 +259,19 @@ identityMatrix n = makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i
 negateA
   :: (Source r ix e, Num e)
   => Array r ix e -> Array D ix e
-negateA = liftArray negate
+negateA = A.map negate
 {-# INLINE negateA #-}
 
 absA
   :: (Source r ix e, Num e)
   => Array r ix e -> Array D ix e
-absA = liftArray abs
+absA = A.map abs
 {-# INLINE absA #-}
 
 signumA
   :: (Source r ix e, Num e)
   => Array r ix e -> Array D ix e
-signumA = liftArray signum
+signumA = A.map signum
 {-# INLINE signumA #-}
 
 fromIntegerA
@@ -239,13 +289,13 @@ fromIntegerA = singleton . fromInteger
 (.^^)
   :: (Source r ix e, Fractional e, Integral b)
   => Array r ix e -> b -> Array D ix e
-(.^^) arr n = liftArray (^^ n) arr
+(.^^) arr n = A.map (^^ n) arr
 {-# INLINE (.^^) #-}
 
 recipA
   :: (Source r ix e, Fractional e)
   => Array r ix e -> Array D ix e
-recipA = liftArray recip
+recipA = A.map recip
 {-# INLINE recipA #-}
 
 
@@ -264,19 +314,19 @@ piA = singleton pi
 expA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-expA = liftArray exp
+expA = A.map exp
 {-# INLINE expA #-}
 
 sqrtA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-sqrtA = liftArray sqrt
+sqrtA = A.map sqrt
 {-# INLINE sqrtA #-}
 
 logA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-logA = liftArray log
+logA = A.map log
 {-# INLINE logA #-}
 
 logBaseA
@@ -296,99 +346,99 @@ logBaseA = liftArray2Matching logBase
 sinA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-sinA = liftArray sin
+sinA = A.map sin
 {-# INLINE sinA #-}
 
 cosA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-cosA = liftArray cos
+cosA = A.map cos
 {-# INLINE cosA #-}
 
 tanA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-tanA = liftArray cos
+tanA = A.map cos
 {-# INLINE tanA #-}
 
 asinA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-asinA = liftArray asin
+asinA = A.map asin
 {-# INLINE asinA #-}
 
 atanA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-atanA = liftArray atan
+atanA = A.map atan
 {-# INLINE atanA #-}
 
 acosA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-acosA = liftArray acos
+acosA = A.map acos
 {-# INLINE acosA #-}
 
 sinhA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-sinhA = liftArray sinh
+sinhA = A.map sinh
 {-# INLINE sinhA #-}
 
 tanhA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-tanhA = liftArray cos
+tanhA = A.map cos
 {-# INLINE tanhA #-}
 
 coshA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-coshA = liftArray cosh
+coshA = A.map cosh
 {-# INLINE coshA #-}
 
 asinhA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-asinhA = liftArray asinh
+asinhA = A.map asinh
 {-# INLINE asinhA #-}
 
 acoshA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-acoshA = liftArray acosh
+acoshA = A.map acosh
 {-# INLINE acoshA #-}
 
 atanhA
   :: (Source r ix e, Floating e)
   => Array r ix e -> Array D ix e
-atanhA = liftArray atanh
+atanhA = A.map atanh
 {-# INLINE atanhA #-}
 
 
 quotA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-quotA = liftArray2Matching (quot)
+quotA = liftArray2Matching quot
 {-# INLINE quotA #-}
 
 
 remA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-remA = liftArray2Matching (rem)
+remA = liftArray2Matching rem
 {-# INLINE remA #-}
 
 divA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-divA = liftArray2Matching (div)
+divA = liftArray2Matching div
 {-# INLINE divA #-}
 
 modA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-modA = liftArray2Matching (mod)
+modA = liftArray2Matching mod
 {-# INLINE modA #-}
 
 
@@ -411,28 +461,28 @@ divModA arr1 = A.unzip . liftArray2Matching (divMod) arr1
 truncateA
   :: (Source r ix a, RealFrac a, Integral b)
   => Array r ix a -> Array D ix b
-truncateA = liftArray truncate
+truncateA = A.map truncate
 {-# INLINE truncateA #-}
 
 
 roundA
   :: (Source r ix a, RealFrac a, Integral b)
   => Array r ix a -> Array D ix b
-roundA = liftArray round
+roundA = A.map round
 {-# INLINE roundA #-}
 
 
 ceilingA
   :: (Source r ix a, RealFrac a, Integral b)
   => Array r ix a -> Array D ix b
-ceilingA = liftArray ceiling
+ceilingA = A.map ceiling
 {-# INLINE ceilingA #-}
 
 
 floorA
   :: (Source r ix a, RealFrac a, Integral b)
   => Array r ix a -> Array D ix b
-floorA = liftArray floor
+floorA = A.map floor
 {-# INLINE floorA #-}
 
 atan2A

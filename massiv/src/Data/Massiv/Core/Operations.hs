@@ -12,7 +12,7 @@
 -- Portability : non-portable
 module Data.Massiv.Core.Operations
   ( Numeric(..)
-  , FloatingPoint(..)
+  , NumericFloat(..)
   ) where
 
 import Data.Massiv.Core.Common
@@ -36,31 +36,58 @@ class Num e => Numeric r e where
 
   dotProduct :: proxy r -> Array (R r) Ix1 e -> Array (R r) Ix1 e -> e
 
-  plusElementArray :: Array r ix e -> e -> Array (R r) ix e
+  plusScalar :: Index ix => Array r ix e -> e -> Array r ix e
 
-  minusElementArray :: Array r ix e -> e -> Array (R r) ix e
+  minusScalar :: Index ix => Array r ix e -> e -> Array r ix e
 
-  multiplyElementArray :: Array r ix e -> e -> Array (R r) ix e
+  multiplyScalar :: Index ix => Array r ix e -> e -> Array r ix e
 
 
-  absPointwise :: Array r ix e -> Array (R r) ix e
+  absPointwise :: Index ix => Array r ix e -> Array r ix e
 
-  additionPointwise :: Array r ix e -> Array r ix e -> Array (R r) ix e
+  additionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
 
-  multiplicationPointwise :: Array r ix e -> Array r ix e -> Array (R r) ix e
+  subtractionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
+
+  multiplicationPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
 
   -- | Raise each element of the array to the power
-  powerPointwise :: Array r ix e -> Int -> Array (R r) ix e
+  powerPointwise :: Index ix => Array r ix e -> Int -> Array r ix e
 
-class FloatingPoint r e where
 
-  divideElementArray :: Array r ix e -> e -> Array (R r) ix e
+class NumericFloat r e where
 
-  divisionPointwise :: Array r ix e -> Array r ix e -> Array (R r) ix e
+  divideScalar :: Index ix => Array r ix e -> e -> Array r ix e
 
-  recipPointwise :: Array r ix e -> Array (R r) ix e
-  sqrtPointwise :: Array r ix e -> Array (R r) ix e
+  divisionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
 
-  floorPointwise :: Integral a => Array r ix e -> Array (R r) ix a
-  ceilingPointwise :: Integral a => Array r ix e -> Array (R r) ix a
+  recipPointwise :: Index ix => Array r ix e -> Array r ix e
+  sqrtPointwise :: Index ix => Array r ix e -> Array r ix e
+
+  floorPointwise :: (Index ix, Integral a) => Array r ix e -> Array r ix a
+  ceilingPointwise :: (Index ix, Integral a) => Array r ix e -> Array r ix a
+
+
+
+
+
+-- class Equality r ix e where
+
+--   eqS :: Array r ix e -> Array r ix e -> m Bool
+
+--   eqConstantS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
+
+-- -- | Throw errors on mismatched sizes (uncompareable)
+-- class Relation r ix e where
+
+--   ltS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
+--   lteS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
+
+--   gtS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
+--   gteS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
+
+--   minimumS :: MonadThrow m => Array r ix e -> m e
+
+--   maximumS :: MonadThrow m => Array r ix e -> m e
+
 

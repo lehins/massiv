@@ -21,8 +21,8 @@ module Data.Massiv.Array.Delayed.Pull
   , delay
   , eq
   , ord
-  , liftArray
-  , liftArray2
+  , liftDArray
+  , liftDArray2
   ) where
 
 import qualified Data.Foldable as F
@@ -154,11 +154,11 @@ instance Index ix => Load D ix e where
 instance Index ix => StrideLoad D ix e
 
 instance (Index ix, Num e) => Num (Array D ix e) where
-  (+)         = liftArray2 (+)
+  (+)         = liftDArray2 (+)
   {-# INLINE (+) #-}
-  (-)         = liftArray2 (-)
+  (-)         = liftDArray2 (-)
   {-# INLINE (-) #-}
-  (*)         = liftArray2 (*)
+  (*)         = liftDArray2 (*)
   {-# INLINE (*) #-}
   abs         = liftDArray abs
   {-# INLINE abs #-}
@@ -168,7 +168,7 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE fromInteger #-}
 
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
-  (/)          = liftArray2 (/)
+  (/)          = liftDArray2 (/)
   {-# INLINE (/) #-}
   fromRational = singleton . fromRational
   {-# INLINE fromRational #-}
@@ -204,12 +204,12 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 
 
 instance Num e => Numeric D e where
-  plusElementArray arr e = liftDArray (+ e) arr
-  {-# INLINE plusElementArray #-}
-  minusElementArray arr e = liftDArray (subtract e) arr
-  {-# INLINE minusElementArray #-}
-  multiplyElementArray arr e = liftDArray (* e) arr
-  {-# INLINE multiplyElementArray #-}
+  plusScalar arr e = liftDArray (+ e) arr
+  {-# INLINE plusScalar #-}
+  minusScalar arr e = liftDArray (subtract e) arr
+  {-# INLINE minusScalar #-}
+  multiplyScalar arr e = liftDArray (* e) arr
+  {-# INLINE multiplyScalar #-}
   absPointwise = liftDArray abs
   {-# INLINE absPointwise #-}
   additionPointwise = liftDArray2 (+)
@@ -223,7 +223,7 @@ instance Num e => Numeric D e where
   dotProduct p a1 a2 = sumArray p (multiplicationPointwise a1 a2)
   {-# INLINE dotProduct #-}
 
-instance (Floating e, RealFrac e) => FloatingPoint D e where
+instance (Floating e, RealFrac e) => NumericFloat D e where
   recipPointwise = liftDArray recip
   {-# INLINE recipPointwise #-}
   sqrtPointwise = liftDArray sqrt
@@ -234,8 +234,8 @@ instance (Floating e, RealFrac e) => FloatingPoint D e where
   {-# INLINE ceilingPointwise #-}
   divisionPointwise = liftDArray2 (/)
   {-# INLINE divisionPointwise #-}
-  divideElementArray arr e= liftDArray (/e) arr
-  {-# INLINE divideElementArray #-}
+  divideScalar arr e = liftDArray (/e) arr
+  {-# INLINE divideScalar #-}
 
 
 -- | The usual map.
@@ -245,9 +245,10 @@ liftDArray f arr = arr { dIndex = f . dIndex arr }
 
 -- | The usual zipWith, except the size of the second array is completely ignored and Seq
 -- computation strategy is set for the result
-liftDArray2 :: (a -> b -> e) -> Array D ix a -> Array D ix b -> Array D ix e
+liftDArray2 :: Index ix => (a -> b -> e) -> Array D ix a -> Array D ix b -> Array D ix e
 liftDArray2 f a1 a2 =
-  DArray (dComp a1 <> dComp a2) (dSize a1) $ \i -> f (dIndex a1 i) (dIndex a2 i)
+  DArray (dComp a1 <> dComp a2) (SafeSz (liftIndex2 min (unSz (dSize a1)) (unSz (dSize a2)))) $ \i ->
+    f (dIndex a1 i) (dIndex a2 i)
 {-# INLINE liftDArray2 #-}
 
 -- | /O(1)/ Conversion from a source array to `D` representation.
@@ -283,28 +284,28 @@ ord f arr1 arr2 =
 {-# INLINE ord #-}
 
 
--- | The usual map.
-liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
-liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
-{-# INLINE liftArray #-}
+-- -- | The usual map.
+-- liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
+-- liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
+-- {-# INLINE liftArray #-}
 
--- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays either have to be the
--- same, or at least one of the two array must be a singleton array, in which case it will behave as
--- a `Data.Massiv.Array.map`.
---
--- @since 0.1.4
-liftArray2
-  :: (Source r1 ix a, Source r2 ix b)
-  => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
-liftArray2 f !arr1 !arr2
-  | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
-  | sz2 == oneSz = liftArray (`f` unsafeIndex arr2 zeroIndex) arr1
-  | sz1 == sz2 =
-    DArray (getComp arr1 <> getComp arr2) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
-  where
-    sz1 = size arr1
-    sz2 = size arr2
-{-# INLINE liftArray2 #-}
+-- -- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays either have to be the
+-- -- same, or at least one of the two array must be a singleton array, in which case it will behave as
+-- -- a `Data.Massiv.Array.map`.
+-- --
+-- -- @since 0.1.4
+-- liftArray2
+--   :: (Source r1 ix a, Source r2 ix b)
+--   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
+-- liftArray2 f !arr1 !arr2
+--   | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
+--   | sz2 == oneSz = liftArray (`f` unsafeIndex arr2 zeroIndex) arr1
+--   | sz1 == sz2 =
+--     DArray (getComp arr1 <> getComp arr2) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+--   | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
+--   where
+--     sz1 = size arr1
+--     sz2 = size arr2
+-- {-# INLINE liftArray2 #-}
 
 

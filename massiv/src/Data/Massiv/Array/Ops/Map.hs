@@ -240,6 +240,27 @@ izipWith3A f arr1 arr2 arr3 =
 {-# INLINE izipWith3A #-}
 
 
+
+-- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays either have to be the
+-- same, or at least one of the two array must be a singleton array, in which case it will behave as
+-- a `Data.Massiv.Array.map`.
+--
+-- @since 0.1.4
+liftArray2
+  :: (Source r1 ix a, Source r2 ix b)
+  => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
+liftArray2 f !arr1 !arr2
+  | sz1 == oneSz = map (f (unsafeIndex arr1 zeroIndex)) arr2
+  | sz2 == oneSz = map (`f` unsafeIndex arr2 zeroIndex) arr1
+  | sz1 == sz2 =
+    DArray (getComp arr1 <> getComp arr2) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
+  where
+    sz1 = size arr1
+    sz2 = size arr2
+{-# INLINE liftArray2 #-}
+
+
 --------------------------------------------------------------------------------
 -- traverse --------------------------------------------------------------------
 --------------------------------------------------------------------------------

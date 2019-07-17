@@ -209,10 +209,11 @@ class Load r ix e => Source r ix e where
   --
   -- @since 0.4.0
   unsafeLinearSlice :: Array r ix e -> Ix1 -> Sz1 -> Array (R r) Ix1 e
-  default unsafeLinearSlice :: (Extract r Ix1 e, Resize r ix) =>
-    Array r ix e -> Ix1 -> Sz1 -> Array (R r) Ix1 e
-  unsafeLinearSlice arr ix sz =
-    unsafeExtract ix sz (unsafeResize (SafeSz (totalElem sz)) arr)
+  unsafeLinearSlice = undefined
+  -- default unsafeLinearSlice :: (Extract r Ix1 e, Resize r ix) =>
+  --   Array r ix e -> Ix1 -> Sz1 -> Array (R r) Ix1 e
+  -- unsafeLinearSlice arr ix sz =
+  --   unsafeExtract ix sz (unsafeResize (SafeSz (totalElem sz)) arr)
 
 -- | Any array that can be computed and loaded into memory
 class (Typeable r, Index ix) => Load r ix e where
