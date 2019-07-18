@@ -267,13 +267,12 @@ fromByteArrayM comp sz ba =
     arr = PArray comp sz ba
 {-# INLINE fromByteArrayM #-}
 
--- | See `fromByteArrayM`.
+-- | /O(1)/ - Construct a flat Array from `ByteArray`
 --
--- @since 0.2.1
-fromByteArray :: (Index ix, Prim e) => Comp -> Sz ix -> ByteArray -> Maybe (Array P ix e)
-fromByteArray = fromByteArrayM
+-- @since 0.4.0
+fromByteArray :: forall e . Prim e => Comp -> ByteArray -> Array P Ix1 e
+fromByteArray comp ba = PArray comp (SafeSz (elemsBA (Proxy :: Proxy e) ba)) ba
 {-# INLINE fromByteArray #-}
-{-# DEPRECATED fromByteArray "In favor of more general `fromByteArrayM`" #-}
 
 
 -- | /O(1)/ - Extract the internal `MutableByteArray`.

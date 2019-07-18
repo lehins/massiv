@@ -208,12 +208,7 @@ class Load r ix e => Source r ix e where
   -- | Source arrays also give us ability to look at their linear slices
   --
   -- @since 0.4.0
-  unsafeLinearSlice :: Array r ix e -> Ix1 -> Sz1 -> Array (R r) Ix1 e
-  unsafeLinearSlice = undefined
-  -- default unsafeLinearSlice :: (Extract r Ix1 e, Resize r ix) =>
-  --   Array r ix e -> Ix1 -> Sz1 -> Array (R r) Ix1 e
-  -- unsafeLinearSlice arr ix sz =
-  --   unsafeExtract ix sz (unsafeResize (SafeSz (totalElem sz)) arr)
+  unsafeLinearSlice :: Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
 
 -- | Any array that can be computed and loaded into memory
 class (Typeable r, Index ix) => Load r ix e where

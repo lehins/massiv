@@ -332,7 +332,7 @@ sum' ::
      forall r ix e. (Source r ix e, Numeric r e)
   => Array r ix e
   -> IO e
-sum' = splitReduce (\_ -> pure . sumArray (Proxy :: Proxy r)) (\x y -> pure (x + y)) 0
+sum' = splitReduce (\_ -> pure . sumArray) (\x y -> pure (x + y)) 0
 {-# INLINE sum' #-}
 
 -- | /O(n)/ - Compute sum of all elements.

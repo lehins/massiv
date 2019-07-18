@@ -19,22 +19,22 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Array.Ops.Fold.Internal
 
 
-class Num e => Numeric r e where
+class (R r ~ r, Num e) => Numeric r e where
 
-  sumArray :: proxy r -> Array (R r) Ix1 e -> e
-  default sumArray :: Source (R r) Ix1 e => proxy r -> Array (R r) Ix1 e -> e
-  sumArray _ = foldlS (+) 0
+  sumArray :: Array r Ix1 e -> e
+  default sumArray :: Source r Ix1 e => Array r Ix1 e -> e
+  sumArray = foldlS (+) 0
   {-# INLINE sumArray #-}
 
-  productArray :: proxy r -> Array (R r) Ix1 e -> e
-  default productArray :: Source (R r) Ix1 e => proxy r -> Array (R r) Ix1 e -> e
-  productArray _ = foldlS (*) 1
+  productArray :: Array r Ix1 e -> e
+  default productArray :: Source r Ix1 e => Array r Ix1 e -> e
+  productArray = foldlS (*) 1
   {-# INLINE productArray #-}
 
   -- | Raise each element in the array to some non-negative power and sum the results
-  powerSumArray :: proxy r -> Array (R r) Ix1 e -> Int -> e
+  powerSumArray :: Array r Ix1 e -> Int -> e
 
-  dotProduct :: proxy r -> Array (R r) Ix1 e -> Array (R r) Ix1 e -> e
+  unsafeDotProduct :: Array r Ix1 e -> Array r Ix1 e -> e
 
   plusScalar :: Index ix => Array r ix e -> e -> Array r ix e
 

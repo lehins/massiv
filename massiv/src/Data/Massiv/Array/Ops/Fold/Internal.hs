@@ -335,7 +335,7 @@ ifoldlIO f !initAcc g !tAcc !arr = do
 -- @since 0.3.7
 splitReduce ::
      (MonadUnliftIO m, Source r ix e)
-  => (Scheduler m a -> Array (R r) Ix1 e -> m a)
+  => (Scheduler m a -> Array r Ix1 e -> m a)
   -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
   -> b -- ^ Accumulator for chunks folding
   -> Array r ix e
@@ -347,10 +347,10 @@ splitReduce f g !tAcc !arr = do
     withScheduler (getComp arr) $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-          scheduleWork scheduler $ f scheduler $ unsafeLinearSlice arr start (SafeSz chunkLength)
+          scheduleWork scheduler $ f scheduler $ unsafeLinearSlice start (SafeSz chunkLength) arr
         when (slackStart < totalLength) $
           scheduleWork scheduler $
-          f scheduler $ unsafeLinearSlice arr slackStart (SafeSz (totalLength - slackStart))
+          f scheduler $ unsafeLinearSlice slackStart (SafeSz (totalLength - slackStart)) arr
   F.foldlM g tAcc results
 {-# INLINE splitReduce #-}
 

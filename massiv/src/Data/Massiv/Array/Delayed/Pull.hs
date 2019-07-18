@@ -70,7 +70,7 @@ instance Index ix => Construct D ix e where
 instance Index ix => Source D ix e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
-  unsafeLinearSlice arr ix sz = unsafeExtract ix sz (unsafeResize (SafeSz (totalElem sz)) arr)
+  unsafeLinearSlice ix sz arr = unsafeExtract ix sz (unsafeResize sz arr)
   {-# INLINE unsafeLinearSlice #-}
 
 
@@ -214,14 +214,16 @@ instance Num e => Numeric D e where
   {-# INLINE absPointwise #-}
   additionPointwise = liftDArray2 (+)
   {-# INLINE additionPointwise #-}
+  subtractionPointwise = liftDArray2 (-)
+  {-# INLINE subtractionPointwise #-}
   multiplicationPointwise = liftDArray2 (*)
   {-# INLINE multiplicationPointwise #-}
   powerPointwise arr pow = liftDArray (^ pow) arr
   {-# INLINE powerPointwise #-}
-  powerSumArray p arr = sumArray p . powerPointwise arr
+  powerSumArray arr = sumArray . powerPointwise arr
   {-# INLINE powerSumArray #-}
-  dotProduct p a1 a2 = sumArray p (multiplicationPointwise a1 a2)
-  {-# INLINE dotProduct #-}
+  unsafeDotProduct a1 a2 = sumArray (multiplicationPointwise a1 a2)
+  {-# INLINE unsafeDotProduct #-}
 
 instance (Floating e, RealFrac e) => NumericFloat D e where
   recipPointwise = liftDArray recip
@@ -234,7 +236,7 @@ instance (Floating e, RealFrac e) => NumericFloat D e where
   {-# INLINE ceilingPointwise #-}
   divisionPointwise = liftDArray2 (/)
   {-# INLINE divisionPointwise #-}
-  divideScalar arr e = liftDArray (/e) arr
+  divideScalar arr e = liftDArray (/ e) arr
   {-# INLINE divideScalar #-}
 
 

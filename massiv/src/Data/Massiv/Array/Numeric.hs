@@ -110,6 +110,7 @@ liftArray2M f a1 a2
 {-# INLINE liftArray2M #-}
 
 
+
 -- | Add two arrays together pointwise. Throws `SizeMismatchException` if arrays sizes do
 -- not match.
 --
@@ -490,4 +491,3 @@ atan2A
   => Array r ix e -> Array r ix e -> Array D ix e
 atan2A = liftArray2Matching atan2
 {-# INLINE atan2A #-}
-
