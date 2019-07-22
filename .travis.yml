@@ -85,19 +85,19 @@ matrix:
   #     apt:
   #       packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-8.24 --stack-yaml stack-ghc-8.0.yaml" # --no-run-tests"
+  - env: BUILD=stack ARGS="--resolver lts-8.24 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
     compiler: ": #stack GHC-8.0.2 (lts-8.24)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-9.21 --stack-yaml stack-ghc-8.0.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-9.21 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
     compiler: ": #stack GHC-8.0.2 (lts-9.21)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
     compiler: ": #stack GHC-8.2.2 (lts-11.22)"
     addons:
       apt:
@@ -210,10 +210,10 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      if [ "${DOCTEST_ARGS}" ]; then
-         stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
-      fi
-      stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      # if [ "${DOCTEST_ARGS}" ]; then
+      #    stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      # fi
+      stack $ARGS test --haddock --no-haddock-deps --flag massiv:unsafe-checks
       ;;
     cabal)
 

@@ -1,4 +1,4 @@
-resolver: lts-12.26
+resolver: lts-13.29
 packages:
 - 'massiv/'
 #- 'massiv-io/'
