@@ -216,9 +216,6 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      if [ "${DOCTEST_ARGS}" ]; then
-         stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
-      fi
       if [ "${COVERALL_ARGS}" ]; then
          stack $COVERALL_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
          stack $COVERALL_ARGS hpc report --all
@@ -226,6 +223,9 @@ script:
          shc combined all
       else
         stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      fi
+      if [ "${DOCTEST_ARGS}" ]; then
+         stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       fi
       ;;
     cabal)

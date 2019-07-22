@@ -1,0 +1,11 @@
+resolver: lts-13.29
+packages:
+- 'massiv/'
+- 'massiv-io/'
+- 'massiv-test/'
+extra-deps:
+- scheduler-1.4.0@sha256:b182be9a7b84e1dba02dac761c3f4e204521d0f779d72d86040789d5aaadf92a,2833
+- github: rubik/stack-hpc-coveralls
+  commit: 8a85fa2f5fb907fb8d9d7fc36978b3951cae6e75
+flags: {}
+extra-package-dbs: []
