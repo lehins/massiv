@@ -24,7 +24,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 
 
--- | Delayed array that will be loaded in an interleaved fasion during parallel
+-- | Delayed array that will be loaded in an interleaved fashion during parallel
 -- computation.
 data DI = DI
 

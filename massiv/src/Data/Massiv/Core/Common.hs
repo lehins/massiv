@@ -96,7 +96,7 @@ import Data.Typeable
 -- | The array family. Representations @r@ describes how data is arranged or computed. All arrays
 -- have a common property that each index @ix@ always maps to the same unique element, even if that
 -- element does not exist in memory and has to be computed upon lookup. Data is always arranged in a
--- nested fasion, depth of which is controlled by @`Rank` ix@.
+-- nested fashion, depth of which is controlled by @`Rank` ix@.
 data family Array r ix e :: *
 
 type family EltRepr r ix :: *
@@ -198,7 +198,7 @@ class Load r ix e => Source r ix e where
                 size, \ !arr -> unsafeLinearIndex arr . toLinearIndex (size arr))
   {-# INLINE unsafeIndex #-}
 
-  -- | Lookup element in the array using flat index in a row-major fasion. No
+  -- | Lookup element in the array using flat index in a row-major fashion. No
   -- bounds check is performed
   unsafeLinearIndex :: Array r ix e -> Int -> e
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
