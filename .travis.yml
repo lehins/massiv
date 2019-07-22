@@ -127,7 +127,7 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13" DOCTEST_ARGS="--resolver lts-13"
+  - env: BUILD=stack COVERALL_ARGS="--stack-yaml stack.coveralls.yaml"
     compiler: ": #stack GHC-8.6.5 (lts-13)"
     addons:
       apt:
@@ -216,10 +216,17 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      # if [ "${DOCTEST_ARGS}" ]; then
-      #    stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
-      # fi
-      stack $ARGS test --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      if [ "${DOCTEST_ARGS}" ]; then
+         stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      fi
+      if [ "${COVERALL_ARGS}" ]; then
+         stack $COVERALL_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
+         stack $COVERALL_ARGS hpc report --all
+         stack $COVERALL_ARGS install stack-hpc-coveralls
+         shc combined all
+      else
+        stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+      fi
       ;;
     cabal)
 
