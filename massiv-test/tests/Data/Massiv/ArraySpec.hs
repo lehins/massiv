@@ -137,5 +137,6 @@ spec = do
   specCommon @Ix1
   specCommon @Ix2
   specCommon @Ix3
-  specCommon @Ix4
-  specCommon @Ix5
+  -- FIXME: Uses too much RAM when compiling
+  -- specCommon @Ix4
+  -- specCommon @Ix5

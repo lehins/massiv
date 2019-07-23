@@ -16,10 +16,13 @@ language: generic
 
 cache:
   directories:
-  - $HOME/.ghc
+  #- $HOME/.ghc
   #- $HOME/.cabal
   - $HOME/.stack
+  - $TRAVIS_BUILD_DIR/.stack-work
   - $TRAVIS_BUILD_DIR/massiv/.stack-work
+  - $TRAVIS_BUILD_DIR/massiv-io/.stack-work
+  - $TRAVIS_BUILD_DIR/massiv-test/.stack-work
   timeout: 360
 
 # The different configurations we want to test. We have BUILD=cabal which uses
@@ -127,7 +130,7 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack COVERALL_ARGS="--stack-yaml stack.coveralls.yaml"
+  - env: BUILD=stack COVERALL_ARGS="--stack-yaml stack-coveralls.yaml"
     compiler: ": #stack GHC-8.6.5 (lts-13)"
     addons:
       apt:
@@ -217,11 +220,13 @@ script:
   case "$BUILD" in
     stack)
       if [ "${COVERALL_ARGS}" ]; then
+         stack $COVERALL_ARGS build --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
          stack $COVERALL_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
          stack $COVERALL_ARGS hpc report --all
          stack $COVERALL_ARGS install stack-hpc-coveralls
          shc combined all
       else
+        stack $ARGS build --haddock --no-haddock-deps --flag massiv:unsafe-checks
         stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       fi
       if [ "${DOCTEST_ARGS}" ]; then
