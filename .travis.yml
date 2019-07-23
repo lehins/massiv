@@ -223,8 +223,7 @@ script:
          stack --stack-yaml $COVERALLS_STACK_YAML test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
          stack --stack-yaml $COVERALLS_STACK_YAML hpc report --all
          stack --stack-yaml $COVERALLS_STACK_YAML install stack-hpc-coveralls
-         # stack --stack-yaml stack-coveralls.yaml exec -- hpc report $(stack path --local-hpc-root --stack-yaml stack-coveralls.yaml)/combined/custom/custom.tix --srcdir ./massiv --srcdir ./massiv-test --hpcdir .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/hpc --reset-hpcdirs
-         STACK_YAML="$COVERALLS_STACK_YAML" shc --repo-token=$COVERALLS_REPO_TOKEN combined all
+         STACK_YAML="$COVERALLS_STACK_YAML" shc --repo-token=$COVERALLS_REPO_TOKEN combined custom
       else
         stack $ARGS build --haddock --no-haddock-deps --flag massiv:unsafe-checks
         stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
