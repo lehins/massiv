@@ -148,7 +148,7 @@ matrix:
   #   compiler: ": #stack GHC-8.0.2 (lts-9.21)"
   #   os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
     compiler: ": #stack GHC-8.2.2 (lts-11.22)"
     os: osx
 
@@ -219,7 +219,7 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      if [ -n "${COVERALLS_ARGS}" ] && [ -n "${COVERALLS_REPO_TOKEN} ]; then
+      if [ -n "${COVERALLS_ARGS}" ] && [ -n "${COVERALLS_REPO_TOKEN}" ]; then
          stack $COVERALLS_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
          stack $COVERALLS_ARGS hpc report --all
          stack $COVERALLS_ARGS install stack-hpc-coveralls
