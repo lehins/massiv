@@ -1,4 +1,4 @@
-# 0.3.7
+# 0.4.0
 
 * Expose `Data.Massiv.Core.List`
 * Expose `unsafeLinearModify` and `unsafeModify`
