@@ -130,7 +130,7 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack COVERALL_ARGS="--stack-yaml stack-coveralls.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-13" COVERALLS_ARGS="--stack-yaml stack-coveralls.yaml"
     compiler: ": #stack GHC-8.6.5 (lts-13)"
     addons:
       apt:
@@ -219,12 +219,12 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      if [ "${COVERALL_ARGS}" ]; then
-         stack $COVERALL_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
-         stack $COVERALL_ARGS hpc report --all
-         stack $COVERALL_ARGS install stack-hpc-coveralls
+      if [ -n "${COVERALLS_ARGS}" ] && [ -n "${COVERALLS_REPO_TOKEN} ]; then
+         stack $COVERALLS_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
+         stack $COVERALLS_ARGS hpc report --all
+         stack $COVERALLS_ARGS install stack-hpc-coveralls
          # stack --stack-yaml stack-coveralls.yaml exec -- hpc report $(stack path --local-hpc-root --stack-yaml stack-coveralls.yaml)/combined/custom/custom.tix --srcdir ./massiv --srcdir ./massiv-test --hpcdir .stack-work/dist/x86_64-linux/Cabal-2.4.0.1/hpc --reset-hpcdirs
-         shc combined all
+         shc --repo-token=$COVERALLS_REPO_TOKEN combined all
       else
         stack $ARGS build --haddock --no-haddock-deps --flag massiv:unsafe-checks
         stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
