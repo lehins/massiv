@@ -169,7 +169,7 @@ oneSz = SafeSz (pureIndex 1)
 {-# INLINE oneSz #-}
 
 
--- | Same as `consDim`, but for `Sz`
+-- | Same as `liftIndex`, but for `Sz`
 --
 -- ==== __Example__
 --
