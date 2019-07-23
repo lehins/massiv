@@ -13,7 +13,7 @@ module Test.Massiv.Array.Mutable
   , atomicIntSpec
   ) where
 
-import Control.Concurrent.Async
+import UnliftIO.Async
 import Data.Bits
 import Data.Functor.Identity
 import Data.List as L
