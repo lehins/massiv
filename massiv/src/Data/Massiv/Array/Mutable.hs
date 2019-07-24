@@ -778,7 +778,6 @@ iforLinearPrimM_ ::
 iforLinearPrimM_ marr f = loopM_ 0 (< totalElem (msize marr)) (+ 1) (unsafeLinearModify marr f)
 {-# INLINE iforLinearPrimM_ #-}
 
--- FIXME: supply Scheduler instead of numWorkers and schedule action
 -- | Create a copy of a pure array, mutate it in place and return its frozen version. The big
 -- difference between `withMArrayS` is that it's not only gonna respect the computation strategy
 -- supplied to it while making a copy, but it will also pass extra argumens to the action that
@@ -795,12 +794,11 @@ iforLinearPrimM_ marr f = loopM_ 0 (< totalElem (msize marr)) (+ 1) (unsafeLinea
 withMArray ::
      (Mutable r ix e, MonadUnliftIO m)
   => Array r ix e
-  -> (Int -> (m () -> m ()) -> MArray RealWorld r ix e -> m a)
+  -> (Scheduler m () -> MArray RealWorld r ix e -> m a)
   -> m (Array r ix e)
 withMArray arr action = do
   marr <- thaw arr
-  withScheduler_ (getComp arr) $ \scheduler ->
-    action (numWorkers scheduler) (scheduleWork scheduler) marr
+  withScheduler_ (getComp arr) (`action` marr)
   liftIO $ unsafeFreeze (getComp arr) marr
 {-# INLINE withMArray #-}
 

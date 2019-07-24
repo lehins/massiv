@@ -62,20 +62,9 @@ unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
 -- @since 0.3.2
 quicksort ::
      (Mutable r Ix1 e, Ord e) => Array r Ix1 e -> Array r Ix1 e
-quicksort arr = unsafePerformIO $ withMArray' arr quicksortM_
+quicksort arr = unsafePerformIO $ withMArray arr quicksortM_
 {-# INLINE quicksort #-}
 
--- TODO: switch to the regular withMArray, once it is fixed.
-withMArray' ::
-     (Mutable r ix e, MonadUnliftIO m)
-  => Array r ix e
-  -> (Scheduler m () -> MArray RealWorld r ix e -> m a)
-  -> m (Array r ix e)
-withMArray' arr action = do
-  marr <- thaw arr
-  withScheduler_ (getComp arr) $ \scheduler -> action scheduler marr
-  liftIO $ unsafeFreeze (getComp arr) marr
-{-# INLINE withMArray' #-}
 
 
 -- | Mutable version of `quicksort`
