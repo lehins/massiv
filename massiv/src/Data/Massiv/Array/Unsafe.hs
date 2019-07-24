@@ -26,9 +26,6 @@ module Data.Massiv.Array.Unsafe
   , unsafeExtract
   , unsafeTransform
   , unsafeTransform2
-    -- ** Deprecated
-  , unsafeTraverse
-  , unsafeTraverse2
     -- * Slicing
   , unsafeSlice
   , unsafeOuterSlice
@@ -90,31 +87,6 @@ unsafeBackpermute :: (Source r' ix' e, Index ix) =>
 unsafeBackpermute !sz ixF !arr =
   makeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
 {-# INLINE unsafeBackpermute #-}
-
-
-unsafeTraverse
-  :: (Source r ix' e', Index ix)
-  => Sz ix
-  -> ((ix' -> e') -> ix -> e)
-  -> Array r ix' e'
-  -> Array D ix e
-unsafeTraverse sz f arr1 =
-  makeArray (getComp arr1) sz (f (unsafeIndex arr1))
-{-# INLINE unsafeTraverse #-}
-{-# DEPRECATED unsafeTraverse "In favor of more general `unsafeTransform'`" #-}
-
-
-unsafeTraverse2
-  :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
-  => Sz ix
-  -> ((ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
-  -> Array r1 ix1 e1
-  -> Array r2 ix2 e2
-  -> Array D ix e
-unsafeTraverse2 sz f arr1 arr2 =
-  makeArray (getComp arr1 <> getComp arr2) sz (f (unsafeIndex arr1) (unsafeIndex arr2))
-{-# INLINE unsafeTraverse2 #-}
-{-# DEPRECATED unsafeTraverse2 "In favor of more general `unsafeTransform2'`" #-}
 
 -- | Same `Data.Array.transform'`, except no bounds checking is performed, thus making it faster,
 -- but unsafe.

@@ -47,7 +47,6 @@ module Data.Massiv.Array.Ops.Construct
   , range
   , rangeStepM
   , rangeStep'
-  , rangeStep
   , rangeInclusive
   , rangeStepInclusiveM
   , rangeStepInclusive'
@@ -442,15 +441,6 @@ infix 4 ..., ..:
 range :: Index ix => Comp -> ix -> ix -> Array D ix ix
 range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 {-# INLINE range #-}
-
-
--- | Same as `range`, but with a custom step.
---
--- @since 0.1.0
-rangeStep :: Index ix => Comp -> ix -> ix -> ix -> Maybe (Array D ix ix)
-rangeStep = rangeStepM
-{-# INLINE rangeStep #-}
-{-# DEPRECATED rangeStep "In favor of more general `rangeStepM`" #-}
 
 -- | Same as `range`, but with a custom step.
 --

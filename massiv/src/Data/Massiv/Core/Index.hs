@@ -64,16 +64,11 @@ module Data.Massiv.Core.Index
   , lastDim
   , initDim
   , getDim'
-  , getDim
   , setDim'
-  , setDim
   , dropDimM
   , dropDim'
-  , dropDim
   , pullOutDim'
-  , pullOutDim
   , insertDim'
-  , insertDim
   , fromDimension
   , getDimension
   , setDimension
@@ -286,14 +281,6 @@ setDim' :: Index ix => ix -> Dim -> Int -> ix
 setDim' ix dim = either throw id . setDimM ix dim
 {-# INLINE [1] setDim' #-}
 
--- | See `setDimM`
---
--- @since 0.2.4
-setDim :: Index ix => ix -> Dim -> Int -> Maybe ix
-setDim = setDimM
-{-# INLINE [1] setDim #-}
-{-# DEPRECATED setDim "In favor of more general `setDimM`" #-}
-
 -- | Change the value from a specific dimension within the index. Throws `IndexException`. See
 -- `getDimM` for a safer version and `getDimension` for a type safe version.
 --
@@ -309,14 +296,6 @@ getDim' :: Index ix => ix -> Dim -> Int
 getDim' ix = either throw id . getDimM ix
 {-# INLINE [1] getDim' #-}
 
--- | See `getDimM`
---
--- @since 0.2.4
-getDim :: Index ix => ix -> Dim -> Maybe Int
-getDim = getDimM
-{-# INLINE [1] getDim #-}
-{-# DEPRECATED getDim "In favor of more general `getDimM`" #-}
-
 -- | Remove a dimension from the index.
 --
 -- ==== __Examples__
@@ -330,14 +309,6 @@ getDim = getDimM
 dropDimM :: (MonadThrow m, Index ix) => ix -> Dim -> m (Lower ix)
 dropDimM ix = fmap snd . pullOutDimM ix
 {-# INLINE [1] dropDimM #-}
-
--- | See `dropDimM`
---
--- @since 0.1.0
-dropDim :: Index ix => ix -> Dim -> Maybe (Lower ix)
-dropDim = dropDimM
-{-# INLINE [1] dropDim #-}
-{-# DEPRECATED dropDim "In favor of more general `dropDimM`" #-}
 
 -- | Remove a dimension from the index.
 --
@@ -366,14 +337,6 @@ pullOutDim' :: Index ix => ix -> Dim -> (Int, Lower ix)
 pullOutDim' ix = either throw id . pullOutDimM ix
 {-# INLINE [1] pullOutDim' #-}
 
--- | See `pullOutDimM`
---
--- @since 0.2.4
-pullOutDim :: Index ix => ix -> Dim -> Maybe (Int, Lower ix)
-pullOutDim = pullOutDimM
-{-# INLINE [1] pullOutDim #-}
-{-# DEPRECATED pullOutDim "In favor of more general `pullOutDimM`" #-}
-
 -- | Raise the dimension of the index by inserting one in the specified dimension. Throws
 -- `IndexException`. See `insertDimM` for a safer version and `insertDimension` for a type safe
 -- version.
@@ -389,14 +352,6 @@ pullOutDim = pullOutDimM
 insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
 insertDim' ix dim = either throw id . insertDimM ix dim
 {-# INLINE [1] insertDim' #-}
-
--- | See `insertDimM`
---
--- @since 0.2.4
-insertDim :: Index ix => Lower ix -> Dim -> Int -> Maybe ix
-insertDim = insertDimM
-{-# INLINE [1] insertDim #-}
-{-# DEPRECATED insertDim "In favor of more general `insertDimM`" #-}
 
 -- | Get the value level `Dim` from the type level equivalent.
 --

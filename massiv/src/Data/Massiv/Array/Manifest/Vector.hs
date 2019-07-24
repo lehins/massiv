@@ -15,7 +15,6 @@
 module Data.Massiv.Array.Manifest.Vector
   ( fromVectorM
   , fromVector'
-  , fromVector
   , castFromVector
   , toVector
   , castToVector
@@ -122,16 +121,6 @@ fromVector' ::
   -> Array r ix a
 fromVector' comp sz = either throw id . fromVectorM comp sz
 {-# INLINE fromVector' #-}
-
-fromVector ::
-     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
-  => Comp
-  -> Sz ix -- ^ Resulting size of the array
-  -> v a -- ^ Source Vector
-  -> Array r ix a
-fromVector comp sz = either throw id . fromVectorM comp sz
-{-# INLINE fromVector #-}
-{-# DEPRECATED fromVector "In favor of safer `fromVectorM`" #-}
 
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will
 -- return `Nothing` only if source array representation was not one of `B`, `N`,

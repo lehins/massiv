@@ -23,10 +23,8 @@ module Data.Massiv.Array.Ops.Fold
   , foldSemi
   , minimumM
   , minimum'
-  , minimum
   , maximumM
   , maximum'
-  , maximum
   , sum
   , sum'
   , product
@@ -301,14 +299,6 @@ maximumM arr =
 
 -- | /O(n)/ - Compute maximum of all elements.
 --
--- @since 0.1.0
-maximum :: (Source r ix e, Ord e) => Array r ix e -> e
-maximum = maximum'
-{-# INLINE maximum #-}
-{-# DEPRECATED maximum "In favor of a safer `maximumM` or an equivalent `maximum'`" #-}
-
--- | /O(n)/ - Compute maximum of all elements.
---
 -- @since 0.3.0
 maximum' :: (Source r ix e, Ord e) => Array r ix e -> e
 maximum' = either throw id . maximumM
@@ -332,14 +322,6 @@ minimumM arr =
 minimum' :: (Source r ix e, Ord e) => Array r ix e -> e
 minimum' = either throw id . minimumM
 {-# INLINE minimum' #-}
-
--- | /O(n)/ - Compute minimum of all elements.
---
--- @since 0.1.0
-minimum :: (Source r ix e, Ord e) => Array r ix e -> e
-minimum = minimum'
-{-# INLINE minimum #-}
-{-# DEPRECATED minimum "In favor of a safer `minimumM` or an equivalent `minimum'`" #-}
 
 
 -- | /O(n)/ - Compute sum of all elements.

@@ -19,7 +19,6 @@ module Data.Massiv.Array.Manifest.List
     fromList
   , fromListsM
   , fromLists'
-  , fromLists
   , toList
   , toLists
   , toLists2
@@ -77,6 +76,8 @@ fromList = fromLists'
 --   , [ [4,5] ]
 --   ]
 -- )
+-- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix3 Int)
+-- Nothing
 -- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: IO (Array B Ix3 Int)
 -- *** Exception: DimTooShortException: expected (Sz1 3), got (Sz1 2)
 --
@@ -86,19 +87,12 @@ fromListsM :: forall r ix e m . (Nested LN ix e, Ragged L ix e, Mutable r ix e, 
 fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 {-# INLINE fromListsM #-}
 
--- | Similar to `fromListsM`, but less general.
-fromLists :: (Nested LN ix e, Ragged L ix e, Mutable r ix e)
-         => Comp -> [ListItem ix e] -> Maybe (Array r ix e)
-fromLists comp = fromRaggedArrayM . setComp comp . throughNested
-{-# INLINE fromLists #-}
-{-# DEPRECATED fromLists "In favor of a more general `fromListsM`" #-}
-
 -- TODO: Figure out QuickCheck properties. Best guess idea so far IMHO is to add it as dependency
 -- and move Arbitrary instances int the library
 --
 -- prop> fromLists' Seq xs == fromList xs
 --
--- | Same as `fromLists`, but will throw an error on irregular shaped lists.
+-- | Same as `fromListsM`, but will throw a pure error on irregular shaped lists.
 --
 -- __Note__: This function is the same as if you would turn on @{-\# LANGUAGE OverloadedLists #-}@
 -- extension. For that reason you can also use `GHC.Exts.fromList`.

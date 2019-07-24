@@ -89,7 +89,7 @@ module Data.Massiv.Array
   , convert
   , convertAs
   , convertProxy
-  , fromRaggedArray
+  , fromRaggedArrayM
   , fromRaggedArray'
   -- * Size
   , size
@@ -106,7 +106,6 @@ module Data.Massiv.Array
   , borderIndex
   , evaluateM
   , evaluate'
-  , evaluateAt
   -- * Mapping
   , module Data.Massiv.Array.Ops.Map
   -- * Folding

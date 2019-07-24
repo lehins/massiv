@@ -20,18 +20,14 @@ module Data.Massiv.Array.Ops.Transform
   -- ** Backpermute
   , backpermuteM
   , backpermute'
-  , backpermute
   -- ** Resize
   , resizeM
   , resize'
-  , resize
   , flatten
   -- ** Extract
   , extractM
-  , extract
   , extract'
   , extractFromToM
-  , extractFromTo
   , extractFromTo'
   , deleteRowsM
   , deleteColumnsM
@@ -42,12 +38,10 @@ module Data.Massiv.Array.Ops.Transform
   , snoc
   , unsnocM
   , appendM
-  , append
   , append'
   , concatM
   , concat'
   , splitAtM
-  , splitAt
   , splitAt'
   , splitExtractM
   -- ** Upsample/Downsample
@@ -60,9 +54,6 @@ module Data.Massiv.Array.Ops.Transform
   , transform'
   , transform2M
   , transform2'
-  -- ** Traverse (deprecated)
-  , traverse
-  , traverse2
   ) where
 
 import Control.Scheduler (traverse_)
@@ -109,24 +100,6 @@ extract' :: Extract r ix e
 extract' sIx newSz = either throw id . extractM sIx newSz
 {-# INLINE extract' #-}
 
--- | Extract a sub-array from within a larger source array. Array that is being extracted must be
--- fully encapsulated in a source array, otherwise `Nothing` is returned,
-extract :: Extract r ix e
-        => ix -- ^ Starting index
-        -> Sz ix -- ^ Size of the resulting array
-        -> Array r ix e -- ^ Source array
-        -> Maybe (Array (EltRepr r ix) ix e)
-extract !sIx !newSz !arr
-  | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
-    Just $ unsafeExtract sIx newSz arr
-  | otherwise = Nothing
-  where
-    sz1 = Sz (liftIndex (+1) (unSz (size arr)))
-    eIx1 = Sz (liftIndex (+1) eIx)
-    eIx = liftIndex2 (+) sIx $ unSz newSz
-{-# INLINE extract #-}
-{-# DEPRECATED extract "In favor of a more general `extractM`" #-}
-
 
 -- | Similar to `extractM`, except it takes starting and ending index. Result array will not include
 -- the ending index.
@@ -140,17 +113,6 @@ extractFromToM :: (MonadThrow m, Extract r ix e) =>
 extractFromToM sIx eIx = extractM sIx (Sz (liftIndex2 (-) eIx sIx))
 {-# INLINE extractFromToM #-}
 
--- | Similar to `extract`, except it takes starting and ending index. Result array will not include
--- the ending index.
-extractFromTo :: Extract r ix e =>
-                 ix -- ^ Starting index
-              -> ix -- ^ Index up to which elmenets should be extracted.
-              -> Array r ix e -- ^ Source array.
-              -> Maybe (Array (EltRepr r ix) ix e)
-extractFromTo sIx eIx = extract sIx $ Sz (liftIndex2 (-) eIx sIx)
-{-# INLINE extractFromTo #-}
-{-# DEPRECATED extractFromTo "In favor of a more general `extractFromToM`" #-}
-
 -- | Same as `extractFromTo`, but throws an error on invalid indices.
 --
 -- @since 0.2.4
@@ -162,16 +124,6 @@ extractFromTo' :: Extract r ix e =>
 extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 {-# INLINE extractFromTo' #-}
 
-
--- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
--- number of elements does not match the source array.
-resize ::
-     (Index ix', Load r ix e, Resize r ix) => Sz ix' -> Array r ix e -> Maybe (Array r ix' e)
-resize !sz !arr
-  | totalElem sz == totalElem (size arr) = Just $ unsafeResize sz arr
-  | otherwise = Nothing
-{-# INLINE resize #-}
-{-# DEPRECATED resize "In favor of a more general `resizeM`" #-}
 
 -- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
 -- number of elements does not match the source array.
@@ -367,7 +319,7 @@ backpermuteM ::
 backpermuteM sz ixF !arr = generateArray (getComp arr) sz (evaluateM arr . ixF)
 {-# INLINE backpermuteM #-}
 
--- | Similar to `backpermuteM`, with few notable differences:
+-- | Similar to `backpermuteM`, with a few notable differences:
 --
 -- * Creates a delayed array, instead of manifest, therefore it can be fused
 -- * Respects computation strategy, so it can be parallelized
@@ -381,18 +333,6 @@ backpermute' :: (Source r' ix' e, Index ix) =>
              -> Array D ix e
 backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 {-# INLINE backpermute' #-}
-
--- | See `backpermute'`.
---
--- @since 0.1.0
-backpermute :: (Source r' ix' e, Index ix) =>
-               Sz ix -- ^ Size of the result array
-            -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
-            -> Array r' ix' e -- ^ Source array.
-            -> Array D ix e
-backpermute = backpermute'
-{-# INLINE backpermute #-}
-{-# DEPRECATED backpermute "In favor of a safe `backpermuteM` or an equivalent `backpermute'`" #-}
 
 
 -- | /O(1)/ - Add an element to the vector from the left side
@@ -516,13 +456,6 @@ appendM n !arr1 !arr2 = do
       }
 {-# INLINE appendM #-}
 
--- | Append two arrays together along a specified dimension.
-append :: (Source r1 ix e, Source r2 ix e) =>
-          Dim -> Array r1 ix e -> Array r2 ix e -> Maybe (Array DL ix e)
-append = appendM
-{-# INLINE append #-}
-{-# DEPRECATED append "In favor of a more general `appendM`" #-}
-
 
 -- | Same as `appendM`, but will throw an exception in pure code on mismatched sizes.
 --
@@ -598,17 +531,6 @@ splitAtM dim i arr = do
   arr2 <- extractFromToM sIx sz arr
   return (arr1, arr2)
 {-# INLINE splitAtM #-}
-
--- | /O(1)/ - Split an array at an index along a specified dimension.
-splitAt ::
-     (Extract r ix e, r' ~ EltRepr r ix)
-  => Dim -- ^ Dimension along which to split
-  -> Int -- ^ Index along the dimension to split at
-  -> Array r ix e -- ^ Source array
-  -> Maybe (Array r' ix e, Array r' ix e)
-splitAt = splitAtM
-{-# INLINE splitAt #-}
-{-# DEPRECATED splitAt "In favor of a more general `splitAtM`" #-}
 
 -- | Same as `splitAt`, but will throw an error instead of returning `Nothing` on wrong dimension
 -- and index out of bounds.
@@ -794,31 +716,6 @@ upsample !fillWith safeStride arr =
     !newsz = SafeSz (timesStride $ unSz sz)
 {-# INLINE upsample #-}
 
-
--- | Create an array by traversing a source array.
-traverse
-  :: (Source r1 ix1 e1, Index ix)
-  => Sz ix -- ^ Size of the result array
-  -> ((ix1 -> e1) -> ix -> e) -- ^ Function that will receive a source array safe index function and
-                              -- an index for an element it should return a value of.
-  -> Array r1 ix1 e1 -- ^ Source array
-  -> Array D ix e
-traverse sz f arr1 = makeArray (getComp arr1) sz (f (evaluate' arr1))
-{-# INLINE traverse #-}
-{-# DEPRECATED traverse "In favor of more general `transform'`" #-}
-
--- | Create an array by traversing two source arrays.
-traverse2
-  :: (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
-  => Sz ix
-  -> ((ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
-  -> Array r1 ix1 e1
-  -> Array r2 ix2 e2
-  -> Array D ix e
-traverse2 sz f arr1 arr2 =
-  makeArray (getComp arr1 <> getComp arr2) sz (f (evaluate' arr1) (evaluate' arr2))
-{-# INLINE traverse2 #-}
-{-# DEPRECATED traverse2 "In favor of more general `transform2'`" #-}
 
 -- | General array transformation, that forces computation and produces a manifest array.
 --

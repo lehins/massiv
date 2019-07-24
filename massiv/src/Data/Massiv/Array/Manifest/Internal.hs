@@ -35,7 +35,6 @@ module Data.Massiv.Array.Manifest.Internal
   , gcastArr
   , fromRaggedArrayM
   , fromRaggedArray'
-  , fromRaggedArray
   , sizeofArray
   , sizeofMutableArray
   , iterateUntil
@@ -307,25 +306,10 @@ convertProxy _ = convert
 {-# INLINE convertProxy #-}
 
 
--- | Convert a ragged array into a usual rectangular shaped one.
-fromRaggedArray :: (Mutable r ix e, Ragged r' ix e, Load r' ix e) =>
-                   Array r' ix e -> Either ShapeException (Array r ix e)
-fromRaggedArray arr =
-  unsafePerformIO $ do
-    let !sz = edgeSize arr
-        !comp = getComp arr
-    mArr <- unsafeNew sz
-    try $ do
-      withScheduler_ comp $ \scheduler ->
-        loadRagged (scheduleWork scheduler) (unsafeLinearWrite mArr) 0 (totalElem sz) sz arr
-      unsafeFreeze comp mArr
-{-# INLINE fromRaggedArray #-}
-{-# DEPRECATED fromRaggedArray "In favor of a more general `fromRaggedArrayM`" #-}
-
 -- | Convert a ragged array into a common array with rectangular shape. Throws `ShapeException`
 -- whenever supplied ragged array does not have a rectangular shape.
 --
--- @since 0.3.0
+-- @since 0.4.0
 fromRaggedArrayM ::
      forall r ix e r' m . (Mutable r ix e, Ragged r' ix e, Load r' ix e, MonadThrow m)
   => Array r' ix e
@@ -341,8 +325,10 @@ fromRaggedArrayM arr =
 {-# INLINE fromRaggedArrayM #-}
 
 
--- | Same as `fromRaggedArray`, but will throw an error if its shape is not
+-- | Same as `fromRaggedArrayM`, but will throw a pure exception if its shape is not
 -- rectangular.
+--
+-- @since 0.1.1
 fromRaggedArray' ::
      forall r ix e r'. (Mutable r ix e, Load r' ix e, Ragged r' ix e)
   => Array r' ix e

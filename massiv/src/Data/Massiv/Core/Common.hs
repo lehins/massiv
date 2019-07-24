@@ -59,7 +59,6 @@ module Data.Massiv.Core.Common
   , borderIndex
   , evaluateM
   , evaluate'
-  , evaluateAt
   , module Data.Massiv.Core.Index
   -- * Common Operations
   , imapM_
@@ -721,14 +720,6 @@ evaluate' arr ix =
     (unsafeIndex arr)
     ix
 {-# INLINE evaluate' #-}
-
--- | See `evaluate'`.
---
--- @since 0.1.0
-evaluateAt :: Source r ix e => Array r ix e -> ix -> e
-evaluateAt = evaluate'
-{-# INLINE evaluateAt #-}
-{-# DEPRECATED evaluateAt "In favor of a safe `evaluateM` or an equivalent `evaluate'`" #-}
 
 
 -- | Map a monadic index aware function over an array sequentially, while discarding the result.
