@@ -1,6 +1,7 @@
 # 0.4.0
 
 * Switch from `EltRepr r ix` to much simpler `R r`
+* `unsafeLinearSet` - length argument now accepts `Sz1` instead of an `Int`
 * Renamed:
   * `forPrimM_` -> `forPrimM`
   * `iforPrimM_` -> `iforPrimM`

@@ -335,7 +335,7 @@ class Manifest r ix e => Mutable r ix e where
   initializeNew mdef sz = do
     marr <- unsafeNew sz
     case mdef of
-      Just val -> unsafeLinearSet marr 0 (totalElem sz) val
+      Just val -> unsafeLinearSet marr 0 (SafeSz (totalElem sz)) val
       Nothing  -> initialize marr
     return marr
   {-# INLINE initializeNew #-}
@@ -344,9 +344,9 @@ class Manifest r ix e => Mutable r ix e where
   --
   -- @since 0.3.0
   unsafeLinearSet :: PrimMonad m =>
-                     MArray (PrimState m) r ix e -> Ix1 -> Int -> e -> m ()
+                     MArray (PrimState m) r ix e -> Ix1 -> Sz1 -> e -> m ()
   unsafeLinearSet marr offset len e =
-    loopM_ offset (< (offset + len)) (+1) (\i -> unsafeLinearWrite marr i e)
+    loopM_ offset (< (offset + unSz len)) (+1) (\i -> unsafeLinearWrite marr i e)
   {-# INLINE unsafeLinearSet #-}
 
   -- | Copy part of one mutable array into another

@@ -189,7 +189,7 @@ instance (Index ix, Prim e) => Mutable P ix e where
                 Sz . elemsMBA _mpa, writeByteArray) ma
   {-# INLINE unsafeLinearWrite #-}
 
-  unsafeLinearSet (MPArray _ ma) = setByteArray ma
+  unsafeLinearSet (MPArray _ ma) offset (SafeSz sz) = setByteArray ma offset sz
   {-# INLINE unsafeLinearSet #-}
 
   unsafeLinearCopy (MPArray _ maFrom) iFrom (MPArray _ maTo) iTo (Sz k) =

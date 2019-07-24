@@ -193,7 +193,7 @@ prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
     arrd =
       runST $ do
         marrd <- unsafeNew sz
-        unsafeLinearSet marrd i (unSz k) e
+        unsafeLinearSet marrd i k e
         unsafeFreeze comp marrd
 
 prop_UnsafeLinearShrink ::
@@ -245,8 +245,8 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
         marr <- thawS arr
         marrGrown <- unsafeLinearGrow marr sz'
         when (sz' /= sz) $ do
-          unsafeLinearSet marrGrown (totalElem sz) (totalElem sz' - totalElem sz) e
-          unsafeLinearSet marrCopied (totalElem sz) (totalElem sz' - totalElem sz) e
+          unsafeLinearSet marrGrown (totalElem sz) (Sz (totalElem sz' - totalElem sz)) e
+          unsafeLinearSet marrCopied (totalElem sz) (Sz (totalElem sz' - totalElem sz)) e
         (,) <$> unsafeFreeze (getComp arr) marrCopied <*> unsafeFreeze (getComp arr) marrGrown
 
 

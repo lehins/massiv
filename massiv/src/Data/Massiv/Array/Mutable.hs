@@ -119,7 +119,7 @@ import Prelude hiding (mapM, read)
 --   [ [ 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0 ]
 --   ]
--- >>> new @B @_ @Int (Sz2 2 6) >>= (`read'` 1)
+-- >>> new @B @_ @Int (Sz2 2 6) >>= (`readM` 1)
 -- *** Exception: Uninitialized
 --
 -- @since 0.1.0
@@ -140,7 +140,7 @@ new = initializeNew Nothing
 -- >>> arr <- fromListsM @U @Ix2 @Double Par [[12,21],[13,31]]
 -- >>> marr <- thaw arr
 -- >>> modify marr (pure . (+ 10)) (1 :. 0)
--- True
+-- Just 13.0
 -- >>> freeze Par marr
 -- Array U Par (Sz (2 :. 2))
 --   [ [ 12.0, 21.0 ]
@@ -173,7 +173,7 @@ thaw arr =
 -- >>> :set -XOverloadedLists
 -- >>> thawS @P @Ix1 @Double [1..10]
 -- >>> marr <- thawS @P @Ix1 @Double [1..10]
--- >>> write' marr 5 100
+-- >>> writeM marr 5 100
 -- >>> freezeS marr
 -- Array P Seq (Sz1 10)
 --   [ 1.0, 2.0, 3.0, 4.0, 5.0, 100.0, 7.0, 8.0, 9.0, 10.0 ]
@@ -245,11 +245,7 @@ freezeS smarr = do
 
 newMaybeInitialized ::
      (Load r' ix e, Mutable r ix e, PrimMonad m) => Array r' ix e -> m (MArray (PrimState m) r ix e)
-newMaybeInitialized !arr = do
-  let !sz = size arr
-  marr <- unsafeNew sz
-  mapM_ (unsafeLinearSet marr 0 (totalElem sz)) $ defaultElement arr
-  pure marr
+newMaybeInitialized !arr = initializeNew (defaultElement arr) (size arr)
 {-# INLINE newMaybeInitialized #-}
 
 
@@ -365,7 +361,7 @@ makeMArrayLinear comp sz f = do
 --
 -- >>> :set -XTypeApplications
 -- >>> import Data.Massiv.Array
--- >>> createArray_ @P @_ @Int Seq (Sz1 2) (\ s marr -> scheduleWork s (write' marr 0 10) >> scheduleWork s (write' marr 1 11))
+-- >>> createArray_ @P @_ @Int Seq (Sz1 2) (\ s marr -> scheduleWork s (writeM marr 0 10) >> scheduleWork s (writeM marr 1 11))
 -- Array P Seq (Sz1 2)
 --   [ 10, 11 ]
 --
