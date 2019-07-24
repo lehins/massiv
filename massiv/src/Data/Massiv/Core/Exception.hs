@@ -1,4 +1,6 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Data.Massiv.Core.Exception
   ( ImpossibleException(..)
   , throwImpossible
@@ -10,6 +12,8 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.Catch
 import Data.Massiv.Core.Index.Internal
+import Control.Monad.ST (ST)
+import Control.Monad.ST.Unsafe (unsafeIOToST)
 
 newtype ImpossibleException =
   ImpossibleException SomeException
@@ -42,3 +46,9 @@ guardNumberOfElements :: (MonadThrow m, Index ix, Index ix') => Sz ix -> Sz ix' 
 guardNumberOfElements sz sz' =
   unless (totalElem sz == totalElem sz') $ throwM $ SizeElementsMismatchException sz sz'
 {-# INLINE guardNumberOfElements #-}
+
+#if !MIN_VERSION_exceptions(0, 10, 3)
+-- | Orphan instance in "massiv"
+instance MonadThrow (ST s) where
+  throwM = unsafeIOToST . throwIO
+#endif

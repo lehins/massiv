@@ -967,6 +967,15 @@ modifyM marr f ix
 
 -- | /O(1)/ - Same as `modifyM`, but discard the returned element
 --
+-- ====__Examples__
+--
+-- >>> :set -XTypeApplications
+-- >>> import Control.Monad.ST
+-- >>> import Data.Massiv.Array
+-- >>> runST $ new @P @Ix1 @Int (Sz1 3) >>= (\ma -> modifyM_ ma (pure . (+10)) 1 >> freezeS ma)
+-- Array P Seq (Sz1 3)
+--   [ 0, 10, 0 ]
+--
 -- @since 0.4.0
 modifyM_ ::
      (Mutable r ix e, PrimMonad m, MonadThrow m)

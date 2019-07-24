@@ -9,6 +9,7 @@
 * Introduced new functions that do not mutate the original array: `forPrimM_`,
   `iforPrimM_` and `iforLinearPrimM_`
 * Addition of `readM`, `writeM`, `modifyM`, `swapM`, `modifyM_`, `swapM_`
+* Add an orphan instance of `MonadThrow` for `ST` monad for older versions of `exceptions`. See [ekmett/exceptions#72](https://github.com/ekmett/exceptions/pull/72)
 * Deprecation of `read'`, `write'` `modify'` and `swap'`
 * Make `modify` accept a monadic action, rather than a pure function. Also not it returns
   the old element.
