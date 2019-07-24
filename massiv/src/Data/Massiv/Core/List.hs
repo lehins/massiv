@@ -33,7 +33,6 @@ import Data.Coerce
 import Data.Foldable (foldr')
 import qualified Data.List as L
 import Data.Massiv.Core.Common
-import Data.Proxy
 import Data.Typeable
 import GHC.Exts
 import System.IO.Unsafe (unsafePerformIO)

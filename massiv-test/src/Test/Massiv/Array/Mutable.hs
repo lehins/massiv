@@ -194,8 +194,8 @@ prop_atomicModifyIntArrayMany =
     marr <- thaw arr
     atomicModifyIntArray marr (liftIndex (subtract 1 . negate) ix) succ `shouldReturn` Nothing
     mys <- mapConcurrently (atomicModifyIntArray marr ix . const) ys
-    my <- A.read marr (ix :: ix)
-    let xs = fromMaybe (error "atomicModifyIntArray read'") $ Prelude.sequenceA (my : toList mys)
+    x <- A.readM marr (ix :: ix)
+    let xs = x : fromMaybe (error "atomicModifyIntArray") (Prelude.sequenceA (toList mys))
     y <- indexM arr ix
     L.sort (y : toList ys) `shouldBe` L.sort xs
 
@@ -230,7 +230,7 @@ prop_atomicOpIntArray f atomicAction =
     marr <- unsafeThaw arr
     mx <- A.read marr ix
     atomicAction marr ix e `shouldReturn` mx
-    T.forM_ mx $ \x -> A.read' marr ix `shouldReturn` f x e
+    T.forM_ mx $ \x -> A.readM marr ix `shouldReturn` f x e
 
 prop_casIntArray ::
      forall ix. (Show (Array P ix Int), Arbitrary ix, Index ix)
@@ -243,7 +243,7 @@ prop_casIntArray =
       Nothing -> casIntArray marr ix e e `shouldReturn` Nothing
       Just x -> do
         casIntArray marr ix x e `shouldReturn` mx
-        A.read' marr ix `shouldReturn` e
+        A.readM marr ix `shouldReturn` e
 
 
 atomicIntSpec ::

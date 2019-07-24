@@ -44,6 +44,9 @@ module Data.Massiv.Array.Unsafe
     -- ** Modify
   , unsafeModify
   , unsafeLinearModify
+    -- ** Swap
+  , unsafeSwap
+  , unsafeLinearSwap
     -- ** Range modification
   , unsafeLinearSet
   , unsafeLinearCopy

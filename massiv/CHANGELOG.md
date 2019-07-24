@@ -1,7 +1,20 @@
 # 0.4.0
 
-* Expose `Data.Massiv.Core.List`
+* Switch from `EltRepr r ix` to much simpler `R r`
+* Renamed:
+  * `forPrimM_` -> `forPrimM`
+  * `iforPrimM_` -> `iforPrimM`
+  * `iforLinearPrimM_` -> `iforLinearPrimM`
+* Introduced new functions that do not mutate the original array: `forPrimM_`,
+  `iforPrimM_` and `iforLinearPrimM_`
+* Addition of `readM`, `writeM`, `modifyM`, `swapM`, `modifyM_`, `swapM_`
+* Deprecation of `read'`, `write'` `modify'` and `swap'`
+* Make `modify` accept a monadic action, rather than a pure function. Also not it returns
+  the old element.
+* Make `swap` return the swapped elements.
+* Addition of `unsafeLinearSwap` and `unsafeSwap`
 * Expose `unsafeLinearModify` and `unsafeModify`
+* Expose `Data.Massiv.Core.List`
 * Expose `indexWith`, so macro `INDEX_CHECK` from `massiv.h` could be used outside massiv.
 * Addition of `liftSz`
 * Bunch of minor fixes to `Show` instances

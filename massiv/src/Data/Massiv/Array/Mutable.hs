@@ -17,12 +17,18 @@ module Data.Massiv.Array.Mutable
     msize
     -- ** Element-wise mutation
   , read
+  , readM
   , read'
   , write
+  , writeM
   , write'
   , modify
+  , modifyM
+  , modifyM_
   , modify'
   , swap
+  , swapM
+  , swapM_
   , swap'
   -- ** Operations on @MArray@
   -- *** Immutable conversion
@@ -61,8 +67,11 @@ module Data.Massiv.Array.Mutable
   , unfoldlPrimM
   , iunfoldlPrimM
   -- *** Mapping
+  , forPrimM
   , forPrimM_
+  , iforPrimM
   , iforPrimM_
+  , iforLinearPrimM
   , iforLinearPrimM_
   -- *** Modify
   , withMArray
@@ -82,7 +91,7 @@ module Data.Massiv.Array.Mutable
 
 -- TODO: add fromListM, et al.
 
-import Control.Monad (when, unless)
+import Control.Monad (void, when, unless, (>=>))
 import Control.Monad.ST
 import Control.Scheduler
 import Data.Massiv.Core.Common
@@ -130,7 +139,7 @@ new = initializeNew Nothing
 -- >>> :set -XTypeApplications
 -- >>> arr <- fromListsM @U @Ix2 @Double Par [[12,21],[13,31]]
 -- >>> marr <- thaw arr
--- >>> modify marr (+ 10) (1 :. 0)
+-- >>> modify marr (pure . (+ 10)) (1 :. 0)
 -- True
 -- >>> freeze Par marr
 -- Array U Par (Sz (2 :. 2))
@@ -640,7 +649,7 @@ iunfoldrPrimM comp sz gen acc0 =
      in iterLinearM sz' 0 (totalElem sz') 1 (<) acc0 $ \i ix acc -> do
           (e, acc') <- gen acc ix
           unsafeLinearWrite marr i e
-          return acc'
+          pure $! acc'
 {-# INLINE iunfoldrPrimM #-}
 
 -- | Just like `iunfoldrPrimM`, but do the unfolding with index aware function.
@@ -659,7 +668,7 @@ unfoldrPrimM comp sz gen acc0 =
      in loopM 0 (< totalElem sz') (+1) acc0 $ \i acc -> do
           (e, acc') <- gen acc
           unsafeLinearWrite marr i e
-          return acc'
+          pure $! acc'
 {-# INLINE unfoldrPrimM #-}
 
 -- | Sequentially unfold an array from the left.
@@ -727,7 +736,7 @@ iunfoldlPrimM comp sz gen acc0 =
      in iterLinearM sz' (totalElem sz' - 1) 0 (negate 1) (>=) acc0 $ \i ix acc -> do
           (acc', e) <- gen acc ix
           unsafeLinearWrite marr i e
-          return acc'
+          pure $! acc'
 {-# INLINE iunfoldlPrimM #-}
 
 -- | Just like `iunfoldlPrimM`, but do the unfolding with index aware function.
@@ -746,37 +755,65 @@ unfoldlPrimM comp sz gen acc0 =
      in loopDeepM 0 (< totalElem sz') (+1) acc0 $ \i acc -> do
           (acc', e) <- gen acc
           unsafeLinearWrite marr i e
-          return acc'
+          pure $! acc'
 {-# INLINE unfoldlPrimM #-}
 
---TODO: in 0.4.0:
---  * forPrimM_  does not modify each element, but simply iterates over
---  * forPrimM - does what forPrimM_ does now.
--- | Sequentially loop over a mutable array while modifying each element with an action.
+-- | Sequentially loop over a mutable array while reading each element and applying an
+-- action to it. There is no mutation to the array, unless the action itself modifies it.
 --
--- @since 0.3.0
-forPrimM_ :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
+-- @since 0.4.0
+forPrimM_ :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m ()) -> m ()
 forPrimM_ marr f =
-  loopM_ 0 (< totalElem (msize marr)) (+1) (unsafeLinearModify marr (const f))
+  loopM_ 0 (< totalElem (msize marr)) (+1) (unsafeLinearRead marr >=> f)
 {-# INLINE forPrimM_ #-}
 
-
--- | Sequentially loop over a mutable array while modifying each element with an index aware action.
+-- | Sequentially loop over a mutable array while modifying each element with an action.
 --
--- @since 0.3.0
+-- @since 0.4.0
+forPrimM :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
+forPrimM marr f =
+  loopM_ 0 (< totalElem (msize marr)) (+1) (unsafeLinearModify marr f)
+{-# INLINE forPrimM #-}
+
+
+-- | Sequentially loop over a mutable array while reading each element and applying an
+-- index aware action to it. There is no mutation to the array, unless the
+-- action itself modifies it.
+--
+-- @since 0.4.0
 iforPrimM_ ::
-     (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (ix -> e -> m e) -> m ()
+     (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (ix -> e -> m ()) -> m ()
 iforPrimM_ marr f = iforLinearPrimM_ marr (f . fromLinearIndex (msize marr))
 {-# INLINE iforPrimM_ #-}
 
+-- | Sequentially loop over a mutable array while modifying each element with an index aware action.
+--
+-- @since 0.4.0
+iforPrimM ::
+     (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (ix -> e -> m e) -> m ()
+iforPrimM marr f = iforLinearPrimM marr (f . fromLinearIndex (msize marr))
+{-# INLINE iforPrimM #-}
+
+
+-- | Sequentially loop over a mutable array while reading each element and applying a
+-- linear index aware action to it. There is no mutation to the array, unless the action
+-- itself modifies it.
+--
+-- @since 0.4.0
+iforLinearPrimM_ ::
+     (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (Int -> e -> m ()) -> m ()
+iforLinearPrimM_ marr f =
+  loopM_ 0 (< totalElem (msize marr)) (+ 1) (\i -> unsafeLinearRead marr i >>= f i)
+{-# INLINE iforLinearPrimM_ #-}
 
 -- | Sequentially loop over a mutable array while modifying each element with an index aware action.
 --
--- @since 0.3.0
-iforLinearPrimM_ ::
+-- @since 0.4.0
+iforLinearPrimM ::
      (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (Int -> e -> m e) -> m ()
-iforLinearPrimM_ marr f = loopM_ 0 (< totalElem (msize marr)) (+ 1) (unsafeLinearModify marr f)
-{-# INLINE iforLinearPrimM_ #-}
+iforLinearPrimM marr f =
+  loopM_ 0 (< totalElem (msize marr)) (+ 1) (\i -> unsafeLinearModify marr (f i) i)
+{-# INLINE iforLinearPrimM #-}
 
 -- | Create a copy of a pure array, mutate it in place and return its frozen version. The big
 -- difference between `withMArrayS` is that it's not only gonna respect the computation strategy
@@ -847,6 +884,18 @@ read marr ix =
 
 -- | /O(1)/ - Same as `read`, but throws `IndexOutOfBoundsException` on an invalid index.
 --
+-- @since 0.4.0
+readM :: (Mutable r ix e, PrimMonad m, MonadThrow m) =>
+        MArray (PrimState m) r ix e -> ix -> m e
+readM marr ix =
+  read marr ix >>= \case
+    Just e -> pure e
+    Nothing -> throwM $ IndexOutOfBoundsException (msize marr) ix
+{-# INLINE readM #-}
+
+
+-- | /O(1)/ - Same as `read`, but throws `IndexOutOfBoundsException` on an invalid index.
+--
 -- @since 0.1.0
 read' :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> m e
 read' marr ix =
@@ -854,16 +903,28 @@ read' marr ix =
     Just e -> pure e
     Nothing -> throw $ IndexOutOfBoundsException (msize marr) ix
 {-# INLINE read' #-}
+{-# DEPRECATED read' "In favor of more general `readM`" #-}
 
 
 -- | /O(1)/ - Write an element into the cell of a mutable array. Returns `False` when index is out
 -- of bounds.
+--
+-- @since 0.1.0
 write :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m Bool
 write marr ix e =
   if isSafeIndex (msize marr) ix
   then unsafeWrite marr ix e >> pure True
   else pure False
 {-# INLINE write #-}
+
+-- | /O(1)/ - Same as `write`, but throws `IndexOutOfBoundsException` on an invalid index.
+--
+-- @since 0.4.0
+writeM ::
+     (Mutable r ix e, PrimMonad m, MonadThrow m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
+writeM marr ix e =
+  write marr ix e >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
+{-# INLINE writeM #-}
 
 
 -- | /O(1)/ - Same as `write`, but lives in IO and throws `IndexOutOfBoundsException` on invalid
@@ -874,21 +935,51 @@ write' ::
      (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
 write' marr ix e = write marr ix e >>= (`unless` throw (IndexOutOfBoundsException (msize marr) ix))
 {-# INLINE write' #-}
+{-# DEPRECATED write' "In favor of more general `writeM`" #-}
 
--- TODO: switch to `... -> m (Maybe e)`
--- | /O(1)/ - Modify an element in the cell of a mutable array with a supplied function. Returns
--- `False` when index is out of bounds.
+-- | /O(1)/ - Modify an element in the cell of a mutable array with a supplied
+-- action. Returns the previous value, if index was not out of bounds.
 --
 -- @since 0.1.0
-modify :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> e) -> ix -> m Bool
+modify ::
+     (Mutable r ix e, PrimMonad m)
+  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+  -> (e -> m e) -- ^ Monadic action that modifies the element
+  -> ix -- ^ Index at which to perform modification.
+  -> m (Maybe e)
 modify marr f ix =
   if isSafeIndex (msize marr) ix
-  then do
-    val <- unsafeRead marr ix
-    unsafeWrite marr ix $ f val
-    return True
-  else return False
+    then Just <$> unsafeModify marr f ix
+    else return Nothing
 {-# INLINE modify #-}
+
+-- | /O(1)/ - Modify an element in the cell of a mutable array with a supplied
+-- action. Throws an `IndexOutOfBoundsException` exception for invalid index and returns
+-- the previous value otherwise.
+--
+-- @since 0.4.0
+modifyM ::
+     (Mutable r ix e, PrimMonad m, MonadThrow m)
+  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+  -> (e -> m e) -- ^ Monadic action that modifies the element
+  -> ix -- ^ Index at which to perform modification.
+  -> m e
+modifyM marr f ix
+  | isSafeIndex (msize marr) ix = unsafeModify marr f ix
+  | otherwise = throwM (IndexOutOfBoundsException (msize marr) ix)
+{-# INLINE modifyM #-}
+
+-- | /O(1)/ - Same as `modifyM`, but discard the returned element
+--
+-- @since 0.4.0
+modifyM_ ::
+     (Mutable r ix e, PrimMonad m, MonadThrow m)
+  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+  -> (e -> m e) -- ^ Monadic action that modifies the element
+  -> ix -- ^ Index at which to perform modification.
+  -> m ()
+modifyM_ marr f ix = void $ modifyM marr f ix
+{-# INLINE modifyM_ #-}
 
 
 -- | /O(1)/ - Same as `modify`, but throws an error if index is out of bounds.
@@ -897,25 +988,55 @@ modify marr f ix =
 modify' :: (Mutable r ix e, PrimMonad m) =>
         MArray (PrimState m) r ix e -> (e -> e) -> ix -> m ()
 modify' marr f ix =
-  modify marr f ix >>= (`unless` throw (IndexOutOfBoundsException (msize marr) ix))
+  modify marr (pure . f) ix >>= \case
+    Just _ -> pure ()
+    Nothing -> throw (IndexOutOfBoundsException (msize marr) ix)
 {-# INLINE modify' #-}
+{-# DEPRECATED modify' "In favor of more general `modifyM`" #-}
 
 
--- | /O(1)/ - Swap two elements in a mutable array by supplying their indices. Returns `False` when
--- either one of the indices is out of bounds.
+-- | /O(1)/ - Same as `swapM`, but instead of thropwing an exception returns `Nothing` when
+-- either one of the indices is out of bounds and `Just` elements under those indices
+-- otherwise.
 --
 -- @since 0.1.0
-swap :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m Bool
-swap marr ix1 ix2 = do
+swap :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m (Maybe (e, e))
+swap marr ix1 ix2 =
   let sz = msize marr
-  if isSafeIndex sz ix1 && isSafeIndex sz ix2
-  then do
-    val <- unsafeRead marr ix1
-    unsafeRead marr ix2 >>= unsafeWrite marr ix1
-    unsafeWrite marr ix2 val
-    return True
-  else return False
+   in if isSafeIndex sz ix1 && isSafeIndex sz ix2
+        then Just <$> unsafeSwap marr ix1 ix2
+        else pure Nothing
 {-# INLINE swap #-}
+
+-- | /O(1)/ - Swap two elements in a mutable array under the supplied indices. Throws an
+-- `IndexOutOfBoundsException` when either one of the indices is out of bounds and
+-- elements under those indices otherwise.
+--
+-- @since 0.4.0
+swapM ::
+     (Mutable r ix e, PrimMonad m, MonadThrow m)
+  => MArray (PrimState m) r ix e
+  -> ix -- ^ Index for the first element, which will be returned as the first element in the
+        -- tuple.
+  -> ix -- ^ Index for the second element, which will be returned as the second element in
+        -- the tuple.
+  -> m (e, e)
+swapM marr ix1 ix2
+  | not (isSafeIndex sz ix1) = throwM $ IndexOutOfBoundsException (msize marr) ix1
+  | not (isSafeIndex sz ix2) = throwM $ IndexOutOfBoundsException (msize marr) ix2
+  | otherwise = unsafeSwap marr ix1 ix2
+  where
+    !sz = msize marr
+{-# INLINE swapM #-}
+
+
+-- | /O(1)/ - Same as `swapM`, but discard the returned elements
+--
+-- @since 0.4.0
+swapM_ ::
+     (Mutable r ix e, PrimMonad m, MonadThrow m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
+swapM_ marr ix1 ix2 = void $ swapM marr ix1 ix2
+{-# INLINE swapM_ #-}
 
 
 -- | /O(1)/ - Same as `swap`, but throws an `IndexOutOfBoundsException` on invalid indices.
@@ -924,8 +1045,11 @@ swap marr ix1 ix2 = do
 swap' ::
      (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
 swap' marr ix1 ix2 =
-  swap marr ix1 ix2 >>=
-    (`unless` if isSafeIndex (msize marr) ix1
-                then throw $ IndexOutOfBoundsException (msize marr) ix2
-                else throw $ IndexOutOfBoundsException (msize marr) ix1)
+  swap marr ix1 ix2 >>= \case
+    Just _ -> pure ()
+    Nothing ->
+      if isSafeIndex (msize marr) ix1
+        then throw $ IndexOutOfBoundsException (msize marr) ix2
+        else throw $ IndexOutOfBoundsException (msize marr) ix1
 {-# INLINE swap' #-}
+{-# DEPRECATED swap' "In favor of more general `swapM`" #-}

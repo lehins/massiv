@@ -68,26 +68,26 @@ class NumericFloat r e where
   ceilingPointwise :: (Index ix, Integral a) => Array r ix e -> Array r ix a
 
 
+-- class Equality r e where
+
+--   unsafeEq :: Index ix => Array r ix e -> Array r ix e -> Bool
+
+--   unsafeEqPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix Bool
 
 
+-- class Relation r e where
 
--- class Equality r ix e where
+--   unsafePointwiseLT :: Array r ix e -> Array r ix e -> Array r ix Bool
+--   unsafePointwiseLTE :: Array r ix e -> Array r ix e -> Array r ix Bool
 
---   eqS :: Array r ix e -> Array r ix e -> m Bool
+--   unsafePointwiseGT :: Array r ix e -> Array r ix e -> Array r ix Bool
+--   unsafePointwiseGTE :: Array r ix e -> Array r ix e -> Array r ix Bool
 
---   eqConstantS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
+--   unsafePointwiseMin :: Array r ix e -> Array r ix e -> Array r ix e
+--   unsafePointwiseMax :: Array r ix e -> Array r ix e -> Array r ix e
 
--- -- | Throw errors on mismatched sizes (uncompareable)
--- class Relation r ix e where
+--   unsafeMinimum :: Array r ix e -> e
 
---   ltS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
---   lteS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
-
---   gtS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
---   gteS :: MonadThrow m => Array r ix e -> Array r ix e -> m Bool
-
---   minimumS :: MonadThrow m => Array r ix e -> m e
-
---   maximumS :: MonadThrow m => Array r ix e -> m e
+--   unsafeMaximum :: Array r ix e -> e
 
 

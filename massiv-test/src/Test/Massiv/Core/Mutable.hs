@@ -40,7 +40,7 @@ prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
   let i = toLinearIndex sz ix
   unsafeLinearWrite marr i e1
   unsafeLinearRead marr i `shouldReturn` e1
-  unsafeLinearModify marr (\ !_ !_ -> pure e2) i `shouldReturn` e1
+  unsafeLinearModify marr (\ !_ -> pure e2) i `shouldReturn` e1
   unsafeLinearRead marr i `shouldReturn` e2
 
 

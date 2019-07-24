@@ -37,6 +37,8 @@ module Data.Massiv.Core.Common
   , unsafeWrite
   , unsafeModify
   , unsafeLinearModify
+  , unsafeSwap
+  , unsafeLinearSwap
   , unsafeDefaultLinearShrink
   , Ragged(..)
   , Nested(..)
@@ -432,31 +434,50 @@ unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeWrite #-}
 
 
--- | Modify an element in the array with a linear index aware action. Returns the previous
--- value.
+-- | Modify an element in the array with a monadic action. Returns the previous value.
 --
--- @since 0.3.7
+-- @since 0.4.0
 unsafeLinearModify :: (Mutable r ix e, PrimMonad m) =>
-                      MArray (PrimState m) r ix e -> (Int -> e -> m e) -> Int -> m e
+                      MArray (PrimState m) r ix e -> (e -> m e) -> Int -> m e
 unsafeLinearModify !marr f !i = do
   v <- unsafeLinearRead marr i
-  v' <- f i v
+  v' <- f v
   unsafeLinearWrite marr i v'
   pure v
 {-# INLINE unsafeLinearModify #-}
 
--- | Modify an element in the array with an index aware action. Returns the previous value.
+-- | Modify an element in the array with a monadic action. Returns the previous value.
 --
--- @since 0.3.7
+-- @since 0.4.0
 unsafeModify :: (Mutable r ix e, PrimMonad m) =>
-                MArray (PrimState m) r ix e -> (ix -> e -> m e) -> ix -> m e
-unsafeModify !marr f !ix = do
-  let i = toLinearIndex (msize marr) ix
-  v <- unsafeLinearRead marr i
-  v' <- f ix v
-  unsafeLinearWrite marr i v'
-  pure v
+                MArray (PrimState m) r ix e -> (e -> m e) -> ix -> m e
+unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeModify #-}
+
+-- | Swap two elements in a mutable array under the supplied indices. Returns the previous
+-- values.
+--
+-- @since 0.4.0
+unsafeSwap :: (Mutable r ix e, PrimMonad m) =>
+                    MArray (PrimState m) r ix e -> ix -> ix -> m (e, e)
+unsafeSwap !marr !ix1 !ix2 = unsafeLinearSwap marr (toLinearIndex sz ix1) (toLinearIndex sz ix2)
+  where sz = msize marr
+{-# INLINE unsafeSwap #-}
+
+
+-- | Swap two elements in a mutable array under the supplied linear indices. Returns the
+-- previous values.
+--
+-- @since 0.4.0
+unsafeLinearSwap :: (Mutable r ix e, PrimMonad m) =>
+                    MArray (PrimState m) r ix e -> Int -> Int -> m (e, e)
+unsafeLinearSwap !marr !i1 !i2 = do
+  val1 <- unsafeLinearRead marr i1
+  val2 <- unsafeLinearRead marr i2
+  unsafeLinearWrite marr i1 val2
+  unsafeLinearWrite marr i2 val1
+  return (val1, val2)
+{-# INLINE unsafeLinearSwap #-}
 
 
 class Nested r ix e where
