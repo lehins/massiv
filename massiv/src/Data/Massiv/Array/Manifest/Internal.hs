@@ -49,12 +49,9 @@ import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List
 import Data.Maybe (fromMaybe)
 import Data.Typeable
-import qualified Data.Vector as V
-import qualified Data.Vector.Mutable as MV
 import GHC.Base hiding (ord)
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -94,19 +91,6 @@ instance (Eq e, Index ix) => Eq (Array M ix e) where
 instance (Ord e, Index ix) => Ord (Array M ix e) where
   compare = ord compare
   {-# INLINE compare #-}
-
-instance Index ix => Construct M ix e where
-  setComp c arr = arr {mComp = c}
-  {-# INLINE setComp #-}
-  makeArrayLinear !comp !sz f =
-    unsafePerformIO $ do
-      let !k = totalElem sz
-      mv <- MV.unsafeNew k
-      withScheduler_ comp $ \scheduler ->
-        splitLinearlyWithM_ scheduler k (pure . f) (MV.unsafeWrite mv)
-      v <- V.unsafeFreeze mv
-      pure $ MArray comp sz (V.unsafeIndex v)
-  {-# INLINE makeArrayLinear #-}
 
 
 -- | /O(1)/ - Conversion of `Manifest` arrays to `M` representation.
@@ -491,38 +475,3 @@ iterateLoop convergence iteration = go
           nextMArr <- unsafeThaw arr
           go (n + 1) arr' (iteration (n + 1) arr') nextMArr
 {-# INLINE iterateLoop #-}
-
-
-instance Num e => Numeric M e where
-  -- plusElementArray arr e = liftDArray (+ e) arr
-  -- {-# INLINE plusElementArray #-}
-  -- minusElementArray arr e = liftDArray (subtract e) arr
-  -- {-# INLINE minusElementArray #-}
-  -- multiplyElementArray arr e = liftDArray (* e) arr
-  -- {-# INLINE multiplyElementArray #-}
-  -- absPointwise = liftDArray abs
-  -- {-# INLINE absPointwise #-}
-  additionPointwise = liftMArray2 (+)
-  {-# INLINE additionPointwise #-}
-  -- multiplicationPointwise = liftDArray2 (*)
-  -- {-# INLINE multiplicationPointwise #-}
-  -- powerPointwise arr pow = liftDArray (^ pow) arr
-  -- {-# INLINE powerPointwise #-}
-  -- powerSumArray p arr = sumArray p . powerPointwise arr
-  -- {-# INLINE powerSumArray #-}
-  -- dotProduct p a1 a2 = sumArray p (multiplicationPointwise a1 a2)
-  -- {-# INLINE dotProduct #-}
-
-
--- | The usual map.
-liftMArray :: (b -> e) -> Array M ix b -> Array M ix e
-liftMArray f arr = arr { mLinearIndex = f . mLinearIndex arr }
-{-# INLINE liftMArray #-}
-
-
--- | The usual zipWith, except the size of the second array is completely ignored and Seq
--- computation strategy is set for the result
-liftMArray2 :: (a -> b -> e) -> Array M ix a -> Array M ix b -> Array M ix e
-liftMArray2 f a1 a2 =
-  MArray (mComp a1 <> mComp a2) (mSize a1) $ \i -> f (mLinearIndex a1 i) (mLinearIndex a2 i)
-{-# INLINE liftMArray2 #-}

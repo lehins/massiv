@@ -43,7 +43,6 @@ prop_GenerateArray ::
      ( Show (Array r ix e)
      , Eq (Array r ix e)
      , Mutable r ix e
-     , Construct r ix e
      , Show e
      , Arbitrary e
      , Arbitrary ix
@@ -54,7 +53,7 @@ prop_GenerateArray ::
 prop_GenerateArray =
   property $ \comp sz f' -> do
     let arr = makeArray comp sz f :: Array r ix e
-        arrST = runST (generateArrayS (getComp arr) (size arr) (return . evaluate' arr))
+        arrST = runST (generateArrayS (size arr) (return . evaluate' arr))
         f = apply f'
     arrST `shouldBe` arr
     arrIO <- generateArray (getComp arr) (size arr) (evaluateM arr)
@@ -64,7 +63,6 @@ prop_Shrink ::
      forall r ix e.
      ( Show (Array r ix e)
      , Mutable r ix e
-     , Construct r ix e
      , Resize r ix
      , Source r Ix1 e
      , Arbitrary ix
@@ -84,7 +82,6 @@ prop_GrowShrink ::
      , Show (Array r ix e)
      , Load (R r) ix e
      , Mutable r ix e
-     , Construct r ix e
      , Extract r ix e
      , Arbitrary ix
      , Arbitrary e
@@ -160,7 +157,6 @@ mutableSpec ::
      , Eq e
      , Mutable r ix e
      , Mutable r Ix1 e
-     , Construct r ix e
      , Extract r ix e
      , Resize r ix
      , CoArbitrary ix

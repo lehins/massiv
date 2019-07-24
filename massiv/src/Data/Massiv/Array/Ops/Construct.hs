@@ -122,8 +122,7 @@ runSTA :: Mutable r ix e => Sz ix -> STA r ix e -> Array r ix e
 runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 {-# INLINE runSTA  #-}
 
--- | Similar to `makeArray`, but construct the array sequentially using an `Applicative` interface
--- disregarding the supplied `Comp`.
+-- | Similar to `makeArray`, but construct the array sequentially using an `Applicative` interface.
 --
 -- /Note/ - using `Data.Massiv.Array.Mutable.generateArray` or
 -- `Data.Massiv.Array.Mutable.generateArrayS` will always be faster, althought not always possible.
@@ -133,11 +132,10 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 --
 makeArrayA ::
      forall r ix e f. (Mutable r ix e, Applicative f)
-  => Comp
-  -> Sz ix
+  => Sz ix
   -> (ix -> f e)
   -> f (Array r ix e)
-makeArrayA !comp !sz f =
+makeArrayA !sz f =
   let n = totalElem sz
       go !i
         | i < n =
@@ -145,7 +143,7 @@ makeArrayA !comp !sz f =
             (\e (STA st) -> STA (\ma -> unsafeLinearWrite ma i e >> st ma))
             (f (fromLinearIndex sz i))
             (go (i + 1))
-        | otherwise = pure (STA (unsafeFreeze comp))
+        | otherwise = pure (STA (unsafeFreeze Seq))
    in runSTA sz <$> go 0
 {-# INLINE makeArrayA  #-}
 
@@ -157,7 +155,6 @@ makeArrayA !comp !sz f =
 makeArrayAR ::
      forall r ix e f. (Mutable r ix e, Applicative f)
   => r
-  -> Comp
   -> Sz ix
   -> (ix -> f e)
   -> f (Array r ix e)
@@ -171,40 +168,47 @@ makeArrayAR _ = makeArrayA
 -- ==== __Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> iterateN Seq (Sz2 2 10) succ (10 :: Int)
+-- >>> iterateN (Sz2 2 10) succ (10 :: Int)
 -- Array DL Seq (Sz (2 :. 10))
 --   [ [ 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ]
 --   , [ 21, 22, 23, 24, 25, 26, 27, 28, 29, 30 ]
 --   ]
 --
 -- @since 0.3.0
-iterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> e) -> e -> Array DL ix e
-iterateN comp sz f = unfoldrS_ comp sz $ \a -> let !a' = f a in (a', a')
+iterateN :: forall ix e . Index ix => Sz ix -> (e -> e) -> e -> Array DL ix e
+iterateN sz f = unfoldrS_ sz $ \a -> let !a' = f a in (a', a')
 {-# INLINE iterateN #-}
 
 -- | Same as `iterateN`, but with index aware function.
 --
 -- @since 0.3.0
-iiterateN :: forall ix e . Index ix => Comp -> Sz ix -> (e -> ix -> e) -> e -> Array DL ix e
-iiterateN comp sz f = iunfoldrS_ comp sz $ \a ix -> let !a' = f a ix in (a', a')
+iiterateN :: forall ix e . Index ix => Sz ix -> (e -> ix -> e) -> e -> Array DL ix e
+iiterateN sz f = iunfoldrS_ sz $ \a ix -> let !a' = f a ix in (a', a')
 {-# INLINE iiterateN #-}
 
 
--- |
+-- | Right unfold of a delayed load array. For the inverse direction use `unfoldlS_`.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> unfoldrS_ (Sz1 10) (\xs -> (head xs, tail xs)) ([10 ..] :: [Int])
+-- Array DL Seq (Sz1 10)
+--   [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ]
 --
 -- @since 0.3.0
-unfoldrS_ :: forall ix e a . Construct DL ix e => Comp -> Sz ix -> (a -> (e, a)) -> a -> Array DL ix e
-unfoldrS_ comp sz f = iunfoldrS_ comp sz (\a _ -> f a)
+unfoldrS_ :: forall ix e a . Construct DL ix e => Sz ix -> (a -> (e, a)) -> a -> Array DL ix e
+unfoldrS_ sz f = iunfoldrS_ sz (\a _ -> f a)
 {-# INLINE unfoldrS_ #-}
 
--- |
+-- | Right unfold of a delayed load array with index aware function
 --
 -- @since 0.3.0
 iunfoldrS_
-  :: Construct DL ix e => Comp -> Sz ix -> (a -> ix -> (e, a)) -> a -> Array DL ix e
-iunfoldrS_ comp sz f acc0 =
+  :: Construct DL ix e => Sz ix -> (a -> ix -> (e, a)) -> a -> Array DL ix e
+iunfoldrS_ sz f acc0 =
   DLArray
-    { dlComp = comp
+    { dlComp = Seq
     , dlSize = sz
     , dlDefault = Nothing
     , dlLoad =
@@ -218,23 +222,23 @@ iunfoldrS_ comp sz f acc0 =
 {-# INLINE iunfoldrS_ #-}
 
 
--- | Unfold sequentially from the end. There is no way to save the accumulator after unfolding is
--- done, since resulting array is delayed, but it's possible to use
+-- | Unfold sequentially from the end. There is no way to save the accumulator after
+-- unfolding is done, since resulting array is delayed, but it's possible to use
 -- `Data.Massiv.Array.Mutable.unfoldlPrimM` to achive such effect.
 --
 -- @since 0.3.0
-unfoldlS_ :: Construct DL ix e => Comp -> Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
-unfoldlS_ comp sz f = iunfoldlS_ comp sz (const f)
+unfoldlS_ :: Construct DL ix e => Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
+unfoldlS_ sz f = iunfoldlS_ sz (const f)
 {-# INLINE unfoldlS_ #-}
 
 -- | Unfold sequentially from the right with an index aware function.
 --
 -- @since 0.3.0
 iunfoldlS_
-  :: Construct DL ix e => Comp -> Sz ix -> (ix -> a -> (a, e)) -> a -> Array DL ix e
-iunfoldlS_ comp sz f acc0 =
+  :: Construct DL ix e => Sz ix -> (ix -> a -> (a, e)) -> a -> Array DL ix e
+iunfoldlS_ sz f acc0 =
   DLArray
-    { dlComp = comp
+    { dlComp = Seq
     , dlSize = sz
     , dlDefault = Nothing
     , dlLoad =

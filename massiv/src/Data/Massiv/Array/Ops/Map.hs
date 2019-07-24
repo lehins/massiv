@@ -201,10 +201,10 @@ izipWithA ::
   -> Array r2 ix e2
   -> f (Array r ix e)
 izipWithA f arr1 arr2 =
+  setComp (getComp arr1 <> getComp arr2) <$>
   makeArrayA
-    (getComp arr1 <> getComp arr2)
-    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))) $ \ !ix ->
-    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
+    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2))))
+    (\ !ix -> f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE izipWithA #-}
 
 -- | Same as `zipWithA`, but for three arrays.
@@ -231,8 +231,8 @@ izipWith3A ::
   -> Array r3 ix e3
   -> f (Array r ix e)
 izipWith3A f arr1 arr2 arr3 =
-  makeArrayA (getComp arr1 <> getComp arr2 <> getComp arr3) sz $ \ !ix ->
-    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
+  setComp (getComp arr1 <> getComp arr2 <> getComp arr3) <$>
+  makeArrayA sz (\ !ix -> f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix))
   where
     sz =
       SafeSz $
@@ -276,7 +276,7 @@ traverseA ::
   => (a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
-traverseA f arr = makeArrayA (getComp arr) (size arr) (f . unsafeIndex arr)
+traverseA f arr = setComp (getComp arr) <$> makeArrayA (size arr) (f . unsafeIndex arr)
 {-# INLINE traverseA #-}
 
 -- | Traverse sequentially over a source array, while discarding the result.
@@ -314,7 +314,8 @@ itraverseA ::
   => (ix -> a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
-itraverseA f arr = makeArrayA (getComp arr) (size arr) $ \ !ix -> f ix (unsafeIndex arr ix)
+itraverseA f arr =
+  setComp (getComp arr) <$> makeArrayA (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE itraverseA #-}
 
 
@@ -368,7 +369,7 @@ traversePrim ::
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-traversePrim f arr = generateArrayS (getComp arr) (size arr) (f . unsafeIndex arr)
+traversePrim f arr = setComp (getComp arr) <$> generateArrayS (size arr) (f . unsafeIndex arr)
 {-# INLINE traversePrim #-}
 
 -- | Same as `traversePrim`, but traverse with index aware action.
@@ -380,7 +381,8 @@ itraversePrim ::
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-itraversePrim f arr = generateArrayS (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+itraversePrim f arr =
+  setComp (getComp arr) <$> generateArrayS (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE itraversePrim #-}
 
 

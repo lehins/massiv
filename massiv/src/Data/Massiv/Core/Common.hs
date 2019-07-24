@@ -290,7 +290,7 @@ class (Load r ix e, Source r ix e) => Manifest r ix e where
   unsafeLinearIndexM :: Array r ix e -> Int -> e
 
 
-class Manifest r ix e => Mutable r ix e where
+class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   data MArray s r ix e :: *
 
   -- | Get the size of a mutable array.
@@ -565,7 +565,7 @@ infixl 4 !, !?, ??
 -- | Infix version of `index'`.
 --
 -- >>> import Data.Massiv.Array as A
--- >>> a = computeAs U $ iterateN Seq (Sz (2 :. 3)) succ (0 :: Int)
+-- >>> a = computeAs U $ iterateN (Sz (2 :. 3)) succ (0 :: Int)
 -- >>> a
 -- Array U Seq (Sz (2 :. 3))
 --   [ [ 1, 2, 3 ]
@@ -574,7 +574,7 @@ infixl 4 !, !?, ??
 -- >>> a ! 0 :. 2
 -- 3
 -- >>> a ! 0 :. 3
--- *** Exception: IndexOutOfBoundsException: (0 :. 3) not safe for (Sz (2 :. 3))
+-- *** Exception: IndexOutOfBoundsException: (0 :. 3) is not safe for (Sz (2 :. 3))
 --
 -- @since 0.1.0
 (!) :: Manifest r ix e => Array r ix e -> ix -> e
@@ -597,7 +597,7 @@ infixl 4 !, !?, ??
 -- >>> a !? 0 :. 2
 -- 3
 -- >>> a !? 0 :. 3
--- *** Exception: IndexOutOfBoundsException: (0 :. 3) not safe for (Sz (2 :. 3))
+-- *** Exception: IndexOutOfBoundsException: (0 :. 3) is not safe for (Sz (2 :. 3))
 -- >>> a !? 0 :. 3 :: Maybe Int
 -- Nothing
 --
@@ -700,7 +700,7 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 -- >>> index' xs 50
 -- 50
 -- >>> index' xs 150
--- *** Exception: IndexOutOfBoundsException: 150 not safe for (Sz1 101)
+-- *** Exception: IndexOutOfBoundsException: 150 is not safe for (Sz1 101)
 --
 -- @since 0.1.0
 index' :: Manifest r ix e => Array r ix e -> ix -> e
@@ -719,7 +719,7 @@ index' = evaluate'
 -- >>> evaluateM (range Seq (Ix2 10 20) (100 :. 210)) 50 :: Either SomeException Ix2
 -- Right (60 :. 70)
 -- >>> evaluateM (range Seq (Ix2 10 20) (100 :. 210)) 150 :: Either SomeException Ix2
--- Left (IndexOutOfBoundsException: (150 :. 150) not safe for (Sz (90 :. 190)))
+-- Left (IndexOutOfBoundsException: (150 :. 150) is not safe for (Sz (90 :. 190)))
 --
 -- @since 0.3.0
 evaluateM :: (Source r ix e, MonadThrow m) => Array r ix e -> ix -> m e
@@ -739,7 +739,7 @@ evaluateM arr ix =
 -- >>> evaluate' (range Seq (Ix2 10 20) (100 :. 210)) 50
 -- 60 :. 70
 -- >>> evaluate' (range Seq (Ix2 10 20) (100 :. 210)) 150
--- *** Exception: IndexOutOfBoundsException: (150 :. 150) not safe for (Sz (90 :. 190))
+-- *** Exception: IndexOutOfBoundsException: (150 :. 150) is not safe for (Sz (90 :. 190))
 --
 -- @since 0.3.0
 evaluate' :: Source r ix e => Array r ix e -> ix -> e

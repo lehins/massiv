@@ -106,29 +106,24 @@ specCommon =
     it "Construct_makeArray S" $ property $ prop_Construct_makeArray_Manifest @S @ix
     it "Construct_makeArray P" $ property $ prop_Construct_makeArray_Manifest @P @ix
     it "Construct_makeArray U" $ property $ prop_Construct_makeArray_Manifest @U @ix
-    it "Construct_makeArray M" $ property $ prop_Construct_makeArray_Manifest @M @ix
     it "Construct_makeArray_Delayed DI" $ property $ prop_Construct_makeArray_Delayed @DI @ix
     it "Construct_makeArray_Delayed DL" $ property $ prop_Construct_makeArray_Delayed @DL @ix
     it "Construct_makeArray_Delayed DW" $ property $ prop_Construct_makeArray_Delayed @DW @ix
-    it "Construct_makeArray_Delayed M" $ property $ prop_Construct_makeArray_Delayed @M @ix
     it "Functor D" $ property $ prop_Functor @D @ix
     it "Functor DI" $ property $ prop_Functor @DI @ix
     it "Functor DL" $ property $ prop_Functor @DL @ix
     it "Functor DW" $ property $ prop_Functor @DW @ix
     it "Extract DI" $ property $ prop_Extract @DI @ix
-    it "Extract D" $ property $ prop_Extract @D @ix
     it "Extract B" $ property $ prop_Extract @B @ix
     it "Extract N" $ property $ prop_Extract @N @ix
     it "Extract S" $ property $ prop_Extract @S @ix
     it "Extract U" $ property $ prop_Extract @U @ix
-    it "Extract M" $ property $ prop_Extract @M @ix
     it "computeWithStride DI" $ property $ prop_computeWithStride @DI @ix
     it "computeWithStride DW" $ property $ prop_computeWithStride @DW @ix
     it "computeWithStride B" $ property $ prop_computeWithStride @B @ix
     it "computeWithStride N" $ property $ prop_computeWithStride @N @ix
     it "computeWithStride S" $ property $ prop_computeWithStride @S @ix
     it "computeWithStride U" $ property $ prop_computeWithStride @U @ix
-    it "computeWithStride M" $ property $ prop_computeWithStride @M @ix
     it "IxUnbox" $ property $ prop_IxUnbox @ix
 
 

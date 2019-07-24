@@ -101,7 +101,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- >>> arr !?> 2 ??> 0 ??> -1 :: Maybe Ix3T
 -- Nothing
 -- >>> arr !?> 2 ??> -10 ?? 1
--- *** Exception: IndexOutOfBoundsException: -10 not safe for (Sz1 2)
+-- *** Exception: IndexOutOfBoundsException: -10 is not safe for (Sz1 2)
 --
 -- @since 0.1.0
 (??>) :: (MonadThrow m, OuterSlice r ix e) => m (Array r ix e) -> Int -> m (Elt r ix e)

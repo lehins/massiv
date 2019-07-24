@@ -657,7 +657,7 @@ instance Show IndexException where
   show (IndexDimensionException ix dim) =
     "IndexDimensionException: " ++ showsPrec 1 dim " for " ++ showsPrec 1 ix ""
   show (IndexOutOfBoundsException sz ix) =
-    "IndexOutOfBoundsException: " ++ showsPrec 1 ix " not safe for " ++ showsPrec 1 sz ""
+    "IndexOutOfBoundsException: " ++ showsPrec 1 ix " is not safe for " ++ showsPrec 1 sz ""
   showsPrec n exc = showsPrecWrapped n (show exc ++)
 
 instance Eq IndexException where

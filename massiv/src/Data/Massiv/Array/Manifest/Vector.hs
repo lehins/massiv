@@ -94,7 +94,6 @@ fromVectorM ::
      , Typeable v
      , VG.Vector v a
      , Mutable (ARepr v) ix a
-     , Construct r ix a
      , Mutable r ix a
      )
   => Comp
@@ -114,7 +113,7 @@ fromVectorM comp sz v =
 --
 -- @since 0.3.0
 fromVector' ::
-     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Construct r ix a, Mutable r ix a)
+     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Mutable r ix a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector

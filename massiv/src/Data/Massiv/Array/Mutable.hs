@@ -469,11 +469,11 @@ createArrayST comp sz action = runST $ createArrayS comp sz action
 {-# INLINE createArrayST #-}
 
 
--- | Sequentially generate a pure array. Much like `makeArray` creates a pure array this function
--- will use `Mutable` interface to generate a pure `Array` in the end, except that computation
--- strategy is ignored. Element producing function no longer has to be pure but is a stateful
--- action, since it is restricted to `PrimMonad` and allows for sharing the state between
--- computation of each element, which could be arbitrary effects if that monad is `IO`.
+-- | Sequentially generate a pure array. Much like `makeArray` creates a pure array this
+-- function will use `Mutable` interface to generate a pure `Array` in the end, except that
+-- computation strategy is set to `Seq`. Element producing function no longer has to be pure
+-- but is a stateful action, becuase it is restricted to `PrimMonad` thus allows for sharing
+-- the state between computation of each element.
 --
 -- @since 0.2.6
 --
@@ -482,7 +482,7 @@ createArrayST comp sz action = runST $ createArrayS comp sz action
 -- >>> import Data.Massiv.Array
 -- >>> import Data.IORef
 -- >>> ref <- newIORef (0 :: Int)
--- >>> generateArray Seq (Sz1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
+-- >>> generateArrayS (Sz1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
 -- 0
 -- 1
 -- 2
@@ -496,26 +496,24 @@ createArrayST comp sz action = runST $ createArrayS comp sz action
 --
 generateArrayS ::
      forall r ix e m. (Mutable r ix e, PrimMonad m)
-  => Comp -- ^ Computation strategy (ingored during generation)
-  -> Sz ix -- ^ Resulting size of the array
+  => Sz ix -- ^ Resulting size of the array
   -> (ix -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
-generateArrayS comp sz gen = generateArrayLinearS comp sz (gen . fromLinearIndex sz)
+generateArrayS sz gen = generateArrayLinearS sz (gen . fromLinearIndex sz)
 {-# INLINE generateArrayS #-}
 
--- | Same as `generateArray` but with action takes row-major linear index.
+-- | Same as `generateArray` but with action that accepts row-major linear index.
 --
 -- @since 0.3.0
 generateArrayLinearS ::
      forall r ix e m. (Mutable r ix e, PrimMonad m)
-  => Comp -- ^ Computation strategy (ingored during generation)
-  -> Sz ix -- ^ Resulting size of the array
+  => Sz ix -- ^ Resulting size of the array
   -> (Int -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
-generateArrayLinearS comp sz gen = do
+generateArrayLinearS sz gen = do
   marr <- unsafeNew sz
   loopM_ 0 (< totalElem (msize marr)) (+ 1) $ \i -> gen i >>= unsafeLinearWrite marr i
-  unsafeFreeze comp marr
+  unsafeFreeze Seq marr
 {-# INLINE generateArrayLinearS #-}
 
 

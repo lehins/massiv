@@ -29,8 +29,7 @@ prop_castToFromVector _ _ (ArrNE arr) =
 
 prop_toFromVector ::
      forall r ix v.
-     ( Construct r ix Int
-     , Mutable r ix Int
+     ( Mutable r ix Int
      , Mutable (ARepr v) ix Int
      , VRepr (ARepr v) ~ v
      , Eq (Array r ix Int)

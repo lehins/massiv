@@ -1,7 +1,9 @@
 # 0.4.0
 
+* Made `Construct` a super class of `Mutable`
 * Reimplement a safe version of `makeLoadArray`, that is parallelizable.
 * Switch from `EltRepr r ix` to much simpler `R r`
+* Remove `Construct` instance for `M` representation.
 * `unsafeLinearSet` - length argument now accepts `Sz1` instead of an `Int`
 * Renamed:
   * `forPrimM_` -> `forPrimM`
@@ -23,6 +25,17 @@
 * Addition of `liftSz`
 * Bunch of minor fixes to `Show` instances
 * Extracted test-suite into it's own package.
+* Stop accepting computation strategy for all functions that can be performed sequentially only:
+  * `iterateN`
+  * `iiterateN`
+  * `unfoldrS_`
+  * `iunfoldrS_`
+  * `unfoldlS_`
+  * `iunfoldlS_`
+  * `makeArrayA`
+  * `makeArrayAR`
+  * `generateArrayLinearS`
+  * `generateArrayS`
 
 # 0.3.6
 

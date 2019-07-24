@@ -59,7 +59,6 @@ prop_UnsafeInitializeNew ::
      , Arbitrary e
      , Arbitrary ix
      , Mutable r ix e
-     , Construct r ix e
      )
   => Property
 prop_UnsafeInitializeNew =
@@ -175,7 +174,6 @@ prop_UnsafeLinearSet ::
      ( Eq (Array (R r) Ix1 e)
      , Show (Array (R r) Ix1 e)
      , Mutable r ix e
-     , Construct r ix e
      , Extract r Ix1 e
      , Resize r ix
      )
@@ -258,7 +256,6 @@ unsafeMutableSpec ::
      , Show (Array r ix e)
      , Mutable r ix e
      , Mutable r Ix1 e
-     , Construct r ix e
      , Show e
      , Eq e
      , Arbitrary e
