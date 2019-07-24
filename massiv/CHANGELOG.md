@@ -1,5 +1,6 @@
 # 0.4.0
 
+* Reimplement a safe version of `makeLoadArray`, that is parallelizable.
 * Switch from `EltRepr r ix` to much simpler `R r`
 * `unsafeLinearSet` - length argument now accepts `Sz1` instead of an `Int`
 * Renamed:
@@ -9,7 +10,8 @@
 * Introduced new functions that do not mutate the original array: `forPrimM_`,
   `iforPrimM_` and `iforLinearPrimM_`
 * Addition of `readM`, `writeM`, `modifyM`, `swapM`, `modifyM_`, `swapM_`
-* Add an orphan instance of `MonadThrow` for `ST` monad for older versions of `exceptions`. See [ekmett/exceptions#72](https://github.com/ekmett/exceptions/pull/72)
+* Add an orphan instance of `MonadThrow` for `ST` monad for older versions of
+  `exceptions`. See [ekmett/exceptions#72](https://github.com/ekmett/exceptions/pull/72)
 * Deprecation of `read'`, `write'` `modify'` and `swap'`
 * Make `modify` accept a monadic action, rather than a pure function. Also not it returns
   the old element.

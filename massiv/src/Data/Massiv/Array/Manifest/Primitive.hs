@@ -283,8 +283,8 @@ toMutableByteArray (MPArray _ mba) = mba
 {-# INLINE toMutableByteArray #-}
 
 
--- | /O(1)/ - Construct a primitive mutable array from the `MutableByteArray`. Will return `Nothing`
--- if number of elements doesn't match.
+-- | /O(1)/ - Construct a primitive mutable array from the `MutableByteArray`. Will throw
+-- `SizeElementsMismatchException` if number of elements doesn't match.
 --
 -- @since 0.3.0
 fromMutableByteArrayM ::
@@ -295,13 +295,12 @@ fromMutableByteArrayM sz mba =
     marr = MPArray sz mba
 {-# INLINE fromMutableByteArrayM #-}
 
--- | See `fromMutableByteArray`.
+-- | /O(1)/ - Construct a flat Array from `MutableByteArray`
 --
--- @since 0.2.1
-fromMutableByteArray :: (Index ix, Prim e) => Sz ix -> MutableByteArray s -> Maybe (MArray s P ix e)
-fromMutableByteArray = fromMutableByteArrayM
+-- @since 0.4.0
+fromMutableByteArray :: forall e s . Prim e => MutableByteArray s -> MArray s P Ix1 e
+fromMutableByteArray mba = MPArray (SafeSz (elemsMBA (Proxy :: Proxy e) mba)) mba
 {-# INLINE fromMutableByteArray #-}
-{-# DEPRECATED fromMutableByteArray "In favor of more general `fromMutableByteArrayM`" #-}
 
 
 -- | Atomically read an `Int` element from the array

@@ -118,7 +118,8 @@ mappendDL (DLArray c1 sz1 mDef1 load1) (DLArray c2 sz2 mDef2 load2) =
     {-# INLINE load #-}
 {-# INLINE mappendDL #-}
 
--- | Describe how an array should be loaded into memory
+-- | Describe how an array should be loaded into memory sequentially. For parallelizable
+-- version see `makeLoadArray`.
 --
 -- @since 0.3.1
 makeLoadArrayS ::
@@ -126,7 +127,7 @@ makeLoadArrayS ::
      Sz ix
   -- ^ Size of the resulting array
   -> e
-  -- ^ Default value to use for all cells that have possibly been ommitted by the writing function
+  -- ^ Default value to use for all cells that might have been ommitted by the writing function
   -> (forall m. Monad m => (ix -> e -> m Bool) -> m ())
   -- ^ Writing function that described which elements to write into the target array.
   -> Array DL ix e
@@ -139,28 +140,60 @@ makeLoadArrayS sz defVal writer =
      in writer safeWrite
 {-# INLINE makeLoadArrayS #-}
 
--- | Specify how an array can be loaded/computed through creation of a `DL` array.
+-- | Specify how an array should be loaded into memory. Unlike `makeLoadArrayS`, loading
+-- function accepts a scheduler, thus can be parallelized. If you need an unsafe version
+-- of this function see `unsafeMakeLoadArray`.
 --
--- @since 0.3.0
+-- @since 0.4.0
 makeLoadArray ::
-     Comp
+     Index ix
+  => Comp
+  -- ^ Computation strategy to use. Directly affects the scheduler that gets created for
+  -- the loading function.
   -> Sz ix
-  -> (forall m. Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ())
+  -- ^ Size of the resulting array
+  -> e
+  -- ^ Default value to use for all cells that might have been ommitted by the writing function
+  -> (forall m. Monad m =>
+                  Scheduler m () -> (ix -> e -> m Bool) -> m ())
+  -- ^ Writing function that described which elements to write into the target array. It
+  -- accepts a scheduler, that can be used for parallelization, as well as a safe element
+  -- writing function.
   -> Array DL ix e
-makeLoadArray comp sz = DLArray comp sz Nothing
+makeLoadArray comp sz defVal writer =
+  DLArray comp sz (Just defVal) $ \scheduler !startAt uWrite ->
+    let safeWrite !ix !e
+          | isSafeIndex sz ix = uWrite (startAt + toLinearIndex sz ix) e >> pure True
+          | otherwise = pure False
+        {-# INLINE safeWrite #-}
+     in writer scheduler safeWrite
 {-# INLINE makeLoadArray #-}
-{-# DEPRECATED makeLoadArray "In favor of equivalent `unsafeMakeLoadArray` and safe `makeLoadArrayS`" #-}
 
 -- | Specify how an array can be loaded/computed through creation of a `DL` array. Unlike
--- `makeLoadArrayS` this function is unsafe since there is no guarantee that all elements will be
--- initialized and in case of parallel scheduler there is a possibility of non-determinism.
+-- `makeLoadArrayS` or `makeLoadArray` this function is unsafe, since there is no
+-- guarantee that all elements will be initialized and the supplied element writing
+-- function does not perform any bounds checking.
 --
 -- @since 0.3.1
 unsafeMakeLoadArray ::
      Comp
+  -- ^ Computation strategy to use. Directly affects the scheduler that gets created for
+  -- the loading function.
   -> Sz ix
+  -- ^ Size of the array
   -> Maybe e
-  -> (forall m. Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ())
+  -- ^ An element to use for initialization of the mutable array that will be created in
+  -- the future
+  -> (forall m. Monad m =>
+                  Scheduler m () -> Int -> (Int -> e -> m ()) -> m ())
+  -- ^ This function accepts:
+  --
+  -- * A scheduler that can be used for parallelization of loading
+  --
+  -- * Linear index at which this load array will start (an offset that should be added to
+  --   the linear writng function)
+  --
+  -- * Linear element writing function
   -> Array DL ix e
 unsafeMakeLoadArray = DLArray
 {-# INLINE unsafeMakeLoadArray #-}
