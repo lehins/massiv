@@ -26,7 +26,6 @@ module Data.Massiv.Array.Ops.Fold
   , maximumM
   , maximum'
   , sum
-  , sum'
   , product
   , and
   , or
@@ -88,17 +87,14 @@ module Data.Massiv.Array.Ops.Fold
   , ifoldrP
   , ifoldlIO
   , ifoldrIO
-  , splitReduce
+  -- , splitReduce
   ) where
 
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Operations
-import Data.Massiv.Core.Index.Internal (Sz(..))
-import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or,
-                product, sum)
+import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or, product, sum)
 
 -- | /O(n)/ - Monoidal fold over an array with an index aware function. Also known as reduce.
 --
@@ -325,15 +321,15 @@ minimum' = either throw id . minimumM
 {-# INLINE minimum' #-}
 
 
--- | /O(n)/ - Compute sum of all elements.
---
--- @since 0.1.0
-sum' ::
-     forall r ix e. (Source r ix e, Numeric r e)
-  => Array r ix e
-  -> IO e
-sum' = splitReduce (\_ -> pure . sumArray) (\x y -> pure (x + y)) 0
-{-# INLINE sum' #-}
+-- -- | /O(n)/ - Compute sum of all elements.
+-- --
+-- -- @since 0.1.0
+-- sum' ::
+--      forall r ix e. (Source r ix e, Numeric r e)
+--   => Array r ix e
+--   -> IO e
+-- sum' = splitReduce (\_ -> pure . sumArray) (\x y -> pure (x + y)) 0
+-- {-# INLINE sum' #-}
 
 -- | /O(n)/ - Compute sum of all elements.
 --
