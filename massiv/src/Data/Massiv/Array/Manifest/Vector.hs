@@ -54,9 +54,9 @@ type family VRepr r :: * -> * where
   VRepr N = VB.Vector
 
 
--- | /O(1)/ - conversion from vector to an array with a corresponding
--- representation. Will return `Nothing` if there is a size mismatch, vector has
--- been sliced before or if some non-standard vector type is supplied.
+-- | /O(1)/ - conversion from vector to an array with a corresponding representation. Will
+-- return `Nothing` if there is a size mismatch or if some non-standard vector type is
+-- supplied.
 castFromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Mutable r ix e, ARepr v ~ r)
                => Comp
                -> Sz ix -- ^ Size of the result Array
@@ -72,12 +72,12 @@ castFromVector comp sz vector = do
          sVector <- join $ gcast1 (Just vector)
          return $ SArray {sComp = comp, sSize = sz, sData = sVector}
     , do Refl <- eqT :: Maybe (v :~: VP.Vector)
-         VP.Vector o _ arr <- join $ gcast1 (Just vector)
-         return $ PArray {pComp = comp, pSize = sz, pOffset = o, pData = arr}
+         VP.Vector offset _ arr <- join $ gcast1 (Just vector)
+         return $ PArray {pComp = comp, pSize = sz, pOffset = offset, pData = arr}
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
          bVector <- join $ gcast1 (Just vector)
-         arr <- castVectorToArray bVector
-         let barr = BArray {bComp = comp, bSize = sz, bData = arr}
+         let BArray _ _ offset arr = castVectorToArray bVector
+             barr = BArray {bComp = comp, bSize = sz, bOffset = offset, bData = arr}
          barr `seqArray` return barr
     ]
 {-# NOINLINE castFromVector #-}
@@ -139,10 +139,10 @@ castToVector arr =
          return $ VP.Vector (pOffset pArr) (totalElem (size arr)) $ pData pArr
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
-         return $ castArrayToVector $ bData bArr
+         return $ castArrayToVector bArr
     , do Refl <- eqT :: Maybe (r :~: N)
          bArr <- gcastArr arr
-         return $ castArrayToVector $ bData $ bArray bArr
+         return $ castArrayToVector $ bArray bArr
     ]
 {-# NOINLINE castToVector #-}
 

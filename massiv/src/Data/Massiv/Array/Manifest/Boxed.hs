@@ -80,9 +80,10 @@ sizeofMutableArray (A.MutableArray ma#) = I# (sizeofMutableArray# ma#)
 -- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
 data B = B deriving Show
 
-data instance Array B ix e = BArray { bComp :: !Comp
-                                    , bSize :: !(Sz ix)
-                                    , bData :: {-# UNPACK #-} !(A.Array e)
+data instance Array B ix e = BArray { bComp   :: !Comp
+                                    , bSize   :: !(Sz ix)
+                                    , bOffset :: {-# UNPACK #-} !Int
+                                    , bData   :: {-# UNPACK #-} !(A.Array e)
                                     }
 
 instance (Ragged L ix e, Show e) => Show (Array B ix e) where
@@ -114,13 +115,17 @@ instance Index ix => Construct B ix e where
   setComp c arr = arr { bComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (\ !ix -> return $! f ix)
-  {-# INLINE makeArray #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (\ !i -> return $! f i)
+  {-# INLINE makeArrayLinear #-}
 
 instance Index ix => Source B ix e where
-  unsafeLinearIndex (BArray _ _ a) =
-    INDEX_CHECK("(Source B ix e).unsafeLinearIndex", Sz . sizeofArray, A.indexArray) a
+  unsafeLinearIndex (BArray _ _sz o a) i =
+    INDEX_CHECK("(Source B ix e).unsafeLinearIndex",
+                const (Sz (totalElem _sz)), A.indexArray a) (i + o)
   {-# INLINE unsafeLinearIndex #-}
+
+  unsafeLinearSlice i k (BArray c _ o a) = BArray c k (o + i) a
+  {-# INLINE unsafeLinearSlice #-}
 
 
 instance Index ix => Resize B ix where
@@ -157,35 +162,38 @@ instance {-# OVERLAPPING #-} Slice B Ix1 e where
 
 instance Index ix => Manifest B ix e where
 
-  unsafeLinearIndexM (BArray _ _ a) =
-    INDEX_CHECK("(Manifest B ix e).unsafeLinearIndexM", Sz . sizeofArray, A.indexArray) a
+  unsafeLinearIndexM (BArray _ _sz o a) i =
+    INDEX_CHECK("(Manifest B ix e).unsafeLinearIndexM",
+                const (Sz (totalElem _sz)), A.indexArray a) (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
 
 instance Index ix => Mutable B ix e where
-  data MArray s B ix e = MBArray !(Sz ix) {-# UNPACK #-} !(A.MutableArray s e)
+  data MArray s B ix e = MBArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
 
-  msize (MBArray sz _) = sz
+  msize (MBArray sz _ _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (BArray _ sz a) = MBArray sz <$> A.unsafeThawArray a
+  unsafeThaw (BArray _ sz o a) = MBArray sz o <$> A.unsafeThawArray a
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze comp (MBArray sz ma) = BArray comp sz <$> A.unsafeFreezeArray ma
+  unsafeFreeze comp (MBArray sz o ma) = BArray comp sz o <$> A.unsafeFreezeArray ma
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew sz = MBArray sz <$> A.newArray (totalElem sz) uninitialized
+  unsafeNew sz = MBArray sz 0 <$> A.newArray (totalElem sz) uninitialized
   {-# INLINE unsafeNew #-}
 
   initialize _ = return ()
   {-# INLINE initialize #-}
 
-  unsafeLinearRead (MBArray _ ma) =
-    INDEX_CHECK("(Mutable B ix e).unsafeLinearRead", Sz . sizeofMutableArray, A.readArray) ma
+  unsafeLinearRead (MBArray _sz o ma) i =
+    INDEX_CHECK("(Mutable B ix e).unsafeLinearRead",
+                const (Sz (totalElem _sz)), A.readArray ma) (i + o)
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBArray _ ma) i e = e `seq`
-    INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite", Sz . sizeofMutableArray, A.writeArray) ma i e
+  unsafeLinearWrite (MBArray _sz o ma) i e = e `seq`
+    INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite",
+                const (Sz (totalElem _sz)), A.writeArray ma) (i + o) e
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where
@@ -218,7 +226,7 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE foldr #-}
   foldr' = foldrS
   {-# INLINE foldr' #-}
-  null (BArray _ sz _) = totalElem sz == 0
+  null (BArray _ sz _ _) = totalElem sz == 0
   {-# INLINE null #-}
   length = totalElem . size
   {-# INLINE length #-}
@@ -291,6 +299,8 @@ instance (Index ix, NFData e) => Source N ix e where
   unsafeLinearIndex (NArray arr) =
     INDEX_CHECK("(Source N ix e).unsafeLinearIndex", Sz . totalElem . size, unsafeLinearIndex) arr
   {-# INLINE unsafeLinearIndex #-}
+  unsafeLinearSlice i k (NArray a) = NArray $ unsafeLinearSlice i k a
+  {-# INLINE unsafeLinearSlice #-}
 
 
 instance Index ix => Resize N ix where
@@ -433,11 +443,13 @@ evalArray ::
 evalArray = fromArraySeq (\a -> a `seqArray` a)
 {-# INLINE evalArray #-}
 
+
+-- TODO: Move in case it was sliced
 -- | /O(1)/ - Unwrap mutable boxed array.
 --
 -- @since 0.2.1
 unwrapMutableArray :: MArray s B ix e -> A.MutableArray s e
-unwrapMutableArray (MBArray _ marr) = marr
+unwrapMutableArray (MBArray _ _ marr) = marr
 {-# INLINE unwrapMutableArray #-}
 
 
@@ -478,7 +490,7 @@ evalNormalFormArray = fromArraySeq (\a -> a `deepseqArray` NArray a)
 --
 -- @since 0.2.1
 unwrapNormalFormMutableArray :: MArray s N ix e -> A.MutableArray s e
-unwrapNormalFormMutableArray (MNArray (MBArray _ marr)) = marr
+unwrapNormalFormMutableArray (MNArray marr) = unwrapMutableArray marr
 {-# INLINE unwrapNormalFormMutableArray #-}
 
 
@@ -505,7 +517,7 @@ fromMutableArraySeq ::
 fromMutableArraySeq with mbarr = do
   let !sz = sizeofMutableArray mbarr
   loopM_ 0 (< sz) (+ 1) (A.readArray mbarr >=> (`with` return ()))
-  return $! MBArray (Sz sz) mbarr
+  return $! MBArray (Sz sz) 0 mbarr
 {-# INLINE fromMutableArraySeq #-}
 
 fromArraySeq ::
@@ -513,7 +525,7 @@ fromArraySeq ::
   -> Comp
   -> A.Array e
   -> a
-fromArraySeq with comp barr = with (BArray comp (Sz (sizeofArray barr)) barr)
+fromArraySeq with comp barr = with (BArray comp (Sz (sizeofArray barr)) 0 barr)
 {-# INLINE fromArraySeq #-}
 
 
@@ -529,19 +541,18 @@ deepseqArray !arr t = foldlInternal (flip deepseq) () (flip seq) () arr `seq` t
 
 -- | Helper function that converts a boxed `A.Array` into a `VB.Vector`. Supplied total number of
 -- elements is assumed to be the same in the array as provided by the size.
-castArrayToVector :: A.Array a -> VB.Vector a
-castArrayToVector arr = runST $ do
+castArrayToVector :: Index ix => Array B ix a -> VB.Vector a
+castArrayToVector (BArray _ sz o arr) = runST $ do
   marr <- A.unsafeThawArray arr
-  VB.unsafeFreeze $ VB.MVector 0 (sizeofArray arr) marr
+  VB.unsafeFreeze $ VB.MVector o (totalElem sz) marr
 {-# INLINE castArrayToVector #-}
 
 
 -- | Cast a Boxed Vector into an Array, but only if it wasn't previously sliced.
-castVectorToArray :: VB.Vector a -> Maybe (A.Array a)
+castVectorToArray :: VB.Vector a -> Array B Ix1 a
 castVectorToArray v =
   runST $ do
-    VB.MVector start end marr <- VB.unsafeThaw v
-    if start == 0 && end == sizeofMutableArray marr
-      then Just <$> A.unsafeFreezeArray marr
-      else return Nothing
+    VB.MVector offset sz marr <- VB.unsafeThaw v
+    arr <- A.unsafeFreezeArray marr
+    pure $ BArray Seq (Sz sz) offset arr
 {-# INLINE castVectorToArray #-}
