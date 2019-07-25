@@ -93,6 +93,8 @@ instance (VS.Storable e, Index ix) => Source S ix e where
   unsafeLinearIndex (SArray _ _ v) =
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
+  unsafeLinearSlice i k (SArray c _ v) = SArray c k $ VS.unsafeSlice i (unSz k) v
+  {-# INLINE unsafeLinearSlice #-}
 
 instance Index ix => Resize S ix where
   unsafeResize !sz !arr = arr { sSize = sz }

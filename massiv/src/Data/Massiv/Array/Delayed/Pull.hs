@@ -69,8 +69,8 @@ instance Index ix => Construct D ix e where
 instance Index ix => Source D ix e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
-  -- unsafeLinearSlice ix sz arr = unsafeExtract ix sz (unsafeResize sz arr)
-  -- {-# INLINE unsafeLinearSlice #-}
+  unsafeLinearSlice ix sz arr = unsafeExtract ix sz (unsafeResize sz arr)
+  {-# INLINE unsafeLinearSlice #-}
 
 
 instance ( Index ix

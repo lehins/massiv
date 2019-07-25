@@ -128,6 +128,8 @@ instance Index ix => Foldable (Array M ix) where
 instance Index ix => Source M ix e where
   unsafeLinearIndex = mLinearIndex
   {-# INLINE unsafeLinearIndex #-}
+  unsafeLinearSlice ix sz arr = unsafeExtract ix sz (unsafeResize sz arr)
+  {-# INLINE unsafeLinearSlice #-}
 
 
 instance Index ix => Manifest M ix e where
