@@ -78,6 +78,8 @@ instance (VU.Unbox e, Index ix) => Source U ix e where
   unsafeLinearIndex (UArray _ _ v) =
     INDEX_CHECK("(Source U ix e).unsafeLinearIndex", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
+  unsafeLinearSlice i k (UArray c _ v) = UArray c k $ VU.unsafeSlice i (unSz k) v
+  {-# INLINE unsafeLinearSlice #-}
 
 
 instance Index ix => Resize U ix where
