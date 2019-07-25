@@ -61,9 +61,10 @@ import System.IO.Unsafe (unsafePerformIO)
 -- | Representation for `Prim`itive elements
 data P = P deriving Show
 
-data instance Array P ix e = PArray { pComp :: !Comp
-                                    , pSize :: !(Sz ix)
-                                    , pData :: {-# UNPACK #-} !ByteArray
+data instance Array P ix e = PArray { pComp   :: !Comp
+                                    , pSize   :: !(Sz ix)
+                                    , pOffset :: {-# UNPACK #-} !Int
+                                    , pData   :: {-# UNPACK #-} !ByteArray
                                     }
 
 instance (Ragged L ix e, Show e, Prim e) => Show (Array P ix e) where
@@ -71,7 +72,7 @@ instance (Ragged L ix e, Show e, Prim e) => Show (Array P ix e) where
   showList = showArrayList
 
 instance Index ix => NFData (Array P ix e) where
-  rnf (PArray c sz a) = c `deepseq` sz `deepseq` a `seq` ()
+  rnf (PArray c sz o a) = c `deepseq` sz `deepseq` o `seq` a `seq` ()
   {-# INLINE rnf #-}
 
 instance (Prim e, Eq e, Index ix) => Eq (Array P ix e) where
@@ -90,10 +91,13 @@ instance (Prim e, Index ix) => Construct P ix e where
   {-# INLINE makeArray #-}
 
 instance (Prim e, Index ix) => Source P ix e where
-  unsafeLinearIndex _pa@(PArray _ _ a) =
+  unsafeLinearIndex _pa@(PArray _ _ o a) i =
     INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
-                Sz . elemsBA _pa, indexByteArray) a
+                Sz . totalElem . size, indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
+
+  unsafeLinearSlice i k (PArray c _ o a) = PArray c k (o + i) a
+  {-# INLINE unsafeLinearSlice #-}
 
 
 instance Index ix => Resize P ix where
@@ -151,65 +155,65 @@ instance ( Prim e
 
 instance (Index ix, Prim e) => Manifest P ix e where
 
-  unsafeLinearIndexM _pa@(PArray _ _ a) =
+  unsafeLinearIndexM _pa@(PArray _ _ o a) i =
     INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
-                Sz . elemsBA _pa, indexByteArray) a
+                Sz . totalElem . size, indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
 
 instance (Index ix, Prim e) => Mutable P ix e where
-  data MArray s P ix e = MPArray !(Sz ix) {-# UNPACK #-} !(MutableByteArray s)
+  data MArray s P ix e = MPArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(MutableByteArray s)
 
-  msize (MPArray sz _) = sz
+  msize (MPArray sz _ _) = sz
   {-# INLINE msize #-}
 
-  unsafeThaw (PArray _ sz a) = MPArray sz <$> unsafeThawByteArray a
+  unsafeThaw (PArray _ sz o a) = MPArray sz o <$> unsafeThawByteArray a
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze comp (MPArray sz a) = PArray comp sz <$> unsafeFreezeByteArray a
+  unsafeFreeze comp (MPArray sz o a) = PArray comp sz o <$> unsafeFreezeByteArray a
   {-# INLINE unsafeFreeze #-}
 
   unsafeNew sz
-    | n <= (maxBound :: Int) `div` eSize = MPArray sz <$> newByteArray (n * eSize)
+    | n <= (maxBound :: Int) `div` eSize = MPArray sz 0 <$> newByteArray (n * eSize)
     | otherwise = error $ "Array size is too big: " ++ show sz
     where !n = totalElem sz
           !eSize = sizeOf (undefined :: e)
   {-# INLINE unsafeNew #-}
 
-  initialize (MPArray sz mba) =
-    fillByteArray mba 0 (totalElem sz * sizeOf (undefined :: e)) 0
+  initialize (MPArray sz o mba) =
+    fillByteArray mba o (totalElem sz * sizeOf (undefined :: e)) 0
   {-# INLINE initialize #-}
 
-  unsafeLinearRead _mpa@(MPArray _ ma) =
+  unsafeLinearRead _mpa@(MPArray _ o ma) i =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
-                Sz . elemsMBA _mpa, readByteArray) ma
+                Sz . totalElem . size, readByteArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite _mpa@(MPArray _ ma) =
+  unsafeLinearWrite _mpa@(MPArray _ o ma) i =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
-                Sz . elemsMBA _mpa, writeByteArray) ma
+                Sz . totalElem . size, writeByteArray) ma (i + o)
   {-# INLINE unsafeLinearWrite #-}
 
-  unsafeLinearSet (MPArray _ ma) offset (SafeSz sz) = setByteArray ma offset sz
+  unsafeLinearSet (MPArray _ o ma) offset (SafeSz sz) = setByteArray ma (offset + o) sz
   {-# INLINE unsafeLinearSet #-}
 
-  unsafeLinearCopy (MPArray _ maFrom) iFrom (MPArray _ maTo) iTo (Sz k) =
-    copyMutableByteArray maTo (iTo * esz) maFrom (iFrom * esz) (k * esz)
+  unsafeLinearCopy (MPArray _ oFrom maFrom) iFrom (MPArray _ oTo maTo) iTo (Sz k) =
+    copyMutableByteArray maTo ((oTo + iTo) * esz) maFrom ((oFrom + iFrom) * esz) (k * esz)
     where esz = sizeOf (undefined :: e)
   {-# INLINE unsafeLinearCopy #-}
 
-  unsafeArrayLinearCopy (PArray _ _ aFrom) iFrom (MPArray _ maTo) iTo (Sz k) =
-    copyByteArray maTo (iTo * esz) aFrom (iFrom * esz) (k * esz)
+  unsafeArrayLinearCopy (PArray _ _ oFrom aFrom) iFrom (MPArray _ oTo maTo) iTo (Sz k) =
+    copyByteArray maTo ((oTo + iTo) * esz) aFrom ((oFrom + iFrom) * esz) (k * esz)
     where esz = sizeOf (undefined :: e)
   {-# INLINE unsafeArrayLinearCopy #-}
 
-  unsafeLinearShrink (MPArray _ ma) sz = do
-    shrinkMutableByteArray ma (totalElem sz * sizeOf (undefined :: e))
-    pure $ MPArray sz ma
+  unsafeLinearShrink (MPArray _ o ma) sz = do
+    shrinkMutableByteArray ma ((o + totalElem sz) * sizeOf (undefined :: e))
+    pure $ MPArray sz o ma
   {-# INLINE unsafeLinearShrink #-}
 
-  unsafeLinearGrow (MPArray _ ma) sz =
-    MPArray sz <$> resizeMutableByteArrayCompat ma (totalElem sz * sizeOf (undefined :: e))
+  unsafeLinearGrow (MPArray _ o ma) sz =
+    MPArray sz o <$> resizeMutableByteArrayCompat ma ((o + totalElem sz) * sizeOf (undefined :: e))
   {-# INLINE unsafeLinearGrow #-}
 
 
@@ -269,22 +273,23 @@ fromByteArrayM :: (MonadThrow m, Index ix, Prim e) => Comp -> Sz ix -> ByteArray
 fromByteArrayM comp sz ba =
   guardNumberOfElements sz (Sz (elemsBA arr ba)) >> pure arr
   where
-    arr = PArray comp sz ba
+    arr = PArray comp sz 0 ba
 {-# INLINE fromByteArrayM #-}
 
 -- | /O(1)/ - Construct a flat Array from `ByteArray`
 --
 -- @since 0.4.0
 fromByteArray :: forall e . Prim e => Comp -> ByteArray -> Array P Ix1 e
-fromByteArray comp ba = PArray comp (SafeSz (elemsBA (Proxy :: Proxy e) ba)) ba
+fromByteArray comp ba = PArray comp (SafeSz (elemsBA (Proxy :: Proxy e) ba)) 0 ba
 {-# INLINE fromByteArray #-}
 
 
+-- TODO: memmove and shrink if non-zer offset
 -- | /O(1)/ - Extract the internal `MutableByteArray`.
 --
 -- @since 0.2.1
 toMutableByteArray :: MArray s P ix e -> MutableByteArray s
-toMutableByteArray (MPArray _ mba) = mba
+toMutableByteArray (MPArray _ _ mba) = mba
 {-# INLINE toMutableByteArray #-}
 
 
@@ -297,14 +302,14 @@ fromMutableByteArrayM ::
 fromMutableByteArrayM sz mba =
   guardNumberOfElements sz (Sz (elemsMBA marr mba)) >> pure marr
   where
-    marr = MPArray sz mba
+    marr = MPArray sz 0 mba
 {-# INLINE fromMutableByteArrayM #-}
 
 -- | /O(1)/ - Construct a flat Array from `MutableByteArray`
 --
 -- @since 0.4.0
 fromMutableByteArray :: forall e s . Prim e => MutableByteArray s -> MArray s P Ix1 e
-fromMutableByteArray mba = MPArray (SafeSz (elemsMBA (Proxy :: Proxy e) mba)) mba
+fromMutableByteArray mba = MPArray (SafeSz (elemsMBA (Proxy :: Proxy e) mba)) 0 mba
 {-# INLINE fromMutableByteArray #-}
 
 
@@ -313,15 +318,15 @@ fromMutableByteArray mba = MPArray (SafeSz (elemsMBA (Proxy :: Proxy e) mba)) mb
 -- @since 0.3.0
 unsafeAtomicReadIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> m Int
-unsafeAtomicReadIntArray _mpa@(MPArray sz mba) ix =
+unsafeAtomicReadIntArray _mpa@(MPArray sz o mba) ix =
   INDEX_CHECK( "unsafeAtomicReadIntArray"
-             , Sz . elemsMBA _mpa
+             , Sz . totalElem . size
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case atomicReadIntArray# mba# i# s# of
                    (# s'#, e# #) -> (# s'#, I# e# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicReadIntArray #-}
 
 -- | Atomically write an `Int` element int the array
@@ -329,13 +334,13 @@ unsafeAtomicReadIntArray _mpa@(MPArray sz mba) ix =
 -- @since 0.3.0
 unsafeAtomicWriteIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m ()
-unsafeAtomicWriteIntArray _mpa@(MPArray sz mba) ix (I# e#) =
+unsafeAtomicWriteIntArray (MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicWriteIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive_ (atomicWriteIntArray# mba# i# e#))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicWriteIntArray #-}
 
 -- | Atomically CAS an `Int` in the array. Returns the old value.
@@ -343,15 +348,15 @@ unsafeAtomicWriteIntArray _mpa@(MPArray sz mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeCasIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> Int -> m Int
-unsafeCasIntArray _mpa@(MPArray sz mba) ix (I# e#) (I# n#) =
+unsafeCasIntArray (MPArray sz o mba) ix (I# e#) (I# n#) =
   INDEX_CHECK( "unsafeCasIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case casIntArray# mba# i# e# n# s# of
                    (# s'#, o# #) -> (# s'#, I# o# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeCasIntArray #-}
 
 
@@ -360,10 +365,10 @@ unsafeCasIntArray _mpa@(MPArray sz mba) ix (I# e#) (I# n#) =
 -- @since 0.3.0
 unsafeAtomicModifyIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> (Int -> Int) -> m Int
-unsafeAtomicModifyIntArray _mpa@(MPArray sz mba) ix f =
-  INDEX_CHECK("unsafeAtomicModifyIntArray", Sz . elemsMBA _mpa, atomicModify)
+unsafeAtomicModifyIntArray _mpa@(MPArray sz o mba) ix f =
+  INDEX_CHECK("unsafeAtomicModifyIntArray", const (Sz (totalElem sz)), atomicModify)
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
   where
     atomicModify (MutableByteArray mba#) (I# i#) =
       let go s# o# =
@@ -385,15 +390,15 @@ unsafeAtomicModifyIntArray _mpa@(MPArray sz mba) ix f =
 -- @since 0.3.0
 unsafeAtomicAddIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicAddIntArray _mpa@(MPArray sz mba) ix (I# e#) =
+unsafeAtomicAddIntArray (MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicAddIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchAddIntArray# mba# i# e# s# of
                    (# s'#, p# #) -> (# s'#, I# p# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicAddIntArray #-}
 
 
@@ -402,15 +407,15 @@ unsafeAtomicAddIntArray _mpa@(MPArray sz mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicSubIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicSubIntArray _mpa@(MPArray sz mba) ix (I# e#) =
+unsafeAtomicSubIntArray (MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicSubIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchSubIntArray# mba# i# e# s# of
                    (# s'#, p# #) -> (# s'#, I# p# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicSubIntArray #-}
 
 
@@ -419,15 +424,15 @@ unsafeAtomicSubIntArray _mpa@(MPArray sz mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicAndIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicAndIntArray _mpa@(MPArray sz mba) ix (I# e#) =
+unsafeAtomicAndIntArray (MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicAndIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchAndIntArray# mba# i# e# s# of
                    (# s'#, p# #) -> (# s'#, I# p# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicAndIntArray #-}
 
 
@@ -436,15 +441,15 @@ unsafeAtomicAndIntArray _mpa@(MPArray sz mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicNandIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicNandIntArray _mpa@(MPArray sz mba) ix (I# e#) =
+unsafeAtomicNandIntArray (MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicNandIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchNandIntArray# mba# i# e# s# of
                    (# s'#, p# #) -> (# s'#, I# p# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicNandIntArray #-}
 
 
@@ -453,15 +458,15 @@ unsafeAtomicNandIntArray _mpa@(MPArray sz mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicOrIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicOrIntArray _mpa@(MPArray sz mba) ix (I# e#) =
+unsafeAtomicOrIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicOrIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchOrIntArray# mba# i# e# s# of
                    (# s'#, p# #) -> (# s'#, I# p# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicOrIntArray #-}
 
 
@@ -470,15 +475,15 @@ unsafeAtomicOrIntArray _mpa@(MPArray sz mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicXorIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicXorIntArray _mpa@(MPArray sz mba) ix (I# e#) =
+unsafeAtomicXorIntArray (MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicXorIntArray"
-             , Sz . elemsMBA _mpa
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchXorIntArray# mba# i# e# s# of
                    (# s'#, p# #) -> (# s'#, I# p# #))
   mba
-  (toLinearIndex sz ix)
+  (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicXorIntArray #-}
 
 

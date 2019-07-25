@@ -72,8 +72,8 @@ castFromVector comp sz vector = do
          sVector <- join $ gcast1 (Just vector)
          return $ SArray {sComp = comp, sSize = sz, sData = sVector}
     , do Refl <- eqT :: Maybe (v :~: VP.Vector)
-         VP.Vector 0 _ arr <- join $ gcast1 (Just vector)
-         return $ PArray {pComp = comp, pSize = sz, pData = arr}
+         VP.Vector o _ arr <- join $ gcast1 (Just vector)
+         return $ PArray {pComp = comp, pSize = sz, pOffset = o, pData = arr}
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
          bVector <- join $ gcast1 (Just vector)
          arr <- castVectorToArray bVector
@@ -136,7 +136,7 @@ castToVector arr =
          return $ sData sArr
     , do Refl <- eqT :: Maybe (r :~: P)
          pArr <- gcastArr arr
-         return $ VP.Vector 0 (totalElem (size arr)) $ pData pArr
+         return $ VP.Vector (pOffset pArr) (totalElem (size arr)) $ pData pArr
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
          return $ castArrayToVector $ bData bArr

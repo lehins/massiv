@@ -209,7 +209,7 @@ class Load r ix e => Extract r ix e where
 
 -- | Arrays that can be used as source to practically any manipulation function.
 class Load r ix e => Source r ix e where
-  {-# MINIMAL (unsafeIndex|unsafeLinearIndex) #-}
+  {-# MINIMAL (unsafeIndex|unsafeLinearIndex), unsafeLinearSlice #-}
 
   -- | Lookup element in the array. No bounds check is performed and access of
   -- arbitrary memory is possible when invalid index is supplied.
@@ -229,10 +229,10 @@ class Load r ix e => Source r ix e where
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
-  -- -- | Source arrays also give us ability to look at their linear slices
-  -- --
-  -- -- @since 0.4.0
-  -- unsafeLinearSlice :: Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
+  -- | Source arrays also give us ability to look at their linear slices
+  --
+  -- @since 0.4.1
+  unsafeLinearSlice :: Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
 
 -- | Any array that can be computed and loaded into memory
 class (Typeable r, Index ix) => Load r ix e where
