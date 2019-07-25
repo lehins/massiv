@@ -23,6 +23,8 @@
 * Expose `Data.Massiv.Core.List`
 * Expose `indexWith`, so macro `INDEX_CHECK` from `massiv.h` could be used outside massiv.
 * Addition of `liftSz`
+* Fixed `expand*` functions by making them accept `Sz1` instead of an `Int`
+* Addition of `expandWithinM`
 * Bunch of minor fixes to `Show` instances
 * Extracted test-suite into it's own package.
 * Stop accepting computation strategy for all functions that can be performed sequentially only:
@@ -36,6 +38,8 @@
   * `makeArrayAR`
   * `generateArrayLinearS`
   * `generateArrayS`
+* Redefined most of the numeric operators with `Numeric` and `NumericFloat`. Will be
+  required for SIMD operations.
 
 # 0.3.6
 

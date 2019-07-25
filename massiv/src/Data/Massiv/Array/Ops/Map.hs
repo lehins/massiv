@@ -365,11 +365,11 @@ itraverseAR _ = itraverseA
 -- @since 0.3.0
 --
 traversePrim ::
-     (Source r' ix a, Mutable r ix b, PrimMonad m)
+     forall r ix b r' a m . (Source r' ix a, Mutable r ix b, PrimMonad m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-traversePrim f arr = setComp (getComp arr) <$> generateArrayS (size arr) (f . unsafeIndex arr)
+traversePrim f = itraversePrim (const f)
 {-# INLINE traversePrim #-}
 
 -- | Same as `traversePrim`, but traverse with index aware action.
@@ -377,12 +377,17 @@ traversePrim f arr = setComp (getComp arr) <$> generateArrayS (size arr) (f . un
 -- @since 0.3.0
 --
 itraversePrim ::
-     (Source r' ix a, Mutable r ix b, PrimMonad m)
+     forall r ix b r' a m . (Source r' ix a, Mutable r ix b, PrimMonad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
 itraversePrim f arr =
-  setComp (getComp arr) <$> generateArrayS (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+  setComp (getComp arr) <$>
+  generateArrayLinearS
+    (size arr)
+    (\ !i ->
+       let ix = fromLinearIndex (size arr) i
+        in f ix (unsafeLinearIndex arr i))
 {-# INLINE itraversePrim #-}
 
 

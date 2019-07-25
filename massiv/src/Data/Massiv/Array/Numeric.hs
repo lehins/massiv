@@ -85,8 +85,8 @@ import Prelude as P
 
 
 infixr 8  .^, .^^
-infixl 7  .*, ./, `quotA`, `remA`, `divA`, `modA`
-infixl 6  .+, .-
+infixl 7  .*., .*, *., ./., ./, `quotA`, `remA`, `divA`, `modA`
+infixl 6  .+., .+, +., .-., .-, -.
 
 liftArray2Matching
   :: (Source r1 ix a, Source r2 ix b)
@@ -136,14 +136,14 @@ liftNumericArray2M f a1 a2
 (.+.) = liftNumericArray2M additionPointwise
 {-# INLINE (.+.) #-}
 
--- | Add an element to each element of the array. Array is on the left.
+-- | Add a scalar to each element of the array. Array is on the left.
 --
 -- @since 0.1.0
 (.+) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
 (.+) = plusScalar
 {-# INLINE (.+) #-}
 
--- | Add an element to each element of the array. Array is on the right.
+-- | Add a scalar to each element of the array. Array is on the right.
 --
 -- @since 0.4.0
 (+.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
@@ -160,14 +160,14 @@ liftNumericArray2M f a1 a2
 {-# INLINE (.-.) #-}
 
 
--- | Add an element to each element of the array. Array is on the left.
+-- | Subtract a scalar from each element of the array. Array is on the left.
 --
 -- @since 0.1.0
 (.-) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
 (.-) = minusScalar
 {-# INLINE (.-) #-}
 
--- | Add an element to each element of the array. Array is on the right.
+-- | Subtract a scalar from each element of the array. Array is on the right.
 --
 -- @since 0.4.0
 (-.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
@@ -197,11 +197,11 @@ liftNumericArray2M f a1 a2
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
-     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (R r) Ix1 e, Num e)
+     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (R r) Ix1 e, Num e, MonadThrow m)
   => Array r Ix2 e
   -> Array r' Ix2 e
-  -> Array r Ix2 e
-(|*|) a1 = compute . multArrs a1
+  -> m (Array r Ix2 e)
+(|*|) a1 a2 = compute <$> multArrs a1 a2
 {-# INLINE [1] (|*|) #-}
 
 {-# RULES
@@ -214,22 +214,24 @@ multiplyTransposedFused ::
      , OuterSlice r Ix2 e
      , Source (R r) Ix1 e
      , Num e
+     , MonadThrow m
      )
   => Array r Ix2 e
   -> Array r Ix2 e
-  -> Array r Ix2 e
-multiplyTransposedFused arr1 arr2 = compute (multiplyTransposed arr1 arr2)
+  -> m (Array r Ix2 e)
+multiplyTransposedFused arr1 arr2 = compute <$> multiplyTransposed arr1 arr2
 {-# INLINE multiplyTransposedFused #-}
 
 
-multArrs :: forall r r' e.
+multArrs :: forall r r' e m.
             ( Mutable r Ix2 e
             , Source r' Ix2 e
             , OuterSlice r Ix2 e
             , Source (R r) Ix1 e
             , Num e
+            , MonadThrow m
             )
-         => Array r Ix2 e -> Array r' Ix2 e -> Array D Ix2 e
+         => Array r Ix2 e -> Array r' Ix2 e -> m (Array D Ix2 e)
 multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
   where
     arr2' :: Array r Ix2 e
@@ -243,13 +245,15 @@ multiplyTransposed ::
      , OuterSlice r Ix2 e
      , Source (R r) Ix1 e
      , Num e
+     , MonadThrow m
      )
   => Array r Ix2 e
   -> Array r Ix2 e
-  -> Array D Ix2 e
+  -> m (Array D Ix2 e)
 multiplyTransposed arr1 arr2
-  | n1 /= m2 = throw $ SizeMismatchException (size arr1) (size arr2)
+  | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (size arr2)
   | otherwise =
+    pure $
     DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
       A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
   where
@@ -259,7 +263,7 @@ multiplyTransposed arr1 arr2
 
 -- | Create an indentity matrix.
 --
--- ====___Example__
+-- ==== __Example__
 --
 -- >>> import Data.Massiv.Array
 -- >>> identityMatrix 5
@@ -272,8 +276,8 @@ multiplyTransposed arr1 arr2
 --   ]
 --
 -- @since 0.3.6
-identityMatrix :: Int -> Array DL Ix2 Int
-identityMatrix n = makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
+identityMatrix :: Sz1 -> Array DL Ix2 Int
+identityMatrix (Sz n) = makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
 {-# INLINE identityMatrix #-}
 
 

@@ -564,6 +564,8 @@ infixl 4 !, !?, ??
 
 -- | Infix version of `index'`.
 --
+-- ==== __Examples__
+--
 -- >>> import Data.Massiv.Array as A
 -- >>> a = computeAs U $ iterateN (Sz (2 :. 3)) succ (0 :: Int)
 -- >>> a
@@ -582,7 +584,7 @@ infixl 4 !, !?, ??
 {-# INLINE (!) #-}
 
 
--- | Infix version of `index`.
+-- | Infix version of `indexM`.
 --
 -- ==== __Examples__
 --
@@ -676,6 +678,8 @@ defaultIndex defVal = borderIndex (Fill defVal)
 
 -- | /O(1)/ - Lookup an element in the array. Use a border resolution technique
 -- when index is out of bounds.
+--
+-- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array as A
 -- >>> :set -XOverloadedLists

@@ -177,7 +177,7 @@ oneSz = SafeSz (pureIndex 1)
 -- >>> liftSz succ (Sz2 2 3)
 -- Sz (3 :. 4)
 --
--- @since 0.3.7
+-- @since 0.4.0
 liftSz :: Index ix => (Int -> Int) -> Sz ix -> Sz ix
 liftSz f (SafeSz ix) = Sz (liftIndex f ix)
 {-# INLINE liftSz #-}

@@ -515,7 +515,7 @@ iterLinearM_ sz !k0 !k1 !inc cond f =
 -- | This is used by @INDEX_CHECK@ macro and thus used whenever the @unsafe-checks@ cabal
 -- flag is on.
 --
--- @since 0.3.7
+-- @since 0.4.0
 indexWith ::
      Index ix
   => String -- ^ Source file name, eg. __FILE__

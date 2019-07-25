@@ -281,9 +281,9 @@ unsafeGenerateN comp sz f = unsafePerformIO $ do
 {-# INLINE unsafeGenerateN #-}
 
 
--- | Construct an array backed by linked lists
+-- | Construct an array backed by linked lists from any source array
 --
--- @since 0.3.7
+-- @since 0.4.0
 toListArray :: (Construct L ix e, Source r ix e)
             => Array r ix e
             -> Array L ix e
@@ -329,7 +329,7 @@ showsArrayLAsPrec pr n arr =
 
 -- | Helper function for declaring `Show` instances for arrays
 --
--- @since 0.3.7
+-- @since 0.4.0
 showsArrayPrec ::
      forall r r' ix ix' e. (Ragged L ix' e, Load r ix e, Source r' ix' e, Show e)
   => (Array r ix e -> Array r' ix' e) -- ^ Modifier
@@ -344,7 +344,7 @@ showsArrayPrec f n arr = showsArrayLAsPrec (Proxy :: Proxy r) n larr
 
 -- | Helper function for declaring `Show` instances for arrays
 --
--- @since 0.3.7
+-- @since 0.4.0
 showArrayList
   :: Show arr => [arr] -> String -> String
 showArrayList arrs = ('[':) . go arrs . (']':)

@@ -1,7 +1,7 @@
 name:                massiv-test
 version:             0.1.0
 synopsis:            Library that contains generators, properties and tests for Massiv Array Library.
-description:         This library is designed for users of massiv library that need random generators writing custom property tests and reusing some of the predefined ones.
+description:         This library is designed for users of massiv library that need random generators for writing custom property tests and reusing some of the predefined ones.
 homepage:            https://github.com/lehins/massiv
 license:             BSD3
 license-file:        LICENSE
@@ -13,18 +13,6 @@ build-type:          Simple
 extra-source-files:  README.md
                    , CHANGELOG.md
 cabal-version:       >=1.10
-
-flag unsafe-checks
-  description: Enable all the bounds checks for unsafe functions at the cost of
-               significant performance penalty
-  default: False
-  manual: True
-
-custom-setup
-  setup-depends:
-      base
-    , Cabal
-    , cabal-doctest >=1.0.6
 
 library
   hs-source-dirs:      src

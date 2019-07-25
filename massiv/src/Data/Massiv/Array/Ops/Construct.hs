@@ -56,6 +56,7 @@ module Data.Massiv.Array.Ops.Construct
   , enumFromStepN
     -- ** Expansion
   , expandWithin
+  , expandWithinM
   , expandWithin'
   , expandOuter
   , expandInner
@@ -623,17 +624,17 @@ enumFromStepN comp !from !step !sz = makeArray comp sz $ \ i -> from + fromInteg
 expandWithin ::
      forall ix e r n a. (IsIndexDimension ix n, Manifest r (Lower ix) a)
   => Dimension n
-  -> Int
-  -> (a -> Int -> e)
+  -> Sz1
+  -> (a -> Ix1 -> e)
   -> Array r (Lower ix) a
   -> Array D ix e
-expandWithin dim k f arr =
+expandWithin dim (Sz k) f arr =
   makeArray (getComp arr) sz $ \ix ->
     let (i, ixl) = pullOutDimension ix dim
      in f (unsafeIndex arr ixl) i
   where
     szl = unSz (size arr)
-    sz = Sz (insertDimension szl dim k)
+    sz = SafeSz (insertDimension szl dim k)
 {-# INLINE expandWithin #-}
 
 -- | Similar to `expandWithin`, except that dimension is specified at a value level, which means it
@@ -643,26 +644,39 @@ expandWithin dim k f arr =
 expandWithin'
   :: (Index ix, Manifest r (Lower ix) a)
   => Dim
-  -> Int
-  -> (a -> Int -> b)
+  -> Sz1
+  -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
   -> Array D ix b
-expandWithin' dim k f arr =
-  makeArray (getComp arr) sz $ \ix ->
-    let (i, ixl) = pullOutDim' ix dim
-     in f (unsafeIndex arr ixl) i
-  where
-    szl = unSz (size arr)
-    sz = Sz (insertDim' szl dim k)
+expandWithin' dim k f arr = either throw id $ expandWithinM dim k f arr
 {-# INLINE expandWithin' #-}
+
+-- | Similar to `expandWithin`, except that dimension is specified at a value level, which means it
+-- will throw an exception on an invalid dimension.
+--
+-- @since 0.4.0
+expandWithinM
+  :: (Index ix, Manifest r (Lower ix) a, MonadThrow m)
+  => Dim
+  -> Sz1
+  -> (a -> Ix1 -> b)
+  -> Array r (Lower ix) a
+  -> m (Array D ix b)
+expandWithinM dim k f arr = do
+  sz <- insertSzM (size arr) dim k
+  pure $
+    makeArray (getComp arr) sz $ \ix ->
+      let (i, ixl) = pullOutDim' ix dim -- dim has been checked above
+       in f (unsafeIndex arr ixl) i
+{-# INLINE expandWithinM #-}
 
 -- | Similar to `expandWithin`, except it uses the outermost dimension.
 --
 -- @since 0.2.6
 expandOuter
   :: (Index ix, Manifest r (Lower ix) a)
-  => Int
-  -> (a -> Int -> b)
+  => Sz1
+  -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
   -> Array D ix b
 expandOuter k f arr =
@@ -671,7 +685,7 @@ expandOuter k f arr =
      in f (unsafeIndex arr ixl) i
   where
     szl = size arr
-    sz = consSz (Sz k) szl
+    sz = consSz k szl
 {-# INLINE expandOuter #-}
 
 -- | Similar to `expandWithin`, except it uses the innermost dimension.
@@ -679,8 +693,8 @@ expandOuter k f arr =
 -- @since 0.2.6
 expandInner
   :: (Index ix, Manifest r (Lower ix) a)
-  => Int
-  -> (a -> Int -> b)
+  => Sz1
+  -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
   -> Array D ix b
 expandInner k f arr =
@@ -689,5 +703,5 @@ expandInner k f arr =
      in f (unsafeIndex arr ixl) i
   where
     szl = size arr
-    sz = snocSz szl (Sz k)
+    sz = snocSz szl k
 {-# INLINE expandInner #-}
