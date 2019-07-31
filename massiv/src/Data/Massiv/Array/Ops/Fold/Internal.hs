@@ -41,7 +41,8 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldrP
   , ifoldlIO
   , ifoldrIO
-  -- , splitReduce
+  , splitReduce
+  , splitReduceInternal
   ) where
 
 import Control.Monad (void, when)
@@ -328,31 +329,38 @@ ifoldlIO f !initAcc g !tAcc !arr = do
   F.foldlM g tAcc results
 {-# INLINE ifoldlIO #-}
 
--- -- | Split an array into linear row-major vector chunks and apply an action to each of
--- -- them. Number of chunks will depend on the computation strategy. Results of each action
--- -- will be combined with a folding function.
--- --
--- -- @since 0.4.1
--- splitReduce ::
---      (MonadUnliftIO m, Source r ix e)
---   => (Scheduler m a -> Array r Ix1 e -> m a)
---   -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
---   -> b -- ^ Accumulator for chunks folding
---   -> Array r ix e
---   -> m b
--- splitReduce f g !tAcc !arr = do
---   let !sz = size arr
---       !totalLength = totalElem sz
---   results <-
---     withScheduler (getComp arr) $ \scheduler ->
---       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
---         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---           scheduleWork scheduler $ f scheduler $ unsafeLinearSlice start (SafeSz chunkLength) arr
---         when (slackStart < totalLength) $
---           scheduleWork scheduler $
---           f scheduler $ unsafeLinearSlice slackStart (SafeSz (totalLength - slackStart)) arr
---   F.foldlM g tAcc results
--- {-# INLINE splitReduce #-}
+-- | Split an array into linear row-major vector chunks and apply an action to each of
+-- them. Number of chunks will depend on the computation strategy. Results of each action
+-- will be combined with a folding function.
+--
+-- @since 0.4.1
+splitReduce ::
+     (MonadUnliftIO m, Source r ix e)
+  => (Scheduler m a -> Array r Ix1 e -> m a)
+  -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
+  -> b -- ^ Accumulator for chunks folding
+  -> Array r ix e
+  -> m b
+splitReduce f g !tAcc !arr = do
+  let !sz = size arr
+      !totalLength = totalElem sz
+  results <-
+    withScheduler (getComp arr) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $ f scheduler $ unsafeLinearSlice start (SafeSz chunkLength) arr
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          f scheduler $ unsafeLinearSlice slackStart (SafeSz (totalLength - slackStart)) arr
+  F.foldlM g tAcc results
+{-# INLINE splitReduce #-}
+
+
+splitReduceInternal ::
+     (Source r ix e) => (Array r Ix1 e -> a) -> (b -> a -> b) -> b -> Array r ix e -> b
+splitReduceInternal f g tAcc =
+  unsafePerformIO . splitReduce (\_ -> pure . f) (\acc -> pure . g acc) tAcc
+{-# INLINE splitReduceInternal #-}
 
 
 

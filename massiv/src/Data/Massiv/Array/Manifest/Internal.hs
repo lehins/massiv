@@ -101,6 +101,7 @@ toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
 toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
 {-# INLINE toManifest #-}
 
+-- TODO: rewrite rule 'toManifest = id'
 
 -- | Row-major sequentia folding over a Manifest array.
 instance Index ix => Foldable (Array M ix) where

@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Data.Massiv.Core.Exception
   ( ImpossibleException(..)
+  , NegativeValue(..)
   , throwImpossible
   , Uninitialized(..)
   , guardNumberOfElements
@@ -55,3 +56,12 @@ guardNumberOfElements sz sz' =
   unless (totalElem sz == totalElem sz') $ throwM $ SizeElementsMismatchException sz sz'
 {-# INLINE guardNumberOfElements #-}
 
+
+data NegativeValue where
+  NegativeValue :: (Num a, Show a) => a -> NegativeValue
+
+instance Exception NegativeValue
+
+instance Show NegativeValue where
+  showsPrec n (NegativeValue v) =
+    showsPrecWrapped n (("NegativeValue " ++) . showsPrec 1 v)

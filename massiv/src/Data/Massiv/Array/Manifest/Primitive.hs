@@ -41,13 +41,14 @@ module Data.Massiv.Array.Manifest.Primitive
 
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.Primitive (PrimMonad(primitive), PrimState, primitive_)
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Pull (eq, ord, delay)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
 import Data.Primitive (sizeOf)
 import Data.Primitive.ByteArray
 import Data.Primitive.Types
@@ -245,6 +246,27 @@ instance ( Prim e
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
+
+
+-- | @since 0.4.1
+instance (Prim e, Num e) => Numeric P e where
+  powerSumArrayS arr = sumArrayS . powerPointwise (delay arr)
+  {-# INLINE powerSumArrayS #-}
+  multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
+  {-# INLINE multiplySumArrayS #-}
+  absPowerSumArrayS arr = sumArrayS . powerPointwise (absPointwise (delay arr))
+  {-# INLINE absPowerSumArrayS #-}
+  unsafeLiftArray f a = makeArrayLinear (pComp a) (pSize a) (f . unsafeLinearIndex a)
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 f a1 a2 =
+    makeArrayLinear (pComp a1 <> pComp a2) (pSize a1) $ \ !i ->
+      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
+  {-# INLINE unsafeLiftArray2 #-}
+
+
+-- | @since 0.4.1
+instance (Prim e, Floating e) => NumericFloat P e where
+
 
 
 elemsBA :: forall proxy e . Prim e => proxy e -> ByteArray -> Int

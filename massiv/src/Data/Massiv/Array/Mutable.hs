@@ -575,8 +575,7 @@ generateArrayWS ::
   -> Sz ix
   -> (ix -> s -> m e)
   -> m (Array r ix e)
-generateArrayWS states sz make =
-  generateArrayLinearWS states sz (\ix -> make (fromLinearIndex sz ix))
+generateArrayWS states sz make = generateArrayLinearWS states sz (make . fromLinearIndex sz)
 {-# INLINE generateArrayWS #-}
 
 

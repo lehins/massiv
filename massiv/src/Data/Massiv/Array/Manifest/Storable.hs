@@ -34,24 +34,25 @@ module Data.Massiv.Array.Manifest.Storable
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (unsafePrimToPrim)
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Pull (eq, ord, delay)
 import Data.Massiv.Array.Manifest.Internal
-import Data.Massiv.Array.Manifest.Primitive (shrinkMutableByteArray)
-import Data.Primitive.ByteArray (MutableByteArray(..))
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
+import Data.Massiv.Array.Manifest.Primitive (shrinkMutableByteArray)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
+import Data.Primitive.ByteArray (MutableByteArray(..))
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Storable.Mutable as MVS
-import Foreign.Ptr
-import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Marshal.Array (advancePtr, copyArray)
+import Foreign.Ptr
 import Foreign.Storable
-import Foreign.Marshal.Array (copyArray, advancePtr)
 import GHC.Exts as GHC (IsList(..))
+import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -230,6 +231,27 @@ instance ( VS.Storable e
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
+
+-- | @since 0.4.1
+instance (Storable e, Num e) => Numeric S e where
+  powerSumArrayS arr = sumArrayS . powerPointwise (delay arr)
+  {-# INLINE powerSumArrayS #-}
+  multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
+  {-# INLINE multiplySumArrayS #-}
+  absPowerSumArrayS arr = sumArrayS . powerPointwise (absPointwise (delay arr))
+  {-# INLINE absPowerSumArrayS #-}
+  unsafeLiftArray f a = makeArrayLinear (sComp a) (sSize a) (f . unsafeLinearIndex a)
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 f a1 a2 =
+    makeArrayLinear (sComp a1 <> sComp a2) (sSize a1) $ \ !i ->
+      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
+  {-# INLINE unsafeLiftArray2 #-}
+
+
+-- | @since 0.4.1
+instance (Storable e, Floating e) => NumericFloat S e where
+
+
 
 -- | A pointer to the beginning of the storable array. It is unsafe since, if mutated, it can break
 -- referential transparency.

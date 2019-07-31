@@ -69,13 +69,19 @@ module Data.Massiv.Array.Numeric
   , floorA
   -- * RealFloat
   , atan2A
+  -- * Norm
+  , normL1
+  , normL2
+  , normL3
+  , normL4
+  , normLn
   ) where
 
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
-import Data.Massiv.Array.Ops.Fold as A
 import Data.Massiv.Array.Ops.Map as A
+import Data.Massiv.Array.Ops.Fold.Internal (splitReduceInternal)
 import Data.Massiv.Array.Ops.Transform as A
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
@@ -197,7 +203,7 @@ liftNumericArray2M f a1 a2
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
-     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (R r) Ix1 e, Num e, MonadThrow m)
+     (Mutable r Ix2 e, Source r' Ix2 e, Numeric r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r' Ix2 e
   -> m (Array r Ix2 e)
@@ -210,12 +216,7 @@ liftNumericArray2M f a1 a2
  #-}
 
 multiplyTransposedFused ::
-     ( Mutable r Ix2 e
-     , OuterSlice r Ix2 e
-     , Source (R r) Ix1 e
-     , Num e
-     , MonadThrow m
-     )
+     (Mutable r Ix2 e, Numeric r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r Ix2 e
   -> m (Array r Ix2 e)
@@ -223,15 +224,11 @@ multiplyTransposedFused arr1 arr2 = compute <$> multiplyTransposed arr1 arr2
 {-# INLINE multiplyTransposedFused #-}
 
 
-multArrs :: forall r r' e m.
-            ( Mutable r Ix2 e
-            , Source r' Ix2 e
-            , OuterSlice r Ix2 e
-            , Source (R r) Ix1 e
-            , Num e
-            , MonadThrow m
-            )
-         => Array r Ix2 e -> Array r' Ix2 e -> m (Array D Ix2 e)
+multArrs ::
+     forall r r' e m. (Mutable r Ix2 e, Source r' Ix2 e, Numeric r e, MonadThrow m)
+  => Array r Ix2 e
+  -> Array r' Ix2 e
+  -> m (Array D Ix2 e)
 multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
   where
     arr2' :: Array r Ix2 e
@@ -241,12 +238,7 @@ multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
 -- | It is quite often that second matrix gets transposed before multiplication (eg. A * A'), but
 -- due to layout of data in memory it is more efficient to transpose the second array again.
 multiplyTransposed ::
-     ( Manifest r Ix2 e
-     , OuterSlice r Ix2 e
-     , Source (R r) Ix1 e
-     , Num e
-     , MonadThrow m
-     )
+     (Manifest r Ix2 e, Numeric r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r Ix2 e
   -> m (Array D Ix2 e)
@@ -255,7 +247,10 @@ multiplyTransposed arr1 arr2
   | otherwise =
     pure $
     DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
-      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
+      multiplySumArrayS
+        (unsafeLinearSlice (i * n1) (SafeSz n1) arr1)
+        (unsafeLinearSlice (j * n1) (SafeSz n1) arr2)
+      -- A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
   where
     SafeSz (m1 :. n1) = size arr1
     SafeSz (n2 :. m2) = size arr2
@@ -437,37 +432,39 @@ modA = liftArray2Matching mod
 quotRemA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-quotRemA arr1 = A.unzip . liftArray2Matching (quotRem) arr1
+quotRemA arr1 = A.unzip . liftArray2Matching quotRem arr1
 {-# INLINE quotRemA #-}
 
 
 divModA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-divModA arr1 = A.unzip . liftArray2Matching (divMod) arr1
+divModA arr1 = A.unzip . liftArray2Matching divMod arr1
 {-# INLINE divModA #-}
 
 
 
-truncateA
-  :: (Index ix, Numeric r e, RealFrac a, Integral e)
-  => Array r ix a -> Array r ix e
-truncateA = unsafeLiftArray truncate
+truncateA ::
+     (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
+truncateA = A.map truncate
 {-# INLINE truncateA #-}
 
 
-roundA :: (Index ix, Numeric r e, RealFrac a, Integral e) => Array r ix a -> Array r ix e
-roundA = unsafeLiftArray round
+roundA ::
+     (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
+roundA = A.map round
 {-# INLINE roundA #-}
 
 
-ceilingA :: (Index ix, Numeric r e, RealFrac a, Integral e) => Array r ix a -> Array r ix e
-ceilingA = unsafeLiftArray ceiling
+ceilingA ::
+     (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
+ceilingA = A.map ceiling
 {-# INLINE ceilingA #-}
 
 
-floorA :: (Index ix, Numeric r e, RealFrac a, Integral e) => Array r ix a -> Array r ix e
-floorA = unsafeLiftArray floor
+floorA ::
+     (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
+floorA = A.map floor
 {-# INLINE floorA #-}
 
 atan2A ::
@@ -477,3 +474,33 @@ atan2A ::
   -> m (Array r ix e)
 atan2A = liftArray2M atan2
 {-# INLINE atan2A #-}
+
+-- normL0 :: (Source r ix e, Numeric r e) => Array r ix e -> e
+-- normL0 = -- count non-zero
+-- {-# INLINE normL0 #-}
+
+normL1 :: (Source r ix e, Numeric r e) => Array r ix e -> e
+normL1 = splitReduceInternal (`absPowerSumArrayS` 1) (+) 0
+{-# INLINE normL1 #-}
+
+normL2 :: (Source r ix e, Numeric r e, Floating e) => Array r ix e -> e
+normL2 = sqrt . splitReduceInternal (`powerSumArrayS` 2) (+) 0
+{-# INLINE normL2 #-}
+
+normL3 :: (Source r ix e, Numeric r e, Floating e) => Array r ix e -> e
+normL3 arr = splitReduceInternal (`absPowerSumArrayS` 3) (+) 0 arr ** (1 / fromIntegral (3 :: Int))
+{-# INLINE normL3 #-}
+
+normL4 :: (Source r ix e, Numeric r e, Floating e) => Array r ix e -> e
+normL4 = sqrt . sqrt . splitReduceInternal (`powerSumArrayS` 4) (+) 0
+{-# INLINE normL4 #-}
+
+normLn :: (Source r ix e, Numeric r e, Floating e, MonadThrow m) => Int -> Array r ix e -> m e
+normLn n arr
+  | n < 0 = throwM $ NegativeValue n
+  | otherwise = pure $ splitReduceInternal (`absPowerSumArrayS` n) (+) 0 arr ** (1 / fromIntegral n)
+{-# INLINE normLn #-}
+
+-- normLinfinity :: (Source r ix e, Numeric r e) => Array r ix e -> e
+-- normLinfinity = absMaximum
+-- {-# INLINE normLinfinity #-}

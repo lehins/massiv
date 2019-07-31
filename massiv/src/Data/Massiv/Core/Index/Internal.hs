@@ -193,6 +193,8 @@ liftSz f (SafeSz ix) = Sz (liftIndex f ix)
 -- >>> import Data.Massiv.Core.Index
 -- >>> liftSz2 (-) (Sz2 2 3) (Sz2 3 1)
 -- Sz (0 :. 2)
+-- >>> liftSz2 min (Sz2 2 3) (Sz2 1 13)
+-- Sz (1 :. 3)
 --
 -- @since 0.4.3
 liftSz2 :: Index ix => (Int -> Int -> Int) -> Sz ix -> Sz ix -> Sz ix

@@ -158,11 +158,11 @@ instance Index ix => Stream D ix e where
 
 
 instance (Index ix, Num e) => Num (Array D ix e) where
-  (+)         = unsafeLiftArray2 (+)
+  (+)         = liftArray2 (+)
   {-# INLINE (+) #-}
-  (-)         = unsafeLiftArray2 (-)
+  (-)         = liftArray2 (-)
   {-# INLINE (-) #-}
-  (*)         = unsafeLiftArray2 (*)
+  (*)         = liftArray2 (*)
   {-# INLINE (*) #-}
   abs         = unsafeLiftArray abs
   {-# INLINE abs #-}
@@ -208,47 +208,21 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 
 
 instance Num e => Numeric D e where
-  -- plusScalar arr e = unsafeLiftArray (+ e) arr
-  -- {-# INLINE plusScalar #-}
-  -- minusScalar arr e = unsafeLiftArray (subtract e) arr
-  -- {-# INLINE minusScalar #-}
-  -- multiplyScalar arr e = unsafeLiftArray (* e) arr
-  -- {-# INLINE multiplyScalar #-}
-  -- absPointwise = unsafeLiftArray abs
-  -- {-# INLINE absPointwise #-}
-  -- additionPointwise = unsafeLiftArray2 (+)
-  -- {-# INLINE additionPointwise #-}
-  -- subtractionPointwise = unsafeLiftArray2 (-)
-  -- {-# INLINE subtractionPointwise #-}
-  -- multiplicationPointwise = unsafeLiftArray2 (*)
-  -- {-# INLINE multiplicationPointwise #-}
-  -- powerPointwise arr pow = unsafeLiftArray (^ pow) arr
-  -- {-# INLINE powerPointwise #-}
-  -- powerSumArray arr = sumArray . powerPointwise arr
-  -- {-# INLINE powerSumArray #-}
-  -- unsafeDotProduct a1 a2 = sumArray (multiplicationPointwise a1 a2)
-  -- {-# INLINE unsafeDotProduct #-}
   unsafeLiftArray f arr = arr {dIndex = f . dIndex arr}
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 f a1 a2 =
-    DArray (dComp a1 <> dComp a2) (SafeSz (liftIndex2 min (unSz (dSize a1)) (unSz (dSize a2)))) $ \i ->
-      f (dIndex a1 i) (dIndex a2 i)
+    DArray (dComp a1 <> dComp a2) (dSize a1) $ \ !i -> f (dIndex a1 i) (dIndex a2 i)
   {-# INLINE unsafeLiftArray2 #-}
 
 
-instance Floating e => NumericFloat D e where
-  -- recipPointwise = liftDArray recip
-  -- {-# INLINE recipPointwise #-}
-  -- sqrtPointwise = liftDArray sqrt
-  -- {-# INLINE sqrtPointwise #-}
-  -- floorPointwise = liftDArray floor
-  -- {-# INLINE floorPointwise #-}
-  -- ceilingPointwise = liftDArray ceiling
-  -- {-# INLINE ceilingPointwise #-}
-  -- divisionPointwise = liftDArray2 (/)
-  -- {-# INLINE divisionPointwise #-}
-  -- divideScalar arr e = liftDArray (/ e) arr
-  -- {-# INLINE divideScalar #-}
+liftArray2 :: Index ix => (t1 -> t2 -> e) -> Array D ix t1 -> Array D ix t2 -> Array D ix e
+liftArray2 f a1 a2 =
+  DArray (dComp a1 <> dComp a2) (SafeSz (liftIndex2 min (unSz (dSize a1)) (unSz (dSize a2)))) $ \i ->
+    f (dIndex a1 i) (dIndex a2 i)
+{-# INLINE liftArray2 #-}
+
+
+instance Floating e => NumericFloat D e
 
 
 
