@@ -25,6 +25,7 @@ module Data.Massiv.Array.Numeric
   , (.^)
   , (|*|)
   , multiplyTransposed
+  , dotProductM
   , identityMatrix
   , negateA
   , absA
@@ -80,13 +81,14 @@ module Data.Massiv.Array.Numeric
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Ops.Fold.Internal (splitReduce2Internal,
+                                            splitReduceInternal)
 import Data.Massiv.Array.Ops.Map as A
-import Data.Massiv.Array.Ops.Fold.Internal (splitReduceInternal)
 import Data.Massiv.Array.Ops.Transform as A
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Operations
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
+import Data.Massiv.Core.Operations
 import Prelude as P
 
 
@@ -103,7 +105,7 @@ liftArray2Matching f !arr1 !arr2
       (getComp arr1 <> getComp arr2)
       sz1
       (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
+  | otherwise = throw $ SizeMismatchException sz1 sz2
   where
     sz1 = size arr1
     sz2 = size arr2
@@ -181,7 +183,7 @@ liftNumericArray2M f a1 a2
 {-# INLINE (-.) #-}
 
 
--- | Multiply two arrays together pointwise.
+-- | Hadamard product. Multiply two arrays together pointwise.
 --
 -- @since 0.4.0
 (.*.) ::
@@ -203,7 +205,7 @@ liftNumericArray2M f a1 a2
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
-     (Mutable r Ix2 e, Source r' Ix2 e, Numeric r e, MonadThrow m)
+     (Mutable r Ix2 e, Source r' Ix2 e, ReduceNumeric r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r' Ix2 e
   -> m (Array r Ix2 e)
@@ -216,7 +218,7 @@ liftNumericArray2M f a1 a2
  #-}
 
 multiplyTransposedFused ::
-     (Mutable r Ix2 e, Numeric r e, MonadThrow m)
+     (Mutable r Ix2 e, ReduceNumeric r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r Ix2 e
   -> m (Array r Ix2 e)
@@ -225,7 +227,7 @@ multiplyTransposedFused arr1 arr2 = compute <$> multiplyTransposed arr1 arr2
 
 
 multArrs ::
-     forall r r' e m. (Mutable r Ix2 e, Source r' Ix2 e, Numeric r e, MonadThrow m)
+     forall r r' e m. (Mutable r Ix2 e, Source r' Ix2 e, ReduceNumeric r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r' Ix2 e
   -> m (Array D Ix2 e)
@@ -235,10 +237,8 @@ multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
     arr2' = compute $ transpose arr2
 {-# INLINE multArrs #-}
 
--- | It is quite often that second matrix gets transposed before multiplication (eg. A * A'), but
--- due to layout of data in memory it is more efficient to transpose the second array again.
 multiplyTransposed ::
-     (Manifest r Ix2 e, Numeric r e, MonadThrow m)
+     (Manifest r Ix2 e, ReduceNumeric r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r Ix2 e
   -> m (Array D Ix2 e)
@@ -250,11 +250,19 @@ multiplyTransposed arr1 arr2
       multiplySumArrayS
         (unsafeLinearSlice (i * n1) (SafeSz n1) arr1)
         (unsafeLinearSlice (j * n1) (SafeSz n1) arr2)
-      -- A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
   where
     SafeSz (m1 :. n1) = size arr1
     SafeSz (n2 :. m2) = size arr2
 {-# INLINE multiplyTransposed #-}
+
+
+dotProductM :: (Source r ix e, ReduceNumeric r e, MonadThrow f) => Array r ix e -> Array r ix e -> f e
+dotProductM arr1 arr2
+  | size arr1 == size arr2 = pure $ splitReduce2Internal multiplySumArrayS (+) 0 arr1 arr2
+  | otherwise = throwM $ SizeMismatchException (size arr1) (size arr2)
+{-# INLINE dotProductM #-}
+
+
 
 -- | Create an indentity matrix.
 --
@@ -479,25 +487,26 @@ atan2A = liftArray2M atan2
 -- normL0 = -- count non-zero
 -- {-# INLINE normL0 #-}
 
-normL1 :: (Source r ix e, Numeric r e) => Array r ix e -> e
+normL1 :: (Source r ix e, ReduceNumeric r e) => Array r ix e -> e
 normL1 = splitReduceInternal (`absPowerSumArrayS` 1) (+) 0
 {-# INLINE normL1 #-}
 
-normL2 :: (Source r ix e, Numeric r e, Floating e) => Array r ix e -> e
-normL2 = sqrt . splitReduceInternal (`powerSumArrayS` 2) (+) 0
+normL2 :: (Source r ix e, ReduceNumeric r e, Floating e) => Array r ix e -> e
+normL2 = sqrt . splitReduceInternal (`evenPowerSumArrayS` 2) (+) 0
 {-# INLINE normL2 #-}
 
-normL3 :: (Source r ix e, Numeric r e, Floating e) => Array r ix e -> e
+normL3 :: (Source r ix e, ReduceNumeric r e, Floating e) => Array r ix e -> e
 normL3 arr = splitReduceInternal (`absPowerSumArrayS` 3) (+) 0 arr ** (1 / fromIntegral (3 :: Int))
 {-# INLINE normL3 #-}
 
-normL4 :: (Source r ix e, Numeric r e, Floating e) => Array r ix e -> e
-normL4 = sqrt . sqrt . splitReduceInternal (`powerSumArrayS` 4) (+) 0
+normL4 :: (Source r ix e, ReduceNumeric r e, Floating e) => Array r ix e -> e
+normL4 = sqrt . sqrt . splitReduceInternal (`evenPowerSumArrayS` 4) (+) 0
 {-# INLINE normL4 #-}
 
-normLn :: (Source r ix e, Numeric r e, Floating e, MonadThrow m) => Int -> Array r ix e -> m e
+normLn :: (Source r ix e, ReduceNumeric r e, Floating e, MonadThrow m) => Int -> Array r ix e -> m e
 normLn n arr
   | n < 0 = throwM $ NegativeValue n
+ --  | n == 0 = pure $ normL0 arr
   | otherwise = pure $ splitReduceInternal (`absPowerSumArrayS` n) (+) 0 arr ** (1 / fromIntegral n)
 {-# INLINE normLn #-}
 

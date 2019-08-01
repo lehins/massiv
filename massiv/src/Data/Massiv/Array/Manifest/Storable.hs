@@ -232,14 +232,16 @@ instance ( VS.Storable e
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
--- | @since 0.4.1
-instance (Storable e, Num e) => Numeric S e where
-  powerSumArrayS arr = sumArrayS . powerPointwise (delay arr)
-  {-# INLINE powerSumArrayS #-}
+instance (Storable e, Num e) => ReduceNumeric S e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
   {-# INLINE multiplySumArrayS #-}
-  absPowerSumArrayS arr = sumArrayS . powerPointwise (absPointwise (delay arr))
+  evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
+  {-# INLINE evenPowerSumArrayS #-}
+  absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
   {-# INLINE absPowerSumArrayS #-}
+
+-- | @since 0.4.1
+instance (Storable e, Num e) => Numeric S e where
   unsafeLiftArray f a = makeArrayLinear (sComp a) (sSize a) (f . unsafeLinearIndex a)
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 f a1 a2 =

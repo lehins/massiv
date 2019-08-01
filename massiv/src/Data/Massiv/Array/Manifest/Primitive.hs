@@ -248,14 +248,15 @@ instance ( Prim e
   {-# INLINE toList #-}
 
 
--- | @since 0.4.1
-instance (Prim e, Num e) => Numeric P e where
-  powerSumArrayS arr = sumArrayS . powerPointwise (delay arr)
-  {-# INLINE powerSumArrayS #-}
+instance (Prim e, Num e) => ReduceNumeric P e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
   {-# INLINE multiplySumArrayS #-}
-  absPowerSumArrayS arr = sumArrayS . powerPointwise (absPointwise (delay arr))
+  evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
+  {-# INLINE evenPowerSumArrayS #-}
+  absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
   {-# INLINE absPowerSumArrayS #-}
+
+instance (Prim e, Num e) => Numeric P e where
   unsafeLiftArray f a = makeArrayLinear (pComp a) (pSize a) (f . unsafeLinearIndex a)
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 f a1 a2 =

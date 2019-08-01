@@ -96,6 +96,7 @@ module Data.Massiv.Array.Ops.Fold
   , ifoldlIO
   , ifoldrIO
   , splitReduce
+  , splitReduce2
   ) where
 
 import Data.Massiv.Array.Delayed.Pull
@@ -436,10 +437,10 @@ minimum' = either throw id . minimumM
 --
 -- @since 0.1.0
 sum' ::
-     forall r ix e. (Source r ix e, Numeric r e)
+     forall r ix e. (Source r ix e, ReduceNumeric r e)
   => Array r ix e
-  -> IO e
-sum' = splitReduce (\_ -> pure . sumArrayS) (\x y -> pure (x + y)) 0
+  -> e
+sum' = splitReduceInternal sumArrayS (+) 0
 {-# INLINE sum' #-}
 
 -- | /O(n)/ - Compute sum of all elements.

@@ -12,6 +12,7 @@
 -- Portability : non-portable
 module Data.Massiv.Core.Operations
   ( Numeric(..)
+  , ReduceNumeric(..)
   , NumericFloat(..)
   ) where
 
@@ -19,9 +20,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Array.Ops.Fold.Internal
 
 
-class Num e => Numeric r e where
-
-  {-# MINIMAL unsafeLiftArray, unsafeLiftArray2 #-}
+class Num e => ReduceNumeric r e where
 
   -- | Compute the sum of all elements in the array sequentially.
   --
@@ -39,27 +38,27 @@ class Num e => Numeric r e where
   productArrayS = foldlS (*) 1
   {-# INLINE productArrayS #-}
 
-  -- | Raise each element in the array to some non-negative power and sum the results
-  --
-  -- @since 0.4.1
-  powerSumArrayS :: Index ix => Array r ix e -> Int -> e
-  powerSumArrayS arr = sumArrayS . powerPointwise arr
-  {-# INLINE powerSumArrayS #-}
-
   -- | Sequentially multiply two arrays pointwise and then sum the results (dot product)
   --
   -- @since 0.4.1
   multiplySumArrayS :: Index ix => Array r ix e -> Array r ix e -> e
-  multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise a1 a2)
-  {-# INLINE multiplySumArrayS #-}
+
+  -- | Raise each element in the array to an even positive power and sum the results
+  --
+  -- > prop $ \arr pow -> even pow ==> evenPowerSumArrayS arr pow === absPowerSumArrayS arr pow
+  --
+  -- @since 0.4.1
+  evenPowerSumArrayS :: Index ix => Array r ix e -> Int -> e
 
   -- | Raise absolute value of each element in the array to some positive power and sum
   -- the results
   --
   -- @since 0.4.1
   absPowerSumArrayS :: Index ix => Array r ix e -> Int -> e
-  absPowerSumArrayS arr = powerSumArrayS (absPointwise arr)
-  {-# INLINE absPowerSumArrayS #-}
+
+class Num e => Numeric r e where
+
+  {-# MINIMAL unsafeLiftArray, unsafeLiftArray2 #-}
 
   -- | Add a scalar froto each element in the array. Respect computation strategy.
   --

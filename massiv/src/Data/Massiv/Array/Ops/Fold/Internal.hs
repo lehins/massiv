@@ -43,6 +43,8 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldrIO
   , splitReduce
   , splitReduceInternal
+  , splitReduce2
+  , splitReduce2Internal
   ) where
 
 import Control.Monad (void, when)
@@ -331,7 +333,7 @@ ifoldlIO f !initAcc g !tAcc !arr = do
 
 -- | Split an array into linear row-major vector chunks and apply an action to each of
 -- them. Number of chunks will depend on the computation strategy. Results of each action
--- will be combined with a folding function.
+-- will be combined with a folding action.
 --
 -- @since 0.4.1
 splitReduce ::
@@ -342,8 +344,7 @@ splitReduce ::
   -> Array r ix e
   -> m b
 splitReduce f g !tAcc !arr = do
-  let !sz = size arr
-      !totalLength = totalElem sz
+  let !totalLength = totalElem (size arr)
   results <-
     withScheduler (getComp arr) $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
@@ -361,6 +362,53 @@ splitReduceInternal ::
 splitReduceInternal f g tAcc =
   unsafePerformIO . splitReduce (\_ -> pure . f) (\acc -> pure . g acc) tAcc
 {-# INLINE splitReduceInternal #-}
+
+
+-- | Split two arrays into linear row-major vector chunks and apply an action to each of
+-- them pointwise. Similar to zipWith followed by a foldl on each individual chunk. Number
+-- of chunks will depend on the computation strategy. Results of each action will be
+-- combined with a folding action. If number of elements in both arrays do not match up
+-- the smallest one will be used.
+--
+-- @since 0.4.1
+splitReduce2 ::
+     (MonadUnliftIO m, Source r1 ix e1, Source r2 ix e2)
+  => (Scheduler m a -> Array r1 Ix1 e1 -> Array r2 Ix1 e2 -> m a)
+  -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
+  -> b -- ^ Accumulator for chunks folding
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> m b
+splitReduce2 f g !tAcc !arr1 !arr2 = do
+  let !totalLength = min (totalElem (size arr1)) (totalElem (size arr2))
+  results <-
+    withScheduler (getComp arr1 <> getComp arr2) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          let slice1 = unsafeLinearSlice start (SafeSz chunkLength) arr1
+              slice2 = unsafeLinearSlice start (SafeSz chunkLength) arr2
+           in scheduleWork scheduler $ f scheduler slice1 slice2
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $
+          let slackLength = SafeSz (totalLength - slackStart)
+              slice1 = unsafeLinearSlice slackStart slackLength arr1
+              slice2 = unsafeLinearSlice slackStart slackLength arr2
+           in f scheduler slice1 slice2
+  F.foldlM g tAcc results
+{-# INLINE splitReduce2 #-}
+
+
+splitReduce2Internal ::
+     (Source r1 ix e1, Source r2 ix e2)
+  => (Array r1 Ix1 e1 -> Array r2 Ix1 e2 -> a)
+  -> (b -> a -> b)
+  -> b
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> b
+splitReduce2Internal f g tAcc arr1 =
+  unsafePerformIO . splitReduce2 (\_ a1 -> pure . f a1) (\acc -> pure . g acc) tAcc arr1
+{-# INLINE splitReduce2Internal #-}
 
 
 

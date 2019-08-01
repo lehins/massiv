@@ -30,6 +30,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 import GHC.Base (build)
+import Numeric
 import Prelude hiding (zipWith)
 
 #include "massiv.h"
@@ -158,11 +159,11 @@ instance Index ix => Stream D ix e where
 
 
 instance (Index ix, Num e) => Num (Array D ix e) where
-  (+)         = liftArray2 (+)
+  (+)         = liftDArray2 (+)
   {-# INLINE (+) #-}
-  (-)         = liftArray2 (-)
+  (-)         = liftDArray2 (-)
   {-# INLINE (-) #-}
-  (*)         = liftArray2 (*)
+  (*)         = liftDArray2 (*)
   {-# INLINE (*) #-}
   abs         = unsafeLiftArray abs
   {-# INLINE abs #-}
@@ -174,6 +175,8 @@ instance (Index ix, Num e) => Num (Array D ix e) where
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
   (/)          = unsafeLiftArray2 (/)
   {-# INLINE (/) #-}
+  recip        = unsafeLiftArray recip
+  {-# INLINE recip #-}
   fromRational = singleton . fromRational
   {-# INLINE fromRational #-}
 
@@ -206,6 +209,27 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
   acosh = unsafeLiftArray acosh
   {-# INLINE acosh #-}
 
+  -- Override default implementation
+  sqrt = sqrtPointwise
+  {-# INLINE sqrt #-}
+  (**) = liftDArray2 (**)
+  {-# INLINE (**) #-}
+  tan = unsafeLiftArray tan
+  {-# INLINE tan #-}
+  tanh = unsafeLiftArray tanh
+  {-# INLINE tanh #-}
+  log1p = unsafeLiftArray log1p
+  {-# INLINE log1p #-}
+  expm1 = unsafeLiftArray expm1
+  {-# INLINE expm1 #-}
+
+instance Num e => ReduceNumeric D e where
+  multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise a1 a2)
+  {-# INLINE multiplySumArrayS #-}
+  evenPowerSumArrayS arr = sumArrayS . powerPointwise arr
+  {-# INLINE evenPowerSumArrayS #-}
+  absPowerSumArrayS arr = sumArrayS . powerPointwise (absPointwise arr)
+  {-# INLINE absPowerSumArrayS #-}
 
 instance Num e => Numeric D e where
   unsafeLiftArray f arr = arr {dIndex = f . dIndex arr}
@@ -215,14 +239,18 @@ instance Num e => Numeric D e where
   {-# INLINE unsafeLiftArray2 #-}
 
 
-liftArray2 :: Index ix => (t1 -> t2 -> e) -> Array D ix t1 -> Array D ix t2 -> Array D ix e
-liftArray2 f a1 a2 =
-  DArray (dComp a1 <> dComp a2) (SafeSz (liftIndex2 min (unSz (dSize a1)) (unSz (dSize a2)))) $ \i ->
-    f (dIndex a1 i) (dIndex a2 i)
-{-# INLINE liftArray2 #-}
-
-
 instance Floating e => NumericFloat D e
+
+
+liftDArray2 :: Index ix => (t1 -> t2 -> e) -> Array D ix t1 -> Array D ix t2 -> Array D ix e
+liftDArray2 f a1 a2
+  | sz1 == sz2 = DArray (dComp a1 <> dComp a2) sz1 $ \i -> f (dIndex a1 i) (dIndex a2 i)
+  | otherwise = throw $ SizeMismatchException sz1 sz2
+  where
+    sz1 = size a1
+    sz2 = size a2
+{-# INLINE liftDArray2 #-}
+
 
 
 
@@ -269,10 +297,10 @@ ord f arr1 arr2 =
 -- -- a `Data.Massiv.Array.map`.
 -- --
 -- -- @since 0.1.4
--- liftArray2
+-- liftDArray2
 --   :: (Source r1 ix a, Source r2 ix b)
 --   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
--- liftArray2 f !arr1 !arr2
+-- liftDArray2 f !arr1 !arr2
 --   | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
 --   | sz2 == oneSz = liftArray (`f` unsafeIndex arr2 zeroIndex) arr1
 --   | sz1 == sz2 =
@@ -281,6 +309,6 @@ ord f arr1 arr2 =
 --   where
 --     sz1 = size arr1
 --     sz2 = size arr2
--- {-# INLINE liftArray2 #-}
+-- {-# INLINE liftDArray2 #-}
 
 
