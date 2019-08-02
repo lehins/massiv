@@ -134,10 +134,13 @@ class Num e => Numeric r e where
 
 
 class (Numeric r e, Floating e) => NumericFloat r e where
-
   divideScalar :: Index ix => Array r ix e -> e -> Array r ix e
   divideScalar arr e = unsafeLiftArray (/ e) arr
   {-# INLINE divideScalar #-}
+
+  recipMultiplyScalar :: Index ix => Array r ix e -> e -> Array r ix e
+  recipMultiplyScalar arr e = unsafeLiftArray (e /) arr
+  {-# INLINE recipMultiplyScalar #-}
 
   divisionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
   divisionPointwise = unsafeLiftArray2 (/)
@@ -151,13 +154,21 @@ class (Numeric r e, Floating e) => NumericFloat r e where
   sqrtPointwise = unsafeLiftArray sqrt
   {-# INLINE sqrtPointwise #-}
 
-  -- floorPointwise :: (RealFrac e, Index ix) => Array r ix e -> Array r ix e
-  -- floorPointwise = unsafeLiftArray (fromIntegral . floor)
-  -- {-# INLINE floorPointwise #-}
+class NumericRound r e a where
 
-  -- ceilingPointwise :: Index ix => Array r ix e -> Array r ix e
+  truncatePointwise :: Index ix => Array r ix e -> Array r ix a
+
+  roundPointwise :: Index ix => Array r ix e -> Array r ix a
+  -- roundPointwise = unsafeLiftArray round
+  -- {-# INLINE roundPointwise #-}
+
+  ceilingPointwise :: Index ix => Array r ix e -> Array r ix a
   -- ceilingPointwise = unsafeLiftArray ceiling
   -- {-# INLINE ceilingPointwise #-}
+
+  floorPointwise :: (RealFrac e, Index ix) => Array r ix e -> Array r ix a
+  -- floorPointwise = unsafeLiftArray floor
+  -- {-# INLINE floorPointwise #-}
 
 
 -- class Equality r e where

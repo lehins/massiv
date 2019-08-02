@@ -41,6 +41,7 @@ module Data.Massiv.Array.Numeric
   -- * Fractional
   , (./.)
   , (./)
+  , (/.)
   , (.^^)
   , recipA
   , fromRationalA
@@ -93,7 +94,7 @@ import Prelude as P
 
 
 infixr 8  .^, .^^
-infixl 7  .*., .*, *., ./., ./, `quotA`, `remA`, `divA`, `modA`
+infixl 7  .*., .*, *., ./., ./, /., `quotA`, `remA`, `divA`, `modA`
 infixl 6  .+., .+, +., .-., .-, -.
 
 liftArray2Matching
@@ -311,6 +312,10 @@ fromIntegerA = singleton . fromInteger
 (./) ::(Index ix,  NumericFloat r e) => Array r ix e -> e -> Array r ix e
 (./) = divideScalar
 {-# INLINE (./) #-}
+
+(/.) ::(Index ix,  NumericFloat r e) => e -> Array r ix e -> Array r ix e
+(/.) = flip recipMultiplyScalar
+{-# INLINE (/.) #-}
 
 (.^^)
   :: (Index ix, Numeric r e, Fractional e, Integral b)
