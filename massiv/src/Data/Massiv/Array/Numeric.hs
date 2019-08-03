@@ -46,7 +46,6 @@ module Data.Massiv.Array.Numeric
   , recipA
   , fromRationalA
   -- * Floating
-  , piA
   , expA
   , logA
   , sqrtA
@@ -113,7 +112,7 @@ liftArray2Matching f !arr1 !arr2
 {-# INLINE liftArray2Matching #-}
 
 liftArray2M ::
-     (Load r ix e, Numeric r e, MonadThrow m)
+     (Load r ix e, NumArray r e, MonadThrow m)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e
@@ -141,21 +140,21 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.+.) ::
-     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+     (Load r ix e, NumArray r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.+.) = liftNumericArray2M additionPointwise
 {-# INLINE (.+.) #-}
 
 -- | Add a scalar to each element of the array. Array is on the left.
 --
 -- @since 0.1.0
-(.+) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
+(.+) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
 (.+) = plusScalar
 {-# INLINE (.+) #-}
 
 -- | Add a scalar to each element of the array. Array is on the right.
 --
 -- @since 0.4.0
-(+.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
+(+.) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
 (+.) = flip plusScalar
 {-# INLINE (+.) #-}
 
@@ -164,7 +163,7 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.-.) ::
-     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+     (Load r ix e, NumArray r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.-.) = liftNumericArray2M subtractionPointwise
 {-# INLINE (.-.) #-}
 
@@ -172,14 +171,14 @@ liftNumericArray2M f a1 a2
 -- | Subtract a scalar from each element of the array. Array is on the left.
 --
 -- @since 0.1.0
-(.-) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
+(.-) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
 (.-) = minusScalar
 {-# INLINE (.-) #-}
 
 -- | Subtract a scalar from each element of the array. Array is on the right.
 --
 -- @since 0.4.0
-(-.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
+(-.) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
 (-.) = flip minusScalar
 {-# INLINE (-.) #-}
 
@@ -188,25 +187,25 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.*.) ::
-     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+     (Load r ix e, NumArray r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.*.) = liftNumericArray2M multiplicationPointwise
 {-# INLINE (.*.) #-}
 
-(.*) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
+(.*) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
 (.*) = multiplyScalar
 {-# INLINE (.*) #-}
 
-(*.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
+(*.) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
 (*.) = flip multiplyScalar
 {-# INLINE (*.) #-}
 
-(.^) :: (Index ix, Numeric r e) => Array r ix e -> Int -> Array r ix e
+(.^) :: (Index ix, NumArray r e) => Array r ix e -> Int -> Array r ix e
 (.^) = powerPointwise
 {-# INLINE (.^) #-}
 
 -- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
-     (Mutable r Ix2 e, Source r' Ix2 e, ReduceNumeric r e, MonadThrow m)
+     (Mutable r Ix2 e, Source r' Ix2 e, ReduceNumArray r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r' Ix2 e
   -> m (Array r Ix2 e)
@@ -219,7 +218,7 @@ liftNumericArray2M f a1 a2
  #-}
 
 multiplyTransposedFused ::
-     (Mutable r Ix2 e, ReduceNumeric r e, MonadThrow m)
+     (Mutable r Ix2 e, ReduceNumArray r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r Ix2 e
   -> m (Array r Ix2 e)
@@ -228,7 +227,7 @@ multiplyTransposedFused arr1 arr2 = compute <$> multiplyTransposed arr1 arr2
 
 
 multArrs ::
-     forall r r' e m. (Mutable r Ix2 e, Source r' Ix2 e, ReduceNumeric r e, MonadThrow m)
+     forall r r' e m. (Mutable r Ix2 e, Source r' Ix2 e, ReduceNumArray r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r' Ix2 e
   -> m (Array D Ix2 e)
@@ -239,7 +238,7 @@ multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
 {-# INLINE multArrs #-}
 
 multiplyTransposed ::
-     (Manifest r Ix2 e, ReduceNumeric r e, MonadThrow m)
+     (Manifest r Ix2 e, ReduceNumArray r e, MonadThrow m)
   => Array r Ix2 e
   -> Array r Ix2 e
   -> m (Array D Ix2 e)
@@ -257,7 +256,7 @@ multiplyTransposed arr1 arr2
 {-# INLINE multiplyTransposed #-}
 
 
-dotProductM :: (Source r ix e, ReduceNumeric r e, MonadThrow f) => Array r ix e -> Array r ix e -> f e
+dotProductM :: (Source r ix e, ReduceNumArray r e, MonadThrow f) => Array r ix e -> Array r ix e -> f e
 dotProductM arr1 arr2
   | size arr1 == size arr2 = pure $ splitReduce2Internal multiplySumArrayS (+) 0 arr1 arr2
   | otherwise = throwM $ SizeMismatchException (size arr1) (size arr2)
@@ -285,16 +284,16 @@ identityMatrix (Sz n) = makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) 
 {-# INLINE identityMatrix #-}
 
 
-negateA :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e
-negateA = unsafeLiftArray negate
+negateA :: (Index ix, NumArray r e) => Array r ix e -> Array r ix e
+negateA = liftArray negate
 {-# INLINE negateA #-}
 
-absA :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e
+absA :: (Index ix, NumArray r e) => Array r ix e -> Array r ix e
 absA = absPointwise
 {-# INLINE absA #-}
 
-signumA :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e
-signumA = unsafeLiftArray signum
+signumA :: (Index ix, NumArray r e) => Array r ix e -> Array r ix e
+signumA = liftArray signum
 {-# INLINE signumA #-}
 
 fromIntegerA :: (Index ix, Num e) => Integer -> Array D ix e
@@ -302,28 +301,28 @@ fromIntegerA = singleton . fromInteger
 {-# INLINE fromIntegerA #-}
 
 (./.) ::
-     (Load r ix e, NumericFloat r e, MonadThrow m)
+     (Load r ix e, FloatArray r e, MonadThrow m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
 (./.) = liftNumericArray2M divisionPointwise
 {-# INLINE (./.) #-}
 
-(./) ::(Index ix,  NumericFloat r e) => Array r ix e -> e -> Array r ix e
+(./) ::(Index ix,  FloatArray r e) => Array r ix e -> e -> Array r ix e
 (./) = divideScalar
 {-# INLINE (./) #-}
 
-(/.) ::(Index ix,  NumericFloat r e) => e -> Array r ix e -> Array r ix e
+(/.) ::(Index ix,  FloatArray r e) => e -> Array r ix e -> Array r ix e
 (/.) = flip recipMultiplyScalar
 {-# INLINE (/.) #-}
 
 (.^^)
-  :: (Index ix, Numeric r e, Fractional e, Integral b)
+  :: (Index ix, NumArray r e, Fractional e, Integral b)
   => Array r ix e -> b -> Array r ix e
-(.^^) arr n = unsafeLiftArray (^^ n) arr
+(.^^) arr n = liftArray (^^ n) arr
 {-# INLINE (.^^) #-}
 
-recipA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
+recipA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
 recipA = recipPointwise
 {-# INLINE recipA #-}
 
@@ -334,22 +333,16 @@ fromRationalA
 fromRationalA = singleton . fromRational
 {-# INLINE fromRationalA #-}
 
-piA
-  :: (Index ix, Floating e)
-  => Array D ix e
-piA = singleton pi
-{-# INLINE piA #-}
-
-expA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-expA = unsafeLiftArray exp
+expA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+expA = liftArray exp
 {-# INLINE expA #-}
 
-sqrtA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-sqrtA = unsafeLiftArray sqrt
+sqrtA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+sqrtA = liftArray sqrt
 {-# INLINE sqrtA #-}
 
-logA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-logA = unsafeLiftArray log
+logA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+logA = liftArray log
 {-# INLINE logA #-}
 
 logBaseA
@@ -366,52 +359,52 @@ logBaseA = liftArray2Matching logBase
 
 
 
-sinA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-sinA = unsafeLiftArray sin
+sinA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+sinA = liftArray sin
 {-# INLINE sinA #-}
 
-cosA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-cosA = unsafeLiftArray cos
+cosA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+cosA = liftArray cos
 {-# INLINE cosA #-}
 
-tanA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-tanA = unsafeLiftArray cos
+tanA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+tanA = liftArray cos
 {-# INLINE tanA #-}
 
-asinA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-asinA = unsafeLiftArray asin
+asinA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+asinA = liftArray asin
 {-# INLINE asinA #-}
 
-atanA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-atanA = unsafeLiftArray atan
+atanA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+atanA = liftArray atan
 {-# INLINE atanA #-}
 
-acosA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-acosA = unsafeLiftArray acos
+acosA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+acosA = liftArray acos
 {-# INLINE acosA #-}
 
-sinhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-sinhA = unsafeLiftArray sinh
+sinhA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+sinhA = liftArray sinh
 {-# INLINE sinhA #-}
 
-tanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-tanhA = unsafeLiftArray cos
+tanhA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+tanhA = liftArray cos
 {-# INLINE tanhA #-}
 
-coshA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-coshA = unsafeLiftArray cosh
+coshA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+coshA = liftArray cosh
 {-# INLINE coshA #-}
 
-asinhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-asinhA = unsafeLiftArray asinh
+asinhA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+asinhA = liftArray asinh
 {-# INLINE asinhA #-}
 
-acoshA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-acoshA = unsafeLiftArray acosh
+acoshA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+acoshA = liftArray acosh
 {-# INLINE acoshA #-}
 
-atanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-atanhA = unsafeLiftArray atanh
+atanhA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
+atanhA = liftArray atanh
 {-# INLINE atanhA #-}
 
 
@@ -481,40 +474,40 @@ floorA = A.map floor
 {-# INLINE floorA #-}
 
 atan2A ::
-     (Load r ix e, Numeric r e, RealFloat e, MonadThrow m)
+     (Load r ix e, NumArray r e, RealFloat e, MonadThrow m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
 atan2A = liftArray2M atan2
 {-# INLINE atan2A #-}
 
--- normL0 :: (Source r ix e, Numeric r e) => Array r ix e -> e
+-- normL0 :: (Source r ix e, NumArray r e) => Array r ix e -> e
 -- normL0 = -- count non-zero
 -- {-# INLINE normL0 #-}
 
-normL1 :: (Source r ix e, ReduceNumeric r e) => Array r ix e -> e
+normL1 :: (Source r ix e, ReduceNumArray r e) => Array r ix e -> e
 normL1 = splitReduceInternal (`absPowerSumArrayS` 1) (+) 0
 {-# INLINE normL1 #-}
 
-normL2 :: (Source r ix e, ReduceNumeric r e, Floating e) => Array r ix e -> e
+normL2 :: (Source r ix e, ReduceNumArray r e, Floating e) => Array r ix e -> e
 normL2 = sqrt . splitReduceInternal (`evenPowerSumArrayS` 2) (+) 0
 {-# INLINE normL2 #-}
 
-normL3 :: (Source r ix e, ReduceNumeric r e, Floating e) => Array r ix e -> e
+normL3 :: (Source r ix e, ReduceNumArray r e, Floating e) => Array r ix e -> e
 normL3 arr = splitReduceInternal (`absPowerSumArrayS` 3) (+) 0 arr ** (1 / fromIntegral (3 :: Int))
 {-# INLINE normL3 #-}
 
-normL4 :: (Source r ix e, ReduceNumeric r e, Floating e) => Array r ix e -> e
+normL4 :: (Source r ix e, ReduceNumArray r e, Floating e) => Array r ix e -> e
 normL4 = sqrt . sqrt . splitReduceInternal (`evenPowerSumArrayS` 4) (+) 0
 {-# INLINE normL4 #-}
 
-normLn :: (Source r ix e, ReduceNumeric r e, Floating e, MonadThrow m) => Int -> Array r ix e -> m e
+normLn :: (Source r ix e, ReduceNumArray r e, Floating e, MonadThrow m) => Int -> Array r ix e -> m e
 normLn n arr
   | n < 0 = throwM $ NegativeValue n
  --  | n == 0 = pure $ normL0 arr
   | otherwise = pure $ splitReduceInternal (`absPowerSumArrayS` n) (+) 0 arr ** (1 / fromIntegral n)
 {-# INLINE normLn #-}
 
--- normLinfinity :: (Source r ix e, Numeric r e) => Array r ix e -> e
+-- normLinfinity :: (Source r ix e, NumArray r e) => Array r ix e -> e
 -- normLinfinity = absMaximum
 -- {-# INLINE normLinfinity #-}

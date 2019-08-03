@@ -248,7 +248,15 @@ instance ( Prim e
   {-# INLINE toList #-}
 
 
-instance (Prim e, Num e) => ReduceNumeric P e where
+instance (Prim e, Num e) => NumArray P e where
+  liftArray = liftPArray
+  {-# INLINE liftArray #-}
+  unsafeLiftArray2 f a1 a2 =
+    makeArrayLinear (pComp a1 <> pComp a2) (pSize a1) $ \ !i ->
+      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
+  {-# INLINE unsafeLiftArray2 #-}
+
+instance (Prim e, Num e) => ReduceNumArray P e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
   {-# INLINE multiplySumArrayS #-}
   evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
@@ -256,17 +264,22 @@ instance (Prim e, Num e) => ReduceNumeric P e where
   absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
   {-# INLINE absPowerSumArrayS #-}
 
-instance (Prim e, Num e) => Numeric P e where
-  unsafeLiftArray f a = makeArrayLinear (pComp a) (pSize a) (f . unsafeLinearIndex a)
-  {-# INLINE unsafeLiftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    makeArrayLinear (pComp a1 <> pComp a2) (pSize a1) $ \ !i ->
-      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
+
+instance (Prim e, Floating e) => FloatArray P e where
+
+instance RoundFloatArray P Float Float where
+  roundPointwise = liftArray roundFloat
+  {-# INLINE roundPointwise #-}
+
+instance RoundFloatArray P Double Double where
+  roundPointwise = liftArray roundDouble
+  {-# INLINE roundPointwise #-}
 
 
--- | @since 0.4.1
-instance (Prim e, Floating e) => NumericFloat P e where
+
+liftPArray :: (Index ix, Prim b, Prim e) => (b -> e) -> Array P ix b -> Array P ix e
+liftPArray f a = makeArrayLinear (pComp a) (pSize a) (f . unsafeLinearIndex a)
+{-# INLINE liftPArray #-}
 
 
 

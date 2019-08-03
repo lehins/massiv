@@ -56,6 +56,9 @@ import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
 
+import Data.Int
+import GHC.Float (double2Int)
+
 #include "massiv.h"
 
 -- | Representation for `Storable` elements
@@ -232,7 +235,16 @@ instance ( VS.Storable e
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
-instance (Storable e, Num e) => ReduceNumeric S e where
+
+instance (Storable e, Num e) => NumArray S e where
+  liftArray = liftSArray
+  {-# INLINE liftArray #-}
+  unsafeLiftArray2 f a1 a2 =
+    makeArrayLinear (sComp a1 <> sComp a2) (sSize a1) $ \ !i ->
+      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
+  {-# INLINE unsafeLiftArray2 #-}
+
+instance (Storable e, Num e) => ReduceNumArray S e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
   {-# INLINE multiplySumArrayS #-}
   evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
@@ -240,20 +252,20 @@ instance (Storable e, Num e) => ReduceNumeric S e where
   absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
   {-# INLINE absPowerSumArrayS #-}
 
--- | @since 0.4.1
-instance (Storable e, Num e) => Numeric S e where
-  unsafeLiftArray f a = makeArrayLinear (sComp a) (sSize a) (f . unsafeLinearIndex a)
-  {-# INLINE unsafeLiftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    makeArrayLinear (sComp a1 <> sComp a2) (sSize a1) $ \ !i ->
-      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
 
+instance (Storable e, Floating e) => FloatArray S e where
 
--- | @since 0.4.1
-instance (Storable e, Floating e) => NumericFloat S e where
+instance RoundFloatArray S Float Float where
+  roundPointwise = liftSArray roundFloat
+  {-# INLINE roundPointwise #-}
 
+instance RoundFloatArray S Double Double where
+  roundPointwise = liftSArray roundDouble
+  {-# INLINE roundPointwise #-}
 
+liftSArray :: (Index ix, Storable b, Storable e) => (b -> e) -> Array S ix b -> Array S ix e
+liftSArray f a = makeArrayLinear (sComp a) (sSize a) (f . unsafeLinearIndex a)
+{-# INLINE liftSArray #-}
 
 -- | A pointer to the beginning of the storable array. It is unsafe since, if mutated, it can break
 -- referential transparency.

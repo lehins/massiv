@@ -27,8 +27,8 @@ import qualified Data.Foldable as F
 import Data.Massiv.Array.Ops.Fold.Internal as A
 import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
+import Data.Massiv.Core.Operations
 import GHC.Base (build)
 import Numeric
 import Prelude hiding (zipWith)
@@ -165,17 +165,17 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE (-) #-}
   (*)         = liftDArray2 (*)
   {-# INLINE (*) #-}
-  abs         = unsafeLiftArray abs
+  abs         = liftArray abs
   {-# INLINE abs #-}
-  signum      = unsafeLiftArray signum
+  signum      = liftArray signum
   {-# INLINE signum #-}
   fromInteger = singleton . fromInteger
   {-# INLINE fromInteger #-}
 
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
-  (/)          = unsafeLiftArray2 (/)
+  (/)          = liftDArray2 (/)
   {-# INLINE (/) #-}
-  recip        = unsafeLiftArray recip
+  recip        = liftArray recip
   {-# INLINE recip #-}
   fromRational = singleton . fromRational
   {-# INLINE fromRational #-}
@@ -184,29 +184,29 @@ instance (Index ix, Fractional e) => Fractional (Array D ix e) where
 instance (Index ix, Floating e) => Floating (Array D ix e) where
   pi    = singleton pi
   {-# INLINE pi #-}
-  exp   = unsafeLiftArray exp
+  exp   = liftArray exp
   {-# INLINE exp #-}
-  log   = unsafeLiftArray log
+  log   = liftArray log
   {-# INLINE log #-}
-  sin   = unsafeLiftArray sin
+  sin   = liftArray sin
   {-# INLINE sin #-}
-  cos   = unsafeLiftArray cos
+  cos   = liftArray cos
   {-# INLINE cos #-}
-  asin  = unsafeLiftArray asin
+  asin  = liftArray asin
   {-# INLINE asin #-}
-  atan  = unsafeLiftArray atan
+  atan  = liftArray atan
   {-# INLINE atan #-}
-  acos  = unsafeLiftArray acos
+  acos  = liftArray acos
   {-# INLINE acos #-}
-  sinh  = unsafeLiftArray sinh
+  sinh  = liftArray sinh
   {-# INLINE sinh #-}
-  cosh  = unsafeLiftArray cosh
+  cosh  = liftArray cosh
   {-# INLINE cosh #-}
-  asinh = unsafeLiftArray asinh
+  asinh = liftArray asinh
   {-# INLINE asinh #-}
-  atanh = unsafeLiftArray atanh
+  atanh = liftArray atanh
   {-# INLINE atanh #-}
-  acosh = unsafeLiftArray acosh
+  acosh = liftArray acosh
   {-# INLINE acosh #-}
 
   -- Override default implementation
@@ -214,16 +214,24 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
   {-# INLINE sqrt #-}
   (**) = liftDArray2 (**)
   {-# INLINE (**) #-}
-  tan = unsafeLiftArray tan
+  tan = liftArray tan
   {-# INLINE tan #-}
-  tanh = unsafeLiftArray tanh
+  tanh = liftArray tanh
   {-# INLINE tanh #-}
-  log1p = unsafeLiftArray log1p
+  log1p = liftArray log1p
   {-# INLINE log1p #-}
-  expm1 = unsafeLiftArray expm1
+  expm1 = liftArray expm1
   {-# INLINE expm1 #-}
 
-instance Num e => ReduceNumeric D e where
+instance Num e => NumArray D e where
+  liftArray f arr = arr {dIndex = f . dIndex arr}
+  {-# INLINE liftArray #-}
+  unsafeLiftArray2 f a1 a2 =
+    DArray (dComp a1 <> dComp a2) (dSize a1) $ \ !i -> f (dIndex a1 i) (dIndex a2 i)
+  {-# INLINE unsafeLiftArray2 #-}
+
+
+instance Num e => ReduceNumArray D e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise a1 a2)
   {-# INLINE multiplySumArrayS #-}
   evenPowerSumArrayS arr = sumArrayS . powerPointwise arr
@@ -231,17 +239,32 @@ instance Num e => ReduceNumeric D e where
   absPowerSumArrayS arr = sumArrayS . powerPointwise (absPointwise arr)
   {-# INLINE absPowerSumArrayS #-}
 
-instance Num e => Numeric D e where
-  unsafeLiftArray f arr = arr {dIndex = f . dIndex arr}
-  {-# INLINE unsafeLiftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    DArray (dComp a1 <> dComp a2) (dSize a1) $ \ !i -> f (dIndex a1 i) (dIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
 
+instance Floating e => FloatArray D e
 
-instance Floating e => NumericFloat D e
+instance RoundFloatArray D Float Int where
+  roundPointwise = liftDArray round
+  {-# INLINE roundPointwise #-}
 
+instance RoundFloatArray D Float Float where
+  roundPointwise = liftDArray roundFloat
+  {-# INLINE roundPointwise #-}
 
+instance RoundFloatArray D Double Int where
+  roundPointwise = liftDArray round
+  {-# INLINE roundPointwise #-}
+
+instance RoundFloatArray D Double Double where
+  roundPointwise = liftDArray roundDouble
+  {-# INLINE roundPointwise #-}
+
+-- | The usual map.
+liftDArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
+liftDArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
+{-# INLINE liftDArray #-}
+
+-- | A zipWith that, instead of computing intersection, throws an exception on mismatched
+-- dimensions.
 liftDArray2 :: Index ix => (t1 -> t2 -> e) -> Array D ix t1 -> Array D ix t2 -> Array D ix e
 liftDArray2 f a1 a2
   | sz1 == sz2 = DArray (dComp a1 <> dComp a2) sz1 $ \i -> f (dIndex a1 i) (dIndex a2 i)
@@ -250,7 +273,6 @@ liftDArray2 f a1 a2
     sz1 = size a1
     sz2 = size a2
 {-# INLINE liftDArray2 #-}
-
 
 
 
@@ -263,8 +285,8 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 "delay" [~1] forall (arr :: Array D ix e) . delay arr = arr
  #-}
 
--- TODO: switch to zipWith
--- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
+
+-- | /O(n)/ - Compute array equality by applying a comparing function to each element.
 eq :: (Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
@@ -274,7 +296,7 @@ eq f arr1 arr2 =
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE eq #-}
 
--- | /O(min (n1, n2))/ - Compute array ordering by applying a comparing function to each element.
+-- | /O(n)/ - Compute array ordering by applying a comparing function to each element.
 -- The exact ordering is unspecified so this is only intended for use in maps and the like where
 -- you need an ordering but do not care about which one is used.
 ord :: (Source r1 ix e1, Source r2 ix e2) =>
@@ -287,10 +309,6 @@ ord f arr1 arr2 =
 {-# INLINE ord #-}
 
 
--- -- | The usual map.
--- liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
--- liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
--- {-# INLINE liftArray #-}
 
 -- -- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays either have to be the
 -- -- same, or at least one of the two array must be a singleton array, in which case it will behave as

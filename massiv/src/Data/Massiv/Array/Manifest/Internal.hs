@@ -214,7 +214,7 @@ unsafeLiftMArray2 f a1 a2 =
 {-# INLINE unsafeLiftMArray2 #-}
 
 
-instance Num e => ReduceNumeric M e where
+instance Num e => ReduceNumArray M e where
   multiplySumArrayS a1 a2 = sumArrayS $ unsafeLiftMArray2 (*) a1 a2
   {-# INLINE multiplySumArrayS #-}
   evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)

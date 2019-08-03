@@ -30,7 +30,6 @@ module Data.Massiv.Array.Ops.Fold
   , maximumM
   , maximum'
   , sum
-  , sum'
   , product
   , and
   , or
@@ -436,26 +435,22 @@ minimum' = either throw id . minimumM
 -- | /O(n)/ - Compute sum of all elements.
 --
 -- @since 0.1.0
-sum' ::
-     forall r ix e. (Source r ix e, ReduceNumeric r e)
+sum ::
+     forall r ix e. (Source r ix e, ReduceNumArray r e)
   => Array r ix e
   -> e
-sum' = splitReduceInternal sumArrayS (+) 0
-{-# INLINE sum' #-}
-
--- | /O(n)/ - Compute sum of all elements.
---
--- @since 0.1.0
-sum :: (Source r ix e, Num e) => Array r ix e -> e
-sum = foldlInternal (+) 0 (+) 0
+sum = splitReduceInternal sumArrayS (+) 0
 {-# INLINE sum #-}
 
 
 -- | /O(n)/ - Compute product of all elements.
 --
 -- @since 0.1.0
-product :: (Source r ix e, Num e) => Array r ix e -> e
-product = foldlInternal (*) 1 (*) 1
+product ::
+     forall r ix e. (Source r ix e, ReduceNumArray r e)
+  => Array r ix e
+  -> e
+product = splitReduceInternal productArrayS (*) 1
 {-# INLINE product #-}
 
 
