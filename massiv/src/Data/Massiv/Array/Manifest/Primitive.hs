@@ -41,6 +41,7 @@ module Data.Massiv.Array.Manifest.Primitive
 
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.Primitive (PrimMonad(primitive), PrimState, primitive_)
+import Control.Monad.ST (runST)
 import Data.Massiv.Array.Delayed.Pull (eq, ord, delay)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
@@ -85,11 +86,12 @@ instance (Prim e, Ord e, Index ix) => Ord (Array P ix e) where
   {-# INLINE compare #-}
 
 instance (Prim e, Index ix) => Construct P ix e where
-  setComp c arr = arr { pComp = c }
-  {-# INLINE setComp #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
+  makeConstantArray sz e = runST $ unsafeFreeze Seq =<< initializeNew (Just e) sz
+  {-# INLINE makeConstantArray #-}
+
 
 instance (Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex (PArray _ _sz o a) i =
@@ -224,6 +226,8 @@ instance (Prim e, Index ix) => Load P ix e where
   {-# INLINE size #-}
   getComp = pComp
   {-# INLINE getComp #-}
+  setComp c arr = arr { pComp = c }
+  {-# INLINE setComp #-}
   loadArrayM !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
@@ -249,12 +253,10 @@ instance ( Prim e
 
 
 instance (Prim e, Num e) => NumArray P e where
-  liftArray = liftPArray
-  {-# INLINE liftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    makeArrayLinear (pComp a1 <> pComp a2) (pSize a1) $ \ !i ->
-      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
+  liftNumArray = liftArray
+  {-# INLINE liftNumArray #-}
+  unsafeLiftNumArray2 = unsafeLiftArray2
+  {-# INLINE unsafeLiftNumArray2 #-}
 
 instance (Prim e, Num e) => ReduceNumArray P e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
@@ -263,7 +265,10 @@ instance (Prim e, Num e) => ReduceNumArray P e where
   {-# INLINE evenPowerSumArrayS #-}
   absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
   {-# INLINE absPowerSumArrayS #-}
+  absMaxArrayS = maximumArrayS 0 . absPointwise . delay
+  {-# INLINE absMaxArrayS #-}
 
+instance (Prim e, Ord e) => ReduceOrdArray P e
 
 instance (Prim e, Floating e) => FloatArray P e where
 

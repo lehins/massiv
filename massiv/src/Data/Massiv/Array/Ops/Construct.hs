@@ -26,6 +26,7 @@ module Data.Massiv.Array.Ops.Construct
   , makeArrayR
   , makeArrayLinearR
   , makeVectorR
+  , makeConstantArray
     -- *** Iterating
   , iterateN
   , iiterateN
@@ -108,7 +109,7 @@ makeArrayLinearR _ = makeArrayLinear
 -- | Same as `makeArrayR`, but restricted to 1-dimensional arrays.
 --
 -- @since 0.1.0
-makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix1 e
+makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Vector r e
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
@@ -117,7 +118,7 @@ makeVectorR _ = makeArray
 --
 -- @since 0.3.0
 replicate :: forall r ix e . Construct r ix e => Comp -> Sz ix -> e -> Array r ix e
-replicate comp sz e = makeArray comp sz (const e)
+replicate comp sz e = makeArrayLinear comp sz (const e)
 {-# INLINE replicate #-}
 
 

@@ -26,8 +26,10 @@ module Data.Massiv.Array.Ops.Fold
   , foldInnerSlice
   , ifoldInnerSlice
   , minimumM
+  , minimumM'
   , minimum'
   , maximumM
+  , maximumM'
   , maximum'
   , sum
   , product
@@ -424,7 +426,32 @@ minimumM arr =
             in pure $ foldlInternal min e0 min e0 arr
 {-# INLINE minimumM #-}
 
--- | /O(n)/ - Compute minimum of all elements.
+
+-- | /O(n)/ - Find the minimum of all elements in the array. Throws `SizeEmptyException`
+-- when supplied array is empty.
+--
+-- @since 0.3.0
+minimumM' :: (Source r ix e, ReduceOrdArray r e, MonadThrow m) => Array r ix e -> m e
+minimumM' arr =
+    if isEmpty arr
+      then throwM (SizeEmptyException (size arr))
+      else let !e0 = unsafeIndex arr zeroIndex
+            in pure $ splitReduceInternal (minimumArrayS e0) min e0 arr
+{-# INLINE minimumM' #-}
+
+-- | /O(n)/ - Find the maximum of all elements in the array. Throws `SizeEmptyException`
+-- when supplied array is empty.
+--
+-- @since 0.3.0x
+maximumM' :: (Source r ix e, ReduceOrdArray r e, MonadThrow m) => Array r ix e -> m e
+maximumM' arr =
+    if isEmpty arr
+      then throwM (SizeEmptyException (size arr))
+      else let !e0 = unsafeIndex arr zeroIndex
+            in pure $ splitReduceInternal (maximumArrayS e0) min e0 arr
+{-# INLINE maximumM' #-}
+
+-- | /O(n)/ - Same as `minimumM`, but throws a pure exception.
 --
 -- @since 0.3.0
 minimum' :: (Source r ix e, Ord e) => Array r ix e -> e

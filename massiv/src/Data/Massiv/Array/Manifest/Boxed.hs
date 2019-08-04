@@ -40,7 +40,7 @@ import Control.Monad ((>=>))
 import Control.Monad.Primitive
 import Control.Monad.ST (runST)
 import qualified Data.Foldable as F (Foldable(..))
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Pull (eq, ord, delay)
 import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
 import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
@@ -52,6 +52,7 @@ import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Array.Ops.Map (traverseA)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
 import qualified Data.Primitive.Array as A
 import qualified Data.Vector as VB
 import qualified Data.Vector.Mutable as VB
@@ -112,9 +113,6 @@ instance (Index ix, Ord e) => Ord (Array B ix e) where
   {-# INLINE compare #-}
 
 instance Index ix => Construct B ix e where
-  setComp c arr = arr { bComp = c }
-  {-# INLINE setComp #-}
-
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (\ !i -> return $! f i)
   {-# INLINE makeArrayLinear #-}
 
@@ -202,6 +200,8 @@ instance Index ix => Load B ix e where
   {-# INLINE size #-}
   getComp = bComp
   {-# INLINE getComp #-}
+  setComp c arr = arr { bComp = c }
+  {-# INLINE setComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -254,6 +254,19 @@ instance ( IsList (Array L ix e)
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
+instance Num e => ReduceNumArray B e where
+  multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
+  {-# INLINE multiplySumArrayS #-}
+  evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
+  {-# INLINE evenPowerSumArrayS #-}
+  absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
+  {-# INLINE absPowerSumArrayS #-}
+  absMaxArrayS = maximumArrayS 0 . absPointwise . delay
+  {-# INLINE absMaxArrayS #-}
+
+instance Ord e => ReduceOrdArray B e
+
+
 -----------------------
 -- Boxed Normal Form --
 -----------------------
@@ -283,8 +296,6 @@ instance (Index ix, NFData e, Ord e) => Ord (Array N ix e) where
 
 
 instance (Index ix, NFData e) => Construct N ix e where
-  setComp c (NArray arr) = NArray (arr {bComp = c})
-  {-# INLINE setComp #-}
   makeArray !comp !sz f =
     unsafePerformIO $
     generateArray
@@ -376,6 +387,8 @@ instance (Index ix, NFData e) => Load N ix e where
   {-# INLINE size #-}
   getComp = bComp . bArray
   {-# INLINE getComp #-}
+  setComp c (NArray arr) = NArray (arr {bComp = c})
+  {-# INLINE setComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -398,6 +411,19 @@ instance ( NFData e
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
+
+instance (NFData e, Num e) => ReduceNumArray N e where
+  multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
+  {-# INLINE multiplySumArrayS #-}
+  evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
+  {-# INLINE evenPowerSumArrayS #-}
+  absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
+  {-# INLINE absPowerSumArrayS #-}
+  absMaxArrayS = maximumArrayS 0 . absPointwise . delay
+  {-# INLINE absMaxArrayS #-}
+
+instance (NFData e, Ord e) => ReduceOrdArray N e
+
 
 
 ----------------------

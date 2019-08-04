@@ -194,6 +194,8 @@ instance Index ix => Load M ix e where
   {-# INLINE size #-}
   getComp = mComp
   {-# INLINE getComp #-}
+  setComp c arr = arr { mComp = c }
+  {-# INLINE setComp #-}
   loadArrayM scheduler (MArray _ sz f) = splitLinearlyWith_ scheduler (totalElem sz) f
   {-# INLINE loadArrayM #-}
 
@@ -204,10 +206,6 @@ instance Index ix => Stream M ix e where
   {-# INLINE toStream #-}
 
 
--- liftMArray :: (b -> e) -> Array M ix b -> Array M ix e
--- liftMArray f arr = arr {mLinearIndex = f . mLinearIndex arr}
--- {-# INLINE liftMArray #-}
-
 unsafeLiftMArray2 :: (t1 -> t2 -> e) -> Array M ix t1 -> Array M ix t2 -> Array M ix e
 unsafeLiftMArray2 f a1 a2 =
     MArray (mComp a1 <> mComp a2) (mSize a1) $ \ !i -> f (mLinearIndex a1 i) (mLinearIndex a2 i)
@@ -215,12 +213,16 @@ unsafeLiftMArray2 f a1 a2 =
 
 
 instance Num e => ReduceNumArray M e where
-  multiplySumArrayS a1 a2 = sumArrayS $ unsafeLiftMArray2 (*) a1 a2
+  multiplySumArrayS a1 a2 = sumArrayS $ unsafeLiftMArray2 (*) a1 a2 -- TODO: delay and benchmark
   {-# INLINE multiplySumArrayS #-}
   evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
   {-# INLINE evenPowerSumArrayS #-}
   absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
   {-# INLINE absPowerSumArrayS #-}
+  absMaxArrayS = maximumArrayS 0 . absPointwise . delay
+  {-# INLINE absMaxArrayS #-}
+
+instance Ord e => ReduceOrdArray M e
 
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the

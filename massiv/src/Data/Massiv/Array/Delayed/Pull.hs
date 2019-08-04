@@ -60,9 +60,6 @@ instance Index ix => Extract D ix e where
 
 
 instance Index ix => Construct D ix e where
-  setComp c arr = arr { dComp = c }
-  {-# INLINE setComp #-}
-
   makeArray = DArray
   {-# INLINE makeArray #-}
 
@@ -147,6 +144,8 @@ instance Index ix => Load D ix e where
   {-# INLINE size #-}
   getComp = dComp
   {-# INLINE getComp #-}
+  setComp c arr = arr { dComp = c }
+  {-# INLINE setComp #-}
   loadArrayM !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
@@ -159,11 +158,11 @@ instance Index ix => Stream D ix e where
 
 
 instance (Index ix, Num e) => Num (Array D ix e) where
-  (+)         = liftDArray2 (+)
+  (+)         = liftArray2' (+)
   {-# INLINE (+) #-}
-  (-)         = liftDArray2 (-)
+  (-)         = liftArray2' (-)
   {-# INLINE (-) #-}
-  (*)         = liftDArray2 (*)
+  (*)         = liftArray2' (*)
   {-# INLINE (*) #-}
   abs         = liftArray abs
   {-# INLINE abs #-}
@@ -173,7 +172,7 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE fromInteger #-}
 
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
-  (/)          = liftDArray2 (/)
+  (/)          = liftArray2' (/)
   {-# INLINE (/) #-}
   recip        = liftArray recip
   {-# INLINE recip #-}
@@ -212,7 +211,7 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
   -- Override default implementation
   sqrt = sqrtPointwise
   {-# INLINE sqrt #-}
-  (**) = liftDArray2 (**)
+  (**) = liftArray2' (**)
   {-# INLINE (**) #-}
   tan = liftArray tan
   {-# INLINE tan #-}
@@ -224,56 +223,40 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
   {-# INLINE expm1 #-}
 
 instance Num e => NumArray D e where
-  liftArray f arr = arr {dIndex = f . dIndex arr}
-  {-# INLINE liftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    DArray (dComp a1 <> dComp a2) (dSize a1) $ \ !i -> f (dIndex a1 i) (dIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
-
+  liftNumArray = liftArray
+  {-# INLINE liftNumArray #-}
+  unsafeLiftNumArray2 = unsafeLiftArray2
+  {-# INLINE unsafeLiftNumArray2 #-}
 
 instance Num e => ReduceNumArray D e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise a1 a2)
   {-# INLINE multiplySumArrayS #-}
-  evenPowerSumArrayS arr = sumArrayS . powerPointwise arr
+  evenPowerSumArrayS arr = sumArrayS . powerScalar arr
   {-# INLINE evenPowerSumArrayS #-}
-  absPowerSumArrayS arr = sumArrayS . powerPointwise (absPointwise arr)
+  absPowerSumArrayS arr = sumArrayS . powerScalar (absPointwise arr)
   {-# INLINE absPowerSumArrayS #-}
+  absMaxArrayS = maximumArrayS 0 . absPointwise
+  {-# INLINE absMaxArrayS #-}
 
+instance Ord e => ReduceOrdArray D e
 
 instance Floating e => FloatArray D e
 
 instance RoundFloatArray D Float Int where
-  roundPointwise = liftDArray round
+  roundPointwise = liftArray round
   {-# INLINE roundPointwise #-}
 
 instance RoundFloatArray D Float Float where
-  roundPointwise = liftDArray roundFloat
+  roundPointwise = liftArray roundFloat
   {-# INLINE roundPointwise #-}
 
 instance RoundFloatArray D Double Int where
-  roundPointwise = liftDArray round
+  roundPointwise = liftArray round
   {-# INLINE roundPointwise #-}
 
 instance RoundFloatArray D Double Double where
-  roundPointwise = liftDArray roundDouble
+  roundPointwise = liftArray roundDouble
   {-# INLINE roundPointwise #-}
-
--- | The usual map.
-liftDArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
-liftDArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
-{-# INLINE liftDArray #-}
-
--- | A zipWith that, instead of computing intersection, throws an exception on mismatched
--- dimensions.
-liftDArray2 :: Index ix => (t1 -> t2 -> e) -> Array D ix t1 -> Array D ix t2 -> Array D ix e
-liftDArray2 f a1 a2
-  | sz1 == sz2 = DArray (dComp a1 <> dComp a2) sz1 $ \i -> f (dIndex a1 i) (dIndex a2 i)
-  | otherwise = throw $ SizeMismatchException sz1 sz2
-  where
-    sz1 = size a1
-    sz2 = size a2
-{-# INLINE liftDArray2 #-}
-
 
 
 -- | /O(1)/ Conversion from a source array to `D` representation.
@@ -315,10 +298,10 @@ ord f arr1 arr2 =
 -- -- a `Data.Massiv.Array.map`.
 -- --
 -- -- @since 0.1.4
--- liftDArray2
+-- liftArray2'
 --   :: (Source r1 ix a, Source r2 ix b)
 --   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
--- liftDArray2 f !arr1 !arr2
+-- liftArray2' f !arr1 !arr2
 --   | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
 --   | sz2 == oneSz = liftArray (`f` unsafeIndex arr2 zeroIndex) arr1
 --   | sz1 == sz2 =
@@ -327,6 +310,6 @@ ord f arr1 arr2 =
 --   where
 --     sz1 = size arr1
 --     sz2 = size arr2
--- {-# INLINE liftDArray2 #-}
+-- {-# INLINE liftArray2' #-}
 
 

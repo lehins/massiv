@@ -23,13 +23,15 @@ module Data.Massiv.Array.Manifest.Unboxed
   , toUnboxedMVector
   ) where
 
+import Control.Monad.ST (runST)
 import Control.DeepSeq (NFData(..), deepseq)
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Pull (eq, ord, delay)
 import Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
+import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Unboxed as VU
@@ -58,12 +60,11 @@ instance NFData ix => NFData (Array U ix e) where
 
 
 instance (VU.Unbox e, Index ix) => Construct U ix e where
-  setComp c arr = arr { uComp = c }
-  {-# INLINE setComp #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
-
+  makeConstantArray sz e = runST $ unsafeFreeze Seq =<< initializeNew (Just e) sz
+  {-# INLINE makeConstantArray #-}
 
 instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
   (==) = eq (==)
@@ -94,6 +95,8 @@ instance (VU.Unbox e, Index ix) => Load U ix e where
   type R U = M
   size = uSize
   {-# INLINE size #-}
+  setComp c arr = arr { uComp = c }
+  {-# INLINE setComp #-}
   getComp = uComp
   {-# INLINE getComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
@@ -204,6 +207,27 @@ instance ( VU.Unbox e
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
+
+
+instance (VU.Unbox e, Num e) => NumArray U e where
+  liftNumArray = liftArray
+  {-# INLINE liftNumArray #-}
+  unsafeLiftNumArray2 = unsafeLiftArray2
+  {-# INLINE unsafeLiftNumArray2 #-}
+
+
+instance (VU.Unbox e, Num e) => ReduceNumArray U e where
+  multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
+  {-# INLINE multiplySumArrayS #-}
+  evenPowerSumArrayS arr = evenPowerSumArrayS (delay arr)
+  {-# INLINE evenPowerSumArrayS #-}
+  absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
+  {-# INLINE absPowerSumArrayS #-}
+  absMaxArrayS = maximumArrayS 0 . absPointwise . delay
+  {-# INLINE absMaxArrayS #-}
+
+instance (VU.Unbox e, Ord e) => ReduceOrdArray U e
+
 
 
 -- | /O(1)/ - Unwrap unboxed array and pull out the underlying unboxed vector.

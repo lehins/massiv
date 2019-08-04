@@ -37,9 +37,6 @@ instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
   showList = showArrayList
 
 instance Index ix => Construct DI ix e where
-  setComp c arr = arr { diArray = (diArray arr) { dComp = c } }
-  {-# INLINE setComp #-}
-
   makeArray c sz = DIArray . makeArray c sz
   {-# INLINE makeArray #-}
 
@@ -57,6 +54,8 @@ instance Index ix => Load DI ix e where
   {-# INLINE size #-}
   getComp = dComp . diArray
   {-# INLINE getComp #-}
+  setComp c arr = arr { diArray = (diArray arr) { dComp = c } }
+  {-# INLINE setComp #-}
   loadArrayM scheduler (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       scheduleWork scheduler $

@@ -7,7 +7,9 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core
-  ( Array(List, unList)
+  ( Matrix
+  , Vector
+  , Array(List, unList)
   , Elt
   , Construct
   , Load(R, loadArrayM, defaultElement)

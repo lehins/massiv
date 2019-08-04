@@ -15,6 +15,7 @@ module Data.Massiv.Core.Operations
   ( NumArray(..)
   , FloatArray(..)
   , ReduceNumArray(..)
+  , ReduceOrdArray(..)
   , RoundFloatArray(..)
   , roundDouble
   , roundFloat
@@ -30,36 +31,43 @@ import Data.Massiv.Array.Ops.Fold.Internal
 -- | Pointwise operations on arrays with numers
 --
 -- @since 0.4.1
-class Num e => NumArray r e where
+class ReduceNumArray r e => NumArray r e where
 
-  {-# MINIMAL liftArray, unsafeLiftArray2 #-}
+  {-# MINIMAL liftNumArray, unsafeLiftNumArray2 #-}
 
   -- | Add a scalar froto each element in the array. Respect computation strategy.
   --
   -- @since 0.4.0
   plusScalar :: Index ix => Array r ix e -> e -> Array r ix e
-  plusScalar arr e = liftArray (+ e) arr
+  plusScalar arr e = liftNumArray (+ e) arr
   {-# INLINE plusScalar #-}
 
   -- | Subtract a scalar from each element in the array. Respect computation strategy.
   --
   -- @since 0.4.0
   minusScalar :: Index ix => Array r ix e -> e -> Array r ix e
-  minusScalar arr e = liftArray (subtract e) arr
+  minusScalar arr e = liftNumArray (subtract e) arr
   {-# INLINE minusScalar #-}
 
   -- | Multiply each element in the array. Respect computation strategy.
   --
   -- @since 0.4.0
   multiplyScalar :: Index ix => Array r ix e -> e -> Array r ix e
-  multiplyScalar arr e = liftArray (* e) arr
+  multiplyScalar arr e = liftNumArray (* e) arr
   {-# INLINE multiplyScalar #-}
+
+  -- | Raise each element of the array to some positive power. Respect computation strategy.
+  --
+  -- @since 0.4.0
+  powerScalar :: Index ix => Array r ix e -> Int -> Array r ix e
+  powerScalar arr pow = liftNumArray (^ pow) arr
+  {-# INLINE powerScalar #-}
 
   -- | Compute absolute value of each element in the array. Respect computation strategy.
   --
   -- @since 0.4.0
   absPointwise :: Index ix => Array r ix e -> Array r ix e
-  absPointwise = liftArray abs
+  absPointwise = liftNumArray abs
   {-# INLINE absPointwise #-}
 
   -- | Subtract two arrays pointwise.  Assume both arrays are of the same size. Respect
@@ -67,7 +75,7 @@ class Num e => NumArray r e where
   --
   -- @since 0.4.0
   additionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
-  additionPointwise = unsafeLiftArray2 (+)
+  additionPointwise = unsafeLiftNumArray2 (+)
   {-# INLINE additionPointwise #-}
 
   -- | Subtract one array from another pointwise. Assume both arrays are of the same size.
@@ -75,7 +83,7 @@ class Num e => NumArray r e where
   --
   -- @since 0.4.0
   subtractionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
-  subtractionPointwise = unsafeLiftArray2 (-)
+  subtractionPointwise = unsafeLiftNumArray2 (-)
   {-# INLINE subtractionPointwise #-}
 
   -- | Multiply two arrays pointwise. Assume both arrays are of the same size.  Respect
@@ -83,29 +91,21 @@ class Num e => NumArray r e where
   --
   -- @since 0.4.0
   multiplicationPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
-  multiplicationPointwise = unsafeLiftArray2 (*)
+  multiplicationPointwise = unsafeLiftNumArray2 (*)
   {-# INLINE multiplicationPointwise #-}
-
-  -- | Raise each element of the array to the power. Respect computation strategy.
-  --
-  -- @since 0.4.0
-  powerPointwise :: Index ix => Array r ix e -> Int -> Array r ix e
-  powerPointwise arr pow = liftArray (^ pow) arr
-  {-# INLINE powerPointwise #-}
-
 
   -- | Apply a function to each element of the array without changing the element
   -- type. Respect computation strategy.
   --
-  -- @since 0.4.0
-  liftArray :: Index ix => (e -> e) -> Array r ix e -> Array r ix e
+  -- @since 0.4.1
+  liftNumArray :: Index ix => (e -> e) -> Array r ix e -> Array r ix e
 
   -- | Apply a binary function to elements of two arrays pointwise. Type of arrays and
   -- elements does not change. Assumes both arrays are of the same size, therefore it is
   -- unsafe. Respect computation strategy.
   --
   -- @since 0.4.0
-  unsafeLiftArray2 :: Index ix => (e -> e -> e) -> Array r ix e -> Array r ix e -> Array r ix e
+  unsafeLiftNumArray2 :: Index ix => (e -> e -> e) -> Array r ix e -> Array r ix e -> Array r ix e
 
 -- | Recucing operations on arrays with numbers
 --
@@ -146,29 +146,45 @@ class Num e => ReduceNumArray r e where
   -- @since 0.4.1
   absPowerSumArrayS :: Index ix => Array r ix e -> Int -> e
 
+  -- | Get the maximum aboslute valuein the array.
+  --
+  -- @since 0.4.1
+  absMaxArrayS :: (Ord e, Index ix) => Array r ix e -> e
+
+class Ord e => ReduceOrdArray r e where
+
+  maximumArrayS :: Index ix => e -> Array r ix e -> e
+  default maximumArrayS :: Source r ix e => e -> Array r ix e -> e
+  maximumArrayS = foldlS max
+  {-# INLINE maximumArrayS #-}
+
+  minimumArrayS :: Index ix => e -> Array r ix e -> e
+  default minimumArrayS :: Source r ix e => e -> Array r ix e -> e
+  minimumArrayS = foldlS min
+  {-# INLINE minimumArrayS #-}
 
 -- | Operations on arrays with floating point numers
 --
 -- @since 0.4.1
 class (NumArray r e, Floating e) => FloatArray r e where
   divideScalar :: Index ix => Array r ix e -> e -> Array r ix e
-  divideScalar arr e = liftArray (/ e) arr
+  divideScalar arr e = liftNumArray (/ e) arr
   {-# INLINE divideScalar #-}
 
   recipMultiplyScalar :: Index ix => Array r ix e -> e -> Array r ix e
-  recipMultiplyScalar arr e = liftArray (e /) arr
+  recipMultiplyScalar arr e = liftNumArray (e /) arr
   {-# INLINE recipMultiplyScalar #-}
 
   divisionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
-  divisionPointwise = unsafeLiftArray2 (/)
+  divisionPointwise = unsafeLiftNumArray2 (/)
   {-# INLINE divisionPointwise #-}
 
   recipPointwise :: Index ix => Array r ix e -> Array r ix e
-  recipPointwise = liftArray recip
+  recipPointwise = liftNumArray recip
   {-# INLINE recipPointwise #-}
 
   sqrtPointwise :: Index ix => Array r ix e -> Array r ix e
-  sqrtPointwise = liftArray sqrt
+  sqrtPointwise = liftNumArray sqrt
   {-# INLINE sqrtPointwise #-}
 
 

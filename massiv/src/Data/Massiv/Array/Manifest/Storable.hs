@@ -34,6 +34,7 @@ module Data.Massiv.Array.Manifest.Storable
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (unsafePrimToPrim)
+import Control.Monad.ST (runST)
 import Data.Massiv.Array.Delayed.Pull (eq, ord, delay)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
@@ -55,9 +56,6 @@ import GHC.Exts as GHC (IsList(..))
 import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
-
-import Data.Int
-import GHC.Float (double2Int)
 
 #include "massiv.h"
 
@@ -86,11 +84,11 @@ instance (VS.Storable e, Ord e, Index ix) => Ord (Array S ix e) where
   {-# INLINE compare #-}
 
 instance (VS.Storable e, Index ix) => Construct S ix e where
-  setComp c arr = arr { sComp = c }
-  {-# INLINE setComp #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
+  makeConstantArray sz e = runST $ unsafeFreeze Seq =<< initializeNew (Just e) sz
+  {-# INLINE makeConstantArray #-}
 
 
 instance (VS.Storable e, Index ix) => Source S ix e where
@@ -212,6 +210,8 @@ instance (Index ix, VS.Storable e) => Load S ix e where
   {-# INLINE size #-}
   getComp = sComp
   {-# INLINE getComp #-}
+  setComp c arr = arr { sComp = c }
+  {-# INLINE setComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -235,14 +235,11 @@ instance ( VS.Storable e
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
-
 instance (Storable e, Num e) => NumArray S e where
-  liftArray = liftSArray
-  {-# INLINE liftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    makeArrayLinear (sComp a1 <> sComp a2) (sSize a1) $ \ !i ->
-      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
+  liftNumArray = liftArray
+  {-# INLINE liftNumArray #-}
+  unsafeLiftNumArray2 = unsafeLiftArray2
+  {-# INLINE unsafeLiftNumArray2 #-}
 
 instance (Storable e, Num e) => ReduceNumArray S e where
   multiplySumArrayS a1 a2 = sumArrayS (multiplicationPointwise (delay a1) (delay a2))
@@ -251,7 +248,10 @@ instance (Storable e, Num e) => ReduceNumArray S e where
   {-# INLINE evenPowerSumArrayS #-}
   absPowerSumArrayS arr = absPowerSumArrayS (delay arr)
   {-# INLINE absPowerSumArrayS #-}
+  absMaxArrayS = maximumArrayS 0 . absPointwise . delay
+  {-# INLINE absMaxArrayS #-}
 
+instance (Storable e, Ord e) => ReduceOrdArray S e
 
 instance (Storable e, Floating e) => FloatArray S e where
 

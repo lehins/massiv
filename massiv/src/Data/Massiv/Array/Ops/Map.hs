@@ -13,6 +13,9 @@
 module Data.Massiv.Array.Ops.Map
   ( map
   , imap
+  , liftArray
+  , liftArray2'
+  , liftArray2M
   -- ** Traversing
   -- *** Applicative
   , traverseA

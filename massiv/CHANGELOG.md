@@ -1,3 +1,8 @@
+=======
+# 0.5.0
+
+* Move `setComp` into `Load` class.
+
 # 0.4.5
 
 * Addition of `computeIO` and `computePrimM`

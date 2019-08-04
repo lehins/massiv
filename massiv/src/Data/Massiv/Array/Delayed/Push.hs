@@ -53,8 +53,6 @@ data instance Array DL ix e = DLArray
   }
 
 instance Index ix => Construct DL ix e where
-  setComp c arr = arr {dlComp = c}
-  {-# INLINE setComp #-}
   makeArrayLinear comp sz f =
     DLArray comp sz Nothing $ \scheduler startAt dlWrite ->
       splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
@@ -271,6 +269,8 @@ instance Index ix => Load DL ix e where
   {-# INLINE size #-}
   getComp = dlComp
   {-# INLINE getComp #-}
+  setComp c arr = arr {dlComp = c}
+  {-# INLINE setComp #-}
   loadArrayM scheduler DLArray {dlLoad} = dlLoad scheduler 0
   {-# INLINE loadArrayM #-}
   defaultElement = dlDefault

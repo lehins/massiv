@@ -26,6 +26,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeExtract
   , unsafeTransform
   , unsafeTransform2
+  , unsafeLiftArray2
     -- * Slicing
   , unsafeSlice
   , unsafeOuterSlice

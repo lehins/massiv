@@ -15,6 +15,8 @@
 -- Portability : non-portable
 module Data.Massiv.Core.Common
   ( Array
+  , Matrix
+  , Vector
   , Elt
   , Steps(..)
   , Stream(..)
@@ -66,6 +68,10 @@ module Data.Massiv.Core.Common
   , module Data.Massiv.Core.Index
   -- * Common Operations
   , imapM_
+  , liftArray
+  , liftArray2'
+  , liftArray2M
+  , unsafeLiftArray2
   , Semigroup((<>))
   -- * Exceptions
   , MonadThrow(..)
@@ -107,6 +113,10 @@ import Data.Vector.Fusion.Util
 -- nested fashion, depth of which is controlled by @`Rank` ix@.
 data family Array r ix e :: *
 
+type Matrix r e = Array r Ix2 e
+
+type Vector r e = Array r Ix1 e
+
 type family Elt r ix e :: * where
   Elt r Ix1 e = e
   Elt r ix  e = Array (R r) (Lower ix) e
@@ -130,23 +140,7 @@ instance Monad m => Functor (Steps m) where
 
 -- | Array types that can be constructed.
 class (Typeable r, Index ix) => Construct r ix e where
-  {-# MINIMAL setComp,(makeArray|makeArrayLinear) #-}
-
-  -- | Set computation strategy for this array
-  --
-  -- ==== __Example__
-  --
-  -- >>> :set -XTypeApplications
-  -- >>> import Data.Massiv.Array
-  -- >>> a = singleton @DL @Ix1 @Int 0
-  -- >>> a
-  -- Array DL Seq (Sz1 1)
-  --   [ 0 ]
-  -- >>> setComp (ParN 6) a -- use 6 capabilities
-  -- Array DL (ParN 6) (Sz1 1)
-  --   [ 0 ]
-  --
-  setComp :: Comp -> Array r ix e -> Array r ix e
+  {-# MINIMAL (makeArray|makeArrayLinear) #-}
 
   -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
   -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
@@ -193,6 +187,12 @@ class (Typeable r, Index ix) => Construct r ix e where
   makeArrayLinear comp sz f = makeArray comp sz (f . toLinearIndex sz)
   {-# INLINE makeArrayLinear #-}
 
+  -- | Create an array with the same value in each cell. Array can be created sequentially.
+  --
+  -- @since 0.4.1
+  makeConstantArray :: Sz ix -> e -> Array r ix e
+  makeConstantArray sz e = makeArrayLinear Seq sz (const e)
+  {-# INLINE makeConstantArray #-}
 
 
 class Index ix => Resize r ix where
@@ -243,6 +243,22 @@ class (Typeable r, Index ix) => Load r ix e where
   --
   -- @since 0.1.0
   getComp :: Array r ix e -> Comp
+
+  -- | Set computation strategy for this array
+  --
+  -- ==== __Example__
+  --
+  -- >>> :set -XTypeApplications
+  -- >>> import Data.Massiv.Array
+  -- >>> a = singleton @DL @Ix1 @Int 0
+  -- >>> a
+  -- Array DL Seq (Sz1 1)
+  --   [ 0 ]
+  -- >>> setComp (ParN 6) a -- use 6 capabilities
+  -- Array DL (ParN 6) (Sz1 1)
+  --   [ 0 ]
+  --
+  setComp :: Comp -> Array r ix e -> Array r ix e
 
   -- | Get the size of an immutabe array
   --
@@ -833,6 +849,59 @@ imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
 imapM_ f !arr =
   iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ !ix -> f ix (unsafeIndex arr ix)
 {-# INLINE imapM_ #-}
+
+-- | Apply a function to each element of an array.
+--
+-- @since 0.4.1
+liftArray ::
+     forall r ix e r' b. (Construct r ix e, Source r' ix b)
+  => (b -> e)
+  -> Array r' ix b
+  -> Array r ix e
+liftArray f a = makeArrayLinear (getComp a) (size a) (f . unsafeLinearIndex a)
+{-# INLINE liftArray #-}
+
+-- | Apply a function to each element of two arrays pointwise. Similarly to
+-- `unsafeLiftArray2`, except that `SizeMismatchException` is thrown when the size of both
+-- arrays does not match.
+--
+-- @since 0.4.1
+liftArray2M ::
+     forall r ix e r1 r2 e1 e2 m. (Construct r ix e, Source r2 ix e2, Source r1 ix e1, MonadThrow m)
+  => (e1 -> e2 -> e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> m (Array r ix e)
+liftArray2M f a1 a2
+  | size a1 == size a2 = pure $ unsafeLiftArray2 f a1 a2
+  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
+{-# INLINE liftArray2M #-}
+
+-- | Same as `liftArray2M`, except it throws the exception purely.
+--
+-- @since 0.4.1
+liftArray2' ::
+     forall r ix e r1 r2 e1 e2. (Construct r ix e, Source r2 ix e2, Source r1 ix e1)
+  => (e1 -> e2 -> e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r ix e
+liftArray2' f a1 a2 = either throw id $ liftArray2M f a1 a2
+{-# INLINE liftArray2' #-}
+
+-- | Apply a function to each element of two arrays pointwise. Size of the first array is used.
+--
+-- @since 0.4.1
+unsafeLiftArray2 ::
+     (Construct r3 ix e3, Source r2 ix e2, Source r1 ix e1)
+  => (e1 -> e2 -> e3)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+unsafeLiftArray2 f a1 a2 =
+  makeArrayLinear (getComp a1 <> getComp a2) (size a1) $ \ !i ->
+    f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
+{-# INLINE unsafeLiftArray2 #-}
 
 
 -- | /O(1)/ - Get the number of elements in the array

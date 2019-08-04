@@ -1,9 +1,10 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Data.Massiv.Core.Exception
   ( ImpossibleException(..)
-  , NegativeValue(..)
+  , InvalidRangeException(..)
   , throwImpossible
   , Uninitialized(..)
   , guardNumberOfElements
@@ -57,11 +58,24 @@ guardNumberOfElements sz sz' =
 {-# INLINE guardNumberOfElements #-}
 
 
-data NegativeValue where
-  NegativeValue :: (Num a, Show a) => a -> NegativeValue
+data InvalidRangeException where
+  NegativeValue :: (Num a, Show a) => a -> InvalidRangeException
+  NonPositiveValue :: (Num a, Show a) => a -> InvalidRangeException
+  InvalidLowerBound :: (Num a, Show a) => a -> Bool -> a -> InvalidRangeException
 
-instance Exception NegativeValue
+instance Exception InvalidRangeException
 
-instance Show NegativeValue where
-  showsPrec n (NegativeValue v) =
-    showsPrecWrapped n (("NegativeValue " ++) . showsPrec 1 v)
+instance Show InvalidRangeException where
+  showsPrec n =
+    \case
+      NegativeValue v -> showsPrecWrapped n (("NegativeValue " ++) . showsPrec 1 v)
+      NonPositiveValue v -> showsPrecWrapped n (("NonPositiveValue " ++) . showsPrec 1 v)
+      InvalidLowerBound v incl b ->
+        let gte =
+              if incl
+                then "at least"
+                else "greater than"
+         in showsPrecWrapped
+              n
+              (("InvalidLowerBound " ++) .
+               showsPrec 1 v . ((" expected " ++ gte ++ ": ") ++) . showsPrec 1 b)

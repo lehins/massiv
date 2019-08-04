@@ -143,6 +143,8 @@ instance (Index ix, Ragged L ix e) => Load L ix e where
   {-# INLINE size #-}
   getComp = lComp
   {-# INLINE getComp #-}
+  setComp c arr = arr { lComp = c }
+  {-# INLINE setComp #-}
   loadArrayM scheduler arr uWrite =
     loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arr
     where !sz = edgeSize arr
@@ -154,6 +156,8 @@ instance (Index ix, Load L ix e, Ragged L ix e) => Load LN ix e where
   {-# INLINE size #-}
   getComp _ = Seq
   {-# INLINE getComp #-}
+  setComp _ = id
+  {-# INLINE setComp #-}
   loadArrayM scheduler arr uWrite =
     loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arrL
     where
@@ -253,8 +257,6 @@ unsafeGenerateParM comp !sz f = do
 
 
 instance {-# OVERLAPPING #-} Construct L Ix1 e where
-  setComp c arr = arr { lComp = c }
-  {-# INLINE setComp #-}
   makeArray comp sz f = LArray comp $ List $ unsafePerformIO $
     withScheduler comp $ \scheduler ->
       loopM_ 0 (< coerce sz) (+ 1) (scheduleWork scheduler . return . f)
@@ -267,8 +269,6 @@ instance ( Index ix
          , Elt L ix e ~ Array L (Lower ix) e
          ) =>
          Construct L ix e where
-  setComp c arr = arr {lComp = c}
-  {-# INLINE setComp #-}
   makeArray = unsafeGenerateN
   {-# INLINE makeArray #-}
 

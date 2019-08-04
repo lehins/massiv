@@ -97,12 +97,33 @@ main = do
               ]
         ]
     , bgroup
-        "New"
+        "maximum"
         [ env (return (arrSeq, computeAs F arrSeq)) $ \ ~(arr, arrV) ->
             bgroup
               "Seq"
-              [ bench "new (S)" $ nfIO (copy' arr :: IO (Array S Ix2 Double))
-              , bench "new (F)" $ nfIO (copy' arrV :: IO (Array F Ix2 Double))
+              [ bench "maximum" $ whnfIO (A.maximumM' arr)
+              , bench "maximum (SIMD)" $ whnfIO (A.maximumM' arrV)
+              ]
+        , env (return (arrPar, computeAs F arrPar)) $ \ ~(arr, arrV) ->
+            bgroup
+              "Par"
+              [ bench "maximum" $ whnfIO (A.maximumM' arr)
+              , bench "maximum (SIMD)" $ whnfIO (A.maximumM' arrV)
+              ]
+        ]
+    , bgroup
+        "minimum"
+        [ env (return (arrSeq, computeAs F arrSeq)) $ \ ~(arr, arrV) ->
+            bgroup
+              "Seq"
+              [ bench "minimum" $ whnfIO (A.minimumM' arr)
+              , bench "minimum (SIMD)" $ whnfIO (A.minimumM' arrV)
+              ]
+        , env (return (arrPar, computeAs F arrPar)) $ \ ~(arr, arrV) ->
+            bgroup
+              "Par"
+              [ bench "minimum" $ whnfIO (A.minimumM' arr)
+              , bench "minimum (SIMD)" $ whnfIO (A.minimumM' arrV)
               ]
         ]
     ]
