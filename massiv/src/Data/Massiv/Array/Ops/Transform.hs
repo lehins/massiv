@@ -286,13 +286,39 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 
 -- | Reverse an array along some dimension. Dimension supplied is checked at compile time.
 --
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> arr = makeArrayLinear Seq (Sz2 4 5) (+10) :: Array D Ix2 Int
+-- >>> arr
+-- Array D Seq (Sz (4 :. 5))
+--   [ [ 10, 11, 12, 13, 14 ]
+--   , [ 15, 16, 17, 18, 19 ]
+--   , [ 20, 21, 22, 23, 24 ]
+--   , [ 25, 26, 27, 28, 29 ]
+--   ]
+-- >>> A.reverse Dim1 arr
+-- Array D Seq (Sz (4 :. 5))
+--   [ [ 14, 13, 12, 11, 10 ]
+--   , [ 19, 18, 17, 16, 15 ]
+--   , [ 24, 23, 22, 21, 20 ]
+--   , [ 29, 28, 27, 26, 25 ]
+--   ]
+-- >>> A.reverse Dim2 arr
+-- Array D Seq (Sz (4 :. 5))
+--   [ [ 25, 26, 27, 28, 29 ]
+--   , [ 20, 21, 22, 23, 24 ]
+--   , [ 15, 16, 17, 18, 19 ]
+--   , [ 10, 11, 12, 13, 14 ]
+--   ]
+--
 -- @since 0.4.1
 reverse :: (IsIndexDimension ix n, Source r ix e) => Dimension n -> Array r ix e -> Array D ix e
 reverse dim = reverse' (fromDimension dim)
 {-# INLINE reverse #-}
 
--- | Reverse an array along some dimension. Throws `IndexDimensionException` for an incorrect
--- dimension.
+-- | Similarly to `reverse`, flip an array along a particular dimension, but throws
+-- `IndexDimensionException` for an incorrect dimension.
 --
 -- @since 0.4.1
 reverseM :: (MonadThrow m, Source r ix e) => Dim -> Array r ix e -> m (Array D ix e)
@@ -303,8 +329,8 @@ reverseM dim arr = do
     unsafeIndex arr (snd $ modifyDim' ix dim (\i -> k - i - 1))
 {-# INLINE reverseM #-}
 
--- | Reverse an array along some dimension. Same as `reverseM`, but throws exception from
--- pure code.
+-- | Reverse an array along some dimension. Same as `reverseM`, but throws the
+-- `IndexDimensionException` from pure code.
 --
 -- @since 0.4.1
 reverse' :: Source r ix e => Dim -> Array r ix e -> Array D ix e
