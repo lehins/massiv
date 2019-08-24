@@ -166,6 +166,8 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE (*) #-}
   abs         = liftArray abs
   {-# INLINE abs #-}
+  negate      = liftArray negate
+  {-# INLINE negate #-}
   signum      = liftArray signum
   {-# INLINE signum #-}
   fromInteger = singleton . fromInteger

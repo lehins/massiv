@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -14,19 +13,20 @@
 --
 module Data.Massiv.Array.Numeric
   ( -- * Num
-    (.+.)
-  , (.+)
-  , (+.)
-  , (.-.)
-  , (.-)
-  , (-.)
-  , (.*.)
-  , (.*)
-  , (*.)
-  , (.^)
-  , (|*|)
+    (!+!)
+  , (!+.)
+  , (.+!)
+  , (!-!)
+  , (!-.)
+  , (.-!)
+  , (!*!)
+  , (!*.)
+  , (.*!)
+  , (!^.)
+  , (!^!)
+  , (!.!)
+  , (!><!)
   , multiplyTransposed
-  , dotProductM
   , identityMatrix
   , negateA
   , absA
@@ -40,18 +40,19 @@ module Data.Massiv.Array.Numeric
   , quotRemA
   , divModA
   -- * Fractional
-  , (./.)
-  , (./)
-  , (/.)
-  , (.^^)
+  , (!/!)
+  , (!/.)
+  , (./!)
+  , (!^^.)
+  , (!^^!)
   , recipA
   , fromRationalA
   -- * Floating
   , expA
   , logA
   , sqrtA
-  , (.**)
-  , (.**.)
+  , (!**.)
+  , (!**!)
   , logBaseA
   , sinA
   , cosA
@@ -99,9 +100,9 @@ import Data.Ratio
 import Prelude as P
 
 
-infixr 8  .^, .^^, .**, .**.
-infixl 7  .*., .*, *., ./., ./, /., `quotA`, `remA`, `divA`, `modA`
-infixl 6  .+., .+, +., .-., .-, -.
+infixr 8  !^., !^!, !^^., !^^!, !**., !**!
+infixl 7  !*!, !*., .*!, !.!, !><!, !/!, !/., ./!, `quotA`, `remA`, `divA`, `modA`
+infixl 6  !+!, !+., .+!, !-!, !-., .-!
 
 
 liftNumArray2M ::
@@ -131,105 +132,238 @@ applyArray2M f a1 a2
 -- | Add two arrays together pointwise. Throws `SizeMismatchException` if arrays sizes do
 -- not match.
 --
--- @since 0.4.0
-(.+.) ::
+-- ==== __Examples__
+--
+-- >>> (Ix1 2 ... 10) !+! (100 ... 110)
+-- *** Exception: SizeMismatchException: (Sz1 9) vs (Sz1 11)
+-- >>> (Ix1 2 ... 10) !+! (100 ... 108)
+-- Array D Seq (Sz1 9)
+--   [ 102, 104, 106, 108, 110, 112, 114, 116, 118 ]
+--
+-- @since 0.4.1
+(!+!) ::
      (Load r ix e, NumArray r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.+.) = applyArray2M additionPointwise
-{-# INLINE (.+.) #-}
+(!+!) = applyArray2M additionPointwise
+{-# INLINE (!+!) #-}
 
 -- | Add a scalar to each element of the array. Array is on the left.
 --
--- @since 0.1.0
-(.+) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
-(.+) = plusScalar
-{-# INLINE (.+) #-}
+-- ==== __Examples__
+--
+-- >>> (Ix1 2 ... 10) !+ 100
+-- Array D Seq (Sz1 9)
+--   [ 102, 103, 104, 105, 106, 107, 108, 109, 110 ]
+--
+-- @since 0.4.1
+(!+.) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
+(!+.) = plusScalar
+{-# INLINE (!+.) #-}
 
 -- | Add a scalar to each element of the array. Array is on the right.
 --
--- @since 0.4.0
-(+.) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
-(+.) = flip plusScalar
-{-# INLINE (+.) #-}
+-- ==== __Examples__
+--
+-- >>> 100 .+! (Ix1 2 ... 10)
+-- Array D Seq (Sz1 9)
+--   [ 102, 103, 104, 105, 106, 107, 108, 109, 110 ]
+--
+-- @since 0.4.1
+(.+!) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
+(.+!) = flip plusScalar
+{-# INLINE (.+!) #-}
 
 -- | Subtract two arrays pointwise. Throws `SizeMismatchException` if arrays sizes do not
 -- match.
 --
--- @since 0.4.0
-(.-.) ::
+-- ==== __Examples__
+--
+-- λ> x = makeArrayLinearR D Seq (Sz2 2 4) id
+-- λ> x
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 0, 1, 2, 3 ]
+--   , [ 4, 5, 6, 7 ]
+--   ]
+-- λ> x !-! x
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 0, 0, 0, 0 ]
+--   , [ 0, 0, 0, 0 ]
+--   ]
+--
+--
+-- @since 0.4.1
+(!-!) ::
      (Load r ix e, NumArray r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.-.) = applyArray2M subtractionPointwise
-{-# INLINE (.-.) #-}
+(!-!) = applyArray2M subtractionPointwise
+{-# INLINE (!-!) #-}
 
 
 -- | Subtract a scalar from each element of the array. Array is on the left.
 --
--- @since 0.1.0
-(.-) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
-(.-) = minusScalar
-{-# INLINE (.-) #-}
+-- ==== __Examples__
+--
+-- >>> x = makeArrayLinearR D Seq (Sz2 2 4) id
+-- >>> x
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 0, 1, 2, 3 ]
+--   , [ 4, 5, 6, 7 ]
+--   ]
+-- >>> x !-. 8
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ -8, -7, -6, -5 ]
+--   , [ -4, -3, -2, -1 ]
+--   ]
+--
+-- @since 0.4.1
+(!-.) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
+(!-.) = minusScalar
+{-# INLINE (!-.) #-}
 
 -- | Subtract a scalar from each element of the array. Array is on the right.
 --
--- @since 0.4.0
-(-.) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
-(-.) = flip minusScalar
-{-# INLINE (-.) #-}
+-- ==== __Examples__
+--
+-- >>> x = makeArrayLinearR D Seq (Sz2 2 4) id
+-- >>> x
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 0, 1, 2, 3 ]
+--   , [ 4, 5, 6, 7 ]
+--   ]
+-- >>> -1 .-! x
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ -1, -2, -3, -4 ]
+--   , [ -5, -6, -7, -8 ]
+--   ]
+--
+-- @since 0.4.1
+(.-!) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
+(.-!) = flip negatePlusScalar
+{-# INLINE (.-!) #-}
 
 
 -- | Multiply two arrays together pointwise. [Hadamard
 -- product](https://en.wikipedia.org/wiki/Hadamard_product_(matrices)). Throws
 -- `SizeMismatchException` when both arrays to not have the same size.
 --
--- @since 0.4.0
-(.*.) ::
+-- ==== __Examples__
+--
+-- >>> import Data.Array.Massiv as A
+-- >>> x = makeArrayLinearR D Seq (Sz2 2 4) id
+-- >>> x
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 0, 1, 2, 3 ]
+--   , [ 4, 5, 6, 7 ]
+--   ]
+-- >>> y = A.reverse Dim2 x
+-- >>> y
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 4, 5, 6, 7 ]
+--   , [ 0, 1, 2, 3 ]
+--   ]
+-- >>> x !*! y
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 0, 5, 12, 21 ]
+--   , [ 0, 5, 12, 21 ]
+-- ]
+--
+-- @since 0.4.1
+(!*!) ::
      (Load r ix e, NumArray r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.*.) = applyArray2M multiplicationPointwise
-{-# INLINE (.*.) #-}
+(!*!) = applyArray2M multiplicationPointwise
+{-# INLINE (!*!) #-}
 
 -- | Multiply by a scalar each element of the array. Array is on the left.
 --
--- @since 0.4.0
-(.*) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
-(.*) = multiplyScalar
-{-# INLINE (.*) #-}
+-- ==== __Examples__
+--
+-- >>> import Data.Array.Massiv as A
+-- >>> x = makeArrayLinearR D Seq (Sz2 2 4) succ
+-- >>> x
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 1, 2, 3, 4 ]
+--   , [ 5, 6, 7, 8 ]
+--   ]
+-- >>> x !*. 10
+-- Array D Seq (Sz (2 :. 4))
+--   [ [ 10, 20, 30, 40 ]
+--   , [ 50, 60, 70, 80 ]
+--   ]
+--
+-- @since 0.4.1
+(!*.) :: (Index ix, NumArray r e) => Array r ix e -> e -> Array r ix e
+(!*.) = multiplyScalar
+{-# INLINE (!*.) #-}
 
 -- | Multiply by a scalar each element of the array. Array is on the right.
 --
--- @since 0.4.0
-(*.) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
-(*.) = flip multiplyScalar
-{-# INLINE (*.) #-}
+-- @since 0.4.1
+(.*!) :: (Index ix, NumArray r e) => e -> Array r ix e -> Array r ix e
+(.*!) = flip multiplyScalar
+{-# INLINE (.*!) #-}
 
 
 -- | Raise each element in the array to some non-negative power. Throws `NegativeValue` on
 -- negative powers.
 --
 -- @since 0.4.1
-(.^) ::
+(!^.) ::
      (Construct r ix e, Load r ix e, NumArray r e, MonadThrow m)
   => Array r ix e
   -> Int
   -> m (Array r ix e)
-(.^) arr p
+(!^.) arr p
   | p < 0 = throwM $ NegativeValue p
   | p == 0 = pure $ setComp (getComp arr) $ makeConstantArray (size arr) 1
   | otherwise = pure $ powerScalar arr p
-{-# INLINE (.^) #-}
+{-# INLINE (!^.) #-}
 
--- | Perform matrix multiplication. First array must have exactly the same number of rows
--- as the second array columns, otherwise `SizeMismatchException`.
+-- | Raise each element in the array to some non-negative power. Throws exceptions from
+-- pure code if any of the elements in the second array are below zero or whenever arrays
+-- do not have the same size.
 --
--- @since 0.4.0
-(|*|) ::
+-- @since 0.4.1
+(!^!) ::
+     (Source r ix e, Source r ix Int, Num e)
+  => Array r ix e
+  -> Array r ix Int -- ^ Array with non-negative powers
+  -> Array D ix e
+(!^!) = liftArray2' (^)
+{-# INLINE (!^!) #-}
+
+-- | Perform matrix multiplication. First array must have exactly the same number of
+-- columns as the second array rows, otherwise `SizeMismatchException`.
+--
+-- ====__Examples__
+--
+-- >>> a <- fromListsM Seq [[1,2,3],[4,5,6]] :: IO (Array P Ix2 Int)
+-- >>> b <- fromListsM Seq [[2,3],[5,6],[7,8]] :: IO (Array P Ix2 Int)
+-- >>> a
+-- Array P Seq (Sz (2 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   ]
+-- >>> b
+-- Array P Seq (Sz (3 :. 2))
+--   [ [ 2, 3 ]
+--   , [ 5, 6 ]
+--   , [ 7, 8 ]
+--   ]
+-- >>> a !><! b
+-- Array P Seq (Sz (2 :. 2))
+--   [ [ 33, 39 ]
+--   , [ 75, 90 ]
+--   ]
+--
+-- @since 0.4.1
+(!><!) ::
      (Mutable r Ix2 e, Source r' Ix2 e, ReduceNumArray r e, MonadThrow m)
   => Matrix r e -- ^ First array
   -> Matrix r' e -- ^ Second array
   -> m (Matrix r e)
-(|*|) a1 a2 = compute <$> multArrs a1 a2
-{-# INLINE [1] (|*|) #-}
+(!><!) a1 a2 = compute <$> multArrs a1 a2
+{-# INLINE [1] (!><!) #-}
 
 {-# RULES
-"multDoubleTranspose" [~1] forall arr1 arr2 . arr1 |*| transpose arr2 =
+"multDoubleTranspose" [~1] forall arr1 arr2 . arr1 !><! transpose arr2 =
     multiplyTransposedFused arr1 (convert arr2)
  #-}
 
@@ -276,12 +410,15 @@ multiplyTransposed arr1 arr2
 {-# INLINE multiplyTransposed #-}
 
 
-dotProductM ::
+-- | [Dot product](https://en.wikipedia.org/wiki/Dot_product)
+--
+-- @since 0.4.1
+(!.!) ::
      (Source r ix e, ReduceNumArray r e, MonadThrow f) => Array r ix e -> Array r ix e -> f e
-dotProductM arr1 arr2
+(!.!) arr1 arr2
   | size arr1 == size arr2 = pure $ splitReduce2Internal multiplySumArrayS (+) 0 arr1 arr2
   | otherwise = throwM $ SizeMismatchException (size arr1) (size arr2)
-{-# INLINE dotProductM #-}
+{-# INLINE (!.!) #-}
 
 
 
@@ -306,7 +443,7 @@ identityMatrix (Sz n) = makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) 
 
 
 negateA :: (Index ix, NumArray r e) => Array r ix e -> Array r ix e
-negateA = (0 -.)
+negateA = (0 .-!)
 {-# INLINE negateA #-}
 
 absA :: (Index ix, NumArray r e) => Array r ix e -> Array r ix e
@@ -321,30 +458,42 @@ fromIntegerA :: (Index ix, Num e) => Integer -> Array D ix e
 fromIntegerA = singleton . fromInteger
 {-# INLINE fromIntegerA #-}
 
-(./.) ::
+(!/!) ::
      (Load r ix e, FloatArray r e, MonadThrow m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-(./.) = applyArray2M divisionPointwise
-{-# INLINE (./.) #-}
+(!/!) = applyArray2M divisionPointwise
+{-# INLINE (!/!) #-}
 
-(./) ::(Index ix,  FloatArray r e) => Array r ix e -> e -> Array r ix e
-(./) = divideScalar
-{-# INLINE (./) #-}
+(!/.) ::(Index ix,  FloatArray r e) => Array r ix e -> e -> Array r ix e
+(!/.) = divideScalar
+{-# INLINE (!/.) #-}
 
-(/.) ::(Index ix,  FloatArray r e) => e -> Array r ix e -> Array r ix e
-(/.) = flip recipMultiplyScalar
-{-# INLINE (/.) #-}
+(./!) ::(Index ix,  FloatArray r e) => e -> Array r ix e -> Array r ix e
+(./!) = flip recipMultiplyScalar
+{-# INLINE (./!) #-}
 
-(.^^)
-  :: (Index ix, NumArray r e, Fractional e, Integral b)
-  => Array r ix e -> b -> Array r ix e
-(.^^) arr n = liftNumArray (^^ n) arr
-{-# INLINE (.^^) #-}
+(!^^.)
+  :: (FloatArray r e, Load r ix e, Construct r ix e)
+  => Array r ix e -> Int -> Array r ix e
+(!^^.) arr pow
+  | pow < 0 = recipPowerScalar arr (negate pow)
+  | pow == 0 = setComp (getComp arr) $ makeConstantArray (size arr) 1
+  | otherwise = powerScalar arr pow
+{-# INLINE (!^^.) #-}
+
+(!^^!) ::
+     (Source r2 ix b, Source r1 ix e, MonadThrow m, Fractional e, Integral b)
+  => Array r1 ix e
+  -> Array r2 ix b
+  -> m (Array D ix e)
+(!^^!) = liftArray2M (^^)
+{-# INLINE (!^^!) #-}
+
 
 recipA :: (Index ix, FloatArray r e) => Array r ix e -> Array r ix e
-recipA = recipPointwise
+recipA = (`recipMultiplyScalar` 1)
 {-# INLINE recipA #-}
 
 
@@ -372,16 +521,16 @@ logBaseA
 logBaseA = liftArray2M logBase
 {-# INLINE logBaseA #-}
 
-(.**) :: (Source r ix e, Floating e) => Array r ix e -> e -> Array D ix e
-(.**) arr p = liftArray (** p) arr
-{-# INLINE (.**) #-}
+(!**.) :: (Source r ix e, Floating e) => Array r ix e -> e -> Array D ix e
+(!**.) arr p = liftArray (** p) arr
+{-# INLINE (!**.) #-}
 
 
-(.**.)
+(!**!)
   :: (Source r1 ix e, Source r2 ix e, Floating e, MonadThrow m)
   => Array r1 ix e -> Array r2 ix e -> m (Array D ix e)
-(.**.) = liftArray2M (**)
-{-# INLINE (.**.) #-}
+(!**!) = liftArray2M (**)
+{-# INLINE (!**!) #-}
 
 
 
@@ -559,8 +708,8 @@ normLp p arr
         rp' = fromRational (recip p)
         arr' =
           if even (numerator p)
-            then powerScalar arr (fromInteger (numerator p)) .** fromRational (1 % denominator p)
-            else A.map abs arr .** p'
+            then powerScalar arr (fromInteger (numerator p)) !**. fromRational (1 % denominator p)
+            else A.map abs arr !**. p'
      in pure (splitReduceInternal sumArrayS (+) 0 arr' ** rp')
 {-# INLINE normLp #-}
 

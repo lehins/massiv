@@ -170,6 +170,9 @@ instance (Index ix, Prim e) => Mutable P ix e where
   msize (MPArray sz _ _) = sz
   {-# INLINE msize #-}
 
+  unsafeMutableSlice i k (MPArray _ o ma) = MPArray k (o + i) ma
+  {-# INLINE unsafeMutableSlice #-}
+
   unsafeThaw (PArray _ sz o a) = MPArray sz o <$> unsafeThawByteArray a
   {-# INLINE unsafeThaw #-}
 
@@ -270,7 +273,7 @@ instance (Prim e, Num e) => ReduceNumArray P e where
 
 instance (Prim e, Ord e) => ReduceOrdArray P e
 
-instance (Prim e, Floating e) => FloatArray P e where
+instance (Prim e, Floating e) => FloatArray P e
 
 instance RoundFloatArray P Float Float where
   roundPointwise = liftArray roundFloat
@@ -279,13 +282,6 @@ instance RoundFloatArray P Float Float where
 instance RoundFloatArray P Double Double where
   roundPointwise = liftArray roundDouble
   {-# INLINE roundPointwise #-}
-
-
-
-liftPArray :: (Index ix, Prim b, Prim e) => (b -> e) -> Array P ix b -> Array P ix e
-liftPArray f a = makeArrayLinear (pComp a) (pSize a) (f . unsafeLinearIndex a)
-{-# INLINE liftPArray #-}
-
 
 
 elemsBA :: forall proxy e . Prim e => proxy e -> ByteArray -> Int

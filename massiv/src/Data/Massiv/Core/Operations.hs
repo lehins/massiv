@@ -49,6 +49,13 @@ class ReduceNumArray r e => NumArray r e where
   minusScalar arr e = liftNumArray (subtract e) arr
   {-# INLINE minusScalar #-}
 
+  -- | Neagateeach element in the array and add an element to it. Respect computation strategy.
+  --
+  -- @since 0.4.1
+  negatePlusScalar :: Index ix => Array r ix e -> e -> Array r ix e
+  negatePlusScalar arr e = liftNumArray (e -) arr
+  {-# INLINE negatePlusScalar #-}
+
   -- | Multiply each element in the array. Respect computation strategy.
   --
   -- @since 0.4.0
@@ -175,13 +182,13 @@ class (NumArray r e, Floating e) => FloatArray r e where
   recipMultiplyScalar arr e = liftNumArray (e /) arr
   {-# INLINE recipMultiplyScalar #-}
 
+  recipPowerScalar :: Index ix => Array r ix e -> Int -> Array r ix e
+  recipPowerScalar arr pow = liftNumArray ((^ pow) . recip) arr
+  {-# INLINE recipPowerScalar #-}
+
   divisionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
   divisionPointwise = unsafeLiftNumArray2 (/)
   {-# INLINE divisionPointwise #-}
-
-  recipPointwise :: Index ix => Array r ix e -> Array r ix e
-  recipPointwise = liftNumArray recip
-  {-# INLINE recipPointwise #-}
 
   sqrtPointwise :: Index ix => Array r ix e -> Array r ix e
   sqrtPointwise = liftNumArray sqrt

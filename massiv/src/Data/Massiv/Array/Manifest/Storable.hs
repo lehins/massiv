@@ -146,6 +146,9 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   msize (MSArray sz _) = sz
   {-# INLINE msize #-}
 
+  unsafeMutableSlice i k (MSArray _ mv) = MSArray k $ MVS.unsafeSlice i (unSz k) mv
+  {-# INLINE unsafeMutableSlice #-}
+
   unsafeThaw (SArray _ sz v) = MSArray sz <$> VS.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
@@ -253,7 +256,7 @@ instance (Storable e, Num e) => ReduceNumArray S e where
 
 instance (Storable e, Ord e) => ReduceOrdArray S e
 
-instance (Storable e, Floating e) => FloatArray S e where
+instance (Storable e, Floating e) => FloatArray S e
 
 instance RoundFloatArray S Float Float where
   roundPointwise = liftSArray roundFloat

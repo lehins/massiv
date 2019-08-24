@@ -162,6 +162,9 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   msize (MUArray sz _) = sz
   {-# INLINE msize #-}
 
+  unsafeMutableSlice i k (MUArray _ mv) = MUArray k $ MVU.unsafeSlice i (unSz k) mv
+  {-# INLINE unsafeMutableSlice #-}
+
   unsafeThaw (UArray _ sz v) = MUArray sz <$> VU.unsafeThaw v
   {-# INLINE unsafeThaw #-}
 
@@ -228,6 +231,7 @@ instance (VU.Unbox e, Num e) => ReduceNumArray U e where
 
 instance (VU.Unbox e, Ord e) => ReduceOrdArray U e
 
+instance (VU.Unbox e, Floating e) => FloatArray U e
 
 
 -- | /O(1)/ - Unwrap unboxed array and pull out the underlying unboxed vector.

@@ -315,6 +315,10 @@ instance Index Ix2 where
   setDimM (i2 :.  _) 1 i1 = pure (i2 :. i1)
   setDimM ix         d _  = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
+  modifyDimM (i2 :. i1) 2 f = pure (i2, f i2 :.   i1)
+  modifyDimM (i2 :. i1) 1 f = pure (i1,   i2 :. f i1)
+  modifyDimM ix         d _  = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i2 :. i1) 2 = pure (i2, i1)
   pullOutDimM (i2 :. i1) 1 = pure (i1, i2)
   pullOutDimM ix         d = throwM $ IndexDimensionException ix d
@@ -365,6 +369,11 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   setDimM (i3 :> i2 :.  _) 1 i1 = pure (i3 :> i2 :. i1)
   setDimM ix               d _  = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
+  modifyDimM (i3 :> i2 :. i1) 3 f = pure (i3, f i3 :>   i2 :.   i1)
+  modifyDimM (i3 :> i2 :. i1) 2 f = pure (i2,   i3 :> f i2 :.   i1)
+  modifyDimM (i3 :> i2 :. i1) 1 f = pure (i1,   i3 :>   i2 :. f i1)
+  modifyDimM ix               d _  = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i3 :> i2 :. i1) 3 = pure (i3, i2 :. i1)
   pullOutDimM (i3 :> i2 :. i1) 2 = pure (i2, i3 :. i1)
   pullOutDimM (i3 :> i2 :. i1) 1 = pure (i1, i3 :. i2)
@@ -416,6 +425,13 @@ instance {-# OVERLAPPABLE #-} ( 1 <= n
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure (di :> ixl)
     | otherwise = maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (setDimM ixl d di)
   {-# INLINE [1] setDimM #-}
+  modifyDimM ix@(i :> ixl) d f
+    | d == dimensions (Proxy :: Proxy (IxN n)) = pure (i, f i :> ixl)
+    | otherwise =
+      case modifyDimM ixl d f of
+        Just (di, ixl') -> pure (di, i :> ixl')
+        Nothing -> throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
   pullOutDimM ix@(i :> ixl) d
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure (i, ixl)
     | otherwise =
@@ -503,7 +519,7 @@ instance V.Vector VU.Vector Ix2 where
 -- | Unboxing of a `IxN`.
 instance (3 <= n, VU.Unbox (Ix (n - 1))) => VU.Unbox (IxN n)
 
-newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (Ix (n-1)))
+newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (Ix (n - 1)))
 
 instance (3 <= n, VU.Unbox (Ix (n - 1))) => VM.MVector VU.MVector (IxN n) where
   basicLength (MV_IxN (_, mvec)) = VM.basicLength mvec
@@ -555,7 +571,7 @@ instance (3 <= n, VU.Unbox (Ix (n - 1))) => VM.MVector VU.MVector (IxN n) where
 #endif
 
 
-newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n-1)))
+newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n - 1)))
 
 instance (3 <= n, VU.Unbox (Ix (n - 1))) => V.Vector VU.Vector (IxN n) where
   basicUnsafeFreeze (MV_IxN (mvec1, mvec)) = do

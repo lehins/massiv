@@ -374,6 +374,11 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   -- @since 0.1.0
   msize :: MArray s r ix e -> Sz ix
 
+  -- | Mutable arrays also give us ability to look at their linear slices
+  --
+  -- @since 0.4.1
+  unsafeMutableSlice :: Ix1 -> Sz1 -> MArray s r ix e -> MArray s r Ix1 e
+
   -- | Convert immutable array into a mutable array without copy.
   --
   -- @since 0.1.0

@@ -172,6 +172,9 @@ instance Index ix => Mutable B ix e where
   msize (MBArray sz _ _) = sz
   {-# INLINE msize #-}
 
+  unsafeMutableSlice i k (MBArray _ o ma) = MBArray k (o + i) ma
+  {-# INLINE unsafeMutableSlice #-}
+
   unsafeThaw (BArray _ sz o a) = MBArray sz o <$> A.unsafeThawArray a
   {-# INLINE unsafeThaw #-}
 
@@ -360,6 +363,9 @@ instance (Index ix, NFData e) => Mutable N ix e where
 
   msize = msize . bmArray
   {-# INLINE msize #-}
+
+  unsafeMutableSlice i k (MNArray ma) = MNArray (unsafeMutableSlice i k ma)
+  {-# INLINE unsafeMutableSlice #-}
 
   unsafeThaw (NArray arr) = MNArray <$> unsafeThaw arr
   {-# INLINE unsafeThaw #-}

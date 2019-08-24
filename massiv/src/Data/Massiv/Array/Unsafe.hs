@@ -32,6 +32,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeOuterSlice
   , unsafeInnerSlice
   , unsafeLinearSlice
+  , unsafeMutableSlice
     -- * Mutable interface
   , unsafeThaw
   , unsafeFreeze

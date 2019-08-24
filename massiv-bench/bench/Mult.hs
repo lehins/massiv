@@ -22,21 +22,21 @@ main = do
           "Mult"
           [ bgroup
               "Seq"
-              [ bench "(|*|) (S)" $ whnfIO (arr |*| arr')
-              , bench "(|*|) (F)" $ whnfIO (arrV |*| arrV')
-              , bench "(.*.) (S)" $ whnfIO (arr .*. arr')
-              , bench "(.*.) (F)" $ whnfIO (arrV .*. arrV')
-              , bench "(./.) (S)" $ whnfIO (arr ./. arr')
-              , bench "(./.) (F)" $ whnfIO (arrV ./. arrV')
+              [ bench "(!><!) (S)" $ whnfIO (arr !><! arr')
+              , bench "(!><!) (F)" $ whnfIO (arrV !><! arrV')
+              , bench "(!*!) (S)" $ whnfIO (arr !*! arr')
+              , bench "(!*!) (F)" $ whnfIO (arrV !*! arrV')
+              , bench "(!/!) (S)" $ whnfIO (arr !/! arr')
+              , bench "(!/!) (F)" $ whnfIO (arrV !/! arrV')
               ]
           , bgroup
               "Par"
-              [ bench "(|*|) (S)" $ whnfIO (setComp Par arr |*| arr')
-              , bench "(|*|) (F)" $ whnfIO (setComp Par arrV |*| arrV')
-              , bench "(.*.) (S)" $ whnfIO (setComp Par arr .*. arr')
-              , bench "(.*.) (F)" $ whnfIO (setComp Par arrV .*. arrV')
-              , bench "(./.) (S)" $ whnfIO (setComp Par arr ./. arr')
-              , bench "(./.) (F)" $ whnfIO (setComp Par arrV ./. arrV')
+              [ bench "(!><!) (S)" $ whnfIO (setComp Par arr !><! arr')
+              , bench "(!><!) (F)" $ whnfIO (setComp Par arrV !><! arrV')
+              , bench "(!*!) (S)" $ whnfIO (setComp Par arr !*! arr')
+              , bench "(!*!) (F)" $ whnfIO (setComp Par arrV !*! arrV')
+              , bench "(!/!) (S)" $ whnfIO (setComp Par arr !/! arr')
+              , bench "(!/!) (F)" $ whnfIO (setComp Par arrV !/! arrV')
               ]
           ]
     ]
