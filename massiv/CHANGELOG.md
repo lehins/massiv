@@ -1,5 +1,7 @@
 # 0.4.1
 
+* Fix performance issue with copying of unboxed arrays and initialization of storable array.
+* Addition of `unsafeLoadIntoS`, `unsafeLoadInto` and `maxSize`
 * Addition of `reverse`, `reverse'` and `reverseM`
 * Addition of `modifyDimension`, `modifyDimM`, and `modifyDim'`
 

@@ -161,9 +161,8 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
     INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", Sz . MVS.length, MVS.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
-  -- TODO: Try approach from `vector`, fallback on Prim for setByteArray/recursive copyArray
-  -- unsafeLinearSet (MSArray _ v) = setByteArray ma
-  -- {-# INLINE unsafeLinearSet #-}
+  unsafeLinearSet (MSArray _ mv) i k = VGM.basicSet (MVS.unsafeSlice i (unSz k) mv)
+  {-# INLINE unsafeLinearSet #-}
 
   unsafeLinearCopy marrFrom iFrom marrTo iTo (Sz k) = do
     let MSArray _ (MVS.MVector _ fpFrom) = marrFrom

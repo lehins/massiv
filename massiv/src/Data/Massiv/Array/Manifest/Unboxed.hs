@@ -168,6 +168,10 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
   initialize (MUArray _ marr) = VGM.basicInitialize marr
   {-# INLINE initialize #-}
 
+  unsafeLinearCopy (MUArray _ mvFrom) iFrom (MUArray _ mvTo) iTo (Sz k) =
+    MVU.unsafeCopy (MVU.unsafeSlice iTo k mvTo) (MVU.unsafeSlice iFrom k mvFrom)
+  {-# INLINE unsafeLinearCopy #-}
+
   unsafeLinearRead (MUArray _ mv) =
     INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", Sz . MVU.length, MVU.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}

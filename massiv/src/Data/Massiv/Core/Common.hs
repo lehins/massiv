@@ -86,7 +86,7 @@ import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
 import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
-                          scheduleWork, scheduleWork_)
+                          scheduleWork, scheduleWork_, withScheduler_, trivialScheduler_)
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
@@ -227,6 +227,7 @@ class (Typeable r, Index ix) => Load r ix e where
   -- @since 0.1.0
   size :: Array r ix e -> Sz ix
 
+
   -- | Load an array into memory.
   --
   -- @since 0.3.0
@@ -240,6 +241,43 @@ class (Typeable r, Index ix) => Load r ix e where
   defaultElement :: Array r ix e -> Maybe e
   defaultElement _ = Nothing
   {-# INLINE defaultElement #-}
+
+  -- | /O(1)/ - Get the possible maximum size of an immutabe array. If the lookup of size
+  -- in constant time is not possible, `Nothing` should be returned. This value will be
+  -- used as the initial size of the mutable array in which loading will happen.
+  --
+  -- @since 0.4.1
+  maxSize :: Array r ix e -> Maybe (Sz ix)
+  maxSize = Just . size
+  {-# INLINE maxSize #-}
+
+  -- | Load into a supplied mutable array sequentially. Returned array does npt have to be
+  -- the same
+  --
+  -- @since 0.4.1
+  unsafeLoadIntoS ::
+       (Mutable r' ix e, PrimMonad m)
+    => MArray (PrimState m) r' ix e
+    -> Array r ix e
+    -> m (MArray (PrimState m) r' ix e)
+  unsafeLoadIntoS marr arr = do
+    loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
+    pure marr
+  {-# INLINE unsafeLoadIntoS #-}
+
+  -- | Same as `unsafeLoadIntoS`, but with respect of computation startegy.
+  --
+  -- @since 0.4.1
+  unsafeLoadInto ::
+       (Mutable r' ix e, MonadIO m)
+    => MArray RealWorld r' ix e
+    -> Array r ix e
+    -> m (MArray RealWorld r' ix e)
+  unsafeLoadInto marr arr = do
+    liftIO $ withScheduler_ (getComp arr) $ \scheduler ->
+      loadArrayM scheduler arr (unsafeLinearWrite marr)
+    pure marr
+  {-# INLINE unsafeLoadInto #-}
 
 
 class Load r ix e => StrideLoad r ix e where
