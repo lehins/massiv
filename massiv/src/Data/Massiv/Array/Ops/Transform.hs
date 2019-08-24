@@ -17,6 +17,10 @@ module Data.Massiv.Array.Ops.Transform
     transpose
   , transposeInner
   , transposeOuter
+  -- ** Reverse
+  , reverse
+  , reverse'
+  , reverseM
   -- ** Backpermute
   , backpermuteM
   , backpermute'
@@ -68,7 +72,7 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
-import Prelude as P hiding (concat, splitAt, traverse, mapM_)
+import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
@@ -280,6 +284,32 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
     !newsz = Sz (transOuter (unSz (size arr)))
 {-# INLINE [1] transposeOuter #-}
 
+-- | Reverse an array along some dimension. Dimension supplied is checked at compile time.
+--
+-- @since 0.4.1
+reverse :: (IsIndexDimension ix n, Source r ix e) => Dimension n -> Array r ix e -> Array D ix e
+reverse dim = reverse' (fromDimension dim)
+{-# INLINE reverse #-}
+
+-- | Reverse an array along some dimension. Throws `IndexDimensionException` for an incorrect
+-- dimension.
+--
+-- @since 0.4.1
+reverseM :: (MonadThrow m, Source r ix e) => Dim -> Array r ix e -> m (Array D ix e)
+reverseM dim arr = do
+  let sz = size arr
+  k <- getDimM (unSz sz) dim
+  pure $ makeArray (getComp arr) sz $ \ ix ->
+    unsafeIndex arr (snd $ modifyDim' ix dim (\i -> k - i - 1))
+{-# INLINE reverseM #-}
+
+-- | Reverse an array along some dimension. Same as `reverseM`, but throws exception from
+-- pure code.
+--
+-- @since 0.4.1
+reverse' :: Source r ix e => Dim -> Array r ix e -> Array D ix e
+reverse' dim = either throw id . reverseM dim
+{-# INLINE reverse' #-}
 
 -- | Rearrange elements of an array into a new one by using a function that maps indices of the
 -- newly created one into the old one. This function can throw `IndexOutOfBoundsException`.

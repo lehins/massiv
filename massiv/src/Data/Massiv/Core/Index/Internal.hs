@@ -399,9 +399,22 @@ class ( Eq ix
 
   -- | Extract the value index has at specified dimension.
   getDimM :: MonadThrow m => ix -> Dim -> m Int
+  getDimM ix dim = fst <$> modifyDimM ix dim id
+  {-# INLINE [1] getDimM #-}
 
   -- | Set the value for an index at specified dimension.
   setDimM :: MonadThrow m => ix -> Dim -> Int -> m ix
+  setDimM ix dim i = snd <$> modifyDimM ix dim (const i)
+  {-# INLINE [1] setDimM #-}
+
+  -- | Update the value for an index at specified dimension and return the old value as
+  -- well as the updated index.
+  modifyDimM :: MonadThrow m => ix -> Dim -> (Int -> Int) -> m (Int, ix)
+  modifyDimM ix dim f = do
+    i <- getDimM ix dim
+    ix' <- setDimM ix dim (f i)
+    pure (i, ix')
+  {-# INLINE [1] modifyDimM #-}
 
   -- | Lift an `Int` to any index by replicating the value as many times as there are dimensions.
   --
@@ -615,13 +628,16 @@ instance Index Ix1 where
   {-# INLINE [1] snocDim #-}
   unsnocDim i = (Ix0, i)
   {-# INLINE [1] unsnocDim #-}
-  getDimM i  1 = pure i
+  getDimM ix 1 = pure ix
   getDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
-  setDimM _  1 i = pure i
-  setDimM ix d _ = throwM $ IndexDimensionException ix d
+  setDimM _  1 ix = pure ix
+  setDimM ix d _  = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
-  pullOutDimM i  1 = pure (i, Ix0)
+  modifyDimM ix 1 f = pure (ix, f ix)
+  modifyDimM ix d _ = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
+  pullOutDimM ix 1 = pure (ix, Ix0)
   pullOutDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM Ix0 1 i = pure i

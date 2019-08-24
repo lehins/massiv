@@ -1,3 +1,8 @@
+# 0.4.1
+
+* Addition of `reverse`, `reverse'` and `reverseM`
+* Addition of `modifyDimension`, `modifyDimM`, and `modifyDim'`
+
 # 0.4.0
 
 * Made `Construct` a super class of `Mutable`

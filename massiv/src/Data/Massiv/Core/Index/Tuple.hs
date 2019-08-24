@@ -186,6 +186,10 @@ instance Index Ix2T where
   setDimM (i2, _) 1 i1 = pure (i2, i1)
   setDimM ix      d _  = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
+  modifyDimM (i2, i1) 2 f = pure (i2, (f i2,   i1))
+  modifyDimM (i2, i1) 1 f = pure (i1, (  i2, f i1))
+  modifyDimM ix       d _  = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i2, i1) 2 = pure (i2, i1)
   pullOutDimM (i2, i1) 1 = pure (i1, i2)
   pullOutDimM ix       d = throwM $ IndexDimensionException ix d
@@ -226,6 +230,11 @@ instance Index Ix3T where
   setDimM (i3, i2,  _) 1 i1 = pure (i3, i2, i1)
   setDimM ix           d _  = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
+  modifyDimM (i3, i2, i1) 3 f = pure (i3, (f i3,   i2,   i1))
+  modifyDimM (i3, i2, i1) 2 f = pure (i2, (  i3, f i2,   i1))
+  modifyDimM (i3, i2, i1) 1 f = pure (i1, (  i3,   i2, f i1))
+  modifyDimM ix           d _  = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i3, i2, i1) 3 = pure (i3, (i2, i1))
   pullOutDimM (i3, i2, i1) 2 = pure (i2, (i3, i1))
   pullOutDimM (i3, i2, i1) 1 = pure (i1, (i3, i2))
@@ -267,6 +276,12 @@ instance Index Ix4T where
   setDimM (i4, i3, i2,  _) 1 i1 = pure (i4, i3, i2, i1)
   setDimM ix               d  _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
+  modifyDimM (i4, i3, i2, i1) 4 f = pure (i4, (f i4,   i3,   i2,   i1))
+  modifyDimM (i4, i3, i2, i1) 3 f = pure (i3, (  i4, f i3,   i2,   i1))
+  modifyDimM (i4, i3, i2, i1) 2 f = pure (i2, (  i4,   i3, f i2,   i1))
+  modifyDimM (i4, i3, i2, i1) 1 f = pure (i1, (  i4,   i3,   i2, f i1))
+  modifyDimM ix               d _ = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i4, i3, i2, i1) 4 = pure (i4, (i3, i2, i1))
   pullOutDimM (i4, i3, i2, i1) 3 = pure (i3, (i4, i2, i1))
   pullOutDimM (i4, i3, i2, i1) 2 = pure (i2, (i4, i3, i1))
@@ -313,6 +328,13 @@ instance Index Ix5T where
   setDimM (i5, i4, i3, i2,  _) 1 i1 = pure (i5, i4, i3, i2, i1)
   setDimM ix                   d  _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
+  modifyDimM (i5, i4, i3, i2, i1) 5 f = pure (i5, (f i5,   i4,   i3,   i2,   i1))
+  modifyDimM (i5, i4, i3, i2, i1) 4 f = pure (i4, (  i5, f i4,   i3,   i2,   i1))
+  modifyDimM (i5, i4, i3, i2, i1) 3 f = pure (i3, (  i5,   i4, f i3,   i2,   i1))
+  modifyDimM (i5, i4, i3, i2, i1) 2 f = pure (i2, (  i5,   i4,   i3, f i2,   i1))
+  modifyDimM (i5, i4, i3, i2, i1) 1 f = pure (i1, (  i5,   i4,   i3,   i2, f i1))
+  modifyDimM ix                   d _ = throwM $ IndexDimensionException ix d
+  {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i5, i4, i3, i2, i1) 5 = pure (i5, (i4, i3, i2, i1))
   pullOutDimM (i5, i4, i3, i2, i1) 4 = pure (i4, (i5, i3, i2, i1))
   pullOutDimM (i5, i4, i3, i2, i1) 3 = pure (i3, (i5, i4, i2, i1))

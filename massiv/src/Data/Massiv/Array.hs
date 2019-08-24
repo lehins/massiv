@@ -153,8 +153,8 @@ import Data.Massiv.Array.Stencil
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Prelude as P hiding (all, and, any, enumFromTo, foldl, foldr, mapM,
-                     mapM_, maximum, minimum, or, product, replicate, splitAt,
-                     sum, zip)
+                            mapM_, maximum, minimum, or, product, replicate, splitAt,
+                            sum, zip)
 
 {- $folding
 

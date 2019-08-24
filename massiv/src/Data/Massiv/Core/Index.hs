@@ -65,6 +65,7 @@ module Data.Massiv.Core.Index
   , initDim
   , getDim'
   , setDim'
+  , modifyDim'
   , dropDimM
   , dropDim'
   , pullOutDim'
@@ -72,6 +73,7 @@ module Data.Massiv.Core.Index
   , fromDimension
   , getDimension
   , setDimension
+  , modifyDimension
   , dropDimension
   , pullOutDimension
   , insertDimension
@@ -296,6 +298,19 @@ getDim' :: Index ix => ix -> Dim -> Int
 getDim' ix = either throw id . getDimM ix
 {-# INLINE [1] getDim' #-}
 
+-- | Update the value of a specific dimension within the index. Throws `IndexException`. See
+-- `modifyDimM` for a safer version and `modifyDimension` for a type safe version.
+--
+-- ==== __Examples__
+--
+-- >>> modifyDim' (2 :> 3 :> 4 :. 5) 2 (+ 10)
+-- (4,2 :> 3 :> 14 :. 5)
+--
+-- @since 0.2.4
+modifyDim' :: Index ix => ix -> Dim -> (Int -> Int) -> (Int, ix)
+modifyDim' ix dim = either throw id . modifyDimM ix dim
+{-# INLINE [1] modifyDim' #-}
+
 -- | Remove a dimension from the index.
 --
 -- ==== __Examples__
@@ -379,6 +394,18 @@ fromDimension = fromIntegral . natVal
 setDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int -> ix
 setDimension ix = setDim' ix . fromDimension
 {-# INLINE [1] setDimension #-}
+
+-- | Type safe way to set value of index at a particular dimension.
+--
+-- ==== __Examples__
+--
+-- >>> modifyDimension (2 :> 3 :> 4 :. 5) Dim3 (+ 2)
+-- (3,2 :> 5 :> 4 :. 5)
+--
+-- @since 0.2.4
+modifyDimension :: IsIndexDimension ix n => ix -> Dimension n -> (Int -> Int) -> (Int, ix)
+modifyDimension ix = modifyDim' ix . fromDimension
+{-# INLINE [1] modifyDimension #-}
 
 -- | Type safe way to extract value of index at a particular dimension.
 --
