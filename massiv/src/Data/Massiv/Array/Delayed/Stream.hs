@@ -140,9 +140,6 @@ toStreamArray = DSArray . S.steps
 {-# INLINE toStreamArray #-}
 
 instance Construct DS Ix1 e where
-  setComp _ arr = arr
-  {-# INLINE setComp #-}
-
   makeArrayLinear _ (Sz k) = fromSteps . S.generate k
   {-# INLINE makeArrayLinear #-}
 

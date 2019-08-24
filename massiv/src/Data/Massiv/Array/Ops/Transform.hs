@@ -82,7 +82,7 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
-import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse, take, drop)
+import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
@@ -339,8 +339,8 @@ reverseM dim arr = do
     unsafeIndex arr (snd $ modifyDim' ix dim (\i -> k - i - 1))
 {-# INLINE reverseM #-}
 
--- | Reverse an array along some dimension. Same as `reverseM`, but throws the
--- `IndexDimensionException` from pure code.
+-- | Reverse an array along some dimension. Same as `reverseM`, but throws exception from
+-- pure code.
 --
 -- @since 0.4.1
 reverse' :: Source r ix e => Dim -> Array r ix e -> Array D ix e

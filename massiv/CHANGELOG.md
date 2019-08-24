@@ -2,6 +2,8 @@
 # 0.5.0
 
 * Move `setComp` into `Load` class.
+* Addition of `reverse`, `reverse'` and `reverseM`
+* Addition of `modifyDimension`, `modifyDimM`, and `modifyDim'`
 
 # 0.4.5
 
