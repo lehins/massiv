@@ -30,6 +30,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Data.Massiv.Array
                      , Data.Massiv.Array.Delayed
+                     , Data.Massiv.Array.Delayed.Stream
                      , Data.Massiv.Array.Manifest
                      , Data.Massiv.Array.Manifest.Vector
                      , Data.Massiv.Array.Mutable
@@ -48,7 +49,6 @@ library
   other-modules:       Data.Massiv.Array.Delayed.Interleaved
                      , Data.Massiv.Array.Delayed.Pull
                      , Data.Massiv.Array.Delayed.Push
-                     , Data.Massiv.Array.Delayed.Stream
                      , Data.Massiv.Array.Delayed.Windowed
                      , Data.Massiv.Array.Manifest.Boxed
                      , Data.Massiv.Array.Manifest.Internal

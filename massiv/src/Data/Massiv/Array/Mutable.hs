@@ -258,8 +258,9 @@ loadArrayS ::
   -> m (MArray (PrimState m) r ix e)
 loadArrayS arr = do
   marr <- newMaybeInitialized arr
-  loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
-  pure marr
+  unsafeLoadIntoS marr arr
+  -- loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
+  -- pure marr
 {-# INLINE loadArrayS #-}
 
 
@@ -273,8 +274,9 @@ loadArray ::
 loadArray arr =
   liftIO $ do
     marr <- newMaybeInitialized arr
-    withScheduler_ (getComp arr) $ \scheduler -> loadArrayM scheduler arr (unsafeLinearWrite marr)
-    pure marr
+    unsafeLoadInto marr arr
+    -- withScheduler_ (getComp arr) $ \scheduler -> loadArrayM scheduler arr (unsafeLinearWrite marr)
+    -- pure marr
 {-# INLINE loadArray #-}
 
 

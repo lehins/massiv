@@ -33,7 +33,7 @@ benchmark sum
   build-depends:       base
                      , criterion
                      , massiv
-                     , massiv-simd
+                     -- , massiv-simd
                      , massiv-bench
   default-language:    Haskell2010
 
@@ -57,7 +57,7 @@ benchmark mult
                      , criterion
                      , massiv
                      , massiv-bench
-                     , massiv-simd
+                     -- , massiv-simd
                      , dense-linear-algebra
   default-language:    Haskell2010
 
@@ -70,7 +70,7 @@ benchmark arithmetic
                      , criterion
                      , massiv
                      , massiv-bench
-                     , massiv-simd
+                     -- , massiv-simd
   default-language:    Haskell2010
 
 benchmark minmax
