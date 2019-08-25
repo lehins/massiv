@@ -48,6 +48,7 @@ library
   other-modules:       Data.Massiv.Array.Delayed.Interleaved
                      , Data.Massiv.Array.Delayed.Pull
                      , Data.Massiv.Array.Delayed.Push
+                     , Data.Massiv.Array.Delayed.Stream
                      , Data.Massiv.Array.Delayed.Windowed
                      , Data.Massiv.Array.Manifest.Boxed
                      , Data.Massiv.Array.Manifest.Internal
@@ -55,6 +56,7 @@ library
                      , Data.Massiv.Array.Manifest.Primitive
                      , Data.Massiv.Array.Manifest.Storable
                      , Data.Massiv.Array.Manifest.Unboxed
+                     , Data.Massiv.Array.Manifest.Vector.Stream
                      , Data.Massiv.Array.Ops.Construct
                      , Data.Massiv.Array.Ops.Fold
                      , Data.Massiv.Array.Ops.Fold.Internal
