@@ -29,18 +29,25 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   , fromBundleM
   -- * Operations on Steps
   , length
+  , singleton
   , generate
   , traverse
   , mapM
+  , concatMap
+  , zipWith
   , zipWithM
   -- ** Folding
   , foldl
   , foldr
   , foldlM
   , foldrM
+  -- ** Unfolding
+  , unfoldr
+  , unfoldrN
   -- ** Filter
   , mapMaybe
   , filter
+  , filterA
   , filterM
   , transStepsId
   -- * Useful re-exports
@@ -48,14 +55,15 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   , module Data.Vector.Fusion.Util
   ) where
 
+import qualified Control.Monad as M
 import Control.Monad.ST
-import Data.Massiv.Core.Common
+import Data.Massiv.Core.Common hiding (singleton)
 import qualified Data.Traversable as Traversable (traverse)
 import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import Data.Vector.Fusion.Bundle.Size
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
-import Prelude hiding (mapM, traverse, length, foldl, foldr, filter)
+import Prelude hiding (zipWith, mapM, traverse, length, foldl, foldr, filter, concatMap)
 
 data Steps m e = Steps
   { sSteps :: S.Stream m e
@@ -66,7 +74,6 @@ instance Monad m => Functor (Steps m) where
 
   fmap f = mapM (pure . f)
   {-# INLINE fmap #-}
-
 
 
 -- TODO: benchmark: `fmap snd . isteps`
@@ -225,23 +232,27 @@ unstreamExact sz str =
     unsafeFreeze Seq marr
 {-# INLINE unstreamExact #-}
 
-
-streamTraverse :: (Monad m, Applicative f) => (a -> f b) -> S.Stream Id a -> f (S.Stream m b)
-streamTraverse f str = S.fromList <$> Traversable.traverse f (unId (S.toList str))
-{-# INLINE streamTraverse #-}
+liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Stream m b)
+liftListA f str = S.fromList <$> f (unId (S.toList str))
+{-# INLINE liftListA #-}
 
 length :: Steps Id a -> Int
 length (Steps str sz) =
   case sz of
     Exact k -> k
-    _ -> unId (S.length str)
+    _       -> unId (S.length str)
+{-# INLINE length #-}
+
+singleton :: Monad m => e -> Steps m e
+singleton e = Steps (S.singleton e) (Exact 1)
+{-# INLINE singleton #-}
 
 generate :: Monad m => Int -> (Int -> e) -> Steps m e
 generate k f = Steps (S.generate k f) (Exact k)
 {-# INLINE generate #-}
 
 traverse :: (Monad m, Applicative f) => (e -> f a) -> Steps Id e -> f (Steps m a)
-traverse f (Steps str k) = (`Steps` k) <$> streamTraverse f str
+traverse f (Steps str k) = (`Steps` k) <$> liftListA (Traversable.traverse f) str
 {-# INLINE traverse #-}
 
 
@@ -249,6 +260,9 @@ mapM :: Monad m => (e -> m a) -> Steps m e -> Steps m a
 mapM f (Steps str k) = Steps (S.mapM f str) k
 {-# INLINE mapM #-}
 
+--zipWith :: Monad m => (a -> b -> m c) -> Steps m a -> Steps m b -> Steps m c
+zipWith f (Steps str1 k1) (Steps str2 k2) = Steps (S.zipWith f str1 str2) (smaller k1 k2)
+{-# INLINE zipWith #-}
 
 zipWithM :: Monad m => (a -> b -> m c) -> Steps m a -> Steps m b -> Steps m c
 zipWithM f (Steps str1 k1) (Steps str2 k2) = Steps (S.zipWithM f str1 str2) (smaller k1 k2)
@@ -283,7 +297,11 @@ mapMaybe :: Monad m => (a -> Maybe e) -> Steps m a -> Steps m e
 mapMaybe f (Steps str k) = Steps (S.mapMaybe f str) (toMax k)
 {-# INLINE mapMaybe #-}
 
-mapMaybeA = undefined
+concatMap :: Monad m => (a -> Steps m e) -> Steps m a -> Steps m e
+concatMap f (Steps str _) = Steps (S.concatMap (sSteps . f) str) Unknown
+{-# INLINE concatMap #-}
+
+--mapMaybeA f (Steps str k) = 
 
 -- mapMaybeM :: Monad m => (a -> m (Maybe e)) -> Steps m a -> Maybe (Steps m e)
 -- mapMaybeM f (Steps str k) = Steps (S.mapMaybeM f str) (toMax k)
@@ -294,9 +312,21 @@ filter :: Monad m => (a -> Bool) -> Steps m a -> Steps m a
 filter f (Steps str k) = Steps (S.filter f str) (toMax k)
 {-# INLINE filter #-}
 
-filterA = undefined
+
+filterA :: (Monad m, Applicative f) => (e -> f Bool) -> Steps Id e -> f (Steps m e)
+filterA f (Steps str k) = (`Steps` toMax k) <$> liftListA (M.filterM f) str
+{-# INLINE filterA #-}
 
 filterM :: Monad m => (e -> m Bool) -> Steps m e -> Steps m e
 filterM f (Steps str k) = Steps (S.filterM f str) (toMax k)
 {-# INLINE filterM #-}
+
+
+unfoldr :: Monad m => (s -> Maybe (e, s)) -> s -> Steps m e
+unfoldr f e0 = Steps (S.unfoldr f e0) Unknown
+{-# INLINE unfoldr #-}
+
+unfoldrN :: Monad m => Sz1 -> (s -> Maybe (e, s)) -> s -> Steps m e
+unfoldrN n f e0 = Steps (S.unfoldrN (unSz n) f e0) (Max (unSz n))
+{-# INLINE unfoldrN #-}
 
