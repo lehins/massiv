@@ -70,6 +70,20 @@ instance Foldable (Array DS Ix1) where
   length = S.length . coerce
   {-# INLINE length #-}
 
+instance Semigroup (Array DS Ix1 e) where
+
+  (<>) a1 a2 = DSArray (coerce a1 `S.append` coerce a2)
+  {-# INLINE (<>) #-}
+
+
+instance Monoid (Array DS Ix1 e) where
+
+  mempty = DSArray S.empty
+  {-# INLINE mempty #-}
+
+  mappend = (<>)
+  {-# INLINE mappend #-}
+
   -- TODO: add more
 
 -- | Flatten an array into a stream of values.

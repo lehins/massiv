@@ -29,11 +29,13 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   , fromBundleM
   -- * Operations on Steps
   , length
+  , empty
   , singleton
   , generate
   , traverse
   , mapM
   , concatMap
+  , append
   , zipWith
   , zipWithM
   -- ** Folding
@@ -57,7 +59,7 @@ module Data.Massiv.Array.Manifest.Vector.Stream
 
 import qualified Control.Monad as M
 import Control.Monad.ST
-import Data.Massiv.Core.Common hiding (singleton)
+import Data.Massiv.Core.Common hiding (empty, singleton)
 import qualified Data.Traversable as Traversable (traverse)
 import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import Data.Vector.Fusion.Bundle.Size
@@ -243,6 +245,10 @@ length (Steps str sz) =
     _       -> unId (S.length str)
 {-# INLINE length #-}
 
+empty :: Monad m => Steps m e
+empty = Steps S.empty (Exact 0)
+{-# INLINE empty #-}
+
 singleton :: Monad m => e -> Steps m e
 singleton e = Steps (S.singleton e) (Exact 1)
 {-# INLINE singleton #-}
@@ -255,12 +261,15 @@ traverse :: (Monad m, Applicative f) => (e -> f a) -> Steps Id e -> f (Steps m a
 traverse f (Steps str k) = (`Steps` k) <$> liftListA (Traversable.traverse f) str
 {-# INLINE traverse #-}
 
+append :: Monad m => Steps m e -> Steps m e -> Steps m e
+append (Steps str1 k1) (Steps str2 k2) = Steps (str1 S.++ str2) (k1 + k2)
+{-# INLINE append #-}
 
 mapM :: Monad m => (e -> m a) -> Steps m e -> Steps m a
 mapM f (Steps str k) = Steps (S.mapM f str) k
 {-# INLINE mapM #-}
 
---zipWith :: Monad m => (a -> b -> m c) -> Steps m a -> Steps m b -> Steps m c
+zipWith :: Monad m => (a -> b -> e) -> Steps m a -> Steps m b -> Steps m e
 zipWith f (Steps str1 k1) (Steps str2 k2) = Steps (S.zipWith f str1 str2) (smaller k1 k2)
 {-# INLINE zipWith #-}
 
