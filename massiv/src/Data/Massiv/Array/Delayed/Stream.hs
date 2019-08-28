@@ -183,6 +183,7 @@ instance Load DS Ix1 e where
 --
 -- ====__Example__
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> unfoldr (\i -> if i < 9 then Just (i*i, i + 1) else Nothing) (0 :: Int)
 -- Array DS Seq (Sz1 9)
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64 ]
@@ -198,6 +199,7 @@ unfoldr f = DSArray . S.unfoldr f
 
 -- | Right unfolding function with limited number of elements.
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> unfoldrN 9 (\i -> Just (i*i, i + 1)) (0 :: Int)
 -- Array DS Seq (Sz1 9)
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64 ]
