@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -52,9 +53,10 @@ instance Applicative (Array DS Ix1) where
   (<*>) a1 a2 = DSArray (S.zipWith ($) (coerce a1) (coerce a2))
   {-# INLINE (<*>) #-}
 
+#if MIN_VERSION_base(4,10,0)
   liftA2 f a1 a2 = DSArray (S.zipWith f (coerce a1) (coerce a2))
   {-# INLINE liftA2 #-}
-
+#endif
 
 instance Monad (Array DS Ix1) where
 
