@@ -16,6 +16,8 @@
 module Data.Massiv.Core.Common
   ( Array
   , Elt
+  , Steps(..)
+  , Stream(..)
   , Construct(..)
   , Source(..)
   , Load(..)
@@ -49,6 +51,7 @@ module Data.Massiv.Core.Common
   , elemsCount
   , isEmpty
   , Sz(SafeSz)
+  , Size(..)
   -- * Indexing
   , (!?)
   , index
@@ -72,6 +75,7 @@ module Data.Massiv.Core.Common
   , ShapeException(..)
   , module Data.Massiv.Core.Exception
   , Proxy(..)
+  , Id(..)
   -- * Stateful Monads
   , MonadUnliftIO
   , MonadIO(liftIO)
@@ -91,6 +95,9 @@ import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Typeable
+import Data.Vector.Fusion.Bundle.Size
+import qualified Data.Vector.Fusion.Stream.Monadic as S
+import Data.Vector.Fusion.Util
 
 #include "massiv.h"
 
@@ -105,6 +112,21 @@ type family Elt r ix e :: * where
   Elt r ix  e = Array (R r) (Lower ix) e
 
 type family NestedStruct r ix e :: *
+
+
+
+class Stream r ix e where
+  toStream :: Array r ix e -> Steps Id e
+
+data Steps m e = Steps
+  { stepsStream :: S.Stream m e
+  , stepsSize   :: Size
+  }
+
+instance Monad m => Functor (Steps m) where
+  fmap f s = s { stepsStream = S.map f (stepsStream s) }
+  {-# INLINE fmap #-}
+
 
 -- | Array types that can be constructed.
 class (Typeable r, Index ix) => Construct r ix e where

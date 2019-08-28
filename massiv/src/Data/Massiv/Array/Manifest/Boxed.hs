@@ -42,8 +42,10 @@ import Control.Monad.ST (runST)
 import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Delayed.Push (DL)
+import Data.Massiv.Array.Delayed.Stream (DS)
 import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
 import Data.Massiv.Array.Manifest.List as L
+import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Array.Ops.Fold.Internal
@@ -88,6 +90,10 @@ instance (Ragged L ix e, Show e) => Show (Array B ix e) where
   showList = showArrayList
 
 instance (Ragged L ix e, Show e) => Show (Array DL ix e) where
+  showsPrec = showsArrayPrec (computeAs B)
+  showList = showArrayList
+
+instance Show e => Show (Array DS Ix1 e) where
   showsPrec = showsArrayPrec (computeAs B)
   showList = showArrayList
 
@@ -192,6 +198,10 @@ instance Index ix => Load B ix e where
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad B ix e
+
+instance Index ix => Stream B ix e where
+  toStream = S.steps
+  {-# INLINE toStream #-}
 
 
 -- | Row-major sequential folding over a Boxed array.
@@ -361,6 +371,9 @@ instance (Index ix, NFData e) => Load N ix e where
 
 instance (Index ix, NFData e) => StrideLoad N ix e
 
+instance Index ix => Stream N ix e where
+  toStream = toStream . coerce
+  {-# INLINE toStream #-}
 
 
 instance ( NFData e

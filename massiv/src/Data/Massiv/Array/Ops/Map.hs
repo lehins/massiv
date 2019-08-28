@@ -13,6 +13,10 @@
 module Data.Massiv.Array.Ops.Map
   ( map
   , imap
+  -- ** Maybe
+  , mapMaybeS
+  , mapMaybeA
+  , mapMaybeM
   -- ** Traversing
   -- *** Applicative
   , traverseA
@@ -72,6 +76,10 @@ module Data.Massiv.Array.Ops.Map
   , izipWithA
   , zipWith3A
   , izipWith3A
+  -- ** Filtering
+  , filterS
+  , filterA
+  , filterM
   ) where
 
 import Control.Monad (void)
@@ -79,6 +87,7 @@ import Control.Monad.Primitive (PrimMonad)
 import Control.Scheduler
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Stream (filterA, filterM, filterS, mapMaybeA, mapMaybeM, mapMaybeS)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct (makeArrayA)
 import Data.Massiv.Core.Common

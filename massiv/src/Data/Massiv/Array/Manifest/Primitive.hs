@@ -44,6 +44,7 @@ import Control.Monad.Primitive (PrimMonad(primitive), PrimState, primitive_)
 import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
+import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
@@ -223,6 +224,10 @@ instance (Prim e, Index ix) => Load P ix e where
   {-# INLINE loadArrayM #-}
 
 instance (Prim e, Index ix) => StrideLoad P ix e
+
+instance (Prim e, Index ix) => Stream P ix e where
+  toStream = S.steps
+  {-# INLINE toStream #-}
 
 instance ( Prim e
          , IsList (Array L ix e)

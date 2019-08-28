@@ -48,6 +48,7 @@ import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold.Internal
+import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import Data.Maybe (fromMaybe)
@@ -191,6 +192,10 @@ instance Index ix => Load M ix e where
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad M ix e
+
+instance Index ix => Stream M ix e where
+  toStream = S.steps
+  {-# INLINE toStream #-}
 
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the

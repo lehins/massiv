@@ -25,6 +25,7 @@ module Data.Massiv.Array.Delayed.Pull
 
 import qualified Data.Foldable as F
 import Data.Massiv.Array.Ops.Fold.Internal as A
+import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
@@ -150,6 +151,11 @@ instance Index ix => Load D ix e where
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad D ix e
+
+instance Index ix => Stream D ix e where
+  toStream = S.steps
+  {-# INLINE toStream #-}
+
 
 instance (Index ix, Num e) => Num (Array D ix e) where
   (+)         = unsafeLiftArray2 (+)

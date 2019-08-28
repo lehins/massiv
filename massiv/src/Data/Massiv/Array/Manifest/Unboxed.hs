@@ -27,6 +27,7 @@ import Control.DeepSeq (NFData(..), deepseq)
 import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import Data.Massiv.Array.Manifest.List as A
+import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
@@ -182,6 +183,12 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
 
   unsafeLinearGrow (MUArray _ mv) sz = MUArray sz <$> MVU.unsafeGrow mv (totalElem sz)
   {-# INLINE unsafeLinearGrow #-}
+
+
+instance (Index ix, VU.Unbox e) => Stream U ix e where
+  toStream = S.steps
+  {-# INLINE toStream #-}
+
 
 instance ( VU.Unbox e
          , IsList (Array L ix e)

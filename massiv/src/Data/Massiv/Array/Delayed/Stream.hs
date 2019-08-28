@@ -13,7 +13,12 @@
 module Data.Massiv.Array.Delayed.Stream
   ( DS(..)
   , toStreamArray
-  , filter
+  , filterS
+  , filterA
+  , filterM
+  , mapMaybeS
+  , mapMaybeA
+  , mapMaybeM
   , unfoldr
   , unfoldrN
   ) where
@@ -22,11 +27,9 @@ import Control.Applicative
 import Control.Monad (void)
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
-import Data.Massiv.Array.Manifest.Boxed (B(..))
-import Data.Massiv.Array.Manifest.Internal (computeAs)
 import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.List (showArrayList, showsArrayPrec)
+import GHC.Exts
 
 -- | Delayed array that will be loaded in an interleaved fashion during parallel
 -- computation.
@@ -70,6 +73,9 @@ instance Foldable (Array DS Ix1) where
   length = S.length . coerce
   {-# INLINE length #-}
 
+  -- TODO: add more
+
+
 instance Semigroup (Array DS Ix1 e) where
 
   (<>) a1 a2 = DSArray (coerce a1 `S.append` coerce a2)
@@ -84,7 +90,23 @@ instance Monoid (Array DS Ix1 e) where
   mappend = (<>)
   {-# INLINE mappend #-}
 
-  -- TODO: add more
+instance IsList (Array DS Ix1 e) where
+  type Item (Array DS Ix1 e) = e
+
+  fromList = DSArray . S.fromList
+  {-# INLINE fromList #-}
+
+  fromListN n = DSArray . S.fromListN n
+  {-# INLINE fromListN #-}
+
+  toList = S.toList . coerce
+  {-# INLINE toList #-}
+
+
+instance S.Stream DS Ix1 e where
+  toStream = coerce
+  {-# INLINE toStream #-}
+
 
 -- | Flatten an array into a stream of values.
 --
@@ -101,14 +123,9 @@ instance Construct DS Ix1 e where
   {-# INLINE makeArrayLinear #-}
 
 
-instance Show e => Show (Array DS Ix1 e) where
-  showsPrec = showsArrayPrec (computeAs B)
-  showList = showArrayList
-
--- take . drop
--- instance Index ix => Extract DI ix e where
---   unsafeExtract sIx newSz = DIArray . unsafeExtract sIx newSz . diArray
---   {-# INLINE unsafeExtract #-}
+instance Extract DS Ix1 e where
+  unsafeExtract sIx newSz = DSArray . S.slice sIx (unSz newSz) . dsArray
+  {-# INLINE unsafeExtract #-}
 
 -- | /O(n)/ - `size` implementation.
 instance Load DS Ix1 e where
@@ -119,23 +136,33 @@ instance Load DS Ix1 e where
   {-# INLINE getComp #-}
 
   loadArrayM _scheduler arr uWrite =
-    case S.sSize (dsArray arr) of
+    case stepsSize (dsArray arr) of
       S.Exact _ ->
         void $ S.foldlM (\i e -> uWrite i e >> pure (i + 1)) 0 (S.transStepsId (coerce arr))
       _ -> error "Loading Stream array is not supported with loadArrayM"
   {-# INLINE loadArrayM #-}
 
   unsafeLoadIntoS marr (DSArray sts) =
-    S.unstreamIntoM marr (S.sSize sts) (S.sSteps sts)
+    S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
   {-# INLINE unsafeLoadIntoS #-}
 
   unsafeLoadInto marr arr = liftIO $ unsafeLoadIntoS marr arr
   {-# INLINE unsafeLoadInto #-}
 
 
-filterS :: Source r ix e => (e -> Bool) -> Array r ix e -> Array DS Ix1 e
-filterS f = DSArray . S.filter f . S.steps
-{-# INLINE filterS #-}
+
+-- cons :: e -> Array DS Ix1 e -> Array DS Ix1 e
+-- cons e = coerce . S.cons e . dsArray
+-- {-# INLINE cons #-}
+
+-- uncons :: Array DS Ix1 e -> Maybe (e, Array DS Ix1 e)
+-- uncons = coerce . S.uncons . dsArray
+-- {-# INLINE uncons #-}
+
+-- snoc :: Array DS Ix1 e -> e -> Array DS Ix1 e
+-- snoc (DSArray sts) e = DSArray (S.snoc sts e)
+-- {-# INLINE snoc #-}
+
 
 -- TODO: skip the stride while loading
 -- instance StrideLoad DS Ix1 e where
@@ -184,3 +211,34 @@ unfoldrN ::
   -> Array DS Ix1 e
 unfoldrN n f = DSArray . S.unfoldrN n f
 {-# INLINE unfoldrN #-}
+
+
+
+filterS :: S.Stream r ix e => (e -> Bool) -> Array r ix e -> Array DS Ix1 e
+filterS f = DSArray . S.filter f . S.toStream
+{-# INLINE filterS #-}
+
+filterA :: (S.Stream r ix e, Applicative f) => (e -> f Bool) -> Array r ix e -> f (Array DS Ix1 e)
+filterA f arr = DSArray <$> S.filterA f (S.toStream arr)
+{-# INLINE filterA #-}
+
+filterM :: (S.Stream r ix e, Monad m) => (e -> m Bool) -> Array r ix e -> m (Array DS Ix1 e)
+filterM = filterA
+{-# INLINE filterM #-}
+
+
+
+mapMaybeS :: S.Stream r ix a => (a -> Maybe b) -> Array r ix a -> Array DS Ix1 b
+mapMaybeS f = DSArray . S.mapMaybe f . S.toStream
+{-# INLINE mapMaybeS #-}
+
+mapMaybeA ::
+     (S.Stream r ix a, Applicative f) => (a -> f (Maybe b)) -> Array r ix a -> f (Array DS Ix1 b)
+mapMaybeA f arr = DSArray <$> S.mapMaybeA f (S.toStream arr)
+{-# INLINE mapMaybeA #-}
+
+mapMaybeM :: (S.Stream r ix a, Monad m) => (a -> m (Maybe b)) -> Array r ix a -> m (Array DS Ix1 b)
+mapMaybeM = mapMaybeA
+{-# INLINE mapMaybeM #-}
+
+

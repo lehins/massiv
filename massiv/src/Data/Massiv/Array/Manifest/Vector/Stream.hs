@@ -1,4 +1,6 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
@@ -11,6 +13,7 @@
 --
 module Data.Massiv.Array.Manifest.Vector.Stream
   ( Steps(..)
+  , Stream(..)
   -- * Conversion
   , steps
   , isteps
@@ -32,6 +35,12 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   , empty
   , singleton
   , generate
+  , cons
+  , uncons
+  , snoc
+  , drop
+  , take
+  , slice
   , traverse
   , mapM
   , concatMap
@@ -46,8 +55,14 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   -- ** Unfolding
   , unfoldr
   , unfoldrN
+  -- * Lists
+  , toList
+  , fromList
+  , fromListN
   -- ** Filter
   , mapMaybe
+  , mapMaybeA
+  , mapMaybeM
   , filter
   , filterA
   , filterM
@@ -57,6 +72,7 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   , module Data.Vector.Fusion.Util
   ) where
 
+import Data.Maybe (catMaybes)
 import qualified Control.Monad as M
 import Control.Monad.ST
 import Data.Massiv.Core.Common hiding (empty, singleton)
@@ -65,17 +81,9 @@ import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import Data.Vector.Fusion.Bundle.Size
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
-import Prelude hiding (zipWith, mapM, traverse, length, foldl, foldr, filter, concatMap)
+import Prelude hiding (zipWith, mapM, traverse, length, foldl, foldr, filter, concatMap, drop, take)
 
-data Steps m e = Steps
-  { sSteps :: S.Stream m e
-  , sSize  :: Size
-  }
 
-instance Monad m => Functor (Steps m) where
-
-  fmap f = mapM (pure . f)
-  {-# INLINE fmap #-}
 
 
 -- TODO: benchmark: `fmap snd . isteps`
@@ -234,10 +242,6 @@ unstreamExact sz str =
     unsafeFreeze Seq marr
 {-# INLINE unstreamExact #-}
 
-liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Stream m b)
-liftListA f str = S.fromList <$> f (unId (S.toList str))
-{-# INLINE liftListA #-}
-
 length :: Steps Id a -> Int
 length (Steps str sz) =
   case sz of
@@ -256,6 +260,20 @@ singleton e = Steps (S.singleton e) (Exact 1)
 generate :: Monad m => Int -> (Int -> e) -> Steps m e
 generate k f = Steps (S.generate k f) (Exact k)
 {-# INLINE generate #-}
+
+cons :: Monad m => e -> Steps m e -> Steps m e
+cons e (Steps str k) = Steps (S.cons e str) (k + 1)
+{-# INLINE cons #-}
+
+uncons :: Monad m => Steps m e -> m (Maybe (e, Steps m e))
+uncons sts@(Steps str _) = do
+  mx <- str S.!? 0
+  pure $ fmap (, drop 1 sts) mx
+{-# INLINE uncons #-}
+
+snoc :: Monad m => Steps m e -> e -> Steps m e
+snoc (Steps str k) e = Steps (S.snoc str e) (k + 1)
+{-# INLINE snoc #-}
 
 traverse :: (Monad m, Applicative f) => (e -> f a) -> Steps Id e -> f (Steps m a)
 traverse f (Steps str k) = (`Steps` k) <$> liftListA (Traversable.traverse f) str
@@ -283,12 +301,12 @@ transStepsId (Steps sts k) = Steps (S.trans (pure . unId) sts) k
 
 
 foldr :: (a -> b -> b) -> b -> Steps Id a -> b
-foldr f acc sts = unId (S.foldr f acc (sSteps sts))
+foldr f acc sts = unId (S.foldr f acc (stepsStream sts))
 {-# INLINE foldr #-}
 
 
 foldl :: (b -> a -> b) -> b -> Steps Id a -> b
-foldl f acc sts = unId (S.foldl f acc (sSteps sts))
+foldl f acc sts = unId (S.foldl f acc (stepsStream sts))
 {-# INLINE foldl #-}
 
 
@@ -307,15 +325,38 @@ mapMaybe f (Steps str k) = Steps (S.mapMaybe f str) (toMax k)
 {-# INLINE mapMaybe #-}
 
 concatMap :: Monad m => (a -> Steps m e) -> Steps m a -> Steps m e
-concatMap f (Steps str _) = Steps (S.concatMap (sSteps . f) str) Unknown
+concatMap f (Steps str _) = Steps (S.concatMap (stepsStream . f) str) Unknown
 {-# INLINE concatMap #-}
 
---mapMaybeA f (Steps str k) = 
 
--- mapMaybeM :: Monad m => (a -> m (Maybe e)) -> Steps m a -> Maybe (Steps m e)
--- mapMaybeM f (Steps str k) = Steps (S.mapMaybeM f str) (toMax k)
--- {-# INLINE mapMaybeM #-}
+mapMaybeA :: (Monad m, Applicative f) => (a -> f (Maybe e)) -> Steps Id a -> f (Steps m e)
+mapMaybeA f (Steps str k) = (`Steps` toMax k) <$> liftListA (mapMaybeListA f) str
+{-# INLINE mapMaybeA #-}
 
+mapMaybeM :: Monad m => (a -> m (Maybe b)) -> Steps m a -> Steps m b
+mapMaybeM f (Steps str k) = Steps (mapMaybeStreamM f str) (toMax k)
+{-# INLINE mapMaybeM #-}
+
+mapMaybeListA :: Applicative f => (a -> f (Maybe b)) -> [a] -> f [b]
+mapMaybeListA f = fmap catMaybes . Traversable.traverse f
+{-# INLINE mapMaybeListA #-}
+
+mapMaybeStreamM :: Monad m => (a -> m (Maybe b)) -> S.Stream m a -> S.Stream m b
+mapMaybeStreamM f (S.Stream step t) = S.Stream step' t
+  where
+    step' s = do
+      r <- step s
+      case r of
+        S.Yield x s' -> do
+          b <- f x
+          return $
+            case b of
+              Nothing -> S.Skip s'
+              Just b' -> S.Yield b' s'
+        S.Skip s' -> return $ S.Skip s'
+        S.Done -> return S.Done
+    {-# INLINE step' #-}
+{-# INLINE mapMaybeStreamM #-}
 
 filter :: Monad m => (a -> Bool) -> Steps m a -> Steps m a
 filter f (Steps str k) = Steps (S.filter f str) (toMax k)
@@ -330,6 +371,17 @@ filterM :: Monad m => (e -> m Bool) -> Steps m e -> Steps m e
 filterM f (Steps str k) = Steps (S.filterM f str) (toMax k)
 {-# INLINE filterM #-}
 
+take :: Monad m => Int -> Steps m a -> Steps m a
+take n (Steps str _) = Steps (S.take n str) (Max n)
+{-# INLINE take #-}
+
+drop :: Monad m => Int -> Steps m a -> Steps m a
+drop n (Steps str k) = Steps (S.drop n str) (k `clampedSubtract` Exact n)
+{-# INLINE drop #-}
+
+slice :: Monad m => Int -> Int -> Steps m a -> Steps m a
+slice i k (Steps str _) = Steps (S.slice i k str) (Max k)
+{-# INLINE slice #-}
 
 unfoldr :: Monad m => (s -> Maybe (e, s)) -> s -> Steps m e
 unfoldr f e0 = Steps (S.unfoldr f e0) Unknown
@@ -339,3 +391,18 @@ unfoldrN :: Monad m => Sz1 -> (s -> Maybe (e, s)) -> s -> Steps m e
 unfoldrN n f e0 = Steps (S.unfoldrN (unSz n) f e0) (Max (unSz n))
 {-# INLINE unfoldrN #-}
 
+toList :: Steps Id e -> [e]
+toList (Steps str _) = unId (S.toList str)
+{-# INLINE toList #-}
+
+fromList :: Monad m => [e] -> Steps m e
+fromList = (`Steps` Unknown) . S.fromList
+{-# INLINE fromList #-}
+
+fromListN :: Monad m => Int -> [e] -> Steps m e
+fromListN n  = (`Steps` Exact n) . S.fromListN n
+{-# INLINE fromListN #-}
+
+liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Stream m b)
+liftListA f str = S.fromList <$> f (unId (S.toList str))
+{-# INLINE liftListA #-}

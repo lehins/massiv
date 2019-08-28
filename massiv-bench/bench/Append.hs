@@ -5,6 +5,7 @@ module Main where
 import Criterion.Main
 import qualified Data.DList as DL
 import Data.Massiv.Array as A
+import Data.Massiv.Array.Delayed.Stream as AS
 import Data.Massiv.Bench as A
 import qualified Data.Vector.Primitive as VP
 import Prelude as P
@@ -37,12 +38,14 @@ main = do
         ]
     , bgroup
         "unfoldr"
-        [ bench "Array" $ whnf (A.computeAs P . unfoldrA firstK) 0
+        [ bench "Array (DS)" $ whnf (A.computeAs P . AS.unfoldr firstK) 0
         , bench "Vector" $ whnf (VP.unfoldr firstK) 0
         ]
     , bgroup
         "unfoldrN"
-        [ bench "Array" $ whnf (A.computeAs P . unfoldrS_ Seq (Sz k) (\i -> (i :: Int, i + 1))) 0
+        [ bench "Array (DL)" $ whnf (A.computeAs P . unfoldrS_ (Sz k) (\i -> (i :: Int, i + 1))) 0
+        , bench "Array (DS)" $
+          whnf (A.computeAs P . AS.unfoldrN (Sz k) (\i -> Just (i :: Int, i + 1))) 0
         , bench "Vector" $ whnf (VP.unfoldrN k (\i -> Just (i :: Int, i + 1))) 0
         ]
     ]
@@ -58,7 +61,7 @@ main = do
     consList !n !acc = consList (n - 1) (n : acc)
     consArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
     consArray 0 !acc = acc
-    consArray !n !acc = consArray (n - 1) (n `cons` acc)
+    consArray !n !acc = consArray (n - 1) (n `A.cons` acc)
     consVector :: Int -> VP.Vector Int -> VP.Vector Int
     consVector 0 !acc = acc
     consVector !n !acc = consVector (n - 1) (n `VP.cons` acc)
@@ -67,7 +70,7 @@ main = do
     snocList !n !acc = snocList (n - 1) (acc `DL.snoc` n)
     snocArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
     snocArray 0 !acc = acc
-    snocArray !n !acc = snocArray (n - 1) (acc `snoc` n)
+    snocArray !n !acc = snocArray (n - 1) (acc `A.snoc` n)
     snocVector :: Int -> VP.Vector Int -> VP.Vector Int
     snocVector 0 !acc = acc
     snocVector !n !acc = snocVector (n - 1) (acc `VP.snoc` n)
@@ -93,10 +96,3 @@ mkAppendBenchGroup gname dim sz =
           -- , bench "appendPull" $ whnf (A.computeAs P . fromJust . appendPull dim arr) arr
           ]
     ]
-
-unfoldrA :: (b -> Maybe (a, b)) -> b -> Array DL Ix1 a
-unfoldrA f = go A.empty
-  where go !arr !b =
-          case f b of
-            Nothing -> arr
-            Just (e, b') -> go (A.snoc arr e) b'

@@ -1,5 +1,10 @@
 # 0.4.1
 
+* Introduction of `Stream` and `DS` representation:
+  * `filterS`, `filterA`, `filterM`
+  * `mapMaybe`, `mapMaybeA`, `mapMaybeM`
+  * `unfoldr`, `unfoldrN`
+
 * Fix performance issue with copying of unboxed arrays and initialization of storable array.
 * Addition of `unsafeLoadIntoS`, `unsafeLoadInto` and `maxSize`
 * Addition of `reverse`, `reverse'` and `reverseM`
