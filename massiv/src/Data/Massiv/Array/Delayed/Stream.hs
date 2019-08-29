@@ -199,6 +199,8 @@ unfoldr f = DSArray . S.unfoldr f
 
 -- | Right unfolding function with limited number of elements.
 --
+-- ==== __Example__
+--
 -- >>> import Data.Massiv.Array as A
 -- >>> unfoldrN 9 (\i -> Just (i*i, i + 1)) (0 :: Int)
 -- Array DS Seq (Sz1 9)
@@ -216,16 +218,80 @@ unfoldrN ::
 unfoldrN n f = DSArray . S.unfoldrN n f
 {-# INLINE unfoldrN #-}
 
-
-
+-- | Sequentially filter out elements from the array according to the supplied predicate.
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> arr = makeArrayR D Seq (Sz2 3 4) fromIx2
+-- >>> arr
+-- Array D Seq (Sz (3 :. 4))
+--   [ [ (0,0), (0,1), (0,2), (0,3) ]
+--   , [ (1,0), (1,1), (1,2), (1,3) ]
+--   , [ (2,0), (2,1), (2,2), (2,3) ]
+--   ]
+-- >>> filterS (even . fst) arr
+-- Array DS Seq (Sz1 8)
+--   [ (0,0), (0,1), (0,2), (0,3), (2,0), (2,1), (2,2), (2,3) ]
+--
+-- @since 0.4.1
 filterS :: S.Stream r ix e => (e -> Bool) -> Array r ix e -> Array DS Ix1 e
 filterS f = DSArray . S.filter f . S.toStream
 {-# INLINE filterS #-}
 
+-- | Sequentially filter out elements from the array according to the supplied applicative predicate.
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> arr = makeArrayR D Seq (Sz2 3 4) fromIx2
+-- >>> arr
+-- Array D Seq (Sz (3 :. 4))
+--   [ [ (0,0), (0,1), (0,2), (0,3) ]
+--   , [ (1,0), (1,1), (1,2), (1,3) ]
+--   , [ (2,0), (2,1), (2,2), (2,3) ]
+--   ]
+-- >>> filterA (Just . odd . fst) arr
+-- Just (Array DS Seq (Sz1 4)
+--   [ (1,0), (1,1), (1,2), (1,3) ]
+-- )
+--
+-- @since 0.4.1
 filterA :: (S.Stream r ix e, Applicative f) => (e -> f Bool) -> Array r ix e -> f (Array DS Ix1 e)
 filterA f arr = DSArray <$> S.filterA f (S.toStream arr)
 {-# INLINE filterA #-}
 
+
+
+-- | Sequentially filter out elements from the array according to the supplied monadic predicate.
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> arr = makeArrayR D Seq (Sz2 3 4) fromIx2
+-- >>> arr
+-- Array D Seq (Sz (3 :. 4))
+--   [ [ (0,0), (0,1), (0,2), (0,3) ]
+--   , [ (1,0), (1,1), (1,2), (1,3) ]
+--   , [ (2,0), (2,1), (2,2), (2,3) ]
+--   ]
+-- >>> filterM (\ix@(_, j) -> print ix >> return (even j)) arr
+-- (0,0)
+-- (0,1)
+-- (0,2)
+-- (0,3)
+-- (1,0)
+-- (1,1)
+-- (1,2)
+-- (1,3)
+-- (2,0)
+-- (2,1)
+-- (2,2)
+-- (2,3)
+-- Array DS Seq (Sz1 6)
+--   [ (0,0), (0,2), (1,0), (1,2), (2,0), (2,2) ]
+--
+-- @since 0.4.1
 filterM :: (S.Stream r ix e, Monad m) => (e -> m Bool) -> Array r ix e -> m (Array DS Ix1 e)
 filterM = filterA
 {-# INLINE filterM #-}
