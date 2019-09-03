@@ -91,6 +91,8 @@ stencilConvolution = do
       ysConvXs4' = [4, 10, 20, 30, 34]
       ysCorrXs4' = [20, 30, 40, 26, 14]
       xs4f' f = f (-1) 1 . f 0 2 . f 1 3 . f 2 4
+      applyStencil :: (Manifest r ix Int, Load DW ix Int) =>
+        Stencil ix Int Int -> Array r ix Int -> Array U ix Int
       applyStencil s = computeAs U . mapStencil (Fill 0) s
   describe "makeConvolutionStencilFromKernel" $ do
     it "1x3" $ applyStencil (makeConvolutionStencilFromKernel xs3) ys `shouldBe` ysConvXs3
