@@ -64,13 +64,11 @@ stencilSpec = do
     it "Ix4" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix4)
 
 
-stencilDirection :: (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Array r Ix2 a -> Array U Ix2 a
-stencilDirection ix =
-  computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
+stencilDirection :: Ix2 -> Array U Ix2 Int -> Array U Ix2 Int
+stencilDirection ix = computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
 
 
-stencilCorners ::
-     (Default a, Unbox a, Manifest r Ix2 a) => Ix2 -> Ix2 -> Array r Ix2 a -> Array U Ix2 a
+stencilCorners :: Ix2 -> Ix2 -> Array U Ix2 Int -> Array U Ix2 Int
 stencilCorners ixC ix = computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) ixC $ \f -> f ix)
 
 
@@ -91,62 +89,63 @@ stencilConvolution = do
       ysConvXs4' = [4, 10, 20, 30, 34]
       ysCorrXs4' = [20, 30, 40, 26, 14]
       xs4f' f = f (-1) 1 . f 0 2 . f 1 3 . f 2 4
-      applyStencil :: (Manifest r ix Int, Load DW ix Int) =>
-        Stencil ix Int Int -> Array r ix Int -> Array U ix Int
-      applyStencil s = computeAs U . mapStencil (Fill 0) s
+      applyStencil1 :: Stencil Ix1 Int Int -> Array U Ix1 Int -> Array U Ix1 Int
+      applyStencil1 s = computeAs U . mapStencil (Fill 0) s
+      applyStencil2 :: Stencil Ix2 Int Int -> Array U Ix2 Int -> Array U Ix2 Int
+      applyStencil2 s = computeAs U . mapStencil (Fill 0) s
   describe "makeConvolutionStencilFromKernel" $ do
-    it "1x3" $ applyStencil (makeConvolutionStencilFromKernel xs3) ys `shouldBe` ysConvXs3
-    it "1x4" $ applyStencil (makeConvolutionStencilFromKernel xs4) ys `shouldBe` ysConvXs4
+    it "1x3" $ applyStencil1 (makeConvolutionStencilFromKernel xs3) ys `shouldBe` ysConvXs3
+    it "1x4" $ applyStencil1 (makeConvolutionStencilFromKernel xs4) ys `shouldBe` ysConvXs4
   describe "makeCorrelationStencilFromKernel" $ do
-    it "1x3" $ applyStencil (makeCorrelationStencilFromKernel xs3) ys `shouldBe` ysCorrXs3
-    it "1x4" $ applyStencil (makeCorrelationStencilFromKernel xs4) ys `shouldBe` ysCorrXs4
+    it "1x3" $ applyStencil1 (makeCorrelationStencilFromKernel xs3) ys `shouldBe` ysCorrXs3
+    it "1x4" $ applyStencil1 (makeCorrelationStencilFromKernel xs4) ys `shouldBe` ysCorrXs4
   describe "makeConvolutionStencil" $ do
-    it "1x3" $ applyStencil (makeConvolutionStencil (Sz1 3) 1 xs3f) ys `shouldBe` ysConvXs3
-    it "1x4" $ applyStencil (makeConvolutionStencil (Sz1 4) 2 xs4f) ys `shouldBe` ysConvXs4
-    it "1x4" $ applyStencil (makeConvolutionStencil (Sz1 4) 1 xs4f') ys `shouldBe` ysConvXs4'
+    it "1x3" $ applyStencil1 (makeConvolutionStencil (Sz1 3) 1 xs3f) ys `shouldBe` ysConvXs3
+    it "1x4" $ applyStencil1 (makeConvolutionStencil (Sz1 4) 2 xs4f) ys `shouldBe` ysConvXs4
+    it "1x4" $ applyStencil1 (makeConvolutionStencil (Sz1 4) 1 xs4f') ys `shouldBe` ysConvXs4'
   describe "makeCorrelationStencil" $ do
-    it "1x3" $ applyStencil (makeCorrelationStencil (Sz1 3) 1 xs3f) ys `shouldBe` ysCorrXs3
-    it "1x4" $ applyStencil (makeCorrelationStencil (Sz1 4) 2 xs4f) ys `shouldBe` ysCorrXs4
-    it "1x4" $ applyStencil (makeCorrelationStencil (Sz1 4) 1 xs4f') ys `shouldBe` ysCorrXs4'
+    it "1x3" $ applyStencil1 (makeCorrelationStencil (Sz1 3) 1 xs3f) ys `shouldBe` ysCorrXs3
+    it "1x4" $ applyStencil1 (makeCorrelationStencil (Sz1 4) 2 xs4f) ys `shouldBe` ysCorrXs4
+    it "1x4" $ applyStencil1 (makeCorrelationStencil (Sz1 4) 1 xs4f') ys `shouldBe` ysCorrXs4'
   describe "makeConvolutionStencil == makeConvolutionStencilFromKernel" $ do
     it "Sobel Horizontal" $
       property $ \(arr :: Array U Ix2 Int) ->
-        applyStencil (makeConvolutionStencil (Sz 3) 1 sobelX) arr ===
-        applyStencil (makeConvolutionStencilFromKernel sobelKernelX) arr
+        applyStencil2 (makeConvolutionStencil (Sz 3) 1 sobelX) arr ===
+        applyStencil2 (makeConvolutionStencilFromKernel sobelKernelX) arr
     it "1x3" $
       property $ \(arr :: Array U Ix1 Int) ->
-        applyStencil (makeConvolutionStencil (Sz1 3) 1 xs3f) arr ===
-        applyStencil (makeConvolutionStencilFromKernel xs3) arr
+        applyStencil1 (makeConvolutionStencil (Sz1 3) 1 xs3f) arr ===
+        applyStencil1 (makeConvolutionStencilFromKernel xs3) arr
     it "1x4" $
       property $ \(arr :: Array U Ix1 Int) ->
-        applyStencil (makeConvolutionStencil (Sz1 4) 2 xs4f) arr ===
-        applyStencil (makeConvolutionStencilFromKernel xs4) arr
+        applyStencil1 (makeConvolutionStencil (Sz1 4) 2 xs4f) arr ===
+        applyStencil1 (makeConvolutionStencilFromKernel xs4) arr
   describe "makeCorrelationStencil == makeCorrelationStencilFromKernel" $ do
     it "Sobel Horizontal" $
       property $ \(arr :: Array U Ix2 Int) ->
-        applyStencil (makeCorrelationStencil (Sz 3) 1 sobelX) arr ===
-        applyStencil (makeCorrelationStencilFromKernel sobelKernelX) arr
+        applyStencil2 (makeCorrelationStencil (Sz 3) 1 sobelX) arr ===
+        applyStencil2 (makeCorrelationStencilFromKernel sobelKernelX) arr
     it "1x3" $
       property $ \(arr :: Array U Ix1 Int) ->
-        applyStencil (makeCorrelationStencil (Sz1 3) 1 xs3f) arr ===
-        applyStencil (makeCorrelationStencilFromKernel xs3) arr
+        applyStencil1 (makeCorrelationStencil (Sz1 3) 1 xs3f) arr ===
+        applyStencil1 (makeCorrelationStencilFromKernel xs3) arr
     it "1x4" $
       property $ \(arr :: Array U Ix1 Int) ->
-        applyStencil (makeCorrelationStencil (Sz1 4) 2 xs4f) arr ===
-        applyStencil (makeCorrelationStencilFromKernel xs4) arr
+        applyStencil1 (makeCorrelationStencil (Sz1 4) 2 xs4f) arr ===
+        applyStencil1 (makeCorrelationStencilFromKernel xs4) arr
   describe "makeConvolutionStencil == makeCorrelationStencil . rotate180" $ do
     it "Sobel Horizontal" $
       property $ \(arr :: Array U Ix2 Int) ->
-        applyStencil (makeConvolutionStencilFromKernel sobelKernelX) arr ===
-        applyStencil (makeCorrelationStencilFromKernel (rotate180 sobelKernelX)) arr
+        applyStencil2 (makeConvolutionStencilFromKernel sobelKernelX) arr ===
+        applyStencil2 (makeCorrelationStencilFromKernel (rotate180 sobelKernelX)) arr
     it "1x3" $
       property $ \(arr :: Array U Ix1 Int) ->
-        applyStencil (makeConvolutionStencilFromKernel xs3) arr ===
-        applyStencil (makeCorrelationStencilFromKernel (rotate180 xs3)) arr
-    -- it "1x4" $
-    --   property $ \(arr :: Array U Ix1 Int) ->
-    --     applyStencil (makeConvolutionStencilFromKernel xs4) arr ===
-    --     applyStencil (makeCorrelationStencilFromKernel (rotate180 xs4)) arr
+        applyStencil1 (makeConvolutionStencilFromKernel xs3) arr ===
+        applyStencil1 (makeCorrelationStencilFromKernel (rotate180 xs3)) arr
+    it "1x5" $
+      property $ \(arr :: Array U Ix1 Int) ->
+        applyStencil1 (makeConvolutionStencilFromKernel ys) arr ===
+        applyStencil1 (makeCorrelationStencilFromKernel (rotate180 ys)) arr
 
 spec :: Spec
 spec = do
