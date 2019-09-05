@@ -341,11 +341,13 @@ sufficient:
 
 * `Seq` - computation will be done sequentially on one core (capability in ghc).
 * `ParOn [Int]` - perform computation in parallel while pinning the workers to particular
-  cores. Providing an empty list will result in the computation being distributed over all available
-  cores, or better known in Haskell as capabilities.
-* `ParN Word16` - similar to ParOn, except it simply specifies the number of cores to use.
-* `Par` - isn't really a constructor but a `pattern` for constructing `ParOn []`, thus should be
-  used instead of `ParOn`.
+  cores. Providing an empty list will result in the computation being distributed over all
+  available cores, or better known in Haskell as capabilities.
+* `ParN Word16` - similar to `ParOn`, except it simply specifies the number of cores to
+  use, with `0` meaning all cores.
+* `Par` - isn't really a constructor but a `pattern` for constructing `ParOn []`, which
+  will result in Scheduler using all cores, thus should be used instead of `ParOn`.
+* `Par'` - similar to `Par`, except it uses `ParN 0` underneath.
 
 Just to make sure a simple novice mistake is prevented, which I have seen in the past, make sure
 your source code is compiled with `ghc -O2 -threaded -with-rtsopts=-N`, otherwise no parallelization
@@ -597,9 +599,9 @@ Benchmark fold-seq: FINISH
   * [Haskell Arrays with Massiv 1/6](https://www.youtube.com/watch?v=euEacUD6jQQ)
   * [Haskell Arrays with Massiv 2/6](https://www.youtube.com/watch?v=WTeaDUOrbaw)
   * [Haskell Arrays with Massiv 3/6](https://www.youtube.com/watch?v=vTbpeugaucI)
-  <!-- * [Haskell Arrays with Massiv 4/6]() -->
-  <!-- * [Haskell Arrays with Massiv 5/6]() -->
-  <!-- * [Haskell Arrays with Massiv 6/6]() -->
+  * [Haskell Arrays with Massiv 4/6](https://www.youtube.com/watch?v=S9rGyjmjpos)
+  * [Haskell Arrays with Massiv 5/6](https://www.youtube.com/watch?v=yyXaR8MXUkI)
+  * [Haskell Arrays with Massiv 6/6](https://www.youtube.com/watch?v=CdOMsREWJeg)
 * Material Presented:
   * [MonadicParty2019](https://github.com/lehins/MonadicParty2019)
   * [Rock Ants](https://github.com/lehins/RockAnts)

@@ -12,7 +12,9 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest.Vector.Stream
-  ( Steps(..)
+  ( -- | __Important__ - This module is still experimental, as such it is considered
+    -- internal and exported for the curious users only.
+    Steps(..)
   , Stream(..)
   -- * Conversion
   , steps

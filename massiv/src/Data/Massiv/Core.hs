@@ -11,6 +11,7 @@ module Data.Massiv.Core
   , Elt
   , Construct
   , Load(R, loadArrayM, defaultElement)
+  , Stream(..)
   , Source
   , Resize
   , Extract

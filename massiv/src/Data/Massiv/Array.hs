@@ -49,6 +49,10 @@
 --         as /Push/ array. Useful for fusing various array combining functions. Use `computeAs` in
 --         order to load array into `Manifest` representation.
 --
+-- * `DS` - delayed stream vector representation that describes how to handle a vector of
+--         possibly of unknonw length. Useful for filtering and unfolding. Use `computeAs`
+--         in order to load array into `Manifest` representation.
+--
 -- * `DI` - delayed interleaved array. Same as `D`, but performs better with unbalanced
 --         computation, when evaluation of one element takes much longer than of its neighbor.
 --
@@ -108,6 +112,15 @@ module Data.Massiv.Array
   , evaluate'
   -- * Mapping
   , module Data.Massiv.Array.Ops.Map
+  -- * Filtering
+  -- ** Maybe
+  , mapMaybeS
+  , mapMaybeA
+  , mapMaybeM
+  -- ** Predicate
+  , filterS
+  , filterA
+  , filterM
   -- * Folding
 
   -- $folding
@@ -138,6 +151,7 @@ module Data.Massiv.Array
   ) where
 
 import Data.Massiv.Array.Delayed
+import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List

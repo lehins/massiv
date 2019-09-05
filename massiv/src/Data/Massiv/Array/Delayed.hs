@@ -17,6 +17,9 @@ module Data.Massiv.Array.Delayed
   , makeLoadArrayS
   , makeLoadArray
   , fromStrideLoad
+  -- ** Delayed Stream Array
+  , DS(..)
+  , toStreamArray
   -- ** Delayed Interleaved Array
   , DI(..)
   , toInterleaved
@@ -33,4 +36,5 @@ module Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Delayed.Interleaved
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
+import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Delayed.Windowed
