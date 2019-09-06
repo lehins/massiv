@@ -48,6 +48,8 @@ module Data.Massiv.Array.Ops.Transform
   , splitAtM
   , splitAt'
   , splitExtractM
+  , takeS
+  , dropS
   -- ** Upsample/Downsample
   , upsample
   , downsample
@@ -67,12 +69,13 @@ import Data.Foldable as F (foldl', foldrM, toList)
 import qualified Data.List as L (uncons)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
+import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
-import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse)
+import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse, take, drop)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be

@@ -272,7 +272,7 @@ liftArray2 f !arr1 !arr2
 -- @since 0.2.6
 --
 traverseA ::
-     (Source r' ix a, Mutable r ix e, Applicative f)
+     forall r ix e r' a f . (Source r' ix a, Mutable r ix e, Applicative f)
   => (a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
@@ -283,7 +283,7 @@ traverseA f arr = setComp (getComp arr) <$> makeArrayA (size arr) (f . unsafeInd
 --
 -- @since 0.3.0
 --
-traverseA_ :: (Source r ix a, Applicative f) => (a -> f e) -> Array r ix a -> f ()
+traverseA_ :: forall r ix e a f . (Source r ix e, Applicative f) => (e -> f a) -> Array r ix e -> f ()
 traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearIndex arr)
 {-# INLINE traverseA_ #-}
 
@@ -292,7 +292,9 @@ traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearInde
 -- @since 0.3.0
 --
 sequenceA ::
-     (Source r' ix (f e), Mutable r ix e, Applicative f) => Array r' ix (f e) -> f (Array r ix e)
+     forall r ix e r' f. (Source r' ix (f e), Mutable r ix e, Applicative f)
+  => Array r' ix (f e)
+  -> f (Array r ix e)
 sequenceA = traverseA id
 {-# INLINE sequenceA #-}
 
@@ -300,7 +302,7 @@ sequenceA = traverseA id
 --
 -- @since 0.3.0
 --
-sequenceA_ :: (Source r ix (f e), Applicative f) => Array r ix (f e) -> f ()
+sequenceA_ :: forall r ix e f . (Source r ix (f e), Applicative f) => Array r ix (f e) -> f ()
 sequenceA_ = traverseA_ id
 {-# INLINE sequenceA_ #-}
 
@@ -310,7 +312,7 @@ sequenceA_ = traverseA_ id
 -- @since 0.2.6
 --
 itraverseA ::
-     (Source r' ix a, Mutable r ix e, Applicative f)
+     forall r ix e r' a f . (Source r' ix a, Mutable r ix e, Applicative f)
   => (ix -> a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
@@ -323,7 +325,11 @@ itraverseA f arr =
 --
 -- @since 0.2.6
 --
-itraverseA_ :: (Source r ix a, Applicative f) => (ix -> a -> f e) -> Array r ix a -> f ()
+itraverseA_ ::
+     forall r ix e a f. (Source r ix a, Applicative f)
+  => (ix -> a -> f e)
+  -> Array r ix a
+  -> f ()
 itraverseA_ f arr =
   loopA_ 0 (< totalElem sz) (+ 1) (\ !i -> f (fromLinearIndex sz i) (unsafeLinearIndex arr i))
   where
@@ -344,6 +350,7 @@ traverseAR ::
   -> f (Array r ix b)
 traverseAR _ = traverseA
 {-# INLINE traverseAR #-}
+{-# DEPRECATED traverseAR "In favor of `traverseA`" #-}
 
 -- | Same as `itraverseA`, except with ability to specify representation.
 --
@@ -357,6 +364,7 @@ itraverseAR ::
   -> f (Array r ix b)
 itraverseAR _ = itraverseA
 {-# INLINE itraverseAR #-}
+{-# DEPRECATED itraverseAR "In favor of `itraverseA`" #-}
 
 
 
@@ -391,7 +399,7 @@ itraversePrim f arr =
 {-# INLINE itraversePrim #-}
 
 
--- | Same as `traverseP`, but with ability to specify the desired representation.
+-- | Same as `traversePrim`, but with ability to specify the desired representation.
 --
 -- @since 0.3.0
 --
@@ -403,8 +411,9 @@ traversePrimR ::
   -> m (Array r ix b)
 traversePrimR _ = traversePrim
 {-# INLINE traversePrimR #-}
+{-# DEPRECATED traversePrimR "In favor of `traversePrim`" #-}
 
--- | Same as `itraverseP`, but with ability to specify the desired representation.
+-- | Same as `itraversePrim`, but with ability to specify the desired representation.
 --
 -- @since 0.3.0
 --
@@ -416,6 +425,7 @@ itraversePrimR ::
   -> m (Array r ix b)
 itraversePrimR _ = itraversePrim
 {-# INLINE itraversePrimR #-}
+{-# DEPRECATED itraversePrimR "In favor of `itraversePrim`" #-}
 
 
 --------------------------------------------------------------------------------

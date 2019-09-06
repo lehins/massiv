@@ -20,6 +20,8 @@ module Data.Massiv.Array.Delayed
   -- ** Delayed Stream Array
   , DS(..)
   , toStreamArray
+  , toSteps
+  , fromSteps
   -- ** Delayed Interleaved Array
   , DI(..)
   , toInterleaved

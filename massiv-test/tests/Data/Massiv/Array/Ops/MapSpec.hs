@@ -60,7 +60,7 @@ prop_itraverseA ::
      (Index ix, Show (Array U ix Int)) => Array D ix Int -> Fun (ix, Int) Int -> Property
 prop_itraverseA arr fun =
   alt_imapM (\ix -> Just . applyFun2Compat fun ix) arr ===
-  itraverseAR U (\ix -> Just . applyFun2Compat fun ix) arr
+  itraverseA @U (\ix -> Just . applyFun2Compat fun ix) arr
 
 
 mapSpec ::
@@ -81,9 +81,9 @@ mapSpec = do
     it "zipFlip" $ property $ prop_zipFlip @ix
     it "zipUnzip3" $ property $ prop_zipUnzip3 @ix
     it "zipFlip3" $ property $ prop_zipFlip3 @ix
-  describe "Traversing" $ do
+  describe "Traversing" $
     it "itraverseA" $ property $ prop_itraverseA @ix
-  describe "StatefulMapping" $ do
+  describe "StatefulMapping" $
     it "mapWS" $ property $ prop_MapWS @ix
 
 spec :: Spec

@@ -13,15 +13,16 @@ module Test.Massiv.Array.Mutable
   , atomicIntSpec
   ) where
 
-import UnliftIO.Async
 import Data.Bits
 import Data.Functor.Identity
 import Data.List as L
 import Data.Massiv.Array as A
+import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
 import Data.Massiv.Array.Mutable.Atomic
 import Data.Massiv.Array.Unsafe
 import Test.Massiv.Core.Common
 import Test.Massiv.Utils as T
+import UnliftIO.Async
 
 
 -- prop_MapMapM :: forall r ix(Show (Array r ix Word), Eq (Array r ix Word), Mutable r ix Word) =>
@@ -143,6 +144,11 @@ prop_unfoldrReverseUnfoldl =
            a2 <- unfoldlPrimM_ @r comp sz (pure . swapTuple . apply f) i
            rev a1 `shouldBe` a2
 
+prop_toStreamArrayMutable ::
+     (Mutable r ix e, Show (Array r ix e), Eq (Array r ix e)) => Array r ix e -> Property
+prop_toStreamArrayMutable arr =
+  arr === S.unstreamExact (size arr) (S.stepsStream (toSteps (toStreamArray arr)))
+
 
 mutableSpec ::
      forall r ix e.
@@ -177,8 +183,8 @@ mutableSpec = do
   describe "Unfolding" $ do
     it "unfoldrList" $ prop_unfoldrList @r @ix @e
     it "unfoldrReverseUnfoldl" $ prop_unfoldrReverseUnfoldl @r @ix @e
-
-
+  describe "Stream" $
+    it "toStreamArrayMutable" $ property (prop_toStreamArrayMutable @r @ix @e)
 
 -- | Try to write many elements into the same array cell concurrently, while keeping the
 -- previous element for each write. With atomic writes, not a single element should be lost.

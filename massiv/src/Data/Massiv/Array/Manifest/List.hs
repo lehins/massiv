@@ -31,7 +31,7 @@ import Data.Massiv.Array.Ops.Fold (foldrInner)
 import Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
-import GHC.Base (build)
+import GHC.Exts (build)
 
 -- | Convert a flat list into a vector
 --

@@ -13,7 +13,12 @@
 --
 module Data.Massiv.Array.Delayed.Stream
   ( DS(..)
+  , Array (..)
   , toStreamArray
+  , toSteps
+  , fromSteps
+  , takeS
+  , dropS
   , filterS
   , filterM
   , mapMaybeS
@@ -29,6 +34,7 @@ import Data.Massiv.Array.Delayed.Pull
 import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
 import Data.Massiv.Core.Common
 import GHC.Exts
+import Prelude hiding (take, drop)
 
 -- | Delayed array that will be loaded in an interleaved fashion during parallel
 -- computation.
@@ -38,6 +44,21 @@ newtype instance Array DS Ix1 e = DSArray
   { dsArray :: S.Steps S.Id e
   }
 
+-- | /O(1)/ - Convert delayed stream arrray into `Steps`.
+--
+-- @since 0.4.1
+toSteps :: Array DS Ix1 e -> Steps Id e
+toSteps = coerce
+{-# INLINE toSteps #-}
+
+-- | /O(1)/ - Convert `Steps` into delayed stream arrray
+--
+-- @since 0.4.1
+fromSteps :: Steps Id e -> Array DS Ix1 e
+fromSteps = coerce
+{-# INLINE fromSteps #-}
+
+
 instance Functor (Array DS Ix1) where
 
   fmap f = coerce . fmap f . dsArray
@@ -45,20 +66,20 @@ instance Functor (Array DS Ix1) where
 
 instance Applicative (Array DS Ix1) where
 
-  pure = DSArray . S.singleton
+  pure = fromSteps . S.singleton
   {-# INLINE pure #-}
 
-  (<*>) a1 a2 = DSArray (S.zipWith ($) (coerce a1) (coerce a2))
+  (<*>) a1 a2 = fromSteps (S.zipWith ($) (coerce a1) (coerce a2))
   {-# INLINE (<*>) #-}
 
 #if MIN_VERSION_base(4,10,0)
-  liftA2 f a1 a2 = DSArray (S.zipWith f (coerce a1) (coerce a2))
+  liftA2 f a1 a2 = fromSteps (S.zipWith f (coerce a1) (coerce a2))
   {-# INLINE liftA2 #-}
 #endif
 
 instance Monad (Array DS Ix1) where
 
-  return = DSArray . S.singleton
+  return = fromSteps . S.singleton
   {-# INLINE return #-}
 
   (>>=) arr f = coerce (S.concatMap (coerce . f) (dsArray arr))
@@ -67,7 +88,7 @@ instance Monad (Array DS Ix1) where
 
 instance Foldable (Array DS Ix1) where
 
-  foldr f acc (DSArray sts) = S.foldr f acc sts
+  foldr f acc = S.foldr f acc . toSteps
   {-# INLINE foldr #-}
 
   length = S.length . coerce
@@ -78,7 +99,7 @@ instance Foldable (Array DS Ix1) where
 
 instance Semigroup (Array DS Ix1 e) where
 
-  (<>) a1 a2 = DSArray (coerce a1 `S.append` coerce a2)
+  (<>) a1 a2 = fromSteps (coerce a1 `S.append` coerce a2)
   {-# INLINE (<>) #-}
 
 
@@ -93,10 +114,10 @@ instance Monoid (Array DS Ix1 e) where
 instance IsList (Array DS Ix1 e) where
   type Item (Array DS Ix1 e) = e
 
-  fromList = DSArray . S.fromList
+  fromList = fromSteps . S.fromList
   {-# INLINE fromList #-}
 
-  fromListN n = DSArray . S.fromListN n
+  fromListN n = fromSteps . S.fromListN n
   {-# INLINE fromListN #-}
 
   toList = S.toList . coerce
@@ -119,12 +140,12 @@ instance Construct DS Ix1 e where
   setComp _ arr = arr
   {-# INLINE setComp #-}
 
-  makeArrayLinear _ (Sz k) = DSArray . S.generate k
+  makeArrayLinear _ (Sz k) = fromSteps . S.generate k
   {-# INLINE makeArrayLinear #-}
 
 
 instance Extract DS Ix1 e where
-  unsafeExtract sIx newSz = DSArray . S.slice sIx (unSz newSz) . dsArray
+  unsafeExtract sIx newSz = fromSteps . S.slice sIx (unSz newSz) . dsArray
   {-# INLINE unsafeExtract #-}
 
 -- | /O(n)/ - `size` implementation.
@@ -148,7 +169,6 @@ instance Load DS Ix1 e where
 
   unsafeLoadInto marr arr = liftIO $ unsafeLoadIntoS marr arr
   {-# INLINE unsafeLoadInto #-}
-
 
 
 -- cons :: e -> Array DS Ix1 e -> Array DS Ix1 e
@@ -292,4 +312,16 @@ mapMaybeM ::
 mapMaybeM f arr = DSArray <$> S.mapMaybeA f (S.toStream arr)
 {-# INLINE mapMaybeM #-}
 
+-- | Extract first @n@ elements from the stream vector
+--
+-- @since 0.4.1
+takeS :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
+takeS n = fromSteps . S.take (unSz n) . S.toStream
+{-# INLINE takeS #-}
 
+-- | Keep all but first @n@ elements from the stream vector.
+--
+-- @since 0.4.1
+dropS :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
+dropS n = fromSteps . S.drop (unSz n) . S.toStream
+{-# INLINE dropS #-}
