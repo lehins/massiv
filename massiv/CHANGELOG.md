@@ -1,8 +1,8 @@
 # 0.4.1
 
 * Introduction of `Stream` and `DS` representation:
-  * `filterS`, `filterA`, `filterM`
-  * `mapMaybe`, `mapMaybeA`, `mapMaybeM`
+  * `filterS`, `filterM`, `ifilterS`, `ifilterM`
+  * `mapMaybeS`, `mapMaybeM`, `imapMaybeS`, `imapMaybeM`
   * `unfoldr`, `unfoldrN`
 
 * Fix performance issue with copying of unboxed arrays and initialization of storable array.
