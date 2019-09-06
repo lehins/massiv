@@ -15,10 +15,8 @@ module Data.Massiv.Array.Delayed.Stream
   ( DS(..)
   , toStreamArray
   , filterS
-  , filterA
   , filterM
   , mapMaybeS
-  , mapMaybeA
   , mapMaybeM
   , unfoldr
   , unfoldrN
@@ -251,30 +249,10 @@ filterS f = DSArray . S.filter f . S.toStream
 --   , [ (1,0), (1,1), (1,2), (1,3) ]
 --   , [ (2,0), (2,1), (2,2), (2,3) ]
 --   ]
--- >>> filterA (Just . odd . fst) arr
+-- >>> filterM (Just . odd . fst) arr
 -- Just (Array DS Seq (Sz1 4)
 --   [ (1,0), (1,1), (1,2), (1,3) ]
 -- )
---
--- @since 0.4.1
-filterA :: (S.Stream r ix e, Applicative f) => (e -> f Bool) -> Array r ix e -> f (Array DS Ix1 e)
-filterA f arr = DSArray <$> S.filterA f (S.toStream arr)
-{-# INLINE filterA #-}
-
-
-
--- | Sequentially filter out elements from the array according to the supplied monadic predicate.
---
--- ==== __Example__
---
--- >>> import Data.Massiv.Array as A
--- >>> arr = makeArrayR D Seq (Sz2 3 4) fromIx2
--- >>> arr
--- Array D Seq (Sz (3 :. 4))
---   [ [ (0,0), (0,1), (0,2), (0,3) ]
---   , [ (1,0), (1,1), (1,2), (1,3) ]
---   , [ (2,0), (2,1), (2,2), (2,3) ]
---   ]
 -- >>> filterM (\ix@(_, j) -> print ix >> return (even j)) arr
 -- (0,0)
 -- (0,1)
@@ -292,23 +270,26 @@ filterA f arr = DSArray <$> S.filterA f (S.toStream arr)
 --   [ (0,0), (0,2), (1,0), (1,2), (2,0), (2,2) ]
 --
 -- @since 0.4.1
-filterM :: (S.Stream r ix e, Monad m) => (e -> m Bool) -> Array r ix e -> m (Array DS Ix1 e)
-filterM = filterA
+filterM :: (S.Stream r ix e, Applicative f) => (e -> f Bool) -> Array r ix e -> f (Array DS Ix1 e)
+filterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 {-# INLINE filterM #-}
 
 
-
+-- | Apply a function to each element of the array, while discarding `Nothing` and
+-- keepingt he `Maybe` result.
+--
+-- @since 0.4.1
 mapMaybeS :: S.Stream r ix a => (a -> Maybe b) -> Array r ix a -> Array DS Ix1 b
 mapMaybeS f = DSArray . S.mapMaybe f . S.toStream
 {-# INLINE mapMaybeS #-}
 
-mapMaybeA ::
-     (S.Stream r ix a, Applicative f) => (a -> f (Maybe b)) -> Array r ix a -> f (Array DS Ix1 b)
-mapMaybeA f arr = DSArray <$> S.mapMaybeA f (S.toStream arr)
-{-# INLINE mapMaybeA #-}
 
-mapMaybeM :: (S.Stream r ix a, Monad m) => (a -> m (Maybe b)) -> Array r ix a -> m (Array DS Ix1 b)
-mapMaybeM = mapMaybeA
+-- | Similar to `mapMaybeS`, but with the use of `Applicative`
+--
+-- @since 0.4.1
+mapMaybeM ::
+     (S.Stream r ix a, Applicative f) => (a -> f (Maybe b)) -> Array r ix a -> f (Array DS Ix1 b)
+mapMaybeM f arr = DSArray <$> S.mapMaybeA f (S.toStream arr)
 {-# INLINE mapMaybeM #-}
 
 
