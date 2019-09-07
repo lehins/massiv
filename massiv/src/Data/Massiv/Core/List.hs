@@ -32,6 +32,7 @@ import Control.Scheduler
 import Data.Coerce
 import Data.Foldable (foldr')
 import qualified Data.List as L
+import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
 import Data.Massiv.Core.Common
 import Data.Typeable
 import GHC.Exts
@@ -47,6 +48,14 @@ type instance NestedStruct LN ix e = [ListItem ix e]
 
 newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
 
+
+instance Construct LN Ix1 e where
+  setComp _ = id
+  {-# INLINE setComp #-}
+  makeArray _ (Sz n) f = coerce (fmap f [0 .. n - 1])
+  {-# INLINE makeArray #-}
+  makeArrayLinear _ (Sz n) f = coerce (fmap f [0 .. n - 1])
+  {-# INLINE makeArrayLinear #-}
 
 instance {-# OVERLAPPING #-} Nested LN Ix1 e where
   fromNested = coerce
@@ -368,3 +377,12 @@ instance Ragged L ix e => OuterSlice L ix e where
           Just (x, _) | n == i -> x
           Just (_, xs) -> go (n + 1) xs
   {-# INLINE unsafeOuterSlice #-}
+
+
+instance Stream LN Ix1 e where
+  toStream = S.fromList . coerce
+  {-# INLINE toStream #-}
+
+instance Ragged L ix e => Stream L ix e where
+  toStream = S.fromList . coerce . lData . flattenRagged
+  {-# INLINE toStream #-}
