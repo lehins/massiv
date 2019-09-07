@@ -306,7 +306,7 @@ getDim' ix = either throw id . getDimM ix
 -- >>> modifyDim' (2 :> 3 :> 4 :. 5) 2 (+ 10)
 -- (4,2 :> 3 :> 14 :. 5)
 --
--- @since 0.2.4
+-- @since 0.4.1
 modifyDim' :: Index ix => ix -> Dim -> (Int -> Int) -> (Int, ix)
 modifyDim' ix dim = either throw id . modifyDimM ix dim
 {-# INLINE [1] modifyDim' #-}
@@ -402,7 +402,7 @@ setDimension ix = setDim' ix . fromDimension
 -- >>> modifyDimension (2 :> 3 :> 4 :. 5) Dim3 (+ 2)
 -- (3,2 :> 5 :> 4 :. 5)
 --
--- @since 0.2.4
+-- @since 0.4.1
 modifyDimension :: IsIndexDimension ix n => ix -> Dimension n -> (Int -> Int) -> (Int, ix)
 modifyDimension ix = modifyDim' ix . fromDimension
 {-# INLINE [1] modifyDimension #-}

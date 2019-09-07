@@ -8,7 +8,6 @@
 * Deprecated `traverseAR`, `itraverseAR`, `traversePrimR`, `itraversePrimR` (not feasible
   to keep duplicate functions just for representation, `TypeApplications` or
   `ScopedVariables` should be used instead.)
-
 * Fix performance issue with copying of unboxed arrays and initialization of storable array.
 * Addition of `unsafeLoadIntoS`, `unsafeLoadInto` and `maxSize`
 * Addition of `reverse`, `reverse'` and `reverseM`

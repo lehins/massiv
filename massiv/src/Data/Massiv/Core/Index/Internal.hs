@@ -398,17 +398,23 @@ class ( Eq ix
   insertDimM :: MonadThrow m => Lower ix -> Dim -> Int -> m ix
 
   -- | Extract the value index has at specified dimension.
+  --
+  -- @since 0.3.0
   getDimM :: MonadThrow m => ix -> Dim -> m Int
   getDimM ix dim = fst <$> modifyDimM ix dim id
   {-# INLINE [1] getDimM #-}
 
   -- | Set the value for an index at specified dimension.
+  --
+  -- @since 0.3.0
   setDimM :: MonadThrow m => ix -> Dim -> Int -> m ix
   setDimM ix dim i = snd <$> modifyDimM ix dim (const i)
   {-# INLINE [1] setDimM #-}
 
   -- | Update the value for an index at specified dimension and return the old value as
   -- well as the updated index.
+  --
+  -- @since 0.4.1
   modifyDimM :: MonadThrow m => ix -> Dim -> (Int -> Int) -> m (Int, ix)
   modifyDimM ix dim f = do
     i <- getDimM ix dim
