@@ -11,7 +11,8 @@ environment:
     WORK_DIR: "c:\\m"
   matrix:
   - ARGS: "--resolver lts-12.26"
-  - ARGS: "--resolver lts-13"
+  - ARGS: "--resolver lts-13.30"
+  - ARGS: "--resolver lts-14"
   - ARGS: "--resolver nightly"
 matrix:
   allow_failures:
