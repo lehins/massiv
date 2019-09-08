@@ -12,8 +12,16 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.Catch
 import Data.Massiv.Core.Index.Internal
+
+#if !MIN_VERSION_exceptions(0, 10, 3)
 import Control.Monad.ST (ST)
 import Control.Monad.ST.Unsafe (unsafeIOToST)
+
+-- | Orphan instance in "massiv"
+instance MonadThrow (ST s) where
+  throwM = unsafeIOToST . throwIO
+#endif
+
 
 newtype ImpossibleException =
   ImpossibleException SomeException
@@ -47,8 +55,3 @@ guardNumberOfElements sz sz' =
   unless (totalElem sz == totalElem sz') $ throwM $ SizeElementsMismatchException sz sz'
 {-# INLINE guardNumberOfElements #-}
 
-#if !MIN_VERSION_exceptions(0, 10, 3)
--- | Orphan instance in "massiv"
-instance MonadThrow (ST s) where
-  throwM = unsafeIOToST . throwIO
-#endif
