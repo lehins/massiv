@@ -1,0 +1,9 @@
+resolver: lts-13.30
+packages:
+- 'massiv/'
+- 'massiv-io/'
+- 'massiv-test/'
+flags: {}
+extra-deps:
+- scheduler-1.4.2@sha256:bad577cefa39840f2f09c43b900868ad7d2d5d50e24d014e1d5087044a4394c3,2888
+extra-package-dbs: []
