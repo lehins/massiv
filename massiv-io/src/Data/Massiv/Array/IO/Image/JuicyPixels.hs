@@ -77,6 +77,7 @@ import qualified Codec.Picture as JP
 import qualified Codec.Picture.ColorQuant as JP
 import qualified Codec.Picture.Gif as JP
 import qualified Codec.Picture.Jpg as JP
+import qualified Codec.Picture.Types as TypesJP
 import Control.Exception
 import Control.Monad (guard, msum)
 import Data.Bifunctor
@@ -940,16 +941,16 @@ toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toVector arrS where
   Sz (m :. n) = size img
 {-# INLINE toJPImageUnsafe #-}
 
-toJPImageY8 :: Source r Ix2 (Pixel Y Word8) => Image r Y Word8 -> JP.Image JP.Pixel8
+toJPImageY8 :: Source r Ix2 (Pixel Y Word8) => Image r Y Word8 -> JP.Image TypesJP.Pixel8
 toJPImageY8 = toJPImageUnsafe
 {-# INLINE toJPImageY8 #-}
 
-toJPImageY16 :: Source r Ix2 (Pixel Y Word16) => Image r Y Word16 -> JP.Image JP.Pixel16
+toJPImageY16 :: Source r Ix2 (Pixel Y Word16) => Image r Y Word16 -> JP.Image TypesJP.Pixel16
 toJPImageY16 = toJPImageUnsafe
 {-# INLINE toJPImageY16 #-}
 
 #if MIN_VERSION_JuicyPixels(3,3,0)
-toJPImageY32 :: Source r Ix2 (Pixel Y Word32) => Image r Y Word32 -> JP.Image JP.Pixel32
+toJPImageY32 :: Source r Ix2 (Pixel Y Word32) => Image r Y Word32 -> JP.Image TypesJP.Pixel32
 toJPImageY32 = toJPImageUnsafe
 {-# INLINE toJPImageY32 #-}
 #endif
