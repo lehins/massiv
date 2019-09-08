@@ -38,9 +38,7 @@ prop_computeWithStrideWindowedEqDownsample ::
   -> ArrIx D ix Int
   -> Property
 prop_computeWithStrideWindowedEqDownsample _ stride (ArrIx arr _) =
-  computeWithStride stride (insertWindow arr (Window zeroIndex (size arr) (unsafeIndex arr) Nothing)) ===
-  -- Below triggers a bug in ghc-8.0 which results in a deadlock.
-  -- computeWithStride stride (makeWindowedArray arr zeroIndex (size arr) (unsafeIndex arr)) ===
+  computeWithStride stride (makeWindowedArray arr zeroIndex (size arr) (unsafeIndex arr)) ===
   computeAs U (downsampleArr stride arr)
 
 
