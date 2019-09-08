@@ -20,7 +20,7 @@ module Graphics.ColorSpace.Internal
 import Control.Applicative
 import Control.DeepSeq (NFData(rnf), deepseq)
 import Control.Monad (liftM)
-import Data.Default
+import Data.Default.Class (Default(..))
 import Data.Foldable
 import Data.Typeable
 import qualified Data.Vector.Generic as V
@@ -34,7 +34,7 @@ import Graphics.ColorSpace.Elevator
 data family Pixel cs e :: *
 
 class (Eq cs, Enum cs, Show cs, Bounded cs, Typeable cs,
-       Functor (Pixel cs), Applicative (Pixel cs), Foldable (Pixel cs),
+       Functor (Pixel cs), Applicative (Pixel cs), Foldable (Pixel cs), Traversable (Pixel cs),
        Eq (Pixel cs e), VU.Unbox (Components cs e), VS.Storable (Pixel cs e), Elevator e)
       => ColorSpace cs e where
 
@@ -118,7 +118,7 @@ class (ColorSpace (Opaque cs) e, ColorSpace cs e) => AlphaSpace cs e where
 
 instance ColorSpace cs e => Default (Pixel cs e) where
 
-  def = promote 0
+  def = pure 0
   {-# INLINE def #-}
 
 
@@ -133,7 +133,7 @@ instance ColorSpace cs e => Num (Pixel cs e) where
   {-# INLINE abs #-}
   signum      = fmap signum
   {-# INLINE signum #-}
-  fromInteger = promote . fromInteger
+  fromInteger = pure . fromInteger
   {-# INLINE fromInteger #-}
 
 
@@ -142,12 +142,12 @@ instance (ColorSpace cs e, Fractional e) => Fractional (Pixel cs e) where
   {-# INLINE (/) #-}
   recip        = fmap recip
   {-# INLINE recip #-}
-  fromRational = promote . fromRational
+  fromRational = pure . fromRational
   {-# INLINE fromRational #-}
 
 
 instance (ColorSpace cs e, Floating e) => Floating (Pixel cs e) where
-  pi      = promote pi
+  pi      = pure pi
   {-# INLINE pi #-}
   exp     = fmap exp
   {-# INLINE exp #-}
@@ -175,9 +175,9 @@ instance (ColorSpace cs e, Floating e) => Floating (Pixel cs e) where
   {-# INLINE acosh #-}
 
 instance (ColorSpace cs e, Bounded e) => Bounded (Pixel cs e) where
-  maxBound = promote maxBound
+  maxBound = pure maxBound
   {-# INLINE maxBound #-}
-  minBound = promote minBound
+  minBound = pure minBound
   {-# INLINE minBound #-}
 
 instance (ColorSpace cs e, NFData e) => NFData (Pixel cs e) where

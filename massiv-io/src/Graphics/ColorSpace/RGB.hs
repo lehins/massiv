@@ -78,20 +78,28 @@ instance Foldable (Pixel RGB) where
   {-# INLINE foldr #-}
 
 
+instance Traversable (Pixel RGB) where
+  traverse f (PixelRGB r g b) = PixelRGB <$> f r <*> f g <*> f b
+  {-# INLINE traverse #-}
+
 instance Storable e => Storable (Pixel RGB e) where
   sizeOf _ = 3 * sizeOf (undefined :: e)
+  {-# INLINE sizeOf #-}
   alignment _ = alignment (undefined :: e)
+  {-# INLINE alignment #-}
   peek !p = do
     let !q = castPtr p
     r <- peek q
     g <- peekElemOff q 1
     b <- peekElemOff q 2
-    return (PixelRGB r g b)
+    return $! PixelRGB r g b
+  {-# INLINE peek #-}
   poke !p (PixelRGB r g b) = do
     let !q = castPtr p
     poke q r
     pokeElemOff q 1 g
     pokeElemOff q 2 b
+  {-# INLINE poke #-}
 
 
 ------------
@@ -162,20 +170,27 @@ instance Foldable (Pixel RGBA) where
   foldr f !z (PixelRGBA r g b a) = f r (f g (f b (f a z)))
   {-# INLINE foldr #-}
 
+instance Traversable (Pixel RGBA) where
+  traverse f (PixelRGBA r g b a) = PixelRGBA <$> f r <*> f g <*> f b <*> f a
+  {-# INLINE traverse #-}
 
 instance Storable e => Storable (Pixel RGBA e) where
   sizeOf _ = 4 * sizeOf (undefined :: e)
+  {-# INLINE sizeOf #-}
   alignment _ = alignment (undefined :: e)
+  {-# INLINE alignment #-}
   peek p = do
     let q = castPtr p
     r <- peek q
     g <- peekElemOff q 1
     b <- peekElemOff q 2
     a <- peekElemOff q 3
-    return (PixelRGBA r g b a)
+    return $! PixelRGBA r g b a
+  {-# INLINE peek #-}
   poke p (PixelRGBA r g b a) = do
     let q = castPtr p
     poke q r
     pokeElemOff q 1 g
     pokeElemOff q 2 b
     pokeElemOff q 3 a
+  {-# INLINE poke #-}

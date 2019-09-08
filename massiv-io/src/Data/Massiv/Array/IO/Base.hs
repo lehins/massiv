@@ -34,7 +34,7 @@ module Data.Massiv.Array.IO.Base
 import Control.Exception (Exception, throw)
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
-import Data.Default (Default(..))
+import Data.Default.Class (Default(..))
 import Data.Massiv.Array
 import Data.Maybe (fromMaybe)
 import Data.Typeable

@@ -506,10 +506,11 @@ instance Elevator e => ToCMYK YA e where
 
 instance Elevator e => ToCMYK RGB e where
   toPixelCMYK (toDouble -> PixelRGB r g b) = PixelCMYK c m y k where
-    !c = (1 - r - k)/(1 - k)
-    !m = (1 - g - k)/(1 - k)
-    !y = (1 - b - k)/(1 - k)
-    !k = 1 - max r (max g b)
+    !c = (k' - r) / k'
+    !m = (k' - g) / k'
+    !y = (k' - b) / k'
+    !k = 1 - k'
+    !k' = max r (max g b)
   {-# INLINE toPixelCMYK #-}
 
 instance Elevator e => ToCMYK RGBA e where

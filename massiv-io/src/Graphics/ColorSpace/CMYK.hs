@@ -86,6 +86,10 @@ instance Foldable (Pixel CMYK) where
   {-# INLINE foldr #-}
 
 
+instance Traversable (Pixel CMYK) where
+  traverse f (PixelCMYK c m y k) = PixelCMYK <$> f c <*> f m <*> f y <*> f k
+  {-# INLINE traverse #-}
+
 
 instance Storable e => Storable (Pixel CMYK e) where
 
@@ -99,7 +103,7 @@ instance Storable e => Storable (Pixel CMYK e) where
     m <- peekElemOff q 1
     y <- peekElemOff q 2
     k <- peekElemOff q 3
-    return (PixelCMYK c m y k)
+    return $! PixelCMYK c m y k
   {-# INLINE peek #-}
   poke !p (PixelCMYK c m y k) = do
     let !q = castPtr p
@@ -187,6 +191,10 @@ instance Foldable (Pixel CMYKA) where
   foldr f !z (PixelCMYKA c m y k a) = f c (f m (f y (f k (f a z))))
   {-# INLINE foldr #-}
 
+instance Traversable (Pixel CMYKA) where
+  traverse f (PixelCMYKA c m y k a) = PixelCMYKA <$> f c <*> f m <*> f y <*> f k <*> f a
+  {-# INLINE traverse #-}
+
 
 instance Storable e => Storable (Pixel CMYKA e) where
 
@@ -201,7 +209,7 @@ instance Storable e => Storable (Pixel CMYKA e) where
     y <- peekElemOff q 2
     k <- peekElemOff q 3
     a <- peekElemOff q 4
-    return (PixelCMYKA c m y k a)
+    return $! PixelCMYKA c m y k a
   {-# INLINE peek #-}
   poke !p (PixelCMYKA c m y k a) = do
     let !q = castPtr p

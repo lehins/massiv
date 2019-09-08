@@ -18,7 +18,6 @@ module Graphics.ColorSpace.Binary (
   Bit, on, off, isOn, isOff, fromBool, zero, one, bit2bool, bool2bit, toNum, fromNum
   ) where
 
-import Control.Applicative
 import Control.Monad
 import Data.Bits
 import Data.Typeable (Typeable)
@@ -84,36 +83,6 @@ instance Bits Bit where
   popCount _       = 1
   {-# INLINE popCount #-}
 
-
-instance Bits (Pixel X Bit) where
-  (.&.) = liftA2 (.&.)
-  {-# INLINE (.&.) #-}
-  (.|.) = liftA2 (.|.)
-  {-# INLINE (.|.) #-}
-  xor = liftA2 xor
-  {-# INLINE xor #-}
-  complement = fmap complement
-  {-# INLINE complement #-}
-  shift !b !n = fmap (`shift` n) b
-  {-# INLINE shift #-}
-  rotate !b !n = fmap (`rotate` n) b
-  {-# INLINE rotate #-}
-  zeroBits = pure zeroBits
-  {-# INLINE zeroBits #-}
-  bit = pure . bit
-  {-# INLINE bit #-}
-  testBit (PixelX (Bit 1)) 0 = True
-  testBit _                _ = False
-  {-# INLINE testBit #-}
-  bitSizeMaybe _ = Just 1
-  {-# INLINE bitSizeMaybe #-}
-  bitSize _ = 1
-  {-# INLINE bitSize #-}
-  isSigned _ = False
-  {-# INLINE isSigned #-}
-  popCount (PixelX (Bit 0)) = 0
-  popCount _                = 1
-  {-# INLINE popCount #-}
 
 toNum :: Num a => Bit -> a
 toNum (Bit 0) = 0

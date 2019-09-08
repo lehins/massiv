@@ -81,6 +81,10 @@ instance Foldable (Pixel HSI) where
   foldr f !z (PixelHSI h s i) = f h (f s (f i z))
   {-# INLINE foldr #-}
 
+instance Traversable (Pixel HSI) where
+  traverse f (PixelHSI h s i) = PixelHSI <$> f h <*> f s <*> f i
+  {-# INLINE traverse #-}
+
 
 instance Storable e => Storable (Pixel HSI e) where
 
@@ -90,16 +94,16 @@ instance Storable e => Storable (Pixel HSI e) where
   {-# INLINE alignment #-}
   peek !p = do
     let !q = castPtr p
-    r <- peek q
-    g <- peekElemOff q 1
-    b <- peekElemOff q 2
-    return (PixelHSI r g b)
+    h <- peek q
+    s <- peekElemOff q 1
+    i <- peekElemOff q 2
+    return $! PixelHSI h s i
   {-# INLINE peek #-}
-  poke !p (PixelHSI r g b) = do
+  poke !p (PixelHSI h s i) = do
     let !q =  castPtr p
-    poke q r
-    pokeElemOff q 1 g
-    pokeElemOff q 2 b
+    poke q h
+    pokeElemOff q 1 s
+    pokeElemOff q 2 i
   {-# INLINE poke #-}
 
 ------------
@@ -173,6 +177,10 @@ instance Foldable (Pixel HSIA) where
   foldr f !z (PixelHSIA h s i a) = f h (f s (f i (f a z)))
   {-# INLINE foldr #-}
 
+instance Traversable (Pixel HSIA) where
+  traverse f (PixelHSIA h s i a) = PixelHSIA <$> f h <*> f s <*> f i <*> f a
+  {-# INLINE traverse #-}
+
 
 instance Storable e => Storable (Pixel HSIA e) where
   sizeOf _ = 4 * sizeOf (undefined :: e)
@@ -185,7 +193,7 @@ instance Storable e => Storable (Pixel HSIA e) where
     s <- peekElemOff q 1
     i <- peekElemOff q 2
     a <- peekElemOff q 3
-    return (PixelHSIA h s i a)
+    return $! PixelHSIA h s i a
   {-# INLINE peek #-}
   poke !p (PixelHSIA h s i a) = do
     let !q = castPtr p

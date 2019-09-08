@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -20,6 +21,7 @@ module Graphics.ColorSpace.X
   , fromPixelsX
   ) where
 
+import Data.Bits (Bits)
 import Data.Foldable
 import Data.Typeable (Typeable)
 import Foreign.Ptr
@@ -27,15 +29,17 @@ import Foreign.Storable
 import Graphics.ColorSpace.Internal
 import Prelude as P
 
--- ^ This is a single channel colorspace, that is designed to separate Gray
+-- | This is a single channel colorspace, that is designed to separate Gray
 -- level values from other types of colorspace, hence it is not convertible to
 -- or from, but rather is here to allow operation on arbirtary single channel
--- images. If you are looking for a true grayscale colorspace
+-- images. If you are looking for the actual grayscale color space.
 -- 'Graphics.ColorSpace.Luma.Y' should be used instead.
 data X = X deriving (Eq, Enum, Bounded, Show, Typeable)
 
 
-newtype instance Pixel X e = PixelX { getX :: e } deriving (Ord, Eq)
+newtype instance  Pixel X e = PixelX
+  { getX :: e
+  } deriving (Ord, Eq, Enum, Bounded, Real, Integral, RealFrac, RealFloat, Bits)
 
 
 instance Show e => Show (Pixel X e) where
@@ -76,11 +80,14 @@ instance Foldable (Pixel X) where
   {-# INLINE foldr #-}
 
 
-instance Monad (Pixel X) where
+instance Traversable (Pixel X) where
+  traverse f (PixelX x) = PixelX <$> f x
+  {-# INLINE traverse #-}
 
+
+instance Monad (Pixel X) where
   return = PixelX
   {-# INLINE return #-}
-
   (>>=) (PixelX g) f = f g
   {-# INLINE (>>=) #-}
 
@@ -123,62 +130,3 @@ toPixelsX = fmap PixelX . toList
 fromPixelsX :: ColorSpace cs e => [(cs, Pixel X e)] -> Pixel cs e
 fromPixelsX = foldl' f (pure 0) where
   f !px (c, PixelX x) = setPxC px c x
-
-
-
--- -- | Apply a left fold to each of the pixels in the image.
--- squashWith :: (Array arr cs e, Array arr X b) =>
---               (b -> e -> b) -> b -> Image arr cs e -> Image arr X b
--- squashWith f !a = I.map (PixelX . foldlPx f a) where
--- {-# INLINE squashWith #-}
-
-
--- -- | Combination of zipWith and simultanious left fold on two pixels at the same time.
--- squashWith2 :: (Array arr cs e, Array arr X b) =>
---                (b -> e -> e -> b) -> b -> Image arr cs e -> Image arr cs e -> Image arr X b
--- squashWith2 f !a = I.zipWith (PixelX .:! foldlPx2 f a) where
--- {-# INLINE squashWith2 #-}
-
-
--- -- | Separate an image into a list of images with 'X' pixels containing every
--- -- channel from the source image.
--- --
--- -- >>> frog <- readImageRGB "images/frog.jpg"
--- -- >>> let [frog_red, frog_green, frog_blue] = toImagesX frog
--- -- >>> writeImage "images/frog_red.png" $ toImageY frog_red
--- -- >>> writeImage "images/frog_green.jpg" $ toImageY frog_green
--- -- >>> writeImage "images/frog_blue.jpg" $ toImageY frog_blue
--- --
--- -- <<images/frog_red.jpg>> <<images/frog_green.jpg>> <<images/frog_blue.jpg>>
--- --
--- toImagesX :: (Array arr cs e, Array arr X e) => Image arr cs e -> [Image arr X e]
--- toImagesX !img = P.map getCh (enumFrom minBound) where
---   getCh !ch = I.map (PixelX . (`getPxC` ch)) img
---   {-# INLINE getCh #-}
--- {-# INLINE toImagesX #-}
-
-
--- -- | Combine a list of images with 'X' pixels into an image of any color
--- -- space, by supplying an order of color space channels.
--- --
--- -- For example here is a frog with swapped 'BlueRGB' and 'GreenRGB' channels.
--- --
--- -- >>> writeImage "images/frog_rbg.jpg" $ fromImagesX [(RedRGB, frog_red), (BlueRGB, frog_green), (GreenRGB, frog_blue)]
--- --
--- -- <<images/frog.jpg>> <<images/frog_rbg.jpg>>
--- --
--- -- It is worth noting though, despite that separating image channels can be
--- -- sometimes pretty useful, exactly the same effect as in example above can be
--- -- achieved in a much simpler and a more efficient way:
--- --
--- -- @ `I.map` (\\(PixelRGB r g b) -> PixelRGB r b g) frog @
--- --
--- fromImagesX :: (Array arr X e, Array arr cs e) =>
---                [(cs, Image arr X e)] -> Image arr cs e
--- fromImagesX = fromXs 0 where
---   updateCh !ch !px (PixelX e) = setPxC px ch e
---   {-# INLINE updateCh #-}
---   fromXs img []          = img
---   fromXs img ((c, i):xs) = fromXs (I.zipWith (updateCh c) img i) xs
---   {-# INLINE fromXs #-}
--- {-# INLINE fromImagesX #-}

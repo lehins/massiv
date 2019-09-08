@@ -1,3 +1,10 @@
+# 0.1.7
+
+* Fix compatibility with `JuicyPixels >= 3.3.0`
+* Add `Traversable` instances for all `Pixel` types.
+* Derive a few more instances for `X` and `Y` pixels.
+* Drop dependency on `data-default` in favor of `data-default-class`
+
 # 0.1.6
 
 * Made it compatible with new `massiv >= 0.3` as well as the old ones.

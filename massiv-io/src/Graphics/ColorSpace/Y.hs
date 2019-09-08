@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -18,6 +19,7 @@ module Graphics.ColorSpace.Y (
   ) where
 
 import Data.Foldable
+import Data.Bits (Bits)
 import Data.Typeable (Typeable)
 import Foreign.Ptr
 import Foreign.Storable
@@ -32,7 +34,8 @@ import Prelude hiding (map)
 data Y = LumaY deriving (Eq, Enum, Show, Bounded, Typeable)
 
 
-newtype instance Pixel Y e = PixelY e deriving (Ord, Eq)
+newtype instance Pixel Y e = PixelY e
+  deriving (Ord, Eq, Enum, Bounded, Real, Integral, RealFrac, RealFloat, Bits)
 
 instance Show e => Show (Pixel Y e) where
   show (PixelY g) = "<Luma:("++show g++")>"
@@ -70,11 +73,14 @@ instance Foldable (Pixel Y) where
   {-# INLINE foldr #-}
 
 
-instance Monad (Pixel Y) where
+instance Traversable (Pixel Y) where
+  traverse f (PixelY y) = PixelY <$> f y
+  {-# INLINE traverse #-}
 
+
+instance Monad (Pixel Y) where
   return = PixelY
   {-# INLINE return #-}
-
   (>>=) (PixelY y) f = f y
   {-# INLINE (>>=) #-}
 
@@ -159,6 +165,11 @@ instance Foldable (Pixel YA) where
   {-# INLINE foldr #-}
 
 
+instance Traversable (Pixel YA) where
+  traverse f (PixelYA y a) = PixelYA <$> f y <*> f a
+  {-# INLINE traverse #-}
+
+
 instance Storable e => Storable (Pixel YA e) where
 
   sizeOf _ = 2 * sizeOf (undefined :: e)
@@ -169,7 +180,7 @@ instance Storable e => Storable (Pixel YA e) where
     let q = castPtr p
     y <- peekElemOff q 0
     a <- peekElemOff q 1
-    return (PixelYA y a)
+    return $! PixelYA y a
   {-# INLINE peek #-}
   poke !p (PixelYA y a) = do
     let q = castPtr p

@@ -82,7 +82,7 @@ import Control.Monad (guard, msum)
 import Data.Bifunctor
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
-import Data.Default (Default(..))
+import Data.Default.Class (Default(..))
 import Data.Massiv.Array as M
 import Data.Massiv.Array.IO.Base
 import Data.Massiv.Array.Manifest.Vector
@@ -796,6 +796,11 @@ fromDynamicImage jpDynImg =
     JP.ImageY16 jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Word16)
       fromJPImageUnsafe jimg
+#if MIN_VERSION_JuicyPixels(3,3,0)
+    JP.ImageY32 jimg -> do
+      Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Word32)
+      fromJPImageUnsafe jimg
+#endif
     JP.ImageYF jimg -> do
       Refl <- eqT :: Maybe (Pixel cs e :~: Pixel Y Float)
       fromJPImageUnsafe jimg
@@ -838,6 +843,9 @@ fromAnyDynamicImage jpDynImg =
   case jpDynImg of
     JP.ImageY8 jimg     -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word8))     >>= toAnyCS
     JP.ImageY16 jimg    -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word16))    >>= toAnyCS
+#if MIN_VERSION_JuicyPixels(3,3,0)
+    JP.ImageY32 jimg    -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Word32))    >>= toAnyCS
+#endif
     JP.ImageYF jimg     -> (fromJPImageUnsafe jimg :: Maybe (Image S Y Float))     >>= toAnyCS
     JP.ImageYA8 jimg    -> (fromJPImageUnsafe jimg :: Maybe (Image S YA Word8))    >>= toAnyCS
     JP.ImageYA16 jimg   -> (fromJPImageUnsafe jimg :: Maybe (Image S YA Word16))   >>= toAnyCS
@@ -896,6 +904,9 @@ toAnyCS img =
 showJP :: JP.DynamicImage -> String
 showJP (JP.ImageY8     _) = "Image S Y Word8"
 showJP (JP.ImageY16    _) = "Image S Y Word16"
+#if MIN_VERSION_JuicyPixels(3,3,0)
+showJP (JP.ImageY32    _) = "Image S Y Word32"
+#endif
 showJP (JP.ImageYF     _) = "Image S Y Float"
 showJP (JP.ImageYA8    _) = "Image S YA Word8"
 showJP (JP.ImageYA16   _) = "Image S YA Word16"
@@ -985,3 +996,4 @@ fromJPImageUnsafe (JP.Image n m !v) = do
   guard (n * m * sizeOf (undefined :: Pixel cs e) == V.length v)
   fromVectorM Par (Sz (m :. n)) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
+

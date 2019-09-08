@@ -81,6 +81,11 @@ instance Foldable (Pixel YCbCr) where
   {-# INLINE foldr #-}
 
 
+instance Traversable (Pixel YCbCr) where
+  traverse f (PixelYCbCr y b r) = PixelYCbCr <$> f y <*> f b <*> f r
+  {-# INLINE traverse #-}
+
+
 instance Storable e => Storable (Pixel YCbCr e) where
 
   sizeOf _ = 3 * sizeOf (undefined :: e)
@@ -92,7 +97,7 @@ instance Storable e => Storable (Pixel YCbCr e) where
     y <- peek q
     b <- peekElemOff q 1
     r <- peekElemOff q 2
-    return (PixelYCbCr y b r)
+    return $! PixelYCbCr y b r
   {-# INLINE poke #-}
   poke !p (PixelYCbCr y b r) = do
     let q = castPtr p
@@ -174,6 +179,11 @@ instance Foldable (Pixel YCbCrA) where
   {-# INLINE foldr #-}
 
 
+instance Traversable (Pixel YCbCrA) where
+  traverse f (PixelYCbCrA y b r a) = PixelYCbCrA <$> f y <*> f b <*> f r <*> f a
+  {-# INLINE traverse #-}
+
+
 instance Storable e => Storable (Pixel YCbCrA e) where
 
   sizeOf _ = 4 * sizeOf (undefined :: e)
@@ -186,7 +196,7 @@ instance Storable e => Storable (Pixel YCbCrA e) where
     b <- peekElemOff q 1
     r <- peekElemOff q 2
     a <- peekElemOff q 3
-    return (PixelYCbCrA y b r a)
+    return $! PixelYCbCrA y b r a
   {-# INLINE peek #-}
   poke !p (PixelYCbCrA y b r a) = do
     let q = castPtr p
