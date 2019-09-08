@@ -176,7 +176,7 @@ displayImageUsing viewer block img =
     else img `seq` void (forkIO display)
   where
     display = do
-      tmpDir <- fmap (</> "hip") getTemporaryDirectory
+      tmpDir <- fmap (</> "massiv-io") getTemporaryDirectory
       createDirectoryIfMissing True tmpDir
       bracket
         (openBinaryTempFile tmpDir "tmp-img.tiff")

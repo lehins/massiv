@@ -65,7 +65,7 @@ module Data.Massiv.Array.IO.Image.JuicyPixels
   , toJPImageRGBF
   , toJPImageYCbCr8
   , toJPImageCMYK8
-  -- , toJPImageCMYK16
+  , toJPImageCMYK16
   -- ** From JuicyPixels
   , fromDynamicImage
   , fromAnyDynamicImage
@@ -665,6 +665,12 @@ encodeTIF img =
                 return $ JP.encodeTiff $ toJPImageY8 img
            , do Refl <- eqT :: Maybe (e :~: Word16)
                 return $ JP.encodeTiff $ toJPImageY16 img
+#if MIN_VERSION_JuicyPixels(3,3,0)
+           , do Refl <- eqT :: Maybe (e :~: Word32)
+                return $ JP.encodeTiff $ toJPImageY32 img
+           , do Refl <- eqT :: Maybe (e :~: Float)
+                return $ JP.encodeTiff $ toJPImageYF img
+#endif
            , return $ JP.encodeTiff $ toJPImageY16 $ M.map toWord16 img
            ]
     , do Refl <- eqT :: Maybe (cs :~: YA)
@@ -701,8 +707,10 @@ encodeTIF img =
          msum
            [ do Refl <- eqT :: Maybe (e :~: Word8)
                 return $ JP.encodeTiff $ toJPImageCMYK8 img
-           -- , do Refl <- eqT :: Maybe (e :~: Word16)
-           --      return $ JP.encodeTiff $ toJPImageCMYK16 img
+           , do Refl <- eqT :: Maybe (e :~: Word16)
+                return $ JP.encodeTiff $ toJPImageCMYK16 img
+             -- for CMYK default is 8bit, instead of 16bit, since many viewers and editors
+             -- don't support it.
            , return $ JP.encodeTiff $ toJPImageCMYK8 $ M.map toWord8 img
            ]
     ]
@@ -940,6 +948,12 @@ toJPImageY16 :: Source r Ix2 (Pixel Y Word16) => Image r Y Word16 -> JP.Image JP
 toJPImageY16 = toJPImageUnsafe
 {-# INLINE toJPImageY16 #-}
 
+#if MIN_VERSION_JuicyPixels(3,3,0)
+toJPImageY32 :: Source r Ix2 (Pixel Y Word32) => Image r Y Word32 -> JP.Image JP.Pixel32
+toJPImageY32 = toJPImageUnsafe
+{-# INLINE toJPImageY32 #-}
+#endif
+
 toJPImageYA8 :: Source r Ix2 (Pixel YA Word8) => Image r YA Word8 -> JP.Image JP.PixelYA8
 toJPImageYA8 = toJPImageUnsafe
 {-# INLINE toJPImageYA8 #-}
@@ -980,10 +994,9 @@ toJPImageCMYK8 :: Source r Ix2 (Pixel CMYK Word8) => Image r CMYK Word8 -> JP.Im
 toJPImageCMYK8 = toJPImageUnsafe
 {-# INLINE toJPImageCMYK8 #-}
 
--- FIXME: debug writing to file of TIF files.
--- toJPImageCMYK16 :: Source r Ix2 (Pixel CMYK Word16) => Image r CMYK Word16 -> JP.Image JP.PixelCMYK16
--- toJPImageCMYK16 = toJPImageUnsafe
--- {-# INLINE toJPImageCMYK16 #-}
+toJPImageCMYK16 :: Source r Ix2 (Pixel CMYK Word16) => Image r CMYK Word16 -> JP.Image JP.PixelCMYK16
+toJPImageCMYK16 = toJPImageUnsafe
+{-# INLINE toJPImageCMYK16 #-}
 
 
 
