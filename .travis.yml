@@ -118,7 +118,7 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.9" DOCTEST_ARGS="--resolver lts-13.9"
+  - env: BUILD=stack ARGS="--resolver lts-13.9 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-13.9 --stack-yaml stack-lts-13.yaml"
     compiler: ": #stack GHC-8.6.3 (lts-13.9)"
     addons:
       apt:
@@ -130,13 +130,13 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.30 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-13.30 --stack-yaml stack-lts-13.yaml"
-    compiler: ": #stack GHC-8.6.5 (lts-13)"
+  - env: BUILD=stack ARGS="--resolver lts-13.30" COVERALLS_STACK_YAML="stack-coveralls.yaml"
+    compiler: ": #stack GHC-8.6.5 (lts-13.30)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-14" COVERALLS_STACK_YAML="stack-coveralls.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-14"
     compiler: ": #stack GHC-8.6.5 (lts-14)"
     addons:
       apt:

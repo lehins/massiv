@@ -1,9 +1,10 @@
-resolver: lts-14.4
+resolver: lts-13.30
 packages:
 - 'massiv/'
 #- 'massiv-io/'
 - 'massiv-test/'
 extra-deps:
+- scheduler-1.4.2@sha256:bad577cefa39840f2f09c43b900868ad7d2d5d50e24d014e1d5087044a4394c3,2888
 - github: rubik/stack-hpc-coveralls
   commit: 8a85fa2f5fb907fb8d9d7fc36978b3951cae6e75
   size: 15657
