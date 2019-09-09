@@ -13,10 +13,10 @@ build-type:          Custom
 extra-source-files:  README.md
                    , CHANGELOG.md
 cabal-version:       >=1.10
-teset-with:          GHC == 8.4.3
-                   , GHC == 8.4.4
-                   , GHC == 8.6.3
-                   , GHC == 8.6.5
+tested-with:          GHC == 8.4.3
+                    , GHC == 8.4.4
+                    , GHC == 8.6.3
+                    , GHC == 8.6.5
 
 flag unsafe-checks
   description: Enable all the bounds checks for unsafe functions at the cost of
