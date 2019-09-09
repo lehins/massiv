@@ -211,7 +211,7 @@ install:
   set -ex
   case "$BUILD" in
     stack)
-      stack --install-ghc $ARGS test --only-dependencies
+      # stack --install-ghc $ARGS test --only-dependencies
       ;;
     cabal)
       cabal --version
