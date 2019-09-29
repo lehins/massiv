@@ -259,8 +259,6 @@ loadArrayS ::
 loadArrayS arr = do
   marr <- newMaybeInitialized arr
   unsafeLoadIntoS marr arr
-  -- loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
-  -- pure marr
 {-# INLINE loadArrayS #-}
 
 
@@ -275,8 +273,6 @@ loadArray arr =
   liftIO $ do
     marr <- newMaybeInitialized arr
     unsafeLoadInto marr arr
-    -- withScheduler_ (getComp arr) $ \scheduler -> loadArrayM scheduler arr (unsafeLinearWrite marr)
-    -- pure marr
 {-# INLINE loadArray #-}
 
 

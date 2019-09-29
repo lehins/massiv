@@ -28,6 +28,11 @@ import Test.Massiv.Utils as T
 import qualified GHC.Exts as Exts
 import Data.List as L
 
+compareAsListAndLoaded ::
+     (Eq e, Show e, Foldable (Array r' Ix1), Load r' Ix1 e) => Array r' Ix1 e -> [e] -> Property
+compareAsListAndLoaded str ls =
+  F.toList str === ls .&&. computeAs B str === A.fromList Seq ls
+
 -- | Compare `toStream` and `A.toList`
 prop_toStream ::
      forall r ix e. (Source r ix e, Stream r ix e, Show e, Eq e)
@@ -60,14 +65,16 @@ prop_filterS ::
   => Array r ix e
   -> Fun e Bool
   -> Property
-prop_filterS arr f = F.toList (A.filterS (apply f) arr) === L.filter (apply f) (F.toList arr)
+prop_filterS arr f =
+  compareAsListAndLoaded (A.filterS (apply f) arr) (L.filter (apply f) (F.toList arr))
 
 prop_mapMaybeS ::
      forall r ix e a. (Eq a, Show a, Stream r ix e, Foldable (Array r ix))
   => Array r ix e
   -> Fun e (Maybe a)
   -> Property
-prop_mapMaybeS arr f = F.toList (A.mapMaybeS (apply f) arr) === M.mapMaybe (apply f) (F.toList arr)
+prop_mapMaybeS arr f =
+  compareAsListAndLoaded (A.mapMaybeS (apply f) arr) (M.mapMaybe (apply f) (F.toList arr))
 
 
 prop_unfoldr ::
@@ -77,7 +84,9 @@ prop_unfoldr ::
   -> NonNegative Int
   -> Property
 prop_unfoldr f s0 (NonNegative n) =
-  F.toList (A.takeS (Sz n) (A.unfoldr (apply f) s0)) === L.take n (L.unfoldr (apply f) s0)
+  compareAsListAndLoaded
+    (A.takeS (Sz n) (A.unfoldr (apply f) s0))
+    (L.take n (L.unfoldr (apply f) s0))
 
 prop_unfoldrN ::
      forall e s. (Eq e, Show e)
@@ -86,7 +95,7 @@ prop_unfoldrN ::
   -> Int
   -> Property
 prop_unfoldrN f s0 n =
-  F.toList (A.unfoldrN (Sz n) (apply f) s0) === L.take n (L.unfoldr (apply f) s0)
+  compareAsListAndLoaded (A.unfoldrN (Sz n) (apply f) s0) (L.take n (L.unfoldr (apply f) s0))
 
 prop_takeDrop ::
      forall r ix e. (Eq e, Show e, Stream r ix e, Foldable (Array r ix))

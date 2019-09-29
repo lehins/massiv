@@ -1,3 +1,7 @@
+# 0.4.2
+
+* Fix loading empty `DS` stream arrays of unknown size. Fix for [#83](https://github.com/lehins/massiv/issues/83).
+
 # 0.4.1
 
 * Introduction of `Stream` and `DS` representation:

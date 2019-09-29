@@ -203,8 +203,7 @@ unstreamMaxM marr (S.Stream step s) = stepLoad s 0
 unstreamUnknown :: Mutable r Ix1 a => S.Stream Id a -> Array r Ix1 a
 unstreamUnknown str =
   runST $ do
-    let kInit = 1
-    marr <- unsafeNew (SafeSz kInit)
+    marr <- unsafeNew zeroSz
     unstreamUnknownM marr str >>= unsafeFreeze Seq
 {-# INLINE unstreamUnknown #-}
 
@@ -225,7 +224,7 @@ unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (msize marrInit
           S.Skip t' -> stepLoad t' i kMax marr
           S.Done -> unsafeLinearShrink marr (SafeSz i)
       | otherwise = do
-        let kMax' = kMax * 2
+        let kMax' = max 1 (kMax * 2)
         marr' <- unsafeLinearGrow marr (SafeSz kMax')
         stepLoad t i kMax' marr'
     {-# INLINE stepLoad #-}
