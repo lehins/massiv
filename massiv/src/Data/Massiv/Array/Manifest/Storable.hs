@@ -195,7 +195,8 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
       _ -> unsafeDefaultLinearShrink marr sz
   {-# INLINE unsafeLinearShrink #-}
 
-  unsafeLinearGrow (MSArray _ mv) sz = MSArray sz <$> MVS.unsafeGrow mv (totalElem sz)
+  unsafeLinearGrow (MSArray oldSz mv) sz =
+    MSArray sz <$> MVS.unsafeGrow mv (totalElem sz - totalElem oldSz)
   {-# INLINE unsafeLinearGrow #-}
 
 

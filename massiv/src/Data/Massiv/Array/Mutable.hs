@@ -91,6 +91,7 @@ module Data.Massiv.Array.Mutable
 
 -- TODO: add fromListM, et al.
 
+import Data.Maybe (fromMaybe)
 import Control.Monad (void, when, unless, (>=>))
 import Control.Monad.ST
 import Control.Scheduler
@@ -245,7 +246,7 @@ freezeS smarr = do
 
 newMaybeInitialized ::
      (Load r' ix e, Mutable r ix e, PrimMonad m) => Array r' ix e -> m (MArray (PrimState m) r ix e)
-newMaybeInitialized !arr = initializeNew (defaultElement arr) (size arr)
+newMaybeInitialized !arr = initializeNew (defaultElement arr) (fromMaybe zeroSz (maxSize arr))
 {-# INLINE newMaybeInitialized #-}
 
 

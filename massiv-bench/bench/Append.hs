@@ -5,7 +5,6 @@ module Main where
 import Criterion.Main
 import qualified Data.DList as DL
 import Data.Massiv.Array as A
-import Data.Massiv.Array.Delayed.Stream as AS
 import Data.Massiv.Bench as A
 import qualified Data.Vector.Primitive as VP
 import Prelude as P
@@ -38,14 +37,14 @@ main = do
         ]
     , bgroup
         "unfoldr"
-        [ bench "Array (DS)" $ whnf (A.computeAs P . AS.unfoldr firstK) 0
+        [ bench "Array (DS)" $ whnf (A.computeAs P . A.unfoldr firstK) 0
         , bench "Vector" $ whnf (VP.unfoldr firstK) 0
         ]
     , bgroup
         "unfoldrN"
         [ bench "Array (DL)" $ whnf (A.computeAs P . unfoldrS_ (Sz k) (\i -> (i :: Int, i + 1))) 0
         , bench "Array (DS)" $
-          whnf (A.computeAs P . AS.unfoldrN (Sz k) (\i -> Just (i :: Int, i + 1))) 0
+          whnf (A.computeAs P . A.unfoldrN (Sz k) (\i -> Just (i :: Int, i + 1))) 0
         , bench "Vector" $ whnf (VP.unfoldrN k (\i -> Just (i :: Int, i + 1))) 0
         ]
     ]

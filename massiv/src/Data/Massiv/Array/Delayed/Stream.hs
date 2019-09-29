@@ -35,6 +35,7 @@ import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
 import Data.Massiv.Core.Common
 import GHC.Exts
 import Prelude hiding (take, drop)
+import Data.Vector.Fusion.Bundle.Size (upperBound)
 
 -- | Delayed array that will be loaded in an interleaved fashion during parallel
 -- computation.
@@ -150,8 +151,11 @@ instance Extract DS Ix1 e where
 
 -- | /O(n)/ - `size` implementation.
 instance Load DS Ix1 e where
-  size = SafeSz . S.length . coerce
+  size = coerce . S.length . coerce
   {-# INLINE size #-}
+
+  maxSize = coerce . upperBound . stepsSize . dsArray
+  {-# INLINE maxSize #-}
 
   getComp _ = Seq
   {-# INLINE getComp #-}
