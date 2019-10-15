@@ -29,6 +29,30 @@ linear row-major fashion, so the above indexing technique translates into a line
 get mapped into an element in memory at some point.
 
 
+## Hierarchy
+
+### Class dependency
+
+```
+                                       Construct (D, DL, DS, DI, DW, B, N, P, U, S, LN) -> Ragged (L)
+                                                           \
+Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Manifest (M) -`-> Mutable (B, N, P, U, S)
+   |\
+   | `> StrideLoad (D, DI, DW, M, B, N, P, U, S)
+   |\
+   | `> Extract (D, DS, DI, M, B, N, P, U, S)
+   |\
+   | `> Slice (D, M, B, N, P, U, S)
+   |\
+   | `> OuterSlice (D, M, B, N, P, U, S, L)
+    \
+     `> InnerSlice (D, M, B, N, P, U, S)
+
+Stream (D, DS, B, N, P, U, S, L, LN)
+
+Resize (D, DL, DI, B, N, P, U, S)
+```
+
 ## Computation
 
 As you know arrays can be computed in parallel or sequentially in `massiv`, but there is a lot more
@@ -39,7 +63,7 @@ to that:
 * array computation strategy will be combined according to its `Monoid` instance when two or more
   arrays are being joined together by some operation into another one.
 * Most of functions will respect the inner computation strategy, while other will ignore it due to
-  their specific nature. 
+  their specific nature.
 
 ## Naming Conventions
 

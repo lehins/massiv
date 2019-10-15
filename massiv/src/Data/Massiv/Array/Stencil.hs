@@ -17,6 +17,7 @@ module Data.Massiv.Array.Stencil
   , makeStencil
   , makeStencilDef
   , mapStencil
+  , applyStencil
     -- ** Profunctor
   , dimapStencil
   , lmapStencil
@@ -59,6 +60,38 @@ mapStencil b (Stencil sSz sCenter stencilF) !arr = insertWindow warr window
     !sz = size arr
     !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
 {-# INLINE mapStencil #-}
+
+-- | Apply a constructed stencil over an array. Resulting array must be `compute`d in
+-- order to be useful. Unlike `mapStencil`, this function does not require a border
+-- resolution technique, since the stencil never reads elements outside, which means the
+-- size of the resulting array will smaller then the original.
+--
+-- @since 0.4.3
+applyStencil ::
+     (Source r ix e, Manifest r ix e)
+  => Stencil ix e a -- ^ Stencil to apply to the array
+  -> Array r ix e -- ^ Source array
+  -> Array DW ix a
+applyStencil (Stencil sSz sCenter stencilF) !arr = insertWindow warr window
+  where
+    !warr =
+      DArray
+        (getComp arr)
+        windowSz
+        (unValue . stencilF (Value . index' arr . liftIndex2 (+) sCenter))
+    !window =
+      Window
+        { windowStart = sCenter
+        , windowSize = windowSz
+        , windowIndex = unValue . stencilF (Value . unsafeIndex arr . liftIndex2 (+) sCenter)
+        , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
+        }
+    !sz = size arr
+    !windowSz
+      | isSafeIndex sSz zeroIndex =
+        Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
+      | otherwise = sz
+{-# INLINE applyStencil #-}
 
 
 -- | Construct a stencil from a function, which describes how to calculate the
