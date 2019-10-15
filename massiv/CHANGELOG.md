@@ -1,6 +1,7 @@
 # 0.4.3
 
 * Addition of `applyStencil`.
+* Improve compile time error reporting for invalid dimensions.
 
 # 0.4.2
 

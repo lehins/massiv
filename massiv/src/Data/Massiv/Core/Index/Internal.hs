@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -12,7 +13,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
+{-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 #if __GLASGOW_HASKELL__ < 820
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 #endif
@@ -48,6 +49,8 @@ module Data.Massiv.Core.Index.Internal
   , pattern Dim4
   , pattern Dim5
   , IsIndexDimension
+  , IsDimValid
+  , ReportInvalidDim
   , Lower
   , Index(..)
   , Ix0(..)
@@ -329,7 +332,7 @@ pattern Dim5 = DimN
 -- safely used with it.
 --
 -- @since 0.2.4
-type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
+type IsIndexDimension ix n = (IsDimValid ix n ~ 'True, Index ix, KnownNat n)
 
 
 -- | This type family will always point to a type for a dimension that is one lower than the type
@@ -337,6 +340,18 @@ type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
 --
 -- @since 0.1.0
 type family Lower ix :: *
+
+
+type family ReportInvalidDim (dims :: Nat) (n :: Nat) isNotZero isLess :: Bool where
+  ReportInvalidDim dims n True True = True
+  ReportInvalidDim dims n True False =
+    TypeError (Text "Dimension " :<>: ShowType n :<>: Text " is higher than " :<>:
+                Text "the maximum expected " :<>: ShowType dims)
+  ReportInvalidDim dims n False isLess =
+    TypeError (Text "Zero dimensional indices are not supported")
+
+type family IsDimValid ix n :: Bool where
+  IsDimValid ix n = ReportInvalidDim (Dimensions ix) n (1 <=? n) (n <=? Dimensions ix)
 
 -- | This is bread and butter of multi-dimensional array indexing. It is unlikely that any of the
 -- functions in this class will be useful to a regular user, unless general algorithms are being

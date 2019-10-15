@@ -43,6 +43,8 @@ module Data.Massiv.Core.Index
   , Dim(..)
   , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)
   , IsIndexDimension
+  , IsDimValid
+  , ReportInvalidDim
   -- ** Stride
   , Stride(Stride)
   , unStride

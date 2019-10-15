@@ -39,8 +39,12 @@ module Data.Massiv.Array.Ops.Transform
   -- ** Append/Split
   , cons
   , unconsM
+  -- , headM
+  -- , head'
   , snoc
   , unsnocM
+  -- , lastM
+  -- , last'
   , appendM
   , append'
   , concatM
@@ -406,6 +410,40 @@ cons e arr =
           uWrite startAt e >> dlLoad arr scheduler (startAt + 1) uWrite
     }
 {-# INLINE cons #-}
+
+
+-- -- | /O(1)/ - Take the first element off the vector from the left side.
+-- --
+-- -- @since 0.4.3
+-- headM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m e
+-- headM = fmap fst . unconsM
+-- {-# INLINE headM #-}
+
+-- -- | /O(1)/ - Take the first element off the vector from the left side. Throws
+-- -- `SizeEmptyException`
+-- --
+-- -- @since 0.4.3
+-- head' :: Source r Ix1 e => Array r Ix1 e -> e
+-- head' = either throw id . headM
+-- {-# INLINE head' #-}
+
+
+-- -- | /O(1)/ - Take the last element off the vector from the right side.
+-- --
+-- -- @since 0.4.3
+-- lastM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m e
+-- lastM = fmap snd . unsnocM
+-- {-# INLINE lastM #-}
+
+-- -- | /O(1)/ - Take the last element off the vector from the right side. Throws
+-- -- `SizeEmptyException`
+-- --
+-- -- @since 0.4.3
+-- last' :: Source r Ix1 e => Array r Ix1 e -> e
+-- last' = either throw id . lastM
+-- {-# INLINE last' #-}
+
+
 
 -- | /O(1)/ - Take one element off the vector from the left side.
 --
