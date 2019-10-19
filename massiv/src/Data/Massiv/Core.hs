@@ -47,7 +47,7 @@ module Data.Massiv.Core
   ) where
 
 import Control.Exception (Exception(..), SomeException)
-import Control.Scheduler (WorkerStates, initWorkerStates)
+import Control.Scheduler (initWorkerStates)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.List

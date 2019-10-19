@@ -269,7 +269,9 @@ safeStencilIndex DArray {..} ix
 validateStencil
   :: Index ix
   => e -> Stencil ix e a -> Stencil ix e a
-validateStencil d s@(Stencil sSz sCenter stencil) =
-  let valArr = DArray Seq sSz (const d)
-  in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
+validateStencil d s@(Stencil sSz sCenter stencil)
+  | isSafeIndex sSz sCenter =
+    let valArr = DArray Seq sSz (const d)
+     in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
+  | otherwise = throw $ IndexOutOfBoundsException sSz sCenter
 {-# INLINE validateStencil #-}

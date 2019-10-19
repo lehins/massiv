@@ -29,7 +29,7 @@ benchmark sum
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Sum.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N6
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N6
   build-depends:       base
                      , criterion
                      , massiv
@@ -41,7 +41,7 @@ benchmark plus
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Plus.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -52,7 +52,7 @@ benchmark mult
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Mult.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -65,7 +65,7 @@ benchmark arithmetic
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Arithmetic.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -77,7 +77,7 @@ benchmark minmax
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             MinMax.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -88,7 +88,7 @@ benchmark sobel
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Sobel.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -99,7 +99,7 @@ benchmark integral
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Integral.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -110,7 +110,7 @@ benchmark upsample
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Upsample.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -121,7 +121,7 @@ benchmark append
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Append.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -134,7 +134,7 @@ benchmark filter
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Filter.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -146,7 +146,7 @@ benchmark grid
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Grid.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -158,7 +158,7 @@ benchmark mutable
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Mutable.hs
-  ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -169,7 +169,7 @@ benchmark mutable
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench
 --   main-is:             FuseSeq.hs
---   ghc-options:         -threaded -O2
+--   ghc-options:         -Wall -threaded -O2
 --   build-depends:       base
 --                      , criterion
 --                      , deepseq
@@ -183,7 +183,7 @@ benchmark mutable
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench
 --   main-is:             ConvolveSeq.hs
---   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N
+--   ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
 --   build-depends:       base
 --                      , criterion
 --                      , deepseq
@@ -194,22 +194,23 @@ benchmark mutable
 --   default-language:    Haskell2010
 
 
--- benchmark stencil
---   type:                exitcode-stdio-1.0
---   hs-source-dirs:      bench
---   main-is:             Stencil.hs
---   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7
---   build-depends:       base
---                      , criterion
---                      , deepseq
---                      , massiv-bench
---   default-language:    Haskell2010
+benchmark stencil
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Stencil.hs
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N7
+  build-depends:       base
+                     , criterion
+                     , deepseq
+                     , massiv
+                     , massiv-bench
+  default-language:    Haskell2010
 
 -- benchmark maximum
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench
 --   main-is:             Maximum.hs
---   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7
+--   ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N7
 --   build-depends:       base
 --                      , bytestring
 --                      , criterion
@@ -223,7 +224,7 @@ benchmark mutable
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench
 --   main-is:             ByteString.hs
---   ghc-options:         -threaded -O2 -rtsopts -with-rtsopts=-N7
+--   ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N7
 --   build-depends:       base
 --                      , bytestring
 --                      , criterion
@@ -237,7 +238,7 @@ benchmark mutable
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench
 --   main-is:             Loops.hs
---   ghc-options:         -threaded -O2
+--   ghc-options:         -Wall -threaded -O2
 --   build-depends:       base
 --                      , criterion
 --                      , massiv
@@ -249,7 +250,7 @@ benchmark mutable
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      bench
 --   main-is:             Index.hs
---   ghc-options:         -threaded -O2
+--   ghc-options:         -Wall -threaded -O2
 --   build-depends:       base
 --                      , criterion
 --                      , massiv
@@ -262,7 +263,7 @@ benchmark mutable
 --   main-is:             ComputePar.hs
 --   other-modules:       CommonMassiv
 --                      , CommonRepa
---   ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -Odph -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3
+--   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N6 -Odph -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3
 --   build-depends:       base
 --                      , criterion
 --                      , massiv
@@ -276,7 +277,7 @@ benchmark mutable
 --   hs-source-dirs:      bench
 --   main-is:             Filtering.hs
 --   other-modules:       Compute
---   ghc-options:         -threaded -O2
+--   ghc-options:         -Wall -threaded -O2
 --   build-depends:       base
 --                      , criterion
 --                      , massiv
@@ -290,7 +291,7 @@ benchmark mutable
 --   main-is:             Convolution.hs
 --   other-modules:       CommonMassiv
 --                      , CommonRepa
---   ghc-options:         -threaded -O2
+--   ghc-options:         -Wall -threaded -O2
 
 --   build-depends:       base
 --                      , criterion
@@ -307,7 +308,7 @@ benchmark mutable
 --   main-is:             ConvolutionPar.hs
 --   other-modules:       CommonMassiv
 --                      , CommonRepa
---   ghc-options:         -threaded -rtsopts -with-rtsopts=-N6 -O2
+--   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N6 -O2
 --                        ---Odph -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -fllvm -optlo-O3
 
 --   build-depends:       base
@@ -328,10 +329,10 @@ benchmark mutable
 --                      -- , time
 --   default-language:    Haskell2010
 --   --ghc-options:         -O2 -fllvm
---   -- ghc-options:         -threaded -O2 -ddump-simpl-stats
---   --ghc-options:         -threaded -rtsopts -with-rtsopts=-N7 -O2
---   --ghc-options:         -Wall -O2 -threaded -prof -fprof-auto
---   ghc-options:         -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
+--   -- ghc-options:         -Wall -threaded -O2 -ddump-simpl-stats
+--   --ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N7 -O2
+--   --ghc-options:         -Wall -O2 -Wall -threaded -prof -fprof-auto
+--   ghc-options:         -Wall -threaded -O2 -ddump-simpl -dsuppress-idinfo -dsuppress-coercions -dsuppress-type-applications -dsuppress-uniques -dsuppress-module-prefixes
 
 source-repository head
   type:     git

@@ -1,7 +1,12 @@
 # 0.4.3
 
-* Addition of `applyStencil`.
+* Addition of `applyStencil` and `Padding` with helper functions `noPadding` and `samePadding`.
+* Addition of `foldlStencil`, `foldrStencil` and monoidal `foldStencil`.
+* Addition of common generic stencils: `sumStencil`, `productStencil`, `avgStencil`,
+  `maxStencil`, `minStencil` and `idStencil`.
+* Addition of `mapStencilUnsafe` for the brave.
 * Improve compile time error reporting for invalid dimensions.
+* Fix incorrect loading of `DW` arrays of dimension higher than 3
 
 # 0.4.2
 

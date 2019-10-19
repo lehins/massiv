@@ -32,6 +32,7 @@ module Data.Massiv.Core.Index
   , zeroSz
   , oneSz
   , liftSz
+  , liftSz2
   , consSz
   , unconsSz
   , snocSz
@@ -482,7 +483,7 @@ iter :: Index ix
   => ix -- ^ Start index
   -> ix -- ^ End index
   -> ix -- ^ Increment
-  -> (Int -> Int -> Bool) -- ^ Continuation confition
+  -> (Int -> Int -> Bool) -- ^ Continuation condition
   -> a -- ^ Accumulator
   -> (ix -> a -> a) -- ^ Iterating function
   -> a

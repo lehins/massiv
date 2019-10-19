@@ -1,8 +1,7 @@
-resolver: lts-13.29
+resolver: lts-14.4
 packages:
 - '.'
-- '../massiv'
 extra-deps:
-- scheduler-1.4.0@sha256:b182be9a7b84e1dba02dac761c3f4e204521d0f779d72d86040789d5aaadf92a,2833
+- '../massiv'
 flags: {}
 extra-package-dbs: []

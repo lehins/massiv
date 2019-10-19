@@ -34,6 +34,7 @@ module Data.Massiv.Core.Index.Internal
   , zeroSz
   , oneSz
   , liftSz
+  , liftSz2
   , consSz
   , unconsSz
   , snocSz
@@ -63,7 +64,7 @@ module Data.Massiv.Core.Index.Internal
   ) where
 
 import Control.DeepSeq
-import Control.Exception (Exception(..))
+import Control.Exception (Exception(..), throw)
 import Control.Monad.Catch (MonadThrow(..))
 import Data.Coerce
 import Data.Massiv.Core.Iterator
@@ -184,6 +185,19 @@ oneSz = SafeSz (pureIndex 1)
 liftSz :: Index ix => (Int -> Int) -> Sz ix -> Sz ix
 liftSz f (SafeSz ix) = Sz (liftIndex f ix)
 {-# INLINE liftSz #-}
+
+-- | Same as `liftIndex2`, but for `Sz`
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Core.Index
+-- >>> liftSz2 (-) (Sz2 2 3) (Sz2 3 1)
+-- Sz (0 :. 2)
+--
+-- @since 0.4.3
+liftSz2 :: Index ix => (Int -> Int -> Int) -> Sz ix -> Sz ix -> Sz ix
+liftSz2 f sz1 sz2 = Sz (liftIndex2 f (coerce sz1) (coerce sz2))
+{-# INLINE liftSz2 #-}
 
 
 -- | Same as `consDim`, but for `Sz`
@@ -637,6 +651,7 @@ instance Index Ix1 where
   fromLinearIndexAcc n k = k `quotRem` n
   {-# INLINE [1] fromLinearIndexAcc #-}
   repairIndex k@(SafeSz ksz) !i rBelow rOver
+    | ksz <= 0 = throw $ IndexZeroException ksz
     | i < 0 = rBelow k i
     | i >= ksz = rOver k i
     | otherwise = i

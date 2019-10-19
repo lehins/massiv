@@ -28,7 +28,6 @@ module Data.Massiv.Array.Delayed.Push
 
 import Control.Monad
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Prelude hiding (map, zipWith)
 import Control.Scheduler as S (traverse_)
 import Data.Foldable as F

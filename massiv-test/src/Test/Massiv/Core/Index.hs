@@ -16,6 +16,7 @@ module Test.Massiv.Core.Index
   ( DimIx(..)
   , SzNE(..)
   , SzIx(..)
+  , SzTiny(..)
   , ixToList
   , arbitraryIx1
   , toIx
@@ -85,6 +86,15 @@ instance (Index ix, Arbitrary ix) => Arbitrary (SzIx ix) where
     SzNE sz <- arbitrary
     -- Make sure index is within bounds:
     SzIx sz . flip (liftIndex2 mod) (unSz sz) <$> arbitrary
+
+
+
+
+newtype SzTiny ix = SzTiny { unSzTiny :: Sz ix }
+  deriving (Show, Eq)
+
+instance (Arbitrary ix, Index ix) => Arbitrary (SzTiny ix) where
+  arbitrary = SzTiny . liftSz (`mod` 10) <$> arbitrary
 
 
 instance Arbitrary e => Arbitrary (Border e) where

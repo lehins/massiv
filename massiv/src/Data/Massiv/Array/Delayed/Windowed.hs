@@ -156,13 +156,14 @@ insertWindow !arr !window =
     , dwWindow =
         Just $!
         Window
-          { windowStart = unSz (Sz (liftIndex2 min wStart (liftIndex (subtract 1) sz)))
-          , windowSize = Sz (liftIndex2 min wSize (liftIndex2 (-) sz wStart))
+          { windowStart = wStart'
+          , windowSize = Sz (liftIndex2 min wSize (liftIndex2 (-) sz wStart'))
           , windowIndex = wIndex
           , windowUnrollIx2 = wUnrollIx2
           }
     }
   where
+    wStart' = unSz (Sz (liftIndex2 min wStart (liftIndex (subtract 1) sz)))
     Sz sz = size arr
     Window { windowStart = wStart
            , windowSize = Sz wSize
@@ -389,29 +390,31 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
       !(headWindowSz, tailWindowSz) = unconsSz windowSize
       !curWindowEnd = curWindowStart + unSz headWindowSz
       !pageElements = totalElem lowerSize
-      loadLower !i =
-        let !lowerWindow =
-              Window
-                { windowStart = lowerWindowStart
-                , windowSize = tailWindowSz
-                , windowIndex = windowIndex . consDim i
-                , windowUnrollIx2 = windowUnrollIx2
-                }
-            !lowerArr =
-              DWArray
-                { dwArray = DArray Seq lowerSourceSize (indexBorder . consDim i)
-                , dwWindow = Just lowerWindow
-                }
-         in loadArrayWithStrideM
-              scheduler
-              (Stride lowerStrideIx)
-              lowerSize
-              lowerArr
-              (\k -> uWrite (k + pageElements * (i `div` s)))
+      mkLowerWindow i =
+        Window
+          { windowStart = lowerWindowStart
+          , windowSize = tailWindowSz
+          , windowIndex = windowIndex . consDim i
+          , windowUnrollIx2 = windowUnrollIx2
+          }
+      mkLowerArray mw i =
+        DWArray
+          {dwArray = DArray Seq lowerSourceSize (indexBorder . consDim i), dwWindow = ($ i) <$> mw}
+      loadLower mw !i =
+        loadArrayWithStrideM
+          scheduler
+          (Stride lowerStrideIx)
+          lowerSize
+          (mkLowerArray mw i)
+          (\k -> uWrite (k + pageElements * (i `div` s)))
       {-# NOINLINE loadLower #-}
-  loopM_ 0 (< headDim windowStart) (+ s) loadLower
-  loopM_ (strideStart (Stride s) curWindowStart) (< curWindowEnd) (+ s) loadLower
-  loopM_ (strideStart (Stride s) curWindowEnd) (< unSz headSourceSize) (+ s) loadLower
+  loopM_ 0 (< headDim windowStart) (+ s) (loadLower Nothing)
+  loopM_
+    (strideStart (Stride s) curWindowStart)
+    (< curWindowEnd)
+    (+ s)
+    (loadLower (Just mkLowerWindow))
+  loopM_ (strideStart (Stride s) curWindowEnd) (< unSz headSourceSize) (+ s) (loadLower Nothing)
 {-# INLINE loadArrayWithIxN #-}
 
 
@@ -430,24 +433,22 @@ loadWithIxN with arr uWrite = do
       !windowEnd = liftIndex2 (+) windowStart (unSz windowSize)
       !(t, windowStartL) = unconsDim windowStart
       !pageElements = totalElem szL
-      loadLower !i =
-        let !lowerWindow =
-              Window
-                { windowStart = windowStartL
-                , windowSize = snd $ unconsSz windowSize
-                , windowIndex = windowIndex . consDim i
-                , windowUnrollIx2 = windowUnrollIx2
-                }
-            !lowerArr =
-              DWArray
-                { dwArray = DArray Seq szL (indexBorder . consDim i)
-                , dwWindow = Just lowerWindow
-                }
-         in with $ loadArrayM trivialScheduler_ lowerArr (\k -> uWrite (k + pageElements * i))
+      mkLowerWindow i =
+        Window
+          { windowStart = windowStartL
+          , windowSize = snd $ unconsSz windowSize
+          , windowIndex = windowIndex . consDim i
+          , windowUnrollIx2 = windowUnrollIx2
+          }
+      mkLowerArray mw i =
+        DWArray {dwArray = DArray Seq szL (indexBorder . consDim i), dwWindow = ($ i) <$> mw}
+      loadLower mw !i =
+        with $
+        loadArrayM trivialScheduler_ (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
       {-# NOINLINE loadLower #-}
-  loopM_ 0 (< headDim windowStart) (+ 1) loadLower
-  loopM_ t (< headDim windowEnd) (+ 1) loadLower
-  loopM_ (headDim windowEnd) (< unSz si) (+ 1) loadLower
+  loopM_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
+  loopM_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
+  loopM_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower Nothing)
 {-# INLINE loadWithIxN #-}
 
 

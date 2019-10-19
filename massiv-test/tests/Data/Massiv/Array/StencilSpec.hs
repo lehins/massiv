@@ -4,25 +4,26 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 module Data.Massiv.Array.StencilSpec (spec) where
 
+import Prelude as P
 import Control.DeepSeq (deepseq)
 import Data.Default (Default(def))
 import Data.Massiv.Array as A
+import Data.Massiv.Array.Stencil.Unsafe as A
 import Test.Massiv.Core
 
--- sum3x3Stencil :: Fractional a => Stencil Ix2 a a
--- sum3x3Stencil = makeConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
---   get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
---   get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
---   get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
--- {-# INLINE sum3x3Stencil #-}
+avg3x3Stencil :: Fractional a => Stencil Ix2 a a
+avg3x3Stencil = (/9) <$> makeConvolutionStencil (Sz 3) (1 :. 1) $ \ get ->
+  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
+  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
+  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
 
 
 singletonStencil :: (Index ix) => (Int -> Int) -> Stencil ix Int Int
 singletonStencil f =
   makeStencil oneSz zeroIndex $ \ get -> fmap f (get zeroIndex)
-{-# INLINE singletonStencil #-}
 
 
 prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int, Show (Array U ix Int)) =>
@@ -30,17 +31,12 @@ prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int, Show (Array U ix
 prop_MapSingletonStencil _ f b (ArrNE arr) =
   computeAs U (mapStencil b (singletonStencil (apply f)) arr) === computeAs U (A.map (apply f) arr)
 
-prop_MapZeroStencil :: (Load DW ix Int, Manifest U ix Int, Show (Array U ix Int)) =>
-                       Proxy ix -> Int -> Array U ix Int -> Property
-prop_MapZeroStencil _ e arr =
-  mappedSame === arrAllSame .&&. appliedAllSame === arrAllSame
+prop_ApplyZeroStencil ::
+     (Load DW ix Int, Manifest U ix Int) => Proxy ix -> Int -> Array U ix Int -> Property
+prop_ApplyZeroStencil _ e arr =
+  assertSomeException $ computeAs U (applyStencil noPadding zeroStencil arr)
   where
-    mappedSame =
-      computeAs U $
-      mapStencil (Fill (error "Should not have accessed elements outside")) zeroStencil arr
-    appliedAllSame = computeAs U (applyStencil zeroStencil arr)
     zeroStencil = makeStencil zeroSz zeroIndex $ \_get -> pure e
-    arrAllSame = A.replicate Seq (size arr) e
 
 
 prop_MapSingletonStencilWithStride ::
@@ -63,6 +59,50 @@ prop_DangerousStencil _ (NonZero s) (DimIx r) (SzIx sz ix) =
     ix' = liftIndex (* signum s) (setDim' zeroIndex r (getDim' (unSz sz) r))
 
 
+instance Index ix => Show (Stencil ix a b) where
+  show stencil =
+    "Stencil " ++ show (getStencilSize stencil) ++ " " ++ show (getStencilCenter stencil)
+
+
+prop_MapEqApplyStencil ::
+     (Show (Array P ix Int), StrideLoad DW ix Int)
+  => Stride ix
+  -> SzTiny ix
+  -> Border Int
+  -> Array P ix Int
+  -> Property
+prop_MapEqApplyStencil stride (SzTiny sz) b arr =
+  forAll (elements (P.zip [0 ..] (toList $ A.map (\(n, _, _) -> n) stencils))) $ \(i, _) ->
+    let (_, stencil, g) = stencils ! i
+     in computeAs P (mapStencilUnsafe b sz zeroIndex g arr) ===
+        computeAs P (applyStencil (samePadding stencil b) stencil arr) .&&.
+        computeWithStrideAs P stride (mapStencilUnsafe b sz zeroIndex g arr) ===
+        computeWithStrideAs P stride (applyStencil (samePadding stencil b) stencil arr)
+  where
+    stencils = mkCommonStencils sz
+
+mkCommonStencils ::
+     (Bounded a, Num a, Ord a, Index ix)
+  => Sz ix
+  -> Array B Ix1 (String, Stencil ix a a, (ix -> a) -> a)
+mkCommonStencils sz =
+  fromList
+    Seq
+    [ (name, stencil sz, \get -> foldlS f acc0 $ fmap get (zeroIndex ..: unSz sz))
+    | (name, stencil, f, acc0) <-
+        [ ("maxStencil", maxStencil, max, minBound)
+        , ("minStencil", minStencil, min, maxBound)
+        , ("sumStencil", sumStencil, (+), 0)
+        , ("productStencil", productStencil, (*), 1)
+        ]
+    ]
+
+prop_FoldrStencil :: Load DW ix (Array DL Ix1 Int) => ArrNE P ix Int -> Property
+prop_FoldrStencil (ArrNE arr) =
+  computeAs P (computeAs B folded ! zeroIndex) === A.fromList Seq (foldrS (:) [] arr)
+  where
+    folded = applyStencil noPadding (foldrStencil cons A.empty (size arr)) arr
+
 stencilSpec :: Spec
 stencilSpec = do
   describe "MapSingletonStencil" $ do
@@ -71,22 +111,38 @@ stencilSpec = do
     it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
     it "Ix2T" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2T)
-  describe "MapZeroStencil" $ do
-    it "Ix1" $ property $ prop_MapZeroStencil (Proxy :: Proxy Ix1)
-    it "Ix2" $ property $ prop_MapZeroStencil (Proxy :: Proxy Ix2)
-    it "Ix3" $ property $ prop_MapZeroStencil (Proxy :: Proxy Ix3)
-    it "Ix4" $ property $ prop_MapZeroStencil (Proxy :: Proxy Ix4)
-    it "Ix2T" $ property $ prop_MapZeroStencil (Proxy :: Proxy Ix2T)
   describe "MapSingletonStencilWithStride" $ do
     it "Ix1" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix2)
     it "Ix3" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix3)
+  describe "ApplyZeroStencil" $ do
+    it "Ix1" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix1)
+    it "Ix2" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix2)
+    it "Ix3" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix3)
+    it "Ix4" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix4)
+    it "Ix2T" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix2T)
   describe "DangerousStencil" $ do
     it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
     it "Ix3" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix4)
-
+  describe "MapEqApplyStencil" $ do
+    it "Ix1" $ property $ prop_MapEqApplyStencil @Ix1
+    it "Ix2" $ property $ prop_MapEqApplyStencil @Ix2
+    it "Ix3" $ property $ prop_MapEqApplyStencil @Ix3
+    it "Ix4" $ property $ prop_MapEqApplyStencil @Ix4
+  describe "FoldrStencil" $ do
+    it "Ix1" $ property $ prop_FoldrStencil @Ix1
+    it "Ix2" $ property $ prop_FoldrStencil @Ix2
+    it "Ix3" $ property $ prop_FoldrStencil @Ix3
+    it "Ix4" $ property $ prop_FoldrStencil @Ix4
+  describe "Simple" $ do
+    it "sumStencil" $ property $ \ (arr :: Array B Ix2 Rational) border ->
+      computeAs N (mapStencil border avg3x3Stencil arr) ===
+      computeAs N (applyStencil (Padding 1 1 border) (avgStencil (Sz 3)) arr)
+    it "sameSizeAndCenter" $ property $ \ (SzIx sz ix) ->
+      let stencil = makeStencil sz ix ($ Ix1 0) :: Stencil Ix1 Int Int
+      in getStencilSize stencil === sz .&&. getStencilCenter stencil === ix
 
 stencilDirection :: Ix2 -> Array U Ix2 Int -> Array U Ix2 Int
 stencilDirection ix = computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
@@ -118,7 +174,7 @@ stencilConvolution = do
       mapStencil2 :: Stencil Ix2 Int Int -> Array U Ix2 Int -> Array U Ix2 Int
       mapStencil2 s = computeAs U . mapStencil (Fill 0) s
       applyStencil1 :: Stencil Ix1 Int Int -> Array U Ix1 Int -> Array U Ix1 Int
-      applyStencil1 s = computeAs U . applyStencil s
+      applyStencil1 s = computeAs U . applyStencil noPadding s
   describe "makeConvolutionStencilFromKernel" $ do
     it "1x3 map" $ mapStencil1 (makeConvolutionStencilFromKernel xs3) ys `shouldBe` ysConvXs3
     it "1x4 map" $ mapStencil1 (makeConvolutionStencilFromKernel xs4) ys `shouldBe` ysConvXs4

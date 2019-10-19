@@ -415,7 +415,7 @@ you do just that. For the sake of example we'll do a sum of all neighbors by han
 
 ```haskell
 sum3x3Filter :: Fractional a => Stencil Ix2 a a
-sum3x3Filter = makeConvolutionStencil (3 :. 3) (1 :. 1) $ \ get ->
+sum3x3Filter = makeConvolutionStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
   get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
   get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
   get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1

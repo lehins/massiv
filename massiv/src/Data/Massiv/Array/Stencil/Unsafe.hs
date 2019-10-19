@@ -13,6 +13,7 @@
 module Data.Massiv.Array.Stencil.Unsafe
   ( -- * Stencil
     makeUnsafeStencil
+  , mapStencilUnsafe
   , forStencilUnsafe
   ) where
 
@@ -23,9 +24,9 @@ import Data.Massiv.Core.Common
 import GHC.Exts (inline)
 
 
--- | This is an unsafe version of the stencil computation. There are no bounds checking further from
--- the border, so if you do make sure you are not going outside the size of the stencil, you will be
--- safe, but this is not enforced.
+-- | Just as `mapStencilUnsafe` this is an unsafe version of the stencil
+-- mapping. Arguments are in slightly different order and the indexing function returns
+-- `Nothing` for elements outside the border.
 --
 -- @since 0.1.7
 forStencilUnsafe ::
@@ -56,6 +57,35 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
     {-# INLINE stencil #-}
 {-# INLINE forStencilUnsafe #-}
 
+
+-- | This is an unsafe version of `Data.Massiv.Array.Stencil.mapStencil`, that does no
+-- stencil validation. There is no performance difference between the two, but the unsafe
+-- version has an advantage of not requiring to deal with `Value` wrapper.
+--
+-- @since 0.4.3
+mapStencilUnsafe ::
+     Manifest r ix e
+  => Border e
+  -> Sz ix
+  -> ix
+  -> ((ix -> e) -> a)
+  -> Array r ix e
+  -> Array DW ix a
+mapStencilUnsafe b sSz sCenter stencilF !arr = insertWindow warr window
+  where
+    !warr = DArray (getComp arr) sz (stencil (borderIndex b arr))
+    !window =
+      Window
+        { windowStart = sCenter
+        , windowSize = windowSz
+        , windowIndex = stencil (unsafeIndex arr)
+        , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
+        }
+    !sz = size arr
+    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
+    stencil getVal !ix = inline stencilF $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
+    {-# INLINE stencil #-}
+{-# INLINE mapStencilUnsafe #-}
 
 
 -- | Similar to `Data.Massiv.Array.Stencil.makeStencil`, but there are no guarantees that the

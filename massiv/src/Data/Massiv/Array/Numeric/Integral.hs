@@ -134,11 +134,11 @@ integralApprox ::
   -> Array r ix e -- ^ Array with values of @f(x,y,..)@ that will be used as source for integration.
   -> Array M ix e
 integralApprox stencil d sz n arr =
-  extract' zeroIndex sz $ toManifest $ loop 1 (<= coerce (dimensions sz)) (+ 1) arr applyStencil
+  extract' zeroIndex sz $ toManifest $ loop 1 (<= coerce (dimensions sz)) (+ 1) arr integrateAlong
   where
     !dx = d / fromIntegral n
-    applyStencil dim = integrateWith (stencil dx) (Dim dim) n
-    {-# INLINE applyStencil #-}
+    integrateAlong dim = integrateWith (stencil dx) (Dim dim) n
+    {-# INLINE integrateAlong #-}
 {-# INLINE integralApprox #-}
 
 

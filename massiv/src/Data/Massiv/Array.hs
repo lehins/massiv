@@ -222,5 +222,3 @@ ifilterM f =
 All folding is done in a row-major order.
 
 -}
-
-
