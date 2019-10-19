@@ -68,8 +68,8 @@ getStencilSize = stencilSize
 getStencilCenter :: Stencil ix e a -> ix
 getStencilCenter = stencilCenter
 
--- | Map a constructed stencil over an array. Resulting array must be `compute`d in order to be
--- useful.
+-- | Map a constructed stencil over an array. Resulting array must be
+-- `Data.Massiv.Array.compute`d in order to be useful.
 --
 -- @since 0.1.0
 mapStencil ::
@@ -174,9 +174,10 @@ samePadding (Stencil (Sz sSz) sCenter _) border =
     , paddingWithElement = border
     }
 
--- | Apply a constructed stencil over an array. Resulting array must be `compute`d in
--- order to be useful. Unlike `mapStencil`, the size of the resulting array will not
--- necesserally be the same as the source array, which will depend on the padding.
+-- | Apply a constructed stencil over an array. Resulting array must be
+-- `Data.Massiv.Array.compute`d in order to be useful. Unlike `mapStencil`, the size of
+-- the resulting array will not necesserally be the same as the source array, which will
+-- depend on the padding.
 --
 -- @since 0.4.3
 applyStencil ::
@@ -279,6 +280,7 @@ idStencil = makeUnsafeStencil oneSz zeroIndex $ \ _ get -> get zeroIndex
 --
 -- ==== __Examples__
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> a = computeAs P $ iterateN (Sz2 3 4) (+1) (10 :: Int)
 -- >>> a
 -- Array P Seq (Sz (3 :. 4))
@@ -309,6 +311,7 @@ foldlStencil f acc0 sz =
 --
 -- ==== __Examples__
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> a = computeAs P $ iterateN (Sz2 3 4) (+1) (10 :: Int)
 -- >>> a
 -- Array P Seq (Sz (3 :. 4))
@@ -407,18 +410,16 @@ minStencil = dimapStencil coerce getMin . foldStencil
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array as A
--- >>> a = computeAs P $ iterateN (Sz2 3 5) (* 2) (1 :: Int)
+-- >>> a = computeAs P $ iterateN (Sz2 2 5) (* 2) (1 :: Int)
 -- >>> a
--- Array P Seq (Sz (3 :. 5))
+-- Array P Seq (Sz (2 :. 5))
 --   [ [ 2, 4, 8, 16, 32 ]
 --   , [ 64, 128, 256, 512, 1024 ]
---   , [ 2048, 4096, 8192, 16384, 32768 ]
 --   ]
 -- >>> applyStencil noPadding (sumStencil (Sz2 1 2)) a
--- Array DW Seq (Sz (3 :. 4))
+-- Array DW Seq (Sz (2 :. 4))
 --   [ [ 6, 12, 24, 48 ]
 --   , [ 192, 384, 768, 1536 ]
---   , [ 6144, 12288, 24576, 49152 ]
 --   ]
 -- >>> [2 + 4, 4 + 8, 8 + 16, 16 + 32] :: [Int]
 -- [6,12,24,48]
@@ -439,11 +440,11 @@ sumStencil = dimapStencil coerce getSum . foldStencil
 --   [ [ 1, 2 ]
 --   , [ 3, 4 ]
 --   ]
--- >>> applyStencil (Padding 0 2 Continue) (productStencil 2) a
+-- >>> applyStencil (Padding 0 2 (Fill 0)) (productStencil 2) a
 -- Array DW Seq (Sz (3 :. 3))
---   [ [ 24, 24, 24 ]
---   , [ 24, 24, 24 ]
---   , [ 24, 24, 24 ]
+--   [ [ 24, 0, 0 ]
+--   , [ 0, 0, 0 ]
+--   , [ 0, 0, 0 ]
 --   ]
 -- >>> applyStencil (Padding 0 2 Reflect) (productStencil 2) a
 -- Array DW Seq (Sz (3 :. 3))
@@ -474,6 +475,8 @@ productStencil = dimapStencil coerce getProduct . foldStencil
 --   [ [ 14.0, 15.0 ]
 --   , [ 18.0, 19.0 ]
 --   ]
+-- >>> Prelude.sum [11.0, 12.0, 13.0, 15.0, 16.0, 17.0] / 6 :: Double
+-- 14.0
 --
 -- @since 0.4.3
 avgStencil :: (Fractional e, Index ix) => Sz ix -> Stencil ix e e
