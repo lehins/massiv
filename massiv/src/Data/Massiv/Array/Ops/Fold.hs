@@ -367,7 +367,7 @@ ifoldOuterSlice f arr = foldMono g $ range (getComp arr) 0 (headDim (unSz (size 
 --   [ [ 11, 12, 13 ]
 --   , [ 14, 15, 16 ]
 --   ]
--- >>> getProduct $ foldInnerSlice (\row -> Product (sum row)) arr
+-- >>> getProduct $ foldInnerSlice (\column -> Product (A.sum column)) arr
 -- 19575
 -- >>> (11 + 14) * (12 + 15) * (13 + 16) :: Int
 -- 19575
