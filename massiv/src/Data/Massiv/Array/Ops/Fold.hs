@@ -339,10 +339,7 @@ foldWithin' dim = foldlWithin' dim mappend mempty
 --
 -- @since 0.4.3
 foldOuterSlice :: (OuterSlice r ix e, Monoid m) => (Elt r ix e -> m) -> Array r ix e -> m
-foldOuterSlice f arr = foldMono g $ range (getComp arr) 0 (headDim (unSz (size arr)))
-  where
-    g i = f (unsafeOuterSlice arr i)
-    {-# INLINE g #-}
+foldOuterSlice f = ifoldOuterSlice (const f)
 {-# INLINE foldOuterSlice #-}
 
 
@@ -377,11 +374,7 @@ ifoldOuterSlice f arr = foldMono g $ range (getComp arr) 0 (headDim (unSz (size 
 --
 -- @since 0.4.3
 foldInnerSlice :: (InnerSlice r ix e, Monoid m) => (Elt r ix e -> m) -> Array r ix e -> m
-foldInnerSlice f arr = foldMono g $ range (getComp arr) 0 (unSz k)
-  where
-    szs@(_, !k) = unsnocSz (size arr)
-    g i = f (unsafeInnerSlice arr szs i)
-    {-# INLINE g #-}
+foldInnerSlice f = ifoldInnerSlice (const f)
 {-# INLINE foldInnerSlice #-}
 
 
