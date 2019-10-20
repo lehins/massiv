@@ -7,6 +7,9 @@
 * Addition of `mapStencilUnsafe` for the brave.
 * Improve compile time error reporting for invalid dimensions.
 * Fix incorrect loading of `DW` arrays of dimension higher than 3
+* Addition of `foldOuterSlice`, `ifoldOuterSlice`, `foldInnerSlice` and
+  `ifoldInnerSlice`. Fix for [#56](https://github.com/lehins/massiv/issues/56)
+
 
 # 0.4.2
 

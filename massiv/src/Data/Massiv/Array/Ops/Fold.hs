@@ -21,6 +21,10 @@ module Data.Massiv.Array.Ops.Fold
   , foldMono
   , ifoldSemi
   , foldSemi
+  , foldOuterSlice
+  , ifoldOuterSlice
+  , foldInnerSlice
+  , ifoldInnerSlice
   , minimumM
   , minimum'
   , maximumM
@@ -42,16 +46,19 @@ module Data.Massiv.Array.Ops.Fold
   , foldlInner
   , ifoldrInner
   , foldrInner
-  -- *** Type safe
+  , foldInner
+  -- *** Type safe within
   , ifoldlWithin
   , foldlWithin
   , ifoldrWithin
   , foldrWithin
-  -- *** Partial
+  , foldWithin
+  -- *** Partial within
   , ifoldlWithin'
   , foldlWithin'
   , ifoldrWithin'
   , foldrWithin'
+  , foldWithin'
 
   -- ** Sequential folds
 
@@ -91,6 +98,7 @@ module Data.Massiv.Array.Ops.Fold
   ) where
 
 import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
@@ -281,6 +289,113 @@ foldrInner :: (Index (Lower ix), Source r ix e) =>
 foldrInner = foldrWithin' 1
 {-# INLINE foldrInner #-}
 
+-- | Monoidal fold over the inner most dimension.
+--
+-- @since 0.4.3
+foldInner :: (Monoid e, Index (Lower ix), Source r ix e) => Array r ix e -> Array D (Lower ix) e
+foldInner = foldlInner mappend mempty
+{-# INLINE foldInner #-}
+
+-- | Monoidal fold over some internal dimension.
+--
+-- @since 0.4.3
+foldWithin ::
+     (Source r ix a, Monoid a, Index (Lower ix), IsIndexDimension ix n)
+  => Dimension n
+  -> Array r ix a
+  -> Array D (Lower ix) a
+foldWithin dim = foldlWithin dim mappend mempty
+{-# INLINE foldWithin #-}
+
+-- | Monoidal fold over some internal dimension. This is a pratial function and will
+-- result in `IndexDimensionException` if supplied dimension is invalid.
+--
+-- @since 0.4.3
+foldWithin' ::
+     (Source r ix a, Monoid a, Index (Lower ix))
+  => Dim
+  -> Array r ix a
+  -> Array D (Lower ix) a
+foldWithin' dim = foldlWithin' dim mappend mempty
+{-# INLINE foldWithin' #-}
+
+
+-- | Reduce each outer slice into a monoid and mappend results together
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> import Data.Monoid (Product(..))
+-- >>> arr = computeAs P $ iterateN (Sz2 2 3) (+1) (10 :: Int)
+-- >>> arr
+-- Array P Seq (Sz (2 :. 3))
+--   [ [ 11, 12, 13 ]
+--   , [ 14, 15, 16 ]
+--   ]
+-- >>> getProduct $ foldOuterSlice (\row -> Product (A.sum row)) arr
+-- 1620
+-- >>> (11 + 12 + 13) * (14 + 15 + 16) :: Int
+-- 1620
+--
+-- @since 0.4.3
+foldOuterSlice :: (OuterSlice r ix e, Monoid m) => (Elt r ix e -> m) -> Array r ix e -> m
+foldOuterSlice f arr = foldMono g $ range (getComp arr) 0 (headDim (unSz (size arr)))
+  where
+    g i = f (unsafeOuterSlice arr i)
+    {-# INLINE g #-}
+{-# INLINE foldOuterSlice #-}
+
+
+-- | Reduce each outer slice into a monoid with an index aware function and mappend results
+-- together
+--
+-- @since 0.4.3
+ifoldOuterSlice :: (OuterSlice r ix e, Monoid m) => (Ix1 -> Elt r ix e -> m) -> Array r ix e -> m
+ifoldOuterSlice f arr = foldMono g $ range (getComp arr) 0 (headDim (unSz (size arr)))
+  where
+    g i = f i (unsafeOuterSlice arr i)
+    {-# INLINE g #-}
+{-# INLINE ifoldOuterSlice #-}
+
+
+-- | Reduce each inner slice into a monoid and mappend results together
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> import Data.Monoid (Product(..))
+-- >>> arr = computeAs P $ iterateN (Sz2 2 3) (+1) (10 :: Int)
+-- >>> arr
+-- Array P Seq (Sz (2 :. 3))
+--   [ [ 11, 12, 13 ]
+--   , [ 14, 15, 16 ]
+--   ]
+-- >>> getProduct $ foldInnerSlice (\row -> Product (sum row)) arr
+-- 19575
+-- >>> (11 + 14) * (12 + 15) * (13 + 16) :: Int
+-- 19575
+--
+-- @since 0.4.3
+foldInnerSlice :: (InnerSlice r ix e, Monoid m) => (Elt r ix e -> m) -> Array r ix e -> m
+foldInnerSlice f arr = foldMono g $ range (getComp arr) 0 (unSz k)
+  where
+    szs@(_, !k) = unsnocSz (size arr)
+    g i = f (unsafeInnerSlice arr szs i)
+    {-# INLINE g #-}
+{-# INLINE foldInnerSlice #-}
+
+
+-- | Reduce each inner slice into a monoid with an index aware function and mappend
+-- results together
+--
+-- @since 0.4.3
+ifoldInnerSlice :: (InnerSlice r ix e, Monoid m) => (Ix1 -> Elt r ix e -> m) -> Array r ix e -> m
+ifoldInnerSlice f arr = foldMono g $ range (getComp arr) 0 (unSz k)
+  where
+    szs@(_, !k) = unsnocSz (size arr)
+    g i = f i (unsafeInnerSlice arr szs i)
+    {-# INLINE g #-}
+{-# INLINE ifoldInnerSlice #-}
 
 -- | /O(n)/ - Compute maximum of all elements.
 --
