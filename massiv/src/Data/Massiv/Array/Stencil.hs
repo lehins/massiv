@@ -335,7 +335,7 @@ foldrStencil f acc0 sz =
 
 
 foldStencil :: (Monoid e, Index ix) => Sz ix -> Stencil ix e e
-foldStencil = foldlStencil (<>) mempty
+foldStencil = foldlStencil mappend mempty
 {-# INLINE foldStencil #-}
 
 -- | Create a stencil centered at 0 that will extract the maximum value in the region of
