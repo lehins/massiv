@@ -1,9 +1,9 @@
-resolver: nightly-2019-06-06
+resolver: lts-14.4
 packages:
 - '.'
-- '../massiv/'
-- '../massiv-io/'
 extra-deps: []
+# - '../massiv/'
+# - '../massiv-io/'
 flags: {}
 extra-package-dbs: []
 nix:

@@ -55,6 +55,7 @@ test-suite tests
                     , Test.Massiv.Core.SchedulerSpec
                     , Test.Massiv.Array.Delayed.StreamSpec
                     , Test.Massiv.Array.MutableSpec
+                    , Test.Massiv.Array.Ops.SortSpec
                       -- TODO: Below should be moved to Test.Massiv.Array
                     , Data.Massiv.Array.Delayed.InterleavedSpec
                     , Data.Massiv.Array.Delayed.PushSpec
@@ -67,7 +68,6 @@ test-suite tests
                     , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.MapSpec
                     , Data.Massiv.Array.Ops.SliceSpec
-                    , Data.Massiv.Array.Ops.SortSpec
                     , Data.Massiv.Array.Ops.TransformSpec
                     , Data.Massiv.Array.StencilSpec
                     , Data.Massiv.ArraySpec

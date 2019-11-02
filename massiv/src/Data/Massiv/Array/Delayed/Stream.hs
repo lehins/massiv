@@ -23,6 +23,7 @@ module Data.Massiv.Array.Delayed.Stream
   , filterM
   , mapMaybeS
   , mapMaybeM
+  , catMaybesS
   , unfoldr
   , unfoldrN
   ) where
@@ -300,12 +301,19 @@ filterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 
 
 -- | Apply a function to each element of the array, while discarding `Nothing` and
--- keepingt he `Maybe` result.
+-- keeping the `Maybe` result.
 --
 -- @since 0.4.1
 mapMaybeS :: S.Stream r ix a => (a -> Maybe b) -> Array r ix a -> Array DS Ix1 b
 mapMaybeS f = DSArray . S.mapMaybe f . S.toStream
 {-# INLINE mapMaybeS #-}
+
+-- | Keep all `Maybe`s and discard the `Nothing`s.
+--
+-- @since 0.4.4
+catMaybesS :: S.Stream r ix (Maybe a) => Array r ix (Maybe a) -> Array DS Ix1 a
+catMaybesS = mapMaybeS id
+{-# INLINE catMaybesS #-}
 
 
 -- | Similar to `mapMaybeS`, but with the use of `Applicative`

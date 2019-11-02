@@ -258,7 +258,7 @@ iunfoldlS_ sz f acc0 =
 -- | Create an array with random values by using a pure splittable random number generator
 -- such as one provided by either [splitmix](https://www.stackage.org/package/splitmix) or
 -- [random](https://www.stackage.org/package/random) packages. If you don't have a
--- splittable generator consider using `randomArrayS` or `randomArrayIO` instead.
+-- splittable generator consider using `randomArrayS` or `randomArrayWS` instead.
 --
 -- Because of the pure nature of the generator and its splitability we are not only able
 -- to parallelize the random value generation, but also guarantee that it will be

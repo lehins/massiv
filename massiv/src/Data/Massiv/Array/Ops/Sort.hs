@@ -10,16 +10,53 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Ops.Sort
-  ( quicksort
+  ( tally
+  , quicksort
   , quicksortM_
   , unsafeUnstablePartitionRegionM
   ) where
 
 import Control.Monad (when)
 import Control.Scheduler
+import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Ops.Transform
 import Data.Massiv.Core.Common
 import System.IO.Unsafe
+
+-- | Count how many occurance of each element there is in the array. Results will be
+-- sorted in ascending order of the element.
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> xs = fromList Seq [2, 4, 3, 2, 4, 5, 2, 1] :: Array P Ix1 Int
+-- >>> xs
+-- Array P Seq (Sz1 8)
+--   [ 2, 4, 3, 2, 4, 5, 2, 1 ]
+-- >>> tally xs
+-- Array DS Seq (Sz1 5)
+--   [ (1,1), (2,3), (3,1), (4,2), (5,1) ]
+--
+-- @since 0.4.4
+tally :: (Mutable r Ix1 e, Resize r ix, Load r ix e, Ord e) => Array r ix e -> Array DS Ix1 (e, Int)
+tally arr
+  | isEmpty arr = setComp (getComp arr) empty
+  | otherwise = catMaybesS $ unfoldrN (sz + 1) count (0, 0, sorted ! 0)
+  where
+    sz@(Sz k) = size sorted
+    count (!i, !n, !prev)
+      | i < k =
+        let !e' = unsafeLinearIndex sorted i
+         in if prev == e'
+              then Just (Nothing, (i + 1, n + 1, prev))
+              else Just (Just (prev, n), (i + 1, 1, e'))
+      | otherwise = Just (Just (prev, n), (i + 1, n, prev))
+    {-# INLINE count #-}
+    sorted = quicksort $ flatten arr
+{-# INLINE tally #-}
+
+
 
 -- | Partition a segment of a vector. Starting and ending indices are unchecked.
 --

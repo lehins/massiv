@@ -1,5 +1,9 @@
 # 0.4.3
 
+* Addition of `catMaybesS` and `tally`
+
+# 0.4.3
+
 * Addition of `applyStencil` and `Padding` with helper functions `noPadding` and `samePadding`.
 * Addition of `foldlStencil`, `foldrStencil` and monoidal `foldStencil`.
 * Addition of common generic stencils: `sumStencil`, `productStencil`, `avgStencil`,
