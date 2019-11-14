@@ -27,7 +27,6 @@ module Data.Massiv.Array.Delayed.Windowed
   ) where
 
 import Control.Exception (Exception(..))
-import Control.Scheduler (trivialScheduler_)
 import Control.Monad (when)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Manifest.Boxed
@@ -74,11 +73,6 @@ instance Index ix => Construct DW ix e where
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
   {-# INLINE makeArray #-}
 
-
--- TODO: adjust in response to Window
--- instance Index ix => Extract DW ix e where
---   unsafeExtract sIx newSz = unsafeExtract sIx newSz . dwArray
---   {-# INLINE unsafeExtract #-}
 
 
 instance Functor (Array DW ix) where
@@ -364,7 +358,7 @@ instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
   {-# INLINE size #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
-  loadArrayM scheduler = loadWithIxN (scheduleWork scheduler)
+  loadArrayM = loadWithIxN
   {-# INLINE loadArrayM #-}
 
 instance (Index (IxN n), StrideLoad DW (Ix (n - 1)) e) => StrideLoad DW (IxN n) e where
@@ -421,11 +415,11 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
 
 loadWithIxN ::
      (Index ix, Monad m, Load DW (Lower ix) e)
-  => (m () -> m ())
+  => Scheduler m ()
   -> Array DW ix e
   -> (Int -> e -> m ())
   -> m ()
-loadWithIxN with arr uWrite = do
+loadWithIxN scheduler arr uWrite = do
   let DWArray darr window = arr
       DArray {dSize = sz, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
@@ -443,8 +437,8 @@ loadWithIxN with arr uWrite = do
       mkLowerArray mw i =
         DWArray {dwArray = DArray Seq szL (indexBorder . consDim i), dwWindow = ($ i) <$> mw}
       loadLower mw !i =
-        with $
-        loadArrayM trivialScheduler_ (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
+        scheduleWork_ scheduler $
+        loadArrayM scheduler (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
       {-# NOINLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
   loopM_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
