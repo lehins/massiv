@@ -79,7 +79,7 @@ import qualified Codec.Picture.Gif as JP
 import qualified Codec.Picture.Jpg as JP
 import qualified Codec.Picture.Types as TypesJP
 import Control.Exception
-import Control.Monad (guard, msum)
+import Control.Monad (guard, msum, unless)
 import Data.Bifunctor
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
@@ -1004,10 +1004,20 @@ toJPImageCMYK16 = toJPImageUnsafe
 
 -- General decoding and helper functions
 
-fromJPImageUnsafe :: forall jpx cs e . (Storable (Pixel cs e), JP.Pixel jpx) =>
+fromJPImageUnsafe :: forall jpx cs e . (Storable (Pixel cs e), Storable e, JP.Pixel jpx) =>
                      JP.Image jpx -> Maybe (Image S cs e)
 fromJPImageUnsafe (JP.Image n m !v) = do
-  guard (n * m * sizeOf (undefined :: Pixel cs e) == V.length v)
+  let numberOfComponentsFromSize = sizeOf (undefined :: Pixel cs e) `div` sizeOf (undefined :: e)
+      numComponentsPerPixel = JP.componentCount (undefined :: jpx)
+  unless (numComponentsPerPixel == numberOfComponentsFromSize) $
+    error $
+    concat
+      [ "Mismatched sizes beteen JuicyPixels: "
+      , show numComponentsPerPixel
+      , " and massiv: "
+      , show numberOfComponentsFromSize
+      ]
+  guard (n * m * numComponentsPerPixel == V.length v)
   fromVectorM Par (Sz (m :. n)) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 

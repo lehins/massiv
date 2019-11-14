@@ -1,3 +1,8 @@
+# 0.1.8
+
+* Fix reading images that have more than 8bit per channel:
+  [#85](https://github.com/lehins/massiv/issues/85)
+
 # 0.1.7
 
 * Fix compatibility with `JuicyPixels >= 3.3.0`
