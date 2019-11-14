@@ -45,8 +45,10 @@ module Data.Massiv.Array.Ops.Transform
   , unsnocM
   -- , lastM
   -- , last'
+  , appendOuterM
   , appendM
   , append'
+  , concatOuterM
   , concatM
   , concat'
   , splitAtM

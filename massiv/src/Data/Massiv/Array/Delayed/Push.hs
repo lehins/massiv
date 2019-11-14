@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -24,6 +25,8 @@ module Data.Massiv.Array.Delayed.Push
   , makeLoadArray
   , unsafeMakeLoadArray
   , fromStrideLoad
+  , appendOuterM
+  , concatOuterM
   ) where
 
 import Control.Monad
@@ -117,6 +120,51 @@ mappendDL (DLArray c1 sz1 mDef1 load1) (DLArray c2 sz2 mDef2 load2) =
     {-# INLINE load #-}
 {-# INLINE mappendDL #-}
 
+-- | Append two arrays together along the outer most dimension. Inner dimensions must
+-- agree, otherwise `SizeMismatchException`.
+--
+-- @since 0.4.4
+appendOuterM ::
+     forall ix e m. (Index ix, MonadThrow m)
+  => Array DL ix e
+  -> Array DL ix e
+  -> m (Array DL ix e)
+appendOuterM (DLArray c1 sz1 mDef1 load1) (DLArray c2 sz2 mDef2 load2) = do
+  let (!i1, !szl1) = unconsSz sz1
+      (!i2, !szl2) = unconsSz sz2
+  unless (szl1 == szl2) $ throwM $ SizeMismatchException sz1 sz2
+  pure $
+    DLArray {dlComp = c1 <> c2, dlSize = consSz (i1 + i2) szl1, dlDefault = Nothing, dlLoad = load}
+  where
+    !k1 = totalElem sz1
+    !k2 = totalElem sz2
+    load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
+    load scheduler !startAt dlWrite = do
+      scheduleWork_ scheduler $ do
+        S.traverse_ (\def1 -> loopM_ startAt (< k1) (+ 1) (`dlWrite` def1)) mDef1
+        load1 scheduler startAt dlWrite
+      scheduleWork_ scheduler $ do
+        let !startAt2 = startAt + k1
+        S.traverse_ (\def2 -> loopM_ startAt2 (< startAt2 + k2) (+ 1) (`dlWrite` def2)) mDef2
+        load2 scheduler startAt2 dlWrite
+    {-# INLINE load #-}
+{-# INLINE appendOuterM #-}
+
+-- | Concat arrays together along the most most dimension. Inner dimensions must agree
+-- for all arrays in the list, otherwise `SizeMismatchException`.
+--
+-- @since 0.4.4
+concatOuterM ::
+     forall ix e m. (Index ix, MonadThrow m)
+  => [Array DL ix e]
+  -> m (Array DL ix e)
+concatOuterM =
+  \case
+    [] -> pure empty
+    (x:xs) -> F.foldlM appendOuterM x xs
+{-# INLINE concatOuterM #-}
+
+
 -- | Describe how an array should be loaded into memory sequentially. For parallelizable
 -- version see `makeLoadArray`.
 --
@@ -203,7 +251,7 @@ unsafeMakeLoadArray = DLArray
 toLoadArray :: Load r ix e => Array r ix e -> Array DL ix e
 toLoadArray arr =
   DLArray (getComp arr) (size arr) Nothing $ \scheduler startAt dlWrite ->
-    loadArrayM scheduler arr (\ !i -> dlWrite (i + startAt))
+    loadArrayM scheduler arr (dlWrite . (+ startAt))
 {-# INLINE toLoadArray #-}
 
 -- | Convert an array that can be loaded with stride into `DL` representation.

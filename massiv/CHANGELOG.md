@@ -1,3 +1,7 @@
+# 0.4.4
+
+* Addition of `appendOuterM` and `concatOuterM`
+
 # 0.4.3
 
 * Addition of `catMaybesS` and `tally`

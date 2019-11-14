@@ -30,7 +30,6 @@ module Data.Massiv.Array.Numeric.Integral
   , fromFunction
   -- ** Sampled at the midpoint
   , fromFunctionMidpoint
-  -- * Helper functions
   ) where
 
 import           Data.Coerce
