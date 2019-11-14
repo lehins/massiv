@@ -19,6 +19,7 @@ main = do
     , bgroup
         "Monoid"
         [ bench "mappend" $ whnf (\a -> A.computeAs P (toLoadArray a <> toLoadArray a)) arr
+        , bench "appendDL" $ whnfIO (A.computeAs P <$> appendDL (toLoadArray arr) (toLoadArray arr))
         , bench "mconcat" $ whnf (\a -> A.computeAs P (mconcat [toLoadArray a, toLoadArray a])) arr
         ]
     , bgroup
