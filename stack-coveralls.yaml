@@ -3,17 +3,7 @@ packages:
 - 'massiv/'
 #- 'massiv-io/'
 - 'massiv-test/'
-extra-deps:
-- scheduler-1.4.2@sha256:bad577cefa39840f2f09c43b900868ad7d2d5d50e24d014e1d5087044a4394c3,2888
-- github: rubik/stack-hpc-coveralls
-  commit: 8a85fa2f5fb907fb8d9d7fc36978b3951cae6e75
-  size: 15657
-  cabal-file:
-    size: 3176
-    sha256: 60fde3cd463b425a595efa54b621dba483e5c80d11b7c99cf57488b0fb6de1a7
-  sha256: 668b0368bda5aa5e7e7a491af99ef555698d7182acd588a1ab1011419cd7db38
-  pantry-tree:
-    size: 1300
-    sha256: def46c0097955dd4d7a8c7f5f968a08a30a7b01999d6f8c6f860d031038356c2
 flags: {}
+extra-deps:
+- scheduler-1.4.2.1@sha256:26fb16ccf5f41ee9144f8c77a5228163968543ae5cc8242c761e69ff8f579e07,2863
 extra-package-dbs: []

@@ -58,9 +58,9 @@ module Data.Massiv.Array.Ops.Transform
   , dropS
   -- ** Upsample/Downsample
   , upsample
-  , upsample'
   , downsample
   -- ** Zoom
+  , zoom
   , zoomWithGrid
   -- ** Transform
   , transformM
@@ -889,7 +889,14 @@ transform2' getSz get arr1 arr2 =
 -- ==== __Example__
 --
 -- >>> import Data.Massiv.Array as A
--- >>> zoomWithGrid 0 (Stride (2 :. 3)) $ resize' (Sz2 3 2) (Ix1 1 ... 6)
+-- >>> arr = resize' (Sz2 3 2) (Ix1 1 ... 6)
+-- >>> arr
+-- Array D Seq (Sz (3 :. 2))
+--   [ [ 1, 2 ]
+--   , [ 3, 4 ]
+--   , [ 5, 6 ]
+--   ]
+-- >>> zoomWithGrid 0 (Stride (2 :. 3)) arr
 -- Array DL Seq (Sz (10 :. 9))
 --   [ [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 1, 1, 1, 0, 2, 2, 2, 0 ]
@@ -922,22 +929,52 @@ zoomWithGrid gridVal (Stride zoomFactor) arr =
     !newSz = Sz (liftIndex (+1) lastNewIx)
 {-# INLINE zoomWithGrid #-}
 
--- | Same as zoomWithGrid, but without grid
+-- | Increaze the size of the array accoridng to the stride multiplier while replicating
+-- the same element to fill the neighbors. It is exactly the same as `zoomWithGrid`, but
+-- without the grid.
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> arr = resize' (Sz3 1 3 2) (Ix1 1 ... 6)
+-- >>> arr
+-- Array D Seq (Sz (1 :> 3 :. 2))
+--   [ [ [ 1, 2 ]
+--     , [ 3, 4 ]
+--     , [ 5, 6 ]
+--     ]
+--   ]
+-- >>> zoom (Stride (2 :> 2 :. 3)) arr
+-- Array DL Seq (Sz (2 :> 6 :. 6))
+--   [ [ [ 1, 1, 1, 2, 2, 2 ]
+--     , [ 1, 1, 1, 2, 2, 2 ]
+--     , [ 3, 3, 3, 4, 4, 4 ]
+--     , [ 3, 3, 3, 4, 4, 4 ]
+--     , [ 5, 5, 5, 6, 6, 6 ]
+--     , [ 5, 5, 5, 6, 6, 6 ]
+--     ]
+--   , [ [ 1, 1, 1, 2, 2, 2 ]
+--     , [ 1, 1, 1, 2, 2, 2 ]
+--     , [ 3, 3, 3, 4, 4, 4 ]
+--     , [ 3, 3, 3, 4, 4, 4 ]
+--     , [ 5, 5, 5, 6, 6, 6 ]
+--     , [ 5, 5, 5, 6, 6, 6 ]
+--     ]
+--   ]
 --
 -- @since 0.4.4
-upsample' ::
+zoom ::
      Source r ix e
   => Stride ix -- ^ Scaling factor
   -> Array r ix e -- ^ Source array
   -> Array DL ix e
-upsample' (Stride zoomFactor) arr =
+zoom (Stride zoomFactor) arr =
   unsafeMakeLoadArray Seq newSz Nothing $ \scheduler _ writeElement ->
     iforSchedulerM_ scheduler arr $ \ !ix !e -> do
-      let !kix = liftIndex2 (*) ix kx
+      let !kix = liftIndex2 (*) ix zoomFactor
       mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
-        range Seq kix (liftIndex2 (+) kix kx)
+        range Seq kix (liftIndex2 (+) kix zoomFactor)
   where
-    !kx = zoomFactor
-    !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
+    !lastNewIx = liftIndex2 (*) zoomFactor $ unSz (size arr)
     !newSz = Sz lastNewIx
-{-# INLINE upsample' #-}
+{-# INLINE zoom #-}

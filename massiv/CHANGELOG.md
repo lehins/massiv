@@ -1,7 +1,7 @@
 # 0.4.4
 
 * Addition of `appendOuterM` and `concatOuterM`
-* Addition of `upsample'`
+* Addition of `zoom`
 
 # 0.4.3
 
