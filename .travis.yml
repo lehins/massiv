@@ -229,7 +229,7 @@ script:
          stack --stack-yaml $COVERALLS_STACK_YAML test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
          stack --stack-yaml $COVERALLS_STACK_YAML hpc report --all
          travis_retry curl -L https://github.com/lehins/stack-hpc-coveralls/releases/download/0.0.5.0/shc.tar.gz | tar xz shc
-         STACK_YAML="$COVERALLS_STACK_YAML" shc --repo-token=$COVERALLS_REPO_TOKEN combined custom
+         STACK_YAML="$COVERALLS_STACK_YAML" ./shc --repo-token=$COVERALLS_REPO_TOKEN combined custom
       else
         stack $ARGS build --haddock --no-haddock-deps --flag massiv:unsafe-checks
         stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
