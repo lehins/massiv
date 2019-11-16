@@ -58,6 +58,7 @@ module Data.Massiv.Array.Ops.Transform
   , dropS
   -- ** Upsample/Downsample
   , upsample
+  , upsample'
   , downsample
   -- ** Zoom
   , zoomWithGrid
@@ -920,3 +921,23 @@ zoomWithGrid gridVal (Stride zoomFactor) arr =
     !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
     !newSz = Sz (liftIndex (+1) lastNewIx)
 {-# INLINE zoomWithGrid #-}
+
+-- | Same as zoomWithGrid, but without grid
+--
+-- @since 0.4.4
+upsample' ::
+     Source r ix e
+  => Stride ix -- ^ Scaling factor
+  -> Array r ix e -- ^ Source array
+  -> Array DL ix e
+upsample' (Stride zoomFactor) arr =
+  unsafeMakeLoadArray Seq newSz Nothing $ \scheduler _ writeElement ->
+    iforSchedulerM_ scheduler arr $ \ !ix !e -> do
+      let !kix = liftIndex2 (*) ix kx
+      mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
+        range Seq kix (liftIndex2 (+) kix kx)
+  where
+    !kx = zoomFactor
+    !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
+    !newSz = Sz lastNewIx
+{-# INLINE upsample' #-}

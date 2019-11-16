@@ -1,6 +1,7 @@
 # 0.4.4
 
 * Addition of `appendOuterM` and `concatOuterM`
+* Addition of `upsample'`
 
 # 0.4.3
 
