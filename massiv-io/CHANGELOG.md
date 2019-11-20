@@ -1,3 +1,7 @@
+# 0.1.9
+
+* Fix `HDR` decoding, i.e. `.hdr` and `.pic` file reading.
+
 # 0.1.8
 
 * Fix reading images that have more than 8bit per channel:

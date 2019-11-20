@@ -304,11 +304,11 @@ instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
 
 instance ColorSpace cs e =>
          Readable (Sequence GIF) (Array B Ix1 (Image S cs e)) where
-  decode f _ bs = decodeGIFs f fromDynamicImage bs
+  decode f _ = decodeGIFs f fromDynamicImage
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Sequence (Auto GIF)) (Array B Ix1 (Image r cs e)) where
-  decode f _ bs = decodeGIFs f fromAnyDynamicImage bs
+  decode f _ = decodeGIFs f fromAnyDynamicImage
 
 
 instance (ColorSpace cs e, Source r Ix2 (Pixel cs e)) =>
@@ -319,7 +319,7 @@ instance (ColorSpace cs e, Source r Ix2 (Pixel cs e)) =>
 
 instance ColorSpace cs e =>
          Readable (Sequence GIF) (Array B Ix1 (JP.GifDelay, Image S cs e)) where
-  decode f _ bs = decodeGIFsWithDelays f fromDynamicImage bs
+  decode f _ = decodeGIFsWithDelays f fromDynamicImage
 
 
 
@@ -458,11 +458,11 @@ instance (ColorSpace cs e, ToRGB cs e, Source r Ix2 (Pixel cs e)) =>
 
 
 instance ColorSpace cs e => Readable HDR (Image S cs e) where
-  decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodePng
+  decode f _ = fromEitherDecode f showJP fromDynamicImage . JP.decodeHDR
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs e) =>
          Readable (Auto HDR) (Image r cs e) where
-  decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodePng
+  decode f _ = fromEitherDecode f showJP fromAnyDynamicImage . JP.decodeHDR
 
 
 
