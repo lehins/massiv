@@ -103,9 +103,10 @@ prop_Write arr ix e =
           A.write marr ix e `shouldReturn` True
           A.read marr ix `shouldReturn` Just e
 
-          marr' <- thawS arr
+          marr' <- thaw arr
           writeM marr' ix e `shouldReturn` ()
-          readM marr' ix `shouldReturn` e
+          arr' <- freeze (getComp arr) marr'
+          indexM arr' ix `shouldReturn` e
 
           arr'' <- withMArray arr (\_ ma -> write_ ma ix e)
           index' arr'' ix `shouldBe` e
