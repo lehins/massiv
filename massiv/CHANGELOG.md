@@ -2,6 +2,7 @@
 
 * Addition of `appendOuterM` and `concatOuterM`
 * Addition of `zoom`
+* Addition of `write_`, `modify_` and `swap_`
 
 # 0.4.3
 

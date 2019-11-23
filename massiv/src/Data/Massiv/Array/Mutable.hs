@@ -20,13 +20,16 @@ module Data.Massiv.Array.Mutable
   , readM
   , read'
   , write
+  , write_
   , writeM
   , write'
   , modify
+  , modify_
   , modifyM
   , modifyM_
   , modify'
   , swap
+  , swap_
   , swapM
   , swapM_
   , swap'
@@ -910,6 +913,16 @@ write marr ix e =
   else pure False
 {-# INLINE write #-}
 
+-- | /O(1)/ - Write an element into the cell of a mutable array. Same as `write` function
+-- in case of an out of bounds index it is noop, but unlike `write`, there is no
+-- information is returned about was the writing of element successful or not.  In other
+-- words, just like `writeM`, but doesn't throw an exception.
+--
+-- @since 0.4.4
+write_ :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
+write_ marr ix = when (isSafeIndex (msize marr) ix) . unsafeWrite marr ix
+{-# INLINE write_ #-}
+
 -- | /O(1)/ - Same as `write`, but throws `IndexOutOfBoundsException` on an invalid index.
 --
 -- @since 0.4.0
@@ -945,6 +958,20 @@ modify marr f ix =
     then Just <$> unsafeModify marr f ix
     else return Nothing
 {-# INLINE modify #-}
+
+-- | /O(1)/ - Same as `modify`, except that neither the previous value, nor any
+-- information on whether the modification was successful are returned. In other words,
+-- just like `modifyM_`, but doesn't throw an exception.
+--
+-- @since 0.4.4
+modify_ ::
+     (Mutable r ix e, PrimMonad m)
+  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+  -> (e -> m e) -- ^ Monadic action that modifies the element
+  -> ix -- ^ Index at which to perform modification.
+  -> m ()
+modify_ marr f ix = when (isSafeIndex (msize marr) ix) $ void $ unsafeModify marr f ix
+{-# INLINE modify_ #-}
 
 -- | /O(1)/ - Modify an element in the cell of a mutable array with a supplied
 -- action. Throws an `IndexOutOfBoundsException` exception for invalid index and returns
@@ -997,18 +1024,29 @@ modify' marr f ix =
 {-# DEPRECATED modify' "In favor of more general `modifyM`" #-}
 
 
--- | /O(1)/ - Same as `swapM`, but instead of thropwing an exception returns `Nothing` when
+-- | /O(1)/ - Same as `swapM`, but instead of throwing an exception returns `Nothing` when
 -- either one of the indices is out of bounds and `Just` elements under those indices
 -- otherwise.
 --
 -- @since 0.1.0
 swap :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m (Maybe (e, e))
 swap marr ix1 ix2 =
-  let sz = msize marr
+  let !sz = msize marr
    in if isSafeIndex sz ix1 && isSafeIndex sz ix2
         then Just <$> unsafeSwap marr ix1 ix2
         else pure Nothing
 {-# INLINE swap #-}
+
+
+-- | /O(1)/ - Same as `swap`, but instead of returning `Nothing` it does nothing. In other
+-- words, it is similar to `swapM_`, but does not throw any exceptions.
+--
+-- @since 0.4.4
+swap_ :: (Mutable r ix e, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
+swap_ marr ix1 ix2 =
+  let !sz = msize marr
+   in when (isSafeIndex sz ix1 && isSafeIndex sz ix2) $ void $ unsafeSwap marr ix1 ix2
+{-# INLINE swap_ #-}
 
 -- | /O(1)/ - Swap two elements in a mutable array under the supplied indices. Throws an
 -- `IndexOutOfBoundsException` when either one of the indices is out of bounds and
