@@ -343,7 +343,7 @@ foldStencil = foldlStencil mappend mempty
 --
 -- ==== __Example__
 --
--- Here is a sample implementation of min pooling.
+-- Here is a sample implementation of max pooling.
 --
 -- >>> import Data.Massiv.Array as A
 -- >>> a <- computeAs P <$> resizeM (Sz2 9 9) (Ix1 10 ..: 91)
