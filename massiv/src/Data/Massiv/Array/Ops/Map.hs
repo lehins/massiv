@@ -23,6 +23,7 @@ module Data.Massiv.Array.Ops.Map
   , itraverseAR
   , sequenceA
   , sequenceA_
+  , traverseS
   -- *** PrimMonad
   , traversePrim
   , itraversePrim
@@ -79,8 +80,9 @@ import Control.Monad.Primitive (PrimMonad)
 import Control.Scheduler
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
-import Data.Massiv.Array.Ops.Construct (makeArrayA)
+import Data.Massiv.Array.Ops.Construct (makeArrayA, makeArrayLinearA)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(..))
 import Prelude hiding (map, mapM, mapM_, sequenceA, traverse, unzip, unzip3,
@@ -276,7 +278,7 @@ traverseA ::
   => (a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
-traverseA f arr = setComp (getComp arr) <$> makeArrayA (size arr) (f . unsafeIndex arr)
+traverseA f arr = makeArrayLinearA (size arr) (f . unsafeLinearIndex arr)
 {-# INLINE traverseA #-}
 
 -- | Traverse sequentially over a source array, while discarding the result.

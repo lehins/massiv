@@ -43,6 +43,7 @@ module Data.Massiv.Array.Ops.Construct
     -- *** Applicative
   , makeArrayA
   , makeArrayAR
+  , makeArrayLinearA
     -- ** Enumeration
   , (...)
   , (..:)
@@ -133,7 +134,6 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 --
 --
 -- @since 0.2.6
---
 makeArrayA ::
      forall r ix e f. (Mutable r ix e, Applicative f)
   => Sz ix
@@ -151,11 +151,27 @@ makeArrayA !sz f =
    in runSTA sz <$> go 0
 {-# INLINE makeArrayA  #-}
 
+-- | Same as `makeArrayA`, but with linear index.
+--
+-- @since 0.4.5
+makeArrayLinearA ::
+     forall r ix e f. (Mutable r ix e, Applicative f)
+  => Sz ix
+  -> (Int -> f e)
+  -> f (Array r ix e)
+makeArrayLinearA !sz f =
+  let n = totalElem sz
+      go !i
+        | i < n =
+          liftA2 (\e (STA st) -> STA (\ma -> unsafeLinearWrite ma i e >> st ma)) (f i) (go (i + 1))
+        | otherwise = pure (STA (unsafeFreeze Seq))
+   in runSTA sz <$> go 0
+{-# INLINE makeArrayLinearA  #-}
+
 
 -- | Same as `makeArrayA`, but with ability to supply result array representation.
 --
 -- @since 0.2.6
---
 makeArrayAR ::
      forall r ix e f. (Mutable r ix e, Applicative f)
   => r
@@ -290,7 +306,7 @@ randomArray ::
   => g -- ^ Initial random value generator
   -> (g -> (g, g))
      -- ^ A function that can split a generator in two independent generators
-  -> (g -> (e, g)) -- TODO: move this argument after the sz, to keep ot consistent.
+  -> (g -> (e, g))
      -- ^ A function that produces a random value and the next generator
   -> Comp -- ^ Computation strategy.
   -> Sz ix -- ^ Resulting size of the array.

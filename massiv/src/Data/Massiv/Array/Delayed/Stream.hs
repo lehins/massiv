@@ -24,6 +24,7 @@ module Data.Massiv.Array.Delayed.Stream
   , mapMaybeS
   , mapMaybeM
   , catMaybesS
+  , traverseS
   , unfoldr
   , unfoldrN
   ) where
@@ -337,3 +338,11 @@ takeS n = fromSteps . S.take (unSz n) . S.toStream
 dropS :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
 dropS n = fromSteps . S.drop (unSz n) . S.toStream
 {-# INLINE dropS #-}
+
+
+-- | Traverse a stream with an applicative action.
+--
+-- @since 0.4.5
+traverseS :: (S.Stream r ix a, Applicative f) => (a -> f b) -> Array r ix a -> f (Array DS Ix1 b)
+traverseS f = fmap fromSteps . S.traverse f . S.toStream
+{-# INLINE traverseS #-}

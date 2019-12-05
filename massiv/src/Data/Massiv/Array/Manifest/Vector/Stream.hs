@@ -86,8 +86,6 @@ import Data.Vector.Fusion.Util
 import Prelude hiding (zipWith, mapM, traverse, length, foldl, foldr, filter, concatMap, drop, take)
 
 
-
-
 -- TODO: benchmark: `fmap snd . isteps`
 steps :: forall r ix e m . (Monad m, Source r ix e) => Array r ix e -> Steps m e
 steps arr = k `seq` arr `seq` Steps (S.Stream step 0) (Exact k)
