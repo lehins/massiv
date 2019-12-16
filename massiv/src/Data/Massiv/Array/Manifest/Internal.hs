@@ -23,6 +23,8 @@ module Data.Massiv.Array.Manifest.Internal
   , toManifest
   , compute
   , computeS
+  , computeIO
+  , computePrimM
   , computeAs
   , computeProxy
   , computeSource
@@ -201,13 +203,42 @@ instance Index ix => Stream M ix e where
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
+--
+-- @since 0.1.0
 compute :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -> Array r ix e
-compute !arr = unsafePerformIO $ loadArray arr >>= unsafeFreeze (getComp arr)
+compute !arr = unsafePerformIO $ computeIO arr
 {-# INLINE compute #-}
 
+-- | Compute array sequentially disregarding predefined computation strategy. Very much
+-- the same as `computePrimM`, but executed in `ST`, thus pure.
+--
+-- @since 0.1.0
 computeS :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -> Array r ix e
-computeS !arr = runST $ loadArrayS arr >>= unsafeFreeze (getComp arr)
+computeS !arr = runST $ computePrimM arr
 {-# INLINE computeS #-}
+
+-- | Compute an array in `IO` monad. Very similar to `compute`, but restricted to `IO` and
+-- cas sometimes be useful for enforcing sequencing of evaluation.
+--
+-- @since 0.4.5
+computeIO ::
+     forall r ix e r' m. (Mutable r ix e, Load r' ix e, MonadIO m)
+  => Array r' ix e
+  -> m (Array r ix e)
+computeIO arr = liftIO (loadArray arr >>= unsafeFreeze (getComp arr))
+{-# INLINE computeIO #-}
+
+-- | Compute an array in `PrimMonad` sequentially disregarding predefined computation
+-- strategy.
+--
+-- @since 0.4.5
+computePrimM ::
+     forall r ix e r' m. (Mutable r ix e, Load r' ix e, PrimMonad m)
+  => Array r' ix e
+  -> m (Array r ix e)
+computePrimM arr = loadArrayS arr >>= unsafeFreeze (getComp arr)
+{-# INLINE computePrimM #-}
+
 
 -- | Just as `compute`, but let's you supply resulting representation type as an argument.
 --

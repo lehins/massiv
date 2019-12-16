@@ -1,3 +1,9 @@
+# 0.4.5
+
+* Addition of `computeIO` and `computePrimM`
+* Addition of `makeArrayLinearA`
+* Addition of `traverseS`
+
 # 0.4.4
 
 * Addition of `appendOuterM` and `concatOuterM`
