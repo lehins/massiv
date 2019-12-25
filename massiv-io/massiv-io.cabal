@@ -36,6 +36,7 @@ library
                      , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.8 && < 5
                      , bytestring
+                     , color-space
                      , data-default-class
                      , deepseq
                      , directory
