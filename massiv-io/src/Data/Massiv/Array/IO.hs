@@ -97,8 +97,7 @@ writeArray :: (Writable f arr, MonadIO m) =>
            -> arr
            -> m ()
 writeArray format opts filepath arr =
-  liftIO $ do
-    writeLazyAtomically filepath =<< encodeM format opts arr
+  liftIO (encodeM format opts arr >>= writeLazyAtomically filepath)
 {-# INLINE writeArray #-}
 
 
@@ -127,9 +126,10 @@ writeArray format opts filepath arr =
 -- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S CMYK Double)
 -- >>> displayImage frogCMYK
 --
-readImage :: (Source S Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) =>
-              FilePath -- ^ File path for an image
-           -> m (Image S cs e)
+readImage ::
+     (Source S Ix2 (Pixel cs e), ColorModel cs e, MonadIO m)
+  => FilePath -- ^ File path for an image
+  -> m (Image S cs e)
 readImage path =
   liftIO $ do
     bs <- B.readFile path
@@ -140,9 +140,10 @@ readImage path =
 -- | Same as `readImage`, but will perform any possible color space and
 -- precision conversions in order to match the result image type. Very useful
 -- whenever image format isn't known at compile time.
-readImageAuto :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) =>
-                  FilePath -- ^ File path for an image
-               -> m (Image r cs e)
+readImageAuto ::
+     (Mutable r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m)
+  => FilePath -- ^ File path for an image
+  -> m (Image r cs e)
 readImageAuto path = liftIO $ do
   bs <- B.readFile path
   fst <$> decodeImageM imageReadAutoFormats path bs
@@ -159,10 +160,9 @@ readImageAuto path = liftIO $ do
 --
 -- Can throw `ConvertError`, `EncodeError` and other usual IO errors.
 --
-writeImage :: (Source r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) =>
-               FilePath -> Image r cs e -> m ()
-writeImage path img = liftIO $ do
-  writeLazyAtomically path =<< encodeImageM imageWriteFormats path img
+writeImage ::
+     (Source r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) => FilePath -> Image r cs e -> m ()
+writeImage path img = liftIO (encodeImageM imageWriteFormats path img >>= writeLazyAtomically path)
 
 
 -- | Write an image to file while performing all necessary precisiona and color space conversions.
@@ -176,8 +176,8 @@ writeImageAuto
      , MonadIO m
      )
   => FilePath -> Image r cs e -> m ()
-writeImageAuto path img = liftIO $ do
-  writeLazyAtomically path =<< encodeImageM imageWriteAutoFormats path img
+writeImageAuto path img =
+  liftIO (encodeImageM imageWriteAutoFormats path img >>= writeLazyAtomically path)
 
 
 

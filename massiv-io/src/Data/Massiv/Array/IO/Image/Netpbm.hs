@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -25,6 +27,10 @@ module Data.Massiv.Array.IO.Image.Netpbm
   , PGM(..)
     -- ** PPM
   , PPM(..)
+  , decodeNetpbmImage
+  , decodeNetpbmImageAuto
+  , decodeNetpbmImageSequence
+  , decodeNetpbmImageSequenceAuto
   ) where
 
 import Control.Monad (guard)
@@ -73,22 +79,6 @@ instance FileFormat (Sequence (Auto PBM)) where
   ext _ = ext PBM
 
 
-instance ColorModel cs e => Readable PBM (Image S cs e) where
-  decodeM f _ = decodePPM f fromNetpbmImage
-
--- instance (Mutable r Ix2 (Pixel cs e), ColorModel cs e) =>
---          Readable (Auto PBM) (Image r cs e) where
---   decodeM f _ = decodePPM f fromNetpbmImageAuto
-
-instance ColorModel cs e => Readable (Sequence PBM) (Array B Ix1 (Image S cs e)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
-
--- instance (Mutable r Ix2 (Pixel cs e), ColorModel cs e) =>
---          Readable (Sequence (Auto PBM)) (Array B Ix1 (Image r cs e)) where
---   decodeM f _ = decodePPMs f fromNetpbmImageAuto
-
-
-
 -- | Netpbm: portable graymap image with @.pgm@ extension.
 data PGM = PGM deriving Show
 
@@ -102,24 +92,6 @@ instance FileFormat (Sequence PGM) where
 instance FileFormat (Sequence (Auto PGM)) where
   type WriteOptions (Sequence (Auto PGM)) = WriteOptions PGM
   ext _ = ext PGM
-
-
-instance ColorModel cs e => Readable PGM (Image S cs e) where
-  decodeM f _ = decodePPM f fromNetpbmImage
-
-
--- instance (Mutable r Ix2 (Pixel cs e), ColorModel cs e) =>
---          Readable (Auto PGM) (Image r cs e) where
---   decodeM f _ = decodePPM f fromNetpbmImageAuto
-
-
-instance ColorModel cs e => Readable (Sequence PGM) (Array B Ix1 (Image S cs e)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
-
-
--- instance (Mutable r Ix2 (Pixel cs e), ColorModel cs e) =>
---          Readable (Sequence (Auto PGM)) (Array B Ix1 (Image r cs e)) where
---   decodeM f _ = decodePPMs f fromNetpbmImageAuto
 
 
 -- | Netpbm: portable pixmap image with @.ppm@ extension.
@@ -137,22 +109,45 @@ instance FileFormat (Sequence (Auto PPM)) where
   type WriteOptions (Sequence (Auto PPM)) = WriteOptions PPM
   ext _ = ext PPM
 
+-- | Try to decode a Netpbm image
+--
+-- @since 0.2.0
+decodeNetpbmImage ::
+     (FileFormat f, ColorModel cs e, MonadThrow m)
+  => f
+  -> B.ByteString
+  -> m (Image S cs e, Maybe B.ByteString)
+decodeNetpbmImage f = decodePPM f fromNetpbmImage
 
-instance ColorModel cs e => Readable PPM (Image S cs e) where
-  decodeM f _ = decodePPM f fromNetpbmImage
+-- | Try to decode a Netpbm image sequence
+--
+-- @since 0.2.0
+decodeNetpbmImageSequence ::
+     (FileFormat f, ColorModel cs e, MonadThrow m)
+  => f
+  -> B.ByteString
+  -> m (Array B Ix1 (Image S cs e), Maybe B.ByteString)
+decodeNetpbmImageSequence f = decodePPMs f fromNetpbmImage
 
--- instance (Mutable r Ix2 (Pixel cs e), ColorModel cs e) =>
---          Readable (Auto PPM) (Image r cs e) where
---   decodeM f _ = decodePPM f fromNetpbmImageAuto
+-- | Try to decode a Netpbm image, while auto converting the colorspace.
+--
+-- @since 0.2.0
+decodeNetpbmImageAuto ::
+     (FileFormat f, Mutable r Ix2 (Pixel cs e), MonadThrow m, ColorSpace cs i e)
+  => f
+  -> B.ByteString
+  -> m (Image r cs e, Maybe B.ByteString)
+decodeNetpbmImageAuto f = decodePPM f fromNetpbmImageAuto
 
-instance ColorModel cs e => Readable (Sequence PPM) (Array B Ix1 (Image S cs e)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
-
--- instance (Mutable r Ix2 (Pixel cs e), ColorModel cs e) =>
---          Readable (Sequence (Auto PPM)) (Array B Ix1 (Image r cs e)) where
---   decodeM f _ = decodePPMs f fromNetpbmImageAuto
-
-
+-- | Try to decode a Netpbm image sequence, while auto converting the colorspace.
+--
+-- @since 0.2.0
+decodeNetpbmImageSequenceAuto ::
+     (FileFormat f, Mutable r Ix2 (Pixel cs e), MonadThrow m, ColorSpace cs i e)
+  => f
+  -> B.ByteString
+  -> m (Array B Ix1 (Image r cs e), Maybe B.ByteString)
+decodeNetpbmImageSequenceAuto f = decodePPMs f fromNetpbmImageAuto
 
 decodePPMs :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorModel cs e, MonadThrow m) =>
               f
@@ -180,9 +175,9 @@ decodePPM f decoder bs =
     Left err -> throwM $ DecodeError err
     Right ([], Nothing) -> throwM $ DecodeError "PNM image is empty"
     Right ([], _) -> throwM $ DecodeError "Cannot parse PNM image"
-    Right (ppm:_, leftOver) -> do
+    Right (ppm:_, leftover) -> do
       img <- fromEitherDecode f showNetpbmCS decoder ppm
-      pure (img, leftOver)
+      pure (img, leftover)
 {-# INLINE decodePPM #-}
 
 
@@ -205,6 +200,31 @@ showNetpbmCS Netpbm.PPM {ppmData} =
     PpmPixelDataRGB16 _ -> "Image S RGB Word16"
 
 
+
+instance Readable PBM (Image S CM.Y Bit) where
+  decodeM f _ = decodeNetpbmImage f
+instance Readable (Sequence PBM) (Array B Ix1 (Image S CM.Y Bit)) where
+  decodeM f _ = decodePPMs f fromNetpbmImage
+
+instance Readable PGM (Image S CM.Y Word8) where
+  decodeM f _ = decodeNetpbmImage f
+instance Readable PGM (Image S CM.Y Word16) where
+  decodeM f _ = decodeNetpbmImage f
+instance Readable (Sequence PGM) (Array B Ix1 (Image S CM.Y Word8)) where
+  decodeM f _ = decodePPMs f fromNetpbmImage
+instance Readable (Sequence PGM) (Array B Ix1 (Image S CM.Y Word16)) where
+  decodeM f _ = decodePPMs f fromNetpbmImage
+
+instance Readable PPM (Image S CM.RGB Word8) where
+  decodeM f _ = decodeNetpbmImage f
+instance Readable PPM (Image S CM.RGB Word16) where
+  decodeM f _ = decodeNetpbmImage f
+instance Readable (Sequence PPM) (Array B Ix1 (Image S CM.RGB Word8)) where
+  decodeM f _ = decodePPMs f fromNetpbmImage
+instance Readable (Sequence PPM) (Array B Ix1 (Image S CM.RGB Word16)) where
+  decodeM f _ = decodePPMs f fromNetpbmImage
+
+
 fromNetpbmImage
   :: forall cs e . ColorModel cs e =>
      Netpbm.PPM -> Maybe (Image S cs e)
@@ -224,21 +244,41 @@ fromNetpbmImage Netpbm.PPM {..} = do
                               fromNetpbmImageUnsafe m n v
 
 
--- fromNetpbmImageAuto
---   :: forall cs i e r . (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
---      Netpbm.PPM -> Maybe (Image r cs e)
--- fromNetpbmImageAuto Netpbm.PPM {..} = do
---   let m = ppmHeight ppmHeader
---       n = ppmWidth ppmHeader
---   case ppmData of
---     -- PbmPixelData v ->
---     --   (fromNetpbmImageUnsafe m n v :: Maybe (Image S Y Bit)) >>= (toAnyCS . M.map fromPixelBinary)
---     PgmPixelData8 v ->
---       convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word8))
---     PgmPixelData16 v ->
---       convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word16))
---     PpmPixelDataRGB8 v ->
---       convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word8))
---     PpmPixelDataRGB16 v ->
---       convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word16))
 
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Readable (Auto PBM) (Image r cs e) where
+  decodeM f _ = decodeNetpbmImageAuto f
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Readable (Sequence (Auto PBM)) (Array B Ix1 (Image r cs e)) where
+  decodeM f _ = decodeNetpbmImageSequenceAuto f
+
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Readable (Auto PGM) (Image r cs e) where
+  decodeM f _ = decodeNetpbmImageAuto f
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Readable (Sequence (Auto PGM)) (Array B Ix1 (Image r cs e)) where
+  decodeM f _ = decodeNetpbmImageSequenceAuto f
+
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Readable (Auto PPM) (Image r cs e) where
+  decodeM f _ = decodeNetpbmImageAuto f
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Readable (Sequence (Auto PPM)) (Array B Ix1 (Image r cs e)) where
+  decodeM f _ = decodeNetpbmImageSequenceAuto f
+
+fromNetpbmImageAuto
+  :: forall cs i e r . (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+     Netpbm.PPM -> Maybe (Image r cs e)
+fromNetpbmImageAuto Netpbm.PPM {..} = do
+  let m = ppmHeight ppmHeader
+      n = ppmWidth ppmHeader
+  case ppmData of
+    PbmPixelData v -> convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Bit))
+    PgmPixelData8 v ->
+      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word8))
+    PgmPixelData16 v ->
+      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word16))
+    PpmPixelDataRGB8 v ->
+      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word8))
+    PpmPixelDataRGB16 v ->
+      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word16))
