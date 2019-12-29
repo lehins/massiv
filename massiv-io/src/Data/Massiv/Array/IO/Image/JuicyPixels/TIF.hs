@@ -28,7 +28,8 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.TIF
 import Prelude as P
 import Data.Maybe (fromMaybe)
 import qualified Codec.Picture as JP
-import qualified Codec.Picture.Types as TypesJP
+import qualified Codec.Picture.Metadata as JP
+import qualified Codec.Picture.Tiff as JP
 import Control.Monad (msum)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
@@ -55,12 +56,9 @@ import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 data TIF = TIF deriving Show
 
 instance FileFormat TIF where
-
+  type Metadata TIF = JP.Metadatas
   ext _ = ".tif"
-  {-# INLINE ext #-}
-
   exts _ = [".tif", ".tiff"]
-  {-# INLINE exts #-}
 
 instance Writable TIF (Image S CM.Y Word8) where
   encodeM TIF _ img = pure $ JP.encodeTiff (toJPImageY8 img)
@@ -107,50 +105,66 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 
 instance Readable TIF (Image S CM.Y Word8) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.Y Word16) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.Y Word32) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.Y Float) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S (Alpha CM.Y) Word8) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S (Alpha CM.Y) Word16) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.RGB Word8) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.RGB Word16) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.RGB Float) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S (Alpha CM.RGB) Word8) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S (Alpha CM.RGB) Word16) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.CMYK Word8) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 instance Readable TIF (Image S CM.CMYK Word16) where
-  decodeM f _ bs = (, Nothing) <$> decodeTIF f bs
+  decodeM f _ = decodeTIF f
+  decodeWithMetadataM f _ = decodeMetadataTIF f
 
 -- | Decode a Tiff Image
 decodeTIF :: (ColorModel cs e, MonadThrow m) => TIF -> B.ByteString -> m (Image S cs e)
-decodeTIF TIF bs =
-  case JP.decodeTiff bs of
-    Left err -> throwM $ DecodeError err
-    Right jp -> fromEitherDecode TIF showJP fromDynamicImage jp
+decodeTIF f bs = convertWith f (JP.decodeTiff bs)
+
+-- | Decode a Tiff Image
+decodeMetadataTIF ::
+     (ColorModel cs e, MonadThrow m) => TIF -> B.ByteString -> m (Image S cs e, JP.Metadatas)
+decodeMetadataTIF f bs = convertWithMetadata f (JP.decodeTiffWithMetadata bs)
+
 
 -- | Decode a Tiff Image
 decodeAutoTIF ::
@@ -158,23 +172,29 @@ decodeAutoTIF ::
   => Auto TIF
   -> B.ByteString
   -> m (Image r cs e)
-decodeAutoTIF (Auto TIF) bs =
-  case JP.decodeTiff bs of
-    Left err -> throwM $ DecodeError err
-    Right jp -> fromEitherDecode (Auto TIF) showJP fromDynamicImageAuto jp
+decodeAutoTIF f bs = convertAutoWith f (JP.decodeTiff bs)
 
+-- | Decode a Tiff Image
+decodeAutoMetadataTIF ::
+     (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadThrow m)
+  => Auto TIF
+  -> B.ByteString
+  -> m (Image r cs e, JP.Metadatas)
+decodeAutoMetadataTIF f bs = convertAutoWithMetadata f (JP.decodeTiffWithMetadata bs)
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto TIF) (Image r cs e) where
-  decodeM f _ bs = (, Nothing) <$> decodeAutoTIF f bs
+  decodeM f _ = decodeAutoTIF f
+  decodeWithMetadataM f _ = decodeAutoMetadataTIF f
 
 encodeTIF ::
      forall r cs e m.
      (ColorModel cs e, Source r Ix2 (Pixel cs e), MonadThrow m)
-  => Image r cs e
+  => TIF
+  -> Image r cs e
   -> m BL.ByteString
-encodeTIF img =
-  fromMaybeEncode TIF (Proxy :: Proxy (Image r cs e)) $
+encodeTIF f img =
+  fromMaybeEncode f (Proxy :: Proxy (Image r cs e)) $
   msum
     [ do Refl <- eqT :: Maybe (cs :~: CM.Y)
          msum
@@ -273,12 +293,15 @@ encodeAutoTIF img =
            , do Refl <- eqT :: Maybe (e :~: Word16)
                 pure $ toTiff toJPImageRGBA16 (toPixelBaseModel . toPixelBaseSpace) img
            ]
+    , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
+         pure $ toTiff toJPImageRGBA8 (toPixelBaseModel . toSRGBA8) img
     ]
   where
     toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
+    toSRGBA8 = convertPixel :: Pixel cs e -> Pixel (Alpha SRGB) Word8
     toTiff ::
          (JP.TiffSaveable px, Source r ix a)
-      => (Array D ix b -> TypesJP.Image px)
+      => (Array D ix b -> JP.Image px)
       -> (a -> b)
       -> Array r ix a
       -> BL.ByteString

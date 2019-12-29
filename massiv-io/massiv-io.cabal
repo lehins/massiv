@@ -19,12 +19,16 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Massiv.Array.IO
-  other-modules:       Graphics.ColorSpace.Elevator
-                     , Graphics.ColorSpace.Internal
-                     , Data.Massiv.Array.IO.Base
+  other-modules:       Data.Massiv.Array.IO.Base
                      , Data.Massiv.Array.IO.Image
                      --, Data.Massiv.Array.IO.Image.JuicyPixels
                      , Data.Massiv.Array.IO.Image.JuicyPixels.Base
+                     -- , Data.Massiv.Array.IO.Image.JuicyPixels.BMP
+                     -- , Data.Massiv.Array.IO.Image.JuicyPixels.GIF
+                     -- , Data.Massiv.Array.IO.Image.JuicyPixels.HDR
+                     -- , Data.Massiv.Array.IO.Image.JuicyPixels.JPG
+                     -- , Data.Massiv.Array.IO.Image.JuicyPixels.PNG
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.TGA
                      , Data.Massiv.Array.IO.Image.JuicyPixels.TIF
                      , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.8 && < 5

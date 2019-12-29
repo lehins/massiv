@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -18,6 +19,10 @@
 --
 module Data.Massiv.Array.IO.Image.JuicyPixels.Base
   ( showJP
+  , convertWith
+  , convertWithMetadata
+  , convertAutoWith
+  , convertAutoWithMetadata
   , toJPImageY8
   , toJPImageY16
   , toJPImageY32
@@ -56,8 +61,47 @@ import Graphics.Color.Space.RGB.Alternative.CMYK
 import Graphics.Color.Space.RGB.Alternative.YCbCr
 
 --------------------------------------------------------------------------------
--- Common encoding/decoding functions ------------------------------------------
+-- Common JuciyPixels encoding/decoding functions ------------------------------
 --------------------------------------------------------------------------------
+
+convertWith ::
+     (MonadThrow m, ColorModel cs e, FileFormat f)
+  => f
+  -> Either String TypesJP.DynamicImage
+  -> m (Image S cs e)
+convertWith f = either (throwM . DecodeError) (fromMaybeDecode f showJP fromDynamicImage)
+
+
+convertWithMetadata ::
+     (MonadThrow m, ColorModel cs e, FileFormat f)
+  => f
+  -> Either String (TypesJP.DynamicImage, Metadata f)
+  -> m (Image S cs e, Metadata f)
+convertWithMetadata f decoded =
+  case decoded of
+    Left err -> throwM $ DecodeError err
+    Right (jp, meta) -> do
+      i <- fromMaybeDecode f showJP fromDynamicImage jp
+      pure (i, meta)
+
+convertAutoWithMetadata ::
+     (MonadThrow m, FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs i e)
+  => Auto f
+  -> Either String (TypesJP.DynamicImage, Metadata f)
+  -> m (Image r cs e, Metadata f)
+convertAutoWithMetadata f decoded =
+  case decoded of
+    Left err -> throwM $ DecodeError err
+    Right (jp, meta) -> do
+      i <- fromMaybeDecode f showJP fromDynamicImageAuto jp
+      pure (i, meta)
+
+convertAutoWith ::
+     (MonadThrow m, FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs i e)
+  => Auto f
+  -> Either String TypesJP.DynamicImage
+  -> m (Image r cs e)
+convertAutoWith f = either (throwM . DecodeError) (fromMaybeDecode f showJP fromDynamicImageAuto)
 
 
 fromDynamicImage ::

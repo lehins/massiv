@@ -1,3 +1,4 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -9,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Base
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -18,9 +19,9 @@
 module Data.Massiv.Array.IO.Base
   ( FileFormat(..)
   , Readable(..)
-  , decode
+  , decode'
   , Writable(..)
-  , encode
+  , encode'
   , ConvertError(..)
   , EncodeError(..)
   , DecodeError(..)
@@ -34,7 +35,7 @@ module Data.Massiv.Array.IO.Base
   , convertImage
   , toProxy
   , fromMaybeEncode
-  , fromEitherDecode
+  , fromMaybeDecode
   , convertEither
   , MonadThrow(..)
   ) where
@@ -97,6 +98,9 @@ class (Default (ReadOptions f), Default (WriteOptions f), Show f) => FileFormat 
   type WriteOptions f
   type WriteOptions f = ()
 
+  type Metadata f
+  type Metadata f = ()
+
   -- | Default file extension for this file format.
   ext :: f -> String
 
@@ -113,6 +117,7 @@ class (Default (ReadOptions f), Default (WriteOptions f), Show f) => FileFormat 
 instance FileFormat f => FileFormat (Auto f) where
   type ReadOptions (Auto f) = ReadOptions f
   type WriteOptions (Auto f) = WriteOptions f
+  type Metadata (Auto f) = Metadata f
 
   ext (Auto f) = ext f
   exts (Auto f) = exts f
@@ -120,23 +125,31 @@ instance FileFormat f => FileFormat (Auto f) where
 
 -- | File formats that can be read into arrays.
 class Readable f arr where
-
+  {-# MINIMAL (decodeM | decodeWithMetadataM) #-}
   -- | Decode a `B.ByteString` into an array. Can also return whatever left over data that
   -- was not consumed during decoding.
   --
   -- @since 0.2.0
-  decodeM :: MonadThrow m => f -> ReadOptions f -> B.ByteString -> m (arr, Maybe B.ByteString)
-
+  decodeM :: MonadThrow m => f -> ReadOptions f -> B.ByteString -> m arr
+  decodeM f opts bs = fst <$> decodeWithMetadataM f opts bs
+  -- | Just as `decodeM`, but also return any format type specific metadata
+  --
+  -- @since 0.2.0
+  decodeWithMetadataM :: MonadThrow m => f -> ReadOptions f -> B.ByteString -> m (arr, Metadata f)
+  default decodeWithMetadataM :: (Metadata f ~ (), MonadThrow m) =>
+    f -> ReadOptions f -> B.ByteString -> m (arr, Metadata f)
+  decodeWithMetadataM f opts bs = do
+    arr <- decodeM f opts bs
+    pure (arr, ())
 
 -- | Encode an array into a `BL.ByteString`.
-encode :: Writable f arr => f -> WriteOptions f -> arr -> BL.ByteString
-encode f opts = either throw id . encodeM f opts
-{-# DEPRECATED encode "In favor of a better `encodeM`" #-}
+encode' :: Writable f arr => f -> WriteOptions f -> arr -> BL.ByteString
+encode' f opts = either throw id . encodeM f opts
 
 -- | Decode a `B.ByteString` into an Array.
-decode :: Readable f arr => f -> ReadOptions f -> B.ByteString -> arr
-decode f opts = either throw fst . decodeM f opts
-{-# DEPRECATED decode "In favor of a better `decodeM`" #-}
+decode' :: Readable f arr => f -> ReadOptions f -> B.ByteString -> arr
+decode' f opts = either throw id . decodeM f opts
+
 
 -- | Arrays that can be written into a file.
 class Writable f arr where
@@ -176,14 +189,14 @@ fromMaybeEncode f imgProxy =
 
 
 -- | Decode an image using the supplied function or throw an error in case of failure.
-fromEitherDecode ::
+fromMaybeDecode ::
      forall r cs e a f m. (ColorModel cs e, FileFormat f, Typeable r, MonadThrow m)
   => f
   -> (a -> String)
   -> (a -> Maybe (Image r cs e))
   -> a
   -> m (Image r cs e)
-fromEitherDecode f showCS conv eImg =
+fromMaybeDecode f showCS conv eImg =
   case conv eImg of
     Nothing ->
       throwM $

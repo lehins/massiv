@@ -15,16 +15,14 @@
 --
 module Data.Massiv.Array.IO.Image
   ( Encode
-  , encodeImage
   , encodeImageM
   , imageWriteFormats
   , imageWriteAutoFormats
   , Decode
-  , decodeImage
   , decodeImageM
   , imageReadFormats
   , imageReadAutoFormats
-  , module Data.Massiv.Array.IO.Image.JuicyPixels.TIF
+  , module JuicyPixels
   , module Data.Massiv.Array.IO.Image.Netpbm
   ) where
 
@@ -33,7 +31,8 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
-import Data.Massiv.Array.IO.Image.JuicyPixels.TIF
+import Data.Massiv.Array.IO.Image.JuicyPixels.TGA as JuicyPixels
+import Data.Massiv.Array.IO.Image.JuicyPixels.TIF as JuicyPixels
 import Data.Massiv.Array.IO.Image.Netpbm
 import Graphics.Color.Model
 import Graphics.Color.Pixel
@@ -60,27 +59,6 @@ instance FileFormat (Encode (Image r cs e)) where
 
 instance Writable (Encode (Image r cs e)) (Image r cs e) where
   encodeM (EncodeAs f enc) _ = enc f
-
-
--- | Encode an array into a `BL.ByteString`.
-encodeImage ::
-     (ColorModel cs e, Source r Ix2 (Pixel cs e))
-  => [Encode (Image r cs e)]
-  -> FilePath
-  -> Image r cs e
-  -> BL.ByteString
-encodeImage formats path = either throw id . encodeImageM formats path
-{-# DEPRECATED encodeImage "In favor of a better `encodeImageM`" #-}
-
--- | Decode a `B.ByteString` into an Array.
-decodeImage ::
-     (ColorModel cs e, Source r Ix2 (Pixel cs e))
-  => [Decode (Image r cs e)]
-  -> FilePath
-  -> B.ByteString
-  -> Image r cs e
-decodeImage formats path = either throw fst . decodeImageM formats path
-{-# DEPRECATED decodeImage "In favor of a better `decodeImageM`" #-}
 
 
 -- | Encode an image into a lazy `BL.ByteString`, while selecting the appropriate format from the
@@ -110,8 +88,8 @@ imageWriteFormats =
   -- , EncodeAs HDR
   -- , EncodeAs JPG
   -- , EncodeAs PNG
-  -- , EncodeAs TGA
-  [ EncodeAs TIF (const encodeTIF)
+  [ EncodeAs TGA encodeTGA
+  , EncodeAs TIF encodeTIF
   ]
 
 -- | List of image formats that can be encoded with any necessary color space conversions.
@@ -127,8 +105,8 @@ imageWriteAutoFormats =
   -- , EncodeAs (Auto HDR)
   -- , EncodeAs (Auto JPG)
   -- , EncodeAs (Auto PNG)
-  -- , EncodeAs (Auto TGA)
-  [ EncodeAs (Auto TIF) (\_ -> pure . encodeAutoTIF)
+  [ EncodeAs (Auto TGA) (\(Auto TGA) -> pure . encodeAutoTGA)
+  , EncodeAs (Auto TIF) (\(Auto TIF) -> pure . encodeAutoTIF)
   ]
 
 
@@ -138,7 +116,7 @@ data Decode out where
     :: (FileFormat f)
     => f
     -> (forall m. MonadThrow m =>
-                    f -> B.ByteString -> m (out, Maybe B.ByteString))
+                    f -> B.ByteString -> m out)
     -> Decode out
 
 instance Show (Decode out) where
@@ -162,7 +140,7 @@ decodeImageM
   => [Decode (Image r cs e)] -- ^ List of available formats to choose from
   -> FilePath -- ^ File name with extension, so format can be inferred
   -> B.ByteString -- ^ Encoded image
-  -> m (Image r cs e, Maybe B.ByteString)
+  -> m (Image r cs e)
 decodeImageM formats path bs = do
   let ext' = P.map toLower . takeExtension $ path
   case dropWhile (not . isFormat ext') formats of
@@ -177,12 +155,12 @@ imageReadFormats =
   -- , DecodeAs HDR
   -- , DecodeAs JPG
   -- , DecodeAs PNG
-  -- , DecodeAs TGA
   [
-    DecodeAs TIF (\f bs -> (, Nothing) <$> decodeTIF f bs)
-  , DecodeAs PBM decodeNetpbmImage
-  , DecodeAs PGM decodeNetpbmImage
-  , DecodeAs PPM decodeNetpbmImage
+    DecodeAs TGA decodeTGA
+  , DecodeAs TIF decodeTIF
+  , DecodeAs PBM (\f -> fmap fst . decodeNetpbmImage f)
+  , DecodeAs PGM (\f -> fmap fst . decodeNetpbmImage f)
+  , DecodeAs PPM (\f -> fmap fst . decodeNetpbmImage f)
   ]
 
 -- | List of image formats decodable with automatic colorspace conversion
@@ -195,11 +173,11 @@ imageReadAutoFormats =
   -- , DecodeAs (Auto HDR)
   -- , DecodeAs (Auto JPG)
   -- , DecodeAs (Auto PNG)
-  -- , DecodeAs (Auto TGA)
-  [ DecodeAs (Auto TIF) (\f bs -> (, Nothing) <$> decodeAutoTIF f bs)
-  , DecodeAs (Auto PBM) decodeAutoNetpbmImage
-  , DecodeAs (Auto PGM) decodeAutoNetpbmImage
-  , DecodeAs (Auto PPM) decodeAutoNetpbmImage
+  [ DecodeAs (Auto TGA) decodeAutoTGA
+  , DecodeAs (Auto TIF) decodeAutoTIF
+  , DecodeAs (Auto PBM) (\f -> fmap fst . decodeAutoNetpbmImage f)
+  , DecodeAs (Auto PGM) (\f -> fmap fst . decodeAutoNetpbmImage f)
+  , DecodeAs (Auto PPM) (\f -> fmap fst . decodeAutoNetpbmImage f)
   ]
 
 

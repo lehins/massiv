@@ -68,14 +68,17 @@ fromVectorM comp sz = pure . fromVector comp sz
 data PBM = PBM deriving Show
 
 instance FileFormat PBM where
+  type Metadata PBM = Maybe B.ByteString
   ext _ = ".pbm"
 
 instance FileFormat (Sequence PBM) where
   type WriteOptions (Sequence PBM) = WriteOptions PBM
+  type Metadata (Sequence PBM) = Maybe B.ByteString
   ext _ = ext PBM
 
 instance FileFormat (Sequence (Auto PBM)) where
   type WriteOptions (Sequence (Auto PBM)) = WriteOptions PBM
+  type Metadata (Sequence (Auto PBM)) = Maybe B.ByteString
   ext _ = ext PBM
 
 
@@ -83,14 +86,17 @@ instance FileFormat (Sequence (Auto PBM)) where
 data PGM = PGM deriving Show
 
 instance FileFormat PGM where
+  type Metadata PGM = Maybe B.ByteString
   ext _ = ".pgm"
 
 instance FileFormat (Sequence PGM) where
   type WriteOptions (Sequence PGM) = WriteOptions PGM
+  type Metadata (Sequence PGM) = Maybe B.ByteString
   ext _ = ext PGM
 
 instance FileFormat (Sequence (Auto PGM)) where
   type WriteOptions (Sequence (Auto PGM)) = WriteOptions PGM
+  type Metadata (Sequence (Auto PGM)) = Maybe B.ByteString
   ext _ = ext PGM
 
 
@@ -98,15 +104,18 @@ instance FileFormat (Sequence (Auto PGM)) where
 data PPM = PPM deriving Show
 
 instance FileFormat PPM where
+  type Metadata PPM = Maybe B.ByteString
   ext _ = ".ppm"
   exts _ = [".ppm", ".pnm"]
 
 instance FileFormat (Sequence PPM) where
   type WriteOptions (Sequence PPM) = WriteOptions PPM
+  type Metadata (Sequence PPM) = Maybe B.ByteString
   ext _ = ext PPM
 
 instance FileFormat (Sequence (Auto PPM)) where
   type WriteOptions (Sequence (Auto PPM)) = WriteOptions PPM
+  type Metadata (Sequence (Auto PPM)) = Maybe B.ByteString
   ext _ = ext PPM
 
 -- | Try to decode a Netpbm image
@@ -159,7 +168,7 @@ decodePPMs f converter bs =
     Left err -> throwM $ DecodeError err
     Right ([], Just _) -> throwM $ DecodeError "Cannot parse PNM image"
     Right (ppms, leftOver) -> do
-      imgs <- P.traverse (fromEitherDecode f showNetpbmCS converter) ppms
+      imgs <- P.traverse (fromMaybeDecode f showNetpbmCS converter) ppms
       pure (fromList Seq imgs, leftOver)
 {-# INLINE decodePPMs #-}
 
@@ -175,7 +184,7 @@ decodePPM f decoder bs =
     Right ([], Nothing) -> throwM $ DecodeError "PNM image is empty"
     Right ([], _) -> throwM $ DecodeError "Cannot parse PNM image"
     Right (ppm:_, leftover) -> do
-      img <- fromEitherDecode f showNetpbmCS decoder ppm
+      img <- fromMaybeDecode f showNetpbmCS decoder ppm
       pure (img, leftover)
 {-# INLINE decodePPM #-}
 
@@ -201,27 +210,27 @@ showNetpbmCS Netpbm.PPM {ppmData} =
 
 
 instance Readable PBM (Image S CM.Y Bit) where
-  decodeM f _ = decodeNetpbmImage f
+  decodeWithMetadataM f _ = decodeNetpbmImage f
 instance Readable (Sequence PBM) (Array B Ix1 (Image S CM.Y Bit)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
 
 instance Readable PGM (Image S CM.Y Word8) where
-  decodeM f _ = decodeNetpbmImage f
+  decodeWithMetadataM f _ = decodeNetpbmImage f
 instance Readable PGM (Image S CM.Y Word16) where
-  decodeM f _ = decodeNetpbmImage f
+  decodeWithMetadataM f _ = decodeNetpbmImage f
 instance Readable (Sequence PGM) (Array B Ix1 (Image S CM.Y Word8)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
 instance Readable (Sequence PGM) (Array B Ix1 (Image S CM.Y Word16)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
 
 instance Readable PPM (Image S CM.RGB Word8) where
-  decodeM f _ = decodeNetpbmImage f
+  decodeWithMetadataM f _ = decodeNetpbmImage f
 instance Readable PPM (Image S CM.RGB Word16) where
-  decodeM f _ = decodeNetpbmImage f
+  decodeWithMetadataM f _ = decodeNetpbmImage f
 instance Readable (Sequence PPM) (Array B Ix1 (Image S CM.RGB Word8)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
 instance Readable (Sequence PPM) (Array B Ix1 (Image S CM.RGB Word16)) where
-  decodeM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
 
 
 fromNetpbmImage
@@ -243,27 +252,26 @@ fromNetpbmImage Netpbm.PPM {..} = do
                               fromNetpbmImageUnsafe m n v
 
 
-
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PBM) (Image r cs e) where
-  decodeM f _ = decodeAutoNetpbmImage f
+  decodeWithMetadataM f _ = decodeAutoNetpbmImage f
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Sequence (Auto PBM)) (Array B Ix1 (Image r cs e)) where
-  decodeM f _ = decodeAutoNetpbmImageSequence f
+  decodeWithMetadataM f _ = decodeAutoNetpbmImageSequence f
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PGM) (Image r cs e) where
-  decodeM f _ = decodeAutoNetpbmImage f
+  decodeWithMetadataM f _ = decodeAutoNetpbmImage f
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Sequence (Auto PGM)) (Array B Ix1 (Image r cs e)) where
-  decodeM f _ = decodeAutoNetpbmImageSequence f
+  decodeWithMetadataM f _ = decodeAutoNetpbmImageSequence f
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PPM) (Image r cs e) where
-  decodeM f _ = decodeAutoNetpbmImage f
+  decodeWithMetadataM f _ = decodeAutoNetpbmImage f
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Sequence (Auto PPM)) (Array B Ix1 (Image r cs e)) where
-  decodeM f _ = decodeAutoNetpbmImageSequence f
+  decodeWithMetadataM f _ = decodeAutoNetpbmImageSequence f
 
 fromNetpbmImageAuto
   :: forall cs i e r . (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>

@@ -18,6 +18,7 @@ module Data.Massiv.Array.IO
   ( -- $supported
     -- * Reading
     readArray
+  , readArrayWithMetadata
   , readImage
   , readImageAuto
   -- * Writing
@@ -38,6 +39,8 @@ module Data.Massiv.Array.IO
   -- * Supported Image Formats
   , module Data.Massiv.Array.IO.Base
   , module Data.Massiv.Array.IO.Image
+  -- * Re-export
+  , module Graphics.Color.Pixel
   ) where
 
 import Prelude
@@ -58,6 +61,7 @@ import System.FilePath
 import System.IO (hClose, openBinaryTempFile, IOMode(..))
 import System.Process (readProcess)
 import UnliftIO.IO.File
+import Graphics.Color.Pixel
 import qualified Graphics.Color.Model.CMYK as CM
 import qualified Graphics.Color.Model.RGB as CM
 import qualified Graphics.Color.Model.Y as CM
@@ -79,15 +83,29 @@ data ExternalViewer =
 
 
 -- | Read an array from one of the supported file formats.
+--
+-- @since 0.1.0
 readArray :: (Readable f arr, MonadIO m) =>
              f -- ^ File format that should be used while decoding the file
           -> ReadOptions f -- ^ Any file format related decoding options. Use `def` for default.
           -> FilePath -- ^ Path to the file
           -> m arr
-readArray format opts path = liftIO $ do
-  bs <- B.readFile path
-  fst <$> decodeM format opts bs
+readArray format opts path = liftIO (B.readFile path >>= decodeM format opts)
 {-# INLINE readArray #-}
+
+-- | Read an array from one of the supported file formats. Some formats are capable of
+-- preducing format specific metadata.
+--
+-- @since 0.2.0
+readArrayWithMetadata ::
+     (Readable f arr, MonadIO m)
+  => f -- ^ File format that should be used while decoding the file
+  -> ReadOptions f -- ^ Any file format related decoding options. Use `def` for default.
+  -> FilePath -- ^ Path to the file
+  -> m (arr, Metadata f)
+readArrayWithMetadata format opts path =
+  liftIO (B.readFile path >>= decodeWithMetadataM format opts)
+{-# INLINE readArrayWithMetadata #-}
 
 writeLazyAtomically :: FilePath -> BL.ByteString -> IO ()
 writeLazyAtomically filepath bss =
@@ -134,10 +152,7 @@ readImage ::
      (ColorModel cs e, MonadIO m)
   => FilePath -- ^ File path for an image
   -> m (Image S cs e)
-readImage path =
-  liftIO $ do
-    bs <- B.readFile path
-    fst <$> decodeImageM imageReadFormats path bs
+readImage path = liftIO (B.readFile path >>= decodeImageM imageReadFormats path)
 {-# INLINE readImage #-}
 
 
@@ -148,9 +163,7 @@ readImageAuto ::
      (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadIO m)
   => FilePath -- ^ File path for an image
   -> m (Image r cs e)
-readImageAuto path = liftIO $ do
-  bs <- B.readFile path
-  fst <$> decodeImageM imageReadAutoFormats path bs
+readImageAuto path = liftIO (B.readFile path >>= decodeImageM imageReadAutoFormats path)
 {-# INLINE readImageAuto #-}
 
 
