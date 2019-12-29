@@ -213,53 +213,6 @@ convertEither f showCS conv eImg =
     (conv eImg)
 
 
--- encodeAuto
---   :: forall f r cs e a csY eY csYA eYA csC eC csCA eCA m.
---      ( ColorSpace cs e
---      , ColorSpace csC eC
---      , ColorSpace csCA eCA
---      , ColorSpace csY eY
---      , ColorSpace csYA eYA
---      , Source r Ix2 (Pixel cs e)
---      , FileFormat f
---      , MonadThrow m
---      )
---   => f
---   -> (forall r' cs' e'. (Source r' Ix2 (Pixel cs' e'), ColorSpace cs' e') =>
---                           Image r' cs' e' -> Maybe a)
---   -> (Pixel cs e -> Pixel csY eY) -- ^ To preferred from Luma
---   -> (Pixel cs e -> Pixel csYA eYA) -- ^ To preferred from Luma with Alpha
---   -> (Pixel cs e -> Pixel csC eC) -- ^ To preferred from any color
---   -> (Pixel cs e -> Pixel csCA eCA) -- ^ To preferred from any color with Alpha
---   -> Image r cs e
---   -> m a
--- encodeAuto f enc toLuma toLumaA toColor toColorA img =
---   fromMaybeEncode f (toProxy img) $ msum
---     [ enc img
---     , do Refl <- eqT :: Maybe (cs :~: Y)
---          enc $ A.map toLuma img
---     , do Refl <- eqT :: Maybe (cs :~: YA)
---          enc $ A.map toLumaA img
---     , do Refl <- eqT :: Maybe (cs :~: RGB)
---          enc $ A.map toColor img
---     , do Refl <- eqT :: Maybe (cs :~: RGBA)
---          enc $ A.map toColorA img
---     , do Refl <- eqT :: Maybe (cs :~: HSI)
---          enc $ A.map toColor img
---     , do Refl <- eqT :: Maybe (cs :~: HSIA)
---          enc $ A.map toColorA img
---     , do Refl <- eqT :: Maybe (cs :~: YCbCr)
---          enc $ A.map toColor img
---     , do Refl <- eqT :: Maybe (cs :~: YCbCrA)
---          enc $ A.map toColorA img
---     , do Refl <- eqT :: Maybe (cs :~: CMYK)
---          enc $ A.map toColor img
---     , do Refl <- eqT :: Maybe (cs :~: CMYKA)
---          enc $ A.map toColorA img
---     , do Refl <- eqT :: Maybe (Pixel cs e :~: Pixel X Bit)
---          enc $ A.map fromPixelBinary img
---     ]
-
 encodeError :: MonadThrow m => Either String a -> m a
 encodeError = either (throwM . EncodeError) pure
 

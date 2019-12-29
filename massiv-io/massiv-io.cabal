@@ -24,6 +24,7 @@ library
                      , Data.Massiv.Array.IO.Base
                      , Data.Massiv.Array.IO.Image
                      --, Data.Massiv.Array.IO.Image.JuicyPixels
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.Base
                      , Data.Massiv.Array.IO.Image.JuicyPixels.TIF
                      , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.8 && < 5
@@ -34,9 +35,9 @@ library
                      , directory
                      , exceptions
                      , filepath        >= 1.0
-                     , massiv          >= 0.1.1
+                     , massiv          >= 0.3
                      , process
-                     , JuicyPixels     >= 3.2.7
+                     , JuicyPixels     >= 3.3
                      , netpbm
                      , unliftio        >= 0.2.12
                      , unliftio-core
