@@ -157,7 +157,9 @@ showImageType ::
 showImageType _ =
   ("<Image " ++) .
   showsTypeRep (typeRep (Proxy :: Proxy r)) .
-  (' ' :) . showsColorModelName (Proxy :: Proxy (Color cs e)) $
+  (' ' :) .
+  showsColorModelName (Proxy :: Proxy (Color cs e)) .
+  (' ' :) . showsTypeRep (typeRep (Proxy :: Proxy e)) $
   ">"
 
 

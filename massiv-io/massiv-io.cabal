@@ -18,21 +18,13 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Graphics.ColorSpace
-                     , Graphics.ColorSpace.Binary
-                     , Graphics.ColorSpace.CMYK
-                     , Graphics.ColorSpace.Complex
-                     , Graphics.ColorSpace.HSI
-                     , Graphics.ColorSpace.RGB
-                     , Graphics.ColorSpace.X
-                     , Graphics.ColorSpace.Y
-                     , Graphics.ColorSpace.YCbCr
-                     , Data.Massiv.Array.IO
+  exposed-modules:     Data.Massiv.Array.IO
   other-modules:       Graphics.ColorSpace.Elevator
                      , Graphics.ColorSpace.Internal
                      , Data.Massiv.Array.IO.Base
                      , Data.Massiv.Array.IO.Image
-                     , Data.Massiv.Array.IO.Image.JuicyPixels
+                     --, Data.Massiv.Array.IO.Image.JuicyPixels
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.TIF
                      , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.8 && < 5
                      , bytestring

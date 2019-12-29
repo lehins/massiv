@@ -51,13 +51,17 @@ import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base hiding (convertEither, fromEitherDecode,
                                   fromMaybeEncode, toProxy)
 import Data.Massiv.Array.IO.Image
-import Graphics.ColorSpace
+import Graphics.Color.Pixel
 import Prelude as P hiding (readFile, writeFile)
 import System.Directory (createDirectoryIfMissing, getTemporaryDirectory)
 import System.FilePath
 import System.IO (hClose, openBinaryTempFile, IOMode(..))
 import System.Process (readProcess)
 import UnliftIO.IO.File
+import qualified Graphics.Color.Model.CMYK as CM
+import qualified Graphics.Color.Model.RGB as CM
+import qualified Graphics.Color.Model.Y as CM
+import qualified Graphics.Color.Model.YCbCr as CM
 
 
 
@@ -127,7 +131,7 @@ writeArray format opts filepath arr =
 -- >>> displayImage frogCMYK
 --
 readImage ::
-     (Source S Ix2 (Pixel cs e), ColorModel cs e, MonadIO m)
+     (ColorModel cs e, MonadIO m)
   => FilePath -- ^ File path for an image
   -> m (Image S cs e)
 readImage path =
@@ -141,7 +145,7 @@ readImage path =
 -- precision conversions in order to match the result image type. Very useful
 -- whenever image format isn't known at compile time.
 readImageAuto ::
-     (Mutable r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m)
+     (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadIO m)
   => FilePath -- ^ File path for an image
   -> m (Image r cs e)
 readImageAuto path = liftIO $ do
@@ -161,21 +165,17 @@ readImageAuto path = liftIO $ do
 -- Can throw `ConvertError`, `EncodeError` and other usual IO errors.
 --
 writeImage ::
-     (Source r Ix2 (Pixel cs e), ColorSpace cs e, MonadIO m) => FilePath -> Image r cs e -> m ()
+     (Source r Ix2 (Pixel cs e), ColorModel cs e, MonadIO m) => FilePath -> Image r cs e -> m ()
 writeImage path img = liftIO (encodeImageM imageWriteFormats path img >>= writeLazyAtomically path)
 
 
--- | Write an image to file while performing all necessary precisiona and color space conversions.
-writeImageAuto
-  :: ( Source r Ix2 (Pixel cs e)
-     , ColorSpace cs e
-     , ToYA cs e
-     , ToRGBA cs e
-     , ToYCbCr cs e
-     , ToCMYK cs e
-     , MonadIO m
-     )
-  => FilePath -> Image r cs e -> m ()
+-- | Write an image to file while performing all necessary precisiona and color space
+-- conversions.
+writeImageAuto ::
+     (Source r Ix2 (Pixel cs e), ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, MonadIO m)
+  => FilePath
+  -> Image r cs e
+  -> m ()
 writeImageAuto path img =
   liftIO (encodeImageM imageWriteAutoFormats path img >>= writeLazyAtomically path)
 

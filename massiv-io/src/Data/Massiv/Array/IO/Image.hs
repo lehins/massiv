@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -23,7 +24,7 @@ module Data.Massiv.Array.IO.Image
   , decodeImageM
   , imageReadFormats
   , imageReadAutoFormats
-  --, module Data.Massiv.Array.IO.Image.JuicyPixels.TIFF
+  , module Data.Massiv.Array.IO.Image.JuicyPixels.TIF
   , module Data.Massiv.Array.IO.Image.Netpbm
   ) where
 
@@ -32,7 +33,7 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
---import Data.Massiv.Array.IO.Image.JuicyPixels.
+import Data.Massiv.Array.IO.Image.JuicyPixels.TIF
 import Data.Massiv.Array.IO.Image.Netpbm
 import Graphics.Color.Model
 import Graphics.Color.Pixel
@@ -42,18 +43,23 @@ import System.FilePath (takeExtension)
 
 
 data Encode out where
-  EncodeAs :: (FileFormat f, Writable f out) => f -> Encode out
+  EncodeAs
+    :: (FileFormat f)
+    => f
+    -> (forall m. MonadThrow m =>
+                    f -> out -> m BL.ByteString)
+    -> Encode out
 
 instance Show (Encode out) where
-  show (EncodeAs f) = show f
+  show (EncodeAs f _) = show f
 
 instance FileFormat (Encode (Image r cs e)) where
-  ext (EncodeAs f) = ext f
+  ext (EncodeAs f _) = ext f
 
-  exts (EncodeAs f) = exts f
+  exts (EncodeAs f _) = exts f
 
 instance Writable (Encode (Image r cs e)) (Image r cs e) where
-  encodeM (EncodeAs f) _ = encodeM f (defaultWriteOptions f)
+  encodeM (EncodeAs f enc) _ = enc f
 
 
 -- | Encode an array into a `BL.ByteString`.
@@ -82,7 +88,7 @@ decodeImage formats path = either throw fst . decodeImageM formats path
 --
 -- @since 0.2.0
 encodeImageM
-  :: (Source r Ix2 (Pixel cs e), ColorModel cs e, MonadThrow m)
+  :: MonadThrow m
   => [Encode (Image r cs e)] -- ^ List of image formats to choose from (useful lists are
                              -- `imageWriteFormats` and `imageWriteAutoFormats`
   -> FilePath -- ^ File name with extension, so the format can be inferred
@@ -98,31 +104,32 @@ encodeImageM formats path img = do
 
 -- | List of image formats that can be encoded without any color space conversion.
 imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorModel cs e) => [Encode (Image r cs e)]
-imageWriteFormats = []
+imageWriteFormats =
   -- [ EncodeAs BMP
   -- , EncodeAs GIF
   -- , EncodeAs HDR
   -- , EncodeAs JPG
   -- , EncodeAs PNG
   -- , EncodeAs TGA
-  -- , EncodeAs TIF
-  -- ]
+  [ EncodeAs TIF (const encodeTIF)
+  ]
 
 -- | List of image formats that can be encoded with any necessary color space conversions.
 imageWriteAutoFormats
   :: ( Source r Ix2 (Pixel cs e)
-     , ColorModel cs e
+     , ColorSpace cs i e
+     , ColorSpace (BaseSpace cs) i e
      )
   => [Encode (Image r cs e)]
-imageWriteAutoFormats = []
+imageWriteAutoFormats =
   -- [ EncodeAs (Auto BMP)
   -- , EncodeAs (Auto GIF)
   -- , EncodeAs (Auto HDR)
   -- , EncodeAs (Auto JPG)
   -- , EncodeAs (Auto PNG)
   -- , EncodeAs (Auto TGA)
-  -- , EncodeAs (Auto TIF)
-  -- ]
+  [ EncodeAs (Auto TIF) (\_ -> pure . encodeAutoTIF)
+  ]
 
 
 
@@ -151,7 +158,7 @@ instance Readable (Decode (Image r cs e)) (Image r cs e) where
 --
 -- @since 0.2.0
 decodeImageM
-  :: (Source r Ix2 (Pixel cs e), ColorModel cs e, MonadThrow m)
+  :: MonadThrow m
   => [Decode (Image r cs e)] -- ^ List of available formats to choose from
   -> FilePath -- ^ File name with extension, so format can be inferred
   -> B.ByteString -- ^ Encoded image
@@ -171,9 +178,9 @@ imageReadFormats =
   -- , DecodeAs JPG
   -- , DecodeAs PNG
   -- , DecodeAs TGA
-  -- , DecodeAs TIF
   [
-    DecodeAs PBM decodeNetpbmImage
+    DecodeAs TIF (\f bs -> (, Nothing) <$> decodeTIF f bs)
+  , DecodeAs PBM decodeNetpbmImage
   , DecodeAs PGM decodeNetpbmImage
   , DecodeAs PPM decodeNetpbmImage
   ]
@@ -189,8 +196,10 @@ imageReadAutoFormats =
   -- , DecodeAs (Auto JPG)
   -- , DecodeAs (Auto PNG)
   -- , DecodeAs (Auto TGA)
-  -- , DecodeAs (Auto TIF)
-  [ DecodeAs (Auto PBM) decodeNetpbmImageAuto
-  , DecodeAs (Auto PGM) decodeNetpbmImageAuto
-  , DecodeAs (Auto PPM) decodeNetpbmImageAuto
+  [ DecodeAs (Auto TIF) (\f bs -> (, Nothing) <$> decodeAutoTIF f bs)
+  , DecodeAs (Auto PBM) decodeAutoNetpbmImage
+  , DecodeAs (Auto PGM) decodeAutoNetpbmImage
+  , DecodeAs (Auto PPM) decodeAutoNetpbmImage
   ]
+
+
