@@ -51,6 +51,10 @@ import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 -- TIF Format ------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+-- TODOs:
+--  * Check on reading in YCbCr
+--  * Check on "except for Y32 which is truncated to 16 bits" in `JP.decodeTiff` doc.
+
 
 -- | Tagged Image File Format image with @.tif@ or @.tiff@ extension.
 data TIF = TIF deriving Show

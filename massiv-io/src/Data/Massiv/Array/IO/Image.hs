@@ -1,9 +1,9 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image
@@ -31,6 +31,7 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
+import Data.Massiv.Array.IO.Image.JuicyPixels.PNG as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.TGA as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.TIF as JuicyPixels
 import Data.Massiv.Array.IO.Image.Netpbm
@@ -154,9 +155,9 @@ imageReadFormats =
   -- , DecodeAs GIF
   -- , DecodeAs HDR
   -- , DecodeAs JPG
-  -- , DecodeAs PNG
   [
-    DecodeAs TGA decodeTGA
+    DecodeAs PNG decodePNG
+  , DecodeAs TGA decodeTGA
   , DecodeAs TIF decodeTIF
   , DecodeAs PBM (\f -> fmap fst . decodeNetpbmImage f)
   , DecodeAs PGM (\f -> fmap fst . decodeNetpbmImage f)
@@ -172,8 +173,8 @@ imageReadAutoFormats =
   -- , DecodeAs (Auto GIF)
   -- , DecodeAs (Auto HDR)
   -- , DecodeAs (Auto JPG)
-  -- , DecodeAs (Auto PNG)
-  [ DecodeAs (Auto TGA) decodeAutoTGA
+  [ DecodeAs (Auto PNG) decodeAutoPNG
+  , DecodeAs (Auto TGA) decodeAutoTGA
   , DecodeAs (Auto TIF) decodeAutoTIF
   , DecodeAs (Auto PBM) (\f -> fmap fst . decodeAutoNetpbmImage f)
   , DecodeAs (Auto PGM) (\f -> fmap fst . decodeAutoNetpbmImage f)

@@ -27,7 +27,7 @@ library
                      -- , Data.Massiv.Array.IO.Image.JuicyPixels.GIF
                      -- , Data.Massiv.Array.IO.Image.JuicyPixels.HDR
                      -- , Data.Massiv.Array.IO.Image.JuicyPixels.JPG
-                     -- , Data.Massiv.Array.IO.Image.JuicyPixels.PNG
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.PNG
                      , Data.Massiv.Array.IO.Image.JuicyPixels.TGA
                      , Data.Massiv.Array.IO.Image.JuicyPixels.TIF
                      , Data.Massiv.Array.IO.Image.Netpbm

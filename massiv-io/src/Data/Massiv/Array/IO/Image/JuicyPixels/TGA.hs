@@ -85,7 +85,8 @@ instance Readable TGA (Image S (Alpha CM.RGB) Word8) where
 
 -- | Decode a Tga Image
 decodeTGA :: (ColorModel cs e, MonadThrow m) => TGA -> B.ByteString -> m (Image S cs e)
-decodeTGA f bs = convertWith f (JP.decodeTga bs)
+decodeTGA f bs = fst <$> decodeWithMetadataTGA f bs
+  --convertWith f (JP.decodeTga bs)
 
 -- | Decode a Tga Image
 decodeWithMetadataTGA ::
