@@ -30,6 +30,7 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
+import Data.Massiv.Array.IO.Image.JuicyPixels.BMP as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.HDR as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.JPG as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.PNG as JuicyPixels
@@ -85,9 +86,9 @@ encodeImageM formats path img = do
 -- | List of image formats that can be encoded without any color space conversion.
 imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorModel cs e) => [Encode (Image r cs e)]
 imageWriteFormats =
-  -- [ EncodeAs BMP
+  [ EncodeAs BMP (`encodeBMP` def)
   -- , EncodeAs GIF
-  [ EncodeAs HDR (`encodeHDR` def)
+  , EncodeAs HDR (`encodeHDR` def)
   , EncodeAs JPG (`encodeJPG` def)
   , EncodeAs PNG encodePNG
   , EncodeAs TGA encodeTGA
@@ -102,9 +103,9 @@ imageWriteAutoFormats
      )
   => [Encode (Image r cs e)]
 imageWriteAutoFormats =
-  -- [ EncodeAs (Auto BMP)
+  [ EncodeAs (Auto BMP) (\(Auto BMP) -> pure . encodeAutoBMP def)
   -- , EncodeAs (Auto GIF)
-  [ EncodeAs (Auto HDR) (\(Auto HDR) -> pure . encodeAutoHDR def)
+  , EncodeAs (Auto HDR) (\(Auto HDR) -> pure . encodeAutoHDR def)
   , EncodeAs (Auto JPG) (\(Auto JPG) -> pure . encodeAutoJPG def)
   , EncodeAs (Auto PNG) (\(Auto PNG) -> pure . encodeAutoPNG)
   , EncodeAs (Auto TGA) (\(Auto TGA) -> pure . encodeAutoTGA)
@@ -152,9 +153,9 @@ decodeImageM formats path bs = do
 -- | List of image formats decodable with no color space conversion
 imageReadFormats :: ColorModel cs e => [Decode (Image S cs e)]
 imageReadFormats =
-  -- [ DecodeAs BMP
+  [ DecodeAs BMP decodeBMP
   -- , DecodeAs GIF
-  [ DecodeAs HDR decodeHDR
+  , DecodeAs HDR decodeHDR
   , DecodeAs JPG decodeJPG
   , DecodeAs PNG decodePNG
   , DecodeAs TGA decodeTGA
@@ -169,9 +170,9 @@ imageReadAutoFormats
   :: (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e)
   => [Decode (Image r cs e)]
 imageReadAutoFormats =
-  -- [ DecodeAs (Auto BMP)
+  [ DecodeAs (Auto BMP) decodeAutoBMP
   -- , DecodeAs (Auto GIF)
-  [ DecodeAs (Auto HDR) decodeAutoHDR
+  , DecodeAs (Auto HDR) decodeAutoHDR
   , DecodeAs (Auto JPG) decodeAutoJPG
   , DecodeAs (Auto PNG) decodeAutoPNG
   , DecodeAs (Auto TGA) decodeAutoTGA
