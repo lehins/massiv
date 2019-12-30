@@ -3,7 +3,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image
@@ -31,6 +30,7 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
+import Data.Massiv.Array.IO.Image.JuicyPixels.HDR as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.JPG as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.PNG as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.TGA as JuicyPixels
@@ -87,8 +87,8 @@ imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorModel cs e) => [Encode (Im
 imageWriteFormats =
   -- [ EncodeAs BMP
   -- , EncodeAs GIF
-  -- , EncodeAs HDR
-  [ EncodeAs JPG (`encodeJPG` def)
+  [ EncodeAs HDR (`encodeHDR` def)
+  , EncodeAs JPG (`encodeJPG` def)
   , EncodeAs PNG encodePNG
   , EncodeAs TGA encodeTGA
   , EncodeAs TIF encodeTIF
@@ -104,8 +104,8 @@ imageWriteAutoFormats
 imageWriteAutoFormats =
   -- [ EncodeAs (Auto BMP)
   -- , EncodeAs (Auto GIF)
-  -- , EncodeAs (Auto HDR)
-  [ EncodeAs (Auto JPG) (\(Auto JPG) -> pure . encodeAutoJPG def)
+  [ EncodeAs (Auto HDR) (\(Auto HDR) -> pure . encodeAutoHDR def)
+  , EncodeAs (Auto JPG) (\(Auto JPG) -> pure . encodeAutoJPG def)
   , EncodeAs (Auto PNG) (\(Auto PNG) -> pure . encodeAutoPNG)
   , EncodeAs (Auto TGA) (\(Auto TGA) -> pure . encodeAutoTGA)
   , EncodeAs (Auto TIF) (\(Auto TIF) -> pure . encodeAutoTIF)
@@ -154,9 +154,8 @@ imageReadFormats :: ColorModel cs e => [Decode (Image S cs e)]
 imageReadFormats =
   -- [ DecodeAs BMP
   -- , DecodeAs GIF
-  -- , DecodeAs HDR
-  [
-    DecodeAs JPG decodeJPG
+  [ DecodeAs HDR decodeHDR
+  , DecodeAs JPG decodeJPG
   , DecodeAs PNG decodePNG
   , DecodeAs TGA decodeTGA
   , DecodeAs TIF decodeTIF
@@ -172,8 +171,8 @@ imageReadAutoFormats
 imageReadAutoFormats =
   -- [ DecodeAs (Auto BMP)
   -- , DecodeAs (Auto GIF)
-  -- , DecodeAs (Auto HDR)
-  [ DecodeAs (Auto JPG) decodeAutoJPG
+  [ DecodeAs (Auto HDR) decodeAutoHDR
+  , DecodeAs (Auto JPG) decodeAutoJPG
   , DecodeAs (Auto PNG) decodeAutoPNG
   , DecodeAs (Auto TGA) decodeAutoTGA
   , DecodeAs (Auto TIF) decodeAutoTIF

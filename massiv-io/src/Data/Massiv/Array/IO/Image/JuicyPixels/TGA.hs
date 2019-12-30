@@ -1,11 +1,9 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -20,7 +18,9 @@
 module Data.Massiv.Array.IO.Image.JuicyPixels.TGA
   ( TGA(..)
   , decodeTGA
+  , decodeWithMetadataTGA
   , decodeAutoTGA
+  , decodeAutoWithMetadataTGA
   , encodeTGA
   , encodeAutoTGA
   ) where
