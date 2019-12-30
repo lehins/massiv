@@ -31,6 +31,7 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
+import Data.Massiv.Array.IO.Image.JuicyPixels.JPG as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.PNG as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.TGA as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.TIF as JuicyPixels
@@ -87,9 +88,9 @@ imageWriteFormats =
   -- [ EncodeAs BMP
   -- , EncodeAs GIF
   -- , EncodeAs HDR
-  -- , EncodeAs JPG
-  -- , EncodeAs PNG
-  [ EncodeAs TGA encodeTGA
+  [ EncodeAs JPG (`encodeJPG` def)
+  , EncodeAs PNG encodePNG
+  , EncodeAs TGA encodeTGA
   , EncodeAs TIF encodeTIF
   ]
 
@@ -104,9 +105,9 @@ imageWriteAutoFormats =
   -- [ EncodeAs (Auto BMP)
   -- , EncodeAs (Auto GIF)
   -- , EncodeAs (Auto HDR)
-  -- , EncodeAs (Auto JPG)
-  -- , EncodeAs (Auto PNG)
-  [ EncodeAs (Auto TGA) (\(Auto TGA) -> pure . encodeAutoTGA)
+  [ EncodeAs (Auto JPG) (\(Auto JPG) -> pure . encodeAutoJPG def)
+  , EncodeAs (Auto PNG) (\(Auto PNG) -> pure . encodeAutoPNG)
+  , EncodeAs (Auto TGA) (\(Auto TGA) -> pure . encodeAutoTGA)
   , EncodeAs (Auto TIF) (\(Auto TIF) -> pure . encodeAutoTIF)
   ]
 
@@ -154,9 +155,9 @@ imageReadFormats =
   -- [ DecodeAs BMP
   -- , DecodeAs GIF
   -- , DecodeAs HDR
-  -- , DecodeAs JPG
   [
-    DecodeAs PNG decodePNG
+    DecodeAs JPG decodeJPG
+  , DecodeAs PNG decodePNG
   , DecodeAs TGA decodeTGA
   , DecodeAs TIF decodeTIF
   , DecodeAs PBM (\f -> fmap fst . decodeNetpbmImage f)
@@ -172,8 +173,8 @@ imageReadAutoFormats =
   -- [ DecodeAs (Auto BMP)
   -- , DecodeAs (Auto GIF)
   -- , DecodeAs (Auto HDR)
-  -- , DecodeAs (Auto JPG)
-  [ DecodeAs (Auto PNG) decodeAutoPNG
+  [ DecodeAs (Auto JPG) decodeAutoJPG
+  , DecodeAs (Auto PNG) decodeAutoPNG
   , DecodeAs (Auto TGA) decodeAutoTGA
   , DecodeAs (Auto TIF) decodeAutoTIF
   , DecodeAs (Auto PBM) (\f -> fmap fst . decodeAutoNetpbmImage f)

@@ -19,7 +19,9 @@
 module Data.Massiv.Array.IO.Image.JuicyPixels.PNG
   ( PNG(..)
   , decodePNG
+  , decodeWithMetadataPNG
   , decodeAutoPNG
+  , decodeAutoWithMetadataPNG
   , encodePNG
   , encodeAutoPNG
   ) where
@@ -42,20 +44,17 @@ import Graphics.Color.Pixel
 import Graphics.Color.Algebra.Binary
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
-
-
 --------------------------------------------------------------------------------
 -- PNG Format ------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 
--- | Tagged Image File Format image with @.tif@ or @.tiff@ extension.
+-- | Portable Network Graphics image with @.png@ extension.
 data PNG = PNG deriving Show
 
 instance FileFormat PNG where
   type Metadata PNG = JP.Metadatas
-  ext _ = ".tif"
-  exts _ = [".tif", ".tiff"]
+  ext _ = ".png"
 
 instance Writable PNG (Image S CM.Y Word8) where
   encodeM PNG _ img = pure $ JP.encodePng (toJPImageY8 img)
@@ -88,44 +87,44 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 instance Readable PNG (Image S CM.Y Word8) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 instance Readable PNG (Image S CM.Y Word16) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 instance Readable PNG (Image S (Alpha CM.Y) Word8) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 instance Readable PNG (Image S (Alpha CM.Y) Word16) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 instance Readable PNG (Image S CM.RGB Word8) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 instance Readable PNG (Image S CM.RGB Word16) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 instance Readable PNG (Image S (Alpha CM.RGB) Word8) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 instance Readable PNG (Image S (Alpha CM.RGB) Word16) where
   decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeMetadataPNG f
+  decodeWithMetadataM f _ = decodeWithMetadataPNG f
 
 -- | Decode a Png Image
 decodePNG :: (ColorModel cs e, MonadThrow m) => PNG -> B.ByteString -> m (Image S cs e)
 decodePNG f bs = convertWith f (JP.decodePng bs)
 
 -- | Decode a Png Image
-decodeMetadataPNG ::
+decodeWithMetadataPNG ::
      (ColorModel cs e, MonadThrow m) => PNG -> B.ByteString -> m (Image S cs e, JP.Metadatas)
-decodeMetadataPNG f bs = convertWithMetadata f (JP.decodePngWithMetadata bs)
+decodeWithMetadataPNG f bs = convertWithMetadata f (JP.decodePngWithMetadata bs)
 
 
 -- | Decode a Png Image
@@ -137,17 +136,17 @@ decodeAutoPNG ::
 decodeAutoPNG f bs = convertAutoWith f (JP.decodePng bs)
 
 -- | Decode a Png Image
-decodeAutoMetadataPNG ::
+decodeAutoWithMetadataPNG ::
      (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadThrow m)
   => Auto PNG
   -> B.ByteString
   -> m (Image r cs e, JP.Metadatas)
-decodeAutoMetadataPNG f bs = convertAutoWithMetadata f (JP.decodePngWithMetadata bs)
+decodeAutoWithMetadataPNG f bs = convertAutoWithMetadata f (JP.decodePngWithMetadata bs)
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PNG) (Image r cs e) where
   decodeM f _ = decodeAutoPNG f
-  decodeWithMetadataM f _ = decodeAutoMetadataPNG f
+  decodeWithMetadataM f _ = decodeAutoWithMetadataPNG f
 
 encodePNG ::
      forall r cs e m.
