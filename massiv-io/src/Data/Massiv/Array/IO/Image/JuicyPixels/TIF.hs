@@ -37,13 +37,8 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
 import Data.Typeable
-import Graphics.Color.Model.Alpha
-import qualified Graphics.Color.Model.CMYK as CM
-import qualified Graphics.Color.Model.RGB as CM
-import qualified Graphics.Color.Model.Y as CM
-import qualified Graphics.Color.Model.YCbCr as CM
-import Graphics.Color.Pixel
-import Graphics.Color.Algebra.Binary
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 
@@ -110,56 +105,56 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 
 instance Readable TIF (Image S CM.Y Word8) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.Y Word16) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.Y Word32) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.Y Float) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.Y) Word8) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.Y) Word16) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.RGB Word8) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.RGB Word16) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.RGB Float) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.RGB) Word8) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.RGB) Word16) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.CMYK Word8) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.CMYK Word16) where
-  decodeM f _ = decodeTIF f
-  decodeWithMetadataM f _ = decodeWithMetadataTIF f
+  decodeM = decodeTIF
+  decodeWithMetadataM = decodeWithMetadataTIF
 
 -- | Decode a Tiff Image
 decodeTIF :: (ColorModel cs e, MonadThrow m) => TIF -> B.ByteString -> m (Image S cs e)
@@ -189,8 +184,8 @@ decodeAutoWithMetadataTIF f bs = convertAutoWithMetadata f (JP.decodeTiffWithMet
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto TIF) (Image r cs e) where
-  decodeM f _ = decodeAutoTIF f
-  decodeWithMetadataM f _ = decodeAutoWithMetadataTIF f
+  decodeM = decodeAutoTIF
+  decodeWithMetadataM = decodeAutoWithMetadataTIF
 
 encodeTIF ::
      forall r cs e m.

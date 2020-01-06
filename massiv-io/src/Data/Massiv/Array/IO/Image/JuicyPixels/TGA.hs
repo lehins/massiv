@@ -36,11 +36,8 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
 import Data.Typeable
-import Graphics.Color.Model.Alpha
-import qualified Graphics.Color.Model.RGB as CM
-import qualified Graphics.Color.Model.Y as CM
-import Graphics.Color.Pixel
-import Graphics.Color.Algebra.Binary
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 
@@ -72,16 +69,16 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 
 instance Readable TGA (Image S CM.Y Word8) where
-  decodeM f _ = decodeTGA f
-  decodeWithMetadataM f _ = decodeWithMetadataTGA f
+  decodeM = decodeTGA
+  decodeWithMetadataM = decodeWithMetadataTGA
 
 instance Readable TGA (Image S CM.RGB Word8) where
-  decodeM f _ = decodeTGA f
-  decodeWithMetadataM f _ = decodeWithMetadataTGA f
+  decodeM = decodeTGA
+  decodeWithMetadataM = decodeWithMetadataTGA
 
 instance Readable TGA (Image S (Alpha CM.RGB) Word8) where
-  decodeM f _ = decodeTGA f
-  decodeWithMetadataM f _ = decodeWithMetadataTGA f
+  decodeM = decodeTGA
+  decodeWithMetadataM = decodeWithMetadataTGA
 
 -- | Decode a Tga Image
 decodeTGA :: (ColorModel cs e, MonadThrow m) => TGA -> B.ByteString -> m (Image S cs e)
@@ -113,7 +110,7 @@ decodeAutoWithMetadataTGA f bs = convertAutoWithMetadata f (JP.decodeTgaWithMeta
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto TGA) (Image r cs e) where
-  decodeWithMetadataM f _ = decodeAutoWithMetadataTGA f
+  decodeWithMetadataM = decodeAutoWithMetadataTGA
 
 encodeTGA ::
      forall r cs e m.

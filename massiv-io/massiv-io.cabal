@@ -9,7 +9,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018-2019 Alexey Kuleshevich
+copyright:           2018-2020 Alexey Kuleshevich
 category:            Data, Data Structures
 build-type:          Simple
 extra-source-files:  README.md
@@ -19,9 +19,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Massiv.Array.IO
+                     , Graphics.ColorSpace
   other-modules:       Data.Massiv.Array.IO.Base
                      , Data.Massiv.Array.IO.Image
-                     --, Data.Massiv.Array.IO.Image.JuicyPixels
+                     , Data.Massiv.Array.IO.Image.JuicyPixels
                      , Data.Massiv.Array.IO.Image.JuicyPixels.Base
                      , Data.Massiv.Array.IO.Image.JuicyPixels.BMP
                      , Data.Massiv.Array.IO.Image.JuicyPixels.GIF
@@ -33,18 +34,15 @@ library
                      , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.8 && < 5
                      , bytestring
-                     , color-space
+                     , Color           >= 0.1.2
                      , data-default-class
                      , deepseq
-                     , directory
                      , exceptions
-                     , filepath        >= 1.0
+                     , filepath
                      , massiv          >= 0.3
-                     , process
                      , JuicyPixels     >= 3.3
                      , netpbm
                      , unliftio        >= 0.2.12
-                     , unliftio-core
                      , vector          >= 0.10
   default-language:    Haskell2010
   ghc-options:         -Wall

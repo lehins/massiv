@@ -28,12 +28,10 @@ module Data.Massiv.Array.IO.Base
   , Sequence(..)
   , Auto(..)
   , Image
-  , defaultReadOptions
+  , convertImage
   , defaultWriteOptions
-  ---, encodeAuto
   , encodeError
   , decodeError
-  , convertImage
   , toProxy
   , fromMaybeEncode
   , fromMaybeDecode
@@ -48,7 +46,7 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Default.Class (Default(..))
 import Data.Massiv.Array as A
 import Data.Typeable
-import Graphics.Color.Pixel
+import Graphics.Pixel.ColorSpace
 
 type Image r cs e = Array r Ix2 (Pixel cs e)
 
@@ -73,11 +71,6 @@ newtype EncodeError = EncodeError String deriving Show
 instance Exception EncodeError
 
 
--- | Generate default read options for a file format
-defaultReadOptions :: FileFormat f => f -> ReadOptions f
-defaultReadOptions _ = def
-
-
 -- | Generate default write options for a file format
 defaultWriteOptions :: FileFormat f => f -> WriteOptions f
 defaultWriteOptions _ = def
@@ -90,11 +83,7 @@ newtype Auto f = Auto f deriving Show
 
 -- | File format. Helps in guessing file format from a file extension,
 -- as well as supplying format specific options during saving the file.
-class (Default (ReadOptions f), Default (WriteOptions f), Show f) => FileFormat f where
-  -- | Options that can be used during reading a file in this format.
-  type ReadOptions f
-  type ReadOptions f = ()
-
+class (Default (WriteOptions f), Show f) => FileFormat f where
   -- | Options that can be used during writing a file in this format.
   type WriteOptions f
   type WriteOptions f = ()
@@ -116,7 +105,6 @@ class (Default (ReadOptions f), Default (WriteOptions f), Show f) => FileFormat 
 
 
 instance FileFormat f => FileFormat (Auto f) where
-  type ReadOptions (Auto f) = ReadOptions f
   type WriteOptions (Auto f) = WriteOptions f
   type Metadata (Auto f) = Metadata f
 
@@ -131,16 +119,16 @@ class Readable f arr where
   -- was not consumed during decoding.
   --
   -- @since 0.2.0
-  decodeM :: MonadThrow m => f -> ReadOptions f -> B.ByteString -> m arr
-  decodeM f opts bs = fst <$> decodeWithMetadataM f opts bs
+  decodeM :: MonadThrow m => f -> B.ByteString -> m arr
+  decodeM f bs = fst <$> decodeWithMetadataM f bs
   -- | Just as `decodeM`, but also return any format type specific metadata
   --
   -- @since 0.2.0
-  decodeWithMetadataM :: MonadThrow m => f -> ReadOptions f -> B.ByteString -> m (arr, Metadata f)
+  decodeWithMetadataM :: MonadThrow m => f -> B.ByteString -> m (arr, Metadata f)
   default decodeWithMetadataM :: (Metadata f ~ (), MonadThrow m) =>
-    f -> ReadOptions f -> B.ByteString -> m (arr, Metadata f)
-  decodeWithMetadataM f opts bs = do
-    arr <- decodeM f opts bs
+    f -> B.ByteString -> m (arr, Metadata f)
+  decodeWithMetadataM f bs = do
+    arr <- decodeM f bs
     pure (arr, ())
 
 -- | Encode an array into a `BL.ByteString`.
@@ -148,8 +136,8 @@ encode' :: Writable f arr => f -> WriteOptions f -> arr -> BL.ByteString
 encode' f opts = either throw id . encodeM f opts
 
 -- | Decode a `B.ByteString` into an Array.
-decode' :: Readable f arr => f -> ReadOptions f -> B.ByteString -> arr
-decode' f opts = either throw id . decodeM f opts
+decode' :: Readable f arr => f -> B.ByteString -> arr
+decode' f = either throw id . decodeM f
 
 
 -- | Arrays that can be written into a file.
@@ -233,6 +221,10 @@ encodeError = either (throwM . EncodeError) pure
 decodeError :: MonadThrow m => Either String a -> m a
 decodeError = either (throwM . DecodeError) pure
 
+
+-- | Convert image to any supported color space
+--
+-- @since 0.2.0
 convertImage ::
      ( Source r' Ix2 (Pixel cs' e')
      , Mutable r Ix2 (Pixel cs e)

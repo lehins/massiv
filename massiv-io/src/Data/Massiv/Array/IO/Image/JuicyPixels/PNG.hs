@@ -37,11 +37,8 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
 import Data.Typeable
-import Graphics.Color.Model.Alpha
-import qualified Graphics.Color.Model.RGB as CM
-import qualified Graphics.Color.Model.Y as CM
-import Graphics.Color.Pixel
-import Graphics.Color.Algebra.Binary
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 --------------------------------------------------------------------------------
@@ -86,36 +83,36 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 
 instance Readable PNG (Image S CM.Y Word8) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S CM.Y Word16) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.Y) Word8) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.Y) Word16) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S CM.RGB Word8) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S CM.RGB Word16) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.RGB) Word8) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.RGB) Word16) where
-  decodeM f _ = decodePNG f
-  decodeWithMetadataM f _ = decodeWithMetadataPNG f
+  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
 
 -- | Decode a Png Image
 decodePNG :: (ColorModel cs e, MonadThrow m) => PNG -> B.ByteString -> m (Image S cs e)
@@ -145,8 +142,8 @@ decodeAutoWithMetadataPNG f bs = convertAutoWithMetadata f (JP.decodePngWithMeta
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PNG) (Image r cs e) where
-  decodeM f _ = decodeAutoPNG f
-  decodeWithMetadataM f _ = decodeAutoWithMetadataPNG f
+  decodeM = decodeAutoPNG
+  decodeWithMetadataM = decodeAutoWithMetadataPNG
 
 encodePNG ::
      forall r cs e m.

@@ -1,6 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -41,28 +40,11 @@ import Data.Massiv.Array.Manifest.Vector
 import Data.Typeable
 import qualified Data.Vector.Storable as V
 import Foreign.Storable (Storable)
-import Graphics.Color.Algebra.Binary
-import Graphics.Color.Pixel
-import qualified Graphics.Color.Model.RGB as CM
-import qualified Graphics.Color.Model.Y as CM
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 import Graphics.Netpbm as Netpbm hiding (PPM)
 import qualified Graphics.Netpbm as Netpbm (PPM(..))
 import Prelude as P
-
-#if !MIN_VERSION_massiv(0, 2, 7)
-pattern Sz :: ix -> ix
-pattern Sz ix = ix
-type Sz ix = ix
-#endif
-#if !MIN_VERSION_massiv(0, 3, 0)
-fromVectorM ::
-     (Construct S ix a, Mutable S ix a, Storable a)
-  => Comp
-  -> Sz ix
-  -> V.Vector a
-  -> Maybe (Array S ix a)
-fromVectorM comp sz = pure . fromVector comp sz
-#endif
 
 -- | Netpbm: portable bitmap image with @.pbm@ extension.
 data PBM = PBM deriving Show
@@ -111,7 +93,7 @@ decodeNetpbmImage ::
   => f
   -> B.ByteString
   -> m (Image S cs e, Maybe B.ByteString)
-decodeNetpbmImage f = decodePPM f fromNetpbmImage
+decodeNetpbmImage = decodePPM fromNetpbmImage
 
 -- | Try to decode a Netpbm image sequence
 --
@@ -121,7 +103,7 @@ decodeNetpbmImageSequence ::
   => Sequence f
   -> B.ByteString
   -> m ([Image S cs e], Maybe B.ByteString)
-decodeNetpbmImageSequence f = decodePPMs f fromNetpbmImage
+decodeNetpbmImageSequence = decodePPMs fromNetpbmImage
 
 -- | Try to decode a Netpbm image, while auto converting the colorspace.
 --
@@ -131,7 +113,7 @@ decodeAutoNetpbmImage ::
   => f
   -> B.ByteString
   -> m (Image r cs e, Maybe B.ByteString)
-decodeAutoNetpbmImage f = decodePPM f fromNetpbmImageAuto
+decodeAutoNetpbmImage = decodePPM fromNetpbmImageAuto
 
 -- | Try to decode a Netpbm image sequence, while auto converting the colorspace.
 --
@@ -141,14 +123,14 @@ decodeAutoNetpbmImageSequence ::
   => Auto (Sequence f)
   -> B.ByteString
   -> m ([Image r cs e], Maybe B.ByteString)
-decodeAutoNetpbmImageSequence f = decodePPMs f fromNetpbmImageAuto
+decodeAutoNetpbmImageSequence = decodePPMs fromNetpbmImageAuto
 
 decodePPMs :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorModel cs e, MonadThrow m) =>
-              f
-           -> (Netpbm.PPM -> Maybe (Image r cs e))
+              (Netpbm.PPM -> Maybe (Image r cs e))
+           -> f
            -> B.ByteString
            -> m ([Image r cs e], Maybe B.ByteString)
-decodePPMs f converter bs =
+decodePPMs converter f bs =
   case parsePPM bs of
     Left err -> throwM $ DecodeError err
     Right ([], Just _) -> throwM $ DecodeError "Cannot parse PNM image"
@@ -159,11 +141,11 @@ decodePPMs f converter bs =
 
 
 decodePPM :: (FileFormat f, Mutable r Ix2 (Pixel cs e), ColorModel cs e, MonadThrow m) =>
-             f
-          -> (Netpbm.PPM -> Maybe (Image r cs e))
+             (Netpbm.PPM -> Maybe (Image r cs e))
+          -> f
           -> B.ByteString
           -> m (Image r cs e, Maybe B.ByteString)
-decodePPM f decoder bs =
+decodePPM decoder f bs =
   case parsePPM bs of
     Left err -> throwM $ DecodeError err
     Right ([], Nothing) -> throwM $ DecodeError "PNM image is empty"
@@ -195,27 +177,27 @@ showNetpbmCS Netpbm.PPM {ppmData} =
 
 
 instance Readable PBM (Image S CM.Y Bit) where
-  decodeWithMetadataM f _ = decodeNetpbmImage f
+  decodeWithMetadataM = decodeNetpbmImage
 instance Readable (Sequence PBM) [Image S CM.Y Bit] where
-  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM = decodePPMs fromNetpbmImage
 
 instance Readable PGM (Image S CM.Y Word8) where
-  decodeWithMetadataM f _ = decodeNetpbmImage f
+  decodeWithMetadataM = decodeNetpbmImage
 instance Readable PGM (Image S CM.Y Word16) where
-  decodeWithMetadataM f _ = decodeNetpbmImage f
+  decodeWithMetadataM = decodeNetpbmImage
 instance Readable (Sequence PGM) [Image S CM.Y Word8] where
-  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM = decodePPMs fromNetpbmImage
 instance Readable (Sequence PGM) [Image S CM.Y Word16] where
-  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM = decodePPMs fromNetpbmImage
 
 instance Readable PPM (Image S CM.RGB Word8) where
-  decodeWithMetadataM f _ = decodeNetpbmImage f
+  decodeWithMetadataM = decodeNetpbmImage
 instance Readable PPM (Image S CM.RGB Word16) where
-  decodeWithMetadataM f _ = decodeNetpbmImage f
+  decodeWithMetadataM = decodeNetpbmImage
 instance Readable (Sequence PPM) [Image S CM.RGB Word8] where
-  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM = decodePPMs fromNetpbmImage
 instance Readable (Sequence PPM) [Image S CM.RGB Word16] where
-  decodeWithMetadataM f _ = decodePPMs f fromNetpbmImage
+  decodeWithMetadataM = decodePPMs fromNetpbmImage
 
 
 fromNetpbmImage
@@ -239,24 +221,24 @@ fromNetpbmImage Netpbm.PPM {..} = do
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PBM) (Image r cs e) where
-  decodeWithMetadataM f _ = decodeAutoNetpbmImage f
+  decodeWithMetadataM = decodeAutoNetpbmImage
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto (Sequence PBM)) [Image r cs e] where
-  decodeWithMetadataM f _ = decodeAutoNetpbmImageSequence f
+  decodeWithMetadataM = decodeAutoNetpbmImageSequence
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PGM) (Image r cs e) where
-  decodeWithMetadataM f _ = decodeAutoNetpbmImage f
+  decodeWithMetadataM = decodeAutoNetpbmImage
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto (Sequence PGM)) [Image r cs e] where
-  decodeWithMetadataM f _ = decodeAutoNetpbmImageSequence f
+  decodeWithMetadataM = decodeAutoNetpbmImageSequence
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto PPM) (Image r cs e) where
-  decodeWithMetadataM f _ = decodeAutoNetpbmImage f
+  decodeWithMetadataM = decodeAutoNetpbmImage
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto (Sequence PPM)) [Image r cs e] where
-  decodeWithMetadataM f _ = decodeAutoNetpbmImageSequence f
+  decodeWithMetadataM = decodeAutoNetpbmImageSequence
 
 fromNetpbmImageAuto
   :: forall cs i e r . (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>

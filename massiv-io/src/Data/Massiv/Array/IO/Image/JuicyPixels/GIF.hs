@@ -48,10 +48,8 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
 import Data.Typeable
-import Graphics.Color.Model.Alpha
-import qualified Graphics.Color.Model.RGB as CM
-import qualified Graphics.Color.Model.Y as CM
-import Graphics.Color.Pixel
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 --------------------------------------------------------------------------------
@@ -96,12 +94,12 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 
 instance Readable GIF (Image S CM.RGB Word8) where
-  decodeM f _ = decodeGIF f
-  decodeWithMetadataM f _ = decodeWithMetadataGIF f
+  decodeM = decodeGIF
+  decodeWithMetadataM = decodeWithMetadataGIF
 
 instance Readable GIF (Image S (Alpha CM.RGB) Word8) where
-  decodeM f _ = decodeGIF f
-  decodeWithMetadataM f _ = decodeWithMetadataGIF f
+  decodeM = decodeGIF
+  decodeWithMetadataM = decodeWithMetadataGIF
 
 -- | Decode a Gif Image
 decodeGIF :: (ColorModel cs e, MonadThrow m) => GIF -> B.ByteString -> m (Image S cs e)
@@ -132,8 +130,8 @@ decodeAutoWithMetadataGIF f bs = convertAutoWithMetadata f (JP.decodeGifWithMeta
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto GIF) (Image r cs e) where
-  decodeM f _ = decodeAutoGIF f
-  decodeWithMetadataM f _ = decodeAutoWithMetadataGIF f
+  decodeM = decodeAutoGIF
+  decodeWithMetadataM = decodeAutoWithMetadataGIF
 
 encodeGIF ::
      forall r cs e m.
@@ -184,17 +182,17 @@ instance FileFormat (Sequence GIF) where
   ext _ = ext GIF
 
 instance Readable (Sequence GIF) [Image S CM.RGB Word8] where
-  decodeM f _ = decodeSequenceGIF f
-  decodeWithMetadataM f _ = decodeSequenceWithMetadataGIF f
+  decodeM = decodeSequenceGIF
+  decodeWithMetadataM = decodeSequenceWithMetadataGIF
 
 instance Readable (Sequence GIF) [Image S (Alpha CM.RGB) Word8] where
-  decodeM f _ = decodeSequenceGIF f
-  decodeWithMetadataM f _ = decodeSequenceWithMetadataGIF f
+  decodeM = decodeSequenceGIF
+  decodeWithMetadataM = decodeSequenceWithMetadataGIF
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto (Sequence GIF)) [Image r cs e] where
-  decodeM f _ = decodeAutoSequenceGIF f
-  decodeWithMetadataM f _ = decodeAutoSequenceWithMetadataGIF f
+  decodeM = decodeAutoSequenceGIF
+  decodeWithMetadataM = decodeAutoSequenceWithMetadataGIF
 
 
 -- | Decode a sequence of Gif images

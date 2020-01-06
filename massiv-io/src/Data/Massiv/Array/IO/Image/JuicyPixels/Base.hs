@@ -53,14 +53,8 @@ import Data.Massiv.Array.Manifest.Vector
 import Data.Typeable
 import qualified Data.Vector.Storable as V
 import Foreign.Storable (Storable(sizeOf))
-import Graphics.Color.Model.Alpha
-import qualified Graphics.Color.Model.CMYK as CM
-import qualified Graphics.Color.Model.RGB as CM
-import qualified Graphics.Color.Model.Y as CM
-import qualified Graphics.Color.Model.YCbCr as CM
-import Graphics.Color.Pixel
-import Graphics.Color.Space.RGB.Alternative.CMYK
-import Graphics.Color.Space.RGB.Alternative.YCbCr
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 
 --------------------------------------------------------------------------------
 -- Common JuciyPixels encoding/decoding functions ------------------------------

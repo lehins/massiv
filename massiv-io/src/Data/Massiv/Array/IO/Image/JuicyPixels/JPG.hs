@@ -38,13 +38,8 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
 import Data.Typeable
-import Graphics.Color.Model.Alpha
-import qualified Graphics.Color.Model.CMYK as CM
-import qualified Graphics.Color.Model.RGB as CM
-import qualified Graphics.Color.Model.Y as CM
-import qualified Graphics.Color.Model.YCbCr as CM
-import Graphics.Color.Pixel
-import Graphics.Color.Algebra.Binary
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 --------------------------------------------------------------------------------
@@ -94,24 +89,24 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 
 instance Readable JPG (Image S CM.Y Word8) where
-  decodeM f _ = decodeJPG f
-  decodeWithMetadataM f _ = decodeWithMetadataJPG f
+  decodeM = decodeJPG
+  decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S (Alpha CM.Y) Word8) where
-  decodeM f _ = decodeJPG f
-  decodeWithMetadataM f _ = decodeWithMetadataJPG f
+  decodeM = decodeJPG
+  decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S CM.RGB Word8) where
-  decodeM f _ = decodeJPG f
-  decodeWithMetadataM f _ = decodeWithMetadataJPG f
+  decodeM = decodeJPG
+  decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S CM.CMYK Word8) where
-  decodeM f _ = decodeJPG f
-  decodeWithMetadataM f _ = decodeWithMetadataJPG f
+  decodeM = decodeJPG
+  decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S CM.YCbCr Word8) where
-  decodeM f _ = decodeJPG f
-  decodeWithMetadataM f _ = decodeWithMetadataJPG f
+  decodeM = decodeJPG
+  decodeWithMetadataM = decodeWithMetadataJPG
 
 -- | Decode a Jpeg Image
 decodeJPG :: (ColorModel cs e, MonadThrow m) => JPG -> B.ByteString -> m (Image S cs e)
@@ -141,8 +136,8 @@ decodeAutoWithMetadataJPG f bs = convertAutoWithMetadata f (JP.decodeJpegWithMet
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto JPG) (Image r cs e) where
-  decodeM f _ = decodeAutoJPG f
-  decodeWithMetadataM f _ = decodeAutoWithMetadataJPG f
+  decodeM = decodeAutoJPG
+  decodeWithMetadataM = decodeAutoWithMetadataJPG
 
 encodeJPG ::
      forall r cs e m.

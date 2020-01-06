@@ -1,7 +1,7 @@
 resolver: lts-14.9
 packages:
 - '.'
-- '../../color-space/color-space'
-extra-deps: []
+extra-deps:
+- '../../Color/Color'
 flags: {}
 extra-package-dbs: []

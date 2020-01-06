@@ -6,14 +6,17 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
 module Data.Massiv.Array.IO.Image
-  ( Encode
+  ( module Data.Massiv.Array.IO.Image.JuicyPixels
+  , module Data.Massiv.Array.IO.Image.Netpbm
+  -- ** Helper image functions
+  , Encode
   , encodeImageM
   , imageWriteFormats
   , imageWriteAutoFormats
@@ -21,8 +24,6 @@ module Data.Massiv.Array.IO.Image
   , decodeImageM
   , imageReadFormats
   , imageReadAutoFormats
-  , module JuicyPixels
-  , module Data.Massiv.Array.IO.Image.Netpbm
   ) where
 
 import qualified Data.ByteString as B (ByteString)
@@ -30,16 +31,9 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
-import Data.Massiv.Array.IO.Image.JuicyPixels.BMP as JuicyPixels
-import Data.Massiv.Array.IO.Image.JuicyPixels.GIF as JuicyPixels
-import Data.Massiv.Array.IO.Image.JuicyPixels.HDR as JuicyPixels
-import Data.Massiv.Array.IO.Image.JuicyPixels.JPG as JuicyPixels
-import Data.Massiv.Array.IO.Image.JuicyPixels.PNG as JuicyPixels
-import Data.Massiv.Array.IO.Image.JuicyPixels.TGA as JuicyPixels
-import Data.Massiv.Array.IO.Image.JuicyPixels.TIF as JuicyPixels
+import Data.Massiv.Array.IO.Image.JuicyPixels
 import Data.Massiv.Array.IO.Image.Netpbm
-import Graphics.Color.Model
-import Graphics.Color.Pixel
+import Graphics.Pixel.ColorSpace
 import Prelude as P
 import System.FilePath (takeExtension)
 
@@ -47,7 +41,7 @@ import System.FilePath (takeExtension)
 
 data Encode out where
   EncodeAs
-    :: (FileFormat f)
+    :: FileFormat f
     => f
     -> (forall m. MonadThrow m =>
                     f -> out -> m BL.ByteString)
@@ -117,7 +111,7 @@ imageWriteAutoFormats =
 
 data Decode out where
   DecodeAs
-    :: (FileFormat f)
+    :: FileFormat f
     => f
     -> (forall m. MonadThrow m =>
                     f -> B.ByteString -> m out)
@@ -132,7 +126,7 @@ instance FileFormat (Decode (Image r cs e)) where
   exts (DecodeAs f _) = exts f
 
 instance Readable (Decode (Image r cs e)) (Image r cs e) where
-  decodeM (DecodeAs f dec) _ = dec f
+  decodeM (DecodeAs f dec) = dec f
 
 
 -- | Decode an image from the strict `ByteString` while inferring format the image is encoded in
@@ -149,7 +143,7 @@ decodeImageM formats path bs = do
   let ext' = P.map toLower . takeExtension $ path
   case dropWhile (not . isFormat ext') formats of
     []    -> throwM $ DecodeError $ "File format is not supported: " ++ ext'
-    (f:_) -> decodeM f () bs
+    (f:_) -> decodeM f bs
 
 -- | List of image formats decodable with no color space conversion
 imageReadFormats :: ColorModel cs e => [Decode (Image S cs e)]

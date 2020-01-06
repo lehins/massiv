@@ -37,9 +37,8 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
 import Data.Typeable
-import Graphics.Color.Model.Alpha
-import qualified Graphics.Color.Model.RGB as CM
-import Graphics.Color.Pixel
+import Graphics.Pixel.ColorSpace
+import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 --------------------------------------------------------------------------------
@@ -83,8 +82,8 @@ instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel 
 
 
 instance Readable HDR (Image S CM.RGB Float) where
-  decodeM f _ = decodeHDR f
-  decodeWithMetadataM f _ = decodeWithMetadataHDR f
+  decodeM = decodeHDR
+  decodeWithMetadataM = decodeWithMetadataHDR
 
 -- | Decode a Jpeg Image
 decodeHDR :: (ColorModel cs e, MonadThrow m) => HDR -> B.ByteString -> m (Image S cs e)
@@ -114,8 +113,8 @@ decodeAutoWithMetadataHDR f bs = convertAutoWithMetadata f (JP.decodeHDRWithMeta
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto HDR) (Image r cs e) where
-  decodeM f _ = decodeAutoHDR f
-  decodeWithMetadataM f _ = decodeAutoWithMetadataHDR f
+  decodeM = decodeAutoHDR
+  decodeWithMetadataM = decodeAutoWithMetadataHDR
 
 encodeHDR ::
      forall r cs e m.
