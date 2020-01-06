@@ -31,6 +31,7 @@ import Data.Char (toLower)
 import Data.Massiv.Array
 import Data.Massiv.Array.IO.Base
 import Data.Massiv.Array.IO.Image.JuicyPixels.BMP as JuicyPixels
+import Data.Massiv.Array.IO.Image.JuicyPixels.GIF as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.HDR as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.JPG as JuicyPixels
 import Data.Massiv.Array.IO.Image.JuicyPixels.PNG as JuicyPixels
@@ -87,7 +88,7 @@ encodeImageM formats path img = do
 imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorModel cs e) => [Encode (Image r cs e)]
 imageWriteFormats =
   [ EncodeAs BMP (`encodeBMP` def)
-  -- , EncodeAs GIF
+  , EncodeAs GIF (`encodeGIF` def)
   , EncodeAs HDR (`encodeHDR` def)
   , EncodeAs JPG (`encodeJPG` def)
   , EncodeAs PNG encodePNG
@@ -104,7 +105,7 @@ imageWriteAutoFormats
   => [Encode (Image r cs e)]
 imageWriteAutoFormats =
   [ EncodeAs (Auto BMP) (\(Auto BMP) -> pure . encodeAutoBMP def)
-  -- , EncodeAs (Auto GIF)
+  , EncodeAs (Auto GIF) (\(Auto GIF) -> encodeAutoGIF def)
   , EncodeAs (Auto HDR) (\(Auto HDR) -> pure . encodeAutoHDR def)
   , EncodeAs (Auto JPG) (\(Auto JPG) -> pure . encodeAutoJPG def)
   , EncodeAs (Auto PNG) (\(Auto PNG) -> pure . encodeAutoPNG)
@@ -154,7 +155,7 @@ decodeImageM formats path bs = do
 imageReadFormats :: ColorModel cs e => [Decode (Image S cs e)]
 imageReadFormats =
   [ DecodeAs BMP decodeBMP
-  -- , DecodeAs GIF
+  , DecodeAs GIF decodeGIF
   , DecodeAs HDR decodeHDR
   , DecodeAs JPG decodeJPG
   , DecodeAs PNG decodePNG
@@ -171,7 +172,7 @@ imageReadAutoFormats
   => [Decode (Image r cs e)]
 imageReadAutoFormats =
   [ DecodeAs (Auto BMP) decodeAutoBMP
-  -- , DecodeAs (Auto GIF)
+  , DecodeAs (Auto GIF) decodeAutoGIF
   , DecodeAs (Auto HDR) decodeAutoHDR
   , DecodeAs (Auto JPG) decodeAutoJPG
   , DecodeAs (Auto PNG) decodeAutoPNG

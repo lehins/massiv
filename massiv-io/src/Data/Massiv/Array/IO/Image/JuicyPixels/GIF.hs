@@ -31,6 +31,11 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.GIF
   , decodeAutoWithMetadataGIF
   , encodeGIF
   , encodeAutoGIF
+  -- Sequence
+  , decodeSequenceGIF
+  , decodeSequenceWithMetadataGIF
+  , decodeAutoSequenceGIF
+  , decodeAutoSequenceWithMetadataGIF
   ) where
 
 import Prelude as P
@@ -74,14 +79,14 @@ instance Writable GIF (Image S CM.Y Word8) where
   encodeM GIF _ =  pure . JP.encodeGifImage . toJPImageY8
 
 instance Writable GIF (Image S CM.RGB Word8) where
-  encodeM GIF = encodePalletizedRGB
+  encodeM GIF = encodePalettizedRGB
 
-encodePalletizedRGB ::
+encodePalettizedRGB ::
      (MonadThrow m, Source r Ix2 (Pixel CM.RGB Word8))
   => GifOptions
   -> Image r CM.RGB Word8
   -> m BL.ByteString
-encodePalletizedRGB GifOptions {gifPaletteOptions} =
+encodePalettizedRGB GifOptions {gifPaletteOptions} =
   encodeError .
   uncurry JP.encodeGifImageWithPalette . JP.palettize gifPaletteOptions . toJPImageRGB8
 
@@ -124,6 +129,7 @@ decodeAutoWithMetadataGIF ::
   -> m (Image r cs e, JP.Metadatas)
 decodeAutoWithMetadataGIF f bs = convertAutoWithMetadata f (JP.decodeGifWithMetadata bs)
 
+
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto GIF) (Image r cs e) where
   decodeM f _ = decodeAutoGIF f
@@ -137,19 +143,18 @@ encodeGIF ::
   -> Image r cs e
   -> m BL.ByteString
 encodeGIF f opts img =
-  fallbackEncodePalletizedRGB $ do
+  fallbackEncodePalettizedRGB $ do
     Refl <- eqT :: Maybe (cs :~: CM.Y)
     Refl <- eqT :: Maybe (e :~: Word8)
     pure $ JP.encodeGifImage $ toJPImageY8 img
   where
-    fallbackEncodePalletizedRGB =
+    fallbackEncodePalettizedRGB =
       \case
         Just bs -> pure bs
         Nothing
           | Just Refl <- (eqT :: Maybe (e :~: Word8))
-          , Just Refl <- (eqT :: Maybe (cs :~: CM.RGB)) -> encodePalletizedRGB opts img
+          , Just Refl <- (eqT :: Maybe (cs :~: CM.RGB)) -> encodePalettizedRGB opts img
         Nothing -> fromMaybeEncode f (Proxy :: Proxy (Image r cs e)) Nothing
-
 
 
 encodeAutoGIF ::
@@ -159,15 +164,71 @@ encodeAutoGIF ::
   -> Image r cs e
   -> m BL.ByteString
 encodeAutoGIF opts img =
-  fallbackEncodePalletizedRGB $ do
+  fallbackEncodePalettizedRGB $ do
     Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
     pure $ JP.encodeGifImage $ toJPImageY8 $ A.map (toPixel8 . toPixelBaseModel) img
   where
     toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
-    fallbackEncodePalletizedRGB =
+    fallbackEncodePalettizedRGB =
       \case
         Just bs -> pure bs
         Nothing
           | Just Refl <- (eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)) ->
-            encodePalletizedRGB opts $ A.map (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
-        Nothing -> encodePalletizedRGB opts $ A.map (toPixelBaseModel . toSRGB8) img
+            encodePalettizedRGB opts $ A.map (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
+        Nothing -> encodePalettizedRGB opts $ A.map (toPixelBaseModel . toSRGB8) img
+
+
+instance FileFormat (Sequence GIF) where
+  type WriteOptions (Sequence GIF) = WriteOptions GIF
+  type Metadata (Sequence GIF) = [JP.GifDelay]
+  ext _ = ext GIF
+
+instance Readable (Sequence GIF) [Image S CM.RGB Word8] where
+  decodeM f _ = decodeSequenceGIF f
+  decodeWithMetadataM f _ = decodeSequenceWithMetadataGIF f
+
+instance Readable (Sequence GIF) [Image S (Alpha CM.RGB) Word8] where
+  decodeM f _ = decodeSequenceGIF f
+  decodeWithMetadataM f _ = decodeSequenceWithMetadataGIF f
+
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Readable (Auto (Sequence GIF)) [Image r cs e] where
+  decodeM f _ = decodeAutoSequenceGIF f
+  decodeWithMetadataM f _ = decodeAutoSequenceWithMetadataGIF f
+
+
+-- | Decode a sequence of Gif images
+decodeSequenceGIF ::
+     (ColorModel cs e, MonadThrow m) => Sequence GIF -> B.ByteString -> m [Image S cs e]
+decodeSequenceGIF f bs = convertSequenceWith f (JP.decodeGifImages bs)
+
+-- | Decode a sequence of Gif images
+decodeSequenceWithMetadataGIF ::
+     (ColorModel cs e, MonadThrow m)
+  => Sequence GIF
+  -> B.ByteString
+  -> m ([Image S cs e], [JP.GifDelay])
+decodeSequenceWithMetadataGIF = decodeSeqMetadata decodeSequenceGIF
+
+-- | Decode a sequence of Gif images
+decodeAutoSequenceGIF ::
+     (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadThrow m)
+  => Auto (Sequence GIF)
+  -> B.ByteString
+  -> m [Image r cs e]
+decodeAutoSequenceGIF f bs = convertAutoSequenceWith f (JP.decodeGifImages bs)
+
+-- | Decode a sequence of Gif images
+decodeAutoSequenceWithMetadataGIF ::
+     (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadThrow m)
+  => Auto (Sequence GIF)
+  -> B.ByteString
+  -> m ([Image r cs e], [JP.GifDelay])
+decodeAutoSequenceWithMetadataGIF = decodeSeqMetadata decodeAutoSequenceGIF
+
+decodeSeqMetadata ::
+     MonadThrow m => (t -> B.ByteString -> m a) -> t -> B.ByteString -> m (a, [JP.GifDelay])
+decodeSeqMetadata decode f bs = do
+  imgs <- decode f bs
+  delays <- decodeError $ JP.getDelaysGifImages bs
+  pure (imgs, delays)

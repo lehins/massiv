@@ -32,6 +32,7 @@ module Data.Massiv.Array.IO.Base
   , defaultWriteOptions
   ---, encodeAuto
   , encodeError
+  , decodeError
   , convertImage
   , toProxy
   , fromMaybeEncode
@@ -228,6 +229,9 @@ convertEither f showCS conv eImg =
 
 encodeError :: MonadThrow m => Either String a -> m a
 encodeError = either (throwM . EncodeError) pure
+
+decodeError :: MonadThrow m => Either String a -> m a
+decodeError = either (throwM . DecodeError) pure
 
 convertImage ::
      ( Source r' Ix2 (Pixel cs' e')

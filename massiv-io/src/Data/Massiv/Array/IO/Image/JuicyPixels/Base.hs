@@ -23,6 +23,8 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.Base
   , convertWithMetadata
   , convertAutoWith
   , convertAutoWithMetadata
+  , convertSequenceWith
+  , convertAutoSequenceWith
   , toJPImageY8
   , toJPImageY16
   , toJPImageY32
@@ -43,7 +45,7 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 import Prelude as P
 import qualified Codec.Picture as JP
-import qualified Codec.Picture.Types as TypesJP
+import qualified Codec.Picture.Types as JP
 import Control.Monad (guard, unless)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
@@ -67,7 +69,7 @@ import Graphics.Color.Space.RGB.Alternative.YCbCr
 convertWith ::
      (MonadThrow m, ColorModel cs e, FileFormat f)
   => f
-  -> Either String TypesJP.DynamicImage
+  -> Either String JP.DynamicImage
   -> m (Image S cs e)
 convertWith f = either (throwM . DecodeError) (fromMaybeDecode f showJP fromDynamicImage)
 
@@ -75,7 +77,7 @@ convertWith f = either (throwM . DecodeError) (fromMaybeDecode f showJP fromDyna
 convertWithMetadata ::
      (MonadThrow m, ColorModel cs e, FileFormat f)
   => f
-  -> Either String (TypesJP.DynamicImage, Metadata f)
+  -> Either String (JP.DynamicImage, Metadata f)
   -> m (Image S cs e, Metadata f)
 convertWithMetadata f decoded =
   case decoded of
@@ -87,7 +89,7 @@ convertWithMetadata f decoded =
 convertAutoWithMetadata ::
      (MonadThrow m, FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs i e)
   => Auto f
-  -> Either String (TypesJP.DynamicImage, Metadata f)
+  -> Either String (JP.DynamicImage, Metadata f)
   -> m (Image r cs e, Metadata f)
 convertAutoWithMetadata f decoded =
   case decoded of
@@ -99,9 +101,29 @@ convertAutoWithMetadata f decoded =
 convertAutoWith ::
      (MonadThrow m, FileFormat f, Mutable r Ix2 (Pixel cs e), ColorSpace cs i e)
   => Auto f
-  -> Either String TypesJP.DynamicImage
+  -> Either String JP.DynamicImage
   -> m (Image r cs e)
 convertAutoWith f = either (throwM . DecodeError) (fromMaybeDecode f showJP fromDynamicImageAuto)
+
+
+convertSequenceWith ::
+     (MonadThrow m, ColorModel cs e, FileFormat (Sequence f))
+  => Sequence f
+  -> Either String [JP.DynamicImage]
+  -> m [Image S cs e]
+convertSequenceWith f ejpImgs = do
+  jpImgs <- decodeError ejpImgs
+  P.traverse (fromMaybeDecode f showJP fromDynamicImage) jpImgs
+
+
+convertAutoSequenceWith ::
+     (MonadThrow m, FileFormat (Sequence f), Mutable r Ix2 (Pixel cs e), ColorSpace cs i e)
+  => Auto (Sequence f)
+  -> Either String [JP.DynamicImage]
+  -> m [Image r cs e]
+convertAutoSequenceWith f ejpImgs = do
+  jpImgs <- decodeError ejpImgs
+  P.traverse (fromMaybeDecode f showJP fromDynamicImageAuto) jpImgs
 
 
 fromDynamicImage ::
@@ -221,15 +243,15 @@ toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toVector arrS
     Sz (m :. n) = size img
 {-# INLINE toJPImageUnsafe #-}
 
-toJPImageY8 :: Source r Ix2 (Pixel CM.Y Word8) => Image r CM.Y Word8 -> JP.Image TypesJP.Pixel8
+toJPImageY8 :: Source r Ix2 (Pixel CM.Y Word8) => Image r CM.Y Word8 -> JP.Image JP.Pixel8
 toJPImageY8 = toJPImageUnsafe
 {-# INLINE toJPImageY8 #-}
 
-toJPImageY16 :: Source r Ix2 (Pixel CM.Y Word16) => Image r CM.Y Word16 -> JP.Image TypesJP.Pixel16
+toJPImageY16 :: Source r Ix2 (Pixel CM.Y Word16) => Image r CM.Y Word16 -> JP.Image JP.Pixel16
 toJPImageY16 = toJPImageUnsafe
 {-# INLINE toJPImageY16 #-}
 
-toJPImageY32 :: Source r Ix2 (Pixel CM.Y Word32) => Image r CM.Y Word32 -> JP.Image TypesJP.Pixel32
+toJPImageY32 :: Source r Ix2 (Pixel CM.Y Word32) => Image r CM.Y Word32 -> JP.Image JP.Pixel32
 toJPImageY32 = toJPImageUnsafe
 {-# INLINE toJPImageY32 #-}
 
