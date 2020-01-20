@@ -378,8 +378,6 @@ class ( Eq ix
       , Ord (Lower ix)
       , Show (Lower ix)
       , NFData (Lower ix)
-      , 1 <= Dimensions ix
-      , KnownNat (Dimensions ix)
       ) =>
       Index ix
   where
