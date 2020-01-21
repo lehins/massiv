@@ -3,6 +3,7 @@
 * Addition of `computeIO` and `computePrimM`
 * Addition of `makeArrayLinearA`
 * Addition of `traverseS`
+* Fix regression in performance introduced in `massiv-0.4.0`
 
 # 0.4.4
 
@@ -63,7 +64,7 @@
 * Add an orphan instance of `MonadThrow` for `ST` monad for older versions of
   `exceptions`. See [ekmett/exceptions#72](https://github.com/ekmett/exceptions/pull/72)
 * Deprecation of `read'`, `write'` `modify'` and `swap'`
-* Make `modify` accept a monadic action, rather than a pure function. Also not it returns
+* Make `modify` accept a monadic action, rather than a pure function. Also now it returns
   the old element.
 * Make `swap` return the swapped elements.
 * Addition of `unsafeLinearSwap` and `unsafeSwap`
@@ -136,7 +137,7 @@
 * Addition of `rangeStepInclusive'`
 * Addition of `flatten`
 * `makeLoadArray` has been deprecated into `unsafeMakeLoadArray`.
-* A new safe `makeLoadArrayS` has been aded.
+* A new safe `makeLoadArrayS` has been added.
 * Fix `infix 4` for `(...)` and `(..:)` range functions, so they can be easily composed with
   numeric operations
 * Addition of `imapSchedulerM_` and `iforSchedulerM_`
@@ -237,7 +238,7 @@
 * Addition of `Profunctor` functions for `Stencil`: `lmapStencil`, `rmapStencil` and `bimapStencil`
 * Addition of integration approximation: `Data.Massiv.Array.Numeric.Integral`
 * Removed overlapping instances for `DW` in favor of concrete instances.
-* Relaxed contraint restrictions on matrix multiplication `(|*|)` and slighly improved performance
+* Relaxed contraint restrictions on matrix multiplication `(|*|)` and slightly improved performance
   with rewrite rules to avoid double transform.
 
 # 0.2.2
