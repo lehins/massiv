@@ -10,7 +10,6 @@ module Test.Massiv.Core.IndexSpec (spec) where
 import Control.DeepSeq
 import Data.Massiv.Array
 import Data.Massiv.Array.Unsafe (Sz(SafeSz))
-import GHC.TypeLits
 import Test.Massiv.Core.Index
 import Test.Massiv.Utils
 import Test.Validity.Eq (eqSpecOnArbitrary)
@@ -28,7 +27,7 @@ specIxN ::
      , Typeable (Lower ix)
      , Arbitrary ix
      , Arbitrary (Lower ix)
-     , IsIndexDimension ix (Dimensions ix), IsIndexDimension ix 1, 1 <= Dimensions ix
+     , IsIndexDimension ix (Dimensions ix)
      )
   => Spec
 specIxN = do
@@ -73,7 +72,7 @@ specIxT ::
      , Index (Lower ix)
      , Arbitrary ix
      , Arbitrary (Lower ix)
-     , IsIndexDimension ix (Dimensions ix), IsIndexDimension ix 1, 1 <= Dimensions ix
+     , IsIndexDimension ix (Dimensions ix)
      )
   => (ix -> ix')
   -> (ix' -> ix)

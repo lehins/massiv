@@ -44,7 +44,7 @@ import Data.Massiv.Core.Index
 import Data.Proxy
 import Data.Typeable
 import Test.Massiv.Utils
-import GHC.TypeLits
+
 
 -- | Dimension that is always within bounds of an index
 newtype DimIx ix = DimIx Dim deriving Show
@@ -415,7 +415,8 @@ specIx1 = describe "Ix1" $ do
 
 
 ixSpec ::
-     forall ix. (Typeable (Lower ix), Arbitrary (Lower ix), Typeable ix, Index ix, Arbitrary ix, IsIndexDimension ix (Dimensions ix), IsIndexDimension ix 1, 1 <= Dimensions ix)
+     forall ix. (Typeable (Lower ix), Arbitrary (Lower ix), Typeable ix, Index ix, Arbitrary ix
+                , IsIndexDimension ix (Dimensions ix))
   => Spec
 ixSpec = do
   let threshold = 50000

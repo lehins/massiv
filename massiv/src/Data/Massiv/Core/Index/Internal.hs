@@ -1,18 +1,18 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 #if __GLASGOW_HASKELL__ < 820
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
@@ -346,7 +346,7 @@ pattern Dim5 = DimN
 -- safely used with it.
 --
 -- @since 0.2.4
-type IsIndexDimension ix n = (IsDimValid ix n ~ 'True, Index ix, KnownNat n)
+type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
 
 
 -- | This type family will always point to a type for a dimension that is one lower than the type
@@ -378,6 +378,7 @@ class ( Eq ix
       , Ord (Lower ix)
       , Show (Lower ix)
       , NFData (Lower ix)
+      , KnownNat (Dimensions ix)
       ) =>
       Index ix
   where
