@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018-2019 Alexey Kuleshevich
+copyright:           2018-2020 Alexey Kuleshevich
 category:            Data, Data Structures, Parallelism
 build-type:          Custom
 extra-source-files:  README.md

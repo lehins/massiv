@@ -217,8 +217,10 @@ computeS :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -
 computeS !arr = runST $ computePrimM arr
 {-# INLINE computeS #-}
 
--- | Compute an array in `IO` monad. Very similar to `compute`, but restricted to `IO` and
--- cas sometimes be useful for enforcing sequencing of evaluation.
+-- | Very similar to `compute`, but computes an array inside the `IO` monad. Despite being
+-- deterministic and referentially transparent, because this is an `IO` action it
+-- can be very useful for enforcing the order of evaluation. Should be a prefered way of
+-- computing an array during benchmarking.
 --
 -- @since 0.4.5
 computeIO ::
