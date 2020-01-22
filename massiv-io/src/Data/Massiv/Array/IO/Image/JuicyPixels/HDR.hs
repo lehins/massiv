@@ -45,9 +45,6 @@ import Data.Massiv.Array.IO.Image.JuicyPixels.Base
 -- HDR Format ------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
--- TODOs: Check if JP is capable of writing Jpegs with PixelYA8 (No instance for
--- JpegEncodable, but it can read 'em)
-
 newtype HdrOptions = HdrOptions
   { hdrUseLightRLE :: Bool
   -- ^ User light RLE compression. Causes problems in some viewers. See:
@@ -58,14 +55,14 @@ instance Default HdrOptions where
   def = HdrOptions False
 
 
--- | Joint Photographic Experts Group image with @.jpg@ or @.jpeg@ extension.
+-- | High-dynamic-range image with @.hdr@ or @.pic@ extension.
 data HDR = HDR deriving Show
 
 instance FileFormat HDR where
   type WriteOptions HDR = HdrOptions
   type Metadata HDR = JP.Metadatas
-  ext _ = ".jpg"
-  exts _ = [".jpg", ".jpeg"]
+  ext _ = ".hdr"
+  exts _ = [".hdr", ".pic"]
 
 getHdrEncoder
   :: HdrOptions -> JP.Image JP.PixelRGBF -> BL.ByteString

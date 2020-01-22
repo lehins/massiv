@@ -128,23 +128,22 @@ writeArray format opts filepath arr =
 {-# INLINE writeArray #-}
 
 
--- | Try to guess an image format from file's extension, then attempt to decode it as such. In order
--- to supply the format manually and thus avoid this guessing technique, use `readArray`
--- instead. Color space and precision of the result array must match exactly that of the actual
--- image, in order to apply auto conversion use `readImageAuto` instead.
+-- | Tries to guess an image format from file's extension, then attempts to decode it as
+-- such. In order to supply the format manually and thus avoid this guessing technique,
+-- use `readArray` instead. Color model and precision of the result image must match
+-- exactly that of the actual image.
 --
--- Might throw `ConvertError`, `DecodeError` and other standard errors related to file IO.
+-- May throw `ConvertError`, `DecodeError` and other standard errors related to file IO.
 --
--- Result image will be read as specified by the type signature:
+-- Resulting image will be read as specified by the type signature:
 --
 -- >>> frog <- readImage "files/frog.jpg" :: IO (Image S YCbCr Word8)
 -- >>> displayImage frog
 --
--- In case when the result image type does not match the color space or precision of the actual
--- image file, `ConvertError` will be thrown.
+-- In case when the result image type does not match the color space or precision of the
+-- actual image file, `ConvertError` will be thrown.
 --
 -- >>> frog <- readImage "files/frog.jpg" :: IO (Image S CMYK Word8)
--- >>> displayImage frog
 -- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S CMYK Word8>"
 --
 -- Whenever image is not in the color model or precision that we need, either use `readImageAuto` or
@@ -175,8 +174,8 @@ readImage path = liftIO (B.readFile path >>= decodeImageM imageReadFormats path)
 -- perform any possible color space conversion and precision adjustment in order to match
 -- the result image type. Very useful whenever image format isn't known at compile time.
 --
--- >>> import Graphics.ColorSpace
--- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S (CMYK SRGB) Double)
+-- >>> import Graphics.ColorSpace as CS
+-- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S (CS.CMYK SRGB) Double)
 -- >>> displayImage frogCMYK
 --
 -- @since 0.1.0
