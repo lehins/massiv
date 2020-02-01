@@ -110,11 +110,11 @@ instance Readable GIF (Image S (Alpha CM.RGB) Word8) where
 
 instance Readable GIF (Image S SRGB Word8) where
   decodeM f = fmap fromImageBaseModel . decodeM f
-  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataGIF f
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
 instance Readable GIF (Image S (Alpha SRGB) Word8) where
   decodeM f = fmap fromImageBaseModel . decodeM f
-  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataGIF f
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
 -- | Decode a Gif Image
 decodeGIF :: (ColorModel cs e, MonadThrow m) => GIF -> B.ByteString -> m (Image S cs e)
@@ -205,12 +205,12 @@ instance Readable (Sequence GIF) [Image S (Alpha CM.RGB) Word8] where
   decodeWithMetadataM = decodeSequenceWithMetadataGIF
 
 instance Readable (Sequence GIF) [Image S SRGB Word8] where
-  decodeM f = fmap (fmap fromImageBaseModel) . decodeSequenceGIF f
-  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeSequenceWithMetadataGIF f
+  decodeM f = fmap (fmap fromImageBaseModel) . decodeM f
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeWithMetadataM f
 
 instance Readable (Sequence GIF) [Image S (Alpha SRGB) Word8] where
-  decodeM f = fmap (fmap fromImageBaseModel) . decodeSequenceGIF f
-  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeSequenceWithMetadataGIF f
+  decodeM f = fmap (fmap fromImageBaseModel) . decodeM f
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeWithMetadataM f
 
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>

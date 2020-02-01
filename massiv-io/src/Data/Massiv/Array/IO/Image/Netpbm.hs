@@ -1,15 +1,15 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image.Netpbm
 -- Copyright   : (c) Alexey Kuleshevich 2018-2020
@@ -33,6 +33,7 @@ module Data.Massiv.Array.IO.Image.Netpbm
   ) where
 
 import Control.Monad (guard)
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B (ByteString)
 import Data.Massiv.Array as M
 import Data.Massiv.Array.IO.Base
@@ -40,10 +41,10 @@ import Data.Massiv.Array.Manifest.Vector
 import Data.Typeable
 import qualified Data.Vector.Storable as V
 import Foreign.Storable (Storable)
-import Graphics.Pixel.ColorSpace
-import qualified Graphics.Pixel as CM
 import Graphics.Netpbm as Netpbm hiding (PPM)
 import qualified Graphics.Netpbm as Netpbm (PPM(..))
+import qualified Graphics.Pixel as CM
+import Graphics.Pixel.ColorSpace
 import Prelude as P
 
 -- | Netpbm: portable bitmap image with @.pbm@ extension.
@@ -178,26 +179,62 @@ showNetpbmCS Netpbm.PPM {ppmData} =
 
 instance Readable PBM (Image S CM.Y Bit) where
   decodeWithMetadataM = decodeNetpbmImage
+instance Readable PBM (Image S (Y D65) Bit) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+
 instance Readable (Sequence PBM) [Image S CM.Y Bit] where
   decodeWithMetadataM = decodePPMs fromNetpbmImage
+instance Readable (Sequence PBM) [Image S (Y D65) Bit] where
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeWithMetadataM f
+
 
 instance Readable PGM (Image S CM.Y Word8) where
   decodeWithMetadataM = decodeNetpbmImage
 instance Readable PGM (Image S CM.Y Word16) where
   decodeWithMetadataM = decodeNetpbmImage
+
+
+instance Readable PGM (Image S (Y D65) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+instance Readable PGM (Image S (Y D65) Word16) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+
 instance Readable (Sequence PGM) [Image S CM.Y Word8] where
   decodeWithMetadataM = decodePPMs fromNetpbmImage
 instance Readable (Sequence PGM) [Image S CM.Y Word16] where
   decodeWithMetadataM = decodePPMs fromNetpbmImage
 
+
+instance Readable (Sequence PGM) [Image S (Y D65) Word8] where
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeWithMetadataM f
+instance Readable (Sequence PGM) [Image S (Y D65) Word16] where
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeWithMetadataM f
+
+
 instance Readable PPM (Image S CM.RGB Word8) where
   decodeWithMetadataM = decodeNetpbmImage
 instance Readable PPM (Image S CM.RGB Word16) where
   decodeWithMetadataM = decodeNetpbmImage
+
+
+instance Readable PPM (Image S SRGB Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+instance Readable PPM (Image S SRGB Word16) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+
 instance Readable (Sequence PPM) [Image S CM.RGB Word8] where
   decodeWithMetadataM = decodePPMs fromNetpbmImage
 instance Readable (Sequence PPM) [Image S CM.RGB Word16] where
   decodeWithMetadataM = decodePPMs fromNetpbmImage
+
+
+instance Readable (Sequence PPM) [Image S SRGB Word8] where
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeWithMetadataM f
+instance Readable (Sequence PPM) [Image S SRGB Word16] where
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeWithMetadataM f
 
 
 fromNetpbmImage
