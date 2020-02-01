@@ -1,7 +1,7 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -27,19 +27,20 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.HDR
   , encodeAutoHDR
   ) where
 
-import Prelude as P
-import Data.Maybe (fromMaybe)
 import qualified Codec.Picture as JP
-import qualified Codec.Picture.Metadata as JP
 import qualified Codec.Picture.HDR as JP
+import qualified Codec.Picture.Metadata as JP
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
-import Data.Typeable
-import Graphics.Pixel.ColorSpace
-import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import qualified Graphics.Pixel as CM
+import Graphics.Pixel.ColorSpace
+import Prelude as P
 
 --------------------------------------------------------------------------------
 -- HDR Format ------------------------------------------------------------------
@@ -73,34 +74,39 @@ getHdrEncoder HdrOptions {hdrUseLightRLE}
 instance Writable HDR (Image S CM.RGB Float) where
   encodeM HDR opts = pure . getHdrEncoder opts . toJPImageRGBF
 
+instance Writable HDR (Image S SRGB Float) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto HDR) (Image r cs e) where
   encodeM _ opts = pure . encodeAutoHDR opts
 
 
 instance Readable HDR (Image S CM.RGB Float) where
-  decodeM = decodeHDR
   decodeWithMetadataM = decodeWithMetadataHDR
 
--- | Decode a Jpeg Image
-decodeHDR :: (ColorModel cs e, MonadThrow m) => HDR -> B.ByteString -> m (Image S cs e)
-decodeHDR f bs = convertWith f (JP.decodeJpeg bs)
+instance Readable HDR (Image S SRGB Float) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
--- | Decode a Jpeg Image
+-- | Decode a HDR Image
+decodeHDR :: (ColorModel cs e, MonadThrow m) => HDR -> B.ByteString -> m (Image S cs e)
+decodeHDR f bs = convertWith f (JP.decodeHDR bs)
+
+-- | Decode a HDR Image
 decodeWithMetadataHDR ::
      (ColorModel cs e, MonadThrow m) => HDR -> B.ByteString -> m (Image S cs e, JP.Metadatas)
 decodeWithMetadataHDR f bs = convertWithMetadata f (JP.decodeHDRWithMetadata bs)
 
 
--- | Decode a Jpeg Image
+-- | Decode a HDR Image
 decodeAutoHDR ::
      (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadThrow m)
   => Auto HDR
   -> B.ByteString
   -> m (Image r cs e)
-decodeAutoHDR f bs = convertAutoWith f (JP.decodeJpeg bs)
+decodeAutoHDR f bs = convertAutoWith f (JP.decodeHDR bs)
 
--- | Decode a Jpeg Image
+-- | Decode a HDR Image
 decodeAutoWithMetadataHDR ::
      (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadThrow m)
   => Auto HDR

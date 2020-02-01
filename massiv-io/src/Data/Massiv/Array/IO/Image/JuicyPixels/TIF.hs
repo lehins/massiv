@@ -26,20 +26,21 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.TIF
   , encodeAutoTIF
   ) where
 
-import Prelude as P
-import Data.Maybe (fromMaybe)
 import qualified Codec.Picture as JP
 import qualified Codec.Picture.Metadata as JP
 import qualified Codec.Picture.Tiff as JP
 import Control.Monad (msum)
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
-import Data.Typeable
-import Graphics.Pixel.ColorSpace
-import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import qualified Graphics.Pixel as CM
+import Graphics.Pixel.ColorSpace
+import Prelude as P
 
 
 
@@ -99,62 +100,128 @@ instance Writable TIF (Image S CM.CMYK Word8) where
 instance Writable TIF (Image S CM.CMYK Word16) where
   encodeM TIF _ img = pure $ JP.encodeTiff (toJPImageCMYK16 img)
 
+instance Writable TIF (Image S (Y D65) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (Y D65) Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (Y D65) Word32) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (Y D65) Float) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (Alpha (Y D65)) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (Alpha (Y D65)) Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S SRGB Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S SRGB Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (Alpha SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (Alpha SRGB) Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (YCbCr SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (CMYK SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TIF (Image S (CMYK SRGB) Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto TIF) (Image r cs e) where
   encodeM _ _ = pure . encodeAutoTIF
 
 
 instance Readable TIF (Image S CM.Y Word8) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.Y Word16) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.Y Word32) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.Y Float) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.Y) Word8) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.Y) Word16) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.RGB Word8) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.RGB Word16) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.RGB Float) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.RGB) Word8) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S (Alpha CM.RGB) Word16) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.CMYK Word8) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
 
 instance Readable TIF (Image S CM.CMYK Word16) where
-  decodeM = decodeTIF
   decodeWithMetadataM = decodeWithMetadataTIF
+
+
+instance Readable TIF (Image S (Y D65) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (Y D65) Word16) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (Y D65) Word32) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (Y D65) Float) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (Alpha (Y D65)) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (Alpha (Y D65)) Word16) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S SRGB Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S SRGB Word16) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S SRGB Float) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (Alpha SRGB) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (Alpha SRGB) Word16) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (CMYK SRGB) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TIF (Image S (CMYK SRGB) Word16) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
 -- | Decode a Tiff Image
 decodeTIF :: (ColorModel cs e, MonadThrow m) => TIF -> B.ByteString -> m (Image S cs e)

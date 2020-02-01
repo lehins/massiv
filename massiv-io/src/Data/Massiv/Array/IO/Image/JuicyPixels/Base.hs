@@ -231,7 +231,7 @@ toJPImageUnsafe
                       ColorModel cs (JP.PixelBaseComponent a))
   => Image r cs (JP.PixelBaseComponent a)
   -> JP.Image a
-toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toVector arrS
+toJPImageUnsafe img = JP.Image n m $ V.unsafeCast $ toStorableVector arrS
   where
     !arrS = computeSource img :: Image S cs (JP.PixelBaseComponent a)
     Sz (m :. n) = size img

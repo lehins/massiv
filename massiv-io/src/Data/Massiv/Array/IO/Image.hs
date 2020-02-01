@@ -113,8 +113,7 @@ data Decode out where
   DecodeAs
     :: FileFormat f
     => f
-    -> (forall m. MonadThrow m =>
-                    f -> B.ByteString -> m out)
+    -> (forall m. MonadThrow m => f -> B.ByteString -> m out)
     -> Decode out
 
 instance Show (Decode out) where

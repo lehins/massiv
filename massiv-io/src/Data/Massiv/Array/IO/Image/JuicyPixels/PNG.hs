@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -77,41 +76,83 @@ instance Writable PNG (Image S (Alpha CM.RGB) Word8) where
 instance Writable PNG (Image S (Alpha CM.RGB) Word16) where
   encodeM PNG _ img = pure $ JP.encodePng (toJPImageRGBA16 img)
 
+
+instance Writable PNG (Image S (Y D65) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable PNG (Image S (Y D65) Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable PNG (Image S (Alpha (Y D65)) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable PNG (Image S (Alpha (Y D65)) Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable PNG (Image S SRGB Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable PNG (Image S SRGB Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable PNG (Image S (Alpha SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable PNG (Image S (Alpha SRGB) Word16) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto PNG) (Image r cs e) where
   encodeM _ _ = pure . encodeAutoPNG
 
 
 instance Readable PNG (Image S CM.Y Word8) where
-  decodeM = decodePNG
   decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S CM.Y Word16) where
-  decodeM = decodePNG
   decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.Y) Word8) where
-  decodeM = decodePNG
   decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.Y) Word16) where
-  decodeM = decodePNG
   decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S CM.RGB Word8) where
-  decodeM = decodePNG
   decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S CM.RGB Word16) where
-  decodeM = decodePNG
   decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.RGB) Word8) where
-  decodeM = decodePNG
   decodeWithMetadataM = decodeWithMetadataPNG
 
 instance Readable PNG (Image S (Alpha CM.RGB) Word16) where
-  decodeM = decodePNG
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+
+instance Readable PNG (Image S (Y D65) Word8) where
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+instance Readable PNG (Image S (Y D65) Word16) where
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+instance Readable PNG (Image S (Alpha (Y D65)) Word8) where
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+instance Readable PNG (Image S (Alpha (Y D65)) Word16) where
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+instance Readable PNG (Image S SRGB Word8) where
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+instance Readable PNG (Image S SRGB Word16) where
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+instance Readable PNG (Image S (Alpha SRGB) Word8) where
+  decodeWithMetadataM = decodeWithMetadataPNG
+
+instance Readable PNG (Image S (Alpha SRGB) Word16) where
   decodeWithMetadataM = decodeWithMetadataPNG
 
 -- | Decode a Png Image

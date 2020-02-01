@@ -4,7 +4,8 @@
 * Write files with durability and atomicity guarantees
 * Switch to `encodeM` and `decodeM`, as well as corresponding `encodeImagM` and `decodeImageM`
 * Addition of `ConvertError`, `DecodeError` and `EncodeError`.
-
+* Got rid of `ReadOptions`
+* Switch to `Color` package for pixels and color space coversion
 
 # 0.1.9
 

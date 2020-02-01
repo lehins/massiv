@@ -1,8 +1,8 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -38,19 +38,20 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.GIF
   , decodeAutoSequenceWithMetadataGIF
   ) where
 
-import Prelude as P
 import qualified Codec.Picture as JP
-import qualified Codec.Picture.Metadata as JP
-import qualified Codec.Picture.Gif as JP
 import qualified Codec.Picture.ColorQuant as JP
+import qualified Codec.Picture.Gif as JP
+import qualified Codec.Picture.Metadata as JP
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
-import Data.Typeable
-import Graphics.Pixel.ColorSpace
-import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
+import Data.Typeable
+import qualified Graphics.Pixel as CM
+import Graphics.Pixel.ColorSpace
+import Prelude as P
 
 --------------------------------------------------------------------------------
 -- GIF Format ------------------------------------------------------------------
@@ -79,6 +80,12 @@ instance Writable GIF (Image S CM.Y Word8) where
 instance Writable GIF (Image S CM.RGB Word8) where
   encodeM GIF = encodePalettizedRGB
 
+instance Writable GIF (Image S (Y D65) Word8) where
+  encodeM GIF opts = encodeM GIF opts . toImageBaseModel
+
+instance Writable GIF (Image S SRGB Word8) where
+  encodeM GIF opts = encodeM GIF opts . toImageBaseModel
+
 encodePalettizedRGB ::
      (MonadThrow m, Source r Ix2 (Pixel CM.RGB Word8))
   => GifOptions
@@ -100,6 +107,14 @@ instance Readable GIF (Image S CM.RGB Word8) where
 instance Readable GIF (Image S (Alpha CM.RGB) Word8) where
   decodeM = decodeGIF
   decodeWithMetadataM = decodeWithMetadataGIF
+
+instance Readable GIF (Image S SRGB Word8) where
+  decodeM f = fmap fromImageBaseModel . decodeM f
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataGIF f
+
+instance Readable GIF (Image S (Alpha SRGB) Word8) where
+  decodeM f = fmap fromImageBaseModel . decodeM f
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataGIF f
 
 -- | Decode a Gif Image
 decodeGIF :: (ColorModel cs e, MonadThrow m) => GIF -> B.ByteString -> m (Image S cs e)
@@ -188,6 +203,15 @@ instance Readable (Sequence GIF) [Image S CM.RGB Word8] where
 instance Readable (Sequence GIF) [Image S (Alpha CM.RGB) Word8] where
   decodeM = decodeSequenceGIF
   decodeWithMetadataM = decodeSequenceWithMetadataGIF
+
+instance Readable (Sequence GIF) [Image S SRGB Word8] where
+  decodeM f = fmap (fmap fromImageBaseModel) . decodeSequenceGIF f
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeSequenceWithMetadataGIF f
+
+instance Readable (Sequence GIF) [Image S (Alpha SRGB) Word8] where
+  decodeM f = fmap (fmap fromImageBaseModel) . decodeSequenceGIF f
+  decodeWithMetadataM f = fmap (first (fmap fromImageBaseModel)) . decodeSequenceWithMetadataGIF f
+
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Readable (Auto (Sequence GIF)) [Image r cs e] where

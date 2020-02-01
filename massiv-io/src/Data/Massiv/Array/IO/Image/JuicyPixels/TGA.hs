@@ -25,20 +25,21 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.TGA
   , encodeAutoTGA
   ) where
 
-import Prelude as P
-import Data.Maybe (fromMaybe)
 import qualified Codec.Picture as JP
 import qualified Codec.Picture.Metadata as JP
 import qualified Codec.Picture.Tga as JP
 import Control.Monad (msum)
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
-import Data.Typeable
-import Graphics.Pixel.ColorSpace
-import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import qualified Graphics.Pixel as CM
+import Graphics.Pixel.ColorSpace
+import Prelude as P
 
 
 --------------------------------------------------------------------------------
@@ -63,27 +64,43 @@ instance Writable TGA (Image S (Alpha CM.RGB) Word8) where
   encodeM TGA _ img = pure $ JP.encodeTga (toJPImageRGBA8 img)
 
 
+instance Writable TGA (Image S (Y D65) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TGA (Image S SRGB Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable TGA (Image S (Alpha SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto TGA) (Image r cs e) where
   encodeM _ _ = pure . encodeAutoTGA
 
 
 instance Readable TGA (Image S CM.Y Word8) where
-  decodeM = decodeTGA
   decodeWithMetadataM = decodeWithMetadataTGA
 
 instance Readable TGA (Image S CM.RGB Word8) where
-  decodeM = decodeTGA
   decodeWithMetadataM = decodeWithMetadataTGA
 
 instance Readable TGA (Image S (Alpha CM.RGB) Word8) where
-  decodeM = decodeTGA
   decodeWithMetadataM = decodeWithMetadataTGA
+
+
+instance Readable TGA (Image S (Y D65) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TGA (Image S SRGB Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable TGA (Image S (Alpha SRGB) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
 -- | Decode a Tga Image
 decodeTGA :: (ColorModel cs e, MonadThrow m) => TGA -> B.ByteString -> m (Image S cs e)
-decodeTGA f bs = fst <$> decodeWithMetadataTGA f bs
-  --convertWith f (JP.decodeTga bs)
+decodeTGA f bs = convertWith f (JP.decodeTga bs)
 
 -- | Decode a Tga Image
 decodeWithMetadataTGA ::

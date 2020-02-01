@@ -1,7 +1,7 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -27,20 +27,21 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.BMP
   , encodeAutoBMP
   ) where
 
-import Prelude as P
-import Data.Maybe (fromMaybe)
 import qualified Codec.Picture as JP
-import qualified Codec.Picture.Metadata as JP
 import qualified Codec.Picture.Bitmap as JP
+import qualified Codec.Picture.Metadata as JP
 import Control.Monad (msum)
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
-import Data.Typeable
-import Graphics.Pixel.ColorSpace
-import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import qualified Graphics.Pixel as CM
+import Graphics.Pixel.ColorSpace
+import Prelude as P
 
 --------------------------------------------------------------------------------
 -- BMP Format ------------------------------------------------------------------
@@ -74,23 +75,39 @@ instance Writable BMP (Image S (Alpha CM.RGB) Word8) where
   encodeM BMP BitmapOptions {bitmapMetadata} =
     pure . JP.encodeBitmapWithMetadata bitmapMetadata . toJPImageRGBA8
 
+
+instance Writable BMP (Image S (Y D65) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable BMP (Image S SRGB Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable BMP (Image S (Alpha SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto BMP) (Image r cs e) where
   encodeM _ opts = pure . encodeAutoBMP opts
 
 
 instance Readable BMP (Image S CM.Y Word8) where
-  decodeM = decodeBMP
   decodeWithMetadataM = decodeWithMetadataBMP
 
 instance Readable BMP (Image S CM.RGB Word8) where
-  decodeM = decodeBMP
   decodeWithMetadataM = decodeWithMetadataBMP
 
 instance Readable BMP (Image S (Alpha CM.RGB) Word8) where
-  decodeM = decodeBMP
   decodeWithMetadataM = decodeWithMetadataBMP
 
+
+instance Readable BMP (Image S (Y D65) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable BMP (Image S SRGB Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable BMP (Image S (Alpha SRGB) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
 -- | Decode a Bitmap Image
 decodeBMP :: (ColorModel cs e, MonadThrow m) => BMP -> B.ByteString -> m (Image S cs e)

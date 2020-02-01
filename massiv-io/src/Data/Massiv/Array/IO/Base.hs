@@ -29,6 +29,8 @@ module Data.Massiv.Array.IO.Base
   , Auto(..)
   , Image
   , convertImage
+  , toImageBaseModel
+  , fromImageBaseModel
   , defaultWriteOptions
   , encodeError
   , decodeError
@@ -39,6 +41,7 @@ module Data.Massiv.Array.IO.Base
   , MonadThrow(..)
   ) where
 
+import Unsafe.Coerce
 import Control.Exception (Exception, throw)
 import Control.Monad.Catch (MonadThrow(..))
 import qualified Data.ByteString as B (ByteString)
@@ -234,3 +237,19 @@ convertImage ::
   => Image r' cs' e'
   -> Image r cs e
 convertImage = compute . A.map convertPixel
+
+-- | Cast an array
+--
+-- @since 0.2.0
+toImageBaseModel ::
+  ColorSpace cs i e => Array S Ix2 (Pixel cs e) -> Array S Ix2 (Pixel (BaseModel cs) e)
+toImageBaseModel = unsafeCoerce
+
+
+-- | Cast an array
+--
+-- @since 0.2.0
+fromImageBaseModel ::
+  ColorSpace cs i e => Array S Ix2 (Pixel (BaseModel cs) e) -> Array S Ix2 (Pixel cs e)
+fromImageBaseModel = unsafeCoerce
+
