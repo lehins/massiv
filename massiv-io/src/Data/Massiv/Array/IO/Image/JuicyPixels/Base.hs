@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -41,6 +40,14 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.Base
   , toJPImageCMYK16
   , fromDynamicImage
   , fromDynamicImageAuto
+  -- * Conversion to sRGB
+  , toYCbCr8
+  , toCMYK8
+  , toCMYK16
+  , toSRGB8
+  , toSRGB16
+  , toSRGBA8
+  , toSRGBA16
   ) where
 
 import Prelude as P
@@ -177,33 +184,33 @@ fromDynamicImageAuto ::
 fromDynamicImageAuto jpDynImg =
   case jpDynImg of
     JP.ImageY8 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Word8))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Word8))
     JP.ImageY16 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Word16))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Word16))
     JP.ImageY32 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Word32))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Word32))
     JP.ImageYF jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Float))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Y D65) Float))
     JP.ImageYA8 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha (Y D65)) Word8))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha (Y D65)) Word8))
     JP.ImageYA16 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha (Y D65)) Word16))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha (Y D65)) Word16))
     JP.ImageRGB8 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S SRGB Word8))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S SRGB Word8))
     JP.ImageRGB16 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S SRGB Word16))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S SRGB Word16))
     JP.ImageRGBF jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S SRGB Float))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S SRGB Float))
     JP.ImageRGBA8 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha SRGB) Word8))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha SRGB) Word8))
     JP.ImageRGBA16 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha SRGB) Word16))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (Alpha SRGB) Word16))
     JP.ImageYCbCr8 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (YCbCr SRGB) Word8))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (YCbCr SRGB) Word8))
     JP.ImageCMYK8 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (CMYK SRGB) Word8))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (CMYK SRGB) Word8))
     JP.ImageCMYK16 jimg ->
-      convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (CMYK SRGB) Word16))
+      compute . convertImage <$> (fromJPImageUnsafe jimg :: Maybe (Image S (CMYK SRGB) Word16))
 
 
 
@@ -328,3 +335,25 @@ fromJPImageUnsafe (JP.Image n m !v) = do
   fromVectorM Par (Sz (m :. n)) $ V.unsafeCast v
 {-# INLINE fromJPImageUnsafe #-}
 
+-- Conversion to sRGB color space based color models
+
+toYCbCr8 :: forall cs i e . ColorSpace cs i e => Pixel cs e -> Pixel CM.YCbCr Word8
+toYCbCr8 = toPixelBaseModel . (convertPixel :: Pixel cs e -> Pixel (YCbCr SRGB) Word8)
+
+toCMYK8 :: forall cs i e . ColorSpace cs i e => Pixel cs e -> Pixel CM.CMYK Word8
+toCMYK8 = toPixelBaseModel . (convertPixel :: Pixel cs e -> Pixel (CMYK SRGB) Word8)
+
+toCMYK16 :: forall cs i e . ColorSpace cs i e => Pixel cs e -> Pixel CM.CMYK Word16
+toCMYK16 = toPixelBaseModel . (convertPixel :: Pixel cs e -> Pixel (CMYK SRGB) Word16)
+
+toSRGB8 :: forall cs i e . ColorSpace cs i e => Pixel cs e -> Pixel CM.RGB Word8
+toSRGB8 = toPixelBaseModel . (convertPixel :: Pixel cs e -> Pixel SRGB Word8)
+
+toSRGB16 :: forall cs i e . ColorSpace cs i e => Pixel cs e -> Pixel CM.RGB Word16
+toSRGB16 = toPixelBaseModel . (convertPixel :: Pixel cs e -> Pixel SRGB Word16)
+
+toSRGBA8 :: forall cs i e . ColorSpace cs i e => Pixel cs e -> Pixel (Alpha CM.RGB) Word8
+toSRGBA8 = toPixelBaseModel . (convertPixel :: Pixel cs e -> Pixel (Alpha SRGB) Word8)
+
+toSRGBA16 :: forall cs i e . ColorSpace cs i e => Pixel cs e -> Pixel (Alpha CM.RGB) Word16
+toSRGBA16 = toPixelBaseModel . (convertPixel :: Pixel cs e -> Pixel (Alpha SRGB) Word16)

@@ -231,7 +231,7 @@ encodeAutoPNG ::
   => Image r cs e
   -> BL.ByteString
 encodeAutoPNG img =
-  fromMaybe (toPng toJPImageRGB8 (toPixelBaseModel . toSRGB8) img) $
+  fromMaybe (toPng toJPImageRGB16 toSRGB16 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
          msum
@@ -239,40 +239,24 @@ encodeAutoPNG img =
                 pure $ toPng toJPImageY8 (toPixel8 . toPixelBaseModel) img
            , do Refl <- eqT :: Maybe (e :~: Word8)
                 pure $ toPng toJPImageY8 toPixelBaseModel img
-           -- , do Refl <- eqT :: Maybe (e :~: Word16)
-           --      pure $ toPng toJPImageY16 toPixelBaseModel img
            , pure $ toPng toJPImageY16 (toPixel16 . toPixelBaseModel) img
            ]
     , do Refl <- eqT :: Maybe (BaseModel cs :~: Alpha CM.Y)
          msum
            [ do Refl <- eqT :: Maybe (e :~: Word8)
                 pure $ toPng toJPImageYA8 toPixelBaseModel img
-           -- , do Refl <- eqT :: Maybe (e :~: Word16)
-           --      pure $ toPng toJPImageYA16 toPixelBaseModel img
            , pure $ toPng toJPImageYA16 (toPixel16 . toPixelBaseModel) img
            ]
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)
-         msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ toPng toJPImageRGB8 (toPixelBaseModel . toPixelBaseSpace) img
-           -- , do Refl <- eqT :: Maybe (e :~: Word16)
-           --      pure $ toPng toJPImageRGB16 (toPixelBaseModel . toPixelBaseSpace) img
-           , pure $ toPng toJPImageRGB16 (toPixel16 . toPixelBaseModel . toPixelBaseSpace) img
-           ]
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: Alpha CM.RGB)
-         msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ toPng toJPImageRGBA8 (toPixelBaseModel . toPixelBaseSpace) img
-           -- , do Refl <- eqT :: Maybe (e :~: Word16)
-           --      pure $ toPng toJPImageRGBA16 (toPixelBaseModel . toPixelBaseSpace) img
-           , pure $ toPng toJPImageRGBA16 (toPixel16 . toPixelBaseModel . toPixelBaseSpace) img
-           ]
     , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
-         pure $ toPng toJPImageRGBA8 (toPixelBaseModel . toSRGBA8) img
+         msum
+           [ do Refl <- eqT :: Maybe (e :~: Word8)
+                pure $ toPng toJPImageRGBA8 toSRGBA8 img
+           , pure $ toPng toJPImageRGBA16 toSRGBA16 img
+           ]
+    , do Refl <- eqT :: Maybe (e :~: Word8)
+         pure $ toPng toJPImageRGB8 toSRGB8 img
     ]
   where
-    toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
-    toSRGBA8 = convertPixel :: Pixel cs e -> Pixel (Alpha SRGB) Word8
     toPng ::
          (JP.PngSavable px, Source r ix a)
       => (Array D ix b -> JP.Image px)

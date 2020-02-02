@@ -24,7 +24,7 @@ custom-setup
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Massiv.Array.IO
-                     , Graphics.ColorSpace
+                     , Graphics.ColorModel
   other-modules:       Data.Massiv.Array.IO.Base
                      , Data.Massiv.Array.IO.Image
                      , Data.Massiv.Array.IO.Image.JuicyPixels

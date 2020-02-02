@@ -145,18 +145,18 @@ decodeImageM formats path bs = do
     (f:_) -> decodeM f bs
 
 -- | List of image formats decodable with no color space conversion
-imageReadFormats :: ColorModel cs e => [Decode (Image S cs e)]
+imageReadFormats :: ColorSpace cs i e => [Decode (Image S cs e)]
 imageReadFormats =
-  [ DecodeAs BMP decodeBMP
-  , DecodeAs GIF decodeGIF
-  , DecodeAs HDR decodeHDR
-  , DecodeAs JPG decodeJPG
-  , DecodeAs PNG decodePNG
-  , DecodeAs TGA decodeTGA
-  , DecodeAs TIF decodeTIF
-  , DecodeAs PBM (\f -> fmap fst . decodeNetpbmImage f)
-  , DecodeAs PGM (\f -> fmap fst . decodeNetpbmImage f)
-  , DecodeAs PPM (\f -> fmap fst . decodeNetpbmImage f)
+  [ DecodeAs BMP (\f -> fmap fromImageBaseModel . decodeBMP f)
+  , DecodeAs GIF (\f -> fmap fromImageBaseModel . decodeGIF f)
+  , DecodeAs HDR (\f -> fmap fromImageBaseModel . decodeHDR f)
+  , DecodeAs JPG (\f -> fmap fromImageBaseModel . decodeJPG f)
+  , DecodeAs PNG (\f -> fmap fromImageBaseModel . decodePNG f)
+  , DecodeAs TGA (\f -> fmap fromImageBaseModel . decodeTGA f)
+  , DecodeAs TIF (\f -> fmap fromImageBaseModel . decodeTIF f)
+  , DecodeAs PBM (\f -> fmap (fromImageBaseModel . fst) . decodeNetpbmImage f)
+  , DecodeAs PGM (\f -> fmap (fromImageBaseModel . fst) . decodeNetpbmImage f)
+  , DecodeAs PPM (\f -> fmap (fromImageBaseModel . fst) . decodeNetpbmImage f)
   ]
 
 -- | List of image formats decodable with automatic colorspace conversion

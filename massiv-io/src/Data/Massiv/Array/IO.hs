@@ -16,7 +16,7 @@
 --
 module Data.Massiv.Array.IO
   ( -- * Supported Image Formats
-    module Graphics.Pixel
+    module Graphics.Pixel.ColorSpace
   , Image
     -- $supported
     -- * Reading
@@ -57,20 +57,20 @@ import Data.Massiv.Array.IO.Base as Base (Auto(..), ConvertError(..),
                                           Writable(..), convertEither,
                                           convertImage, decode', decodeError,
                                           defaultWriteOptions, encode',
-                                          encodeError, fromMaybeDecode,
-                                          fromMaybeEncode, toProxy)
+                                          encodeError, fromImageBaseModel,
+                                          fromMaybeDecode, fromMaybeEncode,
+                                          toImageBaseModel, toProxy)
 import Data.Massiv.Array.IO.Image
-import qualified Graphics.ColorSpace as CS
-import Graphics.Pixel
+import Graphics.Pixel.ColorSpace
 import Prelude
 import Prelude as P hiding (readFile, writeFile)
+import System.FilePath ((</>))
 import System.IO (IOMode(..), hClose, openBinaryTempFile)
 import UnliftIO.Concurrent (forkIO)
+import UnliftIO.Directory (createDirectoryIfMissing, getTemporaryDirectory)
 import UnliftIO.Exception (bracket)
 import UnliftIO.IO.File
 import UnliftIO.Process (readProcess)
-import UnliftIO.Temporary
-
 
 
 -- | External viewing application to use for displaying images.
@@ -87,6 +87,15 @@ data ExternalViewer =
 
 
 -- | Read an array from one of the supported `Readable` file formats.
+--
+-- For example `readImage` assumes all images to be in sRGB color space, but if you know
+-- that the image is actually encoded in some other color space, for example `AdobeRGB`,
+-- then you can read it in manually into a matching color model and then cast into a color
+-- space you know it is encoded in:
+--
+-- >>> import qualified Graphics.ColorModel as CM
+-- >>> frogRGB <- readArray JPG "files/_frog.jpg" :: IO (Image S CM.RGB Word8)
+-- >>> displayImage (fromImageBaseModel frogRGB :: Image S AdobeRGB Word8)
 --
 -- @since 0.1.0
 readArray :: (Readable f arr, MonadIO m) =>
@@ -113,8 +122,14 @@ writeLazyAtomically filepath bss =
   withBinaryFileDurableAtomic filepath WriteMode $ \h -> Prelude.mapM_ (B.hPut h) (BL.toChunks bss)
 {-# INLINE writeLazyAtomically #-}
 
--- | Write an array to disk atomically. On UNIX operating systems writing will happen with
--- guaramtees of atomicity and durability, see `withBinaryFileDurableAtomic`.
+-- | Write an array to disk.
+--
+-- >>> frogYCbCr <- readImage "files/frog.jpg" :: IO (Image S (YCbCr SRGB) Word8)
+-- >>> frogAdobeRGB = convertImage frogYCbCr :: Image D AdobeRGB Word8
+-- >>> writeArray JPG def "files/_frog.jpg" $ toImageBaseModel $ computeAs S frogAdobeRGB
+--
+-- /Note/ - On UNIX operating systems writing will happen with guarantees of atomicity and
+-- durability, see `withBinaryFileDurableAtomic`.
 --
 -- @since 0.2.0
 writeArray :: (Writable f arr, MonadIO m) =>
@@ -129,41 +144,41 @@ writeArray format opts filepath arr =
 
 
 -- | Tries to guess an image format from file's extension, then attempts to decode it as
--- such. In order to supply the format manually and thus avoid this guessing technique,
--- use `readArray` instead. Color model and precision of the result image must match
--- exactly that of the actual image.
+-- such. It also assumes an image is encoded in sRGB color space or its alternate
+-- representation. In order to supply the format manually or choose a different color
+-- space, eg. `AdobeRGB`, use `readArray` instead. Color space and precision of the result
+-- image must match exactly that of the actual image.
 --
 -- May throw `ConvertError`, `DecodeError` and other standard errors related to file IO.
 --
 -- Resulting image will be read as specified by the type signature:
 --
--- >>> frog <- readImage "files/frog.jpg" :: IO (Image S YCbCr Word8)
+-- >>> frog <- readImage "files/frog.jpg" :: IO (Image S (YCbCr SRGB) Word8)
 -- >>> displayImage frog
 --
 -- In case when the result image type does not match the color space or precision of the
 -- actual image file, `ConvertError` will be thrown.
 --
--- >>> frog <- readImage "files/frog.jpg" :: IO (Image S CMYK Word8)
--- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S CMYK Word8>"
+-- >>> frog <- readImage "files/frog.jpg" :: IO (Image S SRGB Word8)
+-- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S RGB Word8>"
 --
--- Whenever image is not in the color model or precision that we need, either use `readImageAuto` or
--- manually convert to the desired one by using the appropriate conversion functions:
+-- Whenever image is not in the color space or precision that we need, either use
+-- `readImageAuto` or manually convert to the desired one by using the appropriate
+-- conversion functions:
 --
--- >>> frog <- readImage "files/frog.jpg" :: IO (Image S YCbCr Word8)
--- >>> import Graphics.ColorSpace as CS
--- >>> let frogYCbCr = A.map CS.fromPixelBaseModel frog :: Image D (CS.YCbCr CS.SRGB) Word8
--- >>> let frogSRGB = A.map CS.convertPixel frogYCbCr :: Image D CS.SRGB Word8
+-- >>> frogYCbCr <- readImage "files/frog.jpg" :: IO (Image S (YCbCr SRGB) Word8)
+-- >>> let frogSRGB = convertImage frogYCbCr
 -- >>> displayImage frogSRGB
 --
 -- A simpler approach to achieve the same effect would be to use `readImageAuto`:
 --
--- >>> frogSRGB' <- readImageAuto "files/frog.jpg" :: IO (Image S CS.SRGB Word8)
+-- >>> frogSRGB' <- readImageAuto "files/frog.jpg" :: IO (Image S SRGB Word8)
 -- >>> compute frogSRGB == frogSRGB'
 -- True
 --
 -- @since 0.1.0
 readImage ::
-     (ColorModel cs e, MonadIO m)
+     (ColorSpace cs i e, MonadIO m)
   => FilePath -- ^ File path for an image
   -> m (Image S cs e)
 readImage path = liftIO (B.readFile path >>= decodeImageM imageReadFormats path)
@@ -180,7 +195,7 @@ readImage path = liftIO (B.readFile path >>= decodeImageM imageReadFormats path)
 --
 -- @since 0.1.0
 readImageAuto ::
-     (Mutable r Ix2 (Pixel cs e), CS.ColorSpace cs i e, MonadIO m)
+     (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e, MonadIO m)
   => FilePath -- ^ File path for an image
   -> m (Image r cs e)
 readImageAuto path = liftIO (B.readFile path >>= decodeImageM imageReadAutoFormats path)
@@ -195,6 +210,8 @@ readImageAuto path = liftIO (B.readFile path >>= decodeImageM imageReadAutoForma
 --
 -- Can throw `ConvertError`, `EncodeError` and other usual IO errors.
 --
+-- /Note/ - On UNIX operating systems writing will happen with guarantees of atomicity and
+-- durability, see `withBinaryFileDurableAtomic`.
 --
 -- @since 0.1.0
 writeImage ::
@@ -202,14 +219,20 @@ writeImage ::
 writeImage path img = liftIO (encodeImageM imageWriteFormats path img >>= writeLazyAtomically path)
 
 
--- | Write an image to file while performing all necessary precisiona and color space
--- conversions.
+-- | Write an image encoded in sRGB color space into a file while performing all necessary
+-- precision and color space conversions. If a file supports color model that the image is
+-- on then it will be encoded as such. For example writing a TIF file in CMYK color model,
+-- 8bit precision and an sRGB color space:
 --
--- /Note/ - Base color space is assumed to be `SRGB`
+-- >>> frogYCbCr <- readImage "files/frog.jpg" :: IO (Image S (YCbCr SRGB) Word8)
+-- >>> writeImageAuto "files/frog.tiff" (convertImage frogYCbCr :: Image D (CMYK AdobeRGB) Word8)
+--
+-- Regardless that the color space supplied was `AdobeRGB` auto conversion will ensure it
+-- is stored as `SRGB`, except in `CM.CMYK` color model, since `TIF` file format supports it.
 --
 -- @since 0.1.0
 writeImageAuto ::
-     (Source r Ix2 (Pixel cs e), CS.ColorSpace cs i e, CS.ColorSpace (CS.BaseSpace cs) i e, MonadIO m)
+     (Source r Ix2 (Pixel cs e), ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, MonadIO m)
   => FilePath
   -> Image r cs e
   -> m ()
@@ -234,15 +257,25 @@ displayImageUsing viewer block img =
     bs <- encodeM (Auto TIF) () img
     (if block then id else void . forkIO) $ display bs
   where
-    display bs =
-      withSystemTempDirectory "massiv-io" $ \tmpDir ->
-        bracket
-          (openBinaryTempFile tmpDir "tmp-img.tiff")
-          (hClose . snd)
-          (\(imgPath, imgHandle) -> do
-             BL.hPut imgHandle bs
-             hClose imgHandle
-             displayImageFile viewer imgPath)
+    display bs = do
+      tmpDir <- fmap (</> "massiv-io") getTemporaryDirectory
+      createDirectoryIfMissing True tmpDir
+      bracket
+        (openBinaryTempFile tmpDir "tmp-img.tiff")
+        (hClose . snd)
+        (\(imgPath, imgHandle) -> do
+           BL.hPut imgHandle bs
+           hClose imgHandle
+           displayImageFile viewer imgPath)
+    -- display bs =
+    --   withSystemTempDirectory "massiv-io" $ \tmpDir ->
+    --     bracket
+    --       (openBinaryTempFile tmpDir "tmp-img.tiff")
+    --       (hClose . snd)
+    --       (\(imgPath, imgHandle) -> do
+    --          BL.hPut imgHandle bs
+    --          hClose imgHandle
+    --          displayImageFile viewer imgPath)
 
 
 

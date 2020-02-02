@@ -312,7 +312,7 @@ encodeAutoTIF ::
   => Image r cs e
   -> BL.ByteString
 encodeAutoTIF img =
-  fromMaybe (toTiff toJPImageRGB8 (toPixelBaseModel . toSRGB8) img) $
+  fromMaybe (toTiff toJPImageRGB8 toSRGB8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
          msum
@@ -335,37 +335,29 @@ encodeAutoTIF img =
            , pure $ toTiff toJPImageYA16 (toPixel16 . toPixelBaseModel) img
            ]
     , do Refl <- eqT :: Maybe (BaseModel cs :~: CM.YCbCr)
-         pure $ toTiff toJPImageYCbCr8 (toPixel8 . toPixelBaseModel) img
+         pure $ toTiff toJPImageYCbCr8 toYCbCr8 img
     , do Refl <- eqT :: Maybe (BaseModel cs :~: CM.CMYK)
          msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ toTiff toJPImageCMYK8 toPixelBaseModel img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                pure $ toTiff toJPImageCMYK16 toPixelBaseModel img
+           [ do Refl <- eqT :: Maybe (e :~: Word16)
+                pure $ toTiff toJPImageCMYK16 toCMYK16 img
              -- for CMYK default is 8bit, instead of 16bit, since many viewers and editors
-             -- don't support it.
-           , pure $ toTiff toJPImageCMYK8 (toPixel8 . toPixelBaseModel) img
+             -- don't support the latter.
+           , pure $ toTiff toJPImageCMYK8 toCMYK8 img
            ]
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)
+    , do Refl <- eqT :: Maybe (BaseModel cs :~: CM.RGB)
          msum
            [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ toTiff toJPImageRGB8 (toPixelBaseModel . toPixelBaseSpace) img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                pure $ toTiff toJPImageRGB16 (toPixelBaseModel . toPixelBaseSpace) img
-           ]
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: Alpha CM.RGB)
-         msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ toTiff toJPImageRGBA8 (toPixelBaseModel . toPixelBaseSpace) img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                pure $ toTiff toJPImageRGBA16 (toPixelBaseModel . toPixelBaseSpace) img
+                pure $ toTiff toJPImageRGB8 toSRGB8 img
+           , pure $ toTiff toJPImageRGB16 toSRGB16 img
            ]
     , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
-         pure $ toTiff toJPImageRGBA8 (toPixelBaseModel . toSRGBA8) img
+         msum
+           [ do Refl <- eqT :: Maybe (e :~: Word8)
+                pure $ toTiff toJPImageRGBA8 toSRGBA8 img
+           , pure $ toTiff toJPImageRGBA16 toSRGBA16 img
+           ]
     ]
   where
-    toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
-    toSRGBA8 = convertPixel :: Pixel cs e -> Pixel (Alpha SRGB) Word8
     toTiff ::
          (JP.TiffSaveable px, Source r ix a)
       => (Array D ix b -> JP.Image px)

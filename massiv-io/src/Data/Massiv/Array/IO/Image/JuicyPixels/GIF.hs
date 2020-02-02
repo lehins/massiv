@@ -181,14 +181,10 @@ encodeAutoGIF opts img =
     Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
     pure $ JP.encodeGifImage $ toJPImageY8 $ A.map (toPixel8 . toPixelBaseModel) img
   where
-    toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
     fallbackEncodePalettizedRGB =
       \case
         Just bs -> pure bs
-        Nothing
-          | Just Refl <- (eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)) ->
-            encodePalettizedRGB opts $ A.map (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
-        Nothing -> encodePalettizedRGB opts $ A.map (toPixelBaseModel . toSRGB8) img
+        Nothing -> encodePalettizedRGB opts $ A.map toSRGB8 img
 
 
 instance FileFormat (Sequence GIF) where

@@ -1,7 +1,7 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -27,20 +27,21 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.JPG
   , encodeAutoJPG
   ) where
 
-import Prelude as P
-import Data.Maybe (fromMaybe)
 import qualified Codec.Picture as JP
-import qualified Codec.Picture.Metadata as JP
 import qualified Codec.Picture.Jpg as JP
+import qualified Codec.Picture.Metadata as JP
 import Control.Monad (msum)
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
-import Data.Typeable
-import Graphics.Pixel.ColorSpace
-import qualified Graphics.Pixel as CM
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
+import Data.Maybe (fromMaybe)
+import Data.Typeable
+import qualified Graphics.Pixel as CM
+import Graphics.Pixel.ColorSpace
+import Prelude as P
 
 --------------------------------------------------------------------------------
 -- JPG Format ------------------------------------------------------------------
@@ -83,30 +84,54 @@ instance Writable JPG (Image S CM.CMYK Word8) where
   encodeM JPG JpegOptions {jpegQuality, jpegMetadata} =
     pure . JP.encodeDirectJpegAtQualityWithMetadata jpegQuality jpegMetadata . toJPImageCMYK8
 
+instance Writable JPG (Image S (Y D65) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable JPG (Image S SRGB Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable JPG (Image S (YCbCr SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
+instance Writable JPG (Image S (CMYK SRGB) Word8) where
+  encodeM f opts = encodeM f opts . toImageBaseModel
+
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto JPG) (Image r cs e) where
   encodeM _ opts = pure . encodeAutoJPG opts
 
 
 instance Readable JPG (Image S CM.Y Word8) where
-  decodeM = decodeJPG
   decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S (Alpha CM.Y) Word8) where
-  decodeM = decodeJPG
   decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S CM.RGB Word8) where
-  decodeM = decodeJPG
   decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S CM.CMYK Word8) where
-  decodeM = decodeJPG
   decodeWithMetadataM = decodeWithMetadataJPG
 
 instance Readable JPG (Image S CM.YCbCr Word8) where
-  decodeM = decodeJPG
   decodeWithMetadataM = decodeWithMetadataJPG
+
+
+instance Readable JPG (Image S (Y D65) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable JPG (Image S (Alpha (Y D65)) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable JPG (Image S SRGB Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable JPG (Image S (CMYK SRGB) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
+instance Readable JPG (Image S (YCbCr SRGB) Word8) where
+  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
+
 
 -- | Decode a Jpeg Image
 decodeJPG :: (ColorModel cs e, MonadThrow m) => JPG -> B.ByteString -> m (Image S cs e)
@@ -171,7 +196,7 @@ encodeAutoJPG ::
   -> Image r cs e
   -> BL.ByteString
 encodeAutoJPG JpegOptions {jpegQuality, jpegMetadata} img =
-  fromMaybe (toJpeg toJPImageRGB8 (toPixelBaseModel . toSRGB8) img) $
+  fromMaybe (toJpeg toJPImageYCbCr8 toYCbCr8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
          msum
@@ -179,17 +204,12 @@ encodeAutoJPG JpegOptions {jpegQuality, jpegMetadata} img =
                 pure $ toJpeg toJPImageY8 (toPixel8 . toPixelBaseModel) img
            , pure $ toJpeg toJPImageY8 (toPixel8 . toPixelBaseModel) img
            ]
-    , do Refl <- eqT :: Maybe (BaseModel cs :~: CM.YCbCr)
-         pure $
-           JP.encodeJpegAtQualityWithMetadata jpegQuality jpegMetadata $
-           toJPImageYCbCr8 $ A.map (toPixel8 . toPixelBaseModel) img
     , do Refl <- eqT :: Maybe (BaseModel cs :~: CM.CMYK)
-         pure $ toJpeg toJPImageCMYK8 (toPixel8 . toPixelBaseModel) img
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)
-         pure $ toJpeg toJPImageRGB8 (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
+         pure $ toJpeg toJPImageCMYK8 toCMYK8 img
+    , do Refl <- eqT :: Maybe (BaseModel cs :~: CM.RGB)
+         pure $ toJpeg toJPImageRGB8 toSRGB8 img
     ]
   where
-    toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
     toJpeg ::
          (JP.JpgEncodable px, Source r ix a)
       => (Array D ix b -> JP.Image px)

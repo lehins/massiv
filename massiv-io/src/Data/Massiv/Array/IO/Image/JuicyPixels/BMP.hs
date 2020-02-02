@@ -167,7 +167,7 @@ encodeAutoBMP ::
   -> Image r cs e
   -> BL.ByteString
 encodeAutoBMP BitmapOptions {bitmapMetadata} img =
-  fromMaybe (toBitmap toJPImageRGB8 (toPixelBaseModel . toSRGB8) img) $
+  fromMaybe (toBitmap toJPImageRGB8 toSRGB8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
          msum
@@ -175,16 +175,10 @@ encodeAutoBMP BitmapOptions {bitmapMetadata} img =
                 pure $ toBitmap toJPImageY8 (toPixel8 . toPixelBaseModel) img
            , pure $ toBitmap toJPImageY8 (toPixel8 . toPixelBaseModel) img
            ]
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)
-         pure $ toBitmap toJPImageRGB8 (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: Alpha CM.RGB)
-         pure $ toBitmap toJPImageRGBA8 (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
     , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
-         pure $ toBitmap toJPImageRGBA8 (toPixelBaseModel . toSRGBA8) img
+         pure $ toBitmap toJPImageRGBA8 toSRGBA8 img
     ]
   where
-    toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
-    toSRGBA8 = convertPixel :: Pixel cs e -> Pixel (Alpha SRGB) Word8
     toBitmap ::
          (JP.BmpEncodable px, Source r ix a)
       => (Array D ix b -> JP.Image px)

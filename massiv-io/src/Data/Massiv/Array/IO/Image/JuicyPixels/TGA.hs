@@ -159,7 +159,7 @@ encodeAutoTGA ::
   => Image r cs e
   -> BL.ByteString
 encodeAutoTGA img =
-  fromMaybe (toTga toJPImageRGB8 (toPixelBaseModel . toSRGB8) img) $
+  fromMaybe (toTga toJPImageRGB8 toSRGB8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
          msum
@@ -169,16 +169,10 @@ encodeAutoTGA img =
                 pure $ toTga toJPImageY8 toPixelBaseModel img
            , pure $ toTga toJPImageY8 (toPixel8 . toPixelBaseModel) img
            ]
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)
-         pure $ toTga toJPImageRGB8 (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
-    , do Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: Alpha CM.RGB)
-         pure $ toTga toJPImageRGBA8 (toPixel8 . toPixelBaseModel . toPixelBaseSpace) img
     , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
-         pure $ toTga toJPImageRGBA8 (toPixelBaseModel . toSRGBA8) img
+         pure $ toTga toJPImageRGBA8 toSRGBA8 img
     ]
   where
-    toSRGB8 = convertPixel :: Pixel cs e -> Pixel SRGB Word8
-    toSRGBA8 = convertPixel :: Pixel cs e -> Pixel (Alpha SRGB) Word8
     toTga ::
          (JP.TgaSaveable px, Source r ix a)
       => (Array D ix b -> JP.Image px)

@@ -284,12 +284,13 @@ fromNetpbmImageAuto Netpbm.PPM {..} = do
   let m = ppmHeight ppmHeader
       n = ppmWidth ppmHeader
   case ppmData of
-    PbmPixelData v -> convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Bit))
+    PbmPixelData v ->
+      compute . convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Bit))
     PgmPixelData8 v ->
-      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word8))
+      compute . convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word8))
     PgmPixelData16 v ->
-      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word16))
+      compute . convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S (Y D65) Word16))
     PpmPixelDataRGB8 v ->
-      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word8))
+      compute . convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word8))
     PpmPixelDataRGB16 v ->
-      convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word16))
+      compute . convertImage <$> (fromNetpbmImageUnsafe m n v :: Maybe (Image S SRGB Word16))

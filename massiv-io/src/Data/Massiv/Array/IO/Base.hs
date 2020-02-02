@@ -229,14 +229,10 @@ decodeError = either (throwM . DecodeError) pure
 --
 -- @since 0.2.0
 convertImage ::
-     ( Source r' Ix2 (Pixel cs' e')
-     , Mutable r Ix2 (Pixel cs e)
-     , ColorSpace cs' i' e'
-     , ColorSpace cs i e
-     )
+     (Source r' Ix2 (Pixel cs' e'), ColorSpace cs' i' e', ColorSpace cs i e)
   => Image r' cs' e'
-  -> Image r cs e
-convertImage = compute . A.map convertPixel
+  -> Image D cs e
+convertImage = A.map convertPixel
 
 -- | Cast an array
 --

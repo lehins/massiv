@@ -139,10 +139,7 @@ encodeAutoHDR ::
   => HdrOptions
   -> Image r cs e
   -> BL.ByteString
-encodeAutoHDR opts img =
-  fromMaybe (toHdr (toPixelBaseModel . toSRGBF) img) $ do
-    Refl <- eqT :: Maybe (BaseModel (BaseSpace cs) :~: CM.RGB)
-    pure $ toHdr (toPixelF . toPixelBaseModel . toPixelBaseSpace) img
+encodeAutoHDR opts = toHdr (toPixelBaseModel . toSRGBF)
   where
     toSRGBF = convertPixel :: Pixel cs e -> Pixel SRGB Float
     toHdr :: Source r Ix2 a => (a -> Pixel CM.RGB Float) -> Array r Ix2 a -> BL.ByteString
