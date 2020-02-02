@@ -36,7 +36,6 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base
 import Data.Massiv.Array.IO.Image.JuicyPixels.Base
-import Data.Maybe (fromMaybe)
 import Data.Typeable
 import qualified Graphics.Pixel as CM
 import Graphics.Pixel.ColorSpace
