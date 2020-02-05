@@ -95,7 +95,7 @@ data ExternalViewer =
 --
 -- >>> import qualified Graphics.ColorModel as CM
 -- >>> frogRGB <- readArray JPG "files/_frog.jpg" :: IO (Image S CM.RGB Word8)
--- >>> displayImage (fromImageBaseModel frogRGB :: Image S AdobeRGB Word8)
+-- >>> let frogAdobeRGB = (fromImageBaseModel frogRGB :: Image S AdobeRGB Word8)
 --
 -- @since 0.1.0
 readArray :: (Readable f arr, MonadIO m) =>
@@ -154,7 +154,8 @@ writeArray format opts filepath arr =
 -- Resulting image will be read as specified by the type signature:
 --
 -- >>> frog <- readImage "files/frog.jpg" :: IO (Image S (YCbCr SRGB) Word8)
--- >>> displayImage frog
+-- >>> size frog
+-- Sz (200 :. 320)
 --
 -- In case when the result image type does not match the color space or precision of the
 -- actual image file, `ConvertError` will be thrown.
@@ -167,8 +168,7 @@ writeArray format opts filepath arr =
 -- conversion functions:
 --
 -- >>> frogYCbCr <- readImage "files/frog.jpg" :: IO (Image S (YCbCr SRGB) Word8)
--- >>> let frogSRGB = convertImage frogYCbCr
--- >>> displayImage frogSRGB
+-- >>> let frogSRGB = convertImage frogYCbCr :: Image D SRGB Word8
 --
 -- A simpler approach to achieve the same effect would be to use `readImageAuto`:
 --
@@ -185,13 +185,13 @@ readImage path = liftIO (B.readFile path >>= decodeImageM imageReadFormats path)
 {-# INLINE readImage #-}
 
 
--- | Similar to `readImage`, but works on color spaces intead of color models and will
--- perform any possible color space conversion and precision adjustment in order to match
--- the result image type. Very useful whenever image format isn't known at compile time.
+-- | Similar to `readImage`, but works will perform all necessary color space conversion
+-- and precision adjustment in order to match the result image type. Very useful whenever
+-- image format isn't known at compile time.
 --
--- >>> import Graphics.ColorSpace as CS
--- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S (CS.CMYK SRGB) Double)
--- >>> displayImage frogCMYK
+-- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S (CMYK SRGB) Double)
+-- >>> size frogCMYK
+-- Sz (200 :. 320)
 --
 -- @since 0.1.0
 readImageAuto ::
@@ -267,16 +267,6 @@ displayImageUsing viewer block img =
            BL.hPut imgHandle bs
            hClose imgHandle
            displayImageFile viewer imgPath)
-    -- display bs =
-    --   withSystemTempDirectory "massiv-io" $ \tmpDir ->
-    --     bracket
-    --       (openBinaryTempFile tmpDir "tmp-img.tiff")
-    --       (hClose . snd)
-    --       (\(imgPath, imgHandle) -> do
-    --          BL.hPut imgHandle bs
-    --          hClose imgHandle
-    --          displayImageFile viewer imgPath)
-
 
 
 -- | Displays an image file by calling an external image viewer. It will block until the

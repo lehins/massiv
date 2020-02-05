@@ -20,6 +20,7 @@
 module Data.Massiv.Array.IO.Image.JuicyPixels.GIF
   ( GIF(..)
   , GifOptions(..)
+  , SequenceGifOptions(..)
   , JP.PaletteOptions(..)
   , JP.PaletteCreationMethod(..)
 
@@ -52,6 +53,7 @@ import Data.Typeable
 import qualified Graphics.Pixel as CM
 import Graphics.Pixel.ColorSpace
 import Prelude as P
+import Data.List.NonEmpty as NE
 
 --------------------------------------------------------------------------------
 -- GIF Format ------------------------------------------------------------------
@@ -186,9 +188,18 @@ encodeAutoGIF opts img =
         Just bs -> pure bs
         Nothing -> encodePalettizedRGB opts $ A.map toSRGB8 img
 
+data SequenceGifOptions = SequenceGifOptions
+  { sequenceGifPaletteOptions :: !JP.PaletteOptions
+  , sequenceGifLooping        :: !JP.GifLooping
+  }
+
+instance Default SequenceGifOptions where
+  def =
+    SequenceGifOptions
+      {sequenceGifPaletteOptions = JP.defaultPaletteOptions, sequenceGifLooping = JP.LoopingNever}
 
 instance FileFormat (Sequence GIF) where
-  type WriteOptions (Sequence GIF) = WriteOptions GIF
+  type WriteOptions (Sequence GIF) = SequenceGifOptions
   type Metadata (Sequence GIF) = [JP.GifDelay]
   ext _ = ext GIF
 
@@ -250,3 +261,68 @@ decodeSeqMetadata decode f bs = do
   imgs <- decode f bs
   delays <- decodeError $ JP.getDelaysGifImages bs
   pure (imgs, delays)
+
+
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.Y Word8)) where
+  encodeM _ SequenceGifOptions {sequenceGifLooping} gifs =
+    encodeError $
+    JP.encodeComplexGifImage $
+    JP.GifEncode
+      { JP.geWidth = cols
+      , JP.geHeight = rows
+      , JP.gePalette = Just JP.greyPalette
+      , JP.geBackground = Nothing
+      , JP.geLooping = sequenceGifLooping
+      , JP.geFrames =
+          flip fmap (NE.toList gifs) $ \(gifDelay, gif) ->
+            JP.GifFrame
+              { JP.gfXOffset = 0
+              , JP.gfYOffset = 0
+              , JP.gfPalette = Nothing
+              , JP.gfTransparent = Nothing
+              , JP.gfDelay = gifDelay
+              , JP.gfDisposal = JP.DisposalAny
+              , JP.gfPixels = toJPImageY8 gif
+              }
+      }
+    where
+      (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size . snd) gifs
+
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.RGB Word8)) where
+  encodeM _ SequenceGifOptions {sequenceGifLooping, sequenceGifPaletteOptions} gifs =
+    encodeError $
+    JP.encodeComplexGifImage $
+    JP.GifEncode
+      { JP.geWidth = cols
+      , JP.geHeight = rows
+      , JP.gePalette = Nothing
+      , JP.geBackground = Nothing
+      , JP.geLooping = sequenceGifLooping
+      , JP.geFrames =
+          flip fmap (NE.toList gifs) $ \(gifDelay, gif) ->
+            let (img, palette) = JP.palettize sequenceGifPaletteOptions $ toJPImageRGB8 gif
+             in JP.GifFrame
+                  { JP.gfXOffset = 0
+                  , JP.gfYOffset = 0
+                  , JP.gfPalette = Just palette
+                  , JP.gfTransparent = Nothing
+                  , JP.gfDelay = gifDelay
+                  , JP.gfDisposal = JP.DisposalAny
+                  , JP.gfPixels = img
+                  }
+      }
+    where
+      (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size . snd) gifs
+
+
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Y D65) Word8)) where
+  encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
+
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S SRGB Word8)) where
+  encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
+
+instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
+         Writable (Auto (Sequence GIF)) (NE.NonEmpty (JP.GifDelay, Image r cs e)) where
+  encodeM (Auto f) opts =
+    encodeM f opts .
+    fmap (fmap (computeAs S . (convertImage :: Image r cs e -> Image D SRGB Word8)))
