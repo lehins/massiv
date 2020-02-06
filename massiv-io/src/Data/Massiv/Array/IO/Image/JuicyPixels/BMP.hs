@@ -87,7 +87,7 @@ instance Writable BMP (Image S (Alpha SRGB) Word8) where
 
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto BMP) (Image r cs e) where
-  encodeM _ opts = pure . encodeAutoBMP opts
+  encodeM f opts = pure . encodeAutoBMP f opts
 
 
 instance Readable BMP (Image S CM.Y Word8) where
@@ -163,10 +163,11 @@ encodeBMP f BitmapOptions {bitmapMetadata} img =
 
 encodeAutoBMP ::
      forall r cs i e. (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e))
-  => BitmapOptions
+  => Auto BMP
+  -> BitmapOptions
   -> Image r cs e
   -> BL.ByteString
-encodeAutoBMP BitmapOptions {bitmapMetadata} img =
+encodeAutoBMP _ BitmapOptions {bitmapMetadata} img =
   fromMaybe (toBitmap toJPImageRGB8 toSRGB8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)

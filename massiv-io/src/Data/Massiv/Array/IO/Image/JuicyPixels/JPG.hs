@@ -98,7 +98,7 @@ instance Writable JPG (Image S (CMYK SRGB) Word8) where
 
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto JPG) (Image r cs e) where
-  encodeM _ opts = pure . encodeAutoJPG opts
+  encodeM f opts = pure . encodeAutoJPG f opts
 
 
 instance Readable JPG (Image S CM.Y Word8) where
@@ -192,10 +192,11 @@ encodeJPG f JpegOptions {jpegQuality, jpegMetadata} img =
 
 encodeAutoJPG ::
      forall r cs i e. (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e))
-  => JpegOptions
+  => Auto JPG
+  -> JpegOptions
   -> Image r cs e
   -> BL.ByteString
-encodeAutoJPG JpegOptions {jpegQuality, jpegMetadata} img =
+encodeAutoJPG _ JpegOptions {jpegQuality, jpegMetadata} img =
   fromMaybe (toJpeg toJPImageYCbCr8 toYCbCr8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)

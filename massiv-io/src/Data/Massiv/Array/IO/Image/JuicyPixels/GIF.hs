@@ -99,7 +99,7 @@ encodePalettizedRGB GifOptions {gifPaletteOptions} =
 
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto GIF) (Image r cs e) where
-  encodeM _ = encodeAutoGIF
+  encodeM = encodeAutoGIF
 
 
 instance Readable GIF (Image S CM.RGB Word8) where
@@ -175,10 +175,11 @@ encodeGIF f opts img =
 encodeAutoGIF ::
      forall r cs i e m.
      (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e), MonadThrow m)
-  => GifOptions
+  => Auto GIF
+  -> GifOptions
   -> Image r cs e
   -> m BL.ByteString
-encodeAutoGIF opts img =
+encodeAutoGIF _ opts img =
   fallbackEncodePalettizedRGB $ do
     Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
     pure $ JP.encodeGifImage $ toJPImageY8 $ A.map (toPixel8 . toPixelBaseModel) img

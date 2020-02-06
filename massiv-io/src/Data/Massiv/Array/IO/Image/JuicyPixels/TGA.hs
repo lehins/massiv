@@ -76,7 +76,7 @@ instance Writable TGA (Image S (Alpha SRGB) Word8) where
 
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto TGA) (Image r cs e) where
-  encodeM _ _ = pure . encodeAutoTGA
+  encodeM f _ = pure . encodeAutoTGA f
 
 
 instance Readable TGA (Image S CM.Y Word8) where
@@ -156,9 +156,10 @@ encodeAutoTGA ::
      , ColorSpace cs i e
      , Source r Ix2 (Pixel cs e)
      )
-  => Image r cs e
+  => Auto TGA
+  -> Image r cs e
   -> BL.ByteString
-encodeAutoTGA img =
+encodeAutoTGA _ img =
   fromMaybe (toTga toJPImageRGB8 toSRGB8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)

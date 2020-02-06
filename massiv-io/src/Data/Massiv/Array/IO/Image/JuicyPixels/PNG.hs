@@ -103,7 +103,7 @@ instance Writable PNG (Image S (Alpha SRGB) Word16) where
 
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto PNG) (Image r cs e) where
-  encodeM _ _ = pure . encodeAutoPNG
+  encodeM f _ = pure . encodeAutoPNG f
 
 
 instance Readable PNG (Image S CM.Y Word8) where
@@ -228,9 +228,10 @@ encodePNG f img =
 
 encodeAutoPNG ::
      forall r cs i e. (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e))
-  => Image r cs e
+  => Auto PNG
+  -> Image r cs e
   -> BL.ByteString
-encodeAutoPNG img =
+encodeAutoPNG _ img =
   fromMaybe (toPng toJPImageRGB16 toSRGB16 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)

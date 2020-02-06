@@ -78,7 +78,7 @@ instance Writable HDR (Image S SRGB Float) where
 
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto HDR) (Image r cs e) where
-  encodeM _ opts = pure . encodeAutoHDR opts
+  encodeM f opts = pure . encodeAutoHDR f opts
 
 
 instance Readable HDR (Image S CM.RGB Float) where
@@ -135,10 +135,11 @@ encodeHDR f opts img =
 
 encodeAutoHDR ::
      forall r cs i e. (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e))
-  => HdrOptions
+  => Auto HDR
+  -> HdrOptions
   -> Image r cs e
   -> BL.ByteString
-encodeAutoHDR opts = toHdr (toPixelBaseModel . toSRGBF)
+encodeAutoHDR _ opts = toHdr (toPixelBaseModel . toSRGBF)
   where
     toSRGBF = convertPixel :: Pixel cs e -> Pixel SRGB Float
     toHdr :: Source r Ix2 a => (a -> Pixel CM.RGB Float) -> Array r Ix2 a -> BL.ByteString

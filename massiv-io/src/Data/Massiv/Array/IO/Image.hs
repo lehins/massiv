@@ -98,13 +98,13 @@ imageWriteAutoFormats
      )
   => [Encode (Image r cs e)]
 imageWriteAutoFormats =
-  [ EncodeAs (Auto BMP) (\(Auto BMP) -> pure . encodeAutoBMP def)
-  , EncodeAs (Auto GIF) (\(Auto GIF) -> encodeAutoGIF def)
-  , EncodeAs (Auto HDR) (\(Auto HDR) -> pure . encodeAutoHDR def)
-  , EncodeAs (Auto JPG) (\(Auto JPG) -> pure . encodeAutoJPG def)
-  , EncodeAs (Auto PNG) (\(Auto PNG) -> pure . encodeAutoPNG)
-  , EncodeAs (Auto TGA) (\(Auto TGA) -> pure . encodeAutoTGA)
-  , EncodeAs (Auto TIF) (\(Auto TIF) -> pure . encodeAutoTIF)
+  [ EncodeAs (Auto BMP) (\f -> pure . encodeAutoBMP f def)
+  , EncodeAs (Auto GIF) (\f -> encodeAutoGIF f def)
+  , EncodeAs (Auto HDR) (\f -> pure . encodeAutoHDR f def)
+  , EncodeAs (Auto JPG) (\f -> pure . encodeAutoJPG f def)
+  , EncodeAs (Auto PNG) (\f -> pure . encodeAutoPNG f)
+  , EncodeAs (Auto TGA) (\f -> pure . encodeAutoTGA f)
+  , EncodeAs (Auto TIF) (\f -> pure . encodeAutoTIF f)
   ]
 
 

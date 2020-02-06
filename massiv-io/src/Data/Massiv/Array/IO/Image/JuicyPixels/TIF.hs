@@ -141,7 +141,7 @@ instance Writable TIF (Image S (CMYK SRGB) Word16) where
 
 instance (ColorSpace cs i e, ColorSpace (BaseSpace cs) i e, Source r Ix2 (Pixel cs e)) =>
          Writable (Auto TIF) (Image r cs e) where
-  encodeM _ _ = pure . encodeAutoTIF
+  encodeM f _ = pure . encodeAutoTIF f
 
 
 instance Readable TIF (Image S CM.Y Word8) where
@@ -309,9 +309,10 @@ encodeTIF f img =
 
 encodeAutoTIF ::
      forall r cs i e. (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e))
-  => Image r cs e
+  => Auto TIF
+  -> Image r cs e
   -> BL.ByteString
-encodeAutoTIF img =
+encodeAutoTIF _ img =
   fromMaybe (toTiff toJPImageRGB8 toSRGB8 img) $
   msum
     [ do Refl <- eqT :: Maybe (BaseModel cs :~: CM.Y)
