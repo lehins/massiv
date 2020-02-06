@@ -1,13 +1,16 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Base
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -16,29 +19,37 @@
 module Data.Massiv.Array.IO.Base
   ( FileFormat(..)
   , Readable(..)
+  , decode'
   , Writable(..)
+  , encode'
   , ConvertError(..)
   , EncodeError(..)
   , DecodeError(..)
   , Sequence(..)
   , Auto(..)
   , Image
-  , defaultReadOptions
+  , convertImage
+  , toImageBaseModel
+  , fromImageBaseModel
   , defaultWriteOptions
+  , encodeError
+  , decodeError
   , toProxy
   , fromMaybeEncode
-  , fromEitherDecode
+  , fromMaybeDecode
   , convertEither
+  , MonadThrow(..)
   ) where
 
+import Unsafe.Coerce
 import Control.Exception (Exception, throw)
+import Control.Monad.Catch (MonadThrow(..))
 import qualified Data.ByteString as B (ByteString)
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Default.Class (Default(..))
-import Data.Massiv.Array
-import Data.Maybe (fromMaybe)
+import Data.Massiv.Array as A
 import Data.Typeable
-import Graphics.ColorSpace (ColorSpace, Pixel)
+import Graphics.Pixel.ColorSpace
 
 type Image r cs e = Array r Ix2 (Pixel cs e)
 
@@ -63,11 +74,6 @@ newtype EncodeError = EncodeError String deriving Show
 instance Exception EncodeError
 
 
--- | Generate default read options for a file format
-defaultReadOptions :: FileFormat f => f -> ReadOptions f
-defaultReadOptions _ = def
-
-
 -- | Generate default write options for a file format
 defaultWriteOptions :: FileFormat f => f -> WriteOptions f
 defaultWriteOptions _ = def
@@ -80,14 +86,13 @@ newtype Auto f = Auto f deriving Show
 
 -- | File format. Helps in guessing file format from a file extension,
 -- as well as supplying format specific options during saving the file.
-class (Default (ReadOptions f), Default (WriteOptions f), Show f) => FileFormat f where
-  -- | Options that can be used during reading a file in this format.
-  type ReadOptions f
-  type ReadOptions f = ()
-
+class (Default (WriteOptions f), Show f) => FileFormat f where
   -- | Options that can be used during writing a file in this format.
   type WriteOptions f
   type WriteOptions f = ()
+
+  type Metadata f
+  type Metadata f = ()
 
   -- | Default file extension for this file format.
   ext :: f -> String
@@ -103,87 +108,144 @@ class (Default (ReadOptions f), Default (WriteOptions f), Show f) => FileFormat 
 
 
 instance FileFormat f => FileFormat (Auto f) where
-  type ReadOptions (Auto f) = ReadOptions f
   type WriteOptions (Auto f) = WriteOptions f
+  type Metadata (Auto f) = Metadata f
 
   ext (Auto f) = ext f
   exts (Auto f) = exts f
 
 
--- | File formats that can be read into an Array.
+-- | File formats that can be read into arrays.
 class Readable f arr where
+  {-# MINIMAL (decodeM | decodeWithMetadataM) #-}
+  -- | Decode a `B.ByteString` into an array. Can also return whatever left over data that
+  -- was not consumed during decoding.
+  --
+  -- @since 0.2.0
+  decodeM :: MonadThrow m => f -> B.ByteString -> m arr
+  decodeM f bs = fst <$> decodeWithMetadataM f bs
+  -- | Just as `decodeM`, but also return any format type specific metadata
+  --
+  -- @since 0.2.0
+  decodeWithMetadataM :: MonadThrow m => f -> B.ByteString -> m (arr, Metadata f)
+  default decodeWithMetadataM :: (Metadata f ~ (), MonadThrow m) =>
+    f -> B.ByteString -> m (arr, Metadata f)
+  decodeWithMetadataM f bs = do
+    arr <- decodeM f bs
+    pure (arr, ())
 
-  -- | Decode a `B.ByteString` into an Array.
-  decode :: f -> ReadOptions f -> B.ByteString -> arr
+-- | Encode an array into a `BL.ByteString`.
+encode' :: Writable f arr => f -> WriteOptions f -> arr -> BL.ByteString
+encode' f opts = either throw id . encodeM f opts
+
+-- | Decode a `B.ByteString` into an Array.
+decode' :: Readable f arr => f -> B.ByteString -> arr
+decode' f = either throw id . decodeM f
 
 
 -- | Arrays that can be written into a file.
 class Writable f arr where
 
   -- | Encode an array into a `BL.ByteString`.
-  encode :: f -> WriteOptions f -> arr -> BL.ByteString
-
+  --
+  -- @since 0.2.0
+  encodeM :: MonadThrow m => f -> WriteOptions f -> arr -> m BL.ByteString
 
 -- | Helper function to create a `Proxy` from the value.
 toProxy :: a -> Proxy a
 toProxy _ = Proxy
 
+showImageType ::
+     forall r cs e. (Typeable r, ColorModel cs e)
+  => Proxy (Image r cs e)
+  -> String
+showImageType _ =
+  ("<Image " ++) .
+  showsTypeRep (typeRep (Proxy :: Proxy r)) .
+  (' ' :) .
+  showsColorModelName (Proxy :: Proxy (Color cs e)) .
+  (' ' :) . showsTypeRep (typeRep (Proxy :: Proxy e)) $
+  ">"
+
+
 -- | Encode an image using the supplied function or throw an error in case of failure.
 fromMaybeEncode
-  :: forall f r cs e b. (ColorSpace cs e, FileFormat f, Typeable r)
-  => f -> Proxy (Image r cs e) -> Maybe b -> b
-fromMaybeEncode _ _         (Just b) = b
-fromMaybeEncode f _imgProxy Nothing =
-  throw $
-  ConvertError
-    ("Format " ++
-     show f ++
-     " cannot be encoded as <Image " ++
-     showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-     showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
-     showsTypeRep (typeRep (Proxy :: Proxy e)) ">")
+  :: forall f r cs e b m. (ColorModel cs e, FileFormat f, Typeable r, MonadThrow m)
+  => f -> Proxy (Image r cs e) -> Maybe b -> m b
+fromMaybeEncode f imgProxy =
+  \case
+    Just b -> pure b
+    Nothing ->
+      throwM $
+      ConvertError ("Format " ++ show f ++ " cannot be encoded as " ++ showImageType imgProxy)
 
 
 -- | Decode an image using the supplied function or throw an error in case of failure.
-fromEitherDecode :: forall r cs e a f. (ColorSpace cs e, FileFormat f, Typeable r) =>
-                    f
-                 -> (a -> String)
-                 -> (a -> Maybe (Image r cs e))
-                 -> Either String a
-                 -> Image r cs e
-fromEitherDecode _ _      _    (Left err)   = throw $ DecodeError err
-fromEitherDecode f showCS conv (Right eImg) =
-  fromMaybe
-    (throw $
-     ConvertError
-       ("Cannot decode " ++ show f ++ " image <" ++
-        showCS eImg ++
-        "> as " ++
-        "<Image " ++
-        showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-        showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
-        showsTypeRep (typeRep (Proxy :: Proxy e)) ">"))
-    (conv eImg)
+fromMaybeDecode ::
+     forall r cs e a f m. (ColorModel cs e, FileFormat f, Typeable r, MonadThrow m)
+  => f
+  -> (a -> String)
+  -> (a -> Maybe (Image r cs e))
+  -> a
+  -> m (Image r cs e)
+fromMaybeDecode f showCS conv eImg =
+  case conv eImg of
+    Nothing ->
+      throwM $
+      ConvertError $
+      "Cannot decode " ++
+      show f ++
+      " image <" ++ showCS eImg ++ "> as " ++ showImageType (Proxy :: Proxy (Image r cs e))
+    Just img -> pure img
 
 
 -- | Convert an image using the supplied function and return ConvertError error in case of failure.
-convertEither :: forall r cs e a f. (ColorSpace cs e, FileFormat f, Typeable r) =>
-                    f
-                 -> (a -> String)
-                 -> (a -> Maybe (Image r cs e))
-                 -> a
-                 -> Either ConvertError (Image r cs e)
+convertEither ::
+     forall r cs i e a f m. (ColorSpace cs i e, FileFormat f, Typeable r, MonadThrow m)
+  => f
+  -> (a -> String)
+  -> (a -> Maybe (Image r cs e))
+  -> a
+  -> m (Image r cs e)
 convertEither f showCS conv eImg =
   maybe
-    (Left $
+    (throwM $
      ConvertError
-       ("Cannot convert " ++ show f ++ " image <" ++
-        showCS eImg ++
-        "> as " ++
-        "<Image " ++
-        showsTypeRep (typeRep (Proxy :: Proxy r)) " " ++
-        showsTypeRep (typeRep (Proxy :: Proxy cs)) " " ++
-        showsTypeRep (typeRep (Proxy :: Proxy e)) ">"))
-    Right
+       ("Cannot convert " ++
+        show f ++
+        " image <" ++ showCS eImg ++ "> as " ++ showImageType (Proxy :: Proxy (Image r cs e))))
+    pure
     (conv eImg)
+
+
+encodeError :: MonadThrow m => Either String a -> m a
+encodeError = either (throwM . EncodeError) pure
+
+decodeError :: MonadThrow m => Either String a -> m a
+decodeError = either (throwM . DecodeError) pure
+
+
+-- | Convert image to any supported color space
+--
+-- @since 0.2.0
+convertImage ::
+     (Source r' Ix2 (Pixel cs' e'), ColorSpace cs' i' e', ColorSpace cs i e)
+  => Image r' cs' e'
+  -> Image D cs e
+convertImage = A.map convertPixel
+
+-- | Cast an array
+--
+-- @since 0.2.0
+toImageBaseModel ::
+  ColorSpace cs i e => Array S Ix2 (Pixel cs e) -> Array S Ix2 (Pixel (BaseModel cs) e)
+toImageBaseModel = unsafeCoerce
+
+
+-- | Cast an array
+--
+-- @since 0.2.0
+fromImageBaseModel ::
+  ColorSpace cs i e => Array S Ix2 (Pixel (BaseModel cs) e) -> Array S Ix2 (Pixel cs e)
+fromImageBaseModel = unsafeCoerce
 

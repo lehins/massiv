@@ -1,3 +1,13 @@
+# 0.2.0
+
+* Switch to `MonadIO`
+* Write files with durability and atomicity guarantees
+* Switch to `encodeM` and `decodeM`, as well as corresponding `encodeImageM` and `decodeImageM`
+* Addition of `decodeWithMetadataM`
+* Addition of `ConvertError`, `DecodeError` and `EncodeError`.
+* Got rid of `ReadOptions`
+* Switch to `Color` package for pixels and color space coversion
+
 # 0.1.9
 
 * Fix `HDR` decoding, i.e. `.hdr` and `.pic` file reading.

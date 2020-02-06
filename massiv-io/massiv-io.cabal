@@ -1,5 +1,5 @@
 name:                massiv-io
-version:             0.1.9.0
+version:             0.2.0.0
 synopsis:            Import/export of Image files into massiv Arrays
 description:         This package contains functionality for import/export of arrays
                      into the real world. For now it only has the ability to read/write
@@ -9,41 +9,46 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018-2019 Alexey Kuleshevich
+copyright:           2018-2020 Alexey Kuleshevich
 category:            Data, Data Structures
-build-type:          Simple
+build-type:          Custom
+extra-doc-files:     files/*.jpg
 extra-source-files:  README.md
                    , CHANGELOG.md
 cabal-version:       >=1.10
+custom-setup
+  setup-depends:
+      base
+    , Cabal
+    , cabal-doctest >=1.0.6
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Graphics.ColorSpace
-                     , Graphics.ColorSpace.Binary
-                     , Graphics.ColorSpace.CMYK
-                     , Graphics.ColorSpace.Complex
-                     , Graphics.ColorSpace.HSI
-                     , Graphics.ColorSpace.RGB
-                     , Graphics.ColorSpace.X
-                     , Graphics.ColorSpace.Y
-                     , Graphics.ColorSpace.YCbCr
-                     , Data.Massiv.Array.IO
-  other-modules:       Graphics.ColorSpace.Elevator
-                     , Graphics.ColorSpace.Internal
-                     , Data.Massiv.Array.IO.Base
+  exposed-modules:     Data.Massiv.Array.IO
+                     , Graphics.ColorModel
+  other-modules:       Data.Massiv.Array.IO.Base
                      , Data.Massiv.Array.IO.Image
                      , Data.Massiv.Array.IO.Image.JuicyPixels
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.Base
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.BMP
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.GIF
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.HDR
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.JPG
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.PNG
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.TGA
+                     , Data.Massiv.Array.IO.Image.JuicyPixels.TIF
                      , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.8 && < 5
                      , bytestring
+                     , Color           >= 0.1.2
                      , data-default-class
                      , deepseq
-                     , directory
-                     , filepath        >= 1.0
-                     , massiv          >= 0.1.1
-                     , process
-                     , JuicyPixels     >= 3.2.7
+                     , exceptions
+                     , filepath
+                     , massiv          >= 0.3
+                     , JuicyPixels     >= 3.3
                      , netpbm
+                     , unliftio        >= 0.2.12
                      , vector          >= 0.10
   default-language:    Haskell2010
   ghc-options:         -Wall
@@ -55,6 +60,20 @@ library
     else
       if os(darwin)
         CPP-options:  -DOS_Mac
+
+source-repository head
+  type:     git
+  location: https://github.com/lehins/massiv
+
+test-suite doctests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  main-is:          doctests.hs
+  build-depends: base
+               , doctest >=0.15
+               , QuickCheck
+               , template-haskell
+  default-language:    Haskell2010
 
 source-repository head
   type:     git

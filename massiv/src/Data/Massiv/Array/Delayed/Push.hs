@@ -150,7 +150,7 @@ appendOuterM (DLArray c1 sz1 mDef1 load1) (DLArray c2 sz2 mDef2 load2) = do
     {-# INLINE load #-}
 {-# INLINE appendOuterM #-}
 
--- | Concat arrays together along the most most dimension. Inner dimensions must agree
+-- | Concat arrays together along the outer most dimension. Inner dimensions must agree
 -- for all arrays in the list, otherwise `SizeMismatchException`.
 --
 -- @since 0.4.4
