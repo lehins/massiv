@@ -47,7 +47,7 @@ import Prelude as P
 
 newtype HdrOptions = HdrOptions
   { hdrUseLightRLE :: Bool
-  -- ^ User light RLE compression. Causes problems in some viewers. See:
+  -- ^ Use light RLE compression. Causes problems in some viewers. See:
   -- `JP.encodeRLENewStyleHDR`
   } deriving (Show)
 

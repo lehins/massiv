@@ -2,7 +2,8 @@
 
 * Switch to `MonadIO`
 * Write files with durability and atomicity guarantees
-* Switch to `encodeM` and `decodeM`, as well as corresponding `encodeImagM` and `decodeImageM`
+* Switch to `encodeM` and `decodeM`, as well as corresponding `encodeImageM` and `decodeImageM`
+* Addition of `decodeWithMetadataM`
 * Addition of `ConvertError`, `DecodeError` and `EncodeError`.
 * Got rid of `ReadOptions`
 * Switch to `Color` package for pixels and color space coversion
