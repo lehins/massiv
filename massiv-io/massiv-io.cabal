@@ -12,6 +12,7 @@ maintainer:          alexey@kuleshevi.ch
 copyright:           2018-2020 Alexey Kuleshevich
 category:            Data, Data Structures
 build-type:          Custom
+extra-doc-files:     files/*.jpg
 extra-source-files:  README.md
                    , CHANGELOG.md
 cabal-version:       >=1.10

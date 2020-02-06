@@ -19,6 +19,7 @@ module Data.Massiv.Array.IO
     module Graphics.Pixel.ColorSpace
   , Image
     -- $supported
+
     -- * Reading
   , readArray
   , readArrayWithMetadata
@@ -156,6 +157,10 @@ writeArray format opts filepath arr =
 -- >>> frog <- readImage "files/frog.jpg" :: IO (Image S (YCbCr SRGB) Word8)
 -- >>> size frog
 -- Sz (200 :. 320)
+--
+-- @__>>> displayImage frog__ @
+--
+-- ![frog](files/frog.jpg)
 --
 -- In case when the result image type does not match the color space or precision of the
 -- actual image file, `ConvertError` will be thrown.
