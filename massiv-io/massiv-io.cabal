@@ -15,7 +15,7 @@ build-type:          Custom
 extra-doc-files:     files/*.jpg
 extra-source-files:  README.md
                    , CHANGELOG.md
-cabal-version:       >=1.10
+cabal-version:       >=1.18
 custom-setup
   setup-depends:
       base
