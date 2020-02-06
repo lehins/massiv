@@ -1,7 +1,7 @@
-resolver: lts-14.9
+resolver: lts-14.20
 packages:
 - '.'
 extra-deps:
-- '../../Color/Color'
+- Color-0.1.2@sha256:d3710247aabd0f2dc40478949b2a9a8a8b25056e708521d08a6dffb5589ed1c5,8010
 flags: {}
 extra-package-dbs: []
