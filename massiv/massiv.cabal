@@ -51,6 +51,7 @@ library
                      , Data.Massiv.Core.Index
                      , Data.Massiv.Core.List
                      , Data.Massiv.Core.Operations
+                     , Data.Massiv.Vector
 
   other-modules:       Data.Massiv.Array.Delayed.Interleaved
                      , Data.Massiv.Array.Delayed.Pull
