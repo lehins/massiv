@@ -220,7 +220,7 @@ readImageAuto path = liftIO (B.readFile path >>= decodeImageM imageReadAutoForma
 --
 -- @since 0.1.0
 writeImage ::
-     (Source r Ix2 (Pixel cs e), ColorModel cs e, MonadIO m) => FilePath -> Image r cs e -> m ()
+     (Source r Ix2 (Pixel cs e), ColorSpace cs i e, MonadIO m) => FilePath -> Image r cs e -> m ()
 writeImage path img = liftIO (encodeImageM imageWriteFormats path img >>= writeLazyAtomically path)
 
 
@@ -356,7 +356,7 @@ precision for reading and writing without any conversion:
 * 'GIF':
 
     * __read__: ('PixelRGB' 'Word8'), ('PixelRGBA' 'Word8')
-    * __write__: ('PixelRGB' 'Word8')
+    * __write__: ('PixelY' 'Word8'), ('PixelRGB' 'Word8')
     * Also supports reading and writing animated images
 
 * 'HDR':
@@ -368,7 +368,7 @@ precision for reading and writing without any conversion:
 
     * __read__: ('PixelY' 'Word8'), ('PixelYA' 'Word8'), ('PixelRGB' 'Word8'), ('PixelCMYK' 'Word8'),
     ('PixelYCbCr', 'Word8')
-    * __write__: ('PixelY' 'Word8'), ('PixelYA', 'Word8'), ('PixelRGB' 'Word8'), ('PixelCMYK' 'Word8'),
+    * __write__: ('PixelY' 'Word8'), ('PixelRGB' 'Word8'), ('PixelCMYK' 'Word8'),
     ('PixelYCbCr', 'Word8')
 
 * 'PNG':

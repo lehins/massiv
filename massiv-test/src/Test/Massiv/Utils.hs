@@ -22,6 +22,7 @@ import Data.Typeable as X
 import Test.QuickCheck as X hiding ((.&.))
 import Test.QuickCheck.Monadic as X
 import Test.Hspec as X
+import Test.Hspec.QuickCheck as X
 import Test.QuickCheck.Function as X
 import Control.DeepSeq as X (NFData, deepseq)
 import UnliftIO.Exception (Exception(..), SomeException, catch, catchAny)

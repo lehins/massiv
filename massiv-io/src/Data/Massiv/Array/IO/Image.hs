@@ -66,7 +66,7 @@ instance Writable (Encode (Image r cs e)) (Image r cs e) where
 encodeImageM
   :: MonadThrow m
   => [Encode (Image r cs e)] -- ^ List of image formats to choose from (useful lists are
-                             -- `imageWriteFormats` and `imageWriteAutoFormats`
+                             -- `imageWriteFormats` and `imageWriteAutoFormats`)
   -> FilePath -- ^ File name with extension, so the format can be inferred
   -> Image r cs e -- ^ Image to encode
   -> m BL.ByteString
@@ -79,27 +79,24 @@ encodeImageM formats path img = do
 
 
 -- | List of image formats that can be encoded without any color space conversion.
-imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorModel cs e) => [Encode (Image r cs e)]
+imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorSpace cs i e) => [Encode (Image r cs e)]
 imageWriteFormats =
-  [ EncodeAs BMP (`encodeBMP` def)
-  , EncodeAs GIF (`encodeGIF` def)
-  , EncodeAs HDR (`encodeHDR` def)
-  , EncodeAs JPG (`encodeJPG` def)
-  , EncodeAs PNG encodePNG
-  , EncodeAs TGA encodeTGA
-  , EncodeAs TIF encodeTIF
+  [ EncodeAs BMP (\ f -> encodeBMP f def . toImageBaseModel . computeSource)
+  , EncodeAs GIF (\ f -> encodeGIF f def . toImageBaseModel . computeSource)
+  , EncodeAs HDR (\ f -> encodeHDR f def . toImageBaseModel . computeSource)
+  , EncodeAs JPG (\ f -> encodeJPG f def . toImageBaseModel . computeSource)
+  , EncodeAs PNG (\ f -> encodePNG f . toImageBaseModel . computeSource)
+  , EncodeAs TGA (\ f -> encodeTGA f . toImageBaseModel . computeSource)
+  , EncodeAs TIF (\ f -> encodeTIF f . toImageBaseModel . computeSource)
   ]
 
 -- | List of image formats that can be encoded with any necessary color space conversions.
-imageWriteAutoFormats
-  :: ( Source r Ix2 (Pixel cs e)
-     , ColorSpace cs i e
-     , ColorSpace (BaseSpace cs) i e
-     )
+imageWriteAutoFormats ::
+     (Source r Ix2 (Pixel cs e), ColorSpace cs i e, ColorSpace (BaseSpace cs) i e)
   => [Encode (Image r cs e)]
 imageWriteAutoFormats =
   [ EncodeAs (Auto BMP) (\f -> pure . encodeAutoBMP f def)
-  , EncodeAs (Auto GIF) (\f -> encodeAutoGIF f def)
+  , EncodeAs (Auto GIF) (`encodeAutoGIF` def)
   , EncodeAs (Auto HDR) (\f -> pure . encodeAutoHDR f def)
   , EncodeAs (Auto JPG) (\f -> pure . encodeAutoJPG f def)
   , EncodeAs (Auto PNG) (\f -> pure . encodeAutoPNG f)

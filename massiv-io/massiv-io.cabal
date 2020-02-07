@@ -61,9 +61,31 @@ library
       if os(darwin)
         CPP-options:  -DOS_Mac
 
-source-repository head
-  type:     git
-  location: https://github.com/lehins/massiv
+test-suite tests
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     tests
+  main-is:            Main.hs
+  other-modules:      Data.Massiv.Array.IOSpec
+                    , Spec
+  build-depends:      JuicyPixels
+                    , QuickCheck
+                    , base
+                    , bytestring
+                    , hspec
+                    , massiv
+                    , massiv-io
+                    , massiv-test
+                    , random
+
+  default-language:   Haskell2010
+  ghc-options:        -Wall
+                      -Wincomplete-record-updates
+                      -Wincomplete-uni-patterns
+                      -Wredundant-constraints
+                      -fno-warn-orphans
+                      -threaded
+                      -freduction-depth=0
+
 
 test-suite doctests
   type:             exitcode-stdio-1.0

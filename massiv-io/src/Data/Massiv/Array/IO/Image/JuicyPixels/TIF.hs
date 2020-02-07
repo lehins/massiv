@@ -168,9 +168,6 @@ instance Readable TIF (Image S CM.RGB Word8) where
 instance Readable TIF (Image S CM.RGB Word16) where
   decodeWithMetadataM = decodeWithMetadataTIF
 
-instance Readable TIF (Image S CM.RGB Float) where
-  decodeWithMetadataM = decodeWithMetadataTIF
-
 instance Readable TIF (Image S (Alpha CM.RGB) Word8) where
   decodeWithMetadataM = decodeWithMetadataTIF
 
@@ -206,9 +203,6 @@ instance Readable TIF (Image S SRGB Word8) where
   decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
 instance Readable TIF (Image S SRGB Word16) where
-  decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
-
-instance Readable TIF (Image S SRGB Float) where
   decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
 
 instance Readable TIF (Image S (Alpha SRGB) Word8) where
@@ -271,6 +265,8 @@ encodeTIF f img =
                 pure $ JP.encodeTiff $ toJPImageY16 img
            , do Refl <- eqT :: Maybe (e :~: Word32)
                 pure $ JP.encodeTiff $ toJPImageY32 img
+           , do Refl <- eqT :: Maybe (e :~: Float)
+                pure $ JP.encodeTiff $ toJPImageYF img
            ]
     , do Refl <- eqT :: Maybe (cs :~: Alpha CM.Y)
          msum
@@ -325,6 +321,8 @@ encodeAutoTIF _ img =
                 pure $ toTiff toJPImageY16 toPixelBaseModel img
            , do Refl <- eqT :: Maybe (e :~: Word32)
                 pure $ toTiff toJPImageY32 toPixelBaseModel img
+           , do Refl <- eqT :: Maybe (e :~: Float)
+                pure $ toTiff toJPImageYF toPixelBaseModel img
            , pure $ toTiff toJPImageY16 (toPixel16 . toPixelBaseModel) img
            ]
     , do Refl <- eqT :: Maybe (BaseModel cs :~: Alpha CM.Y)

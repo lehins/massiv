@@ -116,7 +116,7 @@ instance FileFormat f => FileFormat (Auto f) where
 
 
 -- | File formats that can be read into arrays.
-class Readable f arr where
+class FileFormat f => Readable f arr where
   {-# MINIMAL (decodeM | decodeWithMetadataM) #-}
   -- | Decode a `B.ByteString` into an array. Can also return whatever left over data that
   -- was not consumed during decoding.
@@ -144,7 +144,7 @@ decode' f = either throw id . decodeM f
 
 
 -- | Arrays that can be written into a file.
-class Writable f arr where
+class FileFormat f => Writable f arr where
 
   -- | Encode an array into a `BL.ByteString`.
   --
@@ -234,18 +234,18 @@ convertImage ::
   -> Image D cs e
 convertImage = A.map convertPixel
 
--- | Cast an array
+-- | Cast an array. This is theoretically unsafe operation, but for all current `ColorSpace`
+-- instances this function is perfectly safe.
 --
 -- @since 0.2.0
-toImageBaseModel ::
-  ColorSpace cs i e => Array S Ix2 (Pixel cs e) -> Array S Ix2 (Pixel (BaseModel cs) e)
+toImageBaseModel :: Array S Ix2 (Pixel cs e) -> Array S Ix2 (Pixel (BaseModel cs) e)
 toImageBaseModel = unsafeCoerce
 
 
--- | Cast an array
+-- | Cast an array. This is theoretically unsafe operation, but for all current `ColorSpace`
+-- instances this function is perfectly safe.
 --
 -- @since 0.2.0
-fromImageBaseModel ::
-  ColorSpace cs i e => Array S Ix2 (Pixel (BaseModel cs) e) -> Array S Ix2 (Pixel cs e)
+fromImageBaseModel :: Array S Ix2 (Pixel (BaseModel cs) e) -> Array S Ix2 (Pixel cs e)
 fromImageBaseModel = unsafeCoerce
 

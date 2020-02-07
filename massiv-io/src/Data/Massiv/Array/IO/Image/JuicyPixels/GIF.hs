@@ -21,6 +21,8 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.GIF
   ( GIF(..)
   , GifOptions(..)
   , SequenceGifOptions(..)
+  , JP.GifDelay
+  , JP.GifLooping(..)
   , JP.PaletteOptions(..)
   , JP.PaletteCreationMethod(..)
 
@@ -173,8 +175,7 @@ encodeGIF f opts img =
 
 
 encodeAutoGIF ::
-     forall r cs i e m.
-     (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e), MonadThrow m)
+     forall r cs i e m. (ColorSpace cs i e, Source r Ix2 (Pixel cs e), MonadThrow m)
   => Auto GIF
   -> GifOptions
   -> Image r cs e

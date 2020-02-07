@@ -134,7 +134,7 @@ encodeHDR f opts img =
 
 
 encodeAutoHDR ::
-     forall r cs i e. (ColorSpace (BaseSpace cs) i e, ColorSpace cs i e, Source r Ix2 (Pixel cs e))
+     forall r cs i e. (ColorSpace cs i e, Source r Ix2 (Pixel cs e))
   => Auto HDR
   -> HdrOptions
   -> Image r cs e
