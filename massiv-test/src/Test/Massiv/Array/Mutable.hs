@@ -9,6 +9,12 @@ module Test.Massiv.Array.Mutable
     mutableSpec
   , prop_GenerateArray
   , prop_iMapiMapM
+  , prop_Shrink
+  , prop_GrowShrink
+  , prop_iMapiMapM
+  , prop_unfoldrList
+  , prop_unfoldrReverseUnfoldl
+  , prop_toStreamArrayMutable
   -- * Atomic ops spec
   , atomicIntSpec
   ) where
@@ -77,6 +83,7 @@ prop_Shrink  =
     sarr <- unsafeFreeze (getComp arr) =<< unsafeLinearShrink marr (Sz ix)
     pure (A.foldlS (.&&.) (property True) $ A.zipWith (==) (flatten arr) (flatten sarr))
 
+-- TODO: Improve runtime speed!
 prop_GrowShrink ::
      forall r ix e.
      ( Eq (Array r ix e)
