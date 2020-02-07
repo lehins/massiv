@@ -50,8 +50,6 @@ newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
 
 
 instance Construct LN Ix1 e where
-  setComp _ = id
-  {-# INLINE setComp #-}
   makeArray _ (Sz n) f = coerce (fmap f [0 .. n - 1])
   {-# INLINE makeArray #-}
   makeArrayLinear _ (Sz n) f = coerce (fmap f [0 .. n - 1])
