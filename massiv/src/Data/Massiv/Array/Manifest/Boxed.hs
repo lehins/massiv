@@ -45,7 +45,7 @@ import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
 import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
 import Data.Massiv.Array.Manifest.List as L
-import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
+import Data.Massiv.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Array.Ops.Fold.Internal

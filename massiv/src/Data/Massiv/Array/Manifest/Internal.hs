@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -50,7 +50,7 @@ import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold.Internal
-import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
+import Data.Massiv.Vector.Stream as S (steps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import Data.Maybe (fromMaybe)

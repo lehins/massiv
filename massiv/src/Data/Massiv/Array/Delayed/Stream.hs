@@ -34,7 +34,7 @@ import Control.Applicative
 import Control.Monad (void)
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
-import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
+import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Core.Common
 import GHC.Exts
 import Prelude hiding (take, drop)

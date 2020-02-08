@@ -41,7 +41,7 @@ import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.Primitive (shrinkMutableByteArray)
 import Data.Primitive.ByteArray (MutableByteArray(..))
 import Data.Massiv.Array.Manifest.List as A
-import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
+import Data.Massiv.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List

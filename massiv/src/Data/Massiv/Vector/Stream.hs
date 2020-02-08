@@ -4,15 +4,18 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
--- Module      : Data.Massiv.Array.Manifest.Vector.Stream
--- Copyright   : (c) Alexey Kuleshevich 2019
+-- Module      : Data.Massiv.Vector.Stream
+-- Copyright   : (c) Alexey Kuleshevich 2019-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
-module Data.Massiv.Array.Manifest.Vector.Stream
-  ( -- | __Important__ - This module is still experimental, as such it is considered
+module Data.Massiv.Vector.Stream
+  ( -- | This module has a similar purpose as the 'Data.Vector.Fusion.Bundle.Monadic', but
+    -- quite a bit simpler.
+    --
+    -- __Important__ - This module is still experimental, as such it is considered
     -- internal and exported for the curious users only.
     Steps(..)
   , Stream(..)

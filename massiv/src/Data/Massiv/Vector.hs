@@ -64,9 +64,13 @@ module Data.Massiv.Vector
   -- ** Unfolding
   , unfoldr
   , unfoldrN
+  -- , unfoldrNM
+  -- , constructN
+  -- , constructrN
+  -- * Predicates
   ) where
 
-import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
+import qualified Data.Massiv.Vector.Stream as S
 import Control.Monad hiding (replicateM)
 import Data.Coerce
 import Data.Massiv.Core.Common hiding (empty, singleton)

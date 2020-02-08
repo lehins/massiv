@@ -22,7 +22,7 @@ import Data.Bits
 import Data.Functor.Identity
 import Data.List as L
 import Data.Massiv.Array as A
-import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
+import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Array.Mutable.Atomic
 import Data.Massiv.Array.Unsafe
 import Test.Massiv.Core.Common

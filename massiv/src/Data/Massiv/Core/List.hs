@@ -32,7 +32,7 @@ import Control.Scheduler
 import Data.Coerce
 import Data.Foldable (foldr')
 import qualified Data.List as L
-import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
+import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Core.Common
 import Data.Typeable
 import GHC.Exts

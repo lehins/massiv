@@ -27,7 +27,7 @@ import Control.DeepSeq (NFData(..), deepseq)
 import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import Data.Massiv.Array.Manifest.List as A
-import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
+import Data.Massiv.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List

@@ -22,7 +22,7 @@ module Test.Massiv.Array.Delayed
 import Data.Maybe as M
 import Data.Foldable as F
 import Data.Massiv.Array as A
-import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
+import qualified Data.Massiv.Vector.Stream as S
 import Test.Massiv.Core.Common ()
 import Test.Massiv.Utils as T
 import qualified GHC.Exts as Exts
