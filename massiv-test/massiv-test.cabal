@@ -57,6 +57,7 @@ test-suite tests
                     , Test.Massiv.Array.MutableSpec
                     , Test.Massiv.Array.Ops.TransformSpec
                     , Test.Massiv.Array.Ops.SortSpec
+                    , Test.Massiv.VectorSpec
                       -- TODO: Below should be moved to Test.Massiv.Array
                     , Data.Massiv.Array.Delayed.InterleavedSpec
                     , Data.Massiv.Array.Delayed.PushSpec

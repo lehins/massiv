@@ -1,3 +1,11 @@
+# 0.5.0
+
+* Addition of `fromStorableVector` and `fromStorableMVector`
+* Modify `toMutableByteArray` to produce a copy if dealing with slice.
+* Addition of `toByteArrayM`, `toMutableByteArrayM`
+* Addition of `toPrimitiveVector`, `toPrimitiveMVector`, `fromPrimitiveVector` and
+  `fromPrimitiveMVector`
+
 # 0.4.5
 
 * Addition of `computeIO` and `computePrimM`
@@ -26,7 +34,6 @@
 * Fix incorrect loading of `DW` arrays of dimension higher than 3
 * Addition of `foldOuterSlice`, `ifoldOuterSlice`, `foldInnerSlice` and
   `ifoldInnerSlice`. Fix for [#56](https://github.com/lehins/massiv/issues/56)
-
 
 # 0.4.2
 

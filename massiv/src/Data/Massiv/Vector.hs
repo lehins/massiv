@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- |
 -- Module      : Data.Massiv.Vector
@@ -9,35 +10,79 @@
 --
 module Data.Massiv.Vector
   ( Vector
+  , MVector
+  -- * Accessors
+  -- *** Size
   , length
   , null
+  -- *** Index
   , (!)
   , (!?)
+  -- *** Head
   , head'
   , headM
+  -- *** Last
   , last'
   , lastM
+  -- ** Slicing
+  , slice
   , slice'
   , sliceM
+  -- *** Init
+  , init
   , init'
   , initM
+  -- *** Tail
+  , tail
   , tail'
   , tailM
+  -- *** Take
+  , take
   , take'
   , takeM
+  -- *** Drop
+  , drop
+  , drop'
+  , dropM
+  -- *** SplitAt
+  , splitAt
+  , splitAt'
+  , splitAtM
+  -- * Construction
+  -- ** Initialization
+  , empty
+  , singleton
+  , replicate
+  , generate
+  , iterateN
+  -- ** Monadic initialization
+  , replicateM
+  , generateM
+  , iterateNM
+  -- ** Unfolding
+  , unfoldr
   ) where
 
-import Control.Monad
-import Data.Massiv.Array.Delayed
-import Data.Massiv.Array.Ops.Transform
+import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
+import Control.Monad hiding (replicateM)
+import Data.Coerce
 import Data.Massiv.Core.Common
-import Prelude hiding (length, null)
+import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Stream
+import Data.Massiv.Array.Ops.Construct (replicate)
+import Prelude hiding (drop, init, length, null, splitAt, tail, take, replicate)
 
 
--- | Type synonyme for a single dimension array, or simply a flat vector.
+-- | Type synonym for a single dimension array, or simply a flat vector.
 --
 -- @since 0.5.0
 type Vector r e = Array r Ix1 e
+
+
+-- | Type synonym for a single dimension mutable array, or simply a flat mutable vector.
+--
+-- @since 0.5.0
+type MVector s r e = MArray s r Ix1 e
 
 -- |
 --
@@ -55,6 +100,7 @@ null = isEmpty
 {-# INLINE null #-}
 
 
+-- TODO: Add to vector: headMaybe
 
 -- |
 --
@@ -91,38 +137,85 @@ lastM v = evaluateM v (max 0 (unSz (size v) - 1))
 -- |
 --
 -- @since 0.5.0
-slice' :: Extract r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector (R r) e
-slice' = extract'
+slice :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
+slice !i (Sz k) v = unsafeLinearSlice i' newSz v
+  where
+    !i' = min n (max 0 i)
+    !newSz = SafeSz (min (n - i') k)
+    Sz n = size v
+{-# INLINE slice #-}
+
+-- |
+--
+-- @since 0.5.0
+slice' :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
+slice' i k = either throw id . sliceM i k
 {-# INLINE slice' #-}
 
 -- |
 --
 -- @since 0.5.0
-sliceM :: (Extract r Ix1 e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector (R r) e)
-sliceM = extractM
+sliceM :: (Source r Ix1 e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
+sliceM i newSz@(Sz k) v
+  | i >= 0 && k <= n - i = pure $ unsafeLinearSlice i newSz v
+  | otherwise = throwM $ SizeSubregionException sz i newSz
+  where
+    sz@(Sz n) = size v
 {-# INLINE sliceM #-}
 
 
 -- |
 --
 -- @since 0.5.0
-init' :: Extract r Ix1 e => Vector r e -> Vector (R r) e
+unsafeSlice :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
+unsafeSlice = unsafeLinearSlice
+{-# INLINE unsafeSlice #-}
+
+-- |
+--
+-- @since 0.5.0
+init :: Source r Ix1 e => Vector r e -> Vector r e
+init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
+{-# INLINE init #-}
+
+-- |
+--
+-- @since 0.5.0
+init' :: Source r Ix1 e => Vector r e -> Vector r e
 init' = either throw id . initM
 {-# INLINE init' #-}
 
 -- |
 --
 -- @since 0.5.0
-initM :: (Extract r Ix1 e, MonadThrow m) => Vector r e -> m (Vector (R r) e)
+initM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
 initM v = do
   when (null v) $ throwM $ SizeEmptyException $ size v
-  pure $ unsafeExtract 0 (SafeSz (unSz (size v) - 1)) v
+  pure $ unsafeInit v
 {-# INLINE initM #-}
+
 
 -- |
 --
 -- @since 0.5.0
-tail' :: Extract r Ix1 e => Vector r e -> Vector (R r) e
+unsafeInit :: Source r Ix1 e => Vector r e -> Vector r e
+unsafeInit v = unsafeLinearSlice 0 (SafeSz (coerce (size v) - 1)) v
+{-# INLINE unsafeInit #-}
+
+
+
+-- |
+--
+-- @since 0.5.0
+tail :: Source r Ix1 e => Vector r e -> Vector r e
+tail = drop 1
+{-# INLINE tail #-}
+
+
+-- |
+--
+-- @since 0.5.0
+tail' :: Source r Ix1 e => Vector r e -> Vector r e
 tail' = either throw id . tailM
 {-# INLINE tail' #-}
 
@@ -130,32 +223,150 @@ tail' = either throw id . tailM
 -- |
 --
 -- @since 0.5.0
-tailM :: (Extract r Ix1 e, MonadThrow m) => Vector r e -> m (Vector (R r) e)
+tailM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
 tailM v = do
   when (null v) $ throwM $ SizeEmptyException $ size v
-  pure $ unsafeExtract 1 (SafeSz (unSz (size v) - 1)) v
+  pure $ unsafeTail v
 {-# INLINE tailM #-}
 
-
--- TODO: Have functions implemented that don't fail! Eg. take.
 
 -- |
 --
 -- @since 0.5.0
-take' :: Extract r Ix1 e => Sz1 -> Vector r e -> Vector (R r) e
+unsafeTail :: Source r Ix1 e => Vector r e -> Vector r e
+unsafeTail = unsafeDrop 1
+{-# INLINE unsafeTail #-}
+
+
+
+-- |
+--
+-- @since 0.5.0
+take :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+take k = fst . splitAt k
+{-# INLINE take #-}
+
+-- |
+--
+-- @since 0.5.0
+take' :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
 take' k = either throw id . takeM k
 {-# INLINE take' #-}
 
 -- |
 --
 -- @since 0.5.0
-takeM :: (Extract r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector (R r) e)
+takeM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
 takeM k v = do
   let sz = size v
   when (k > sz) $ throwM $ SizeSubregionException sz 0 k
-  pure $ unsafeExtract 0 k v
+  pure $ unsafeTake k v
 {-# INLINE takeM #-}
 
+-- |
+--
+-- @since 0.5.0
+unsafeTake :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+unsafeTake = unsafeLinearSlice 0
+{-# INLINE unsafeTake #-}
+
+-- |
+--
+-- @since 0.5.0
+drop :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+drop k = snd . splitAt k
+{-# INLINE drop #-}
+
+-- |
+--
+-- @since 0.5.0
+drop' :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+drop' k = either throw id . dropM k
+{-# INLINE drop' #-}
+
+-- |
+--
+-- @since 0.5.0
+dropM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
+dropM k@(Sz d) v = do
+  let sz@(Sz n) = size v
+  when (k > sz) $ throwM $ SizeSubregionException sz d (sz - k)
+  pure $ unsafeLinearSlice d (SafeSz (n - d)) v
+{-# INLINE dropM #-}
 
 
--- TODO: Add to vector: headMaybe
+-- |
+--
+-- @since 0.5.0
+unsafeDrop :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+unsafeDrop (Sz d) v = unsafeLinearSlice d (SafeSz (coerce (size v) - d)) v
+{-# INLINE unsafeDrop #-}
+
+
+-- |
+--
+-- @since 0.5.0
+splitAt :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+splitAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
+  where
+    !n = coerce (size v)
+    !d = SafeSz (min k n)
+{-# INLINE splitAt #-}
+
+-- |
+--
+-- @since 0.5.0
+splitAt' :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+splitAt' k = either throw id . splitAtM k
+{-# INLINE splitAt' #-}
+
+-- |
+--
+-- @since 0.5.0
+splitAtM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
+splitAtM k v = do
+  l <- takeM k v
+  pure (l, unsafeDrop k v)
+{-# INLINE splitAtM #-}
+
+
+
+-- |
+--
+-- @since 0.5.0
+generate :: Comp -> Sz1 -> (Ix1 -> e) -> Vector D e
+generate = makeArray
+{-# INLINE generate #-}
+
+
+-- |
+--
+-- @since 0.5.0
+iterateN :: Sz1 -> (e -> e) -> e -> Vector DS e
+iterateN n f a = fromSteps $ S.iterateN (unSz n) f a
+{-# INLINE iterateN #-}
+
+
+-- |
+--
+-- @since 0.5.0
+replicateM :: Monad m => Sz1 -> m e -> m (Vector DS e)
+replicateM n f = fromStepsM $ S.replicateM (unSz n) f
+{-# INLINE replicateM #-}
+
+
+-- |
+--
+-- @since 0.5.0
+generateM :: Monad m => Sz1 -> (Ix1 -> m e) -> m (Vector DS e)
+generateM n f = fromStepsM $ S.generateM (unSz n) f
+{-# INLINE generateM #-}
+
+
+-- |
+--
+-- @since 0.5.0
+iterateNM :: Monad m => Sz1 -> (e -> m e) -> e -> m (Vector DS e)
+iterateNM n f a = fromStepsM $ S.iterateNM (unSz n) f a
+{-# INLINE iterateNM #-}
+

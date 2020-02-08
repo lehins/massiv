@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -10,7 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -20,10 +21,18 @@ module Data.Massiv.Array.Manifest.Primitive
   ( P(..)
   , Array(..)
   , Prim
+  , toPrimitiveVector
+  , toPrimitiveMVector
+  , fromPrimitiveVector
+  , fromPrimitiveMVector
   , toByteArray
+  , toByteArrayM
+  , unsafeToByteArray
+  , unsafeToMutableByteArray
   , fromByteArrayM
   , fromByteArray
   , toMutableByteArray
+  , toMutableByteArrayM
   , fromMutableByteArrayM
   , fromMutableByteArray
   , shrinkMutableByteArray
@@ -48,9 +57,12 @@ import Data.Massiv.Array.Manifest.Vector.Stream as S (steps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Maybe (fromMaybe)
 import Data.Primitive (sizeOf)
 import Data.Primitive.ByteArray
 import Data.Primitive.Types
+import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Primitive.Mutable as MVP
 import GHC.Base (Int(..))
 import GHC.Exts as GHC
 import Prelude hiding (mapM)
@@ -257,12 +269,31 @@ elemsMBA _ a = sizeofMutableByteArray a `div` sizeOf (undefined :: e)
 {-# INLINE elemsMBA #-}
 
 
--- | /O(1)/ - Extract the internal `ByteArray`.
+-- | /O(n)/ - Ensure that the size matches the internal `ByteArray`. If not make a copy of
+-- the slice and return it as `ByteArray`
 --
 -- @since 0.2.1
-toByteArray :: Array P ix e -> ByteArray
-toByteArray = pData
+toByteArray :: (Index ix, Prim e) => Array P ix e -> ByteArray
+toByteArray arr = fromMaybe (unsafeToByteArray $ compute arr) $ toByteArrayM arr
 {-# INLINE toByteArray #-}
+
+-- | /O(1)/ - Extract the internal `ByteArray`. This might not match the ariginal
+-- primitive array due to potential slicing.
+--
+-- @since 0.5.0
+unsafeToByteArray :: Array P ix e -> ByteArray
+unsafeToByteArray = pData
+{-# INLINE unsafeToByteArray #-}
+
+
+-- | /O(n)/ - Ensure that the size matches the internal `ByteArray`.
+--
+-- @since 0.5.0
+toByteArrayM :: (Prim e, Index ix, MonadThrow m) => Array P ix e -> m ByteArray
+toByteArrayM arr@PArray {pSize, pData} = do
+  guardNumberOfElements pSize (Sz (elemsBA arr pData))
+  pure pData
+{-# INLINE toByteArrayM #-}
 
 
 -- | /O(1)/ - Construct a primitive array from the `ByteArray`. Will return `Nothing` if number of
@@ -284,13 +315,41 @@ fromByteArray comp ba = PArray comp (SafeSz (elemsBA (Proxy :: Proxy e) ba)) 0 b
 {-# INLINE fromByteArray #-}
 
 
--- TODO: memmove and shrink if non-zer offset
 -- | /O(1)/ - Extract the internal `MutableByteArray`.
 --
 -- @since 0.2.1
-toMutableByteArray :: MArray s P ix e -> MutableByteArray s
-toMutableByteArray (MPArray _ _ mba) = mba
+unsafeToMutableByteArray :: MArray s P ix e -> MutableByteArray s
+unsafeToMutableByteArray (MPArray _ _ mba) = mba
+{-# INLINE unsafeToMutableByteArray #-}
+
+-- | /O(n)/ - Try to cast a mutable array to `MutableByteArray`, if sizes do not match make
+-- a copy. Returns `True` if an array was converted without a copy, in which case it means
+-- tha the source at the resulting array are still pointing to the same location in memory.
+--
+-- @since 0.5.0
+toMutableByteArray ::
+     forall ix e m. (Prim e, Index ix, PrimMonad m)
+  => MArray (PrimState m) P ix e
+  -> m (Bool, MutableByteArray (PrimState m))
+toMutableByteArray marr@(MPArray sz offset mbas) =
+  case toMutableByteArrayM marr of
+    Just mba -> pure (True, mba)
+    Nothing -> do
+      let eSize = sizeOf (undefined :: e)
+          szBytes = totalElem sz * eSize
+      mbad <- newPinnedByteArray szBytes
+      copyMutableByteArray mbad 0 mbas (offset * eSize) szBytes
+      pure (False, mbad)
 {-# INLINE toMutableByteArray #-}
+
+
+-- | /O(1)/ - Extract the internal `MutableByteArray`.
+--
+-- @since 0.2.1
+toMutableByteArrayM :: (Index ix, Prim e, MonadThrow m) => MArray s P ix e -> m (MutableByteArray s)
+toMutableByteArrayM marr@(MPArray sz _ mba) =
+  mba <$ guardNumberOfElements sz (Sz (elemsMBA marr mba))
+{-# INLINE toMutableByteArrayM #-}
 
 
 -- | /O(1)/ - Construct a primitive mutable array from the `MutableByteArray`. Will throw
@@ -300,7 +359,7 @@ toMutableByteArray (MPArray _ _ mba) = mba
 fromMutableByteArrayM ::
      (MonadThrow m, Index ix, Prim e) => Sz ix -> MutableByteArray s -> m (MArray s P ix e)
 fromMutableByteArrayM sz mba =
-  guardNumberOfElements sz (Sz (elemsMBA marr mba)) >> pure marr
+  marr <$ guardNumberOfElements sz (Sz (elemsMBA marr mba))
   where
     marr = MPArray sz 0 mba
 {-# INLINE fromMutableByteArrayM #-}
@@ -312,6 +371,44 @@ fromMutableByteArray :: forall e s . Prim e => MutableByteArray s -> MArray s P 
 fromMutableByteArray mba = MPArray (SafeSz (elemsMBA (Proxy :: Proxy e) mba)) 0 mba
 {-# INLINE fromMutableByteArray #-}
 
+
+
+
+-- | /O(1)/ - Cast a primitive array to a primitive vector.
+--
+-- @since 0.5.0
+toPrimitiveVector :: Index ix => Array P ix e -> VP.Vector e
+toPrimitiveVector PArray {pSize, pOffset, pData} = VP.Vector pOffset (totalElem pSize) pData
+{-# INLINE toPrimitiveVector #-}
+
+
+-- | /O(1)/ - Cast a mutable primitive array to a mutable primitive vector.
+--
+-- @since 0.5.0
+toPrimitiveMVector :: Index ix => MArray s P ix e -> MVP.MVector s e
+toPrimitiveMVector (MPArray sz offset mba) = MVP.MVector offset (totalElem sz) mba
+{-# INLINE toPrimitiveMVector #-}
+
+
+-- | /O(1)/ - Cast a primitive vector to a primitive array.
+--
+-- @since 0.5.0
+fromPrimitiveVector ::
+     (Index ix, MonadThrow m) => Comp -> Sz ix -> VP.Vector e -> m (Array P ix e)
+fromPrimitiveVector comp sz (VP.Vector offset len ba) = do
+  guardNumberOfElements sz (Sz len)
+  pure $ PArray {pComp = comp, pSize = sz, pOffset = offset, pData = ba}
+{-# INLINE fromPrimitiveVector #-}
+
+-- | /O(1)/ - Cast a mutable primitive vector to a mutable primitive array.
+--
+-- @since 0.5.0
+fromPrimitiveMVector ::
+     (Index ix, Prim e, MonadThrow m) => Sz ix -> MVP.MVector s e -> m (MArray s P ix e)
+fromPrimitiveMVector sz mv@(MVP.MVector offset _ mba) = do
+  guardNumberOfElements sz (Sz (MVP.length mv))
+  pure $ MPArray sz offset mba
+{-# INLINE fromPrimitiveMVector #-}
 
 -- | Atomically read an `Int` element from the array
 --

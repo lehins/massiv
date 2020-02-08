@@ -11,7 +11,6 @@ module Test.Massiv.Array.Mutable
   , prop_iMapiMapM
   , prop_Shrink
   , prop_GrowShrink
-  , prop_iMapiMapM
   , prop_unfoldrList
   , prop_unfoldrReverseUnfoldl
   , prop_toStreamArrayMutable

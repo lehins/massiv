@@ -43,6 +43,10 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   , drop
   , take
   , slice
+  , iterateN
+  , iterateNM
+  , replicateM
+  , generateM
   , traverse
   , mapM
   , concatMap
@@ -68,6 +72,8 @@ module Data.Massiv.Array.Manifest.Vector.Stream
   , filter
   , filterA
   , filterM
+  -- * Transformations
+  , transSteps
   , transStepsId
   -- * Useful re-exports
   , module Data.Vector.Fusion.Bundle.Size
@@ -298,6 +304,13 @@ transStepsId :: Monad m => Steps Id e -> Steps m e
 transStepsId (Steps sts k) = Steps (S.trans (pure . unId) sts) k
 {-# INLINE transStepsId #-}
 
+transSteps :: (Monad m, Monad n) => Steps m e -> m (Steps n e)
+transSteps (Steps strM sz@(Exact _)) = (`Steps` sz) <$> liftListM strM
+transSteps (Steps strM _) = do
+  (n, strN) <- liftListNM strM
+  pure (Steps strN (Exact n))
+{-# INLINE transSteps #-}
+
 
 foldr :: (a -> b -> b) -> b -> Steps Id a -> b
 foldr f acc sts = unId (S.foldr f acc (stepsStream sts))
@@ -382,6 +395,24 @@ slice :: Monad m => Int -> Int -> Steps m a -> Steps m a
 slice i k (Steps str _) = Steps (S.slice i k str) (Max k)
 {-# INLINE slice #-}
 
+iterateN :: Monad m => Int -> (a -> a) -> a -> Steps m a
+iterateN n f a = Steps (S.iterateN n f a) (Exact n)
+{-# INLINE iterateN #-}
+
+iterateNM :: Monad m => Int -> (a -> m a) -> a -> Steps m a
+iterateNM n f a = Steps (S.iterateNM n f a) (Exact n)
+{-# INLINE iterateNM #-}
+
+replicateM :: Monad m => Int -> m a -> Steps m a
+replicateM n f = Steps (S.replicateM n f) (Exact n)
+{-# INLINE replicateM #-}
+
+
+generateM :: Monad m => Int -> (Int -> m a) -> Steps m a
+generateM n f = Steps (S.generateM n f) (Exact n)
+{-# INLINE generateM #-}
+
+
 unfoldr :: Monad m => (s -> Maybe (e, s)) -> s -> Steps m e
 unfoldr f e0 = Steps (S.unfoldr f e0) Unknown
 {-# INLINE unfoldr #-}
@@ -405,3 +436,21 @@ fromListN n  = (`Steps` Exact n) . S.fromListN n
 liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Stream m b)
 liftListA f str = S.fromList <$> f (unId (S.toList str))
 {-# INLINE liftListA #-}
+
+liftListM :: (Monad m, Monad n) => S.Stream m a -> m (S.Stream n a)
+liftListM str = do
+  xs <- S.toList str
+  pure $ S.fromList xs
+{-# INLINE liftListM #-}
+
+liftListNM :: (Monad m, Monad n) => S.Stream m a -> m (Int, S.Stream n a)
+liftListNM str = do
+  (n, xs) <- toListN str
+  pure (n, S.fromList xs)
+{-# INLINE liftListNM #-}
+
+
+toListN :: Monad m => S.Stream m a -> m (Int, [a])
+toListN = S.foldr (\x (i, xs) -> (i + 1, x:xs)) (0, [])
+{-# INLINE toListN #-}
+

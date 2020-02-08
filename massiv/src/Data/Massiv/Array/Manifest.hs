@@ -37,7 +37,12 @@ module Data.Massiv.Array.Manifest
   , P(..)
   , Prim
   -- ** Conversion
+  , toPrimitiveVector
+  , toPrimitiveMVector
+  , fromPrimitiveVector
+  , fromPrimitiveMVector
   , toByteArray
+  , toByteArrayM
   , fromByteArray
   , fromByteArrayM
   , toMutableByteArray
@@ -49,6 +54,8 @@ module Data.Massiv.Array.Manifest
   -- ** Conversion
   , toStorableVector
   , toStorableMVector
+  , fromStorableVector
+  , fromStorableMVector
   -- ** Direct Pointer Access
   , withPtr
   -- * Unboxed

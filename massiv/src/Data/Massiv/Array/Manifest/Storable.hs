@@ -9,7 +9,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -21,6 +21,8 @@ module Data.Massiv.Array.Manifest.Storable
   , VS.Storable
   , toStorableVector
   , toStorableMVector
+  , fromStorableVector
+  , fromStorableMVector
   , withPtr
   , unsafeWithPtr
   , unsafeArrayToForeignPtr
@@ -262,6 +264,24 @@ toStorableVector = sData
 toStorableMVector :: MArray s S ix e -> VS.MVector s e
 toStorableMVector (MSArray _ mv) = mv
 {-# INLINE toStorableMVector #-}
+
+-- | /O(1)/ - Cast a storable vector to a storable array.
+--
+-- @since 0.5.0
+fromStorableVector ::
+     (Storable e, Index ix, MonadThrow m) => Comp -> Sz ix -> VS.Vector e -> m (Array S ix e)
+fromStorableVector comp sz v = do
+  guardNumberOfElements sz (Sz (VS.length v))
+  pure $ SArray {sComp = comp, sSize = sz, sData = v}
+{-# INLINE fromStorableVector #-}
+
+-- | /O(1)/ - Cast a mutable storable vector to a mutable storable array.
+--
+-- @since 0.5.0
+fromStorableMVector :: (Index ix, MonadThrow m) => Sz ix -> MVS.MVector s e -> m (MArray s S ix e)
+fromStorableMVector sz mv@(MVS.MVector len _) =
+  MSArray sz mv <$ guardNumberOfElements sz (Sz len)
+{-# INLINE fromStorableMVector #-}
 
 
 -- | /O(1)/ - Yield the underlying `ForeignPtr` together with its length.

@@ -62,19 +62,21 @@ castFromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Mutable r ix e, A
                -> Sz ix -- ^ Size of the result Array
                -> v e -- ^ Source Vector
                -> Maybe (Array r ix e)
-castFromVector comp sz vector = do
-  guard (totalElem sz == VG.length vector)
+castFromVector comp sz vector =
   msum
     [ do Refl <- eqT :: Maybe (v :~: VU.Vector)
+         guard (totalElem sz == VG.length vector)
          uVector <- join $ gcast1 (Just vector)
          return $ UArray {uComp = comp, uSize = sz, uData = uVector}
     , do Refl <- eqT :: Maybe (v :~: VS.Vector)
+         guard (totalElem sz == VG.length vector)
          sVector <- join $ gcast1 (Just vector)
          return $ SArray {sComp = comp, sSize = sz, sData = sVector}
     , do Refl <- eqT :: Maybe (v :~: VP.Vector)
-         VP.Vector offset _ arr <- join $ gcast1 (Just vector)
-         return $ PArray {pComp = comp, pSize = sz, pOffset = offset, pData = arr}
+         pVector <- join $ gcast1 (Just vector)
+         fromPrimitiveVector comp sz pVector
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
+         guard (totalElem sz == VG.length vector)
          bVector <- join $ gcast1 (Just vector)
          let BArray _ _ offset arr = castVectorToArray bVector
              barr = BArray {bComp = comp, bSize = sz, bOffset = offset, bData = arr}

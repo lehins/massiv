@@ -5,7 +5,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -30,7 +30,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeSlice
   , unsafeOuterSlice
   , unsafeInnerSlice
-  -- , unsafeLinearSlice
+  , unsafeLinearSlice
     -- * Mutable interface
   , unsafeThaw
   , unsafeFreeze
@@ -74,6 +74,8 @@ module Data.Massiv.Array.Unsafe
   , unsafeAtomicXorIntArray
   , unsafeCasIntArray
     -- ** Other operations
+  , unsafeToByteArray
+  , unsafeToMutableByteArray
   , unsafeUnstablePartitionRegionM
   ) where
 

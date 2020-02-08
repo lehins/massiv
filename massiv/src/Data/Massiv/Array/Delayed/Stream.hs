@@ -17,6 +17,7 @@ module Data.Massiv.Array.Delayed.Stream
   , toStreamArray
   , toSteps
   , fromSteps
+  , fromStepsM
   , takeS
   , dropS
   , filterS
@@ -39,27 +40,35 @@ import GHC.Exts
 import Prelude hiding (take, drop)
 import Data.Vector.Fusion.Bundle.Size (upperBound)
 
--- | Delayed array that will be loaded in an interleaved fashion during parallel
--- computation.
+-- | Delayed stream array that represents a sequence of values that can be loaded
+-- sequentially. Important distinction from other arrays is that its size might no be
+-- known until it is computed.
 data DS = DS
 
 newtype instance Array DS Ix1 e = DSArray
   { dsArray :: S.Steps S.Id e
   }
 
--- | /O(1)/ - Convert delayed stream arrray into `Steps`.
+-- | /O(1)/ - Convert delayed stream array into `Steps`.
 --
 -- @since 0.4.1
 toSteps :: Array DS Ix1 e -> Steps Id e
 toSteps = coerce
 {-# INLINE toSteps #-}
 
--- | /O(1)/ - Convert `Steps` into delayed stream arrray
+-- | /O(1)/ - Convert `Steps` into delayed stream array
 --
 -- @since 0.4.1
 fromSteps :: Steps Id e -> Array DS Ix1 e
 fromSteps = coerce
 {-# INLINE fromSteps #-}
+
+-- | /O(1)/ - Convert monadic `Steps` into delayed stream array
+--
+-- @since 0.5.0
+fromStepsM :: Monad m => Steps m e -> m (Array DS Ix1 e)
+fromStepsM = fmap DSArray . S.transSteps
+{-# INLINE fromStepsM #-}
 
 
 instance Functor (Array DS Ix1) where
