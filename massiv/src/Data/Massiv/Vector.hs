@@ -15,14 +15,14 @@ module Data.Massiv.Vector
   -- *** Size
   , length
   , null
-  -- *** Index
+  -- *** Indexing
   , (!)
   , (!?)
-  -- *** Head
   , head'
-  , headM
-  -- *** Last
   , last'
+  -- *** Monadic Indexing
+  , indexM
+  , headM
   , lastM
   -- ** Slicing
   , slice
@@ -59,17 +59,21 @@ module Data.Massiv.Vector
   , replicateM
   , generateM
   , iterateNM
+  -- , create
+  -- , createT
   -- ** Unfolding
   , unfoldr
+  , unfoldrN
   ) where
 
 import qualified Data.Massiv.Array.Manifest.Vector.Stream as S
 import Control.Monad hiding (replicateM)
 import Data.Coerce
-import Data.Massiv.Core.Common
+import Data.Massiv.Core.Common hiding (empty, singleton)
+import qualified Data.Massiv.Core.Common as A (empty, singleton)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Stream
-import Data.Massiv.Array.Ops.Construct (replicate)
+import qualified Data.Massiv.Array.Ops.Construct as A (replicate)
 import Prelude hiding (drop, init, length, null, splitAt, tail, take, replicate)
 
 
@@ -83,6 +87,16 @@ type Vector r e = Array r Ix1 e
 --
 -- @since 0.5.0
 type MVector s r e = MArray s r Ix1 e
+
+
+-- ========= --
+-- Accessors --
+-- ========= --
+
+
+------------------------
+-- Length information --
+------------------------
 
 -- |
 --
@@ -99,6 +113,9 @@ null :: Load r Ix1 e => Vector r e -> Bool
 null = isEmpty
 {-# INLINE null #-}
 
+--------------
+-- Indexing --
+--------------
 
 -- TODO: Add to vector: headMaybe
 
@@ -109,15 +126,6 @@ head' :: Source r Ix1 e => Vector r e -> e
 head' = (`evaluate'` 0)
 {-# INLINE head' #-}
 
-
--- |
---
--- @since 0.5.0
-headM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
-headM = (`evaluateM` 0)
-{-# INLINE headM #-}
-
-
 -- |
 --
 -- @since 0.5.0
@@ -125,6 +133,18 @@ last' :: Source r Ix1 e => Vector r e -> e
 last' v = evaluate' v (max 0 (unSz (size v) - 1))
 {-# INLINE last' #-}
 
+
+----------------------
+-- Monadic indexing --
+----------------------
+
+
+-- |
+--
+-- @since 0.5.0
+headM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
+headM = (`evaluateM` 0)
+{-# INLINE headM #-}
 
 -- |
 --
@@ -330,14 +350,34 @@ splitAtM k v = do
 {-# INLINE splitAtM #-}
 
 
+-- |
+--
+-- @since 0.5.0
+empty :: Construct r Ix1 e => Vector r e
+empty = A.empty
+{-# INLINE empty #-}
+
+-- |
+--
+-- @since 0.5.0
+singleton :: Construct r Ix1 e => e -> Vector r e
+singleton = A.singleton
+{-# INLINE singleton #-}
 
 -- |
 --
 -- @since 0.5.0
 generate :: Comp -> Sz1 -> (Ix1 -> e) -> Vector D e
-generate = makeArray
+generate = makeArrayLinear
 {-# INLINE generate #-}
 
+
+-- | Replicate the same element
+--
+-- @since 0.5.0
+replicate :: Comp -> Sz1 -> e -> Vector D e
+replicate = A.replicate
+{-# INLINE replicate #-}
 
 -- |
 --

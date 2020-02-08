@@ -80,6 +80,7 @@ test-suite tests
                     , genvalidity-hspec
                     , massiv
                     , massiv-test
+                    , mwc-random
                     , hspec
                     , scheduler
                     , QuickCheck
