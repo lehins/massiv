@@ -28,6 +28,10 @@ module Data.Massiv.Vector
   , slice
   , slice'
   , sliceM
+  , sslice
+  , sliceAt
+  , sliceAt'
+  , sliceAtM
   -- *** Init
   , init
   , init'
@@ -46,18 +50,18 @@ module Data.Massiv.Vector
   , drop'
   , dropM
   , sdrop
-  -- -- *** SplitAt
-  -- , splitAt
-  -- , splitAt'
-  -- , splitAtM
   -- * Construction
   -- ** Initialization
   , empty
   , sempty
+  , singleton
   , ssingleton
+  , A.replicate
   , sreplicate
   , generate
   , sgenerate
+  -- , iterateN
+  -- , iiterateN
   , siterateN
   -- ** Monadic initialization
   , sreplicateM
@@ -232,15 +236,15 @@ module Data.Massiv.Vector
   , traverseS
   ) where
 
-import qualified Data.Massiv.Vector.Stream as S
-import Control.Monad hiding (replicateM, filterM)
+import Control.Monad hiding (filterM, replicateM)
 import Data.Coerce
-import Data.Massiv.Core.Common
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Stream
-import qualified Data.Massiv.Array.Ops.Construct as A (makeArrayR)
-import Prelude hiding (drop, init, length, null, splitAt, tail, take, replicate)
+import qualified Data.Massiv.Array.Ops.Construct as A (makeArrayR, replicate)
+import Data.Massiv.Core.Common
+import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Vector.Unsafe
+import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take)
 
 -- ========= --
 -- Accessors --
@@ -321,6 +325,14 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
 -- |
 --
 -- @since 0.5.0
+sslice :: Stream r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector DS e
+sslice !i (Sz k) = fromSteps . S.slice i k . S.toStream
+{-# INLINE sslice #-}
+
+
+-- |
+--
+-- @since 0.5.0
 slice' :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
 slice' i k = either throw id . sliceM i k
 {-# INLINE slice' #-}
@@ -392,7 +404,7 @@ tailM v = do
 --
 -- @since 0.5.0
 take :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
-take k = fst . splitAt k
+take k = fst . sliceAt k
 {-# INLINE take #-}
 
 -- |
@@ -423,8 +435,15 @@ stake n = fromSteps . S.take (unSz n) . S.toStream
 --
 -- @since 0.5.0
 drop :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
-drop k = snd . splitAt k
+drop k = snd . sliceAt k
 {-# INLINE drop #-}
+
+-- | Keep all but the first @n@ elements from the delayed stream vector.
+--
+-- @since 0.5.0
+sdrop :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
+sdrop n = fromSteps . S.drop (unSz n) . S.toStream
+{-# INLINE sdrop #-}
 
 -- |
 --
@@ -444,39 +463,33 @@ dropM k@(Sz d) v = do
 {-# INLINE dropM #-}
 
 
--- | Keep all but the first @n@ elements from the delayed stream vector.
---
--- @since 0.5.0
-sdrop :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
-sdrop n = fromSteps . S.drop (unSz n) . S.toStream
-{-# INLINE sdrop #-}
-
-
 -- |
 --
+--
+--
 -- @since 0.5.0
-splitAt :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
-splitAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
+sliceAt :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
   where
     !n = coerce (size v)
     !d = SafeSz (min k n)
-{-# INLINE splitAt #-}
+{-# INLINE sliceAt #-}
 
 -- |
 --
 -- @since 0.5.0
-splitAt' :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
-splitAt' k = either throw id . splitAtM k
-{-# INLINE splitAt' #-}
+sliceAt' :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+sliceAt' k = either throw id . sliceAtM k
+{-# INLINE sliceAt' #-}
 
 -- |
 --
 -- @since 0.5.0
-splitAtM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
-splitAtM k v = do
+sliceAtM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
+sliceAtM k v = do
   l <- takeM k v
   pure (l, unsafeDrop k v)
-{-# INLINE splitAtM #-}
+{-# INLINE sliceAtM #-}
 
 
 -- |
@@ -801,6 +814,7 @@ dropS = sdrop
 unfoldr :: (s -> Maybe (e, s)) -> s -> Vector DS e
 unfoldr = sunfoldr
 {-# INLINE unfoldr #-}
+{-# DEPRECATED unfoldr "In favor of `sunfoldr`" #-}
 
 
 -- | See `sunfoldrN`
@@ -809,6 +823,7 @@ unfoldr = sunfoldr
 unfoldrN :: Sz1 -> (s -> Maybe (e, s)) -> s -> Vector DS e
 unfoldrN = unfoldrN
 {-# INLINE unfoldrN #-}
+{-# DEPRECATED unfoldrN "In favor of `sunfoldrN`" #-}
 
 
 -- | See `sfilterM`

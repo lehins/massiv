@@ -63,7 +63,7 @@ prop_UnsafeInitializeNew ::
   => Property
 prop_UnsafeInitializeNew =
   property $ \comp sz e ->
-    (A.replicate comp sz e :: Array r ix e) ===
+    (compute (A.replicate comp sz e) :: Array r ix e) ===
     runST (unsafeFreeze comp =<< initializeNew (Just e) sz)
 
 prop_UnsafeInitialize ::
@@ -100,13 +100,12 @@ prop_UnsafeLinearCopy arr =
 
 prop_UnsafeLinearCopyPart ::
      forall r ix e.
-     ( Eq (Array r ix e)
+     ( Eq (Vector r e)
+     , Show (Vector r e)
+     , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
      , Mutable r ix e
      , Mutable r Ix1 e
-     , Extract r Ix1 e
      , Resize r ix
      )
   => ArrIx r ix e
@@ -114,7 +113,7 @@ prop_UnsafeLinearCopyPart ::
   -> Ix1
   -> Property
 prop_UnsafeLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
-  arr === arrs .&&. extract' i k (flatten arr) === extract' j k arrd
+  arr === arrs .&&. slice' i k (flatten arr) === slice' j k arrd
   where
     sz = size arr
     i = toLinearIndex sz ix
@@ -144,11 +143,10 @@ prop_UnsafeArrayLinearCopy arr =
 
 prop_UnsafeArrayLinearCopyPart ::
      forall r ix e.
-     ( Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
+     ( Eq (Vector r e)
+     , Show (Vector r e)
      , Mutable r ix e
      , Mutable r Ix1 e
-     , Extract r Ix1 e
      , Resize r ix
      )
   => ArrIx r ix e
@@ -156,7 +154,7 @@ prop_UnsafeArrayLinearCopyPart ::
   -> Ix1
   -> Property
 prop_UnsafeArrayLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
-  extract' i k (flatten arr) === extract' j k arr'
+  slice' i k (flatten arr) === slice' j k arr'
   where
     sz = size arr
     i = toLinearIndex sz ix
@@ -171,10 +169,10 @@ prop_UnsafeArrayLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
 
 prop_UnsafeLinearSet ::
      forall r ix e.
-     ( Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
+     ( Eq (Vector r e)
+     , Show (Vector r e)
      , Mutable r ix e
-     , Extract r Ix1 e
+     , Mutable r Ix1 e
      , Resize r ix
      )
   => Comp
@@ -183,8 +181,8 @@ prop_UnsafeLinearSet ::
   -> e
   -> Property
 prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
-  extract' i k (flatten (A.replicate Seq sz e :: Array r ix e)) ===
-  extract' i k (flatten (arrd :: Array r ix e))
+  compute (A.replicate Seq k e :: Vector D e) ===
+  slice' i k (flatten (arrd :: Array r ix e))
   where
     i = toLinearIndex sz ix
     k = Sz (totalElem sz - i - delta)
@@ -196,16 +194,16 @@ prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
 
 prop_UnsafeLinearShrink ::
      forall r ix e.
-     ( Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
+     ( Eq (Vector r e)
+     , Show (Vector r e)
      , Mutable r ix e
-     , Extract r Ix1 e
+     , Source r Ix1 e
      , Resize r ix
      )
   => ArrIx r ix e
   -> Property
 prop_UnsafeLinearShrink (ArrIx arr ix) =
-  extract' 0 k (flatten arr) === extract' 0 k (flatten arr')
+  slice' 0 k (flatten arr) === slice' 0 k (flatten arr')
   where
     sz = size arr
     sz' = Sz (liftIndex2 (-) (unSz sz) ix)
@@ -220,17 +218,17 @@ prop_UnsafeLinearGrow ::
      forall r ix e.
      ( Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
+     , Eq (Vector r e)
+     , Show (Vector r e)
      , Mutable r ix e
-     , Extract r Ix1 e
+     , Source r Ix1 e
      , Resize r ix
      )
   => ArrIx r ix e
   -> e
   -> Property
 prop_UnsafeLinearGrow (ArrIx arr ix) e =
-  extract' 0 k (flatten arr) === extract' 0 k (flatten arrGrown) .&&.
+  slice' 0 k (flatten arr) === slice' 0 k (flatten arrGrown) .&&.
   arrCopied === arrGrown
   where
     sz = size arr
@@ -250,8 +248,8 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
 
 unsafeMutableSpec ::
      forall r ix e.
-     ( Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
+     ( Eq (Vector r e)
+     , Show (Vector r e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
      , Mutable r ix e
@@ -262,7 +260,6 @@ unsafeMutableSpec ::
      , Arbitrary ix
      , Typeable e
      , Typeable ix
-     , Extract r Ix1 e
      , Resize r ix
      )
   => Spec

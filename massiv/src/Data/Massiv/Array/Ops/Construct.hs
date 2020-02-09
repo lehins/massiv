@@ -116,7 +116,7 @@ makeVectorR _ = makeArray
 -- | Replicate the same element
 --
 -- @since 0.3.0
-replicate :: forall r ix e . Construct r ix e => Comp -> Sz ix -> e -> Array r ix e
+replicate :: forall ix e . Index ix => Comp -> Sz ix -> e -> Array D ix e
 replicate comp sz e = makeArray comp sz (const e)
 {-# INLINE replicate #-}
 

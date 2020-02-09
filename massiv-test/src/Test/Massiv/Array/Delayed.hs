@@ -12,10 +12,10 @@ module Test.Massiv.Array.Delayed
   , prop_toStream
   , prop_toStreamIsList
   , prop_toStreamFoldable
-  , prop_filterS
-  , prop_mapMaybeS
+  , prop_sfilter
+  , prop_smapMaybe
   , prop_takeDrop
-  , prop_unfoldr
+  , prop_sunfoldr
   ) where
 
 
@@ -60,60 +60,85 @@ prop_toStreamFoldable arr =
   F.toList arr === S.toList (toStream arr)
 
 
-prop_filterS ::
+prop_sfilter ::
      forall r ix e. (Eq e, Show e, Stream r ix e, Foldable (Array r ix))
   => Array r ix e
   -> Fun e Bool
   -> Property
-prop_filterS arr f =
-  compareAsListAndLoaded (A.filterS (apply f) arr) (L.filter (apply f) (F.toList arr))
+prop_sfilter arr f =
+  compareAsListAndLoaded (A.sfilter (apply f) arr) (L.filter (apply f) (F.toList arr))
 
-prop_mapMaybeS ::
+prop_smapMaybe ::
      forall r ix e a. (Eq a, Show a, Stream r ix e, Foldable (Array r ix))
   => Array r ix e
   -> Fun e (Maybe a)
   -> Property
-prop_mapMaybeS arr f =
-  compareAsListAndLoaded (A.mapMaybeS (apply f) arr) (M.mapMaybe (apply f) (F.toList arr))
+prop_smapMaybe arr f =
+  compareAsListAndLoaded (A.smapMaybe (apply f) arr) (M.mapMaybe (apply f) (F.toList arr))
 
 
-prop_unfoldr ::
+prop_sunfoldr ::
      forall e s. (Eq e, Show e)
   => Fun s (Maybe (e, s))
   -> s
   -> NonNegative Int
   -> Property
-prop_unfoldr f s0 (NonNegative n) =
+prop_sunfoldr f s0 (NonNegative n) =
   compareAsListAndLoaded
-    (A.takeS (Sz n) (A.unfoldr (apply f) s0))
+    (A.stake (Sz n) (A.sunfoldr (apply f) s0))
     (L.take n (L.unfoldr (apply f) s0))
 
-prop_unfoldrN ::
+prop_sunfoldrN ::
      forall e s. (Eq e, Show e)
   => Fun s (Maybe (e, s))
   -> s
   -> Int
   -> Property
-prop_unfoldrN f s0 n =
-  compareAsListAndLoaded (A.unfoldrN (Sz n) (apply f) s0) (L.take n (L.unfoldr (apply f) s0))
+prop_sunfoldrN f s0 n =
+  compareAsListAndLoaded (A.sunfoldrN (Sz n) (apply f) s0) (L.take n (L.unfoldr (apply f) s0))
 
-prop_takeDrop ::
-     forall r ix e. (Eq e, Show e, Stream r ix e, Foldable (Array r ix))
+
+prop_stakesDrop ::
+     forall r ix e.
+     ( Eq e
+     , Show e
+     , Stream r ix e
+     , Foldable (Array r ix)
+     )
   => Array r ix e
   -> Int
   -> Int
   -> Property
-prop_takeDrop arr t d =
-  Exts.toList (A.takeS (Sz t) (A.dropS (Sz d) arr)) === take t (drop d (F.toList arr)) .&&.
-  Exts.toList (A.dropS (Sz d) (A.takeS (Sz t) arr)) ===
-  drop d (take t (F.toList arr))
+prop_stakesDrop arr t d =
+  conjoin
+    [ stoList (A.stake (Sz t) (A.sdrop (Sz d) arr)) === L.take t (L.drop d (F.toList arr))
+    , stoList (A.sdrop (Sz d) (A.stake (Sz t) arr)) === L.drop d (L.take t (F.toList arr))
+    ]
 
+prop_takeDrop ::
+     forall r e.
+     ( Eq e
+     , Show e
+     , Source r Ix1 e
+     , Foldable (Array r Ix1)
+     )
+  => Vector r e
+  -> Int
+  -> Int
+  -> Property
+prop_takeDrop arr t d =
+  conjoin
+    [ A.toList (A.take (Sz t) (A.drop (Sz d) arr)) === L.take t (L.drop d (F.toList arr))
+    , A.toList (A.drop (Sz d) (A.take (Sz t) arr)) === L.drop d (L.take t (F.toList arr))
+    ]
 
 delayedStreamSpec :: Spec
-delayedStreamSpec =
+delayedStreamSpec = do
+  describe "D Spec" $
+    it "takeDrop" $ property (prop_takeDrop @D @Int)
   describe "DS Spec" $ do
-    it "filterS" $ property (prop_filterS @DS @Ix1 @Int)
-    it "mapMaybeS" $ property (prop_mapMaybeS @DS @Ix1 @Int @Word)
-    it "unfoldr" $ property (prop_unfoldr @Int @Word)
-    it "unfoldrN" $ property (prop_unfoldrN @Int @Word)
-    it "takeDrop" $ property (prop_takeDrop @DS @Ix1 @Int)
+    it "sfilter" $ property (prop_sfilter @DS @Ix1 @Int)
+    it "smapMaybe" $ property (prop_smapMaybe @DS @Ix1 @Int @Word)
+    it "sunfoldr" $ property (prop_sunfoldr @Int @Word)
+    it "sunfoldrN" $ property (prop_sunfoldrN @Int @Word)
+    it "stakesDrop" $ property (prop_stakesDrop @DS @Ix1 @Int)
