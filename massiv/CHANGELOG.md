@@ -5,7 +5,7 @@
 * Addition of `toByteArrayM`, `toMutableByteArrayM`
 * Addition of `toPrimitiveVector`, `toPrimitiveMVector`, `fromPrimitiveVector` and
   `fromPrimitiveMVector`
-* Change `replicate` to produce delayed array `D`
+* Change `replicate` to produce delayed load array `DL`
 
 # 0.4.5
 

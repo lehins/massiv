@@ -181,7 +181,7 @@ prop_UnsafeLinearSet ::
   -> e
   -> Property
 prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
-  compute (A.replicate Seq k e :: Vector D e) ===
+  compute (A.replicate Seq k e) ===
   slice' i k (flatten (arrd :: Array r ix e))
   where
     i = toLinearIndex sz ix

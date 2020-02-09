@@ -100,30 +100,30 @@ module Data.Massiv.Vector
   -- , modify
   -- -- * Elementwise
   -- -- ** Mapping
-  -- , map
-  -- , imap
-  -- , concatMap
+  -- , smap
+  -- , simap
+  -- , sconcatMap
   -- -- ** Monadic mapping
   -- , smapM
-  -- , mapM_
-  -- , forM
-  -- , forM_
+  -- , smapM_
+  -- , sforM
+  -- , sforM_
   -- -- ** Zipping
   -- , szipWith
-  -- , zipWith2
-  -- , zipWith3
-  -- , zipWith4
-  -- , zipWith5
-  -- , zipWith6
+  -- , szipWith2
+  -- , szipWith3
+  -- , szipWith4
+  -- , szipWith5
+  -- , szipWith6
   -- , sizipWith
-  -- , izipWith2
-  -- , izipWith3
-  -- , izipWith4
-  -- , izipWith5
-  -- , izipWith6
+  -- , sizipWith2
+  -- , sizipWith3
+  -- , sizipWith4
+  -- , sizipWith5
+  -- , sizipWith6
   -- -- ** Monadic zipping
-  -- , zipWithM
-  -- , zipWithM_
+  -- , szipWithM
+  -- , szipWithM_
   -- * Predicates
   -- ** Filtering
   , sfilter

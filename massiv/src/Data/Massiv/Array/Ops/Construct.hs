@@ -116,8 +116,8 @@ makeVectorR _ = makeArray
 -- | Replicate the same element
 --
 -- @since 0.3.0
-replicate :: forall ix e . Index ix => Comp -> Sz ix -> e -> Array D ix e
-replicate comp sz e = makeArray comp sz (const e)
+replicate :: forall ix e . Index ix => Comp -> Sz ix -> e -> Array DL ix e
+replicate comp sz e = makeLoadArray comp sz e $ \_ _ -> pure ()
 {-# INLINE replicate #-}
 
 
