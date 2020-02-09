@@ -66,6 +66,10 @@ module Data.Massiv.Vector.Stream
   -- ** Unfolding
   , unfoldr
   , unfoldrN
+  , unfoldrM
+  , unfoldrNM
+  -- ** Enumeration
+  , enumFromStepN
   -- * Lists
   , toList
   , fromList
@@ -449,9 +453,24 @@ unfoldr :: Monad m => (s -> Maybe (e, s)) -> s -> Steps m e
 unfoldr f e0 = Steps (S.unfoldr f e0) Unknown
 {-# INLINE unfoldr #-}
 
-unfoldrN :: Monad m => Sz1 -> (s -> Maybe (e, s)) -> s -> Steps m e
-unfoldrN n f e0 = Steps (S.unfoldrN (unSz n) f e0) (Max (unSz n))
+unfoldrN :: Monad m => Int -> (s -> Maybe (e, s)) -> s -> Steps m e
+unfoldrN n f e0 = Steps (S.unfoldrN n f e0) (Max n)
 {-# INLINE unfoldrN #-}
+
+unfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> Steps m e
+unfoldrM f e0 = Steps (S.unfoldrM f e0) Unknown
+{-# INLINE unfoldrM #-}
+
+unfoldrNM :: Monad m => Int -> (s -> m (Maybe (e, s))) -> s -> Steps m e
+unfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) (Max n)
+{-# INLINE unfoldrNM #-}
+
+
+enumFromStepN :: (Num a, Monad m) => a -> a -> Int -> Steps m a
+enumFromStepN x step k = Steps (S.enumFromStepN x step k) (Exact k)
+{-# INLINE enumFromStepN #-}
+
+
 
 toList :: Steps Id e -> [e]
 toList (Steps str _) = unId (S.toList str)

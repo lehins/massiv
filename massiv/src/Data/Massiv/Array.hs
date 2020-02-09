@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 -- |
 -- Module      : Data.Massiv.Array
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019

@@ -72,13 +72,13 @@ module Data.Massiv.Vector
   -- ** Unfolding
   , sunfoldr
   , sunfoldrN
-  -- , unfoldrM
-  -- , unfoldrNM
+  , sunfoldrM
+  , sunfoldrNM
   -- , constructN
   -- , constructrN
   -- -- ** Enumeration
-  -- , enumFromN
-  -- , enumFromStepN
+  , enumFromN
+  , enumFromStepN
   -- ** Concatenation
   -- , consS -- cons
   -- , snocS -- snoc
@@ -103,7 +103,8 @@ module Data.Massiv.Vector
   -- , smap
   -- , simap
   -- , sconcatMap
-  -- -- ** Monadic mapping
+  -- ** Monadic mapping
+  , straverse
   -- , smapM
   -- , smapM_
   -- , sforM
@@ -130,13 +131,12 @@ module Data.Massiv.Vector
   , sifilter
   , sfilterM
   , sifilterM
-  -- , uniq -- unique?
+  -- , uniq -- sunique?
   , smapMaybe
   , smapMaybeM
   , scatMaybes
-  -- , imapMaybe
-  -- , filterM
-  -- --, ifilterM -- why missing?
+  , simapMaybe
+  , simapMaybeM
   -- , takeWhile
   -- , dropWhile
   -- -- ** Partitioning
@@ -597,10 +597,37 @@ sunfoldrN ::
   -- is reached.
   -> s -- ^ Inititial element.
   -> Vector DS e
-sunfoldrN n f = DSArray . S.unfoldrN n f
+sunfoldrN (Sz n) f = DSArray . S.unfoldrN n f
 {-# INLINE sunfoldrN #-}
 
+-- |
+--
+-- @since 0.5.0
+sunfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
+sunfoldrM f = fmap DSArray . S.transSteps . S.unfoldrM f
+{-# INLINE sunfoldrM #-}
 
+-- |
+--
+-- @since 0.5.0
+sunfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
+sunfoldrNM (Sz n) f = fmap DSArray . S.transSteps . S.unfoldrNM n f
+{-# INLINE sunfoldrNM #-}
+
+
+-- |
+--
+-- @since 0.5.0
+enumFromN :: Num e => e -> Sz1 -> Vector DS e
+enumFromN x (Sz n) = DSArray $ S.enumFromStepN x 1 n
+{-# INLINE enumFromN #-}
+
+-- |
+--
+-- @since 0.5.0
+enumFromStepN :: Num e => e -> e -> Sz1 -> Vector DS e
+enumFromStepN x step (Sz n) = DSArray $ S.enumFromStepN x step n
+{-# INLINE enumFromStepN #-}
 
 
 
