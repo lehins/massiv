@@ -15,6 +15,10 @@
 -- Portability : non-portable
 module Data.Massiv.Core.Common
   ( Array
+  , Vector
+  , MVector
+  , Matrix
+  , MMatrix
   , Elt
   , Steps(..)
   , Stream(..)
@@ -96,7 +100,7 @@ import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Typeable
 import Data.Vector.Fusion.Bundle.Size
-import qualified Data.Vector.Fusion.Stream.Monadic as S
+import qualified Data.Vector.Fusion.Stream.Monadic as S (Stream)
 import Data.Vector.Fusion.Util
 
 #include "massiv.h"
@@ -106,6 +110,30 @@ import Data.Vector.Fusion.Util
 -- element does not exist in memory and has to be computed upon lookup. Data is always arranged in a
 -- nested fashion, depth of which is controlled by @`Rank` ix@.
 data family Array r ix e :: *
+
+-- | Type synonym for a single dimension array, or simply a flat vector.
+--
+-- @since 0.5.0
+type Vector r e = Array r Ix1 e
+
+
+-- | Type synonym for a single dimension mutable array, or simply a flat mutable vector.
+--
+-- @since 0.5.0
+type MVector s r e = MArray s r Ix1 e
+
+-- | Type synonym for a two-dimentsional array, or simply a matrix.
+--
+-- @since 0.5.0
+type Matrix r e = Array r Ix2 e
+
+
+-- | Type synonym for a two-dimentsional mutable array, or simply a mutable matrix.
+--
+-- @since 0.5.0
+type MMatrix s r e = MArray s r Ix2 e
+
+
 
 type family Elt r ix e :: * where
   Elt r Ix1 e = e
@@ -122,10 +150,6 @@ data Steps m e = Steps
   { stepsStream :: S.Stream m e
   , stepsSize   :: Size
   }
-
-instance Monad m => Functor (Steps m) where
-  fmap f s = s { stepsStream = S.map f (stepsStream s) }
-  {-# INLINE fmap #-}
 
 
 -- | Array types that can be constructed.

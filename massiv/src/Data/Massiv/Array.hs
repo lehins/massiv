@@ -97,6 +97,8 @@ module Data.Massiv.Array
   , convertProxy
   , fromRaggedArrayM
   , fromRaggedArray'
+  -- * Vector
+  , module Data.Massiv.Vector
   -- * Size
   , size
   , elemsCount
@@ -114,17 +116,6 @@ module Data.Massiv.Array
   , evaluate'
   -- * Mapping
   , module Data.Massiv.Array.Ops.Map
-  -- * Filtering
-  -- ** Maybe
-  , mapMaybeS
-  , imapMaybeS
-  , mapMaybeM
-  , imapMaybeM
-  -- ** Predicate
-  , filterS
-  , ifilterS
-  , filterM
-  , ifilterM
   -- * Folding
 
   -- $folding
@@ -155,6 +146,7 @@ module Data.Massiv.Array
   , module Data.Massiv.Array.Numeric
   ) where
 
+import Data.Massiv.Vector
 import Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Manifest
@@ -174,50 +166,6 @@ import Data.Massiv.Core.Common
 import Prelude as P hiding (all, and, any, enumFromTo, foldl, foldr, mapM,
                             mapM_, maximum, minimum, or, product, replicate, splitAt,
                             sum, zip)
-
-
--- | Similar to `mapMaybeM`, but map with an index aware function.
---
--- @since 0.4.1
-imapMaybeS :: Source r ix a => (ix -> a -> Maybe b) -> Array r ix a -> Array DS Ix1 b
-imapMaybeS f arr =
-  mapMaybeS (uncurry f) $ makeArrayR D (getComp arr) (size arr) $ \ ix -> (ix, unsafeIndex arr ix)
-{-# INLINE imapMaybeS #-}
-
--- | Similar to `mapMaybeM`, but map with an index aware function.
---
--- @since 0.4.1
-imapMaybeM ::
-     (Source r ix a, Applicative f) => (ix -> a -> f (Maybe b)) -> Array r ix a -> f (Array DS Ix1 b)
-imapMaybeM f arr =
-  mapMaybeM (uncurry f) $ makeArrayR D (getComp arr) (size arr) $ \ ix -> (ix, unsafeIndex arr ix)
-{-# INLINE imapMaybeM #-}
-
--- | Similar to `filterS`, but map with an index aware function.
---
--- @since 0.4.1
-ifilterS :: Source r ix a => (ix -> a -> Bool) -> Array r ix a -> Array DS Ix1 a
-ifilterS f =
-  imapMaybeS $ \ix e ->
-    if f ix e
-      then Just e
-      else Nothing
-{-# INLINE ifilterS #-}
-
-
--- | Similar to `filterM`, but map with an index aware function.
---
--- @since 0.4.1
-ifilterM ::
-     (Source r ix a, Applicative f) => (ix -> a -> f Bool) -> Array r ix a -> f (Array DS Ix1 a)
-ifilterM f =
-  imapMaybeM $ \ix e ->
-    (\p ->
-       if p
-         then Just e
-         else Nothing) <$>
-    f ix e
-{-# INLINE ifilterM #-}
 
 
 {- $folding

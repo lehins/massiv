@@ -54,8 +54,6 @@ module Data.Massiv.Array.Ops.Transform
   , splitAtM
   , splitAt'
   , splitExtractM
-  , takeS
-  , dropS
   -- ** Upsample/Downsample
   , upsample
   , downsample
@@ -76,7 +74,6 @@ import Data.Foldable as F (foldl', foldrM, toList)
 import qualified Data.List as L (uncons)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
-import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map

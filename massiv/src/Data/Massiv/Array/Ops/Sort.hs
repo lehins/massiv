@@ -22,6 +22,7 @@ import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Transform
 import Data.Massiv.Core.Common
+import Data.Massiv.Vector (scatMaybes, sunfoldrN)
 import System.IO.Unsafe
 
 -- | Count how many occurance of each element there is in the array. Results will be
@@ -42,7 +43,7 @@ import System.IO.Unsafe
 tally :: (Mutable r Ix1 e, Resize r ix, Load r ix e, Ord e) => Array r ix e -> Array DS Ix1 (e, Int)
 tally arr
   | isEmpty arr = setComp (getComp arr) empty
-  | otherwise = catMaybesS $ unfoldrN (sz + 1) count (0, 0, sorted ! 0)
+  | otherwise = scatMaybes $ sunfoldrN (sz + 1) count (0, 0, sorted ! 0)
   where
     sz@(Sz k) = size sorted
     count (!i, !n, !prev)

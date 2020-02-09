@@ -77,16 +77,18 @@ module Data.Massiv.Array.Unsafe
   , unsafeToByteArray
   , unsafeToMutableByteArray
   , unsafeUnstablePartitionRegionM
+  , module Data.Massiv.Vector.Unsafe
   ) where
 
 import Data.Massiv.Array.Delayed.Pull (D)
 import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray)
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
+import Data.Massiv.Array.Ops.Sort (unsafeUnstablePartitionRegionM)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Massiv.Core.Index.Stride (Stride(SafeStride))
-import Data.Massiv.Array.Ops.Sort (unsafeUnstablePartitionRegionM)
+import Data.Massiv.Vector.Unsafe
 
 unsafeBackpermute :: (Source r' ix' e, Index ix) =>
                      Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e

@@ -1,8 +1,9 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Massiv.Vector.Stream
 -- Copyright   : (c) Alexey Kuleshevich 2019-2020
@@ -48,6 +49,7 @@ module Data.Massiv.Vector.Stream
   , slice
   , iterateN
   , iterateNM
+  , replicate
   , replicateM
   , generateM
   , traverse
@@ -83,16 +85,39 @@ module Data.Massiv.Vector.Stream
   , module Data.Vector.Fusion.Util
   ) where
 
-import Data.Maybe (catMaybes)
 import qualified Control.Monad as M
 import Control.Monad.ST
 import Data.Massiv.Core.Common hiding (empty, singleton)
+import Data.Maybe (catMaybes)
 import qualified Data.Traversable as Traversable (traverse)
 import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import Data.Vector.Fusion.Bundle.Size
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
-import Prelude hiding (zipWith, mapM, traverse, length, foldl, foldr, filter, concatMap, drop, take)
+import Prelude hiding (concatMap, drop, filter, foldl, foldr, length, mapM,
+                replicate, take, traverse, zipWith)
+
+
+
+
+instance Monad m => Functor (Steps m) where
+  fmap f str = str {stepsStream = S.map f (stepsStream str)}
+  {-# INLINE fmap #-}
+  (<$) e str =
+    case stepsSize str of
+      Exact n -> str {stepsStream = S.replicate n e}
+      _       -> fmap (const e) str
+  {-# INLINE (<$) #-}
+
+instance Monad m => Semigroup (Steps m e) where
+  (<>) = append
+  {-# INLINE (<>) #-}
+
+instance Monad m => Monoid (Steps m e) where
+  mempty = empty
+  {-# INLINE mempty #-}
+  mappend = append
+  {-# INLINE mappend #-}
 
 
 -- TODO: benchmark: `fmap snd . isteps`
@@ -173,8 +198,8 @@ unstreamIntoM ::
 unstreamIntoM marr sz str =
   case sz of
     Exact _ -> marr <$ unstreamMaxM marr str
-    Max _ -> unsafeLinearShrink marr . SafeSz =<< unstreamMaxM marr str
-    Unknown  -> unstreamUnknownM marr str
+    Max _   -> unsafeLinearShrink marr . SafeSz =<< unstreamMaxM marr str
+    Unknown -> unstreamUnknownM marr str
 {-# INLINE unstreamIntoM #-}
 
 
@@ -405,6 +430,10 @@ iterateN n f a = Steps (S.iterateN n f a) (Exact n)
 iterateNM :: Monad m => Int -> (a -> m a) -> a -> Steps m a
 iterateNM n f a = Steps (S.iterateNM n f a) (Exact n)
 {-# INLINE iterateNM #-}
+
+replicate :: Monad m => Int -> a -> Steps m a
+replicate n a = Steps (S.replicate n a) (Exact n)
+{-# INLINE replicate #-}
 
 replicateM :: Monad m => Int -> m a -> Steps m a
 replicateM n f = Steps (S.replicateM n f) (Exact n)

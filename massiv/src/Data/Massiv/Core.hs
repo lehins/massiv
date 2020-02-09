@@ -8,6 +8,10 @@
 --
 module Data.Massiv.Core
   ( Array(List, unList)
+  , Vector
+  , MVector
+  , Matrix
+  , MMatrix
   , Elt
   , Construct
   , Load(R, loadArrayM, defaultElement)

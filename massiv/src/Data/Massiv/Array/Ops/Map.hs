@@ -23,7 +23,6 @@ module Data.Massiv.Array.Ops.Map
   , itraverseAR
   , sequenceA
   , sequenceA_
-  , traverseS
   -- *** PrimMonad
   , traversePrim
   , itraversePrim
