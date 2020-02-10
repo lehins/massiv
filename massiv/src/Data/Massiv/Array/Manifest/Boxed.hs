@@ -121,7 +121,7 @@ instance Index ix => Construct B ix e where
 instance Index ix => Source B ix e where
   unsafeLinearIndex (BArray _ _sz o a) i =
     INDEX_CHECK("(Source B ix e).unsafeLinearIndex",
-                const (Sz (totalElem _sz)), A.indexArray a) (i + o)
+                const (Sz (totalElem _sz)), A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeLinearSlice i k (BArray c _ o a) = BArray c k (o + i) a
@@ -164,7 +164,7 @@ instance Index ix => Manifest B ix e where
 
   unsafeLinearIndexM (BArray _ _sz o a) i =
     INDEX_CHECK("(Manifest B ix e).unsafeLinearIndexM",
-                const (Sz (totalElem _sz)), A.indexArray a) (i + o)
+                const (Sz (totalElem _sz)), A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -188,12 +188,12 @@ instance Index ix => Mutable B ix e where
 
   unsafeLinearRead (MBArray _sz o ma) i =
     INDEX_CHECK("(Mutable B ix e).unsafeLinearRead",
-                const (Sz (totalElem _sz)), A.readArray ma) (i + o)
+                const (Sz (totalElem _sz)), A.readArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MBArray _sz o ma) i e = e `seq`
     INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite",
-                const (Sz (totalElem _sz)), A.writeArray ma) (i + o) e
+                const (Sz (totalElem _sz)), A.writeArray) ma (i + o) e
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where

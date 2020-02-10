@@ -105,7 +105,7 @@ instance (Prim e, Index ix) => Construct P ix e where
 instance (Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex (PArray _ _sz o a) i =
     INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
-                const (Sz (totalElem _sz)), indexByteArray a) (i + o)
+                const (Sz (totalElem _sz)), indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeLinearSlice i k (PArray c _ o a) = PArray c k (o + i) a
@@ -169,7 +169,7 @@ instance (Index ix, Prim e) => Manifest P ix e where
 
   unsafeLinearIndexM _pa@(PArray _ _sz o a) i =
     INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
-                const (Sz (totalElem _sz)), indexByteArray a) (i + o)
+                const (Sz (totalElem _sz)), indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -198,12 +198,12 @@ instance (Index ix, Prim e) => Mutable P ix e where
 
   unsafeLinearRead _mpa@(MPArray _sz o ma) i =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
-                const (Sz (totalElem _sz)), readByteArray ma) (i + o)
+                const (Sz (totalElem _sz)), readByteArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite _mpa@(MPArray _sz o ma) i =
     INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
-                const (Sz (totalElem _sz)), writeByteArray ma) (i + o)
+                const (Sz (totalElem _sz)), writeByteArray) ma (i + o)
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearSet (MPArray _ o ma) offset (SafeSz sz) = setByteArray ma (offset + o) sz
@@ -419,7 +419,7 @@ unsafeAtomicReadIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> m Int
 unsafeAtomicReadIntArray _mpa@(MPArray sz o mba) ix =
   INDEX_CHECK( "unsafeAtomicReadIntArray"
-             , Sz . totalElem . size
+             , const (Sz (totalElem sz))
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case atomicReadIntArray# mba# i# s# of
