@@ -399,9 +399,9 @@ transStepsId (Steps sts k) = Steps (S.trans (pure . unId) sts) k
 {-# INLINE transStepsId #-}
 
 transSteps :: (Monad m, Monad n) => Steps m e -> m (Steps n e)
-transSteps (Steps strM sz@(Exact _)) = (`Steps` sz) <$> liftListM strM
+transSteps (Steps strM sz@(Exact _)) = (`Steps` sz) <$> transListM strM
 transSteps (Steps strM _) = do
-  (n, strN) <- liftListNM strM
+  (n, strN) <- transListNM strM
   pure (Steps strN (Exact n))
 {-# INLINE transSteps #-}
 
@@ -600,17 +600,18 @@ liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Str
 liftListA f str = S.fromList <$> f (unId (S.toList str))
 {-# INLINE liftListA #-}
 
-liftListM :: (Monad m, Monad n) => S.Stream m a -> m (S.Stream n a)
-liftListM str = do
+
+transListM :: (Monad m, Monad n) => S.Stream m a -> m (S.Stream n a)
+transListM str = do
   xs <- S.toList str
   pure $ S.fromList xs
-{-# INLINE liftListM #-}
+{-# INLINE transListM #-}
 
-liftListNM :: (Monad m, Monad n) => S.Stream m a -> m (Int, S.Stream n a)
-liftListNM str = do
+transListNM :: (Monad m, Monad n) => S.Stream m a -> m (Int, S.Stream n a)
+transListNM str = do
   (n, xs) <- toListN str
   pure (n, S.fromList xs)
-{-# INLINE liftListNM #-}
+{-# INLINE transListNM #-}
 
 
 toListN :: Monad m => S.Stream m a -> m (Int, [a])
