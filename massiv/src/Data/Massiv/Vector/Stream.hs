@@ -57,6 +57,7 @@ module Data.Massiv.Vector.Stream
   , traverse
   , map
   , mapM
+  , mapM_
   , indexed
   , concatMap
   , append
@@ -80,6 +81,8 @@ module Data.Massiv.Vector.Stream
   , unfoldrN
   , unfoldrM
   , unfoldrNM
+  , unfoldrExactN
+  , unfoldrExactNM
   -- ** Enumeration
   , enumFromStepN
   -- * Lists
@@ -113,7 +116,7 @@ import Data.Vector.Fusion.Bundle.Size
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
 import Prelude hiding (concatMap, drop, filter, foldl, foldl1, foldr, foldr1,
-                length, map, mapM, null, replicate, take, traverse, zipWith)
+                length, map, mapM, mapM_, null, replicate, take, traverse, zipWith)
 
 
 instance Monad m => Functor (Steps m) where
@@ -379,6 +382,10 @@ mapM :: Monad m => (e -> m a) -> Steps m e -> Steps m a
 mapM f (Steps str k) = Steps (S.mapM f str) k
 {-# INLINE mapM #-}
 
+mapM_ :: Monad m => (e -> m a) -> Steps m e -> m ()
+mapM_ f (Steps str _) = S.mapM_ f str
+{-# INLINE mapM_ #-}
+
 zipWith :: Monad m => (a -> b -> e) -> Steps m a -> Steps m b -> Steps m e
 zipWith f (Steps str1 k1) (Steps str2 k2) = Steps (S.zipWith f str1 str2) (smaller k1 k2)
 {-# INLINE zipWith #-}
@@ -555,6 +562,19 @@ unfoldrM f e0 = Steps (S.unfoldrM f e0) Unknown
 unfoldrNM :: Monad m => Int -> (s -> m (Maybe (e, s))) -> s -> Steps m e
 unfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) (Max n)
 {-# INLINE unfoldrNM #-}
+
+unfoldrExactN :: Monad m => Int -> (s -> (a, s)) -> s -> Steps m a
+unfoldrExactN n f = unfoldrExactNM n (pure . f)
+{-# INLINE unfoldrExactN #-}
+
+unfoldrExactNM :: Monad m => Int -> (s -> m (a, s)) -> s -> Steps m a
+unfoldrExactNM n f t = Steps (S.Stream step (t, n)) (Exact n)
+  where
+    step (s, i)
+      | i <= 0 = pure S.Done
+      | otherwise = fmap (\(x, s') -> S.Yield x (s', i - 1)) (f s)
+    {-# INLINE [0] step #-}
+{-# INLINE unfoldrExactNM #-}
 
 
 enumFromStepN :: (Num a, Monad m) => a -> a -> Int -> Steps m a

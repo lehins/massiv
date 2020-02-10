@@ -71,9 +71,11 @@ module Data.Massiv.Vector
   -- , createT
   -- ** Unfolding
   , sunfoldr
-  , sunfoldrN
   , sunfoldrM
+  , sunfoldrN
   , sunfoldrNM
+  , sunfoldrExactN
+  , sunfoldrExactNM
   -- , constructN
   -- , constructrN
   -- -- ** Enumeration
@@ -100,15 +102,20 @@ module Data.Massiv.Vector
   -- , modify
   -- -- * Elementwise
   -- -- ** Mapping
-  -- , smap
-  -- , simap
+  , smap
+  , simap
   -- , sconcatMap
   -- ** Monadic mapping
   , straverse
-  -- , smapM
-  -- , smapM_
-  -- , sforM
-  -- , sforM_
+  -- , sitraverse
+  , smapM
+  , smapM_
+  , simapM
+  , simapM_
+  , sforM
+  , sforM_
+  , siforM
+  , siforM_
   -- -- ** Zipping
   -- , szipWith
   -- , szipWith2
@@ -157,16 +164,13 @@ module Data.Massiv.Vector
   , sfoldl
   , sfoldlM
   , sfoldlM_
+  , sifoldl
+  , sifoldlM
+  , sifoldlM_
   , sfoldl1'
   , sfoldl1M
   , sfoldl1M_
-  --, sifoldl
-  -- , sifoldlM
-  -- , sifoldlM_
-  -- , sifoldl1'
-  -- , sifoldl1M
-  -- , sifoldl1M_
-  
+
   -- , sfoldlLazy
   -- , sfoldl1Lazy
   -- , sfoldr
@@ -615,15 +619,30 @@ sunfoldrN (Sz n) f = DSArray . S.unfoldrN n f
 --
 -- @since 0.5.0
 sunfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
-sunfoldrM f = fmap DSArray . S.transSteps . S.unfoldrM f
+sunfoldrM f = fromStepsM . S.unfoldrM f
 {-# INLINE sunfoldrM #-}
 
 -- |
 --
 -- @since 0.5.0
 sunfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
-sunfoldrNM (Sz n) f = fmap DSArray . S.transSteps . S.unfoldrNM n f
+sunfoldrNM (Sz n) f = fromStepsM . S.unfoldrNM n f
 {-# INLINE sunfoldrNM #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sunfoldrExactN :: Sz1 -> (s -> (e, s)) -> s -> Vector DS e
+sunfoldrExactN (Sz n) f = fromSteps . S.unfoldrExactN n f
+{-# INLINE sunfoldrExactN #-}
+
+-- |
+--
+-- @since 0.5.0
+sunfoldrExactNM :: Monad m => Sz1 -> (s -> m (e, s)) -> s -> m (Vector DS e)
+sunfoldrExactNM (Sz n) f = fromStepsM . S.unfoldrExactNM n f
+{-# INLINE sunfoldrExactNM #-}
 
 
 -- |
@@ -812,12 +831,87 @@ smapMaybeM f = fmap DSArray . S.mapMaybeA f . S.toStream
 {-# INLINE smapMaybeM #-}
 
 
+
+-- |
+--
+-- @since 0.5.0
+smap :: (S.Stream r ix a) => (a -> b) -> Array r ix a -> Vector DS b
+smap f = fromSteps . S.map f . S.toStream
+{-# INLINE smap #-}
+
+-- |
+--
+-- @since 0.5.0
+simap :: (S.Stream r ix a) => (ix -> a -> b) -> Array r ix a -> Vector DS b
+simap f = fromSteps . S.map (uncurry f) . S.toStreamIx
+{-# INLINE simap #-}
+
+
 -- | Traverse a stream with an applicative action.
 --
 -- @since 0.5.0
 straverse :: (S.Stream r ix a, Applicative f) => (a -> f b) -> Array r ix a -> f (Vector DS b)
 straverse f = fmap fromSteps . S.traverse f . S.toStream
 {-# INLINE straverse #-}
+
+
+-- |
+--
+-- @since 0.5.0
+smapM :: (S.Stream r ix a, Monad m) => (a -> m b) -> Array r ix a -> m (Vector DS b)
+smapM f = fromStepsM . S.mapM f . S.transStepsId . S.toStream
+{-# INLINE smapM #-}
+
+-- |
+--
+-- @since 0.5.0
+simapM :: (S.Stream r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m (Vector DS b)
+simapM f = fromStepsM . S.mapM (uncurry f) . S.transStepsId . S.toStreamIx
+{-# INLINE simapM #-}
+
+-- |
+--
+-- @since 0.5.0
+smapM_ :: (S.Stream r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
+smapM_ f = S.mapM_ f . S.transStepsId . S.toStream
+{-# INLINE smapM_ #-}
+
+-- |
+--
+-- @since 0.5.0
+simapM_ :: (S.Stream r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
+simapM_ f = S.mapM_ (uncurry f) . S.transStepsId . S.toStreamIx
+{-# INLINE simapM_ #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sforM :: (S.Stream r ix a, Monad m) => Array r ix a -> (a -> m b) -> m (Vector DS b)
+sforM = flip smapM
+{-# INLINE sforM #-}
+
+-- |
+--
+-- @since 0.5.0
+siforM :: (S.Stream r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m (Vector DS b)
+siforM = flip simapM
+{-# INLINE siforM #-}
+
+-- |
+--
+-- @since 0.5.0
+sforM_ :: (S.Stream r ix a, Monad m) => Array r ix a -> (a -> m b) -> m ()
+sforM_ = flip smapM_
+{-# INLINE sforM_ #-}
+
+-- |
+--
+-- @since 0.5.0
+siforM_ :: (S.Stream r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
+siforM_ = flip simapM_
+{-# INLINE siforM_ #-}
+
 
 -- |
 --
@@ -865,6 +959,29 @@ sfoldl1M f arr = do
 sfoldl1M_ :: (Stream r ix e, MonadThrow m) => (e -> e -> m e) -> Array r ix e -> m ()
 sfoldl1M_ f = void . sfoldl1M f
 {-# INLINE sfoldl1M_ #-}
+
+
+
+-- |
+--
+-- @since 0.5.0
+sifoldl :: Stream r ix e => (a -> ix -> e -> a) -> a -> Array r ix e -> a
+sifoldl f acc = S.unId . S.foldl (\a (ix, e) -> f a ix e) acc . toStreamIx
+{-# INLINE sifoldl #-}
+
+-- |
+--
+-- @since 0.5.0
+sifoldlM :: (Stream r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m a
+sifoldlM f acc = S.foldlM (\a (ix, e) -> f a ix e) acc . S.transStepsId . toStreamIx
+{-# INLINE sifoldlM #-}
+
+-- |
+--
+-- @since 0.5.0
+sifoldlM_ :: (Stream r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m ()
+sifoldlM_ f acc = void . sifoldlM f acc
+{-# INLINE sifoldlM_ #-}
 
 
 
