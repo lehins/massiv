@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -38,6 +39,7 @@ module Data.Massiv.Vector.Stream
   , fromBundleM
   -- * Operations on Steps
   , length
+  , null
   , empty
   , singleton
   , generate
@@ -53,6 +55,7 @@ module Data.Massiv.Vector.Stream
   , replicateM
   , generateM
   , traverse
+  , map
   , mapM
   , concatMap
   , append
@@ -60,9 +63,17 @@ module Data.Massiv.Vector.Stream
   , zipWithM
   -- ** Folding
   , foldl
-  , foldr
+  , foldl1
   , foldlM
-  , foldrM
+  , foldl1M
+  , foldlLazy
+  , foldl1Lazy
+  , foldlLazyM
+  , foldl1LazyM
+  , foldrLazy
+  , foldr1Lazy
+  , foldrLazyM
+  , foldr1LazyM
   -- ** Unfolding
   , unfoldr
   , unfoldrN
@@ -87,10 +98,12 @@ module Data.Massiv.Vector.Stream
   -- * Useful re-exports
   , module Data.Vector.Fusion.Bundle.Size
   , module Data.Vector.Fusion.Util
+  , Id(..)
   ) where
 
 import qualified Control.Monad as M
 import Control.Monad.ST
+import qualified Data.Foldable as F
 import Data.Massiv.Core.Common hiding (empty, singleton)
 import Data.Maybe (catMaybes)
 import qualified Data.Traversable as Traversable (traverse)
@@ -98,10 +111,8 @@ import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import Data.Vector.Fusion.Bundle.Size
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
-import Prelude hiding (concatMap, drop, filter, foldl, foldr, length, mapM,
-                replicate, take, traverse, zipWith)
-
-
+import Prelude hiding (concatMap, drop, filter, foldl, foldl1, foldr, foldr1,
+                length, map, mapM, null, replicate, take, traverse, zipWith)
 
 
 instance Monad m => Functor (Steps m) where
@@ -122,6 +133,33 @@ instance Monad m => Monoid (Steps m e) where
   {-# INLINE mempty #-}
   mappend = append
   {-# INLINE mappend #-}
+
+
+instance Foldable (Steps Id) where
+  foldr f acc = unId . foldrLazy f acc
+  {-# INLINE foldr #-}
+  foldl f acc = unId . foldlLazy f acc
+  {-# INLINE foldl #-}
+  foldl' f acc = unId . foldl f acc
+  {-# INLINE foldl' #-}
+  foldr1 f = unId . foldr1Lazy f
+  {-# INLINE foldr1 #-}
+  foldl1 f = unId . foldl1Lazy f
+  {-# INLINE foldl1 #-}
+  toList = toList
+  {-# INLINE toList #-}
+  length = unId . length
+  {-# INLINE length #-}
+  null = unId . null
+  {-# INLINE null #-}
+  sum = unId . foldl (+) 0
+  {-# INLINE sum #-}
+  product = unId . foldl (*) 1
+  {-# INLINE product #-}
+  maximum = unId . foldl1 max
+  {-# INLINE maximum #-}
+  minimum = unId . foldl1 min
+  {-# INLINE minimum #-}
 
 
 -- TODO: benchmark: `fmap snd . isteps`
@@ -279,12 +317,20 @@ unstreamExact sz str =
     unsafeFreeze Seq marr
 {-# INLINE unstreamExact #-}
 
-length :: Steps Id a -> Int
+length :: Monad m => Steps m a -> m Int
 length (Steps str sz) =
   case sz of
-    Exact k -> k
-    _       -> unId (S.length str)
+    Exact k -> pure k
+    _       -> S.length str
 {-# INLINE length #-}
+
+
+null :: Monad m => Steps m a -> m Bool
+null (Steps str sz) =
+  case sz of
+    Exact k -> pure (k == 0)
+    _       -> S.null str
+{-# INLINE null #-}
 
 empty :: Monad m => Steps m e
 empty = Steps S.empty (Exact 0)
@@ -320,6 +366,10 @@ append :: Monad m => Steps m e -> Steps m e -> Steps m e
 append (Steps str1 k1) (Steps str2 k2) = Steps (str1 S.++ str2) (k1 + k2)
 {-# INLINE append #-}
 
+map :: Monad m => (e -> a) -> Steps m e -> Steps m a
+map f (Steps str k) = Steps (S.map f str) k
+{-# INLINE map #-}
+
 mapM :: Monad m => (e -> m a) -> Steps m e -> Steps m a
 mapM f (Steps str k) = Steps (S.mapM f str) k
 {-# INLINE mapM #-}
@@ -344,24 +394,60 @@ transSteps (Steps strM _) = do
 {-# INLINE transSteps #-}
 
 
-foldr :: (a -> b -> b) -> b -> Steps Id a -> b
-foldr f acc sts = unId (S.foldr f acc (stepsStream sts))
-{-# INLINE foldr #-}
-
-
-foldl :: (b -> a -> b) -> b -> Steps Id a -> b
-foldl f acc sts = unId (S.foldl f acc (stepsStream sts))
+foldl :: Monad m => (b -> a -> b) -> b -> Steps m a -> m b
+foldl f acc = S.foldl' f acc . stepsStream
 {-# INLINE foldl #-}
+
+foldl1 :: Monad m => (a -> a -> a) -> Steps m a -> m a
+foldl1 f = S.foldl1' f . stepsStream
+{-# INLINE foldl1 #-}
 
 
 foldlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> m a
-foldlM f acc (Steps sts _) = S.foldlM f acc sts
+foldlM f acc = S.foldlM' f acc . stepsStream
 {-# INLINE foldlM #-}
 
 
-foldrM :: Monad m => (b -> a -> m a) -> a -> Steps m b -> m a
-foldrM f acc (Steps sts _) = S.foldrM f acc sts
-{-# INLINE foldrM #-}
+foldl1M :: Monad m => (a -> a -> m a) -> Steps m a -> m a
+foldl1M f (Steps sts _) = S.foldl1M' f sts
+{-# INLINE foldl1M #-}
+
+
+foldrLazy :: Monad m => (a -> b -> b) -> b -> Steps m a -> m b
+foldrLazy f acc = S.foldr f acc . stepsStream
+{-# INLINE foldrLazy #-}
+
+foldr1Lazy :: Monad m => (a -> a -> a) -> Steps m a -> m a
+foldr1Lazy f = S.foldr1 f . stepsStream
+{-# INLINE foldr1Lazy #-}
+
+foldlLazy :: Monad m => (b -> a -> b) -> b -> Steps m a -> m b
+foldlLazy f acc = S.foldl f acc . stepsStream
+{-# INLINE foldlLazy #-}
+
+foldl1Lazy :: Monad m => (a -> a -> a) -> Steps m a -> m a
+foldl1Lazy f = S.foldl1 f . stepsStream
+{-# INLINE foldl1Lazy #-}
+
+
+foldlLazyM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> m a
+foldlLazyM f acc = S.foldlM f acc . stepsStream
+{-# INLINE foldlLazyM #-}
+
+
+foldl1LazyM :: Monad m => (a -> a -> m a) -> Steps m a -> m a
+foldl1LazyM f (Steps sts _) = S.foldl1M f sts
+{-# INLINE foldl1LazyM #-}
+
+
+foldrLazyM :: Monad m => (b -> a -> m a) -> a -> Steps m b -> m a
+foldrLazyM f acc (Steps sts _) = S.foldrM f acc sts
+{-# INLINE foldrLazyM #-}
+
+
+foldr1LazyM :: Monad m => (a -> a -> m a) -> Steps m a -> m a
+foldr1LazyM f = S.foldr1M f . stepsStream
+{-# INLINE foldr1LazyM #-}
 
 
 mapMaybe :: Monad m => (a -> Maybe e) -> Steps m a -> Steps m e
@@ -399,7 +485,7 @@ mapMaybeStreamM f (S.Stream step t) = S.Stream step' t
               Just b' -> S.Yield b' s'
         S.Skip s' -> return $ S.Skip s'
         S.Done -> return S.Done
-    {-# INLINE step' #-}
+    {-# INLINE [0] step' #-}
 {-# INLINE mapMaybeStreamM #-}
 
 filter :: Monad m => (a -> Bool) -> Steps m a -> Steps m a
@@ -469,6 +555,7 @@ unfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) (Max n)
 enumFromStepN :: (Num a, Monad m) => a -> a -> Int -> Steps m a
 enumFromStepN x step k = Steps (S.enumFromStepN x step k) (Exact k)
 {-# INLINE enumFromStepN #-}
+
 
 
 

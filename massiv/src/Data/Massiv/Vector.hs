@@ -14,7 +14,7 @@ module Data.Massiv.Vector
   -- * Accessors
   -- *** Size
   , length
-  , null
+  , snull
   -- *** Indexing
   , (!)
   , (!?)
@@ -77,8 +77,8 @@ module Data.Massiv.Vector
   -- , constructN
   -- , constructrN
   -- -- ** Enumeration
-  , enumFromN
-  , enumFromStepN
+  , senumFromN
+  , senumFromStepN
   -- ** Concatenation
   -- , consS -- cons
   -- , snocS -- snoc
@@ -153,41 +153,50 @@ module Data.Massiv.Vector
   -- , findIndices
   -- , elemIndex
   -- , elemIndices
-  -- -- * Folding
-  -- , foldl -- foldlLazy
-  -- , foldl1 -- foldl1Lazy
-  -- , foldl'
-  -- , foldl1'
-  -- , foldr -- foldrLazy
-  -- , foldr1 -- foldr1Lazy
-  -- , foldr'
-  -- , foldr1'
-  -- , ifoldl -- ifoldlLazy
-  -- , ifoldl'
-  -- , ifoldr -- ifoldrLazy
-  -- , ifoldr'
-  -- -- ** Specialized folds
-  -- , all
-  -- , any
-  -- , sum
-  -- , product
-  -- , maximum
-  -- , maximumBy
-  -- , minimum
-  -- , minimumBy
-  -- , minIndex
-  -- , minIndexBy
-  -- , maxIndex
-  -- , maxIndexBy
+  -- * Folding
+  , sfoldl
+  , sfoldlM
+  , sfoldlM_
+  , sfoldl1'
+  , sfoldl1M
+  , sfoldl1M_
+  --, sifoldl
+  -- , sifoldlM
+  -- , sifoldlM_
+  -- , sifoldl1'
+  -- , sifoldl1M
+  -- , sifoldl1M_
+  
+  -- , sfoldlLazy
+  -- , sfoldl1Lazy
+  -- , sfoldr
+  -- , sfoldr1
+  -- , sfoldrLazy
+  -- , sfoldr1Lazy
+  -- , sifoldlLazy
+  -- , sifoldr
   -- -- ** Monadic folds
-  -- , foldM
   -- , foldM'
-  -- , fold1M
   -- , fold1M'
   -- , foldM_
   -- , foldM'_
   -- , fold1M_ -- foldl1LazyM_
   -- , fold1M'_
+  -- -- ** Specialized folds
+  -- , all
+  -- , any
+  , ssum
+  , sproduct
+  , smaximum'
+  , smaximumM
+  -- , maximumBy
+  , sminimum'
+  , sminimumM
+  -- , minimumBy
+  -- , minIndex
+  -- , minIndexBy
+  -- , maxIndex
+  -- , maxIndexBy
   -- -- ** Prefix sums
   -- , prescanl
   -- , prescanl'
@@ -240,7 +249,8 @@ import Control.Monad hiding (filterM, replicateM)
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Stream
-import qualified Data.Massiv.Array.Ops.Construct as A (makeArrayR, replicate)
+import qualified Data.Massiv.Array.Ops.Construct as A (replicate)
+import qualified Data.Massiv.Array.Ops.Map as A (imap)
 import Data.Massiv.Core.Common
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Vector.Unsafe
@@ -257,18 +267,20 @@ import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take)
 
 -- |
 --
+-- /Note/ - calling this function on the `DS` type of vector might result in the whole
+-- stream being traversed.
+--
 -- @since 0.5.0
 length :: Load r Ix1 e => Vector r e -> Sz1
 length = size
 {-# INLINE length #-}
 
-
 -- |
 --
 -- @since 0.5.0
-null :: Load r Ix1 e => Vector r e -> Bool
-null = isEmpty
-{-# INLINE null #-}
+snull :: Stream r ix e => Array r ix e -> Bool
+snull = S.unId . S.null . toStream
+{-# INLINE snull #-}
 
 --------------
 -- Indexing --
@@ -367,7 +379,7 @@ init' = either throw id . initM
 -- @since 0.5.0
 initM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
 initM v = do
-  when (null v) $ throwM $ SizeEmptyException $ size v
+  when (isEmpty v) $ throwM $ SizeEmptyException $ size v
   pure $ unsafeInit v
 {-# INLINE initM #-}
 
@@ -394,7 +406,7 @@ tail' = either throw id . tailM
 -- @since 0.5.0
 tailM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
 tailM v = do
-  when (null v) $ throwM $ SizeEmptyException $ size v
+  when (isEmpty v) $ throwM $ SizeEmptyException $ size v
   pure $ unsafeTail v
 {-# INLINE tailM #-}
 
@@ -618,16 +630,16 @@ sunfoldrNM (Sz n) f = fmap DSArray . S.transSteps . S.unfoldrNM n f
 -- |
 --
 -- @since 0.5.0
-enumFromN :: Num e => e -> Sz1 -> Vector DS e
-enumFromN x (Sz n) = DSArray $ S.enumFromStepN x 1 n
-{-# INLINE enumFromN #-}
+senumFromN :: Num e => e -> Sz1 -> Vector DS e
+senumFromN x (Sz n) = DSArray $ S.enumFromStepN x 1 n
+{-# INLINE senumFromN #-}
 
 -- |
 --
 -- @since 0.5.0
-enumFromStepN :: Num e => e -> e -> Sz1 -> Vector DS e
-enumFromStepN x step (Sz n) = DSArray $ S.enumFromStepN x step n
-{-# INLINE enumFromStepN #-}
+senumFromStepN :: Num e => e -> e -> Sz1 -> Vector DS e
+senumFromStepN x step (Sz n) = DSArray $ S.enumFromStepN x step n
+{-# INLINE senumFromStepN #-}
 
 
 
@@ -772,8 +784,7 @@ smapMaybe f = DSArray . S.mapMaybe f . S.toStream
 --
 -- @since 0.5.0
 simapMaybe :: Source r ix a => (ix -> a -> Maybe b) -> Array r ix a -> Vector DS b
-simapMaybe f arr =
-  scatMaybes $ A.makeArrayR D (getComp arr) (size arr) $ \ix -> f ix (unsafeIndex arr ix)
+simapMaybe f = scatMaybes . A.imap f
 {-# INLINE simapMaybe #-}
 
 -- | Similar to `smapMaybeM`, but map with an index aware function.
@@ -781,8 +792,7 @@ simapMaybe f arr =
 -- @since 0.5.0
 simapMaybeM ::
      (Source r ix a, Applicative f) => (ix -> a -> f (Maybe b)) -> Array r ix a -> f (Vector DS b)
-simapMaybeM f arr =
-  smapMaybeM (uncurry f) $ A.makeArrayR D (getComp arr) (size arr) $ \ ix -> (ix, unsafeIndex arr ix)
+simapMaybeM f = smapMaybeM (uncurry f) . A.imap (,)
 {-# INLINE simapMaybeM #-}
 
 
@@ -794,12 +804,12 @@ scatMaybes = smapMaybe id
 {-# INLINE scatMaybes #-}
 
 
--- | Similar to `mapMaybeS`, but with the use of `Applicative`
+-- | Similar to `smapMaybe`, but with the use of `Applicative`
 --
 -- @since 0.5.0
 smapMaybeM ::
      (S.Stream r ix a, Applicative f) => (a -> f (Maybe b)) -> Array r ix a -> f (Vector DS b)
-smapMaybeM f arr = DSArray <$> S.mapMaybeA f (S.toStream arr)
+smapMaybeM f = fmap DSArray . S.mapMaybeA f . S.toStream
 {-# INLINE smapMaybeM #-}
 
 
@@ -810,12 +820,99 @@ straverse :: (S.Stream r ix a, Applicative f) => (a -> f b) -> Array r ix a -> f
 straverse f = fmap fromSteps . S.traverse f . S.toStream
 {-# INLINE straverse #-}
 
+-- |
+--
+-- @since 0.5.0
+sfoldl :: Stream r ix e => (a -> e -> a) -> a -> Array r ix e -> a
+sfoldl f acc = S.unId . S.foldl f acc . toStream
+{-# INLINE sfoldl #-}
+
+-- |
+--
+-- @since 0.5.0
+sfoldlM :: (Stream r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m a
+sfoldlM f acc = S.foldlM f acc . S.transStepsId . toStream
+{-# INLINE sfoldlM #-}
+
+-- |
+--
+-- @since 0.5.0
+sfoldlM_ :: (Stream r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m ()
+sfoldlM_ f acc = void . sfoldlM f acc
+{-# INLINE sfoldlM_ #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sfoldl1' :: Stream r ix e => (e -> e -> e) -> Array r ix e -> e
+sfoldl1' f = either throw id . sfoldl1M (\e -> pure . f e)
+{-# INLINE sfoldl1' #-}
+
+-- |
+--
+-- @since 0.5.0
+sfoldl1M :: (Stream r ix e, MonadThrow m) => (e -> e -> m e) -> Array r ix e -> m e
+sfoldl1M f arr = do
+  let str = S.transStepsId $ toStream arr
+  nullStream <- S.null str
+  when nullStream $ throwM $ SizeEmptyException (size arr)
+  S.foldl1M f str
+{-# INLINE sfoldl1M #-}
+
+-- |
+--
+-- @since 0.5.0
+sfoldl1M_ :: (Stream r ix e, MonadThrow m) => (e -> e -> m e) -> Array r ix e -> m ()
+sfoldl1M_ f = void . sfoldl1M f
+{-# INLINE sfoldl1M_ #-}
 
 
 
+-- |
+--
+-- @since 0.5.0
+ssum :: (Num e, Stream r ix e) => Array r ix e -> e
+ssum = sfoldl (+) 0
+{-# INLINE ssum #-}
+
+-- |
+--
+-- @since 0.5.0
+sproduct :: (Num e, Stream r ix e) => Array r ix e -> e
+sproduct = sfoldl (*) 1
+{-# INLINE sproduct #-}
+
+
+-- |
+--
+-- @since 0.5.0
+smaximum' :: (Ord e, Stream r ix e) => Array r ix e -> e
+smaximum' = sfoldl1' max
+{-# INLINE smaximum' #-}
+
+-- |
+--
+-- @since 0.5.0
+smaximumM :: (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
+smaximumM = sfoldl1M (\e acc -> pure (max e acc))
+{-# INLINE smaximumM #-}
 
 
 
+-- |
+--
+-- @since 0.5.0
+sminimum' :: (Ord e, Stream r ix e) => Array r ix e -> e
+sminimum' = sfoldl1' min
+{-# INLINE sminimum' #-}
+
+-- |
+--
+-- @since 0.5.0
+sminimumM :: (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
+sminimumM = sfoldl1M (\e acc -> pure (min e acc))
+{-# INLINE sminimumM #-}
 
 
 

@@ -143,7 +143,7 @@ type family NestedStruct r ix e :: *
 
 
 
-class Stream r ix e where
+class Load r ix e => Stream r ix e where
   toStream :: Array r ix e -> Steps Id e
 
 data Steps m e = Steps

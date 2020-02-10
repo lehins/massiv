@@ -381,7 +381,7 @@ instance (Index ix, NFData e) => Load N ix e where
 
 instance (Index ix, NFData e) => StrideLoad N ix e
 
-instance Index ix => Stream N ix e where
+instance (Index ix, NFData e) => Stream N ix e where
   toStream = toStream . coerce
   {-# INLINE toStream #-}
 

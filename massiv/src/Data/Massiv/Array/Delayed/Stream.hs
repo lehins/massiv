@@ -23,6 +23,7 @@ module Data.Massiv.Array.Delayed.Stream
 import Control.Applicative
 import Control.Monad (void)
 import Data.Coerce
+import Data.Foldable
 import Data.Massiv.Array.Delayed.Pull
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Core.Common
@@ -62,15 +63,14 @@ fromStepsM = fmap DSArray . S.transSteps
 
 
 instance Functor (Array DS Ix1) where
-
-  fmap f = coerce . fmap f . dsArray
+  fmap f = coerce . S.map f . dsArray
   {-# INLINE fmap #-}
+  (<$) e = coerce . (e <$) . dsArray
+  {-# INLINE (<$) #-}
 
 instance Applicative (Array DS Ix1) where
-
   pure = fromSteps . S.singleton
   {-# INLINE pure #-}
-
   (<*>) a1 a2 = fromSteps (S.zipWith ($) (coerce a1) (coerce a2))
   {-# INLINE (<*>) #-}
 
@@ -80,48 +80,57 @@ instance Applicative (Array DS Ix1) where
 #endif
 
 instance Monad (Array DS Ix1) where
-
   return = fromSteps . S.singleton
   {-# INLINE return #-}
-
   (>>=) arr f = coerce (S.concatMap (coerce . f) (dsArray arr))
   {-# INLINE (>>=) #-}
 
 
 instance Foldable (Array DS Ix1) where
-
-  foldr f acc = S.foldr f acc . toSteps
+  foldr f acc = S.unId . S.foldrLazy f acc . toSteps
   {-# INLINE foldr #-}
-
-  length = S.length . coerce
+  foldl f acc = S.unId . S.foldlLazy f acc . toSteps
+  {-# INLINE foldl #-}
+  foldl' f acc = S.unId . S.foldl f acc . toSteps
+  {-# INLINE foldl' #-}
+  foldr1 f = S.unId . S.foldr1Lazy f . toSteps
+  {-# INLINE foldr1 #-}
+  foldl1 f = S.unId . S.foldl1Lazy f . toSteps
+  {-# INLINE foldl1 #-}
+  toList = S.toList . coerce
+  {-# INLINE toList #-}
+  length = S.unId . S.length . coerce
   {-# INLINE length #-}
+  null = S.unId . S.null . coerce
+  {-# INLINE null #-}
+  sum = S.unId . S.foldl (+) 0 . toSteps
+  {-# INLINE sum #-}
+  product = S.unId . S.foldl (*) 1 . toSteps
+  {-# INLINE product #-}
+  maximum = S.unId . S.foldl1 max . toSteps
+  {-# INLINE maximum #-}
+  minimum = S.unId . S.foldl1 min . toSteps
+  {-# INLINE minimum #-}
 
-  -- TODO: add more
 
 
 instance Semigroup (Array DS Ix1 e) where
-
   (<>) a1 a2 = fromSteps (coerce a1 `S.append` coerce a2)
   {-# INLINE (<>) #-}
 
 
 instance Monoid (Array DS Ix1 e) where
-
   mempty = DSArray S.empty
   {-# INLINE mempty #-}
-
   mappend = (<>)
   {-# INLINE mappend #-}
 
 instance IsList (Array DS Ix1 e) where
   type Item (Array DS Ix1 e) = e
-
   fromList = fromSteps . S.fromList
   {-# INLINE fromList #-}
-
   fromListN n = fromSteps . S.fromListN n
   {-# INLINE fromListN #-}
-
   toList = S.toList . coerce
   {-# INLINE toList #-}
 
@@ -152,7 +161,7 @@ instance Extract DS Ix1 e where
 
 -- | /O(n)/ - `size` implementation.
 instance Load DS Ix1 e where
-  size = coerce . S.length . coerce
+  size = coerce . S.unId . S.length . coerce
   {-# INLINE size #-}
 
   maxSize = coerce . upperBound . stepsSize . dsArray
