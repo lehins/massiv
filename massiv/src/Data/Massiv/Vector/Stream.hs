@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -43,6 +44,8 @@ module Data.Massiv.Vector.Stream
   , empty
   , singleton
   , generate
+  , headMaybe
+  , last
   , cons
   , uncons
   , snoc
@@ -76,6 +79,9 @@ module Data.Massiv.Vector.Stream
   , foldr1Lazy
   , foldrLazyM
   , foldr1LazyM
+
+  , or
+  , and
   -- ** Unfolding
   , unfoldr
   , unfoldrN
@@ -115,8 +121,9 @@ import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import Data.Vector.Fusion.Bundle.Size
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
-import Prelude hiding (concatMap, drop, filter, foldl, foldl1, foldr, foldr1,
-                length, map, mapM, mapM_, null, replicate, take, traverse, zipWith)
+import Prelude hiding (and, concatMap, drop, filter, foldl, foldl1, foldr,
+                foldr1, length, map, mapM, mapM_, null, or, replicate, take,
+                traverse, zipWith)
 
 
 instance Monad m => Functor (Steps m) where
@@ -348,6 +355,20 @@ generate :: Monad m => Int -> (Int -> e) -> Steps m e
 generate k f = Steps (S.generate k f) (Exact k)
 {-# INLINE generate #-}
 
+-- | First element of the 'Stream' or error if empty
+headMaybe :: Monad m => Steps m a -> m (Maybe a)
+headMaybe (Steps (S.Stream step t) _) = headMaybeLoop S.SPEC t
+  where
+    headMaybeLoop !_ s = do
+      r <- step s
+      case r of
+        S.Yield x _ -> pure $ Just x
+        S.Skip s'   -> headMaybeLoop S.SPEC s'
+        S.Done      -> pure Nothing
+    {-# INLINE [0] headMaybeLoop #-}
+{-# INLINE headMaybe #-}
+
+
 cons :: Monad m => e -> Steps m e -> Steps m e
 cons e (Steps str k) = Steps (S.cons e str) (k + 1)
 {-# INLINE cons #-}
@@ -460,6 +481,15 @@ foldrLazyM f acc (Steps sts _) = S.foldrM f acc sts
 foldr1LazyM :: Monad m => (a -> a -> m a) -> Steps m a -> m a
 foldr1LazyM f = S.foldr1M f . stepsStream
 {-# INLINE foldr1LazyM #-}
+
+
+or :: Monad m => Steps m Bool -> m Bool
+or = S.or . stepsStream
+{-# INLINE or #-}
+
+and :: Monad m => Steps m Bool -> m Bool
+and = S.and . stepsStream
+{-# INLINE and #-}
 
 
 mapMaybe :: Monad m => (a -> Maybe e) -> Steps m a -> Steps m e

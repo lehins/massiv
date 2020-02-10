@@ -19,6 +19,7 @@ module Data.Massiv.Vector
   , (!)
   , (!?)
   , head'
+  , shead'
   , last'
   -- *** Monadic Indexing
   , indexM
@@ -107,7 +108,7 @@ module Data.Massiv.Vector
   -- , sconcatMap
   -- ** Monadic mapping
   , straverse
-  -- , sitraverse
+  , sitraverse
   , smapM
   , smapM_
   , simapM
@@ -170,25 +171,11 @@ module Data.Massiv.Vector
   , sfoldl1'
   , sfoldl1M
   , sfoldl1M_
-
-  -- , sfoldlLazy
-  -- , sfoldl1Lazy
-  -- , sfoldr
-  -- , sfoldr1
-  -- , sfoldrLazy
-  -- , sfoldr1Lazy
-  -- , sifoldlLazy
-  -- , sifoldr
-  -- -- ** Monadic folds
-  -- , foldM'
-  -- , fold1M'
-  -- , foldM_
-  -- , foldM'_
-  -- , fold1M_ -- foldl1LazyM_
-  -- , fold1M'_
-  -- -- ** Specialized folds
-  -- , all
-  -- , any
+  -- ** Specialized folds
+  , sor
+  , sand
+  , sall
+  , sany
   , ssum
   , sproduct
   , smaximum'
@@ -301,6 +288,23 @@ head' = (`evaluate'` 0)
 -- |
 --
 -- @since 0.5.0
+shead' :: Stream r Ix1 e => Vector r e -> e
+shead' = either throw id . sheadM
+{-# INLINE shead' #-}
+
+-- |
+--
+-- @since 0.5.0
+sheadM :: (Stream r Ix1 e, MonadThrow m) => Vector r e -> m e
+sheadM v =
+  case S.unId (S.headMaybe (toStream v)) of
+    Nothing -> throwM $ SizeEmptyException (size v)
+    Just e -> pure e
+{-# INLINE sheadM #-}
+
+-- |
+--
+-- @since 0.5.0
 last' :: Source r Ix1 e => Vector r e -> e
 last' v = evaluate' v (max 0 (unSz (size v) - 1))
 {-# INLINE last' #-}
@@ -315,14 +319,19 @@ last' v = evaluate' v (max 0 (unSz (size v) - 1))
 --
 -- @since 0.5.0
 headM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
-headM = (`evaluateM` 0)
+headM v
+  | isEmpty v = throwM $ SizeEmptyException (size v)
+  | otherwise = pure $ unsafeLinearIndex v 0
 {-# INLINE headM #-}
 
 -- |
 --
 -- @since 0.5.0
 lastM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
-lastM v = evaluateM v (max 0 (unSz (size v) - 1))
+lastM v
+  | k == 0 = throwM $ SizeEmptyException (size v)
+  | otherwise = pure $ unsafeLinearIndex v (k - 1)
+  where k = unSz (size v)
 {-# INLINE lastM #-}
 
 
@@ -847,12 +856,20 @@ simap f = fromSteps . S.map (uncurry f) . S.toStreamIx
 {-# INLINE simap #-}
 
 
--- | Traverse a stream with an applicative action.
+-- | Traverse a stream with an applicative function.
 --
 -- @since 0.5.0
 straverse :: (S.Stream r ix a, Applicative f) => (a -> f b) -> Array r ix a -> f (Vector DS b)
 straverse f = fmap fromSteps . S.traverse f . S.toStream
 {-# INLINE straverse #-}
+
+
+-- | Traverse a stream with an index aware applicative function.
+--
+-- @since 0.5.0
+sitraverse :: (S.Stream r ix a, Applicative f) => (ix -> a -> f b) -> Array r ix a -> f (Vector DS b)
+sitraverse f = fmap fromSteps . S.traverse (uncurry f) . S.toStreamIx
+{-# INLINE sitraverse #-}
 
 
 -- |
@@ -982,6 +999,38 @@ sifoldlM f acc = S.foldlM (\a (ix, e) -> f a ix e) acc . S.transStepsId . toStre
 sifoldlM_ :: (Stream r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m ()
 sifoldlM_ f acc = void . sifoldlM f acc
 {-# INLINE sifoldlM_ #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sor :: Stream r ix Bool => Array r ix Bool -> Bool
+sor = S.unId . S.or . toStream
+{-# INLINE sor #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sand :: Stream r ix Bool => Array r ix Bool -> Bool
+sand = S.unId . S.and . toStream
+{-# INLINE sand #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sany :: Stream r ix e => (e -> Bool) -> Array r ix e -> Bool
+sany f = S.unId . S.or . S.map f . toStream
+{-# INLINE sany #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sall :: Stream r ix e => (e -> Bool) -> Array r ix e -> Bool
+sall f = S.unId . S.and . S.map f . toStream
+{-# INLINE sall #-}
 
 
 

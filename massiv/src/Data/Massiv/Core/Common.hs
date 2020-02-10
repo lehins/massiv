@@ -294,15 +294,15 @@ class (Typeable r, Index ix) => Load r ix e where
   -- in constant time is not possible, `Nothing` should be returned. This value will be
   -- used as the initial size of the mutable array in which loading will happen.
   --
-  -- @since 0.4.1
+  -- @since 0.5.0
   maxSize :: Array r ix e -> Maybe (Sz ix)
   maxSize = Just . size
   {-# INLINE maxSize #-}
 
-  -- | Load into a supplied mutable array sequentially. Returned array does npt have to be
+  -- | Load into a supplied mutable array sequentially. Returned array does not have to be
   -- the same
   --
-  -- @since 0.4.1
+  -- @since 0.5.0
   unsafeLoadIntoS ::
        (Mutable r' ix e, PrimMonad m)
     => MArray (PrimState m) r' ix e
@@ -315,7 +315,7 @@ class (Typeable r, Index ix) => Load r ix e where
 
   -- | Same as `unsafeLoadIntoS`, but with respect of computation startegy.
   --
-  -- @since 0.4.1
+  -- @since 0.5.0
   unsafeLoadInto ::
        (Mutable r' ix e, MonadIO m)
     => MArray RealWorld r' ix e
