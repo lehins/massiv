@@ -24,6 +24,7 @@ module Data.Massiv.Vector
   -- *** Monadic Indexing
   , indexM
   , headM
+  , sheadM
   , lastM
   -- ** Slicing
   , slice
@@ -117,22 +118,44 @@ module Data.Massiv.Vector
   , sforM_
   , siforM
   , siforM_
-  -- -- ** Zipping
-  -- , szipWith
-  -- , szipWith2
-  -- , szipWith3
-  -- , szipWith4
-  -- , szipWith5
-  -- , szipWith6
-  -- , sizipWith
-  -- , sizipWith2
-  -- , sizipWith3
-  -- , sizipWith4
-  -- , sizipWith5
-  -- , sizipWith6
-  -- -- ** Monadic zipping
-  -- , szipWithM
-  -- , szipWithM_
+  -- ** Zipping
+  , szip
+  , szip3
+  , szip4
+  , szip5
+  , szip6
+  , szipWith
+  , szipWith3
+  , szipWith4
+  , szipWith5
+  , szipWith6
+  , sizipWith
+  , sizipWith3
+  , sizipWith4
+  , sizipWith5
+  , sizipWith6
+  -- ** Monadic zipping
+  , szipWithM
+  , szipWith3M
+  , szipWith4M
+  , szipWith5M
+  , szipWith6M
+  , sizipWithM
+  , sizipWith3M
+  , sizipWith4M
+  , sizipWith5M
+  , sizipWith6M
+
+  , szipWithM_
+  , szipWith3M_
+  , szipWith4M_
+  , szipWith5M_
+  , szipWith6M_
+  , sizipWithM_
+  , sizipWith3M_
+  , sizipWith4M_
+  , sizipWith5M_
+  , sizipWith6M_
   -- * Predicates
   -- ** Filtering
   , sfilter
@@ -844,14 +867,14 @@ smapMaybeM f = fmap DSArray . S.mapMaybeA f . S.toStream
 -- |
 --
 -- @since 0.5.0
-smap :: (S.Stream r ix a) => (a -> b) -> Array r ix a -> Vector DS b
+smap :: S.Stream r ix a => (a -> b) -> Array r ix a -> Vector DS b
 smap f = fromSteps . S.map f . S.toStream
 {-# INLINE smap #-}
 
 -- |
 --
 -- @since 0.5.0
-simap :: (S.Stream r ix a) => (ix -> a -> b) -> Array r ix a -> Vector DS b
+simap :: S.Stream r ix a => (ix -> a -> b) -> Array r ix a -> Vector DS b
 simap f = fromSteps . S.map (uncurry f) . S.toStreamIx
 {-# INLINE simap #-}
 
@@ -928,6 +951,666 @@ sforM_ = flip smapM_
 siforM_ :: (S.Stream r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
 siforM_ = flip simapM_
 {-# INLINE siforM_ #-}
+
+
+
+-- |
+--
+-- @since 0.5.0
+szip ::
+     (S.Stream ra ixa a, S.Stream rb ixb b) => Array ra ixa a -> Array rb ixb b -> Vector DS (a, b)
+szip = szipWith (,)
+{-# INLINE szip #-}
+
+-- |
+--
+-- @since 0.5.0
+szip3 ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c)
+  => Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Vector DS (a, b, c)
+szip3 = szipWith3 (,,)
+{-# INLINE szip3 #-}
+
+-- |
+--
+-- @since 0.5.0
+szip4 ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, S.Stream rd ixd d)
+  => Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Vector DS (a, b, c, d)
+szip4 = szipWith4 (,,,)
+{-# INLINE szip4 #-}
+
+-- |
+--
+-- @since 0.5.0
+szip5 ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, S.Stream rd ixd d, S.Stream re ixe e)
+  => Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> Vector DS (a, b, c, d, e)
+szip5 = szipWith5 (,,,,)
+{-# INLINE szip5 #-}
+
+-- |
+--
+-- @since 0.5.0
+szip6 ::
+     ( S.Stream ra ixa a
+     , S.Stream rb ixb b
+     , S.Stream rc ixc c
+     , S.Stream rd ixd d
+     , S.Stream re ixe e
+     , S.Stream rf ixf f
+     )
+  => Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> Array rf ixf f
+  -> Vector DS (a, b, c, d, e, f)
+szip6 = szipWith6 (,,,,,)
+{-# INLINE szip6 #-}
+
+
+
+
+
+
+-- |
+--
+-- @since 0.5.0
+szipWith ::
+     (S.Stream ra ixa a, S.Stream rb ixb b)
+  => (a -> b -> c)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Vector DS c
+szipWith f v1 v2 = fromSteps $ S.zipWith f (S.toStream v1) (S.toStream v2)
+{-# INLINE szipWith #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith3 ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c)
+  => (a -> b -> c -> d)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Vector DS d
+szipWith3 f v1 v2 v3 = fromSteps $ S.zipWith3 f (S.toStream v1) (S.toStream v2) (S.toStream v3)
+{-# INLINE szipWith3 #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith4 ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, S.Stream rd ixd d)
+  => (a -> b -> c -> d -> e)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Vector DS e
+szipWith4 f v1 v2 v3 v4 =
+  fromSteps $ S.zipWith4 f (S.toStream v1) (S.toStream v2) (S.toStream v3) (S.toStream v4)
+{-# INLINE szipWith4 #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith5 ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, S.Stream rd ixd d, S.Stream re ixe e)
+  => (a -> b -> c -> d -> e -> f)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> Vector DS f
+szipWith5 f v1 v2 v3 v4 v5 =
+  fromSteps $
+  S.zipWith5 f (S.toStream v1) (S.toStream v2) (S.toStream v3) (S.toStream v4) (S.toStream v5)
+{-# INLINE szipWith5 #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith6 ::
+     ( S.Stream ra ixa a
+     , S.Stream rb ixb b
+     , S.Stream rc ixc c
+     , S.Stream rd ixd d
+     , S.Stream re ixe e
+     , S.Stream rf ixf f
+     )
+  => (a -> b -> c -> d -> e -> f -> g)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> Array rf ixf f
+  -> Vector DS g
+szipWith6 f v1 v2 v3 v4 v5 v6 =
+  fromSteps $
+  S.zipWith6
+    f
+    (S.toStream v1)
+    (S.toStream v2)
+    (S.toStream v3)
+    (S.toStream v4)
+    (S.toStream v5)
+    (S.toStream v6)
+{-# INLINE szipWith6 #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith ::
+     (S.Stream ra ix a, S.Stream rb ix b)
+  => (ix -> a -> b -> c)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Vector DS c
+sizipWith f v1 v2 = fromSteps $ S.zipWith (uncurry f) (S.toStreamIx v1) (S.toStream v2)
+{-# INLINE sizipWith #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith3 ::
+     (S.Stream ra ix a, S.Stream rb ix b, S.Stream rc ix c)
+  => (ix -> a -> b -> c -> d)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Vector DS d
+sizipWith3 f v1 v2 v3 =
+  fromSteps $ S.zipWith3 (uncurry f) (S.toStreamIx v1) (S.toStream v2) (S.toStream v3)
+{-# INLINE sizipWith3 #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith4 ::
+     (S.Stream ra ix a, S.Stream rb ix b, S.Stream rc ix c, S.Stream rd ix d)
+  => (ix -> a -> b -> c -> d -> e)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> Vector DS e
+sizipWith4 f v1 v2 v3 v4 =
+  fromSteps $
+  S.zipWith4 (uncurry f) (S.toStreamIx v1) (S.toStream v2) (S.toStream v3) (S.toStream v4)
+{-# INLINE sizipWith4 #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith5 ::
+     (S.Stream ra ix a, S.Stream rb ix b, S.Stream rc ix c, S.Stream rd ix d, S.Stream re ix e)
+  => (ix -> a -> b -> c -> d -> e -> f)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> Array re ix e
+  -> Vector DS f
+sizipWith5 f v1 v2 v3 v4 v5 =
+  fromSteps $
+  S.zipWith5
+    (uncurry f)
+    (S.toStreamIx v1)
+    (S.toStream v2)
+    (S.toStream v3)
+    (S.toStream v4)
+    (S.toStream v5)
+{-# INLINE sizipWith5 #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith6 ::
+     ( S.Stream ra ix a
+     , S.Stream rb ix b
+     , S.Stream rc ix c
+     , S.Stream rd ix d
+     , S.Stream re ix e
+     , S.Stream rf ix f
+     )
+  => (ix -> a -> b -> c -> d -> e -> f -> g)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> Array re ix e
+  -> Array rf ix f
+  -> Vector DS g
+sizipWith6 f v1 v2 v3 v4 v5 v6 =
+  fromSteps $
+  S.zipWith6
+    (uncurry f)
+    (S.toStreamIx v1)
+    (S.toStream v2)
+    (S.toStream v3)
+    (S.toStream v4)
+    (S.toStream v5)
+    (S.toStream v6)
+{-# INLINE sizipWith6 #-}
+
+
+-- |
+--
+-- @since 0.5.0
+szipWithM ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, Monad m)
+  => (a -> b -> m c)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> m (Vector DS c)
+szipWithM f v1 v2 = fromStepsM $ S.zipWithM f (toStreamM v1) (toStreamM v2)
+{-# INLINE szipWithM #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith3M ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, Monad m)
+  => (a -> b -> c -> m d)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> m (Vector DS d)
+szipWith3M f v1 v2 v3 = fromStepsM $ S.zipWith3M f (toStreamM v1) (toStreamM v2) (toStreamM v3)
+{-# INLINE szipWith3M #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith4M ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, S.Stream rd ixd d, Monad m)
+  => (a -> b -> c -> d -> m e)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> m (Vector DS e)
+szipWith4M f v1 v2 v3 v4 =
+  fromStepsM $ S.zipWith4M f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
+{-# INLINE szipWith4M #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith5M ::
+     ( S.Stream ra ixa a
+     , S.Stream rb ixb b
+     , S.Stream rc ixc c
+     , S.Stream rd ixd d
+     , S.Stream re ixe e
+     , Monad m
+     )
+  => (a -> b -> c -> d -> e -> m f)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> m (Vector DS f)
+szipWith5M f v1 v2 v3 v4 v5 =
+  fromStepsM $
+  S.zipWith5M f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4) (toStreamM v5)
+{-# INLINE szipWith5M #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith6M ::
+     ( S.Stream ra ixa a
+     , S.Stream rb ixb b
+     , S.Stream rc ixc c
+     , S.Stream rd ixd d
+     , S.Stream re ixe e
+     , S.Stream rf ixf f
+     , Monad m
+     )
+  => (a -> b -> c -> d -> e -> f -> m g)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> Array rf ixf f
+  -> m (Vector DS g)
+szipWith6M f v1 v2 v3 v4 v5 v6 =
+  fromStepsM $
+  S.zipWith6M
+    f
+    (toStreamM v1)
+    (toStreamM v2)
+    (toStreamM v3)
+    (toStreamM v4)
+    (toStreamM v5)
+    (toStreamM v6)
+{-# INLINE szipWith6M #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sizipWithM ::
+     (S.Stream ra ix a, S.Stream rb ix b, Monad m)
+  => (ix -> a -> b -> m c)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> m (Vector DS c)
+sizipWithM f v1 v2 = fromStepsM $ S.zipWithM (uncurry f) (toStreamIxM v1) (toStreamM v2)
+{-# INLINE sizipWithM #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sizipWith3M ::
+     (S.Stream ra ix a, S.Stream rb ix b, S.Stream rc ix c, Monad m)
+  => (ix -> a -> b -> c -> m d)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> m (Vector DS d)
+sizipWith3M f v1 v2 v3 =
+  fromStepsM $ S.zipWith3M (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3)
+{-# INLINE sizipWith3M #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith4M ::
+     (S.Stream ra ix a, S.Stream rb ix b, S.Stream rc ix c, S.Stream rd ix d, Monad m)
+  => (ix -> a -> b -> c -> d -> m e)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> m (Vector DS e)
+sizipWith4M f v1 v2 v3 v4 =
+  fromStepsM $
+  S.zipWith4M (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
+{-# INLINE sizipWith4M #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith5M ::
+     ( S.Stream ra ix a
+     , S.Stream rb ix b
+     , S.Stream rc ix c
+     , S.Stream rd ix d
+     , S.Stream re ix e
+     , Monad m
+     )
+  => (ix -> a -> b -> c -> d -> e -> m f)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> Array re ix e
+  -> m (Vector DS f)
+sizipWith5M f v1 v2 v3 v4 v5 =
+  fromStepsM $
+  S.zipWith5M
+    (uncurry f)
+    (toStreamIxM v1)
+    (toStreamM v2)
+    (toStreamM v3)
+    (toStreamM v4)
+    (toStreamM v5)
+{-# INLINE sizipWith5M #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith6M ::
+     ( S.Stream ra ix a
+     , S.Stream rb ix b
+     , S.Stream rc ix c
+     , S.Stream rd ix d
+     , S.Stream re ix e
+     , S.Stream rf ix f
+     , Monad m
+     )
+  => (ix -> a -> b -> c -> d -> e -> f -> m g)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> Array re ix e
+  -> Array rf ix f
+  -> m (Vector DS g)
+sizipWith6M f v1 v2 v3 v4 v5 v6 =
+  fromStepsM $
+  S.zipWith6M
+    (uncurry f)
+    (toStreamIxM v1)
+    (toStreamM v2)
+    (toStreamM v3)
+    (toStreamM v4)
+    (toStreamM v5)
+    (toStreamM v6)
+{-# INLINE sizipWith6M #-}
+
+
+-- |
+--
+-- @since 0.5.0
+szipWithM_ ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, Monad m)
+  => (a -> b -> m c)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> m ()
+szipWithM_ f v1 v2 = S.zipWithM_ f (toStreamM v1) (toStreamM v2)
+{-# INLINE szipWithM_ #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith3M_ ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, Monad m)
+  => (a -> b -> c -> m d)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> m ()
+szipWith3M_ f v1 v2 v3 = S.zipWith3M_ f (toStreamM v1) (toStreamM v2) (toStreamM v3)
+{-# INLINE szipWith3M_ #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith4M_ ::
+     (S.Stream ra ixa a, S.Stream rb ixb b, S.Stream rc ixc c, S.Stream rd ixd d, Monad m)
+  => (a -> b -> c -> d -> m e)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> m ()
+szipWith4M_ f v1 v2 v3 v4 =
+  S.zipWith4M_ f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
+{-# INLINE szipWith4M_ #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith5M_ ::
+     ( S.Stream ra ixa a
+     , S.Stream rb ixb b
+     , S.Stream rc ixc c
+     , S.Stream rd ixd d
+     , S.Stream re ixe e
+     , Monad m
+     )
+  => (a -> b -> c -> d -> e -> m f)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> m ()
+szipWith5M_ f v1 v2 v3 v4 v5 =
+  S.zipWith5M_ f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4) (toStreamM v5)
+{-# INLINE szipWith5M_ #-}
+
+-- |
+--
+-- @since 0.5.0
+szipWith6M_ ::
+     ( S.Stream ra ixa a
+     , S.Stream rb ixb b
+     , S.Stream rc ixc c
+     , S.Stream rd ixd d
+     , S.Stream re ixe e
+     , S.Stream rf ixf f
+     , Monad m
+     )
+  => (a -> b -> c -> d -> e -> f -> m g)
+  -> Array ra ixa a
+  -> Array rb ixb b
+  -> Array rc ixc c
+  -> Array rd ixd d
+  -> Array re ixe e
+  -> Array rf ixf f
+  -> m ()
+szipWith6M_ f v1 v2 v3 v4 v5 v6 =
+  S.zipWith6M_
+    f
+    (toStreamM v1)
+    (toStreamM v2)
+    (toStreamM v3)
+    (toStreamM v4)
+    (toStreamM v5)
+    (toStreamM v6)
+{-# INLINE szipWith6M_ #-}
+
+
+
+
+-- |
+--
+-- @since 0.5.0
+sizipWithM_ ::
+     (S.Stream ra ix a, S.Stream rb ix b, Monad m)
+  => (ix -> a -> b -> m c)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> m ()
+sizipWithM_ f v1 v2 = S.zipWithM_ (uncurry f) (toStreamIxM v1) (toStreamM v2)
+{-# INLINE sizipWithM_ #-}
+
+
+-- |
+--
+-- @since 0.5.0
+sizipWith3M_ ::
+     (S.Stream ra ix a, S.Stream rb ix b, S.Stream rc ix c, Monad m)
+  => (ix -> a -> b -> c -> m d)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> m ()
+sizipWith3M_ f v1 v2 v3 = S.zipWith3M_ (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3)
+{-# INLINE sizipWith3M_ #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith4M_ ::
+     (S.Stream ra ix a, S.Stream rb ix b, S.Stream rc ix c, S.Stream rd ix d, Monad m)
+  => (ix -> a -> b -> c -> d -> m e)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> m ()
+sizipWith4M_ f v1 v2 v3 v4 =
+  S.zipWith4M_ (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
+{-# INLINE sizipWith4M_ #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith5M_ ::
+     ( S.Stream ra ix a
+     , S.Stream rb ix b
+     , S.Stream rc ix c
+     , S.Stream rd ix d
+     , S.Stream re ix e
+     , Monad m
+     )
+  => (ix -> a -> b -> c -> d -> e -> m f)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> Array re ix e
+  -> m ()
+sizipWith5M_ f v1 v2 v3 v4 v5 =
+  S.zipWith5M_
+    (uncurry f)
+    (toStreamIxM v1)
+    (toStreamM v2)
+    (toStreamM v3)
+    (toStreamM v4)
+    (toStreamM v5)
+{-# INLINE sizipWith5M_ #-}
+
+-- |
+--
+-- @since 0.5.0
+sizipWith6M_ ::
+     ( S.Stream ra ix a
+     , S.Stream rb ix b
+     , S.Stream rc ix c
+     , S.Stream rd ix d
+     , S.Stream re ix e
+     , S.Stream rf ix f
+     , Monad m
+     )
+  => (ix -> a -> b -> c -> d -> e -> f -> m g)
+  -> Array ra ix a
+  -> Array rb ix b
+  -> Array rc ix c
+  -> Array rd ix d
+  -> Array re ix e
+  -> Array rf ix f
+  -> m ()
+sizipWith6M_ f v1 v2 v3 v4 v5 v6 =
+  S.zipWith6M_
+    (uncurry f)
+    (toStreamIxM v1)
+    (toStreamM v2)
+    (toStreamM v3)
+    (toStreamM v4)
+    (toStreamM v5)
+    (toStreamM v6)
+{-# INLINE sizipWith6M_ #-}
+
+
+
 
 
 -- |

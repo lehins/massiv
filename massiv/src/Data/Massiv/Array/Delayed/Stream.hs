@@ -15,6 +15,8 @@ module Data.Massiv.Array.Delayed.Stream
   ( DS(..)
   , Array (..)
   , toStreamArray
+  , toStreamM
+  , toStreamIxM
   , toSteps
   , fromSteps
   , fromStepsM
@@ -148,6 +150,21 @@ instance S.Stream DS Ix1 e where
 toStreamArray :: Source r ix e => Array r ix e -> Array DS Ix1 e
 toStreamArray = DSArray . S.steps
 {-# INLINE toStreamArray #-}
+
+-- | /O(1)/ - Convert an array into monadic `Steps`
+--
+-- @since 0.5.0
+toStreamM :: (Stream r ix e, Monad m) => Array r ix e -> Steps m e
+toStreamM = S.transStepsId . toStream
+{-# INLINE toStreamM #-}
+
+-- | /O(1)/ - Convert an array into monadic `Steps`
+--
+-- @since 0.5.0
+toStreamIxM :: (Stream r ix e, Monad m) => Array r ix e -> Steps m (ix, e)
+toStreamIxM = S.transStepsId . toStreamIx
+{-# INLINE toStreamIxM #-}
+
 
 instance Construct DS Ix1 e where
   setComp _ arr = arr

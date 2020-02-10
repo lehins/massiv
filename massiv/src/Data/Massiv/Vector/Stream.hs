@@ -25,6 +25,7 @@ module Data.Massiv.Vector.Stream
   -- * Conversion
   , steps
   , isteps
+  , consume
   , fromStream
   , fromStreamM
   , fromStreamExactM
@@ -65,7 +66,20 @@ module Data.Massiv.Vector.Stream
   , concatMap
   , append
   , zipWith
+  , zipWith3
+  , zipWith4
+  , zipWith5
+  , zipWith6
   , zipWithM
+  , zipWith3M
+  , zipWith4M
+  , zipWith5M
+  , zipWith6M
+  , zipWithM_
+  , zipWith3M_
+  , zipWith4M_
+  , zipWith5M_
+  , zipWith6M_
   -- ** Folding
   , foldl
   , foldl1
@@ -123,7 +137,7 @@ import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
 import Prelude hiding (and, concatMap, drop, filter, foldl, foldl1, foldr,
                 foldr1, length, map, mapM, mapM_, null, or, replicate, take,
-                traverse, zipWith)
+                traverse, zipWith, zipWith3)
 
 
 instance Monad m => Functor (Steps m) where
@@ -408,12 +422,158 @@ mapM_ f (Steps str _) = S.mapM_ f str
 {-# INLINE mapM_ #-}
 
 zipWith :: Monad m => (a -> b -> e) -> Steps m a -> Steps m b -> Steps m e
-zipWith f (Steps str1 k1) (Steps str2 k2) = Steps (S.zipWith f str1 str2) (smaller k1 k2)
+zipWith f (Steps sa ka) (Steps sb kb) = Steps (S.zipWith f sa sb) (smaller ka kb)
 {-# INLINE zipWith #-}
 
+zipWith3 :: Monad m => (a -> b -> c -> d) -> Steps m a -> Steps m b -> Steps m c -> Steps m d
+zipWith3 f (Steps sa ka) (Steps sb kb) (Steps sc kc) =
+  Steps (S.zipWith3 f sa sb sc) (smaller ka (smaller kb kc))
+{-# INLINE zipWith3 #-}
+
+zipWith4 ::
+  Monad m => (a -> b -> c -> d -> e) -> Steps m a -> Steps m b -> Steps m c -> Steps m d -> Steps m e
+zipWith4 f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) =
+  Steps (S.zipWith4 f sa sb sc sd) (smaller ka (smaller kb (smaller kc kd)))
+{-# INLINE zipWith4 #-}
+
+zipWith5 ::
+     Monad m
+  => (a -> b -> c -> d -> e -> f)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> Steps m e
+  -> Steps m f
+zipWith5 f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) =
+  Steps (S.zipWith5 f sa sb sc sd se) (smaller ka (smaller kb (smaller kc (smaller kd ke))))
+{-# INLINE zipWith5 #-}
+
+zipWith6 ::
+     Monad m
+  => (a -> b -> c -> d -> e -> f -> g)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> Steps m e
+  -> Steps m f
+  -> Steps m g
+zipWith6 f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) (Steps sf kf) =
+  Steps
+    (S.zipWith6 f sa sb sc sd se sf)
+    (smaller ka (smaller kb (smaller kc (smaller kd (smaller ke kf)))))
+{-# INLINE zipWith6 #-}
+
 zipWithM :: Monad m => (a -> b -> m c) -> Steps m a -> Steps m b -> Steps m c
-zipWithM f (Steps str1 k1) (Steps str2 k2) = Steps (S.zipWithM f str1 str2) (smaller k1 k2)
+zipWithM f (Steps sa ka) (Steps sb kb) = Steps (S.zipWithM f sa sb) (smaller ka kb)
 {-# INLINE zipWithM #-}
+
+
+zipWith3M :: Monad m => (a -> b -> c -> m d) -> Steps m a -> Steps m b -> Steps m c -> Steps m d
+zipWith3M f (Steps sa ka) (Steps sb kb) (Steps sc kc) =
+  Steps (S.zipWith3M f sa sb sc) (smaller ka (smaller kb kc))
+{-# INLINE zipWith3M #-}
+
+zipWith4M ::
+     Monad m
+  => (a -> b -> c -> d -> m e)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> Steps m e
+zipWith4M f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) =
+  Steps (S.zipWith4M f sa sb sc sd) (smaller ka (smaller kb (smaller kc kd)))
+{-# INLINE zipWith4M #-}
+
+zipWith5M ::
+     Monad m
+  => (a -> b -> c -> d -> e -> m f)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> Steps m e
+  -> Steps m f
+zipWith5M f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) =
+  Steps (S.zipWith5M f sa sb sc sd se) (smaller ka (smaller kb (smaller kc (smaller kd ke))))
+{-# INLINE zipWith5M #-}
+
+zipWith6M ::
+     Monad m
+  => (a -> b -> c -> d -> e -> f -> m g)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> Steps m e
+  -> Steps m f
+  -> Steps m g
+zipWith6M f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) (Steps sf kf) =
+  Steps
+    (S.zipWith6M f sa sb sc sd se sf)
+    (smaller ka (smaller kb (smaller kc (smaller kd (smaller ke kf)))))
+{-# INLINE zipWith6M #-}
+
+
+zipWithM_ :: Monad m => (a -> b -> m c) -> Steps m a -> Steps m b -> m ()
+zipWithM_ f (Steps str1 _) (Steps str2 _) = S.zipWithM_ f str1 str2
+{-# INLINE zipWithM_ #-}
+
+zipWith3M_ :: Monad m => (a -> b -> c -> m d) -> Steps m a -> Steps m b -> Steps m c -> m ()
+zipWith3M_ f sa sb sc = consume $ zipWith3M f sa sb sc
+{-# INLINE zipWith3M_ #-}
+
+
+zipWith4M_ ::
+     Monad m
+  => (a -> b -> c -> d -> m e)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> m ()
+zipWith4M_ f sa sb sc sd = consume $ zipWith4M f sa sb sc sd
+{-# INLINE zipWith4M_ #-}
+
+zipWith5M_ ::
+     Monad m
+  => (a -> b -> c -> d -> e -> m f)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> Steps m e
+  -> m ()
+zipWith5M_ f sa sb sc sd se = consume $ zipWith5M f sa sb sc sd se
+{-# INLINE zipWith5M_ #-}
+
+zipWith6M_ ::
+     Monad m
+  => (a -> b -> c -> d -> e -> f -> m g)
+  -> Steps m a
+  -> Steps m b
+  -> Steps m c
+  -> Steps m d
+  -> Steps m e
+  -> Steps m f
+  -> m ()
+zipWith6M_ f sa sb sc sd se sf = consume $ zipWith6M f sa sb sc sd se sf
+{-# INLINE zipWith6M_ #-}
+
+
+
+consume :: Monad m => Steps m a -> m ()
+consume (Steps (S.Stream step t) _) = consumeLoop S.SPEC t
+  where
+    consumeLoop !_ s = do
+      r <- step s
+      case r of
+        S.Yield _ s' -> consumeLoop S.SPEC s'
+        S.Skip s' -> consumeLoop S.SPEC s'
+        S.Done -> pure ()
+{-# INLINE consume #-}
 
 transStepsId :: Monad m => Steps Id e -> Steps m e
 transStepsId (Steps sts k) = Steps (S.trans (pure . unId) sts) k
@@ -544,7 +704,12 @@ filterM f (Steps str k) = Steps (S.filterM f str) (toMax k)
 {-# INLINE filterM #-}
 
 take :: Monad m => Int -> Steps m a -> Steps m a
-take n (Steps str _) = Steps (S.take n str) (Max n)
+take n (Steps str sz) =
+  Steps (S.take n str) $!
+  case sz of
+    Exact k -> Exact (min n k)
+    Max k -> Max (min n k)
+    Unknown -> Unknown
 {-# INLINE take #-}
 
 drop :: Monad m => Int -> Steps m a -> Steps m a
