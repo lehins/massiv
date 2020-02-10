@@ -56,7 +56,7 @@ import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
-import Data.Massiv.Vector.Stream as S (steps)
+import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Maybe (fromMaybe)
 import Data.Primitive (sizeOf)
 import Data.Primitive.ByteArray
@@ -244,6 +244,8 @@ instance (Prim e, Index ix) => StrideLoad P ix e
 instance (Prim e, Index ix) => Stream P ix e where
   toStream = S.steps
   {-# INLINE toStream #-}
+  toStreamIx = S.isteps
+  {-# INLINE toStreamIx #-}
 
 instance ( Prim e
          , IsList (Array L ix e)

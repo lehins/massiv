@@ -52,9 +52,9 @@ newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
 instance Construct LN Ix1 e where
   setComp _ = id
   {-# INLINE setComp #-}
-  makeArray _ (Sz n) f = coerce (fmap f [0 .. n - 1])
+  makeArray _ (Sz n) f = coerce (L.map f [0 .. n - 1])
   {-# INLINE makeArray #-}
-  makeArrayLinear _ (Sz n) f = coerce (fmap f [0 .. n - 1])
+  makeArrayLinear _ (Sz n) f = coerce (L.map f [0 .. n - 1])
   {-# INLINE makeArrayLinear #-}
 
 instance {-# OVERLAPPING #-} Nested LN Ix1 e where
@@ -383,6 +383,12 @@ instance Stream LN Ix1 e where
   toStream = S.fromList . coerce
   {-# INLINE toStream #-}
 
-instance Ragged L ix e => Stream L ix e where
-  toStream = S.fromList . coerce . lData . flattenRagged
+  toStreamIx = S.indexed . S.fromList . coerce
+  {-# INLINE toStreamIx #-}
+
+instance Stream L Ix1 e where
+  toStream = toStream . lData
   {-# INLINE toStream #-}
+
+  toStreamIx = toStreamIx . lData
+  {-# INLINE toStreamIx #-}

@@ -27,7 +27,7 @@ import Control.DeepSeq (NFData(..), deepseq)
 import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import Data.Massiv.Array.Manifest.List as A
-import Data.Massiv.Vector.Stream as S (steps)
+import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
@@ -190,6 +190,8 @@ instance (VU.Unbox e, Index ix) => Mutable U ix e where
 instance (Index ix, VU.Unbox e) => Stream U ix e where
   toStream = S.steps
   {-# INLINE toStream #-}
+  toStreamIx = S.isteps
+  {-# INLINE toStreamIx #-}
 
 
 instance ( VU.Unbox e

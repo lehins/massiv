@@ -249,8 +249,7 @@ import Control.Monad hiding (filterM, replicateM)
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Stream
-import qualified Data.Massiv.Array.Ops.Construct as A (replicate)
-import qualified Data.Massiv.Array.Ops.Map as A (imap)
+import qualified Data.Massiv.Array.Ops.Construct as A (makeArrayR, replicate)
 import Data.Massiv.Core.Common
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Vector.Unsafe
@@ -709,7 +708,7 @@ sfilter f = DSArray . S.filter f . S.toStream
 -- | Similar to `sfilter`, but map with an index aware function.
 --
 -- @since 0.5.0
-sifilter :: Source r ix a => (ix -> a -> Bool) -> Array r ix a -> Vector DS a
+sifilter :: Stream r ix a => (ix -> a -> Bool) -> Array r ix a -> Vector DS a
 sifilter f =
   simapMaybe $ \ix e ->
     if f ix e
@@ -760,7 +759,7 @@ sfilterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 --
 -- @since 0.5.0
 sifilterM ::
-     (Source r ix a, Applicative f) => (ix -> a -> f Bool) -> Array r ix a -> f (Vector DS a)
+     (Stream r ix a, Applicative f) => (ix -> a -> f Bool) -> Array r ix a -> f (Vector DS a)
 sifilterM f =
   simapMaybeM $ \ix e ->
     (\p ->
@@ -783,16 +782,16 @@ smapMaybe f = DSArray . S.mapMaybe f . S.toStream
 -- | Similar to `smapMaybe`, but map with an index aware function.
 --
 -- @since 0.5.0
-simapMaybe :: Source r ix a => (ix -> a -> Maybe b) -> Array r ix a -> Vector DS b
-simapMaybe f = scatMaybes . A.imap f
+simapMaybe :: Stream r ix a => (ix -> a -> Maybe b) -> Array r ix a -> Vector DS b
+simapMaybe f = DSArray . S.mapMaybe (uncurry f) . toStreamIx
 {-# INLINE simapMaybe #-}
 
 -- | Similar to `smapMaybeM`, but map with an index aware function.
 --
 -- @since 0.5.0
 simapMaybeM ::
-     (Source r ix a, Applicative f) => (ix -> a -> f (Maybe b)) -> Array r ix a -> f (Vector DS b)
-simapMaybeM f = smapMaybeM (uncurry f) . A.imap (,)
+     (Stream r ix a, Applicative f) => (ix -> a -> f (Maybe b)) -> Array r ix a -> f (Vector DS b)
+simapMaybeM f = fmap DSArray . S.mapMaybeA (uncurry f) . toStreamIx
 {-# INLINE simapMaybeM #-}
 
 
@@ -1004,7 +1003,8 @@ traverseS = straverse
 --
 -- @since 0.4.1
 imapMaybeS :: Source r ix a => (ix -> a -> Maybe b) -> Array r ix a -> Array DS Ix1 b
-imapMaybeS = simapMaybe
+imapMaybeS f arr =
+  mapMaybeS (uncurry f) $ A.makeArrayR D (getComp arr) (size arr) $ \ix -> (ix, unsafeIndex arr ix)
 {-# INLINE imapMaybeS #-}
 {-# DEPRECATED imapMaybeS "In favor of `simapMaybe`" #-}
 
@@ -1013,7 +1013,8 @@ imapMaybeS = simapMaybe
 -- @since 0.4.1
 imapMaybeM ::
      (Source r ix a, Applicative f) => (ix -> a -> f (Maybe b)) -> Array r ix a -> f (Array DS Ix1 b)
-imapMaybeM = simapMaybeM
+imapMaybeM f arr =
+  mapMaybeM (uncurry f) $ A.makeArrayR D (getComp arr) (size arr) $ \ix -> (ix, unsafeIndex arr ix)
 {-# INLINE imapMaybeM #-}
 {-# DEPRECATED imapMaybeM "In favor of `simapMaybeM`" #-}
 
@@ -1021,7 +1022,11 @@ imapMaybeM = simapMaybeM
 --
 -- @since 0.4.1
 ifilterS :: Source r ix a => (ix -> a -> Bool) -> Array r ix a -> Array DS Ix1 a
-ifilterS = sifilter
+ifilterS f =
+  imapMaybeS $ \ix e ->
+    if f ix e
+      then Just e
+      else Nothing
 {-# INLINE ifilterS #-}
 {-# DEPRECATED ifilterS "In favor of `sifilter`" #-}
 
@@ -1031,6 +1036,12 @@ ifilterS = sifilter
 -- @since 0.4.1
 ifilterM ::
      (Source r ix a, Applicative f) => (ix -> a -> f Bool) -> Array r ix a -> f (Array DS Ix1 a)
-ifilterM = sifilterM
+ifilterM f =
+  imapMaybeM $ \ix e ->
+    (\p ->
+       if p
+         then Just e
+         else Nothing) <$>
+    f ix e
 {-# INLINE ifilterM #-}
 {-# DEPRECATED ifilterM "In favor of `sifilterM`" #-}

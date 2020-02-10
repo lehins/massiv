@@ -45,7 +45,7 @@ import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
 import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
 import Data.Massiv.Array.Manifest.List as L
-import Data.Massiv.Vector.Stream as S (steps)
+import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Array.Ops.Fold.Internal
@@ -210,6 +210,8 @@ instance Index ix => StrideLoad B ix e
 instance Index ix => Stream B ix e where
   toStream = S.steps
   {-# INLINE toStream #-}
+  toStreamIx = S.isteps
+  {-# INLINE toStreamIx #-}
 
 
 -- | Row-major sequential folding over a Boxed array.
@@ -384,6 +386,8 @@ instance (Index ix, NFData e) => StrideLoad N ix e
 instance (Index ix, NFData e) => Stream N ix e where
   toStream = toStream . coerce
   {-# INLINE toStream #-}
+  toStreamIx = toStreamIx . coerce
+  {-# INLINE toStreamIx #-}
 
 
 instance ( NFData e

@@ -146,6 +146,8 @@ type family NestedStruct r ix e :: *
 class Load r ix e => Stream r ix e where
   toStream :: Array r ix e -> Steps Id e
 
+  toStreamIx :: Array r ix e -> Steps Id (ix, e)
+
 data Steps m e = Steps
   { stepsStream :: S.Stream m e
   , stepsSize   :: Size

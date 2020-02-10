@@ -138,6 +138,8 @@ instance IsList (Array DS Ix1 e) where
 instance S.Stream DS Ix1 e where
   toStream = coerce
   {-# INLINE toStream #-}
+  toStreamIx = S.indexed . coerce
+  {-# INLINE toStreamIx #-}
 
 
 -- | Flatten an array into a stream of values.

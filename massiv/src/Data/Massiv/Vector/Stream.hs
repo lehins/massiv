@@ -57,6 +57,7 @@ module Data.Massiv.Vector.Stream
   , traverse
   , map
   , mapM
+  , indexed
   , concatMap
   , append
   , zipWith
@@ -369,6 +370,10 @@ append (Steps str1 k1) (Steps str2 k2) = Steps (str1 S.++ str2) (k1 + k2)
 map :: Monad m => (e -> a) -> Steps m e -> Steps m a
 map f (Steps str k) = Steps (S.map f str) k
 {-# INLINE map #-}
+
+indexed :: Monad m => Steps m e -> Steps m (Int, e)
+indexed (Steps str k) = Steps (S.indexed str) k
+{-# INLINE indexed #-}
 
 mapM :: Monad m => (e -> m a) -> Steps m e -> Steps m a
 mapM f (Steps str k) = Steps (S.mapM f str) k

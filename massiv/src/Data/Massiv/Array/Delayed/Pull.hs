@@ -21,6 +21,7 @@ module Data.Massiv.Array.Delayed.Pull
   , delay
   , eq
   , ord
+  , imap
   ) where
 
 import qualified Data.Foldable as F
@@ -155,7 +156,13 @@ instance Index ix => StrideLoad D ix e
 instance Index ix => Stream D ix e where
   toStream = S.steps
   {-# INLINE toStream #-}
+  toStreamIx = S.steps . imap (,)
+  {-# INLINE toStreamIx #-}
 
+-- | Map an index aware function over an array
+imap :: Source r ix e' => (ix -> e' -> e) -> Array r ix e' -> Array D ix e
+imap f !arr = DArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
+{-# INLINE imap #-}
 
 instance (Index ix, Num e) => Num (Array D ix e) where
   (+)         = unsafeLiftArray2 (+)

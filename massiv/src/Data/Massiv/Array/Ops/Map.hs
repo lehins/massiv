@@ -95,10 +95,6 @@ map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
 map f = imap (const f)
 {-# INLINE map #-}
 
--- | Map an index aware function over an array
-imap :: Source r ix e' => (ix -> e' -> e) -> Array r ix e' -> Array D ix e
-imap f !arr = DArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
-{-# INLINE imap #-}
 
 --------------------------------------------------------------------------------
 -- zip -------------------------------------------------------------------------
