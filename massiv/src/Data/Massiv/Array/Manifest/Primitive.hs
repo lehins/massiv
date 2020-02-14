@@ -103,12 +103,12 @@ instance (Prim e, Index ix) => Construct P ix e where
   {-# INLINE makeArray #-}
 
 instance (Prim e, Index ix) => Source P ix e where
-  unsafeLinearIndex (PArray _ _sz o a) i =
+  unsafeLinearIndex _arr@(PArray _ _ o a) i =
     INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
-                const (Sz (totalElem _sz)), indexByteArray) a (i + o)
+                SafeSz . elemsBA _arr, indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
-  unsafeLinearSlice i k (PArray c _ o a) = PArray c k (o + i) a
+  unsafeLinearSlice i k (PArray c _ o a) = PArray c k (i + o) a
   {-# INLINE unsafeLinearSlice #-}
 
 
@@ -419,7 +419,7 @@ unsafeAtomicReadIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> m Int
 unsafeAtomicReadIntArray _mpa@(MPArray sz o mba) ix =
   INDEX_CHECK( "unsafeAtomicReadIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case atomicReadIntArray# mba# i# s# of
@@ -433,9 +433,9 @@ unsafeAtomicReadIntArray _mpa@(MPArray sz o mba) ix =
 -- @since 0.3.0
 unsafeAtomicWriteIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m ()
-unsafeAtomicWriteIntArray (MPArray sz o mba) ix (I# e#) =
+unsafeAtomicWriteIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicWriteIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive_ (atomicWriteIntArray# mba# i# e#))
   mba
@@ -447,9 +447,9 @@ unsafeAtomicWriteIntArray (MPArray sz o mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeCasIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> Int -> m Int
-unsafeCasIntArray (MPArray sz o mba) ix (I# e#) (I# n#) =
+unsafeCasIntArray _mpa@(MPArray sz o mba) ix (I# e#) (I# n#) =
   INDEX_CHECK( "unsafeCasIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case casIntArray# mba# i# e# n# s# of
@@ -465,7 +465,7 @@ unsafeCasIntArray (MPArray sz o mba) ix (I# e#) (I# n#) =
 unsafeAtomicModifyIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> (Int -> Int) -> m Int
 unsafeAtomicModifyIntArray _mpa@(MPArray sz o mba) ix f =
-  INDEX_CHECK("unsafeAtomicModifyIntArray", const (Sz (totalElem sz)), atomicModify)
+  INDEX_CHECK("unsafeAtomicModifyIntArray", SafeSz . elemsMBA _mpa, atomicModify)
   mba
   (o + toLinearIndex sz ix)
   where
@@ -489,9 +489,9 @@ unsafeAtomicModifyIntArray _mpa@(MPArray sz o mba) ix f =
 -- @since 0.3.0
 unsafeAtomicAddIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicAddIntArray (MPArray sz o mba) ix (I# e#) =
+unsafeAtomicAddIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicAddIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchAddIntArray# mba# i# e# s# of
@@ -506,9 +506,9 @@ unsafeAtomicAddIntArray (MPArray sz o mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicSubIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicSubIntArray (MPArray sz o mba) ix (I# e#) =
+unsafeAtomicSubIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicSubIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchSubIntArray# mba# i# e# s# of
@@ -523,9 +523,9 @@ unsafeAtomicSubIntArray (MPArray sz o mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicAndIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicAndIntArray (MPArray sz o mba) ix (I# e#) =
+unsafeAtomicAndIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicAndIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchAndIntArray# mba# i# e# s# of
@@ -540,9 +540,9 @@ unsafeAtomicAndIntArray (MPArray sz o mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicNandIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicNandIntArray (MPArray sz o mba) ix (I# e#) =
+unsafeAtomicNandIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicNandIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchNandIntArray# mba# i# e# s# of
@@ -559,7 +559,7 @@ unsafeAtomicOrIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicOrIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicOrIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchOrIntArray# mba# i# e# s# of
@@ -574,9 +574,9 @@ unsafeAtomicOrIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 -- @since 0.3.0
 unsafeAtomicXorIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
-unsafeAtomicXorIntArray (MPArray sz o mba) ix (I# e#) =
+unsafeAtomicXorIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   INDEX_CHECK( "unsafeAtomicXorIntArray"
-             , const (Sz (totalElem sz))
+             , SafeSz . elemsMBA _mpa
              , \(MutableByteArray mba#) (I# i#) ->
                  primitive $ \s# ->
                  case fetchXorIntArray# mba# i# e# s# of

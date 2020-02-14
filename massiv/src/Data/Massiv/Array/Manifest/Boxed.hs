@@ -121,7 +121,7 @@ instance Index ix => Construct B ix e where
 instance Index ix => Source B ix e where
   unsafeLinearIndex (BArray _ _sz o a) i =
     INDEX_CHECK("(Source B ix e).unsafeLinearIndex",
-                const (Sz (totalElem _sz)), A.indexArray) a (i + o)
+                SafeSz . sizeofArray, A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeLinearSlice i k (BArray c _ o a) = BArray c k (o + i) a
@@ -164,7 +164,7 @@ instance Index ix => Manifest B ix e where
 
   unsafeLinearIndexM (BArray _ _sz o a) i =
     INDEX_CHECK("(Manifest B ix e).unsafeLinearIndexM",
-                const (Sz (totalElem _sz)), A.indexArray) a (i + o)
+                SafeSz . sizeofArray, A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -186,14 +186,14 @@ instance Index ix => Mutable B ix e where
   initialize _ = return ()
   {-# INLINE initialize #-}
 
-  unsafeLinearRead (MBArray _sz o ma) i =
+  unsafeLinearRead (MBArray _ o ma) i =
     INDEX_CHECK("(Mutable B ix e).unsafeLinearRead",
-                const (Sz (totalElem _sz)), A.readArray) ma (i + o)
+                SafeSz . sizeofMutableArray, A.readArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MBArray _sz o ma) i e = e `seq`
     INDEX_CHECK("(Mutable B ix e).unsafeLinearWrite",
-                const (Sz (totalElem _sz)), A.writeArray) ma (i + o) e
+                SafeSz . sizeofMutableArray, A.writeArray) ma (i + o) e
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where
@@ -298,8 +298,7 @@ instance (Index ix, NFData e) => Construct N ix e where
   {-# INLINE makeArray #-}
 
 instance (Index ix, NFData e) => Source N ix e where
-  unsafeLinearIndex (NArray arr) =
-    INDEX_CHECK("(Source N ix e).unsafeLinearIndex", Sz . totalElem . size, unsafeLinearIndex) arr
+  unsafeLinearIndex (NArray arr) = unsafeLinearIndex arr
   {-# INLINE unsafeLinearIndex #-}
   unsafeLinearSlice i k (NArray a) = NArray $ unsafeLinearSlice i k a
   {-# INLINE unsafeLinearSlice #-}
@@ -341,8 +340,7 @@ instance {-# OVERLAPPING #-} NFData e => Slice N Ix1 e where
 
 instance (Index ix, NFData e) => Manifest N ix e where
 
-  unsafeLinearIndexM (NArray arr) =
-    INDEX_CHECK("(Manifest N ix e).unsafeLinearIndexM", Sz . totalElem . size, unsafeLinearIndexM) arr
+  unsafeLinearIndexM (NArray arr) = unsafeLinearIndexM arr
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -364,12 +362,10 @@ instance (Index ix, NFData e) => Mutable N ix e where
   initialize _ = return ()
   {-# INLINE initialize #-}
 
-  unsafeLinearRead (MNArray ma) =
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearRead", Sz . totalElem . msize, unsafeLinearRead) ma
+  unsafeLinearRead (MNArray ma) = unsafeLinearRead ma
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MNArray ma) i e = e `deepseq`
-    INDEX_CHECK("(Mutable N ix e).unsafeLinearWrite", Sz . totalElem . msize, unsafeLinearWrite) ma i e
+  unsafeLinearWrite (MNArray ma) i e = e `deepseq` unsafeLinearWrite ma i e
   {-# INLINE unsafeLinearWrite #-}
 
 instance (Index ix, NFData e) => Load N ix e where
