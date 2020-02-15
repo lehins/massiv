@@ -110,7 +110,7 @@ _specEncodeDecodeGifSequenceNoError =
     let imgs = fmap (second unArr) $ NE.fromList $ getNonEmpty imgsNE
     bs <- encodeM (Sequence GIF) def imgs
     imgs' :: [Image S cs e] <- decodeM (Sequence GIF) $ BL.toStrict bs
-    length imgs' `shouldBe` length imgs
+    Prelude.length imgs' `shouldBe` Prelude.length imgs
 
 
 spec :: Spec
