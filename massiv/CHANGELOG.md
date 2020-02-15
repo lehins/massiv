@@ -23,6 +23,8 @@
   * `toStorableVector`, `toStorableMVector`, `fromStorableVector` and `fromStorableMVector`
   * `fromUnboxedVector` and `fromUnboxedMVector`
   * `unsafeBoxedArray`, `unsafeNormalBoxedArray`, `unsafeFromBoxedVector`
+* Removed deprecated `traverseAR`, `itraverseAR`, `traversePrimR` and `itraversePrimR`
+* Removed: `imapMR`, `imapMR`, `iforMR`, and `iforMR`
 
 # 0.4.5
 
