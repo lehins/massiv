@@ -11,7 +11,7 @@ import Prelude as P
 import Control.DeepSeq (deepseq)
 import Data.Default (Default(def))
 import Data.Massiv.Array as A
-import Data.Massiv.Array.Stencil.Unsafe as A
+import Data.Massiv.Array.Unsafe as A
 import Test.Massiv.Core
 
 avg3x3Stencil :: Fractional a => Stencil Ix2 a a
@@ -74,9 +74,9 @@ prop_MapEqApplyStencil ::
 prop_MapEqApplyStencil stride (SzTiny sz) b arr =
   forAll (elements (P.zip [0 ..] (toList $ A.map (\(n, _, _) -> n) stencils))) $ \(i, _) ->
     let (_, stencil, g) = stencils ! i
-     in computeAs P (mapStencilUnsafe b sz zeroIndex g arr) ===
+     in computeAs P (unsafeMapStencil b sz zeroIndex (const g) arr) ===
         computeAs P (applyStencil (samePadding stencil b) stencil arr) .&&.
-        computeWithStrideAs P stride (mapStencilUnsafe b sz zeroIndex g arr) ===
+        computeWithStrideAs P stride (unsafeMapStencil b sz zeroIndex (const g) arr) ===
         computeWithStrideAs P stride (applyStencil (samePadding stencil b) stencil arr)
   where
     stencils = mkCommonStencils sz

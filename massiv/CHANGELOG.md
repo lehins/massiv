@@ -1,5 +1,6 @@
 # 0.5.0
 
+* Remove `Show` instance from `Value`.
 * Addition of `unsafeCreateArray`, `unsafeCreateArray_` and `unsafeCreateArrayS`
 * Remove `Comp` argument from functions that ignore it and set it to `Seq`:
   * `createArrayS_`, `createArrayS`, `createArrayST_`, `createArrayST`
@@ -11,6 +12,9 @@
 * Addition of `toPrimitiveVector`, `toPrimitiveMVector`, `fromPrimitiveVector` and
   `fromPrimitiveMVector`
 * Change `replicate` to produce delayed load array `DL`
+* Export unsafe stencil functions from `Data.Array.Massiv.Unsafe`, rather than from
+  `Data.Massiv.Array.Stencil.Unsafe`.
+* Implement `unsafeMapStencil` and deprecate `mapStencilUnsafe` and `forStencilUnsafe`
 
 # 0.4.5
 

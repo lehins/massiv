@@ -44,7 +44,6 @@ library
                      , Data.Massiv.Array.Numeric
                      , Data.Massiv.Array.Numeric.Integral
                      , Data.Massiv.Array.Stencil
-                     , Data.Massiv.Array.Stencil.Unsafe
                      , Data.Massiv.Array.Unsafe
                      , Data.Massiv.Core
                      , Data.Massiv.Core.Index
@@ -74,6 +73,7 @@ library
                      , Data.Massiv.Array.Ops.Transform
                      , Data.Massiv.Array.Stencil.Convolution
                      , Data.Massiv.Array.Stencil.Internal
+                     , Data.Massiv.Array.Stencil.Unsafe
                      , Data.Massiv.Core.Common
                      , Data.Massiv.Core.Exception
                      , Data.Massiv.Core.Index.Internal

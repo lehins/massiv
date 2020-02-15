@@ -81,6 +81,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeToMutableByteArray
   , unsafeUnstablePartitionRegionM
   , module Data.Massiv.Vector.Unsafe
+  , module Data.Massiv.Array.Stencil.Unsafe
   ) where
 
 import Data.Massiv.Array.Delayed.Pull (D)
@@ -93,6 +94,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Massiv.Core.Index.Stride (Stride(SafeStride))
 import Data.Massiv.Vector.Unsafe
+import Data.Massiv.Array.Stencil.Unsafe
 
 
 unsafeBackpermute :: (Source r' ix' e, Index ix) =>

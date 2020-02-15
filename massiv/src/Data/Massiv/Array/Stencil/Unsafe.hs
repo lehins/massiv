@@ -13,6 +13,8 @@
 module Data.Massiv.Array.Stencil.Unsafe
   ( -- * Stencil
     makeUnsafeStencil
+  , unsafeMapStencil
+  -- ** Deprecated
   , mapStencilUnsafe
   , forStencilUnsafe
   ) where
@@ -56,13 +58,9 @@ forStencilUnsafe !arr !sSz !sCenter relStencil =
     stencil getVal !ix = inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
 {-# INLINE forStencilUnsafe #-}
+{-# DEPRECATED forStencilUnsafe "In favor of `unsafeMapStencil`" #-}
 
 
--- | This is an unsafe version of `Data.Massiv.Array.Stencil.mapStencil`, that does no
--- stencil validation. There is no performance difference between the two, but the unsafe
--- version has an advantage of not requiring to deal with `Value` wrapper.
---
--- @since 0.4.3
 mapStencilUnsafe ::
      Manifest r ix e
   => Border e
@@ -71,7 +69,26 @@ mapStencilUnsafe ::
   -> ((ix -> e) -> a)
   -> Array r ix e
   -> Array DW ix a
-mapStencilUnsafe b sSz sCenter stencilF !arr = insertWindow warr window
+mapStencilUnsafe b sz ix f = unsafeMapStencil b sz ix (const f)
+{-# INLINE mapStencilUnsafe #-}
+{-# DEPRECATED mapStencilUnsafe "In favor of `unsafeMapStencil`" #-}
+
+-- | This is an unsafe version of `Data.Massiv.Array.Stencil.mapStencil`, that does no
+-- take `Stencil` as argument, as such it does no stencil validation. There is no
+-- performance difference between the two, but the unsafe version has an advantage of not
+-- requiring to deal with `Value` wrapper and has access to the actual index with the
+-- array.
+--
+-- @since 0.5.0
+unsafeMapStencil ::
+     Manifest r ix e
+  => Border e
+  -> Sz ix
+  -> ix
+  -> (ix -> (ix -> e) -> a)
+  -> Array r ix e
+  -> Array DW ix a
+unsafeMapStencil b sSz sCenter stencilF !arr = insertWindow warr window
   where
     !warr = DArray (getComp arr) sz (stencil (borderIndex b arr))
     !window =
@@ -83,9 +100,9 @@ mapStencilUnsafe b sSz sCenter stencilF !arr = insertWindow warr window
         }
     !sz = size arr
     !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
-    stencil getVal !ix = inline stencilF $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
+    stencil getVal !ix = inline (stencilF ix) $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
-{-# INLINE mapStencilUnsafe #-}
+{-# INLINE unsafeMapStencil #-}
 
 
 -- | Similar to `Data.Massiv.Array.Stencil.makeStencil`, but there are no guarantees that the
