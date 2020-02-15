@@ -13,7 +13,7 @@ module Data.Massiv.Vector
   , MVector
   -- * Accessors
   -- *** Size
-  , length
+  , slength
   , snull
   -- *** Indexing
   , (!)
@@ -278,15 +278,17 @@ import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take)
 -- Length information --
 ------------------------
 
--- |
---
--- /Note/ - calling this function on the `DS` type of vector might result in the whole
--- stream being traversed.
+-- | Get the length of a streaming vector if it is known. Calling `size` will give you the
+-- exact size instead, but for `DS` representation could result in evaluating of the whole
+-- stream.
 --
 -- @since 0.5.0
-length :: Load r Ix1 e => Vector r e -> Sz1
-length = size
-{-# INLINE length #-}
+slength :: Stream r ix e => Array r ix e -> Maybe Sz1
+slength v =
+  case stepsSize (toStream v) of
+    Exact sz -> Just (SafeSz sz)
+    _        -> Nothing
+{-# INLINE slength #-}
 
 -- |
 --
@@ -322,7 +324,7 @@ sheadM :: (Stream r Ix1 e, MonadThrow m) => Vector r e -> m e
 sheadM v =
   case S.unId (S.headMaybe (toStream v)) of
     Nothing -> throwM $ SizeEmptyException (size v)
-    Just e -> pure e
+    Just e  -> pure e
 {-# INLINE sheadM #-}
 
 -- |

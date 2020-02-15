@@ -25,6 +25,12 @@
   * `unsafeBoxedArray`, `unsafeNormalBoxedArray`, `unsafeFromBoxedVector`
 * Removed deprecated `traverseAR`, `itraverseAR`, `traversePrimR` and `itraversePrimR`
 * Removed: `imapMR`, `imapMR`, `iforMR`, and `iforMR`
+* Renamed:
+  * `withMArray` to `withMArray_`,
+  * `withMArrayS` to `withMArrayS_` and
+  * `withMArrayST` to `withMArrayST_`
+* Added versions that keep the artifact of mutable action: `withMArray`, `withMArrayS`,
+  `withMArrayST`.
 
 # 0.4.5
 

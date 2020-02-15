@@ -100,7 +100,7 @@ unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
 -- @since 0.3.2
 quicksort ::
      (Mutable r Ix1 e, Ord e) => Array r Ix1 e -> Array r Ix1 e
-quicksort arr = unsafePerformIO $ withMArray arr quicksortM_
+quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 {-# INLINE quicksort #-}
 
 

@@ -78,8 +78,11 @@ module Data.Massiv.Array.Mutable
   , iforLinearPrimM_
   -- *** Modify
   , withMArray
+  , withMArray_
   , withMArrayS
+  , withMArrayS_
   , withMArrayST
+  , withMArrayST_
   -- *** Initialize
   , initialize
   , initializeNew
@@ -799,6 +802,20 @@ iforLinearPrimM marr f =
   loopM_ 0 (< totalElem (msize marr)) (+ 1) (\i -> unsafeLinearModify marr (f i) i)
 {-# INLINE iforLinearPrimM #-}
 
+-- | Same as `withMArray_`, but allows to keep artifacts of scheduled tasks.
+--
+-- @since 0.5.0
+withMArray ::
+     (Mutable r ix e, MonadUnliftIO m)
+  => Array r ix e
+  -> (Scheduler m a -> MArray RealWorld r ix e -> m b)
+  -> m ([a], Array r ix e)
+withMArray arr action = do
+  marr <- thaw arr
+  xs <- withScheduler (getComp arr) (`action` marr)
+  liftIO ((,) xs <$> unsafeFreeze (getComp arr) marr)
+{-# INLINE withMArray #-}
+
 -- | Create a copy of a pure array, mutate it in place and return its frozen version. The big
 -- difference between `withMArrayS` is that it's not only gonna respect the computation strategy
 -- supplied to it while making a copy, but it will also pass extra argumens to the action that
@@ -811,47 +828,68 @@ iforLinearPrimM marr f =
 --
 -- * And, of course, the mutable array itself.
 --
--- @since 0.3.0
-withMArray ::
+-- @since 0.5.0
+withMArray_ ::
      (Mutable r ix e, MonadUnliftIO m)
   => Array r ix e
   -> (Scheduler m () -> MArray RealWorld r ix e -> m a)
   -> m (Array r ix e)
-withMArray arr action = do
+withMArray_ arr action = do
   marr <- thaw arr
   withScheduler_ (getComp arr) (`action` marr)
   liftIO $ unsafeFreeze (getComp arr) marr
-{-# INLINE withMArray #-}
+{-# INLINE withMArray_ #-}
 
 
 -- | Create a copy of a pure array, mutate it in place and return its frozen version. The important
--- benefit over doing a manual `thawS` followed by a `freezeS` is that an array will be only copied
+-- benefit over doing a manual `thawS` followed by a `freezeS` is that an array will only be copied
 -- once.
 --
--- @since 0.3.2
+-- @since 0.5.0
 withMArrayS ::
      (Mutable r ix e, PrimMonad m)
   => Array r ix e
   -> (MArray (PrimState m) r ix e -> m a)
-  -> m (Array r ix e)
+  -> m (a, Array r ix e)
 withMArrayS arr action = do
   marr <- thawS arr
-  _ <- action marr
-  unsafeFreeze (getComp arr) marr
+  a <- action marr
+  (,) a <$> unsafeFreeze (getComp arr) marr
 {-# INLINE withMArrayS #-}
+
+
+-- | Same as `withMArrayS`, but discards rhe element produced by the supplied action
+--
+-- @since 0.5.0
+withMArrayS_ ::
+     (Mutable r ix e, PrimMonad m)
+  => Array r ix e
+  -> (MArray (PrimState m) r ix e -> m a)
+  -> m (Array r ix e)
+withMArrayS_ arr action = snd <$> withMArrayS arr action
+{-# INLINE withMArrayS_ #-}
 
 
 -- | Same as `withMArrayS` but in `ST`. This is not only pure, but also the safest way to do
 -- mutation to the array.
 --
--- @since 0.2.2
+-- @since 0.5.0
 withMArrayST ::
      Mutable r ix e
   => Array r ix e
   -> (forall s . MArray s r ix e -> ST s a)
-  -> Array r ix e
+  -> (a, Array r ix e)
 withMArrayST arr f = runST $ withMArrayS arr f
 {-# INLINE withMArrayST #-}
+
+-- | Same as `withMArrayS` but in `ST`. This is not only pure, but also the safest way to do
+-- mutation to the array.
+--
+-- @since 0.5.0
+withMArrayST_ ::
+     Mutable r ix e => Array r ix e -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
+withMArrayST_ arr f = runST $ withMArrayS_ arr f
+{-# INLINE withMArrayST_ #-}
 
 
 -- | /O(1)/ - Lookup an element in the mutable array. Returns `Nothing` when index is out of bounds.

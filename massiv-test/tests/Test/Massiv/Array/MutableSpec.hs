@@ -108,7 +108,7 @@ prop_Write arr ix e =
           arr' <- freeze (getComp arr) marr'
           indexM arr' ix `shouldReturn` e
 
-          arr'' <- withMArray arr (\_ ma -> write_ ma ix e)
+          arr'' <- withMArray_ arr (\_ ma -> write_ ma ix e)
           index' arr'' ix `shouldBe` e
 
 
@@ -140,7 +140,7 @@ prop_Modify arr f ix =
           arr' <- freezeS marr'
           indexM arr' ix `shouldReturn` fe
 
-          arr'' <- withMArrayS arr (\ma -> modify_ ma fM ix)
+          arr'' <- withMArrayS_ arr (\ma -> modify_ ma fM ix)
           index' arr'' ix `shouldBe` fe
 
 prop_Swap :: (Mutable r ix e, Eq e, Show e) => Array r ix e -> ix -> ix -> Property
@@ -178,7 +178,7 @@ prop_Swap arr ix1 ix2 =
           indexM arr' ix1 `shouldReturn` e2
           indexM arr' ix2 `shouldReturn` e1
 
-          let arr'' = withMArrayST arr (\ma -> swap_ ma ix1 ix2)
+          let arr'' = withMArrayST_ arr (\ma -> swap_ ma ix1 ix2)
           index' arr'' ix1 `shouldBe` e2
           index' arr'' ix2 `shouldBe` e1
 

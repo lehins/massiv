@@ -68,7 +68,7 @@ instance Index ix => Construct D ix e where
 
 
 instance Index ix => Source D ix e where
-  unsafeIndex = INDEX_CHECK ("(Source D ix e).unsafeIndex", size, dIndex)
+  unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
   unsafeLinearSlice !o !sz arr =
     DArray (dComp arr) sz $ \ !i -> unsafeIndex arr (fromLinearIndex (size arr) (i + o))
