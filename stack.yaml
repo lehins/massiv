@@ -6,5 +6,4 @@ packages:
 flags: {}
 extra-package-dbs: []
 extra-deps:
-- Color-0.1.2@sha256:d3710247aabd0f2dc40478949b2a9a8a8b25056e708521d08a6dffb5589ed1c5,8010
-
+- Color-0.1.3.1@sha256:204cb6aeda71d61547266ecb7867ac574ae72cacdb6375b5cd90db9bdc50c0a2,8122
