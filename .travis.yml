@@ -94,17 +94,17 @@ matrix:
   #     apt:
   #       packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-9.21 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
-    compiler: ": #stack GHC-8.0.2 (lts-9.21)"
-    addons:
-      apt:
-        packages: [libgmp-dev]
+  # - env: BUILD=stack ARGS="--resolver lts-9.21 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
+  #   compiler: ": #stack GHC-8.0.2 (lts-9.21)"
+  #   addons:
+  #     apt:
+  #       packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
-    compiler: ": #stack GHC-8.2.2 (lts-11.22)"
-    addons:
-      apt:
-        packages: [libgmp-dev]
+  # - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
+  #   compiler: ": #stack GHC-8.2.2 (lts-11.22)"
+  #   addons:
+  #     apt:
+  #       packages: [libgmp-dev]
 
   - env: BUILD=stack ARGS="--resolver lts-12.14 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-12.14 --stack-yaml stack-lts-13.yaml"
     compiler: ": #stack GHC-8.4.3 (lts-12.14)"
@@ -154,12 +154,12 @@ matrix:
   #   compiler: ": #stack GHC-8.0.2 (lts-9.21)"
   #   os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
-    compiler: ": #stack GHC-8.2.2 (lts-11.22)"
-    os: osx
+  # - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
+  #   compiler: ": #stack GHC-8.2.2 (lts-11.22)"
+  #   os: osx
 
   - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-12.26 --stack-yaml stack-lts-13.yaml"
-    compiler: ": #stack GHC-8.4.3 (lts-12.26)"
+    compiler: ": #stack GHC-8.4.4 (lts-12.26)"
     os: osx
 
   - env: BUILD=stack ARGS="--resolver lts-14" DOCTEST_ARGS="--resolver lts-14"
@@ -226,7 +226,7 @@ script:
   case "$BUILD" in
     stack)
       if [ -n "${COVERALLS_STACK_YAML}" ] && [ -n "${COVERALLS_REPO_TOKEN}" ]; then
-         stack --stack-yaml $COVERALLS_STACK_YAML test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
+         stack --stack-yaml $COVERALLS_STACK_YAML test massiv-test:tests massiv-io:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
          stack --stack-yaml $COVERALLS_STACK_YAML hpc report --all
          travis_retry curl -L https://github.com/lehins/stack-hpc-coveralls/releases/download/0.0.5.0/shc.tar.gz | tar xz shc
          STACK_YAML="$COVERALLS_STACK_YAML" ./shc --repo-token=$COVERALLS_REPO_TOKEN combined custom

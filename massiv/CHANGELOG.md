@@ -1,6 +1,6 @@
 # 0.5.0
 
-* Addition of `unsafeCreateArrayS` and `unsafeCreateArrayS`
+* Addition of `unsafeCreateArray`, `unsafeCreateArray_` and `unsafeCreateArrayS`
 * Remove `Comp` argument from functions that ignore it and set it to `Seq`:
   * `createArrayS_`, `createArrayS`, `createArrayST_`, `createArrayST`
   * `unfoldrPrimM_`, `iunfoldrPrimM_`, `unfoldrPrimM`, `iunfoldrPrimM`

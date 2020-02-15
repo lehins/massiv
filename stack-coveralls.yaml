@@ -1,7 +1,7 @@
 resolver: lts-13.30
 packages:
 - 'massiv/'
-#- 'massiv-io/'
+- 'massiv-io/'
 - 'massiv-test/'
 flags: {}
 extra-deps:
