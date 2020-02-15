@@ -232,10 +232,10 @@ script:
          STACK_YAML="$COVERALLS_STACK_YAML" ./shc --repo-token=$COVERALLS_REPO_TOKEN combined custom
       else
         stack $ARGS build --haddock --no-haddock-deps --flag massiv:unsafe-checks
-        stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+        stack $ARGS test massiv-test:tests massiv-io:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       fi
       if [ "${DOCTEST_ARGS}" ]; then
-         stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+         stack $DOCTEST_ARGS test massiv:doctests massiv-io:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
       fi
       ;;
     cabal)

@@ -73,7 +73,7 @@ import Data.Massiv.Array.Delayed.Push
 --import Data.Massiv.Array.Delayed.Stream (unfoldr, unfoldrN)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
-import Prelude as P hiding (enumFromTo, replicate)
+import Prelude hiding (enumFromTo, replicate)
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
@@ -212,7 +212,7 @@ iiterateN sz f = iunfoldrS_ sz $ \a ix -> let !a' = f a ix in (a', a')
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> unfoldrS_ (Sz1 10) (\xs -> (head xs, tail xs)) ([10 ..] :: [Int])
+-- >>> unfoldrS_ (Sz1 10) (\xs -> (Prelude.head xs, Prelude.tail xs)) ([10 ..] :: [Int])
 -- Array DL Seq (Sz1 10)
 --   [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ]
 --
