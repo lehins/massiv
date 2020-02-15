@@ -25,6 +25,9 @@ module Data.Massiv.Array.Manifest
   , Uninitialized(..)
   -- ** Conversion
   -- $boxed_conversion_note
+  , unwrapNormalForm
+  , evalNormalForm
+  -- *** Primitive Boxed Array
   , unwrapArray
   , evalArray
   , unwrapMutableArray
@@ -33,30 +36,40 @@ module Data.Massiv.Array.Manifest
   , evalNormalFormArray
   , unwrapNormalFormMutableArray
   , evalNormalFormMutableArray
+  -- *** Boxed Vector
+  , toBoxedVector
+  , toBoxedMVector
+  , evalBoxedVector
+  , evalBoxedMVector
   -- * Primitive
   , P(..)
   , Prim
   -- ** Conversion
+  -- *** Primitive ByteArray
+  , toByteArray
+  , toByteArrayM
+  , unwrapByteArray
+  , fromByteArray
+  , fromByteArrayM
+  , toMutableByteArray
+  , unwrapMutableByteArray
+  , fromMutableByteArray
+  , fromMutableByteArrayM
+  -- *** Primitive Vector
   , toPrimitiveVector
   , toPrimitiveMVector
   , fromPrimitiveVector
   , fromPrimitiveMVector
-  , toByteArray
-  , toByteArrayM
-  , fromByteArray
-  , fromByteArrayM
-  , toMutableByteArray
-  , fromMutableByteArray
-  , fromMutableByteArrayM
   -- * Storable
   , S(..)
   , Storable
   -- ** Conversion
+  -- *** Primitive Vector
   , toStorableVector
   , toStorableMVector
   , fromStorableVector
   , fromStorableMVector
-  -- ** Direct Pointer Access
+  -- *** Direct Pointer Access
   , withPtr
   -- * Unboxed
   , U(..)
@@ -64,12 +77,15 @@ module Data.Massiv.Array.Manifest
   -- ** Conversion
   , toUnboxedVector
   , toUnboxedMVector
+  , fromUnboxedVector
+  , fromUnboxedMVector
   -- * ByteString Conversion
   , fromByteString
   , castFromByteString
   , toByteString
   , castToByteString
   , toBuilder
+  , castToBuilder
   ) where
 
 import Data.ByteString as S
@@ -113,15 +129,21 @@ toByteString = castToByteString .
 #else
   compute
 #endif
-  --fst $ unfoldrN (totalElem (size arr)) (\ !i -> Just (unsafeLinearIndex arr i, i + 1)) 0
 {-# INLINE toByteString #-}
 
--- | /O(n)/ - Conversion of array monoidally into a ByteString Builder.
+-- | /O(n)/ - Conversion of array monoidally into a ByteString `Builder`.
 --
 -- @since 0.2.1
 toBuilder :: Source r ix e => (e -> Builder) -> Array r ix e -> Builder
 toBuilder = foldMono
 {-# INLINE toBuilder #-}
+
+-- | /O(1)/ - Cast a storable array of `Word8` to ByteString `Builder`.
+--
+-- @since 0.5.0
+castToBuilder :: Array S ix Word8 -> Builder
+castToBuilder = byteString . castToByteString
+{-# INLINE castToBuilder #-}
 
 -- | /O(1)/ - Cast a `S`torable array into a strict `ByteString`
 --

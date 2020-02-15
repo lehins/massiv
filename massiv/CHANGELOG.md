@@ -9,12 +9,20 @@
 * Addition of `fromStorableVector` and `fromStorableMVector`
 * Modify `toMutableByteArray` to produce a copy if dealing with slice.
 * Addition of `toByteArrayM`, `toMutableByteArrayM`
-* Addition of `toPrimitiveVector`, `toPrimitiveMVector`, `fromPrimitiveVector` and
-  `fromPrimitiveMVector`
 * Change `replicate` to produce delayed load array `DL`
 * Export unsafe stencil functions from `Data.Array.Massiv.Unsafe`, rather than from
   `Data.Massiv.Array.Stencil.Unsafe`.
 * Implement `unsafeMapStencil` and deprecate `mapStencilUnsafe` and `forStencilUnsafe`
+* Addition of `castToBuilder`
+* Addition of conversion functions:
+  * `unwrapNormalForm` and `evalNormalForm`
+  * `toBoxedVector`, `toBoxedMVector`, `evalBoxedVector` and `evalBoxedMVector`
+  * `unwrapByteArray` and `unwrapMutableByteArray`
+  * `toPrimitiveVector`, `toPrimitiveMVector`, `fromPrimitiveVector` and
+  `fromPrimitiveMVector`
+  * `toStorableVector`, `toStorableMVector`, `fromStorableVector` and `fromStorableMVector`
+  * `fromUnboxedVector` and `fromUnboxedMVector`
+  * `unsafeBoxedArray`, `unsafeNormalBoxedArray`, `unsafeFromBoxedVector`
 
 # 0.4.5
 

@@ -21,6 +21,8 @@ module Data.Massiv.Array.Manifest.Unboxed
   , Array(..)
   , toUnboxedVector
   , toUnboxedMVector
+  , fromUnboxedVector
+  , fromUnboxedMVector
   ) where
 
 import Control.DeepSeq (NFData(..), deepseq)
@@ -222,3 +224,20 @@ toUnboxedVector = uData
 toUnboxedMVector :: MArray s U ix e -> VU.MVector s e
 toUnboxedMVector (MUArray _ mv) = mv
 {-# INLINE toUnboxedMVector #-}
+
+
+
+-- | /O(1)/ - Wrap an unboxed vector and produce an unboxed flat array.
+--
+-- @since 0.5.0
+fromUnboxedVector :: VU.Unbox e => VU.Vector e -> Array U Ix1 e
+fromUnboxedVector v = UArray Seq (SafeSz (VU.length v)) v
+{-# INLINE fromUnboxedVector #-}
+
+
+-- | /O(1)/ - Wrap an unboxed mutable vector and produce a mutable unboxed flat array.
+--
+-- @since 0.5.0
+fromUnboxedMVector :: VU.Unbox e => VU.MVector s e -> MArray s U Ix1 e
+fromUnboxedMVector mv = MUArray (SafeSz (MVU.length mv)) mv
+{-# INLINE fromUnboxedMVector #-}

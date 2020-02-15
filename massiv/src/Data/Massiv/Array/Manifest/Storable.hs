@@ -270,19 +270,15 @@ toStorableMVector (MSArray _ mv) = mv
 -- | /O(1)/ - Cast a storable vector to a storable array.
 --
 -- @since 0.5.0
-fromStorableVector ::
-     (Storable e, Index ix, MonadThrow m) => Comp -> Sz ix -> VS.Vector e -> m (Array S ix e)
-fromStorableVector comp sz v = do
-  guardNumberOfElements sz (Sz (VS.length v))
-  pure $ SArray {sComp = comp, sSize = sz, sData = v}
+fromStorableVector :: Storable e => Comp -> VS.Vector e -> Array S Ix1 e
+fromStorableVector comp v = SArray {sComp = comp, sSize = SafeSz (VS.length v), sData = v}
 {-# INLINE fromStorableVector #-}
 
 -- | /O(1)/ - Cast a mutable storable vector to a mutable storable array.
 --
 -- @since 0.5.0
-fromStorableMVector :: (Index ix, MonadThrow m) => Sz ix -> MVS.MVector s e -> m (MArray s S ix e)
-fromStorableMVector sz mv@(MVS.MVector len _) =
-  MSArray sz mv <$ guardNumberOfElements sz (Sz len)
+fromStorableMVector :: MVS.MVector s e -> MArray s S Ix1 e
+fromStorableMVector mv@(MVS.MVector len _) = MSArray (SafeSz len) mv
 {-# INLINE fromStorableMVector #-}
 
 

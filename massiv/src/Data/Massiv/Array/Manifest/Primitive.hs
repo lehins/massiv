@@ -27,10 +27,10 @@ module Data.Massiv.Array.Manifest.Primitive
   , fromPrimitiveMVector
   , toByteArray
   , toByteArrayM
-  , unsafeToByteArray
-  , unsafeToMutableByteArray
-  , fromByteArrayM
+  , unwrapByteArray
+  , unwrapMutableByteArray
   , fromByteArray
+  , fromByteArrayM
   , toMutableByteArray
   , toMutableByteArrayM
   , fromMutableByteArrayM
@@ -276,19 +276,19 @@ elemsMBA _ a = sizeofMutableByteArray a `div` sizeOf (undefined :: e)
 --
 -- @since 0.2.1
 toByteArray :: (Index ix, Prim e) => Array P ix e -> ByteArray
-toByteArray arr = fromMaybe (unsafeToByteArray $ compute arr) $ toByteArrayM arr
+toByteArray arr = fromMaybe (unwrapByteArray $ compute arr) $ toByteArrayM arr
 {-# INLINE toByteArray #-}
 
--- | /O(1)/ - Extract the internal `ByteArray`. This might not match the ariginal
--- primitive array due to potential slicing.
+-- | /O(1)/ - Extract the internal `ByteArray`. This will discard any possible slicing that has been
+-- applied to the array. Use `toByteArray` in order to preserve slicing.
 --
 -- @since 0.5.0
-unsafeToByteArray :: Array P ix e -> ByteArray
-unsafeToByteArray = pData
-{-# INLINE unsafeToByteArray #-}
+unwrapByteArray :: Array P ix e -> ByteArray
+unwrapByteArray = pData
+{-# INLINE unwrapByteArray #-}
 
 
--- | /O(n)/ - Ensure that the size matches the internal `ByteArray`.
+-- | /O(1)/ - Unwrap Ensure that the size matches the internal `ByteArray`.
 --
 -- @since 0.5.0
 toByteArrayM :: (Prim e, Index ix, MonadThrow m) => Array P ix e -> m ByteArray
@@ -317,12 +317,13 @@ fromByteArray comp ba = PArray comp (SafeSz (elemsBA (Proxy :: Proxy e) ba)) 0 b
 {-# INLINE fromByteArray #-}
 
 
--- | /O(1)/ - Extract the internal `MutableByteArray`.
+-- | /O(1)/ - Extract the internal `MutableByteArray`. This will discard any possible
+-- slicing that has been applied to the array.
 --
--- @since 0.2.1
-unsafeToMutableByteArray :: MArray s P ix e -> MutableByteArray s
-unsafeToMutableByteArray (MPArray _ _ mba) = mba
-{-# INLINE unsafeToMutableByteArray #-}
+-- @since 0.5.0
+unwrapMutableByteArray :: MArray s P ix e -> MutableByteArray s
+unwrapMutableByteArray (MPArray _ _ mba) = mba
+{-# INLINE unwrapMutableByteArray #-}
 
 -- | /O(n)/ - Try to cast a mutable array to `MutableByteArray`, if sizes do not match make
 -- a copy. Returns `True` if an array was converted without a copy, in which case it means
@@ -395,21 +396,16 @@ toPrimitiveMVector (MPArray sz offset mba) = MVP.MVector offset (totalElem sz) m
 -- | /O(1)/ - Cast a primitive vector to a primitive array.
 --
 -- @since 0.5.0
-fromPrimitiveVector ::
-     (Index ix, MonadThrow m) => Comp -> Sz ix -> VP.Vector e -> m (Array P ix e)
-fromPrimitiveVector comp sz (VP.Vector offset len ba) = do
-  guardNumberOfElements sz (Sz len)
-  pure $ PArray {pComp = comp, pSize = sz, pOffset = offset, pData = ba}
+fromPrimitiveVector :: VP.Vector e -> Array P Ix1 e
+fromPrimitiveVector (VP.Vector offset len ba) =
+  PArray {pComp = Seq, pSize = SafeSz len, pOffset = offset, pData = ba}
 {-# INLINE fromPrimitiveVector #-}
 
 -- | /O(1)/ - Cast a mutable primitive vector to a mutable primitive array.
 --
 -- @since 0.5.0
-fromPrimitiveMVector ::
-     (Index ix, Prim e, MonadThrow m) => Sz ix -> MVP.MVector s e -> m (MArray s P ix e)
-fromPrimitiveMVector sz mv@(MVP.MVector offset _ mba) = do
-  guardNumberOfElements sz (Sz (MVP.length mv))
-  pure $ MPArray sz offset mba
+fromPrimitiveMVector :: MVP.MVector s e -> MArray s P Ix1 e
+fromPrimitiveMVector (MVP.MVector offset len mba) = MPArray (SafeSz len) offset mba
 {-# INLINE fromPrimitiveMVector #-}
 
 -- | Atomically read an `Int` element from the array

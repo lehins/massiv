@@ -20,6 +20,8 @@ module Data.Massiv.Array.Manifest.Boxed
   ( B(..)
   , N(..)
   , Array(..)
+  , unwrapNormalForm
+  , evalNormalForm
   , unwrapArray
   , evalArray
   , unwrapMutableArray
@@ -28,8 +30,15 @@ module Data.Massiv.Array.Manifest.Boxed
   , evalNormalFormArray
   , unwrapNormalFormMutableArray
   , evalNormalFormMutableArray
-  , castArrayToVector
-  , castVectorToArray
+  , toBoxedVector
+  , toBoxedMVector
+  , evalBoxedVector
+  , evalBoxedMVector
+  , evalNormalBoxedVector
+  , evalNormalBoxedMVector
+  , unsafeBoxedArray
+  , unsafeNormalBoxedArray
+  , unsafeFromBoxedVector
   , seqArray
   , deepseqArray
   ) where
@@ -54,7 +63,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import qualified Data.Primitive.Array as A
 import qualified Data.Vector as VB
-import qualified Data.Vector.Mutable as VB
+import qualified Data.Vector.Mutable as MVB
 import GHC.Base (build)
 import GHC.Exts as GHC
 import Prelude hiding (mapM)
@@ -407,26 +416,12 @@ instance ( NFData e
 uninitialized :: a
 uninitialized = throw Uninitialized
 
-
--- -- | /O(1)/ - Unwrap a fully evaluated boxed array.
--- --
--- -- @since 0.2.1
--- unwrapNormalFormArray :: Array N ix e -> Array B ix e
--- unwrapNormalFormArray = bArray
--- {-# INLINE unwrapNormalFormArray #-}
-
--- -- | /O(1)/ - Unwrap a fully evaluated mutable boxed array.
--- --
--- -- @since 0.2.1
--- unwrapNormalFormMutableArray :: MArray s N ix e -> MArray s B ix e
--- unwrapNormalFormMutableArray (MNArray marr) = marr
--- {-# INLINE unwrapNormalFormMutableArray #-}
-
 ---------------------
 -- WHNF conversion --
 ---------------------
 
--- | /O(1)/ - Unwrap boxed array.
+-- | /O(1)/ - Unwrap boxed array. This will discard any possible slicing that has been
+-- applied to the array.
 --
 -- @since 0.2.1
 unwrapArray :: Array B ix e -> A.Array e
@@ -444,8 +439,8 @@ evalArray = fromArraySeq (\a -> a `seqArray` a)
 {-# INLINE evalArray #-}
 
 
--- TODO: Move in case it was sliced
--- | /O(1)/ - Unwrap mutable boxed array.
+-- | /O(1)/ - Unwrap mutable boxed array. This will discard any possible slicing that has been
+-- applied to the array.
 --
 -- @since 0.2.1
 unwrapMutableArray :: MArray s B ix e -> A.MutableArray s e
@@ -467,7 +462,8 @@ evalMutableArray = fromMutableArraySeq seq
 -- NF conversion --
 -------------------
 
--- | /O(1)/ - Unwrap a fully evaluated boxed array.
+-- | /O(1)/ - Unwrap a fully evaluated boxed array. This will discard any possible slicing
+-- that has been applied to the array.
 --
 -- @since 0.2.1
 unwrapNormalFormArray :: Array N ix e -> A.Array e
@@ -486,7 +482,8 @@ evalNormalFormArray = fromArraySeq (\a -> a `deepseqArray` NArray a)
 {-# INLINE evalNormalFormArray #-}
 
 
--- | /O(1)/ - Unwrap a fully evaluated mutable boxed array.
+-- | /O(1)/ - Unwrap a fully evaluated mutable boxed array. This will discard any possible
+-- slicing that has been applied to the array.
 --
 -- @since 0.2.1
 unwrapNormalFormMutableArray :: MArray s N ix e -> A.MutableArray s e
@@ -514,10 +511,10 @@ fromMutableArraySeq ::
   => (e -> m () -> m a)
   -> A.MutableArray (PrimState m) e
   -> m (MArray (PrimState m) B Ix1 e)
-fromMutableArraySeq with mbarr = do
-  let !sz = sizeofMutableArray mbarr
-  loopM_ 0 (< sz) (+ 1) (A.readArray mbarr >=> (`with` return ()))
-  return $! MBArray (Sz sz) 0 mbarr
+fromMutableArraySeq with ma = do
+  let !sz = sizeofMutableArray ma
+  loopM_ 0 (< sz) (+ 1) (A.readArray ma >=> (`with` return ()))
+  return $! MBArray (SafeSz sz) 0 ma
 {-# INLINE fromMutableArraySeq #-}
 
 fromArraySeq ::
@@ -525,7 +522,7 @@ fromArraySeq ::
   -> Comp
   -> A.Array e
   -> a
-fromArraySeq with comp barr = with (BArray comp (Sz (sizeofArray barr)) 0 barr)
+fromArraySeq with comp barr = with (BArray comp (SafeSz (sizeofArray barr)) 0 barr)
 {-# INLINE fromArraySeq #-}
 
 
@@ -539,20 +536,106 @@ deepseqArray !arr t = foldlInternal (flip deepseq) () (flip seq) () arr `seq` t
 {-# INLINE deepseqArray #-}
 
 
--- | Helper function that converts a boxed `A.Array` into a `VB.Vector`. Supplied total number of
--- elements is assumed to be the same in the array as provided by the size.
-castArrayToVector :: Index ix => Array B ix a -> VB.Vector a
-castArrayToVector (BArray _ sz o arr) = runST $ do
-  marr <- A.unsafeThawArray arr
-  VB.unsafeFreeze $ VB.MVector o (totalElem sz) marr
-{-# INLINE castArrayToVector #-}
+-- | /O(n)/ - Compute all elements of a boxed array to NF (normal form)
+--
+-- @since 0.5.0
+unwrapNormalForm :: Array N ix e -> Array B ix e
+unwrapNormalForm = coerce
+{-# INLINE unwrapNormalForm #-}
+
+-- | /O(n)/ - Compute all elements of a boxed array to NF (normal form)
+--
+-- @since 0.5.0
+evalNormalForm :: (Index ix, NFData e) => Array B ix e -> Array N ix e
+evalNormalForm arr = arr `deepseqArray` NArray arr
+{-# INLINE evalNormalForm #-}
+
+-- | /O(1)/ - Converts a boxed `Array` into a `VB.Vector`.
+--
+-- @since 0.5.0
+toBoxedVector :: Index ix => Array B ix a -> VB.Vector a
+toBoxedVector arr = runST $ VB.unsafeFreeze . toBoxedMVector =<< unsafeThaw arr
+{-# INLINE toBoxedVector #-}
+
+-- | /O(1)/ - Converts a boxed `MArray` into a `VMB.MVector`.
+--
+-- @since 0.5.0
+toBoxedMVector :: Index ix => MArray s B ix a -> MVB.MVector s a
+toBoxedMVector (MBArray sz o marr) = MVB.MVector o (totalElem sz) marr
+{-# INLINE toBoxedMVector #-}
+
+-- | /O(n)/ - Convert a boxed vector and evaluate all elements to WHNF. Computation
+-- strategy will be respected during evaluation
+--
+-- @since 0.5.0
+evalBoxedVector :: Comp -> VB.Vector a -> Array B Ix1 a
+evalBoxedVector comp v = arr `seqArray` arr
+  where
+    arr = setComp comp $ unsafeFromBoxedVector v
+{-# INLINE evalBoxedVector #-}
 
 
--- | Cast a Boxed Vector into an Array, but only if it wasn't previously sliced.
-castVectorToArray :: VB.Vector a -> Array B Ix1 a
-castVectorToArray v =
+-- | /O(n)/ - Convert mutable boxed vector and evaluate all elements to WHNF
+-- sequentially. Both keep pointing to the same memory
+--
+-- @since 0.5.0
+evalBoxedMVector :: PrimMonad m => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) B Ix1 a)
+evalBoxedMVector (MVB.MVector o k ma) = do
+  let marr = MBArray (SafeSz k) o ma
+  loopM_ o (< k) (+ 1) (A.readArray ma >=> (`seq` pure ()))
+  pure marr
+{-# INLINE evalBoxedMVector #-}
+
+
+-- | /O(n)/ - Cast a boxed vector without touching any elements. It is unsafe because it
+-- violates the invariant that all elements of `B` array are in WHNF.
+--
+-- @since 0.5.0
+unsafeFromBoxedVector :: VB.Vector a -> Array B Ix1 a
+unsafeFromBoxedVector v =
   runST $ do
-    VB.MVector offset sz marr <- VB.unsafeThaw v
-    arr <- A.unsafeFreezeArray marr
-    pure $ BArray Seq (Sz sz) offset arr
-{-# INLINE castVectorToArray #-}
+    MVB.MVector o k ma <- VB.unsafeThaw v
+    unsafeFreeze Seq $ MBArray (SafeSz k) o ma
+{-# INLINE unsafeFromBoxedVector #-}
+
+-- | /O(n)/ - Cast a boxed array. It is unsafe because it violates the invariant that all
+-- elements of `N` array are in NF.
+--
+-- @since 0.5.0
+unsafeBoxedArray :: A.Array e -> Array B Ix1 e
+unsafeBoxedArray = fromArraySeq id Seq
+{-# INLINE unsafeBoxedArray #-}
+
+
+-- | /O(n)/ - Cast a boxed array. It is unsafe because it violates the invariant that all
+-- elements of `N` array are in NF.
+--
+-- @since 0.5.0
+unsafeNormalBoxedArray :: Array B ix e -> Array N ix e
+unsafeNormalBoxedArray = coerce
+{-# INLINE unsafeNormalBoxedArray #-}
+
+-- | /O(n)/ - Convert mutable boxed vector and evaluate all elements to WHNF
+-- sequentially. Both keep pointing to the same memory
+--
+-- @since 0.5.0
+evalNormalBoxedMVector ::
+     (NFData a, PrimMonad m) => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) N Ix1 a)
+evalNormalBoxedMVector (MVB.MVector o k ma) = do
+  let marr = MNArray (MBArray (SafeSz k) o ma)
+  loopM_ o (< k) (+ 1) (A.readArray ma >=> (`deepseq` pure ()))
+  pure marr
+{-# INLINE evalNormalBoxedMVector #-}
+
+-- | /O(n)/ - Convert a boxed vector and evaluate all elements to WHNF. Computation
+-- strategy will be respected during evaluation
+--
+-- @since 0.5.0
+evalNormalBoxedVector :: NFData a => Comp -> VB.Vector a -> Array N Ix1 a
+evalNormalBoxedVector comp v =
+  runST $ do
+    MVB.MVector o k ma <- VB.unsafeThaw v
+    arr <- unsafeFreeze comp $ MBArray (SafeSz k) o ma
+    arr `deepseqArray` pure (NArray arr)
+{-# INLINE evalNormalBoxedVector #-}
+

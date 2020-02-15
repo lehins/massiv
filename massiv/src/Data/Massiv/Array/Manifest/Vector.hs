@@ -56,31 +56,29 @@ type family VRepr r :: * -> * where
 
 -- | /O(1)/ - conversion from vector to an array with a corresponding representation. Will
 -- return `Nothing` if there is a size mismatch or if some non-standard vector type is
--- supplied.
+-- supplied. Is suppplied is the boxed `Data.Vector.Vector` then it's all elements will be
+-- evaluated toWHNF, therefore complexity will be /O(n)/
 castFromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Mutable r ix e, ARepr v ~ r)
                => Comp
                -> Sz ix -- ^ Size of the result Array
                -> v e -- ^ Source Vector
                -> Maybe (Array r ix e)
-castFromVector comp sz vector =
+castFromVector comp sz vector = do
+  guard (totalElem sz == VG.length vector)
   msum
     [ do Refl <- eqT :: Maybe (v :~: VU.Vector)
-         guard (totalElem sz == VG.length vector)
          uVector <- join $ gcast1 (Just vector)
          return $ UArray {uComp = comp, uSize = sz, uData = uVector}
     , do Refl <- eqT :: Maybe (v :~: VS.Vector)
-         guard (totalElem sz == VG.length vector)
          sVector <- join $ gcast1 (Just vector)
          return $ SArray {sComp = comp, sSize = sz, sData = sVector}
     , do Refl <- eqT :: Maybe (v :~: VP.Vector)
-         pVector <- join $ gcast1 (Just vector)
-         fromPrimitiveVector comp sz pVector
+         VP.Vector o _ ba <- join $ gcast1 (Just vector)
+         return $ PArray {pComp = comp, pSize = sz, pOffset = o, pData = ba}
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
-         guard (totalElem sz == VG.length vector)
          bVector <- join $ gcast1 (Just vector)
-         let BArray _ _ offset arr = castVectorToArray bVector
-             barr = BArray {bComp = comp, bSize = sz, bOffset = offset, bData = arr}
-         barr `seqArray` return barr
+         let ba = unsafeFromBoxedVector bVector
+         ba `seqArray` pure (unsafeResize sz ba)
     ]
 {-# NOINLINE castFromVector #-}
 
@@ -126,8 +124,10 @@ fromVector' comp sz = either throw id . fromVectorM comp sz
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will
 -- return `Nothing` only if source array representation was not one of `B`, `N`,
 -- `P`, `S` or `U`.
-castToVector :: forall v r ix e . (Mutable r ix e, VRepr r ~ v)
-         => Array r ix e -> Maybe (v e)
+castToVector ::
+     forall v r ix e. (Mutable r ix e, VRepr r ~ v)
+  => Array r ix e
+  -> Maybe (v e)
 castToVector arr =
   msum
     [ do Refl <- eqT :: Maybe (r :~: U)
@@ -141,10 +141,10 @@ castToVector arr =
          return $ VP.Vector (pOffset pArr) (totalElem (size arr)) $ pData pArr
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
-         return $ castArrayToVector bArr
+         return $ toBoxedVector bArr
     , do Refl <- eqT :: Maybe (r :~: N)
          bArr <- gcastArr arr
-         return $ castArrayToVector $ bArray bArr
+         return $ toBoxedVector $ bArray bArr
     ]
 {-# NOINLINE castToVector #-}
 

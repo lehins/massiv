@@ -77,8 +77,9 @@ module Data.Massiv.Array.Unsafe
   , unsafeAtomicXorIntArray
   , unsafeCasIntArray
     -- ** Other operations
-  , unsafeToByteArray
-  , unsafeToMutableByteArray
+  , unsafeBoxedArray
+  , unsafeNormalBoxedArray
+  , unsafeFromBoxedVector
   , unsafeUnstablePartitionRegionM
   , module Data.Massiv.Vector.Unsafe
   , module Data.Massiv.Array.Stencil.Unsafe
@@ -86,6 +87,7 @@ module Data.Massiv.Array.Unsafe
 
 import Data.Massiv.Array.Delayed.Pull (D)
 import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray)
+import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
 import Data.Massiv.Array.Mutable.Internal
