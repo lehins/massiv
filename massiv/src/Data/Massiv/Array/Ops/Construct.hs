@@ -30,12 +30,14 @@ module Data.Massiv.Array.Ops.Construct
   , iterateN
   , iiterateN
     -- *** Unfolding
-  -- , unfoldr
-  -- , unfoldrN
   , unfoldlS_
+  -- , unfoldlS
   , iunfoldlS_
+  --, iunfoldlS
   , unfoldrS_
+  --, unfoldrS
   , iunfoldrS_
+  --, iunfoldrS
     -- *** Random
   , randomArray
   , randomArrayS
@@ -206,8 +208,7 @@ iiterateN :: forall ix e . Index ix => Sz ix -> (e -> ix -> e) -> e -> Array DL 
 iiterateN sz f = iunfoldrS_ sz $ \a ix -> let !a' = f a ix in (a', a')
 {-# INLINE iiterateN #-}
 
-
--- | Right unfold of a delayed load array. For the inverse direction use `unfoldlS_`.
+-- | Right unfold into a delayed load array. For the opposite direction use `unfoldlS_`.
 --
 -- ==== __Examples__
 --
@@ -377,7 +378,7 @@ randomArrayS ::
      -- ^ A function that produces a random value and the next generator
   -> (g, Array r ix e)
 randomArrayS gen sz nextRandom =
-  runST $ unfoldrPrimM Seq sz (pure . nextRandom) gen
+  runST $ unfoldrPrimM sz (pure . nextRandom) gen
 {-# INLINE randomArrayS #-}
 
 -- | This is a stateful approach of generating random values. If your generator is pure

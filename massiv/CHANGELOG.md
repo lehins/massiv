@@ -1,5 +1,10 @@
 # 0.5.0
 
+* Addition of `unsafeCreateArrayS` and `unsafeCreateArrayS`
+* Remove `Comp` argument from functions that ignore it and set it to `Seq`:
+  * `createArrayS_`, `createArrayS`, `createArrayST_`, `createArrayST`
+  * `unfoldrPrimM_`, `iunfoldrPrimM_`, `unfoldrPrimM`, `iunfoldrPrimM`
+  * `unfoldlPrimM_`, `iunfoldlPrimM_`, `unfoldlPrimM`, `iunfoldlPrimM`
 * Addition of `fromStorableVector` and `fromStorableMVector`
 * Modify `toMutableByteArray` to produce a copy if dealing with slice.
 * Addition of `toByteArrayM`, `toMutableByteArrayM`

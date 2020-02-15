@@ -50,6 +50,7 @@ import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold.Internal
+import Data.Massiv.Array.Mutable.Internal (unsafeCreateArray_)
 import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
@@ -377,7 +378,7 @@ computeWithStride ::
 computeWithStride stride !arr =
   unsafePerformIO $ do
     let !sz = strideSize stride (size arr)
-    createArray_ (getComp arr) sz $ \scheduler marr ->
+    unsafeCreateArray_ (getComp arr) sz $ \scheduler marr ->
       loadArrayWithStrideM scheduler stride sz arr (unsafeLinearWrite marr)
 {-# INLINE computeWithStride #-}
 
@@ -517,3 +518,5 @@ iterateLoop convergence iteration = go
           nextMArr <- unsafeThaw arr
           go (n + 1) arr' (iteration (n + 1) arr') nextMArr
 {-# INLINE iterateLoop #-}
+
+

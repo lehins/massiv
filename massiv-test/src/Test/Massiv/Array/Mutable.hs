@@ -125,7 +125,7 @@ prop_unfoldrList ::
   => Property
 prop_unfoldrList =
   property $ \comp sz f (i :: Word) ->
-    let xs = runST (unfoldrPrimM_ comp sz (pure . apply f) i) :: Array r ix e
+    let xs = runST (unfoldrPrimM_ sz (pure . apply f) i) :: Array r ix e
         ys = A.fromList comp (L.take (totalElem sz) (L.unfoldr (Just . apply f) i))
      in flatten xs === ys
 
@@ -142,12 +142,12 @@ prop_unfoldrReverseUnfoldl ::
      )
   => Property
 prop_unfoldrReverseUnfoldl =
-  property $ \ comp sz f (i :: Word) ->
+  property $ \ sz f (i :: Word) ->
     let swapTuple (x, y) = (y, x)
         rev a =
           compute @r (backpermute' sz (liftIndex pred . liftIndex2 (-) (unSz sz)) a)
-     in do a1 :: Array r ix e <- unfoldrPrimM_ @r comp sz (pure . apply f) i
-           a2 <- unfoldlPrimM_ @r comp sz (pure . swapTuple . apply f) i
+     in do a1 :: Array r ix e <- unfoldrPrimM_ @r sz (pure . apply f) i
+           a2 <- unfoldlPrimM_ @r sz (pure . swapTuple . apply f) i
            rev a1 `shouldBe` a2
 
 prop_toStreamArrayMutable ::
