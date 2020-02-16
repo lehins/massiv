@@ -206,8 +206,8 @@ spec = do
           prop "sunfoldrNM" prop_sunfoldrNM
           prop "sunfoldrExactM" prop_sunfoldrExactNM
         describe "Enumeration" $ do
-          prop "senumFromN" $ \i n -> V.senumFromN i (Sz n) !==! VP.enumFromN i n
-          prop "senumFromStepN" $ \i s n -> V.senumFromStepN i s (Sz n) !==! VP.enumFromStepN i s n
+          prop "senumFromN" $ \(i :: Int) n -> V.senumFromN i (Sz n) !==! VP.enumFromN i n
+          prop "senumFromStepN" $ \(i :: Int) s n -> V.senumFromStepN i s (Sz n) !==! VP.enumFromStepN i s n
       describe "Conversion" $ do
         describe "Lists" $ do
           prop "sfromList" $ \comp (xs :: [Word]) ->
