@@ -213,4 +213,4 @@ spec = do
           prop "sfromList" $ \comp (xs :: [Word]) ->
             sfromList xs !==! toPrimitiveVector (fromList comp xs)
           prop "sfromList" $ \(xs :: [Word]) -> sfromList xs !==! VP.fromList xs
-          prop "sfromListN" $ \n (xs :: [Word]) -> sfromListN n xs !==! VP.fromListN n xs
+          prop "sfromListN" $ \sz@(Sz n) (xs :: [Word]) -> sfromListN sz xs !==! VP.fromListN n xs

@@ -1013,8 +1013,8 @@ sfromList = fromSteps . S.fromList
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfromListN :: Int -> [e] -> Vector DS e
-sfromListN n = fromSteps . S.fromListN n
+sfromListN :: Sz1 -> [e] -> Vector DS e
+sfromListN (Sz n) = fromSteps . S.fromListN n
 {-# INLINE sfromListN #-}
 
 -- | Convert an array to a list by the means of a delayed stream vector.
