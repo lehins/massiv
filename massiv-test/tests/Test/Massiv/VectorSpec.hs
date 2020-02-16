@@ -68,17 +68,44 @@ prop_siterateNM seed k a =
     genWith :: PrimMonad f => ((Word -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
     genWith genM gen = genM (\prev -> xor prev <$> uniform gen)
 
---slicingSpec = 
+
+genWithUnfoldrM :: PrimMonad f => ((Word -> f (Maybe (Word, Word))) -> t) -> MWC.Gen (PrimState f) -> t
+genWithUnfoldrM genM gen = genM $ \prev -> do
+  x <- uniform gen
+  let cur = prev `xor` x
+  pure $ if cur `mod` 17 == 0 then Nothing else Just (x, cur)
+
+prop_sunfoldrM :: SeedVector -> Word -> Property
+prop_sunfoldrM seed a =
+  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (\action -> V.sunfoldrM action a))
+  !==! withSeed seed (genWithUnfoldrM (\action -> VP.unfoldrM action a))
+
+prop_sunfoldrNM :: SeedVector -> Int -> Word -> Property
+prop_sunfoldrNM seed k a =
+  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (\action -> V.sunfoldrNM (Sz k) action a))
+  !==! withSeed seed (genWithUnfoldrM (\action -> VP.unfoldrNM k action a))
+
+prop_sunfoldrExactNM :: SeedVector -> Int -> Word -> Property
+prop_sunfoldrExactNM seed k a =
+  withSeed @(V.Vector DS Word) seed (genWith (\action -> V.sunfoldrExactNM (Sz k) action a))
+  !==! withSeed seed (genWith (\action -> VP.unfoldrNM k (\a' -> Just <$> action a') a))
+  where
+    genWith :: PrimMonad f => ((Word -> f (Word, Word)) -> t) -> MWC.Gen (PrimState f) -> t
+    genWith genM gen = genM $ \prev -> do
+      x <- uniform gen
+      pure (x, prev `xor` x)
+
+
 
 spec :: Spec
 spec = do
-  describe "Vector" $
-    -- describe "same-as-array" $ do
-    --   prop "sliceAt'" $ \sz (arr :: Array P Ix1 Word) ->
-    --     let ~(l, r) = V.sliceAt' sz arr
-    --         ~(l', r') = splitAt' 1 (unSz sz) arr
-    --      in l !!==!! toPrimitiveVector (compute l') .&&. r !!==!! toPrimitiveVector (compute r')
-   do
+  describe "Vector" $ do
+    describe "same-as-array" $ do
+      describe "Enumeration" $ do
+        prop "senumFromN" $ \comp (i :: Int) sz ->
+          V.senumFromN i sz !==! toPrimitiveVector (compute (A.enumFromN comp i sz))
+        prop "senumFromStepN" $ \comp (i :: Int) s sz ->
+          V.senumFromStepN i s sz !==! toPrimitiveVector (compute (A.enumFromStepN comp i s sz))
     describe "same-as-vector-package" $ do
       describe "Accessors" $ do
         describe "Size" $ do
@@ -172,10 +199,18 @@ spec = do
                   | b > 10000 || b `div` 19 == 0 = Nothing
                   | otherwise = Just (b * b, b + 1)
              in V.sunfoldrN (Sz n) f a !==! VP.unfoldrN n f a
+          prop "sunfoldrExactN" $ \n (a :: Word) ->
+            let f b = (b * b, b + 1)
+             in V.sunfoldrExactN (Sz n) f a !==! VP.unfoldrN n (Just . f) a
+          prop "sunfoldrM" prop_sunfoldrM
+          prop "sunfoldrNM" prop_sunfoldrNM
+          prop "sunfoldrExactM" prop_sunfoldrExactNM
+        describe "Enumeration" $ do
+          prop "senumFromN" $ \i n -> V.senumFromN i (Sz n) !==! VP.enumFromN i n
+          prop "senumFromStepN" $ \i s n -> V.senumFromStepN i s (Sz n) !==! VP.enumFromStepN i s n
       describe "Conversion" $ do
         describe "Lists" $ do
           prop "sfromList" $ \comp (xs :: [Word]) ->
             sfromList xs !==! toPrimitiveVector (fromList comp xs)
           prop "sfromList" $ \(xs :: [Word]) -> sfromList xs !==! VP.fromList xs
-          -- prop "sfromListN" $ \ n (xs :: [Word]) ->
-          --   sfromListN n xs !==! VP.fromListN n xs
+          prop "sfromListN" $ \n (xs :: [Word]) -> sfromListN n xs !==! VP.fromListN n xs
