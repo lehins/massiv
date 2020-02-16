@@ -278,9 +278,9 @@ import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take)
 -- Length information --
 ------------------------
 
--- | Get the length of a streaming vector if it is known. Calling `size` will give you the
--- exact size instead, but for `DS` representation could result in evaluating of the whole
--- stream.
+-- | /O(1)/ - Get the length of a stream vector, but only if it is known excatly. Calling
+-- `size` will always give you the exact size instead, but for `DS` representation could
+-- result in evaluating of the whole stream.
 --
 -- @since 0.5.0
 slength :: Stream r ix e => Array r ix e -> Maybe Sz1
@@ -290,7 +290,7 @@ slength v =
     _        -> Nothing
 {-# INLINE slength #-}
 
--- |
+-- | /O(1)/ - Check if a stream array is empty.
 --
 -- @since 0.5.0
 snull :: Stream r ix e => Array r ix e -> Bool
@@ -303,21 +303,32 @@ snull = S.unId . S.null . toStream
 
 -- TODO: Add to vector: headMaybe
 
--- |
+-- | Get the first element of a `Source` vector. Throws an error on empty.
 --
 -- @since 0.5.0
 head' :: Source r Ix1 e => Vector r e -> e
-head' = (`evaluate'` 0)
+head' = either throw id . headM
 {-# INLINE head' #-}
 
--- |
+
+-- | Get the first element of a `Source` vector. Throws an error on empty.
+--
+-- @since 0.5.0
+headM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
+headM v
+  | isEmpty v = throwM $ SizeEmptyException (size v)
+  | otherwise = pure $ unsafeLinearIndex v 0
+{-# INLINE headM #-}
+
+
+-- | Get the first element of a `Stream` vector. Throws an error on empty.
 --
 -- @since 0.5.0
 shead' :: Stream r Ix1 e => Vector r e -> e
 shead' = either throw id . sheadM
 {-# INLINE shead' #-}
 
--- |
+-- | Get the first element of a `Stream` vector. Throws an error on empty.
 --
 -- @since 0.5.0
 sheadM :: (Stream r Ix1 e, MonadThrow m) => Vector r e -> m e
@@ -327,29 +338,15 @@ sheadM v =
     Just e  -> pure e
 {-# INLINE sheadM #-}
 
--- |
+-- | Get the last element of a `Source` vector. Throws an error on empty.
 --
 -- @since 0.5.0
 last' :: Source r Ix1 e => Vector r e -> e
-last' v = evaluate' v (max 0 (unSz (size v) - 1))
+last' = either throw id . lastM
 {-# INLINE last' #-}
 
 
-----------------------
--- Monadic indexing --
-----------------------
-
-
--- |
---
--- @since 0.5.0
-headM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
-headM v
-  | isEmpty v = throwM $ SizeEmptyException (size v)
-  | otherwise = pure $ unsafeLinearIndex v 0
-{-# INLINE headM #-}
-
--- |
+-- | Get the last element of a `Source` vector. Throws an error on empty.
 --
 -- @since 0.5.0
 lastM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
@@ -360,7 +357,7 @@ lastM v
 {-# INLINE lastM #-}
 
 
--- |
+-- | /O(1)/ - Take a slice of a `Source` vector. Never fails, instead adjusts the indices.
 --
 -- @since 0.5.0
 slice :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
@@ -371,7 +368,7 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
     Sz n = size v
 {-# INLINE slice #-}
 
--- |
+-- | /O(1)/ - Take a slice of a `Stream` vector. Never fails, instead adjusts the indices.
 --
 -- @since 0.5.0
 sslice :: Stream r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector DS e
@@ -379,14 +376,14 @@ sslice !i (Sz k) = fromSteps . S.slice i k . S.toStream
 {-# INLINE sslice #-}
 
 
--- |
+-- | /O(1)/ - Take a slice of a `Source` vector. Throws an error on incorrect indices.
 --
 -- @since 0.5.0
 slice' :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
 slice' i k = either throw id . sliceM i k
 {-# INLINE slice' #-}
 
--- |
+-- | /O(1)/ - Take a slice of a `Source` vector. Throws an error on incorrect indices.
 --
 -- @since 0.5.0
 sliceM :: (Source r Ix1 e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
@@ -397,21 +394,21 @@ sliceM i newSz@(Sz k) v
     sz@(Sz n) = size v
 {-# INLINE sliceM #-}
 
--- |
+-- | /O(1)/ - Get the vector without the last element. Never fails
 --
 -- @since 0.5.0
 init :: Source r Ix1 e => Vector r e -> Vector r e
 init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 {-# INLINE init #-}
 
--- |
+-- | /O(1)/ - Get the vector without the last element. Throws an error on empty
 --
 -- @since 0.5.0
 init' :: Source r Ix1 e => Vector r e -> Vector r e
 init' = either throw id . initM
 {-# INLINE init' #-}
 
--- |
+-- | /O(1)/ - Get the vector without the last element. Throws an error on empty
 --
 -- @since 0.5.0
 initM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
@@ -422,7 +419,7 @@ initM v = do
 
 
 
--- |
+-- | /O(1)/ - Get the vector without the first element. Never fails
 --
 -- @since 0.5.0
 tail :: Source r Ix1 e => Vector r e -> Vector r e
@@ -430,7 +427,7 @@ tail = drop 1
 {-# INLINE tail #-}
 
 
--- |
+-- | /O(1)/ - Get the vector without the first element. Throws an error on empty
 --
 -- @since 0.5.0
 tail' :: Source r Ix1 e => Vector r e -> Vector r e
@@ -438,7 +435,7 @@ tail' = either throw id . tailM
 {-# INLINE tail' #-}
 
 
--- |
+-- | /O(1)/ - Get the vector without the first element. Throws an error on empty
 --
 -- @since 0.5.0
 tailM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
@@ -449,21 +446,21 @@ tailM v = do
 
 
 
--- |
+-- | /O(1)/ - Get the vector with the first @n@ elements. Never fails
 --
 -- @since 0.5.0
 take :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
 take k = fst . sliceAt k
 {-# INLINE take #-}
 
--- |
+-- | /O(1)/ - Get the vector with the first @n@ elements. Throws an error size is less than @n@
 --
 -- @since 0.5.0
 take' :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
 take' k = either throw id . takeM k
 {-# INLINE take' #-}
 
--- |
+-- | /O(1)/ - Get the vector with the first @n@ elements. Throws an error size is less than @n@
 --
 -- @since 0.5.0
 takeM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
@@ -473,10 +470,10 @@ takeM k v = do
   pure $ unsafeTake k v
 {-# INLINE takeM #-}
 
--- | Extract first @n@ elements from the delayed stream vector
+-- | /O(1)/ - Get a `Stream` vector with the first @n@ elements. Never fails
 --
 -- @since 0.5.0
-stake :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
+stake :: Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
 stake n = fromSteps . S.take (unSz n) . S.toStream
 {-# INLINE stake #-}
 
@@ -490,7 +487,7 @@ drop k = snd . sliceAt k
 -- | Keep all but the first @n@ elements from the delayed stream vector.
 --
 -- @since 0.5.0
-sdrop :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
+sdrop :: Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
 sdrop n = fromSteps . S.drop (unSz n) . S.toStream
 {-# INLINE sdrop #-}
 
@@ -512,8 +509,7 @@ dropM k@(Sz d) v = do
 {-# INLINE dropM #-}
 
 
--- |
---
+-- | Samel as `sliceAt`, except it never fails.
 --
 --
 -- @since 0.5.0
@@ -524,14 +520,14 @@ sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
     !d = SafeSz (min k n)
 {-# INLINE sliceAt #-}
 
--- |
+-- | Same as `Data.Massiv.Array.splitAt'`, except for a flat vector.
 --
 -- @since 0.5.0
 sliceAt' :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
 sliceAt' k = either throw id . sliceAtM k
 {-# INLINE sliceAt' #-}
 
--- |
+-- | Same as `Data.Massiv.Array.splitAtM`, except for a flat vector.
 --
 -- @since 0.5.0
 sliceAtM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
@@ -541,35 +537,37 @@ sliceAtM k v = do
 {-# INLINE sliceAtM #-}
 
 
--- |
+-- | Create an empty delayed stream vector
 --
 -- @since 0.5.0
 sempty :: Vector DS e
 sempty = DSArray S.empty
 {-# INLINE sempty #-}
 
--- |
+-- | Create a delayed stream vector with a single element
 --
 -- @since 0.5.0
 ssingleton :: e -> Vector DS e
 ssingleton = DSArray . S.singleton
 {-# INLINE ssingleton #-}
 
--- | Replicate the same element
+-- | Replicate the same element @n@ times
 --
 -- @since 0.5.0
 sreplicate :: Sz1 -> e -> Vector DS e
 sreplicate (Sz n) = DSArray . S.replicate n
 {-# INLINE sreplicate #-}
 
--- |
+-- | Create a delayed vector of length @n@ with a function that maps an index to an
+-- element. Same as `makeLinearArray`
 --
 -- @since 0.5.0
 generate :: Comp -> Sz1 -> (Ix1 -> e) -> Vector D e
 generate = makeArrayLinear
 {-# INLINE generate #-}
 
--- |
+-- | Create a delayed stream vector of length @n@ with a function that maps an index to an
+-- element. Same as `makeLinearArray`
 --
 -- @since 0.5.0
 sgenerate :: Sz1 -> (Ix1 -> e) -> Vector DS e
@@ -577,7 +575,8 @@ sgenerate (Sz n) = DSArray . S.generate n
 {-# INLINE sgenerate #-}
 
 
--- |
+-- | Create a delayed stream vector of length @n@ by repeatedly apply a function to the
+-- initial value.
 --
 -- @since 0.5.0
 siterateN :: Sz1 -> (e -> e) -> e -> Vector DS e
@@ -585,7 +584,7 @@ siterateN n f a = fromSteps $ S.iterateN (unSz n) f a
 {-# INLINE siterateN #-}
 
 
--- |
+-- | Create a vector by using the same monadic action @n@ times
 --
 -- @since 0.5.0
 sreplicateM :: Monad m => Sz1 -> m e -> m (Vector DS e)
@@ -593,7 +592,8 @@ sreplicateM n f = fromStepsM $ S.replicateM (unSz n) f
 {-# INLINE sreplicateM #-}
 
 
--- |
+-- | Create a delayed stream vector of length @n@ with a monadic action that from an index
+-- generates an element.
 --
 -- @since 0.5.0
 sgenerateM :: Monad m => Sz1 -> (Ix1 -> m e) -> m (Vector DS e)
@@ -601,7 +601,8 @@ sgenerateM n f = fromStepsM $ S.generateM (unSz n) f
 {-# INLINE sgenerateM #-}
 
 
--- |
+-- | Create a delayed stream vector of length @n@ by repeatedly apply a monadic action to
+-- the initial value.
 --
 -- @since 0.5.0
 siterateNM :: Monad m => Sz1 -> (e -> m e) -> e -> m (Vector DS e)
@@ -649,14 +650,14 @@ sunfoldrN ::
 sunfoldrN (Sz n) f = DSArray . S.unfoldrN n f
 {-# INLINE sunfoldrN #-}
 
--- |
+-- | Same as `unfoldr`, by with monadic generating function.
 --
 -- @since 0.5.0
 sunfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
 sunfoldrM f = fromStepsM . S.unfoldrM f
 {-# INLINE sunfoldrM #-}
 
--- |
+-- | Same as `unfoldrN`, by with monadic generating function.
 --
 -- @since 0.5.0
 sunfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
@@ -664,14 +665,14 @@ sunfoldrNM (Sz n) f = fromStepsM . S.unfoldrNM n f
 {-# INLINE sunfoldrNM #-}
 
 
--- |
+-- | Similar to `unfoldrN`, except the length of the resulting vector will be exactly @n@
 --
 -- @since 0.5.0
 sunfoldrExactN :: Sz1 -> (s -> (e, s)) -> s -> Vector DS e
 sunfoldrExactN (Sz n) f = fromSteps . S.unfoldrExactN n f
 {-# INLINE sunfoldrExactN #-}
 
--- |
+-- | Similar to `unfoldrNM`, except the length of the resulting vector will be exactly @n@
 --
 -- @since 0.5.0
 sunfoldrExactNM :: Monad m => Sz1 -> (s -> m (e, s)) -> s -> m (Vector DS e)
@@ -679,23 +680,28 @@ sunfoldrExactNM (Sz n) f = fromStepsM . S.unfoldrExactNM n f
 {-# INLINE sunfoldrExactNM #-}
 
 
--- |
+-- | Enumerate from a starting number @n@ times with a step @1@
 --
 -- @since 0.5.0
 senumFromN :: Num e => e -> Sz1 -> Vector DS e
 senumFromN x (Sz n) = DSArray $ S.enumFromStepN x 1 n
 {-# INLINE senumFromN #-}
 
--- |
+-- | Enumerate from a starting number @n@ times with a custom step value
 --
 -- @since 0.5.0
-senumFromStepN :: Num e => e -> e -> Sz1 -> Vector DS e
+senumFromStepN ::
+     Num e
+  => e -- ^ Starting value
+  -> e -- ^ Step
+  -> Sz1 -- ^ Resulting length of a vector
+  -> Vector DS e
 senumFromStepN x step (Sz n) = DSArray $ S.enumFromStepN x step n
 {-# INLINE senumFromStepN #-}
 
 
 
--- |
+-- | Append two vectors together
 --
 -- @since 0.5.0
 sappend :: (Stream r1 Ix1 e, Stream r2 Ix1 e) => Vector r1 e -> Vector r2 e -> Vector DS e
@@ -703,28 +709,28 @@ sappend a1 a2 = fromSteps (toStream a1 `S.append` toStream a2)
 {-# INLINE sappend #-}
 
 
--- |
+-- | Concat vectors together
 --
 -- @since 0.5.0
 sconcat :: Stream r Ix1 e => [Vector r e] -> Vector DS e
 sconcat = DSArray . foldMap toStream
 {-# INLINE sconcat #-}
 
--- |
+-- | Convert a list to a delayed stream vector
 --
 -- @since 0.5.0
 sfromList :: [e] -> Vector DS e
 sfromList = fromSteps . S.fromList
 {-# INLINE sfromList #-}
 
--- |
+-- | Convert a list of a known length to a delayed stream vector
 --
 -- @since 0.5.0
 sfromListN :: Int -> [e] -> Vector DS e
 sfromListN n = fromSteps . S.fromListN n
 {-# INLINE sfromListN #-}
 
--- |
+-- | Convert an array to a list by the means of a delayed stream vector.
 --
 -- @since 0.5.0
 stoList :: Stream r ix e => Array r ix e -> [e]
@@ -866,14 +872,14 @@ smapMaybeM f = fmap DSArray . S.mapMaybeA f . S.toStream
 
 
 
--- |
+-- | Map a function over a stream vector
 --
 -- @since 0.5.0
 smap :: S.Stream r ix a => (a -> b) -> Array r ix a -> Vector DS b
 smap f = fromSteps . S.map f . S.toStream
 {-# INLINE smap #-}
 
--- |
+-- | Map an index aware function over a stream vector
 --
 -- @since 0.5.0
 simap :: S.Stream r ix a => (ix -> a -> b) -> Array r ix a -> Vector DS b
@@ -881,7 +887,7 @@ simap f = fromSteps . S.map (uncurry f) . S.toStreamIx
 {-# INLINE simap #-}
 
 
--- | Traverse a stream with an applicative function.
+-- | Traverse a stream vector with an applicative function.
 --
 -- @since 0.5.0
 straverse :: (S.Stream r ix a, Applicative f) => (a -> f b) -> Array r ix a -> f (Vector DS b)
@@ -889,7 +895,7 @@ straverse f = fmap fromSteps . S.traverse f . S.toStream
 {-# INLINE straverse #-}
 
 
--- | Traverse a stream with an index aware applicative function.
+-- | Traverse a stream vector with an index aware applicative function.
 --
 -- @since 0.5.0
 sitraverse :: (S.Stream r ix a, Applicative f) => (ix -> a -> f b) -> Array r ix a -> f (Vector DS b)
@@ -897,28 +903,28 @@ sitraverse f = fmap fromSteps . S.traverse (uncurry f) . S.toStreamIx
 {-# INLINE sitraverse #-}
 
 
--- |
+-- | Traverse a stream vector with a monadic function.
 --
 -- @since 0.5.0
 smapM :: (S.Stream r ix a, Monad m) => (a -> m b) -> Array r ix a -> m (Vector DS b)
 smapM f = fromStepsM . S.mapM f . S.transStepsId . S.toStream
 {-# INLINE smapM #-}
 
--- |
+-- | Traverse a stream vector with a monadic index aware function.
 --
 -- @since 0.5.0
 simapM :: (S.Stream r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m (Vector DS b)
 simapM f = fromStepsM . S.mapM (uncurry f) . S.transStepsId . S.toStreamIx
 {-# INLINE simapM #-}
 
--- |
+-- | Traverse a stream vector with a monadic function, while discarding the result
 --
 -- @since 0.5.0
 smapM_ :: (S.Stream r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
 smapM_ f = S.mapM_ f . S.transStepsId . S.toStream
 {-# INLINE smapM_ #-}
 
--- |
+-- | Traverse a stream vector with a monadic index aware function, while discarding the result
 --
 -- @since 0.5.0
 simapM_ :: (S.Stream r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
@@ -926,28 +932,28 @@ simapM_ f = S.mapM_ (uncurry f) . S.transStepsId . S.toStreamIx
 {-# INLINE simapM_ #-}
 
 
--- |
+-- | Same as `smapM`, but with arguments flipped.
 --
 -- @since 0.5.0
 sforM :: (S.Stream r ix a, Monad m) => Array r ix a -> (a -> m b) -> m (Vector DS b)
 sforM = flip smapM
 {-# INLINE sforM #-}
 
--- |
+-- | Same as `simapM`, but with arguments flipped.
 --
 -- @since 0.5.0
 siforM :: (S.Stream r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m (Vector DS b)
 siforM = flip simapM
 {-# INLINE siforM #-}
 
--- |
+-- | Same as `smapM_`, but with arguments flipped.
 --
 -- @since 0.5.0
 sforM_ :: (S.Stream r ix a, Monad m) => Array r ix a -> (a -> m b) -> m ()
 sforM_ = flip smapM_
 {-# INLINE sforM_ #-}
 
--- |
+-- | Same as `simapM_`, but with arguments flipped.
 --
 -- @since 0.5.0
 siforM_ :: (S.Stream r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
@@ -1770,7 +1776,7 @@ sminimumM = sfoldl1M (\e acc -> pure (min e acc))
 --
 -- @since 0.4.1
 takeS :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
-takeS = stake
+takeS n = fromSteps . S.take (unSz n) . S.toStream
 {-# INLINE takeS #-}
 {-# DEPRECATED takeS "In favor of `stake`" #-}
 
@@ -1778,7 +1784,7 @@ takeS = stake
 --
 -- @since 0.4.1
 dropS :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
-dropS = sdrop
+dropS n = fromSteps . S.drop (unSz n) . S.toStream
 {-# INLINE dropS #-}
 {-# DEPRECATED dropS "In favor of `sdrop`" #-}
 

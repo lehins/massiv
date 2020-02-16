@@ -99,13 +99,13 @@ prop_sunfoldrN f s0 n =
 
 
 prop_stakesDrop ::
-     forall r ix e.
+     forall r e.
      ( Eq e
      , Show e
-     , Stream r ix e
-     , Foldable (Array r ix)
+     , Stream r Ix1 e
+     , Foldable (Array r Ix1)
      )
-  => Array r ix e
+  => Vector r e
   -> Int
   -> Int
   -> Property
@@ -141,4 +141,4 @@ delayedStreamSpec = do
     it "smapMaybe" $ property (prop_smapMaybe @DS @Ix1 @Int @Word)
     it "sunfoldr" $ property (prop_sunfoldr @Int @Word)
     it "sunfoldrN" $ property (prop_sunfoldrN @Int @Word)
-    it "stakesDrop" $ property (prop_stakesDrop @DS @Ix1 @Int)
+    it "stakesDrop" $ property (prop_stakesDrop @DS @Int)
