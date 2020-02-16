@@ -1,3 +1,7 @@
+# 0.5.1
+
+* Fix `sfromListN` acceptain a plain `Int` instead of `Sz1`, as well as switch to upper bound.
+
 # 0.5.0
 
 * Remove `Show` instance from `Value`.

@@ -330,7 +330,7 @@ slength v =
 -- True
 -- >>> snull $ ssingleton "A Vector with a single String element"
 -- False
--- snull $ sfromList []
+-- >>> snull $ sfromList []
 -- True
 -- >>> snull $ sfromList [1 :: Int ..]
 -- False
@@ -484,6 +484,8 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
 -- >>> slice' 98 50 (Ix1 0 ... 100)
 -- Array D *** Exception: SizeSubregionException: (Sz1 101) is to small for 98 (Sz1 50)
 -- >>> slice' 9999999999998 50 (Ix1 0 ... 10000000000000)
+-- Array D *** Exception: SizeSubregionException: (Sz1 10000000000001) is to small for 9999999999998 (Sz1 50)
+-- >>> slice' 9999999999998 3 (Ix1 0 ... 10000000000000)
 -- Array D Seq (Sz1 3)
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
