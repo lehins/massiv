@@ -1165,7 +1165,7 @@ scatMaybes = smapMaybe id
 {-# INLINE scatMaybes #-}
 
 
--- | Similar to `smapMaybe`, but with the use of `Applicative`
+-- | Similar to `smapMaybe`, but with the `Applicative` function.
 --
 -- ==== __Examples__
 --

@@ -9,11 +9,12 @@
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.VectorSpec (spec) where
 
-import Control.Exception
 import Control.DeepSeq
+import Control.Exception
 import Data.Bits
 import Data.Massiv.Array as A
 import Data.Massiv.Vector as V
+import Data.Maybe
 import qualified Data.Vector.Primitive as VP
 import Data.Word
 import Test.Massiv.Core
@@ -209,7 +210,30 @@ spec = do
           prop "senumFromN" $ \(i :: Int) n -> V.senumFromN i (Sz n) !==! VP.enumFromN i n
           prop "senumFromStepN" $ \(i :: Int) s n ->
             V.senumFromStepN i s (Sz n) !==! VP.enumFromStepN i s n
-      describe "Conversion" $ do
+        describe "Concatenation" $ do
+          prop "sappend" $ \(v1 :: Vector D Int) (v2 :: Vector P Int) ->
+            V.sappend v1 v2 !==! toPrimitiveVector (compute v1) VP.++ toPrimitiveVector v2
+          prop "sconcat" $ \(vs :: [Vector P Int]) ->
+            V.sconcat vs !==! VP.concat (fmap toPrimitiveVector vs)
+      describe "Predicates" $ do
+        describe "Filtering" $ do
+          prop "sfilter" $ \(v :: Vector P Word) (f :: Fun Word Bool) ->
+            V.sfilter (apply f) v !==! VP.filter (apply f) (toPrimitiveVector v)
+          prop "sifilter" $ \(v :: Vector P Word) (f :: Fun (Int, Word) Bool) ->
+            V.sifilter (applyFun2 f) v !==! VP.ifilter (applyFun2 f) (toPrimitiveVector v)
+          prop "smapMaybe" $ \(v :: Vector P Word) (f :: Fun Word (Maybe Int)) ->
+            V.smapMaybe (apply f) v !==! VP.mapMaybe (apply f) (toPrimitiveVector v)
+          prop "simapMaybe" $ \(v :: Vector P Word) (f :: Fun (Int, Word) (Maybe Int)) ->
+            V.simapMaybe (applyFun2 f) v !==! VP.imapMaybe (applyFun2 f) (toPrimitiveVector v)
+          prop "scatMaybes" $ \(v :: Vector D (Maybe Word))  ->
+            V.scatMaybes v !==! toPrimitiveVector (compute (smap fromJust (sfilter isJust v)))
+          -- prop "smapMaybeM"
+          -- prop "simapMaybeM"
+          prop "smap" $ \(v :: Vector P Word) (f :: Fun Word Int) ->
+            V.smap (apply f) v !==! VP.map (apply f) (toPrimitiveVector v)
+          prop "simap" $ \(v :: Vector P Word) (f :: Fun (Int, Word) Int) ->
+            V.simap (applyFun2 f) v !==! VP.imap (applyFun2 f) (toPrimitiveVector v)
+      describe "Conversion" $
         describe "Lists" $ do
           prop "sfromList" $ \comp (xs :: [Word]) ->
             sfromList xs !==! toPrimitiveVector (fromList comp xs)
