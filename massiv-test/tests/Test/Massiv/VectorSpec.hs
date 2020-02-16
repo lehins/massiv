@@ -10,6 +10,7 @@
 module Test.Massiv.VectorSpec (spec) where
 
 import Control.Exception
+import Control.DeepSeq
 import Data.Bits
 import Data.Massiv.Array as A
 import Data.Massiv.Vector as V
@@ -22,7 +23,7 @@ import System.Random.MWC as MWC
 infix 4 !==!, !!==!!
 
 sizeException :: SizeException -> Bool
-sizeException _ = True
+sizeException exc = exc `deepseq` True
 
 (!==!) :: (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
 (!==!) arr vec = toPrimitiveVector (convert arr) === vec
@@ -71,12 +72,13 @@ prop_siterateNM seed k a =
 
 spec :: Spec
 spec = do
-  describe "Vector" $ do
+  describe "Vector" $
     -- describe "same-as-array" $ do
     --   prop "sliceAt'" $ \sz (arr :: Array P Ix1 Word) ->
     --     let ~(l, r) = V.sliceAt' sz arr
     --         ~(l', r') = splitAt' 1 (unSz sz) arr
     --      in l !!==!! toPrimitiveVector (compute l') .&&. r !!==!! toPrimitiveVector (compute r')
+   do
     describe "same-as-vector-package" $ do
       describe "Accessors" $ do
         describe "Size" $ do
@@ -90,8 +92,11 @@ spec = do
             snull (siterateN 3 id ()) `shouldBe` False
             snull (0 ..: 1 :> 2 :> 3 :. 0) `shouldBe` True
         describe "Indexing" $ do
-          prop "head'" $ \(ArrNE arr :: ArrNE D Ix1 Int) ->
+          prop "head' (non-empty)" $ \(ArrNE arr :: ArrNE D Ix1 Int) ->
             head' arr === evaluate' arr 0 .&&. head' arr === shead' arr
+          prop "head'" $ \(arr :: Array D Ix1 Int) ->
+            (singleton (head' arr) :: Array D Ix1 Int) !!==!!
+            VP.singleton (VP.head (toPrimitiveVector (compute arr)))
           prop "shead'" $ \(arr :: Array P Ix1 Int) ->
             (singleton (shead' arr) :: Array D Ix1 Int) !!==!!
             VP.singleton (VP.head (toPrimitiveVector arr))
@@ -106,22 +111,37 @@ spec = do
             VP.take (unSz sz) (VP.drop i (toPrimitiveVector arr))
           prop "slice'" $ \i sz (arr :: Array P Ix1 Word) ->
             V.slice' i sz arr !!==!! VP.slice i (unSz sz) (toPrimitiveVector arr)
+          prop "init" $ \(arr :: Array P Ix1 Word) ->
+            V.init arr !==! VP.reverse (VP.drop 1 (VP.reverse (toPrimitiveVector arr)))
           prop "init'" $ \(arr :: Array P Ix1 Word) ->
             V.init' arr !!==!! VP.init (toPrimitiveVector arr)
+          prop "tail" $ \(arr :: Array P Ix1 Word) ->
+            let vp = toPrimitiveVector arr
+             in (V.tail arr !==! VP.drop 1 vp) .&&.
+                (not (isEmpty arr) ==> V.tail arr !==! VP.tail vp)
           prop "tail'" $ \(arr :: Array P Ix1 Word) ->
             V.tail' arr !!==!! VP.tail (toPrimitiveVector arr)
           prop "take" $ \n (arr :: Array P Ix1 Word) ->
             V.take (Sz n) arr !==! VP.take n (toPrimitiveVector arr)
+          prop "take'" $ \sz@(Sz n) (arr :: Array P Ix1 Word) ->
+            V.take' sz arr !!==!! VP.slice 0 n (toPrimitiveVector arr)
           prop "stake" $ \n (arr :: Array P Ix1 Word) ->
             V.stake (Sz n) arr !==! VP.take n (toPrimitiveVector arr)
           prop "drop" $ \n (arr :: Array P Ix1 Word) ->
             V.drop (Sz n) arr !==! VP.drop n (toPrimitiveVector arr)
+          prop "drop'" $ \sz@(Sz n) (arr :: Array P Ix1 Word) ->
+            V.drop' sz arr !!==!! VP.slice n (unSz (size arr) - n) (toPrimitiveVector arr)
           prop "sdrop" $ \n (arr :: Array P Ix1 Word) ->
             V.sdrop (Sz n) arr !==! VP.drop n (toPrimitiveVector arr)
           prop "sliceAt" $ \sz (arr :: Array P Ix1 Word) ->
             let (larr, rarr) = V.sliceAt (Sz sz) arr
                 (lvec, rvec) = VP.splitAt sz (toPrimitiveVector arr)
              in (larr !==! lvec) .&&. (rarr !==! rvec)
+          prop "sliceAt'" $ \sz@(Sz n) (arr :: Array P Ix1 Word) ->
+            let (larr, rarr) = V.sliceAt' sz arr
+                lvec = VP.slice 0 n (toPrimitiveVector arr)
+                rvec = VP.slice n (unSz (size arr) - n) (toPrimitiveVector arr)
+             in (larr !!==!! lvec) .&&. (rarr !!==!! rvec)
       describe "Constructors" $ do
         describe "Initialization" $ do
           it "empty" $ toPrimitiveVector (V.empty :: V.Vector P Word) `shouldBe` VP.empty
@@ -154,9 +174,8 @@ spec = do
              in V.sunfoldrN (Sz n) f a !==! VP.unfoldrN n f a
       describe "Conversion" $ do
         describe "Lists" $ do
-          prop "sfromList" $ \ comp (xs :: [Word]) ->
+          prop "sfromList" $ \comp (xs :: [Word]) ->
             sfromList xs !==! toPrimitiveVector (fromList comp xs)
-          prop "sfromList" $ \(xs :: [Word]) ->
-            sfromList xs !==! VP.fromList xs
+          prop "sfromList" $ \(xs :: [Word]) -> sfromList xs !==! VP.fromList xs
           -- prop "sfromListN" $ \ n (xs :: [Word]) ->
           --   sfromListN n xs !==! VP.fromListN n xs

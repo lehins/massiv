@@ -7,6 +7,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -300,7 +301,7 @@ pullOutSzM (SafeSz sz) = fmap coerce . pullOutDimM sz
 -- | A way to select Array dimension at a value level.
 --
 -- @since 0.1.0
-newtype Dim = Dim { unDim :: Int } deriving (Eq, Ord, Num, Real, Integral, Enum)
+newtype Dim = Dim { unDim :: Int } deriving (Eq, Ord, Num, Real, Integral, Enum, NFData)
 
 instance Show Dim where
   show (Dim d) = "(Dim " ++ show d ++ ")"
@@ -699,7 +700,7 @@ data IndexException where
   -- | Index contains a zero value along one of the dimensions.
   IndexZeroException :: Index ix => !ix -> IndexException
   -- | Dimension is out of reach.
-  IndexDimensionException :: (Show ix, Typeable ix) => !ix -> !Dim -> IndexException
+  IndexDimensionException :: (NFData ix, Show ix, Typeable ix) => !ix -> !Dim -> IndexException
   -- | Index is out of bounds.
   IndexOutOfBoundsException :: Index ix => !(Sz ix) -> !ix -> IndexException
 
@@ -720,6 +721,13 @@ instance Eq IndexException where
       (IndexOutOfBoundsException sz1 i1, IndexOutOfBoundsException sz2 i2) ->
         show sz1 == show sz2 && show i1 == show i2
       _ -> False
+
+instance NFData IndexException where
+  rnf =
+    \case
+      IndexZeroException i -> rnf i
+      IndexDimensionException i d -> i `deepseq` rnf d
+      IndexOutOfBoundsException sz i -> sz `deepseq` rnf i
 
 instance Exception IndexException
 
@@ -747,6 +755,14 @@ instance Eq SizeException where
         show sz1 == show sz2 && show i1 == show i2 && show sz1' == show sz2'
       (SizeEmptyException sz1, SizeEmptyException sz2) -> show sz1 == show sz2
       _ -> False
+
+instance NFData SizeException where
+  rnf =
+    \case
+      SizeMismatchException sz sz' -> sz `deepseq` rnf sz'
+      SizeElementsMismatchException sz sz' -> sz `deepseq` rnf sz'
+      SizeSubregionException sz i sz' -> sz `deepseq` i `deepseq` rnf sz'
+      SizeEmptyException sz -> rnf sz
 
 instance Exception SizeException
 
