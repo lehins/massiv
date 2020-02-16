@@ -789,7 +789,7 @@ fromList = (`Steps` Unknown) . S.fromList
 {-# INLINE fromList #-}
 
 fromListN :: Monad m => Int -> [e] -> Steps m e
-fromListN n  = (`Steps` Exact n) . S.fromListN n
+fromListN n  = (`Steps` Max n) . S.fromListN n
 {-# INLINE fromListN #-}
 
 liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Stream m b)

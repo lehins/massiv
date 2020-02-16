@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -34,7 +33,7 @@ sizeException _ = True
   case eRes of
     Right vec' -> toPrimitiveVector (computeSource arr) `shouldBe` vec'
     Left (_exc :: ErrorCall) ->
-      shouldThrow (pure $! toPrimitiveVector (computeSource arr)) sizeException
+      shouldThrow (pure $! computeAs P arr) sizeException
 
 newtype SeedVector = SeedVector (VP.Vector Word32) deriving (Eq, Show)
 
@@ -68,13 +67,43 @@ prop_siterateNM seed k a =
     genWith :: PrimMonad f => ((Word -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
     genWith genM gen = genM (\prev -> xor prev <$> uniform gen)
 
+--slicingSpec = 
 
 spec :: Spec
 spec = do
   describe "Vector" $ do
+    -- describe "same-as-array" $ do
+    --   prop "sliceAt'" $ \sz (arr :: Array P Ix1 Word) ->
+    --     let ~(l, r) = V.sliceAt' sz arr
+    --         ~(l', r') = splitAt' 1 (unSz sz) arr
+    --      in l !!==!! toPrimitiveVector (compute l') .&&. r !!==!! toPrimitiveVector (compute r')
     describe "same-as-vector-package" $ do
       describe "Accessors" $ do
+        describe "Size" $ do
+          it "slength" $ do
+            slength (sfromList []) `shouldBe` Nothing
+            slength (sfromListN 1 []) `shouldBe` Nothing
+            slength (sgenerate 1 id) `shouldBe` Just 1
+          it "snull" $ do
+            snull sempty `shouldBe` True
+            snull (fromLists' Seq [[]] :: Array P Ix2 Int) `shouldBe` True
+            snull (siterateN 3 id ()) `shouldBe` False
+            snull (0 ..: 1 :> 2 :> 3 :. 0) `shouldBe` True
+        describe "Indexing" $ do
+          prop "head'" $ \(ArrNE arr :: ArrNE D Ix1 Int) ->
+            head' arr === evaluate' arr 0 .&&. head' arr === shead' arr
+          prop "shead'" $ \(arr :: Array P Ix1 Int) ->
+            (singleton (shead' arr) :: Array D Ix1 Int) !!==!!
+            VP.singleton (VP.head (toPrimitiveVector arr))
+          prop "last'" $ \(arr :: Array P Ix1 Int) ->
+            (singleton (last' arr) :: Array D Ix1 Int) !!==!!
+            VP.singleton (VP.last (toPrimitiveVector arr))
         describe "Slicing" $ do
+          prop "slice" $ \i sz (arr :: Array P Ix1 Word) ->
+            V.slice i sz arr !!==!! VP.take (unSz sz) (VP.drop i (toPrimitiveVector arr))
+          prop "sslice" $ \i sz (arr :: Array P Ix1 Word) ->
+            computeAs B (V.sslice i sz arr) !!==!!
+            VP.take (unSz sz) (VP.drop i (toPrimitiveVector arr))
           prop "slice'" $ \i sz (arr :: Array P Ix1 Word) ->
             V.slice' i sz arr !!==!! VP.slice i (unSz sz) (toPrimitiveVector arr)
           prop "init'" $ \(arr :: Array P Ix1 Word) ->
@@ -96,6 +125,8 @@ spec = do
       describe "Constructors" $ do
         describe "Initialization" $ do
           it "empty" $ toPrimitiveVector (V.empty :: V.Vector P Word) `shouldBe` VP.empty
+          it "sempty" $
+            toPrimitiveVector (compute (V.sempty :: V.Vector DS Word)) `shouldBe` VP.empty
           prop "singleton" $ \e -> (V.singleton e :: V.Vector P Word) !==! VP.singleton e
           prop "ssingleton" $ \(e :: Word) -> V.ssingleton e !==! VP.singleton e
           prop "replicate" $ \comp k (e :: Word) -> V.replicate comp (Sz k) e !==! VP.replicate k e
@@ -121,3 +152,11 @@ spec = do
                   | b > 10000 || b `div` 19 == 0 = Nothing
                   | otherwise = Just (b * b, b + 1)
              in V.sunfoldrN (Sz n) f a !==! VP.unfoldrN n f a
+      describe "Conversion" $ do
+        describe "Lists" $ do
+          prop "sfromList" $ \ comp (xs :: [Word]) ->
+            sfromList xs !==! toPrimitiveVector (fromList comp xs)
+          prop "sfromList" $ \(xs :: [Word]) ->
+            sfromList xs !==! VP.fromList xs
+          -- prop "sfromListN" $ \ n (xs :: [Word]) ->
+          --   sfromListN n xs !==! VP.fromListN n xs

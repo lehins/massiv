@@ -149,7 +149,6 @@ module Data.Massiv.Array
 
 import Data.Massiv.Vector
 import Data.Massiv.Array.Delayed
-import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List
