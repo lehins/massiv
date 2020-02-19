@@ -2,7 +2,7 @@
 
 * Fix `sfromListN` acceptain a plain `Int` instead of `Sz1`, as well as switch to upper bound.
 * Fix order of argumetns in `iforM`
-* Deprecate `liftArray2`
+* Restrict `szip*`, `szipWith*` and `sizipWith*` functions to flat vectors.
 
 # 0.5.0
 

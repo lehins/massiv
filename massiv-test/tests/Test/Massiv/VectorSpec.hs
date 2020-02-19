@@ -212,15 +212,15 @@ applyFun7 :: Fun (a, b, (c, d, e, f, g)) h -> (a -> b -> c -> d -> e -> f -> g -
 applyFun7 (Fun _ i) a b c d f g h = i (a, b, (c, d, f, g, h))
 
 
-prop_szipWith :: Vector P Word -> Array P Ix2 Int -> Fun (Word, Int) Int -> Property
+prop_szipWith :: Vector P Word -> Vector P Int -> Fun (Word, Int) Int -> Property
 prop_szipWith v1 v2 f =
   V.szipWith (applyFun2 f) v1 v2 !==!
   VP.zipWith (applyFun2 f) (toPrimitiveVector v1) (toPrimitiveVector v2)
 
 prop_szipWith3 ::
      Vector P Word64
-  -> Array P Ix2 Word32
-  -> Array P Ix3 Word16
+  -> Vector P Word32
+  -> Vector P Word16
   -> Fun (Word64, Word32, Word16) Int
   -> Property
 prop_szipWith3 v1 v2 v3 f =
@@ -229,9 +229,9 @@ prop_szipWith3 v1 v2 v3 f =
 
 prop_szipWith4 ::
      Vector P Word64
-  -> Array P Ix2 Word32
-  -> Array P Ix3 Word16
-  -> Array P Ix4 Word8
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
   -> Fun (Word64, Word32, Word16, Word8) Int
   -> Property
 prop_szipWith4 v1 v2 v3 v4 f =
@@ -245,10 +245,10 @@ prop_szipWith4 v1 v2 v3 v4 f =
 
 prop_szipWith5 ::
      Vector P Word64
-  -> Array P Ix2 Word32
-  -> Array P Ix3 Word16
-  -> Array P Ix4 Word8
-  -> Array P Ix5 Int8
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
   -> Fun (Word64, Word32, Word16, Word8, Int8) Int
   -> Property
 prop_szipWith5 v1 v2 v3 v4 v5 f =
@@ -263,11 +263,11 @@ prop_szipWith5 v1 v2 v3 v4 v5 f =
 
 prop_szipWith6 ::
      Vector DS Word64
-  -> Array B Ix2 Word32
-  -> Array N Ix3 Word16
-  -> Array S Ix4 Word8
-  -> Array U Ix5 Int8
-  -> Array P Ix4 Int16
+  -> Vector B Word32
+  -> Vector N Word16
+  -> Vector S Word8
+  -> Vector U Int8
+  -> Vector P Int16
   -> Fun (Word64, (Word32, Word16, Word8, Int8, Int16)) Int
   -> Property
 prop_szipWith6 v1 v2 v3 v4 v5 v6 f =
@@ -356,7 +356,7 @@ prop_sizipWith6 v1 v2 v3 v4 v5 v6 f =
 
 
 spec :: Spec
-spec = do
+spec =
   describe "Vector" $ do
     describe "same-as-array" $ do
       describe "traverse" $ do
