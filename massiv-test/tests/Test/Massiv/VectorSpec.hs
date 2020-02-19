@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.VectorSpec (spec) where
 
+import Data.STRef
 import Control.DeepSeq
 import Control.Exception
 import Data.Bits
@@ -16,6 +17,7 @@ import Data.Massiv.Array as A
 import Data.Massiv.Vector as V
 import Data.Maybe
 import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Unboxed as VU
 import Data.Word
 import Test.Massiv.Core
 
@@ -43,9 +45,7 @@ instance Arbitrary SeedVector where
   arbitrary = SeedVector . VP.fromList <$> arbitrary
 
 withSeed :: forall a. SeedVector -> (forall s. MWC.Gen s -> ST s a) -> a
-withSeed (SeedVector seed) f = runST $ do
-  gen <- MWC.initialize seed
-  f gen
+withSeed (SeedVector seed) f = runST $ MWC.initialize seed >>= f
 
 prop_sreplicateM :: SeedVector -> Int -> Property
 prop_sreplicateM seed k =
@@ -63,14 +63,15 @@ prop_sgenerateM seed k f =
 
 prop_siterateNM :: SeedVector -> Int -> Word -> Property
 prop_siterateNM seed k a =
-  withSeed @(V.Vector DS Word) seed (genWith (\action -> V.siterateNM (Sz k) action a))
-  !==! withSeed seed (genWith (\action -> VP.iterateNM k action a))
+  withSeed @(V.Vector DS Word) seed (genWith (\f -> V.siterateNM (Sz k) f a))
+  !==! withSeed seed (genWith (\f -> VP.iterateNM k f a))
   where
     genWith :: PrimMonad f => ((Word -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
     genWith genM gen = genM (\prev -> xor prev <$> uniform gen)
 
 
-genWithUnfoldrM :: PrimMonad f => ((Word -> f (Maybe (Word, Word))) -> t) -> MWC.Gen (PrimState f) -> t
+genWithUnfoldrM ::
+     PrimMonad f => ((Word -> f (Maybe (Word, Word))) -> t) -> MWC.Gen (PrimState f) -> t
 genWithUnfoldrM genM gen = genM $ \prev -> do
   x <- uniform gen
   let cur = prev `xor` x
@@ -78,18 +79,18 @@ genWithUnfoldrM genM gen = genM $ \prev -> do
 
 prop_sunfoldrM :: SeedVector -> Word -> Property
 prop_sunfoldrM seed a =
-  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (\action -> V.sunfoldrM action a))
-  !==! withSeed seed (genWithUnfoldrM (\action -> VP.unfoldrM action a))
+  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (`V.sunfoldrM` a))
+  !==! withSeed seed (genWithUnfoldrM (`VP.unfoldrM`a))
 
 prop_sunfoldrNM :: SeedVector -> Int -> Word -> Property
 prop_sunfoldrNM seed k a =
-  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (\action -> V.sunfoldrNM (Sz k) action a))
-  !==! withSeed seed (genWithUnfoldrM (\action -> VP.unfoldrNM k action a))
+  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (\f -> V.sunfoldrNM (Sz k) f a))
+  !==! withSeed seed (genWithUnfoldrM (\f -> VP.unfoldrNM k f a))
 
 prop_sunfoldrExactNM :: SeedVector -> Int -> Word -> Property
 prop_sunfoldrExactNM seed k a =
-  withSeed @(V.Vector DS Word) seed (genWith (\action -> V.sunfoldrExactNM (Sz k) action a))
-  !==! withSeed seed (genWith (\action -> VP.unfoldrNM k (\a' -> Just <$> action a') a))
+  withSeed @(V.Vector DS Word) seed (genWith (\f -> V.sunfoldrExactNM (Sz k) f a))
+  !==! withSeed seed (genWith (\f -> VP.unfoldrNM k (fmap Just . f) a))
   where
     genWith :: PrimMonad f => ((Word -> f (Word, Word)) -> t) -> MWC.Gen (PrimState f) -> t
     genWith genM gen = genM $ \prev -> do
@@ -98,10 +99,68 @@ prop_sunfoldrExactNM seed k a =
 
 
 
+
+genWithIMapM :: PrimMonad f => ((Int -> Word -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
+genWithIMapM genM gen = genM $ \i e -> do
+  ir <- uniformR (0, fromIntegral i) gen
+  xor ir . xor e <$> uniform gen
+
+genWithIMapST_ :: ((Int -> Word -> ST s ()) -> ST s ()) -> MWC.Gen s -> ST s Word
+genWithIMapST_ genM gen = do
+  ref <- newSTRef =<< uniform gen
+  genM $ \i e -> do
+    ir <- uniformR (0, fromIntegral i) gen
+    e' <- xor ir . xor e <$> uniform gen
+    modifySTRef ref (xor e')
+  readSTRef ref
+
+prop_straverse :: SeedVector -> Array P Ix2 Word -> Property
+prop_straverse seed a =
+  withSeed @(V.Vector DS Word) seed (genWithIMapM (\f -> V.straverse (f 0) a))
+  !==! withSeed seed (genWithIMapM (\f -> VP.mapM (f 0) (toPrimitiveVector a)))
+
+prop_smapM :: SeedVector -> Array P Ix2 Word -> Property
+prop_smapM seed a =
+  withSeed @(V.Vector DS Word) seed (genWithIMapM (\f -> V.smapM (f 0) a))
+  !==! withSeed seed (genWithIMapM (\f -> VP.mapM (f 0) (toPrimitiveVector a)))
+
+prop_sitraverse :: SeedVector -> Vector P Word -> Property
+prop_sitraverse seed a =
+  withSeed @(V.Vector DS Word) seed (genWithIMapM (`V.sitraverse` a))
+  !==! withSeed seed (genWithIMapM (\f -> VP.convert <$> VU.mapM (uncurry f) vp))
+  where
+    vp = VU.imap (,) $ toUnboxedVector (compute a)
+
+prop_simapM :: SeedVector -> Vector U Word -> Property
+prop_simapM seed a =
+  withSeed @(V.Vector DS Word) seed (genWithIMapM (V.siforM a))
+  !==! withSeed seed (genWithIMapM (\f -> VP.convert <$> VU.mapM (uncurry f) vp))
+  where
+    vp = VU.imap (,) $ toUnboxedVector a
+
+prop_smapM_ :: SeedVector -> Array P Ix2 Word -> Property
+prop_smapM_ seed a =
+  withSeed seed (genWithIMapST_ (\f -> V.smapM_ (f 0) a)) ===
+  withSeed seed (genWithIMapST_ (\f -> VP.mapM_ (f 0) (toPrimitiveVector a)))
+
+prop_simapM_ :: SeedVector -> Vector U Word -> Property
+prop_simapM_ seed a =
+  withSeed seed (genWithIMapST_ (V.siforM_ a)) ===
+  withSeed seed (genWithIMapST_ (\f -> VU.mapM_ (uncurry f) vp))
+  where
+    vp = VU.imap (,) $ toUnboxedVector a
+
+
 spec :: Spec
 spec = do
   describe "Vector" $ do
     describe "same-as-array" $ do
+      describe "traverse" $ do
+        prop "straverse == traversePrim" prop_straverse_traversePrim
+        prop "sitraverse == itraversePrim" prop_sitraverse_itraversePrim
+        prop "sitraverse == itraverseA" prop_sitraverse_itraverseA
+        prop "simapM_ == itraverseA_" prop_smapM_itraverseA_
+        prop "smapM_ == itraverseA_" prop_smapM_itraverseA_
       describe "Enumeration" $ do
         prop "senumFromN" $ \comp (i :: Int) sz ->
           V.senumFromN i sz !==! toPrimitiveVector (compute (A.enumFromN comp i sz))
@@ -233,9 +292,43 @@ spec = do
             V.smap (apply f) v !==! VP.map (apply f) (toPrimitiveVector v)
           prop "simap" $ \(v :: Vector P Word) (f :: Fun (Int, Word) Int) ->
             V.simap (applyFun2 f) v !==! VP.imap (applyFun2 f) (toPrimitiveVector v)
+          prop "straverse" prop_straverse
+          prop "sitraverse" prop_sitraverse
+          prop "smapM" prop_smapM
+          prop "simapM" prop_simapM
+          prop "smapM" prop_smapM_
+          prop "simapM" prop_simapM_
       describe "Conversion" $
         describe "Lists" $ do
           prop "sfromList" $ \comp (xs :: [Word]) ->
             sfromList xs !==! toPrimitiveVector (fromList comp xs)
           prop "sfromList" $ \(xs :: [Word]) -> sfromList xs !==! VP.fromList xs
           prop "sfromListN" $ \sz@(Sz n) (xs :: [Word]) -> sfromListN sz xs !==! VP.fromListN n xs
+
+
+prop_sitraverse_itraverseA :: SeedVector -> Vector S Word -> Property
+prop_sitraverse_itraverseA seed a =
+  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (`V.sitraverse` a))
+  === withSeed seed (genWithIMapM (`itraverseA` a))
+
+prop_straverse_traversePrim :: SeedVector -> Vector S Word -> Property
+prop_straverse_traversePrim seed a =
+  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (\f -> V.straverse (f 0) a))
+  === withSeed seed (genWithIMapM (\f -> traversePrim (f 0) a))
+
+prop_sitraverse_itraversePrim :: SeedVector -> Vector S Word -> Property
+prop_sitraverse_itraversePrim seed a =
+  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (`V.sitraverse` a))
+  === withSeed seed (genWithIMapM (`itraversePrim` a))
+
+prop_smapM_itraverseA_ :: SeedVector -> Array P Ix2 Word -> Property
+prop_smapM_itraverseA_ seed a =
+  withSeed seed (genWithIMapST_ (\f -> V.simapM_ (xorToLinear f) a)) ===
+  withSeed seed (genWithIMapST_ (\f -> itraverseA_ (xorToLinear f) a))
+  where
+    xorToLinear f i = f (foldlIndex xor 0 i)
+
+-- prop_siforM_iforM :: SeedVector -> Vector S Word -> Property
+-- prop_siforM_iforM seed a =
+--   withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))
+--   === withSeed seed (genWithIMapM (iforM a))

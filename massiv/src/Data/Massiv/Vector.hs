@@ -1227,6 +1227,8 @@ smapM f = fromStepsM . S.mapM f . S.transStepsId . S.toStream
 
 -- | Traverse a stream vector with a monadic index aware function.
 --
+-- Corresponds to: @mapM (uncurry f) . imap (,) v@
+--
 -- ==== __Examples__
 --
 -- @since 0.5.0
