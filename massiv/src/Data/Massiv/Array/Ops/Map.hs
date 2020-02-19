@@ -383,7 +383,7 @@ forM = flip traverseA
 {-# INLINE forM #-}
 
 
--- | Map a monadic action over an array sequentially.
+-- | Map an index aware monadic action over an array sequentially.
 --
 -- @since 0.2.6
 imapM ::
@@ -395,15 +395,15 @@ imapM = itraverseA
 {-# INLINE imapM #-}
 
 
--- | Same as `forM`, except map an index aware action.
+-- | Same as `forM`, except with an index aware action.
 --
--- @since 0.2.6
+-- @since 0.5.1
 iforM ::
      forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
-  => (ix -> a -> m b)
-  -> Array r' ix a
+  => Array r' ix a
+  -> (ix -> a -> m b)
   -> m (Array r ix b)
-iforM = itraverseA
+iforM = flip itraverseA
 {-# INLINE iforM #-}
 
 
@@ -503,7 +503,7 @@ iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 {-# INLINE iforSchedulerM_ #-}
 
 
--- | Same as `mapIO` but map an index aware action instead.
+-- | Same as `mapIO` but map an index aware action instead. Respects computation strategy.
 --
 -- @since 0.2.6
 imapIO ::

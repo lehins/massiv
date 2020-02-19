@@ -9,13 +9,13 @@
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.VectorSpec (spec) where
 
-import Data.STRef
 import Control.DeepSeq
 import Control.Exception
 import Data.Bits
 import Data.Massiv.Array as A
 import Data.Massiv.Vector as V
 import Data.Maybe
+import Data.Primitive.MutVar
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Unboxed as VU
 import Data.Word
@@ -98,31 +98,48 @@ prop_sunfoldrExactNM seed k a =
       pure (x, prev `xor` x)
 
 
+genWithMapM :: PrimMonad m => ((Word -> m Word) -> m a) -> MWC.Gen (PrimState m) -> m a
+genWithMapM genM gen = genM $ \e -> xor e <$> uniform gen
+genWithMapWS :: PrimMonad m => ((Word -> MWC.Gen (PrimState m) -> m Word) -> m a) -> m a
+genWithMapWS genM = genM $ \e gen -> xor e <$> uniform gen
 
-
-genWithIMapM :: PrimMonad f => ((Int -> Word -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
+genWithIMapM :: PrimMonad m => ((Int -> Word -> m Word) -> m a) -> MWC.Gen (PrimState m) -> m a
 genWithIMapM genM gen = genM $ \i e -> do
   ir <- uniformR (0, fromIntegral i) gen
   xor ir . xor e <$> uniform gen
+genWithIMapWS :: PrimMonad m => ((Int -> Word -> MWC.Gen (PrimState m) -> m Word) -> m a) -> m a
+genWithIMapWS genM =
+  genM $ \i e gen -> do
+    ir <- uniformR (0, fromIntegral i) gen
+    xor ir . xor e <$> uniform gen
 
-genWithIMapST_ :: ((Int -> Word -> ST s ()) -> ST s ()) -> MWC.Gen s -> ST s Word
-genWithIMapST_ genM gen = do
-  ref <- newSTRef =<< uniform gen
+
+genWithMapM_ :: PrimMonad m => ((Word -> m ()) -> m ()) -> MWC.Gen (PrimState m) -> m Word
+genWithMapM_ genM gen = do
+  ref <- newMutVar =<< uniform gen
+  genM $ \e -> do
+    e' <- xor e <$> uniform gen
+    modifyMutVar ref (xor e')
+  readMutVar ref
+
+genWithIMapM_ :: PrimMonad m => ((Int -> Word -> m ()) -> m ()) -> MWC.Gen (PrimState m) -> m Word
+genWithIMapM_ genM gen = do
+  ref <- newMutVar =<< uniform gen
   genM $ \i e -> do
     ir <- uniformR (0, fromIntegral i) gen
     e' <- xor ir . xor e <$> uniform gen
-    modifySTRef ref (xor e')
-  readSTRef ref
+    modifyMutVar ref (xor e')
+  readMutVar ref
 
 prop_straverse :: SeedVector -> Array P Ix2 Word -> Property
 prop_straverse seed a =
-  withSeed @(V.Vector DS Word) seed (genWithIMapM (\f -> V.straverse (f 0) a))
-  !==! withSeed seed (genWithIMapM (\f -> VP.mapM (f 0) (toPrimitiveVector a)))
+  withSeed @(V.Vector DS Word) seed (genWithMapM (`V.straverse` a))
+  !==! withSeed seed (genWithMapM (`VP.mapM` toPrimitiveVector a))
 
 prop_smapM :: SeedVector -> Array P Ix2 Word -> Property
 prop_smapM seed a =
-  withSeed @(V.Vector DS Word) seed (genWithIMapM (\f -> V.smapM (f 0) a))
-  !==! withSeed seed (genWithIMapM (\f -> VP.mapM (f 0) (toPrimitiveVector a)))
+  withSeed @(V.Vector DS Word) seed (genWithMapM (`V.smapM` a))
+  !==! withSeed seed (genWithMapM (`VP.mapM` toPrimitiveVector a))
 
 prop_sitraverse :: SeedVector -> Vector P Word -> Property
 prop_sitraverse seed a =
@@ -140,13 +157,13 @@ prop_simapM seed a =
 
 prop_smapM_ :: SeedVector -> Array P Ix2 Word -> Property
 prop_smapM_ seed a =
-  withSeed seed (genWithIMapST_ (\f -> V.smapM_ (f 0) a)) ===
-  withSeed seed (genWithIMapST_ (\f -> VP.mapM_ (f 0) (toPrimitiveVector a)))
+  withSeed seed (genWithMapM_ (V.sforM_ a)) ===
+  withSeed seed (genWithMapM_ (VP.forM_ (toPrimitiveVector a)))
 
 prop_simapM_ :: SeedVector -> Vector U Word -> Property
 prop_simapM_ seed a =
-  withSeed seed (genWithIMapST_ (V.siforM_ a)) ===
-  withSeed seed (genWithIMapST_ (\f -> VU.mapM_ (uncurry f) vp))
+  withSeed seed (genWithIMapM_ (V.siforM_ a)) ===
+  withSeed seed (genWithIMapM_ (\f -> VU.mapM_ (uncurry f) vp))
   where
     vp = VU.imap (,) $ toUnboxedVector a
 
@@ -159,8 +176,18 @@ spec = do
         prop "straverse == traversePrim" prop_straverse_traversePrim
         prop "sitraverse == itraversePrim" prop_sitraverse_itraversePrim
         prop "sitraverse == itraverseA" prop_sitraverse_itraverseA
-        prop "simapM_ == itraverseA_" prop_smapM_itraverseA_
-        prop "smapM_ == itraverseA_" prop_smapM_itraverseA_
+        prop "simapM_ == itraverseA_" prop_simapM_itraverseA_
+        prop "smapM_ == traverseA_" prop_smapM_traverseA_
+        prop "sforM == forM" prop_sforM_forM
+        prop "siforM == iforM" prop_siforM_iforM
+        prop "sforM_ == forM_" prop_sforM_forM_
+        prop "siforM_ == iforM_" prop_siforM_iforM_
+        prop "sforM_ == forIO_ (ParN 1)" prop_sforM_forIO_
+        prop "sforM == forIO (Seq)" prop_sforM_forIO
+        prop "siforM == iforIO (ParN 1)" prop_siforM_iforIO
+        prop "siforM == iforIO_ (ParN 1)" prop_siforM_iforIO_
+        prop "siforM == iforWS (ParN 1)" prop_siforM_iforWS
+        prop "smapM == mapWS (Seq)" prop_smapM_mapWS
       describe "Enumeration" $ do
         prop "senumFromN" $ \comp (i :: Int) sz ->
           V.senumFromN i sz !==! toPrimitiveVector (compute (A.enumFromN comp i sz))
@@ -318,17 +345,78 @@ prop_straverse_traversePrim seed a =
 
 prop_sitraverse_itraversePrim :: SeedVector -> Vector S Word -> Property
 prop_sitraverse_itraversePrim seed a =
-  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (`V.sitraverse` a))
-  === withSeed seed (genWithIMapM (`itraversePrim` a))
-
-prop_smapM_itraverseA_ :: SeedVector -> Array P Ix2 Word -> Property
-prop_smapM_itraverseA_ seed a =
-  withSeed seed (genWithIMapST_ (\f -> V.simapM_ (xorToLinear f) a)) ===
-  withSeed seed (genWithIMapST_ (\f -> itraverseA_ (xorToLinear f) a))
+  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (\f -> V.sitraverse (xorToLinear f) a))
+  === withSeed seed (genWithIMapM (\f -> itraversePrim (xorToLinear f) a))
   where
     xorToLinear f i = f (foldlIndex xor 0 i)
 
--- prop_siforM_iforM :: SeedVector -> Vector S Word -> Property
--- prop_siforM_iforM seed a =
---   withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))
---   === withSeed seed (genWithIMapM (iforM a))
+prop_smapM_traverseA_ :: SeedVector -> Array P Ix2 Word -> Property
+prop_smapM_traverseA_ seed a =
+  withSeed seed (genWithMapM_ (`V.smapM_` a)) === withSeed seed (genWithMapM_ (`traverseA_` a))
+
+prop_simapM_itraverseA_ :: SeedVector -> Array P Ix2 Word -> Property
+prop_simapM_itraverseA_ seed a =
+  withSeed seed (genWithIMapM_ (\f -> V.simapM_ (xorToLinear f) a)) ===
+  withSeed seed (genWithIMapM_ (\f -> itraverseA_ (xorToLinear f) a))
+  where
+    xorToLinear f i = f (foldlIndex xor 0 i)
+
+prop_sforM_forM :: SeedVector -> Vector S Word -> Property
+prop_sforM_forM seed a =
+  withSeed @(V.Vector P Word) seed (fmap compute . genWithMapM (V.sforM a))
+  === withSeed seed (genWithMapM (A.forM a))
+
+prop_siforM_iforM :: SeedVector -> Vector S Word -> Property
+prop_siforM_iforM seed a =
+  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))
+  === withSeed seed (genWithIMapM (iforM a))
+
+withSeedIO :: forall a. SeedVector -> (MWC.Gen (PrimState IO) -> IO a) -> IO a
+withSeedIO (SeedVector seed) f = MWC.initialize seed >>= f
+
+prop_sforM_forIO :: SeedVector -> Vector S Word -> Property
+prop_sforM_forIO seed a = property $
+  withSeedIO seed (genWithMapM (forIO (setComp Seq a))) `shouldReturn`
+    withSeed @(V.Vector P Word) seed (fmap compute . genWithMapM (V.sforM a))
+
+prop_siforM_iforIO :: SeedVector -> Vector S Word -> Property
+prop_siforM_iforIO seed a = property $
+  withSeedIO seed (genWithIMapM (iforIO (setComp (ParN 1) a))) `shouldReturn`
+    withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))
+
+prop_sforM_forM_ :: SeedVector -> Vector S Word -> Property
+prop_sforM_forM_ seed a = property $
+  withSeed seed (genWithMapM_ (A.forM_ a)) `shouldBe`
+    withSeed @Word seed (genWithMapM_ (V.sforM_ a))
+
+prop_siforM_iforM_ :: SeedVector -> Vector S Word -> Property
+prop_siforM_iforM_ seed a = property $
+  withSeed seed (genWithIMapM_ (iforM_ a)) `shouldBe`
+    withSeed @Word seed (genWithIMapM_ (V.siforM_ a))
+
+prop_sforM_forIO_ :: SeedVector -> Vector S Word -> Property
+prop_sforM_forIO_ seed a = property $
+  withSeedIO seed (genWithMapM_ (forIO_ (setComp (ParN 1) a))) `shouldReturn`
+    withSeed @Word seed (genWithMapM_ (V.sforM_ a))
+
+prop_siforM_iforIO_ :: SeedVector -> Vector S Word -> Property
+prop_siforM_iforIO_ seed a = property $
+  withSeedIO seed (genWithIMapM_ (iforIO_ (setComp (ParN 1) a))) `shouldReturn`
+    withSeed @Word seed (genWithIMapM_ (V.siforM_ a))
+
+
+prop_siforM_iforWS :: SeedVector -> Vector S Word -> Property
+prop_siforM_iforWS seed@(SeedVector sv) a =
+  property $ do
+    wsArray <-
+      do ws <- initWorkerStates (ParN 1) (const (MWC.initialize sv))
+         genWithIMapWS (iforWS ws a)
+    wsArray `shouldBe` withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))
+
+prop_smapM_mapWS :: SeedVector -> Vector S Word -> Property
+prop_smapM_mapWS seed@(SeedVector sv) a =
+  property $ do
+    wsArray <-
+      do ws <- initWorkerStates Seq (const (MWC.initialize sv))
+         genWithMapWS (\f -> mapWS ws f a)
+    wsArray `shouldBe` withSeed @(V.Vector P Word) seed (fmap compute . genWithMapM (`V.smapM` a))
