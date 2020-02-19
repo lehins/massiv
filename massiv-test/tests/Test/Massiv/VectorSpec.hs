@@ -17,7 +17,9 @@ import Data.Massiv.Array as A
 import Data.Massiv.Vector as V
 import Data.Maybe
 import Data.Primitive.MutVar
+import qualified Data.Vector as VB
 import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import Data.Word
 import Data.Int
@@ -142,6 +144,13 @@ prop_smapM :: SeedVector -> Array P Ix2 Word -> Property
 prop_smapM seed a =
   withSeed @(V.Vector DS Word) seed (genWithMapM (`V.smapM` a))
   !==! withSeed seed (genWithMapM (`VP.mapM` toPrimitiveVector a))
+
+prop_smapMaybeM :: SeedVector -> Array B Ix2 Word -> Fun Word (Maybe Word16) -> Property
+prop_smapMaybeM seed a gm =
+  withSeed @(V.Vector DS Word16) seed (genWithMapM (\ f -> V.smapMaybeM (fmap g . f) a))
+  !==! withSeed seed (genWithMapM
+                      (\f -> VP.convert . VB.mapMaybe id <$> VB.mapM (fmap g . f) (toBoxedVector a)))
+  where g = apply gm
 
 prop_sitraverse :: SeedVector -> Vector P Word -> Property
 prop_sitraverse seed a =
@@ -493,8 +502,7 @@ spec = do
             V.simapMaybe (applyFun2 f) v !==! VP.imapMaybe (applyFun2 f) (toPrimitiveVector v)
           prop "scatMaybes" $ \(v :: Vector D (Maybe Word)) ->
             V.scatMaybes v !==! toPrimitiveVector (compute (smap fromJust (sfilter isJust v)))
-          -- prop "smapMaybeM"
-          -- prop "simapMaybeM"
+          prop "smapMaybeM" prop_smapMaybeM
           prop "fmap" $ \(v :: Vector DS Word) (f :: Fun Word Int) ->
             fmap (apply f) v !==! VP.map (apply f) (toPrimitiveVector (compute v))
           prop "<$" $ \(v :: Vector DS Word) (a :: Char) ->
@@ -521,7 +529,30 @@ spec = do
           prop "sizipWith6" prop_sizipWith6
           prop "liftA2" $ \(v1 :: Vector DS Word) (v2 :: Vector DS Int) (f :: Fun (Word, Int) Int) ->
             liftA2 (applyFun2 f) v1 v2 !==!
-            VP.zipWith (applyFun2 f) (toPrimitiveVector (compute v1)) (toPrimitiveVector (compute v2))
+            VP.zipWith
+              (applyFun2 f)
+              (toPrimitiveVector (compute v1))
+              (toPrimitiveVector (compute v2))
+      describe "Folding" $ do
+        prop "sfoldl" $ \(v :: Vector P Word32) (f :: Fun (Word, Word32) Word) a0 ->
+          V.sfoldl (applyFun2 f) a0 v === VP.foldl (applyFun2 f) a0 (toPrimitiveVector v)
+        prop "sifoldl" $ \(v :: Vector P Word32) (f :: Fun (Word, Ix1, Word32) Word) a0 ->
+          V.sifoldl (applyFun3 f) a0 v === VP.ifoldl (applyFun3 f) a0 (toPrimitiveVector v)
+        prop "sfoldl1'" prop_sfoldl1'
+        describe "Specialized" $ do
+          prop "sor" $ \(v :: Vector S Bool) -> V.sor v === VS.or (toStorableVector v)
+          prop "sand" $ \(v :: Vector S Bool) -> V.sand v === VS.and (toStorableVector v)
+          prop "sany" $ \(v :: Vector P Word) (f :: Fun Word Bool) ->
+            V.sany (apply f) v === VP.any (apply f) (toPrimitiveVector v)
+          prop "sall" $ \(v :: Vector P Word) (f :: Fun Word Bool) ->
+            V.sall (apply f) v === VP.all (apply f) (toPrimitiveVector v)
+          prop "ssum" $ \(v :: Vector P Word) -> V.ssum v === VP.sum (toPrimitiveVector v)
+          prop "sproduct" $ \(v :: Vector P Word) ->
+            V.sproduct v === VP.product (toPrimitiveVector v)
+          prop "maximum'" prop_maximum'
+          prop "minimum'" prop_minimum'
+          prop "maximumM" prop_maximumM
+          prop "minimumM" prop_minimumM
       describe "Conversion" $
         describe "Lists" $ do
           prop "sfromList" $ \comp (xs :: [Word]) ->
@@ -529,6 +560,28 @@ spec = do
           prop "sfromList" $ \(xs :: [Word]) -> sfromList xs !==! VP.fromList xs
           prop "sfromListN" $ \sz@(Sz n) (xs :: [Word]) -> sfromListN sz xs !==! VP.fromListN n xs
 
+prop_sfoldl1' :: Vector P Word -> Fun (Word, Word) Word -> Property
+prop_sfoldl1' v f =
+  V.singleton @D (V.sfoldl1' (applyFun2 f) v) !!==!!
+  VP.singleton (VP.foldl1' (applyFun2 f) (toPrimitiveVector v))
+
+prop_maximum' :: Vector P Word -> Property
+prop_maximum' v =
+  V.singleton @D (V.smaximum' v) !!==!! VP.singleton (VP.maximum (toPrimitiveVector v))
+
+prop_minimum' :: Vector P Word -> Property
+prop_minimum' v =
+  V.singleton @D (V.sminimum' v) !!==!! VP.singleton (VP.minimum (toPrimitiveVector v))
+
+prop_maximumM :: Vector P Word -> Property
+prop_maximumM v =
+  let vp = toPrimitiveVector v
+   in V.smaximumM v === (guard (not (VP.null vp)) >> Just (VP.maximum vp))
+
+prop_minimumM :: Vector P Word -> Property
+prop_minimumM v =
+  let vp = toPrimitiveVector v
+   in V.sminimumM v === (guard (not (VP.null vp)) >> Just (VP.minimum vp))
 
 prop_sitraverse_itraverseA :: SeedVector -> Vector S Word -> Property
 prop_sitraverse_itraverseA seed a =

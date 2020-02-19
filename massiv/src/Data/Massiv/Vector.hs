@@ -1109,6 +1109,8 @@ sfilterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 
 -- | Similar to `filterM`, but map with an index aware function.
 --
+-- Corresponds to: @filterM (uncurry f) . imap (,)@
+--
 -- ==== __Examples__
 --
 -- @since 0.5.0
@@ -1166,6 +1168,8 @@ scatMaybes = smapMaybe id
 
 
 -- | Similar to `smapMaybe`, but with the `Applicative` function.
+--
+-- Similar to @mapMaybe id <$> mapM f arr@
 --
 -- ==== __Examples__
 --
