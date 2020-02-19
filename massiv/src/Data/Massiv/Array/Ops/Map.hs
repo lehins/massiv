@@ -165,7 +165,7 @@ izipWith3 f arr1 arr2 arr3 =
 {-# INLINE izipWith3 #-}
 
 
--- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
+-- | Similar to `zipWith`, except does it sequentially and using the `Applicative`. Note that
 -- resulting array has Mutable representation.
 --
 -- @since 0.3.0
