@@ -32,6 +32,102 @@ infix 4 !==!, !!==!!
 sizeException :: SizeException -> Bool
 sizeException exc = exc `deepseq` True
 
+toUnboxV2 ::
+     Unbox e1
+  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e1)
+  -> Array U ix1 e2
+  -> Array U ix2 e3
+  -> Array U Ix1 e1
+toUnboxV2 f v1 v2 = fromUnboxedVector (f (toUnboxedVector v1) (toUnboxedVector v2))
+
+toUnboxV3 ::
+     Unbox e1
+  => (VU.Vector e -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e1)
+  -> Array U ix e
+  -> Array U ix1 e2
+  -> Array U ix2 e3
+  -> Array U Ix1 e1
+toUnboxV3 f v1 = toUnboxV2 (f (toUnboxedVector v1))
+
+toUnboxV4 ::
+     Unbox e1
+  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e1)
+  -> Array U ix1 e2
+  -> Array U ix2 e3
+  -> Array U ix3 e4
+  -> Array U ix4 e5
+  -> Array U Ix1 e1
+toUnboxV4 f v1 = toUnboxV3 (f (toUnboxedVector v1))
+
+toUnboxV5 ::
+     Unbox e1
+  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e1)
+  -> Array U ix1 e2
+  -> Array U ix2 e3
+  -> Array U ix3 e4
+  -> Array U ix4 e5
+  -> Array U ix5 e6
+  -> Array U Ix1 e1
+toUnboxV5 f v1 = toUnboxV4 (f (toUnboxedVector v1))
+
+toUnboxV6 ::
+     Unbox e1
+  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e7 -> VU.Vector e1)
+  -> Array U ix1 e2
+  -> Array U ix2 e3
+  -> Array U ix3 e4
+  -> Array U ix4 e5
+  -> Array U ix5 e6
+  -> Array U ix6 e7
+  -> Array U Ix1 e1
+toUnboxV6 f v1 = toUnboxV5 (f (toUnboxedVector v1))
+
+toPrimV2 :: (Index ix) => (VP.Vector e1 -> VP.Vector e2 -> t) -> Array P ix e1 -> Array P ix e2 -> t
+toPrimV2 f v1 v2 = f (toPrimitiveVector v1) (toPrimitiveVector v2)
+
+toPrimV3 ::
+     Index ix
+  => (VP.Vector e -> VP.Vector e1 -> VP.Vector e2 -> t)
+  -> Array P ix e
+  -> Array P ix e1
+  -> Array P ix e2
+  -> t
+toPrimV3 f v1 = toPrimV2 (f (toPrimitiveVector v1))
+
+toPrimV4 ::
+     Index ix
+  => (VP.Vector e1 -> VP.Vector e2 -> VP.Vector e3 -> VP.Vector e4 -> t)
+  -> Array P ix e1
+  -> Array P ix e2
+  -> Array P ix e3
+  -> Array P ix e4
+  -> t
+toPrimV4 f v1 = toPrimV3 (f (toPrimitiveVector v1))
+
+toPrimV5 ::
+     Index ix
+  => (VP.Vector e -> VP.Vector e1 -> VP.Vector e2 -> VP.Vector e3 -> VP.Vector e4 -> t)
+  -> Array P ix e
+  -> Array P ix e1
+  -> Array P ix e2
+  -> Array P ix e3
+  -> Array P ix e4
+  -> t
+toPrimV5 f v1 = toPrimV4 (f (toPrimitiveVector v1))
+
+toPrimV6 ::
+     Index ix
+  => (VP.Vector e -> VP.Vector e1 -> VP.Vector e2 -> VP.Vector e3 -> VP.Vector e4 -> VP.Vector e5 -> t)
+  -> Array P ix e
+  -> Array P ix e1
+  -> Array P ix e2
+  -> Array P ix e3
+  -> Array P ix e4
+  -> Array P ix e5
+  -> t
+toPrimV6 f v1 = toPrimV5 (f (toPrimitiveVector v1))
+
+
 (!==!) :: (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
 (!==!) arr vec = toPrimitiveVector (convert arr) === vec
 
@@ -51,15 +147,32 @@ instance Arbitrary SeedVector where
 withSeed :: forall a. SeedVector -> (forall s. MWC.Gen s -> ST s a) -> a
 withSeed (SeedVector seed) f = runST $ MWC.initialize seed >>= f
 
+withSeed2 ::
+     forall a. (Eq a, Show a)
+  => SeedVector
+  -> (forall s. MWC.Gen s -> ST s a)
+  -> (forall s. MWC.Gen s -> ST s a)
+  -> Property
+withSeed2 seed f g = withSeed @a seed f === withSeed seed g
+
+withSeedV2 ::
+     forall r e. (Eq e, Show e, Prim e, Load r Ix1 e)
+  => SeedVector
+  -> (forall s. MWC.Gen s -> ST s (V.Vector r e))
+  -> (forall s. MWC.Gen s -> ST s (VP.Vector e))
+  -> Property
+withSeedV2 seed f g = withSeed @(V.Vector r e) seed f !==! withSeed seed g
+
+
 prop_sreplicateM :: SeedVector -> Int -> Property
-prop_sreplicateM seed k =
-  withSeed @(V.Vector DS Word) seed (V.sreplicateM (Sz k) . uniform)
-  !==! withSeed seed (VP.replicateM k . uniform)
+prop_sreplicateM seed k = withSeedV2 @DS @Word seed
+                          (V.sreplicateM (Sz k) . uniform)
+                          (VP.replicateM k . uniform)
 
 prop_sgenerateM :: SeedVector -> Int -> Fun Int Word -> Property
-prop_sgenerateM seed k f =
-  withSeed @(V.Vector DS Word) seed (genWith (V.sgenerateM (Sz k)))
-  !==! withSeed seed (genWith (VP.generateM k))
+prop_sgenerateM seed k f = withSeedV2 @DS @Word seed
+                           (genWith (V.sgenerateM (Sz k)))
+                           (genWith (VP.generateM k))
   where
     genWith :: PrimMonad f => ((Int -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
     genWith genM gen = genM (\i -> xor (apply f i) <$> uniform gen)
@@ -83,18 +196,21 @@ genWithUnfoldrM genM gen = genM $ \prev -> do
 
 prop_sunfoldrM :: SeedVector -> Word -> Property
 prop_sunfoldrM seed a =
-  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (`V.sunfoldrM` a))
-  !==! withSeed seed (genWithUnfoldrM (`VP.unfoldrM`a))
+  withSeedV2 @DS @Word seed
+  (genWithUnfoldrM (`V.sunfoldrM` a))
+  (genWithUnfoldrM (`VP.unfoldrM`a))
 
 prop_sunfoldrNM :: SeedVector -> Int -> Word -> Property
 prop_sunfoldrNM seed k a =
-  withSeed @(V.Vector DS Word) seed (genWithUnfoldrM (\f -> V.sunfoldrNM (Sz k) f a))
-  !==! withSeed seed (genWithUnfoldrM (\f -> VP.unfoldrNM k f a))
+  withSeedV2 @DS @Word seed
+  (genWithUnfoldrM (\f -> V.sunfoldrNM (Sz k) f a))
+  (genWithUnfoldrM (\f -> VP.unfoldrNM k f a))
 
 prop_sunfoldrExactNM :: SeedVector -> Int -> Word -> Property
 prop_sunfoldrExactNM seed k a =
-  withSeed @(V.Vector DS Word) seed (genWith (\f -> V.sunfoldrExactNM (Sz k) f a))
-  !==! withSeed seed (genWith (\f -> VP.unfoldrNM k (fmap Just . f) a))
+  withSeedV2 @DS @Word seed
+  (genWith (\f -> V.sunfoldrExactNM (Sz k) f a))
+  (genWith (\f -> VP.unfoldrNM k (fmap Just . f) a))
   where
     genWith :: PrimMonad f => ((Word -> f (Word, Word)) -> t) -> MWC.Gen (PrimState f) -> t
     genWith genM gen = genM $ \prev -> do
@@ -211,11 +327,58 @@ applyFun6 (Fun _ h) a b c d f g = h (a, (b, c, d, f, g))
 applyFun7 :: Fun (a, b, (c, d, e, f, g)) h -> (a -> b -> c -> d -> e -> f -> g -> h)
 applyFun7 (Fun _ i) a b c d f g h = i (a, b, (c, d, f, g, h))
 
+com2M :: Fun (a, b) d -> (d -> c) -> a -> b -> c
+com2M f g a = g . applyFun2 f a
+
+com3M :: Fun (a, b, c) d -> (d -> e) -> a -> b -> c -> e
+com3M f g a b = g . applyFun3 f a b
+
+com4M :: Fun (a, b, c, d) e -> (e -> h) -> a -> b -> c -> d -> h
+com4M f g a b c = g . applyFun4 f a b c
+
+com5M :: Fun (a, b, c, d, e) h -> (h -> i) -> a -> b -> c -> d -> e -> i
+com5M f g a b c d = g . applyFun5 f a b c d
+
+com6M :: Fun (a, (b, c, d, e, h)) i -> (i -> j) -> a -> b -> c -> d -> e -> h -> j
+com6M f g a b c d e = g . applyFun6 f a b c d e
+
+com7M :: Fun (a, b, (c, d, e, h, i)) j -> (j -> k) -> a -> b -> c -> d -> e -> h -> i -> k
+com7M f g a b c d e h = g . applyFun7 f a b c d e h
+
+
+prop_szip :: Vector U Word -> Vector U Int -> Property
+prop_szip v1 v2 = compute (V.szip v1 v2) === toUnboxV2 VU.zip v1 v2
+
+prop_szip3 :: Vector U Word64 -> Vector U Word32 -> Vector U Word16 -> Property
+prop_szip3 v1 v2 v3 = compute (V.szip3 v1 v2 v3) === toUnboxV3 VU.zip3 v1 v2 v3
+
+prop_szip4 :: Vector U Word64 -> Vector U Word32 -> Vector U Word16 -> Vector U Word8 -> Property
+prop_szip4 v1 v2 v3 v4 = compute (V.szip4 v1 v2 v3 v4) === toUnboxV4 VU.zip4 v1 v2 v3 v4
+
+prop_szip5 ::
+     Vector U Word64
+  -> Vector U Word32
+  -> Vector U Word16
+  -> Vector U Word8
+  -> Vector U Int8
+  -> Property
+prop_szip5 v1 v2 v3 v4 v5 = compute (V.szip5 v1 v2 v3 v4 v5) === toUnboxV5 VU.zip5 v1 v2 v3 v4 v5
+
+prop_szip6 ::
+     Vector U Word64
+  -> Vector U Word32
+  -> Vector U Word16
+  -> Vector U Word8
+  -> Vector U Int8
+  -> Vector U Int16
+  -> Property
+prop_szip6 v1 v2 v3 v4 v5 v6 =
+  compute (V.szip6 v1 v2 v3 v4 v5 v6) === toUnboxV6 VU.zip6 v1 v2 v3 v4 v5 v6
+
 
 prop_szipWith :: Vector P Word -> Vector P Int -> Fun (Word, Int) Int -> Property
 prop_szipWith v1 v2 f =
-  V.szipWith (applyFun2 f) v1 v2 !==!
-  VP.zipWith (applyFun2 f) (toPrimitiveVector v1) (toPrimitiveVector v2)
+  V.szipWith (applyFun2 f) v1 v2 !==! toPrimV2 (VP.zipWith (applyFun2 f)) v1 v2
 
 prop_szipWith3 ::
      Vector P Word64
@@ -224,8 +387,7 @@ prop_szipWith3 ::
   -> Fun (Word64, Word32, Word16) Int
   -> Property
 prop_szipWith3 v1 v2 v3 f =
-  V.szipWith3 (applyFun3 f) v1 v2 v3 !==!
-  VP.zipWith3 (applyFun3 f) (toPrimitiveVector v1) (toPrimitiveVector v2) (toPrimitiveVector v3)
+  V.szipWith3 (applyFun3 f) v1 v2 v3 !==! toPrimV3 (VP.zipWith3 (applyFun3 f)) v1 v2 v3
 
 prop_szipWith4 ::
      Vector P Word64
@@ -235,13 +397,7 @@ prop_szipWith4 ::
   -> Fun (Word64, Word32, Word16, Word8) Int
   -> Property
 prop_szipWith4 v1 v2 v3 v4 f =
-  V.szipWith4 (applyFun4 f) v1 v2 v3 v4 !==!
-  VP.zipWith4
-    (applyFun4 f)
-    (toPrimitiveVector v1)
-    (toPrimitiveVector v2)
-    (toPrimitiveVector v3)
-    (toPrimitiveVector v4)
+  V.szipWith4 (applyFun4 f) v1 v2 v3 v4 !==! toPrimV4 (VP.zipWith4 (applyFun4 f)) v1 v2 v3 v4
 
 prop_szipWith5 ::
      Vector P Word64
@@ -252,14 +408,7 @@ prop_szipWith5 ::
   -> Fun (Word64, Word32, Word16, Word8, Int8) Int
   -> Property
 prop_szipWith5 v1 v2 v3 v4 v5 f =
-  V.szipWith5 (applyFun5 f) v1 v2 v3 v4 v5 !==!
-  VP.zipWith5
-    (applyFun5 f)
-    (toPrimitiveVector v1)
-    (toPrimitiveVector v2)
-    (toPrimitiveVector v3)
-    (toPrimitiveVector v4)
-    (toPrimitiveVector v5)
+  V.szipWith5 (applyFun5 f) v1 v2 v3 v4 v5 !==! toPrimV5 (VP.zipWith5 (applyFun5 f)) v1 v2 v3 v4 v5
 
 prop_szipWith6 ::
      Vector DS Word64
@@ -272,19 +421,19 @@ prop_szipWith6 ::
   -> Property
 prop_szipWith6 v1 v2 v3 v4 v5 v6 f =
   V.szipWith6 (applyFun6 f) v1 v2 v3 v4 v5 v6 !==!
-  VP.zipWith6
-    (applyFun6 f)
-    (toPrimitiveVector (compute v1))
-    (toPrimitiveVector (compute v2))
-    (toPrimitiveVector (compute v3))
-    (toPrimitiveVector (compute v4))
-    (toPrimitiveVector (compute v5))
-    (toPrimitiveVector v6)
+  toPrimV6
+    (VP.zipWith6 (applyFun6 f))
+    (compute v1)
+    (compute v2)
+    (compute v3)
+    (compute v4)
+    (compute v5)
+    v6
 
 prop_sizipWith :: Vector DS Word64 -> Vector DS Word32 -> Fun (Ix1, Word64, Word32) Int -> Property
 prop_sizipWith v1 v2 f =
   sizipWith (applyFun3 f) v1 v2 !==!
-  VP.izipWith (applyFun3 f) (toPrimitiveVector (compute v1)) (toPrimitiveVector (compute v2))
+  toPrimV2 (VP.izipWith (applyFun3 f)) (compute v1) (compute v2)
 
 prop_sizipWith3 ::
      Vector P Word64
@@ -294,11 +443,7 @@ prop_sizipWith3 ::
   -> Property
 prop_sizipWith3 v1 v2 v3 f =
   sizipWith3 (applyFun4 f) v1 v2 v3 !==!
-  VP.izipWith3
-    (applyFun4 f)
-    (toPrimitiveVector (compute v1))
-    (toPrimitiveVector (compute v2))
-    (toPrimitiveVector (compute v3))
+  toPrimV3 (VP.izipWith3 (applyFun4 f)) (compute v1) (compute v2) (compute v3)
 
 prop_sizipWith4 ::
      Vector D Word64
@@ -309,12 +454,7 @@ prop_sizipWith4 ::
   -> Property
 prop_sizipWith4 v1 v2 v3 v4 f =
   sizipWith4 (applyFun5 f) v1 v2 v3 v4 !==!
-  VP.izipWith4
-    (applyFun5 f)
-    (toPrimitiveVector (compute v1))
-    (toPrimitiveVector (compute v2))
-    (toPrimitiveVector (compute v3))
-    (toPrimitiveVector (compute v4))
+  toPrimV4 (VP.izipWith4 (applyFun5 f)) (compute v1) (compute v2) (compute v3) (compute v4)
 
 prop_sizipWith5 ::
      Vector DS Word64
@@ -326,13 +466,7 @@ prop_sizipWith5 ::
   -> Property
 prop_sizipWith5 v1 v2 v3 v4 v5 f =
   sizipWith5 (applyFun6 f) v1 v2 v3 v4 v5 !==!
-  VP.izipWith5
-    (applyFun6 f)
-    (toPrimitiveVector (compute v1))
-    (toPrimitiveVector (compute v2))
-    (toPrimitiveVector (compute v3))
-    (toPrimitiveVector (compute v4))
-    (toPrimitiveVector (compute v5))
+  toPrimV5 (VP.izipWith5 (applyFun6 f)) (compute v1) (compute v2) v3 (compute v4) (compute v5)
 
 prop_sizipWith6 ::
      Vector DS Word64
@@ -340,20 +474,274 @@ prop_sizipWith6 ::
   -> Vector B Word16
   -> Vector N Word8
   -> Vector P Int8
-  -> Vector U Int16
+  -> Vector P Int16
   -> Fun (Ix1, Word64, (Word32, Word16, Word8, Int8, Int16)) Int
   -> Property
 prop_sizipWith6 v1 v2 v3 v4 v5 v6 f =
   sizipWith6 (applyFun7 f) v1 v2 v3 v4 v5 v6 !==!
-  VP.izipWith6
-    (applyFun7 f)
-    (toPrimitiveVector (compute v1))
-    (toPrimitiveVector (compute v2))
-    (toPrimitiveVector (compute v3))
-    (toPrimitiveVector (compute v4))
-    (toPrimitiveVector (compute v5))
-    (toPrimitiveVector (compute v6))
+  toPrimV6 (VP.izipWith6 (applyFun7 f)) (compute v1) (compute v2) (compute v3) (compute v4) v5 v6
 
+
+prop_szipWithM ::
+     SeedVector -> Vector P Word64 -> Vector P Word32 -> Fun (Word64, Word32) Word -> Property
+prop_szipWithM seed v1 v2 f =
+  withSeedV2 @DS @Word seed
+    (genWithMapM (\g -> V.szipWithM (com2M f g) v1 v2))
+    (genWithMapM (\g -> toPrimV2 (VP.zipWithM (com2M f g)) v1 v2))
+
+prop_szipWith3M ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Fun (Word64, Word32, Word16) Word
+  -> Property
+prop_szipWith3M seed v1 v2 v3 f =
+  withSeedV2 @DS @Word seed
+  (genWithMapM (\g -> V.szipWith3M (com3M f g) v1 v2 v3))
+  (genWithMapM (VP.forM (toPrimV3 (VP.zipWith3 (applyFun3 f)) v1 v2 v3)))
+
+prop_szipWith4M ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Fun (Word64, Word32, Word16, Word8) Word
+  -> Property
+prop_szipWith4M seed v1 v2 v3 v4 f =
+  withSeedV2 @DS @Word seed
+  (genWithMapM (\g -> V.szipWith4M (com4M f g) v1 v2 v3 v4))
+  (genWithMapM (VP.forM (toPrimV4 (VP.zipWith4 (applyFun4 f)) v1 v2 v3 v4)))
+
+
+prop_szipWith5M ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Word64, Word32, Word16, Word8, Int8) Word
+  -> Property
+prop_szipWith5M seed v1 v2 v3 v4 v5 f =
+  withSeedV2 @DS @Word seed
+    (genWithMapM (\g -> V.szipWith5M (com5M f g) v1 v2 v3 v4 v5))
+    (genWithMapM (VP.forM (toPrimV5 (VP.zipWith5 (applyFun5 f)) v1 v2 v3 v4 v5)))
+
+
+prop_szipWith6M ::
+     SeedVector
+  -> Vector P Int16
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Int16, (Word64, Word32, Word16, Word8, Int8)) Word
+  -> Property
+prop_szipWith6M seed v1 v2 v3 v4 v5 v6 f =
+  withSeedV2 @DS @Word seed
+    (genWithMapM (\g -> V.szipWith6M (com6M f g) v1 v2 v3 v4 v5 v6))
+    (genWithMapM (VP.forM (toPrimV6 (VP.zipWith6 (applyFun6 f)) v1 v2 v3 v4 v5 v6)))
+
+
+prop_szipWithM_ ::
+     SeedVector -> Vector P Word64 -> Vector P Word32 -> Fun (Word64, Word32) Word -> Property
+prop_szipWithM_ seed v1 v2 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.szipWithM_ (com2M f g) v1 v2))
+    (genWithMapM_ (\g -> toPrimV2 (VP.zipWithM_ (com2M f g)) v1 v2))
+
+prop_szipWith3M_ ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Fun (Word64, Word32, Word16) Word
+  -> Property
+prop_szipWith3M_ seed v1 v2 v3 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.szipWith3M_ (com3M f g) v1 v2 v3))
+    (genWithMapM_ (VP.forM_ (toPrimV3 (VP.zipWith3 (applyFun3 f)) v1 v2 v3)))
+
+prop_szipWith4M_ ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Fun (Word64, Word32, Word16, Word8) Word
+  -> Property
+prop_szipWith4M_ seed v1 v2 v3 v4 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.szipWith4M_ (com4M f g) v1 v2 v3 v4))
+    (genWithMapM_ (VP.forM_ (toPrimV4 (VP.zipWith4 (applyFun4 f)) v1 v2 v3 v4)))
+
+
+prop_szipWith5M_ ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Word64, Word32, Word16, Word8, Int8) Word
+  -> Property
+prop_szipWith5M_ seed v1 v2 v3 v4 v5 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.szipWith5M_ (com5M f g) v1 v2 v3 v4 v5))
+    (genWithMapM_ (VP.forM_ (toPrimV5 (VP.zipWith5 (applyFun5 f)) v1 v2 v3 v4 v5)))
+
+prop_szipWith6M_ ::
+     SeedVector
+  -> Vector P Int16
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Int16, (Word64, Word32, Word16, Word8, Int8)) Word
+  -> Property
+prop_szipWith6M_ seed v1 v2 v3 v4 v5 v6 f =
+  withSeed2 seed
+    (genWithMapM_ (\g -> V.szipWith6M_ (com6M f g) v1 v2 v3 v4 v5 v6))
+    (genWithMapM_ (VP.forM_ (toPrimV6 (VP.zipWith6 (applyFun6 f)) v1 v2 v3 v4 v5 v6)))
+
+prop_sizipWithM ::
+     SeedVector -> Vector U Word64 -> Vector U Word32 -> Fun (Ix1, Word64, Word32) Word -> Property
+prop_sizipWithM seed v1 v2 f =
+  withSeedV2 @DS @Word seed
+    (genWithMapM (\g -> V.sizipWithM (com3M f g) v1 v2))
+    (genWithMapM (\g -> VP.convert <$>
+                        VU.izipWithM (com3M f g) (toUnboxedVector v1) (toUnboxedVector v2)))
+
+prop_sizipWith3M ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Fun (Ix1, Word64, Word32, Word16) Word
+  -> Property
+prop_sizipWith3M seed v1 v2 v3 f =
+  withSeedV2 @DS @Word seed
+  (genWithMapM (\g -> V.sizipWith3M (com4M f g) v1 v2 v3))
+  (genWithMapM (VP.forM (toPrimV3 (VP.izipWith3 (applyFun4 f)) v1 v2 v3)))
+
+prop_sizipWith4M ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Fun (Ix1, Word64, Word32, Word16, Word8) Word
+  -> Property
+prop_sizipWith4M seed v1 v2 v3 v4 f =
+  withSeedV2 @DS @Word seed
+  (genWithMapM (\g -> V.sizipWith4M (com5M f g) v1 v2 v3 v4))
+  (genWithMapM (VP.forM (toPrimV4 (VP.izipWith4 (applyFun5 f)) v1 v2 v3 v4)))
+
+prop_sizipWith5M ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Ix1, (Word64, Word32, Word16, Word8, Int8)) Word
+  -> Property
+prop_sizipWith5M seed v1 v2 v3 v4 v5 f =
+  withSeedV2 @DS @Word seed
+    (genWithMapM (\g -> V.sizipWith5M (com6M f g) v1 v2 v3 v4 v5))
+    (genWithMapM (VP.forM (toPrimV5 (VP.izipWith5 (applyFun6 f)) v1 v2 v3 v4 v5)))
+
+
+prop_sizipWith6M ::
+     SeedVector
+  -> Vector P Int16
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Ix1, Int16, (Word64, Word32, Word16, Word8, Int8)) Word
+  -> Property
+prop_sizipWith6M seed v1 v2 v3 v4 v5 v6 f =
+  withSeedV2 @DS @Word seed
+    (genWithMapM (\g -> V.sizipWith6M (com7M f g) v1 v2 v3 v4 v5 v6))
+    (genWithMapM (VP.forM (toPrimV6 (VP.izipWith6 (applyFun7 f)) v1 v2 v3 v4 v5 v6)))
+
+
+prop_sizipWithM_ ::
+     SeedVector -> Vector U Word64 -> Vector U Word32 -> Fun (Ix1, Word64, Word32) Word -> Property
+prop_sizipWithM_ seed v1 v2 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.sizipWithM_ (com3M f g) v1 v2))
+    (genWithMapM_ (\g -> VU.izipWithM_ (com3M f g) (toUnboxedVector v1) (toUnboxedVector v2)))
+
+prop_sizipWith3M_ ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Fun (Ix1, Word64, Word32, Word16) Word
+  -> Property
+prop_sizipWith3M_ seed v1 v2 v3 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.sizipWith3M_ (com4M f g) v1 v2 v3))
+    (genWithMapM_ (VP.forM_ (toPrimV3 (VP.izipWith3 (applyFun4 f)) v1 v2 v3)))
+
+prop_sizipWith4M_ ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Fun (Ix1, Word64, Word32, Word16, Word8) Word
+  -> Property
+prop_sizipWith4M_ seed v1 v2 v3 v4 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.sizipWith4M_ (com5M f g) v1 v2 v3 v4))
+    (genWithMapM_ (VP.forM_ (toPrimV4 (VP.izipWith4 (applyFun5 f)) v1 v2 v3 v4)))
+
+
+prop_sizipWith5M_ ::
+     SeedVector
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Ix1, (Word64, Word32, Word16, Word8, Int8)) Word
+  -> Property
+prop_sizipWith5M_ seed v1 v2 v3 v4 v5 f =
+  withSeed2
+    seed
+    (genWithMapM_ (\g -> V.sizipWith5M_ (com6M f g) v1 v2 v3 v4 v5))
+    (genWithMapM_ (VP.forM_ (toPrimV5 (VP.izipWith5 (applyFun6 f)) v1 v2 v3 v4 v5)))
+
+
+prop_sizipWith6M_ ::
+     SeedVector
+  -> Vector P Int16
+  -> Vector P Word64
+  -> Vector P Word32
+  -> Vector P Word16
+  -> Vector P Word8
+  -> Vector P Int8
+  -> Fun (Ix1, Int16, (Word64, Word32, Word16, Word8, Int8)) Word
+  -> Property
+prop_sizipWith6M_ seed v1 v2 v3 v4 v5 v6 f =
+  withSeed2 seed
+    (genWithMapM_ (\g -> V.sizipWith6M_ (com7M f g) v1 v2 v3 v4 v5 v6))
+    (genWithMapM_ (VP.forM_ (toPrimV6 (VP.izipWith6 (applyFun7 f)) v1 v2 v3 v4 v5 v6)))
 
 spec :: Spec
 spec =
@@ -503,6 +891,7 @@ spec =
           prop "scatMaybes" $ \(v :: Vector D (Maybe Word)) ->
             V.scatMaybes v !==! toPrimitiveVector (compute (smap fromJust (sfilter isJust v)))
           prop "smapMaybeM" prop_smapMaybeM
+        describe "Mapping" $ do
           prop "fmap" $ \(v :: Vector DS Word) (f :: Fun Word Int) ->
             fmap (apply f) v !==! VP.map (apply f) (toPrimitiveVector (compute v))
           prop "<$" $ \(v :: Vector DS Word) (a :: Char) ->
@@ -517,6 +906,11 @@ spec =
           prop "simapM" prop_simapM
           prop "smapM" prop_smapM_
           prop "simapM" prop_simapM_
+          prop "szip" prop_szip
+          prop "szip3" prop_szip3
+          prop "szip4" prop_szip4
+          prop "szip5" prop_szip5
+          prop "szip6" prop_szip6
           prop "szipWith" prop_szipWith
           prop "szipWith3" prop_szipWith3
           prop "szipWith4" prop_szipWith4
@@ -529,10 +923,27 @@ spec =
           prop "sizipWith6" prop_sizipWith6
           prop "liftA2" $ \(v1 :: Vector DS Word) (v2 :: Vector DS Int) (f :: Fun (Word, Int) Int) ->
             liftA2 (applyFun2 f) v1 v2 !==!
-            VP.zipWith
-              (applyFun2 f)
-              (toPrimitiveVector (compute v1))
-              (toPrimitiveVector (compute v2))
+            toPrimV2 (VP.zipWith (applyFun2 f)) (compute v1) (compute v2)
+          prop "szipWithM" prop_szipWithM
+          prop "szipWith3M" prop_szipWith3M
+          prop "szipWith4M" prop_szipWith4M
+          prop "szipWith5M" prop_szipWith5M
+          prop "szipWith6M" prop_szipWith6M
+          prop "sizipWithM" prop_sizipWithM
+          prop "sizipWith3M" prop_sizipWith3M
+          prop "sizipWith4M" prop_sizipWith4M
+          prop "sizipWith5M" prop_sizipWith5M
+          prop "sizipWith6M" prop_sizipWith6M
+          prop "szipWithM_" prop_szipWithM_
+          prop "szipWith3M_" prop_szipWith3M_
+          prop "szipWith4M_" prop_szipWith4M_
+          prop "szipWith5M_" prop_szipWith5M_
+          prop "szipWith6M_" prop_szipWith6M_
+          prop "sizipWithM_" prop_sizipWithM_
+          prop "sizipWith3M_" prop_sizipWith3M_
+          prop "sizipWith4M_" prop_sizipWith4M_
+          prop "sizipWith5M_" prop_sizipWith5M_
+          prop "sizipWith6M_" prop_sizipWith6M_
       describe "Folding" $ do
         prop "sfoldl" $ \(v :: Vector P Word32) (f :: Fun (Word, Word32) Word) a0 ->
           V.sfoldl (applyFun2 f) a0 v === VP.foldl (applyFun2 f) a0 (toPrimitiveVector v)
@@ -585,18 +996,21 @@ prop_minimumM v =
 
 prop_sitraverse_itraverseA :: SeedVector -> Vector S Word -> Property
 prop_sitraverse_itraverseA seed a =
-  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (`V.sitraverse` a))
-  === withSeed seed (genWithIMapM (`itraverseA` a))
+  withSeed2 @(V.Vector P Word) seed
+  (fmap compute . genWithIMapM (`V.sitraverse` a))
+  (genWithIMapM (`itraverseA` a))
 
 prop_straverse_traversePrim :: SeedVector -> Vector S Word -> Property
 prop_straverse_traversePrim seed a =
-  withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (\f -> V.straverse (f 0) a))
-  === withSeed seed (genWithIMapM (\f -> traversePrim (f 0) a))
+  withSeed2 @(V.Vector P Word) seed
+  (fmap compute . genWithIMapM (\f -> V.straverse (f 0) a))
+  (genWithIMapM (\f -> traversePrim (f 0) a))
 
 prop_sitraverse_itraversePrim :: SeedVector -> Array P Ix3 Word -> Property
 prop_sitraverse_itraversePrim seed a =
-  withSeed @(V.Vector P Word) seed (genWithIMapM (\f -> compute <$> V.sitraverse (xorToLinear f) a))
-  === withSeed seed (genWithIMapM (\f -> flatten <$> itraversePrim @P (xorToLinear f) a))
+  withSeed2 @(V.Vector P Word) seed
+  (genWithIMapM (\f -> compute <$> V.sitraverse (xorToLinear f) a))
+  (genWithIMapM (\f -> flatten <$> itraversePrim @P (xorToLinear f) a))
   where
     xorToLinear f i = f (foldlIndex xor 0 i)
 
@@ -606,8 +1020,10 @@ prop_smapM_traverseA_ seed a =
 
 prop_simapM_itraverseA_ :: SeedVector -> Array P Ix2 Word -> Property
 prop_simapM_itraverseA_ seed a =
-  withSeed seed (genWithIMapM_ (\f -> V.simapM_ (xorToLinear f) a)) ===
-  withSeed seed (genWithIMapM_ (\f -> itraverseA_ (xorToLinear f) a))
+  withSeed2
+    seed
+    (genWithIMapM_ (\f -> V.simapM_ (xorToLinear f) a))
+    (genWithIMapM_ (\f -> itraverseA_ (xorToLinear f) a))
   where
     xorToLinear f i = f (foldlIndex xor 0 i)
 
