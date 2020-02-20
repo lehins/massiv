@@ -100,8 +100,10 @@ module Data.Massiv.Vector.Stream
   -- ** Unfolding
   , unfoldr
   , unfoldrN
+  , unsafeUnfoldrN
   , unfoldrM
   , unfoldrNM
+  , unsafeUnfoldrNM
   , unfoldrExactN
   , unfoldrExactNM
   -- ** Enumeration
@@ -110,6 +112,7 @@ module Data.Massiv.Vector.Stream
   , toList
   , fromList
   , fromListN
+  , unsafeFromListN
   -- ** Filter
   , mapMaybe
   , mapMaybeA
@@ -748,16 +751,24 @@ unfoldr f e0 = Steps (S.unfoldr f e0) Unknown
 {-# INLINE unfoldr #-}
 
 unfoldrN :: Monad m => Int -> (s -> Maybe (e, s)) -> s -> Steps m e
-unfoldrN n f e0 = Steps (S.unfoldrN n f e0) (Max n)
+unfoldrN n f e0 = Steps (S.unfoldrN n f e0) Unknown
 {-# INLINE unfoldrN #-}
+
+unsafeUnfoldrN :: Monad m => Int -> (s -> Maybe (e, s)) -> s -> Steps m e
+unsafeUnfoldrN n f e0 = Steps (S.unfoldrN n f e0) (Max n)
+{-# INLINE unsafeUnfoldrN #-}
 
 unfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> Steps m e
 unfoldrM f e0 = Steps (S.unfoldrM f e0) Unknown
 {-# INLINE unfoldrM #-}
 
 unfoldrNM :: Monad m => Int -> (s -> m (Maybe (e, s))) -> s -> Steps m e
-unfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) (Max n)
+unfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) Unknown
 {-# INLINE unfoldrNM #-}
+
+unsafeUnfoldrNM :: Monad m => Int -> (s -> m (Maybe (e, s))) -> s -> Steps m e
+unsafeUnfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) (Max n)
+{-# INLINE unsafeUnfoldrNM #-}
 
 unfoldrExactN :: Monad m => Int -> (s -> (a, s)) -> s -> Steps m a
 unfoldrExactN n f = unfoldrExactNM n (pure . f)
@@ -789,8 +800,12 @@ fromList = (`Steps` Unknown) . S.fromList
 {-# INLINE fromList #-}
 
 fromListN :: Monad m => Int -> [e] -> Steps m e
-fromListN n  = (`Steps` Max n) . S.fromListN n
+fromListN n  = (`Steps` Unknown) . S.fromListN n
 {-# INLINE fromListN #-}
+
+unsafeFromListN :: Monad m => Int -> [e] -> Steps m e
+unsafeFromListN n  = (`Steps` Max n) . S.fromListN n
+{-# INLINE unsafeFromListN #-}
 
 liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Stream m b)
 liftListA f str = S.fromList <$> f (unId (S.toList str))

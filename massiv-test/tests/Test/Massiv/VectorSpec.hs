@@ -861,11 +861,17 @@ spec =
                   | b > 10000 || b `div` 19 == 0 = Nothing
                   | otherwise = Just (b * b, b + 1)
              in V.sunfoldrN (Sz n) f a !==! VP.unfoldrN n f a
+          it "sunfoldrN (maxBound)" $
+            let maxv = V.sunfoldrN (Sz maxBound) (const (Nothing :: Maybe (Word8, Word8))) 0
+             in computeAs P maxv `shouldBe` A.empty
           prop "sunfoldrExactN" $ \n (a :: Word) ->
             let f b = (b * b, b + 1)
              in V.sunfoldrExactN (Sz n) f a !==! VP.unfoldrN n (Just . f) a
           prop "sunfoldrM" prop_sunfoldrM
           prop "sunfoldrNM" prop_sunfoldrNM
+          it "sunfoldrNM (maxBound)" $
+            let maxv = V.sunfoldrNM (Sz maxBound) (pure . const (Nothing :: Maybe (Word8, Word8))) 0
+             in computeAs P <$> maxv `shouldReturn` A.empty
           prop "sunfoldrExactM" prop_sunfoldrExactNM
         describe "Enumeration" $ do
           prop "senumFromN" $ \(i :: Int) n -> V.senumFromN i (Sz n) !==! VP.enumFromN i n
@@ -970,6 +976,8 @@ spec =
             sfromList xs !==! toPrimitiveVector (fromList comp xs)
           prop "sfromList" $ \(xs :: [Word]) -> sfromList xs !==! VP.fromList xs
           prop "sfromListN" $ \sz@(Sz n) (xs :: [Word]) -> sfromListN sz xs !==! VP.fromListN n xs
+          prop "sfromListN (maxBound)" $ \(xs :: [Word]) ->
+            sfromListN (Sz (maxBound `div` 8)) xs !==! VP.fromList xs
 
 prop_sfoldl1' :: Vector P Word -> Fun (Word, Word) Word -> Property
 prop_sfoldl1' v f =

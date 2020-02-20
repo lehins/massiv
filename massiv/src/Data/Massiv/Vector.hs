@@ -912,7 +912,7 @@ sunfoldrN ::
 sunfoldrN (Sz n) f = DSArray . S.unfoldrN n f
 {-# INLINE sunfoldrN #-}
 
--- | Same as `unfoldr`, by with monadic generating function.
+-- | Same as `unfoldr`, but with monadic generating function.
 --
 -- ==== __Examples__
 --
@@ -921,7 +921,7 @@ sunfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
 sunfoldrM f = fromStepsM . S.unfoldrM f
 {-# INLINE sunfoldrM #-}
 
--- | Same as `unfoldrN`, by with monadic generating function.
+-- | Same as `unfoldrN`, but with monadic generating function.
 --
 -- ==== __Examples__
 --

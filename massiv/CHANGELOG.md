@@ -3,6 +3,10 @@
 * Fix `sfromListN` acceptain a plain `Int` instead of `Sz1`, as well as switch to upper bound.
 * Fix order of argumetns in `iforM`
 * Restrict `szip*`, `szipWith*` and `sizipWith*` functions to flat vectors.
+* Addition of `unsafeSUnfoldrN`, `unsafeSUnfoldrNM` and `unsafeSFromListN`
+* Fix `sunfoldrN`, `sunfoldrNM` and `sfromListN` to not trust the supplied size.
+
+
 
 # 0.5.0
 

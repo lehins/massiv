@@ -33,10 +33,16 @@ module Data.Massiv.Vector.Unsafe
   -- , unsafeBackpermute
   -- -- ** Predicates
   -- , unsafePartition
+  -- ** Unbounded streams
+  , unsafeSUnfoldrN
+  , unsafeSUnfoldrNM
+  , unsafeSFromListN
   ) where
 
 import Data.Coerce
 import Data.Massiv.Core.Common
+import Data.Massiv.Array.Delayed.Stream
+import qualified Data.Massiv.Vector.Stream as S
 
 -- ========= --
 -- Accessors --
@@ -123,3 +129,48 @@ unsafeDrop :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
 unsafeDrop (Sz d) v = unsafeLinearSlice d (SafeSz (coerce (size v) - d)) v
 {-# INLINE unsafeDrop #-}
 
+
+-- | Convert a list of a known length to a delayed stream vector.
+--
+-- /Unsafe/ - This function is unsafe because it will allocate enough space in memory for
+-- @n@ elements ahead of time, regardless of the actual size of the list. Supplying @n@
+-- that is too big will result in an asynchronous `Control.Exception.Base.HeapOverflow`
+-- exception.
+--
+-- @since 0.5.1
+unsafeSFromListN :: Sz1 -> [e] -> Vector DS e
+unsafeSFromListN (Sz n) = fromSteps . S.unsafeFromListN n
+{-# INLINE unsafeSFromListN #-}
+
+-- | /O(n)/ - Right unfolding function with at most @n@ number of elements.
+--
+-- /Unsafe/ - This function is unsafe because it will allocate enough space in memory for
+-- @n@ elements ahead of time, regardless of when unfolding function returns a
+-- `Nothing`. Supplying @n@ that is too big will result in an asynchronous
+-- `Control.Exception.Base.HeapOverflow` exception.
+--
+-- @since 0.5.1
+unsafeSUnfoldrN ::
+     Sz1
+  -- ^ @n@ - maximum number of elements that the vector will have
+  -> (s -> Maybe (e, s))
+  -- ^ Unfolding function. Stops when `Nothing` is returned or maximum number of elements
+  -- is reached.
+  -> s -- ^ Inititial element.
+  -> Vector DS e
+unsafeSUnfoldrN (Sz n) f = DSArray . S.unsafeUnfoldrN n f
+{-# INLINE unsafeSUnfoldrN #-}
+
+
+
+-- | Same as `unsafeSUnfoldrN`, but with monadic generating function.
+--
+-- /Unsafe/ - This function is unsafe because it will allocate enough space in memory for
+-- @n@ elements ahead of time, regardless of when unfolding function returns a
+-- `Nothing`. Supplying @n@ that is too big will result in an asynchronous
+-- `Control.Exception.Base.HeapOverflow` exception.
+--
+-- @since 0.5.1
+unsafeSUnfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
+unsafeSUnfoldrNM (Sz n) f = fromStepsM . S.unsafeUnfoldrNM n f
+{-# INLINE unsafeSUnfoldrNM #-}
