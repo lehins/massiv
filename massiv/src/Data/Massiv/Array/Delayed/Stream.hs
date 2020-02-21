@@ -186,6 +186,9 @@ instance Load DS Ix1 e where
   maxSize = coerce . upperBound . stepsSize . dsArray
   {-# INLINE maxSize #-}
 
+  isEmpty = S.unId . S.null . coerce
+  {-# INLINE isEmpty #-}
+
   getComp _ = Seq
   {-# INLINE getComp #-}
 

@@ -5,8 +5,8 @@
 * Restrict `szip*`, `szipWith*` and `sizipWith*` functions to flat vectors.
 * Addition of `unsafeSUnfoldrN`, `unsafeSUnfoldrNM` and `unsafeSFromListN`
 * Fix `sunfoldrN`, `sunfoldrNM` and `sfromListN` to not trust the supplied size.
-
-
+* Move `isEmpty` into `Load` class
+* Add `isNotEmpty`
 
 # 0.5.0
 

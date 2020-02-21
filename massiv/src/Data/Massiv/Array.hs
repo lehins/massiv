@@ -104,6 +104,7 @@ module Data.Massiv.Array
   , size
   , elemsCount
   , isEmpty
+  , isNotEmpty
   -- * Indexing
   , (!?)
   , (!)

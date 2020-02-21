@@ -37,14 +37,6 @@ module Data.Massiv.Array.Ops.Transform
   , deleteColumnsM
   , deleteRegionM
   -- ** Append/Split
-  , cons
-  , unconsM
-  -- , headM
-  -- , head'
-  , snoc
-  , unsnocM
-  -- , lastM
-  -- , last'
   , appendOuterM
   , appendM
   , append'
@@ -398,97 +390,6 @@ backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 {-# INLINE backpermute' #-}
 
 
--- | /O(1)/ - Add an element to the vector from the left side
---
--- @since 0.3.0
-cons :: e -> Array DL Ix1 e -> Array DL Ix1 e
-cons e arr =
-  arr
-    { dlSize = SafeSz (1 + unSz (dlSize arr))
-    , dlLoad =
-        \scheduler startAt uWrite ->
-          uWrite startAt e >> dlLoad arr scheduler (startAt + 1) uWrite
-    }
-{-# INLINE cons #-}
-
-
--- -- | /O(1)/ - Take the first element off the vector from the left side.
--- --
--- -- @since 0.4.3
--- headM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m e
--- headM = fmap fst . unconsM
--- {-# INLINE headM #-}
-
--- -- | /O(1)/ - Take the first element off the vector from the left side. Throws
--- -- `SizeEmptyException`
--- --
--- -- @since 0.4.3
--- head' :: Source r Ix1 e => Array r Ix1 e -> e
--- head' = either throw id . headM
--- {-# INLINE head' #-}
-
-
--- -- | /O(1)/ - Take the last element off the vector from the right side.
--- --
--- -- @since 0.4.3
--- lastM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m e
--- lastM = fmap snd . unsnocM
--- {-# INLINE lastM #-}
-
--- -- | /O(1)/ - Take the last element off the vector from the right side. Throws
--- -- `SizeEmptyException`
--- --
--- -- @since 0.4.3
--- last' :: Source r Ix1 e => Array r Ix1 e -> e
--- last' = either throw id . lastM
--- {-# INLINE last' #-}
-
-
-
--- | /O(1)/ - Take one element off the vector from the left side.
---
--- @since 0.3.0
-unconsM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (e, Array D Ix1 e)
-unconsM arr
-  | 0 == totalElem sz = throwM $ SizeEmptyException sz
-  | otherwise =
-    pure
-      ( unsafeLinearIndex arr 0
-      , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\ !i -> unsafeLinearIndex arr (i + 1)))
-  where
-    !sz = size arr
-{-# INLINE unconsM #-}
-
--- | /O(1)/ - Add an element to the vector from the right side
---
--- @since 0.3.0
-snoc :: Array DL Ix1 e -> e -> Array DL Ix1 e
-snoc arr e =
-  arr
-    { dlSize = SafeSz (1 + k)
-    , dlLoad =
-        \scheduler startAt uWrite -> dlLoad arr scheduler startAt uWrite >> uWrite (k + startAt) e
-    }
-  where
-    !k = unSz (size arr)
-{-# INLINE snoc #-}
-
-
--- | /O(1)/ - Take one element off the vector from the right side.
---
--- @since 0.3.0
-unsnocM :: (MonadThrow m, Source r Ix1 e) => Array r Ix1 e -> m (Array D Ix1 e, e)
-unsnocM arr
-  | k < 0 = throwM $ SizeEmptyException sz
-  | otherwise =
-    pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
-  where
-    !sz = size arr
-    !k = unSz sz - 1
-{-# INLINE unsnocM #-}
-
-
-
 -- | Append two arrays together along a particular dimension. Sizes of both arrays must match, with
 -- an allowed exception of the dimension they are being appended along, otherwise `Nothing` is
 -- returned.
@@ -570,8 +471,9 @@ concat' n arrs = either throw id $ concatM n arrs
 {-# INLINE concat' #-}
 
 -- | Concatenate many arrays together along some dimension. It is important that all sizes are
--- equal, with an exception of the dimensions along which concatenation happens, otherwise it doues
--- result in a `SizeMismatchException` exception.
+-- equal, with an exception of the dimensions along which concatenation happens.
+--
+-- /__Exceptions__/: `IndexDimensionException`, `SizeMismatchException`
 --
 -- @since 0.3.0
 concatM ::
@@ -611,7 +513,11 @@ concatM n !arrsF =
 {-# INLINE concatM #-}
 
 
--- | /O(1)/ - Split an array at an index along a specified dimension.
+-- | /O(1)/ - Split an array into two at an index along a specified dimension.
+--
+-- /Related/: `splitAt'`, `splitExtractM`, `Data.Massiv.Vector.sliceAt'`, `Data.Massiv.Vector.sliceAtM`
+--
+-- /__Exceptions__/: `IndexDimensionException`, `SizeSubregionException`
 --
 -- @since 0.3.0
 splitAtM ::
@@ -629,8 +535,13 @@ splitAtM dim i arr = do
   return (arr1, arr2)
 {-# INLINE splitAtM #-}
 
--- | Same as `splitAt`, but will throw an error instead of returning `Nothing` on wrong dimension
--- and index out of bounds.
+-- | /O(1)/ - Split an array into two at an index along a specified dimension. Throws an
+-- error for a wrong dimension or incorrect indices.
+--
+-- /Related/: `splitAtM`, `splitExtractM`, `Data.Massiv.Vector.sliceAt'`, `Data.Massiv.Vector.sliceAtM`
+--
+-- ==== __Examples__
+--
 --
 -- @since 0.1.0
 splitAt' :: Extract r ix e =>

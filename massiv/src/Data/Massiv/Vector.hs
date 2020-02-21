@@ -19,8 +19,10 @@ module Data.Massiv.Vector
   , size
   , snull
   -- *** Indexing
-  , (!)
   , (!?)
+  , (!)
+  , index
+  , index'
   , head'
   , shead'
   , last'
@@ -29,6 +31,8 @@ module Data.Massiv.Vector
   , headM
   , sheadM
   , lastM
+  , unconsM
+  , unsnocM
   -- ** Slicing
   , slice
   , slice'
@@ -61,6 +65,8 @@ module Data.Massiv.Vector
   , sempty
   , singleton
   , ssingleton
+  , cons
+  , snoc
   , A.replicate
   , sreplicate
   , generate
@@ -274,11 +280,12 @@ import Control.Monad hiding (filterM, replicateM)
 import Data.Coerce
 import Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Delayed.Pull
+import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Delayed.Stream
-import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Manifest.List (fromList)
 import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Ops.Construct
 import qualified Data.Massiv.Array.Ops.Construct as A (makeArrayR, replicate)
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
@@ -295,20 +302,36 @@ import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take)
 -- Length information --
 ------------------------
 
--- | /O(1)/ - Get the length of a stream vector, but only if it is known exactly.
+-- | /O(1)/ - Get the length of a `Stream` array, but only if it is known exactly in
+-- constant time without looking at any of the elements in the array.
 --
--- There are also `size` and `sizeMax`. Calling `size` will always give you the exact size
--- instead, but for `DS` representation it could result in evaluation of the whole
--- stream, similar to how `Data.List.length` on lists works.
+-- /Related/: `maxSize`, `size`, `elemsCount` and `totalElem`
 --
 -- ==== __Examples__
 --
+-- >>> slength $ sfromList []
+-- Nothing
+-- >>> slength $ sreplicate 5 ()
+-- Just (Sz1 5)
+-- >>> slength $ makeArrayLinearR D Seq (Sz1 5) id
+-- Just (Sz1 5)
 -- >>> slength $ sunfoldr (\x -> Just (x, x)) (0 :: Int)
 -- Nothing
 -- >>> slength $ sunfoldrN 10 (\x -> Just (x, x)) (0 :: Int)
 -- Nothing
 -- >>> slength $ sunfoldrExactN 10 (\x -> (x, x)) (0 :: Int)
 -- Just (Sz1 10)
+--
+-- /Similar/:
+--
+-- [@Data.Foldable.`Data.Foldable.length`@] For some data structures, like a list for
+-- example, it is an /O(n)/ operation, because there is a need to evaluate the full spine
+-- and possibly even the elements in order to get the full length. With `Stream` vectors
+-- that is rarely the case.
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.length`@] In the vector package this
+-- function will always break fusion, unless it is the only operation that is applied to
+-- the vector.
 --
 -- @since 0.5.0
 slength :: Stream r ix e => Array r ix e -> Maybe Sz1
@@ -318,9 +341,11 @@ slength v =
     _        -> Nothing
 {-# INLINE slength #-}
 
--- | /O(1)/ - Check if a stream array is empty or not. It only looks at the exact size
+-- | /O(1)/ - Check wether a `Stream` array is empty or not. It only looks at the exact size
 -- (i.e. `slength`), if it is available, otherwise checks if there is at least one element
 -- in a stream.
+--
+-- /Related/: `isEmpty`, `isNotEmpty`
 --
 -- ==== __Examples__
 --
@@ -335,9 +360,17 @@ slength v =
 -- >>> snull $ sfromList [1 :: Int ..]
 -- False
 --
+-- /Similar/:
+--
+-- [@Data.Foldable.`Data.Foldable.null`] - List fusion is also broken with a check for
+-- emptiness, unless there are no other consumers of the list.
+-- [@Data.Vector.Generic.`Data.Vector.Generic.null`@] - Same as with
+-- `Data.Vector.Generic.length`, unless it is the only operation applied to the vector it
+-- will break fusion and will result in the vector being fully matrialized in memory.
+--
 -- @since 0.5.0
-snull :: Stream r ix e => Array r ix e -> Bool
-snull = S.unId . S.null . toStream
+snull :: Load r ix e => Array r ix e -> Bool
+snull = isEmpty
 {-# INLINE snull #-}
 
 --------------
@@ -346,7 +379,9 @@ snull = S.unId . S.null . toStream
 
 -- TODO: Add to vector: headMaybe
 
--- | Get the first element of a `Source` vector. Throws an error on empty.
+-- | /O(1)/ - Get the first element of a `Source` vector. Throws an error on empty.
+--
+-- /Related/: `shead'`, `headM`, `sheadM`, `unconsM`.
 --
 -- ==== __Examples__
 --
@@ -355,13 +390,25 @@ snull = S.unId . S.null . toStream
 -- >>> head' (Ix1 10 ..: 10)
 -- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
+-- /__Similar__/:
+--
+-- [@Data.List.`Data.List.head`@] Also constant time and partial. Fusion is broken if
+-- there other consumers of the list.
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.head`@] Also constant time and partial. Will
+-- cause materialization of the full vector if any other function is applied to the vector.
+--
 -- @since 0.5.0
 head' :: Source r Ix1 e => Vector r e -> e
 head' = either throw id . headM
 {-# INLINE head' #-}
 
 
--- | Get the first element of a `Source` vector. Throws an error on empty.
+-- | /O(1)/ - Get the first element of a `Source` vector.
+--
+-- /Related/: `head'`, `shead'`, `sheadM`, `unconsM`.
+--
+-- /__Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
@@ -382,7 +429,9 @@ headM v
 {-# INLINE headM #-}
 
 
--- | Get the first element of a `Stream` vector. Throws an error on empty.
+-- | /O(1)/ - Get the first element of a `Stream` vector. Throws an error on empty.
+--
+-- /Related/: `head'`, `headM`, `sheadM`, `unconsM`.
 --
 -- ==== __Examples__
 --
@@ -397,7 +446,11 @@ shead' :: Stream r Ix1 e => Vector r e -> e
 shead' = either throw id . sheadM
 {-# INLINE shead' #-}
 
--- | Get the first element of a `Stream` vector. Throws an error on empty.
+-- | /O(1)/ - Get the first element of a `Stream` vector.
+--
+-- /Related/: `head'`, `headM`, `shead'`, `unconsM`.
+--
+-- /__Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
@@ -414,7 +467,58 @@ sheadM v =
     Just e  -> pure e
 {-# INLINE sheadM #-}
 
--- | Get the last element of a `Source` vector. Throws an error on empty.
+
+-- | /O(1)/ - Take one element off of the vector from the left side, as well as the
+-- remaining part of the vector.
+--
+-- /Related/: `head'`, `shead'`, `headM`, `sheadM`, `cons`
+--
+-- /__Exceptions__/: `SizeEmptyException`
+--
+-- ==== __Examples__
+--
+-- >>> unconsM (fromList Seq [1,2,3] :: Array P Ix1 Int)
+-- (1,Array D Seq (Sz1 2)
+--   [ 2, 3 ])
+--
+-- @since 0.3.0
+unconsM :: (MonadThrow m, Source r Ix1 e) => Vector r e -> m (e, Vector D e)
+unconsM arr
+  | 0 == totalElem sz = throwM $ SizeEmptyException sz
+  | otherwise =
+    pure
+      ( unsafeLinearIndex arr 0
+      , makeArray (getComp arr) (SafeSz (unSz sz - 1)) (\ !i -> unsafeLinearIndex arr (i + 1)))
+  where
+    !sz = size arr
+{-# INLINE unconsM #-}
+
+-- | /O(1)/ - Take one element off of the vector from the right side, as well as the
+-- remaining part of the vector.
+--
+-- /Related/: `last'`, `lastM`, `snoc`
+--
+-- /__Exceptions__/: `SizeEmptyException`
+--
+-- ==== __Examples__
+--
+-- >>> unsnocM (fromList Seq [1,2,3] :: Array P Ix1 Int)
+-- (Array D Seq (Sz1 2)
+--   [ 1, 2 ],3)
+--
+-- @since 0.3.0
+unsnocM :: (MonadThrow m, Source r Ix1 e) => Vector r e -> m (Vector D e, e)
+unsnocM arr
+  | k < 0 = throwM $ SizeEmptyException sz
+  | otherwise =
+    pure (makeArray (getComp arr) (SafeSz k) (unsafeLinearIndex arr), unsafeLinearIndex arr k)
+  where
+    !sz = size arr
+    !k = unSz sz - 1
+{-# INLINE unsnocM #-}
+
+
+-- | /O(1)/ - Get the last element of a `Source` vector. Throws an error on empty.
 --
 -- ==== __Examples__
 --
@@ -429,7 +533,9 @@ last' = either throw id . lastM
 {-# INLINE last' #-}
 
 
--- | Get the last element of a `Source` vector. Throws an error on empty.
+-- | /O(1)/ - Get the last element of a `Source` vector.
+--
+-- /__Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
@@ -498,6 +604,11 @@ slice' i k = either throw id . sliceM i k
 -- | /O(1)/ - Take a slice of a `Source` vector. Throws an error on incorrect indices.
 --
 -- ==== __Examples__
+--
+-- ==== __Exceptions__
+--
+-- * Throws `SizeSubregionException` when either starting index or resulting size would
+-- cause out of bounds indexing.
 --
 -- @since 0.5.0
 sliceM :: (Source r Ix1 e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
@@ -798,6 +909,36 @@ sempty = DSArray S.empty
 ssingleton :: e -> Vector DS e
 ssingleton = DSArray . S.singleton
 {-# INLINE ssingleton #-}
+
+-- | /O(1)/ - Add an element to the vector from the left side
+--
+-- @since 0.3.0
+cons :: e -> Vector DL e -> Vector DL e
+cons e arr =
+  arr
+    { dlSize = SafeSz (1 + unSz (dlSize arr))
+    , dlLoad =
+        \scheduler startAt uWrite ->
+          uWrite startAt e >> dlLoad arr scheduler (startAt + 1) uWrite
+    }
+{-# INLINE cons #-}
+
+
+-- | /O(1)/ - Add an element to the vector from the right side
+--
+-- @since 0.3.0
+snoc :: Vector DL e -> e -> Vector DL e
+snoc arr e =
+  arr
+    { dlSize = SafeSz (1 + k)
+    , dlLoad =
+        \scheduler startAt uWrite -> dlLoad arr scheduler startAt uWrite >> uWrite (k + startAt) e
+    }
+  where
+    !k = unSz (size arr)
+{-# INLINE snoc #-}
+
+
 
 -- | Replicate the same element @n@ times
 --

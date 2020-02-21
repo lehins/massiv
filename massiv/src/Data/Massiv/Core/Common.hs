@@ -53,7 +53,7 @@ module Data.Massiv.Core.Common
   , singleton
   -- * Size
   , elemsCount
-  , isEmpty
+  , isNotEmpty
   , Sz(SafeSz)
   , Size(..)
   -- * Indexing
@@ -255,9 +255,10 @@ class Load r ix e => Source r ix e where
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
-  -- | Source arrays also give us ability to look at their linear slices
+  -- | /O(1)/ - Source arrays also give us ability to look at their linear slices in
+  -- constant time
   --
-  -- @since 0.4.1
+  -- @since 0.5.0
   unsafeLinearSlice :: Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
 
 -- | Any array that can be computed and loaded into memory
@@ -270,7 +271,9 @@ class (Typeable r, Index ix) => Load r ix e where
   -- @since 0.1.0
   getComp :: Array r ix e -> Comp
 
-  -- | Get the size of an immutabe array
+  -- | Get the exact size of an immutabe array. Most of the time will produce the size in
+  -- constant time, except for `DS` representation, which could result in evaluation of
+  -- the whole stream. See `maxSize` and `Data.Massiv.Vector.slength` for more info.
   --
   -- @since 0.1.0
   size :: Array r ix e -> Sz ix
@@ -291,13 +294,30 @@ class (Typeable r, Index ix) => Load r ix e where
   {-# INLINE defaultElement #-}
 
   -- | /O(1)/ - Get the possible maximum size of an immutabe array. If the lookup of size
-  -- in constant time is not possible, `Nothing` should be returned. This value will be
-  -- used as the initial size of the mutable array in which loading will happen.
+  -- in constant time is not possible, `Nothing` will be returned. This value will be used
+  -- as the initial size of the mutable array into which the loading will happen.
   --
   -- @since 0.5.0
   maxSize :: Array r ix e -> Maybe (Sz ix)
   maxSize = Just . size
   {-# INLINE maxSize #-}
+
+
+  -- | /O(1)/ - Check if an array has no elements.
+  --
+  -- ==== __Examples__
+  --
+  -- >>> import Data.Massiv.Array
+  -- >>> isEmpty $ range Seq (Ix2 10 20) (11 :. 21)
+  -- False
+  -- >>> isEmpty $ range Seq (Ix2 10 20) (10 :. 21)
+  -- True
+  --
+  -- @since 0.1.0
+  isEmpty :: Array r ix e -> Bool
+  isEmpty !arr = 0 == elemsCount arr
+  {-# INLINE isEmpty #-}
+
 
   -- | Load into a supplied mutable array sequentially. Returned array does not have to be
   -- the same
@@ -648,7 +668,7 @@ singleton = makeArray Seq oneSz . const
 
 infixl 4 !, !?, ??
 
--- | Infix version of `index'`.
+-- | /O(1)/ - Infix version of `index'`.
 --
 -- ==== __Examples__
 --
@@ -670,7 +690,9 @@ infixl 4 !, !?, ??
 {-# INLINE (!) #-}
 
 
--- | Infix version of `indexM`.
+-- | /O(1)/ - Infix version of `indexM`.
+--
+-- /__Exceptions__/: `IndexOutOfBoundsException`
 --
 -- ==== __Examples__
 --
@@ -698,6 +720,8 @@ infixl 4 !, !?, ??
 -- | /O(1)/ - Lookup an element in the array, where array itself is wrapped with
 -- `MonadThrow`. This operator is useful when used together with slicing or other
 -- functions that can fail.
+--
+-- /__Exceptions__/: `IndexOutOfBoundsException`
 --
 -- ==== __Examples__
 --
@@ -729,15 +753,16 @@ infixl 4 !, !?, ??
 
 -- | /O(1)/ - Lookup an element in the array. Returns `Nothing`, when index is out of bounds and
 -- returns the element at the supplied index otherwise. Use `indexM` instead, since it is more
--- generaland can just as well be used with `Maybe`.
+-- general and it can just as well be used with `Maybe`.
 --
 -- @since 0.1.0
 index :: Manifest r ix e => Array r ix e -> ix -> Maybe e
 index = indexM
 {-# INLINE index #-}
 
--- | /O(1)/ - Lookup an element in the array. Throws `IndexOutOfBoundsException`, when index is out
--- of bounds and returns the element at the supplied index otherwise.
+-- | /O(1)/ - Lookup an element in the array.
+--
+-- /__Exceptions__/: `IndexOutOfBoundsException`
 --
 -- @since 0.3.0
 indexM :: (Manifest r ix e, MonadThrow m) => Array r ix e -> ix -> m e
@@ -861,7 +886,10 @@ imapM_ f !arr =
 {-# INLINE imapM_ #-}
 
 
--- | /O(1)/ - Get the number of elements in the array
+-- | /O(1)/ - Get the number of elements in the array.
+--
+-- /Note/ - It is always a constant time operation except for some arrays with
+-- `Data.Massiv.Array.DS` representation. See `Data.Massiv.Vector.slength` for more info.
 --
 -- ==== __Examples__
 --
@@ -874,17 +902,18 @@ elemsCount :: Load r ix e => Array r ix e -> Int
 elemsCount = totalElem . size
 {-# INLINE elemsCount #-}
 
--- | /O(1)/ - Check if array has no elements.
+
+-- | /O(1)/ - Check if array has elements.
 --
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> isEmpty $ range Seq (Ix2 10 20) (11 :. 21)
--- False
--- >>> isEmpty $ range Seq (Ix2 10 20) (10 :. 21)
+-- >>> isNotEmpty (singleton 1 :: Array D Ix2 Int)
 -- True
+-- >>> isNotEmpty (empty :: Array D Ix2 Int)
+-- False
 --
--- @since 0.1.0
-isEmpty :: Load r ix e => Array r ix e -> Bool
-isEmpty !arr = 0 == elemsCount arr
-{-# INLINE isEmpty #-}
+-- @since 0.5.1
+isNotEmpty :: Load r ix e => Array r ix e -> Bool
+isNotEmpty = not . isEmpty
+{-# INLINE isNotEmpty #-}
