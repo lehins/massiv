@@ -14,6 +14,7 @@ import Control.DeepSeq
 import Control.Exception
 import Data.Bits
 import Data.Massiv.Array as A
+import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Vector as V
 import Data.Maybe
 import Data.Primitive.MutVar
@@ -204,6 +205,10 @@ prop_sunfoldrNM :: SeedVector -> Int -> Word -> Property
 prop_sunfoldrNM seed k a =
   withSeedV2 @DS @Word seed
   (genWithUnfoldrM (\f -> V.sunfoldrNM (Sz k) f a))
+  (genWithUnfoldrM (\f -> VP.unfoldrNM k f a))
+  .&&.
+  withSeedV2 @DS @Word seed
+  (genWithUnfoldrM (\f -> A.unsafeUnfoldrNM (Sz k) f a))
   (genWithUnfoldrM (\f -> VP.unfoldrNM k f a))
 
 prop_sunfoldrExactNM :: SeedVector -> Int -> Word -> Property
@@ -765,9 +770,9 @@ spec =
         prop "smapM == mapWS (Seq)" prop_smapM_mapWS
       describe "Enumeration" $ do
         prop "senumFromN" $ \comp (i :: Int) sz ->
-          V.senumFromN i sz !==! toPrimitiveVector (compute (A.enumFromN comp i sz))
+          computeAs S (V.senumFromN i sz) === compute (A.enumFromN comp i sz)
         prop "senumFromStepN" $ \comp (i :: Int) s sz ->
-          V.senumFromStepN i s sz !==! toPrimitiveVector (compute (A.enumFromStepN comp i s sz))
+          computeAs S (V.senumFromStepN i s sz) === compute (A.enumFromStepN comp i s sz)
     describe "same-as-vector-package" $ do
       describe "Accessors" $ do
         describe "Size" $ do
@@ -860,7 +865,8 @@ spec =
             let f b
                   | b > 10000 || b `div` 19 == 0 = Nothing
                   | otherwise = Just (b * b, b + 1)
-             in V.sunfoldrN (Sz n) f a !==! VP.unfoldrN n f a
+             in V.sunfoldrN (Sz n) f a !==! VP.unfoldrN n f a .&&. A.unsafeUnfoldrN (Sz n) f a !==!
+                VP.unfoldrN n f a
           it "sunfoldrN (maxBound)" $
             let maxv = V.sunfoldrN (Sz maxBound) (const (Nothing :: Maybe (Word8, Word8))) 0
              in computeAs P maxv `shouldBe` A.empty
@@ -978,6 +984,8 @@ spec =
           prop "sfromListN" $ \sz@(Sz n) (xs :: [Word]) -> sfromListN sz xs !==! VP.fromListN n xs
           prop "sfromListN (maxBound)" $ \(xs :: [Word]) ->
             sfromListN (Sz (maxBound `div` 8)) xs !==! VP.fromList xs
+          prop "unsafeFromListN" $ \sz@(Sz n) (xs :: [Word]) ->
+            A.unsafeFromListN sz xs !==! VP.fromListN n xs
 
 prop_sfoldl1' :: Vector P Word -> Fun (Word, Word) Word -> Property
 prop_sfoldl1' v f =

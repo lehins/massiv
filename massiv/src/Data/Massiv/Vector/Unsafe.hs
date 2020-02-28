@@ -34,9 +34,9 @@ module Data.Massiv.Vector.Unsafe
   -- -- ** Predicates
   -- , unsafePartition
   -- ** Unbounded streams
-  , unsafeSUnfoldrN
-  , unsafeSUnfoldrNM
-  , unsafeSFromListN
+  , unsafeUnfoldrN
+  , unsafeUnfoldrNM
+  , unsafeFromListN
   ) where
 
 import Data.Coerce
@@ -130,7 +130,7 @@ unsafeDrop (Sz d) v = unsafeLinearSlice d (SafeSz (coerce (size v) - d)) v
 {-# INLINE unsafeDrop #-}
 
 
--- | Convert a list of a known length to a delayed stream vector.
+-- | /O(n)/ - Convert a list of a known length to a delayed stream vector.
 --
 -- /Unsafe/ - This function is unsafe because it will allocate enough space in memory for
 -- @n@ elements ahead of time, regardless of the actual size of the list. Supplying @n@
@@ -138,9 +138,9 @@ unsafeDrop (Sz d) v = unsafeLinearSlice d (SafeSz (coerce (size v) - d)) v
 -- exception.
 --
 -- @since 0.5.1
-unsafeSFromListN :: Sz1 -> [e] -> Vector DS e
-unsafeSFromListN (Sz n) = fromSteps . S.unsafeFromListN n
-{-# INLINE unsafeSFromListN #-}
+unsafeFromListN :: Sz1 -> [e] -> Vector DS e
+unsafeFromListN (Sz n) = fromSteps . S.unsafeFromListN n
+{-# INLINE unsafeFromListN #-}
 
 -- | /O(n)/ - Right unfolding function with at most @n@ number of elements.
 --
@@ -150,7 +150,7 @@ unsafeSFromListN (Sz n) = fromSteps . S.unsafeFromListN n
 -- `Control.Exception.Base.HeapOverflow` exception.
 --
 -- @since 0.5.1
-unsafeSUnfoldrN ::
+unsafeUnfoldrN ::
      Sz1
   -- ^ @n@ - maximum number of elements that the vector will have
   -> (s -> Maybe (e, s))
@@ -158,12 +158,12 @@ unsafeSUnfoldrN ::
   -- is reached.
   -> s -- ^ Inititial element.
   -> Vector DS e
-unsafeSUnfoldrN (Sz n) f = DSArray . S.unsafeUnfoldrN n f
-{-# INLINE unsafeSUnfoldrN #-}
+unsafeUnfoldrN (Sz n) f = DSArray . S.unsafeUnfoldrN n f
+{-# INLINE unsafeUnfoldrN #-}
 
 
 
--- | Same as `unsafeSUnfoldrN`, but with monadic generating function.
+-- | /O(n)/ - Same as `unsafeUnfoldrN`, but with monadic generating function.
 --
 -- /Unsafe/ - This function is unsafe because it will allocate enough space in memory for
 -- @n@ elements ahead of time, regardless of when unfolding function returns a
@@ -171,6 +171,6 @@ unsafeSUnfoldrN (Sz n) f = DSArray . S.unsafeUnfoldrN n f
 -- `Control.Exception.Base.HeapOverflow` exception.
 --
 -- @since 0.5.1
-unsafeSUnfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
-unsafeSUnfoldrNM (Sz n) f = fromStepsM . S.unsafeUnfoldrNM n f
-{-# INLINE unsafeSUnfoldrNM #-}
+unsafeUnfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
+unsafeUnfoldrNM (Sz n) f = fromStepsM . S.unsafeUnfoldrNM n f
+{-# INLINE unsafeUnfoldrNM #-}

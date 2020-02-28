@@ -92,7 +92,9 @@ module Data.Massiv.Vector
   -- ** Enumeration
   , (...)
   , (..:)
+  , enumFromN
   , senumFromN
+  , enumFromStepN
   , senumFromStepN
   -- ** Concatenation
   -- , consS -- cons
@@ -245,6 +247,20 @@ module Data.Massiv.Vector
   , fromList
   , sfromList
   , sfromListN
+  -- * Computation
+  , compute
+  , computeS
+  , computeIO
+  , computePrimM
+  , computeAs
+  , computeProxy
+  , computeSource
+  , computeWithStride
+  , computeWithStrideAs
+  , clone
+  , convert
+  , convertAs
+  , convertProxy
   -- -- ** Other vector types
   -- , convert
   -- -- ** Mutable vectors
@@ -283,6 +299,7 @@ import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Manifest
+import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List (fromList)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
@@ -322,7 +339,7 @@ import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take)
 -- >>> slength $ sunfoldrExactN 10 (\x -> (x, x)) (0 :: Int)
 -- Just (Sz1 10)
 --
--- /Similar/:
+-- /__Similar__/:
 --
 -- [@Data.Foldable.`Data.Foldable.length`@] For some data structures, like a list for
 -- example, it is an /O(n)/ operation, because there is a need to evaluate the full spine
@@ -341,7 +358,7 @@ slength v =
     _        -> Nothing
 {-# INLINE slength #-}
 
--- | /O(1)/ - Check wether a `Stream` array is empty or not. It only looks at the exact size
+-- | /O(1)/ - Check whether a `Stream` array is empty or not. It only looks at the exact size
 -- (i.e. `slength`), if it is available, otherwise checks if there is at least one element
 -- in a stream.
 --
@@ -360,13 +377,14 @@ slength v =
 -- >>> snull $ sfromList [1 :: Int ..]
 -- False
 --
--- /Similar/:
+-- /__Similar__/:
 --
--- [@Data.Foldable.`Data.Foldable.null`] - List fusion is also broken with a check for
+-- [@Data.Foldable.`Data.Foldable.null`@] List fusion is also broken with a check for
 -- emptiness, unless there are no other consumers of the list.
--- [@Data.Vector.Generic.`Data.Vector.Generic.null`@] - Same as with
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.null`@] Same as with
 -- `Data.Vector.Generic.length`, unless it is the only operation applied to the vector it
--- will break fusion and will result in the vector being fully matrialized in memory.
+-- will break fusion and will result in the vector being fully materialized in memory.
 --
 -- @since 0.5.0
 snull :: Load r ix e => Array r ix e -> Bool
@@ -377,7 +395,6 @@ snull = isEmpty
 -- Indexing --
 --------------
 
--- TODO: Add to vector: headMaybe
 
 -- | /O(1)/ - Get the first element of a `Source` vector. Throws an error on empty.
 --
@@ -408,7 +425,7 @@ head' = either throw id . headM
 --
 -- /Related/: `head'`, `shead'`, `sheadM`, `unconsM`.
 --
--- /__Exceptions__/: `SizeEmptyException`
+-- /__Throws Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
@@ -420,6 +437,11 @@ head' = either throw id . headM
 -- Nothing
 -- >>> either show (const "") $ headM (Ix1 10 ..: 10)
 -- "SizeEmptyException: (Sz1 0) corresponds to an empty array"
+--
+-- /__Similar__/:
+--
+-- [@Data.Maybe.`Data.Maybe.listToMaybe`@] It also a safe way to get the head of the list,
+-- except it is restricted to `Maybe`
 --
 -- @since 0.5.0
 headM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
@@ -448,12 +470,16 @@ shead' = either throw id . sheadM
 
 -- | /O(1)/ - Get the first element of a `Stream` vector.
 --
--- /Related/: `head'`, `headM`, `shead'`, `unconsM`.
+-- /Related/: `head'`, `shead'`, `headM`, `unconsM`.
 --
--- /__Exceptions__/: `SizeEmptyException`
+-- /__Throws Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
+-- >>> maybe 101 id $ sheadM (empty :: Vector D Int)
+-- 101
+-- >>> maybe 101 id $ sheadM (singleton 202 :: Vector D Int)
+-- 202
 -- >>> sheadM $ sunfoldr (\x -> Just (x, x)) (0 :: Int)
 -- 0
 -- >>> x <- sheadM $ sunfoldr (\_ -> Nothing) (0 :: Int)
@@ -468,18 +494,23 @@ sheadM v =
 {-# INLINE sheadM #-}
 
 
--- | /O(1)/ - Take one element off of the vector from the left side, as well as the
--- remaining part of the vector.
+-- | /O(1)/ - Take one element off of the `Source` vector from the left side, as well as
+-- the remaining part of the vector in delayed `D` representation.
 --
 -- /Related/: `head'`, `shead'`, `headM`, `sheadM`, `cons`
 --
--- /__Exceptions__/: `SizeEmptyException`
+-- /__Throws Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
 -- >>> unconsM (fromList Seq [1,2,3] :: Array P Ix1 Int)
 -- (1,Array D Seq (Sz1 2)
 --   [ 2, 3 ])
+--
+-- /__Similar__/:
+--
+-- [@Data.List.`Data.List.uncons`@] Same concept, except restricted to `Maybe` instead of
+-- the more general `MonadThrow`
 --
 -- @since 0.3.0
 unconsM :: (MonadThrow m, Source r Ix1 e) => Vector r e -> m (e, Vector D e)
@@ -498,7 +529,7 @@ unconsM arr
 --
 -- /Related/: `last'`, `lastM`, `snoc`
 --
--- /__Exceptions__/: `SizeEmptyException`
+-- /__Throws Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
@@ -520,12 +551,22 @@ unsnocM arr
 
 -- | /O(1)/ - Get the last element of a `Source` vector. Throws an error on empty.
 --
+-- /Related/: `lastM`, `unsnocM`
+--
 -- ==== __Examples__
 --
 -- >>> last' (Ix1 10 ... 10000000000000)
 -- 10000000000000
 -- >>> last' (fromList Seq [] :: Array P Ix1 Int)
 -- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
+--
+-- /__Similar__/:
+--
+-- [@Data.List.`Data.List.last`@] Also partial, but it has /O(n)/ complixity. Fusion is
+-- broken if there other consumers of the list.
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.last`@] Also constant time and partial. Will
+-- cause materialization of the full vector if any other function is applied to the vector.
 --
 -- @since 0.5.0
 last' :: Source r Ix1 e => Vector r e -> e
@@ -535,7 +576,9 @@ last' = either throw id . lastM
 
 -- | /O(1)/ - Get the last element of a `Source` vector.
 --
--- /__Exceptions__/: `SizeEmptyException`
+-- /Related/: `last'`, `unsnocM`
+--
+-- /__Throws Exceptions__/: `SizeEmptyException`
 --
 -- ==== __Examples__
 --
@@ -603,12 +646,10 @@ slice' i k = either throw id . sliceM i k
 
 -- | /O(1)/ - Take a slice of a `Source` vector. Throws an error on incorrect indices.
 --
+-- /__Throws Exceptions__/: `SizeSubregionException`
+--
 -- ==== __Examples__
 --
--- ==== __Exceptions__
---
--- * Throws `SizeSubregionException` when either starting index or resulting size would
--- cause out of bounds indexing.
 --
 -- @since 0.5.0
 sliceM :: (Source r Ix1 e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
@@ -622,10 +663,6 @@ sliceM i newSz@(Sz k) v
 
 -- | Take a slice of a `Stream` vector. Never fails, instead adjusts the indices.
 --
--- Unlike `slice` it has to iterate through element until the staring index is reached,
--- therefore something like @sslice 9999999999998 50 (Ix1 0 ... 10000000000000)@ will not
--- be feasable.
---
 -- ==== __Examples__
 --
 -- >>> sslice 10 5 (Ix1 0 ... 10000000000000)
@@ -637,6 +674,15 @@ sliceM i newSz@(Sz k) v
 -- >>> sslice (-10) 5 (Ix1 0 ... 10000000000000)
 -- Array DS Seq (Sz1 5)
 --   [ 0, 1, 2, 3, 4 ]
+--
+-- Unlike `slice` it has to iterate through each element until the staring index is reached,
+-- therefore something like @sslice 9999999999998 50 (Ix1 0 ... 10000000000000)@ will not
+-- be feasable.
+--
+-- >>> import System.Timeout (timeout)
+-- >>> let smallArr = sslice 9999999999998 50 (Ix1 0 ... 10000000000000)
+-- >>> timeout 500000 (computeIO smallArr :: IO (Array P Ix1 Int))
+-- Nothing
 --
 -- @since 0.5.0
 sslice :: Stream r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector DS e
@@ -1015,8 +1061,8 @@ siterateNM n f a = fromStepsM $ S.iterateNM (unSz n) f a
 
 
 
--- | Right unfolding function. Useful when it is unknown ahead of time on how many
--- elements the vector will have.
+-- | Right unfolding function. Useful when it is unknown ahead of time how many
+-- elements a vector will have.
 --
 -- ====__Example__
 --
@@ -1053,18 +1099,42 @@ sunfoldrN ::
 sunfoldrN (Sz n) f = DSArray . S.unfoldrN n f
 {-# INLINE sunfoldrN #-}
 
--- | Same as `unfoldr`, but with monadic generating function.
+-- | /O(n)/ - Same as `unfoldr`, but with monadic generating function.
 --
 -- ==== __Examples__
+--
+-- >>> import Control.Monad (when, guard)
+-- >>> sunfoldrM (\i -> when (i == 0) (Left "Zero denominator") >> Right (guard (i < 5) >> Just (100 `div` i, i + 1))) (-10 :: Int)
+-- Left "Zero denominator"
+-- >>> sunfoldrM (\i -> when (i == 0) (Left "Zero denominator") >> Right (guard (i < -5) >> Just (100 `div` i, i + 1))) (-10 :: Int)
+-- Right (Array DS Seq (Sz1 5)
+--   [ -10, -12, -13, -15, -17 ]
+-- )
 --
 -- @since 0.5.0
 sunfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
 sunfoldrM f = fromStepsM . S.unfoldrM f
 {-# INLINE sunfoldrM #-}
 
--- | Same as `unfoldrN`, but with monadic generating function.
+-- | /O(n)/ - Same as `unfoldrN`, but with monadic generating function.
 --
 -- ==== __Examples__
+--
+-- >>> import Control.Monad (guard)
+-- >>> sunfoldrNM 6 (\i -> print i >> pure (guard (i < 5) >> Just (i * i, i + 1))) (10 :: Int)
+-- 10
+-- Array DS Seq (Sz1 0)
+--   [  ]
+-- >>> sunfoldrNM 6 (\i -> print i >> pure (guard (i < 15) >> Just (i * i, i + 1))) (10 :: Int)
+-- 10
+-- 11
+-- 12
+-- 13
+-- 14
+-- 15
+-- Array DS Seq (Sz1 5)
+--   [ 100, 121, 144, 169, 196 ]
+--
 --
 -- @since 0.5.0
 sunfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
@@ -1072,18 +1142,31 @@ sunfoldrNM (Sz n) f = fromStepsM . S.unfoldrNM n f
 {-# INLINE sunfoldrNM #-}
 
 
--- | Similar to `unfoldrN`, except the length of the resulting vector will be exactly @n@
+-- | /O(n)/ - Similar to `unfoldrN`, except the length of the resulting vector will be exactly @n@
 --
 -- ==== __Examples__
+--
+-- >>> sunfoldrExactN 10 (\i -> (i * i, i + 1)) (10 :: Int)
+-- Array DS Seq (Sz1 10)
+--   [ 100, 121, 144, 169, 196, 225, 256, 289, 324, 361 ]
 --
 -- @since 0.5.0
 sunfoldrExactN :: Sz1 -> (s -> (e, s)) -> s -> Vector DS e
 sunfoldrExactN (Sz n) f = fromSteps . S.unfoldrExactN n f
 {-# INLINE sunfoldrExactN #-}
 
--- | Similar to `unfoldrNM`, except the length of the resulting vector will be exactly @n@
+-- | /O(n)/ - Similar to `unfoldrNM`, except the length of the resulting vector will be exactly @n@
 --
 -- ==== __Examples__
+--
+-- λ> sunfoldrExactNM 11 (\i -> pure (100 `div` i, i + 1)) (-10 :: Int)
+-- Array DS *** Exception: divide by zero
+-- λ> sunfoldrExactNM 11 (\i -> guard (i /= 0) >> Just (100 `div` i, i + 1)) (-10 :: Int)
+-- Nothing
+-- λ> sunfoldrExactNM 9 (\i -> guard (i /= 0) >> Just (100 `div` i, i + 1)) (-10 :: Int)
+-- Just (Array DS Seq (Sz1 9)
+--   [ -10, -12, -13, -15, -17, -20, -25, -34, -50 ]
+-- )
 --
 -- @since 0.5.0
 sunfoldrExactNM :: Monad m => Sz1 -> (s -> m (e, s)) -> s -> m (Vector DS e)
@@ -1091,25 +1174,56 @@ sunfoldrExactNM (Sz n) f = fromStepsM . S.unfoldrExactNM n f
 {-# INLINE sunfoldrExactNM #-}
 
 
--- | Enumerate from a starting number @n@ times with a step @1@
+-- | /O(n)/ - Enumerate from a starting number @x@ exactly @n@ times with a step @1@.
+--
+-- /Related/: `senumFromStepN`, `enumFromN`, `enumFromStepN`, `rangeSize`,
+-- `rangeStepSize`, `range`, `rangeStep`
 --
 -- ==== __Examples__
 --
+-- >>> senumFromN (10 :: Int) 9
+-- Array DS Seq (Sz1 9)
+--   [ 10, 11, 12, 13, 14, 15, 16, 17, 18 ]
+--
+-- /__Similar__/:
+--
+-- [@Prelude.`Prelude.enumFromTo`@] Very similar to @[x .. x + n - 1]@, except that
+-- `senumFromN` is faster and it only works for `Num` and not for `Enum` elements
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.enumFromN`@] Uses exactly the same
+-- implementation underneath.
+--
 -- @since 0.5.0
-senumFromN :: Num e => e -> Sz1 -> Vector DS e
+senumFromN ::
+     Num e
+  => e -- ^ @x@ - starting number
+  -> Sz1 -- ^ @n@ - length of resulting vector
+  -> Vector DS e
 senumFromN x (Sz n) = DSArray $ S.enumFromStepN x 1 n
 {-# INLINE senumFromN #-}
 
--- | Enumerate from a starting number @n@ times with a custom step value
+-- | /O(n)/ - Enumerate from a starting number @x@ exactly @n@ times with a custom step value @dx@
 --
 -- ==== __Examples__
+--
+-- >>> senumFromStepN (5 :: Int) 2 10
+-- Array DS Seq (Sz1 10)
+--   [ 5, 7, 9, 11, 13, 15, 17, 19, 21, 23 ]
+--
+-- __/Similar/__:
+--
+-- [@Prelude.`Prelude.enumFrom`@] Just like @take n [x, x + dx ..]@, except that
+-- `senumFromN` is faster and it only works for `Num` and not for `Enum` elements
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.enumFromStepN`@] Uses exactly the same
+-- implementation underneath.
 --
 -- @since 0.5.0
 senumFromStepN ::
      Num e
-  => e -- ^ Starting value
-  -> e -- ^ Step
-  -> Sz1 -- ^ Resulting length of a vector
+  => e -- ^ @x@ - starting number
+  -> e -- ^ @dx@ - Step
+  -> Sz1 -- ^ @n@ - length of resulting vector
   -> Vector DS e
 senumFromStepN x step (Sz n) = DSArray $ S.enumFromStepN x step n
 {-# INLINE senumFromStepN #-}
@@ -1118,7 +1232,25 @@ senumFromStepN x step (Sz n) = DSArray $ S.enumFromStepN x step n
 
 -- | Append two vectors together
 --
+-- /Related/: `appendM`, `appendOuterM`,
+--
 -- ==== __Examples__
+--
+-- λ> sappend (1 ..: 6) (senumFromStepN 6 (-1) 6)
+-- Array DS Seq (Sz1 11)
+--   [ 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1 ]
+--
+-- __/Similar/__:
+--
+-- [@Data.Semigroup.`Data.Semigroup.<>`@] `DS` and `DL` arrays have instances for
+-- `Semigroup`, so they will work in a similar fashion. `sappend` differs in that it accepts
+-- `Stream` arrays with possibly different representations.
+--
+-- [@Data.List.`Data.List.++`@] Same operation, but for lists.
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.++`@] Uses exactly the same implementation
+-- underneath as `sappend`, except that it cannot append two vectors with different
+-- memory representations.
 --
 -- @since 0.5.0
 sappend :: (Stream r1 Ix1 e, Stream r2 Ix1 e) => Vector r1 e -> Vector r2 e -> Vector DS e
@@ -1128,7 +1260,27 @@ sappend a1 a2 = fromSteps (toStream a1 `S.append` toStream a2)
 
 -- | Concat vectors together
 --
+-- /Related/: `concatM`, `concatOuterM`,
+--
 -- ==== __Examples__
+--
+-- >>> sconcat [2 ... 6, empty, singleton 1, generate Seq 5 id]
+-- Array DS Seq (Sz1 11)
+--   [ 2, 3, 4, 5, 6, 1, 0, 1, 2, 3, 4 ]
+-- >>> sconcat [senumFromN 2 5, sempty, ssingleton 1, sgenerate 5 id]
+-- Array DS Seq (Sz1 11)
+--   [ 2, 3, 4, 5, 6, 1, 0, 1, 2, 3, 4 ]
+--
+-- __/Similar/__:
+--
+-- [@Data.Monoid.`Data.Monoid.mconcat`@] `DS` and `DL` arrays have instances for `Monoid`, so
+-- they will work in a similar fashion. `sconcat` differs in that it accepts `Stream`
+-- arrays of other representations.
+--
+-- [@Data.List.`Data.List.concat`@] Same operation, but for lists.
+--
+-- [@Data.Vector.Generic.`Data.Vector.Generic.concat`@] Uses exactly the same
+-- implementation underneath as `sconcat`.
 --
 -- @since 0.5.0
 sconcat :: Stream r Ix1 e => [Vector r e] -> Vector DS e
@@ -1136,6 +1288,8 @@ sconcat = DSArray . foldMap toStream
 {-# INLINE sconcat #-}
 
 -- | Convert a list to a delayed stream vector
+--
+-- /Related/: `fromList`, `fromListN`, `sfromListN`
 --
 -- ==== __Examples__
 --
@@ -1151,9 +1305,20 @@ sfromList :: [e] -> Vector DS e
 sfromList = fromSteps . S.fromList
 {-# INLINE sfromList #-}
 
--- | Convert a list of a known length to a delayed stream vector
+-- | Convert a list to a delayed stream vector. Length of the resulting vector will be at
+-- most @n@. This version isn't really more efficient then `sfromList`, but there is
+-- `Data.Massiv.Array.Unsafe.unsafeFromListN`
+--
+-- /Related/: `fromList`, `fromListN`, `sfromList`
 --
 -- ==== __Examples__
+--
+-- >>> sfromListN 10 [1 :: Int ..]
+-- Array DS Seq (Sz1 10)
+--   [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+-- >>> sfromListN 10 [1 :: Int .. 5]
+-- Array DS Seq (Sz1 5)
+--   [ 1, 2, 3, 4, 5 ]
 --
 -- @since 0.5.0
 sfromListN :: Sz1 -> [e] -> Vector DS e
@@ -1161,6 +1326,8 @@ sfromListN (Sz n) = fromSteps . S.fromListN n
 {-# INLINE sfromListN #-}
 
 -- | Convert an array to a list by the means of a delayed stream vector.
+--
+-- /Related/: `toList`
 --
 -- ==== __Examples__
 --
