@@ -5,8 +5,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Data.Massiv.Array.IOSpec (spec) where
 
-import Data.Bifunctor
-import Data.List.NonEmpty as NE (NonEmpty, fromList)
+import Data.List.NonEmpty as NE (NonEmpty(..))
 import Data.Massiv.Array
 import Data.Massiv.Array.IO hiding (showsType)
 import qualified Data.ByteString.Lazy as BL
@@ -94,7 +93,7 @@ specEncodeDecodeAutoNoError nonAutoFormat =
     bs' <- encodeImageM imageWriteAutoFormats ("foo" ++ ext f) img
     bs' `shouldBe` bs
 
-_specEncodeDecodeGifSequenceNoError ::
+specEncodeDecodeGifSequenceNoError ::
      forall cs e.
      ( Readable (Sequence GIF) [Image S cs e]
      , Writable (Sequence GIF) (NonEmpty (GifDelay, Image S cs e))
@@ -102,16 +101,24 @@ _specEncodeDecodeGifSequenceNoError ::
      , ColorModel cs e
      )
   => Spec
-_specEncodeDecodeGifSequenceNoError =
+specEncodeDecodeGifSequenceNoError =
   prop (("Image S " ++) .
         showsColorModelName (Proxy :: Proxy (Color cs e)) . (' ':) .
         showsType @e $ "") $
-  property $ \ (imgsNE :: NonEmptyList (GifDelay, ArrNE S Ix2 (Pixel cs e))) -> do
-    let imgs = fmap (second unArr) $ NE.fromList $ getNonEmpty imgsNE
+  property $ forAll (genNonEmptyImagesWithGifDelay @cs @e) $ \ imgs -> do
     bs <- encodeM (Sequence GIF) def imgs
     imgs' :: [Image S cs e] <- decodeM (Sequence GIF) $ BL.toStrict bs
     Prelude.length imgs' `shouldBe` Prelude.length imgs
 
+genNonEmptyImagesWithGifDelay ::
+     forall cs e. (Storable (Color cs e), Arbitrary (Pixel cs e))
+  => Gen (NonEmpty (GifDelay, Image S cs e))
+genNonEmptyImagesWithGifDelay = do
+  arrs <- toSameSizeNE <$> (arbitrary :: Gen (ArrNE D Ix3 (Pixel cs e)))
+  Prelude.mapM (\i -> (,) <$> arbitrary <*> pure (compute i)) arrs
+
+toSameSizeNE :: OuterSlice r ix e => ArrNE r ix e -> NonEmpty (Elt r ix e)
+toSameSizeNE (ArrNE arr) = (arr !>) <$> (0 :| [1 .. unSz (fst (unconsSz (size arr))) - 1])
 
 spec :: Spec
 spec = do
@@ -125,9 +132,9 @@ spec = do
       specEncodeNoError @(Y D65) @Word8 GIF
       specEncodeDecodeNoError @SRGB @Word8 GIF
       --specEncodeGifSequenceNoError @(Y D65) @Word8
-      --describe "Sequenece" $ -- Need to ensure same size for all arrays
-      -- TODO: Define (Arbitrary ArrListNE) (either slice 3d, or gen list of functions)
-      --  specEncodeDecodeGifSequenceNoError @SRGB @Word8
+      describe "Sequenece" $ do
+        specEncodeDecodeGifSequenceNoError @SRGB @Word8
+        specEncodeDecodeGifSequenceNoError @(Alpha SRGB) @Word8
       -- TODO: read RGBA8, write Y8
     -- getting 'DecodeError "Invalid sanline size"' with seed=2023820902
     -- describe "HDR" $ do

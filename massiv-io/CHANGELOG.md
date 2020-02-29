@@ -1,3 +1,7 @@
+# 0.2.1
+
+* Addition of instances for `GIF` sequences in `RGB` with `Alpha`
+
 # 0.2.0
 
 * Switch to `MonadIO`

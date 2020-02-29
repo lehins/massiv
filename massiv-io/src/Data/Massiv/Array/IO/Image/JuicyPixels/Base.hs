@@ -52,7 +52,7 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.Base
 
 import Prelude as P
 import qualified Codec.Picture as JP
-import qualified Codec.Picture.Types as JP
+--import qualified Codec.Picture.Types as JP
 import Control.Monad (guard, unless)
 import Data.Massiv.Array as A
 import Data.Massiv.Array.IO.Base

@@ -45,7 +45,7 @@ import qualified Codec.Picture as JP
 import qualified Codec.Picture.ColorQuant as JP
 import qualified Codec.Picture.Gif as JP
 import qualified Codec.Picture.Metadata as JP
-import Data.Bifunctor (first)
+import Data.Bifunctor (first, second)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
@@ -192,6 +192,7 @@ encodeAutoGIF _ opts img =
 
 data SequenceGifOptions = SequenceGifOptions
   { sequenceGifPaletteOptions :: !JP.PaletteOptions
+   -- ^ Options used for palletization. Ignored for images with Alpha channel
   , sequenceGifLooping        :: !JP.GifLooping
   }
 
@@ -316,6 +317,24 @@ instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.RGB Word8
     where
       (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size . snd) gifs
 
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha CM.RGB) Word8)) where
+  encodeM _ SequenceGifOptions {sequenceGifLooping} gifs =
+    encodeError $
+    JP.encodeComplexGifImage $
+    JP.GifEncode
+      { JP.geWidth = cols
+      , JP.geHeight = rows
+      , JP.gePalette = Nothing
+      , JP.geBackground = Nothing
+      , JP.geLooping = sequenceGifLooping
+      , JP.geFrames =
+          JP.palettizeWithAlpha (second toJPImageRGBA8 <$> NE.toList gifs) JP.DisposalAny
+      }
+    where
+      (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size . snd) gifs
+
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha SRGB) Word8)) where
+  encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
 
 instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Y D65) Word8)) where
   encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
