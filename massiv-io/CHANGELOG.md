@@ -1,6 +1,7 @@
 # 0.2.1
 
-* Addition of instances for `GIF` sequences in `RGB` with `Alpha`
+* Addition of instances for `GIF` sequences in `RGB` with `Alpha` and instanced with
+  `GifDisposalMethod`
 
 # 0.2.0
 

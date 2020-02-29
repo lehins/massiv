@@ -25,9 +25,8 @@ module Data.Massiv.Array.IO.Image.JuicyPixels.GIF
   , JP.GifLooping(..)
   , JP.PaletteOptions(..)
   , JP.PaletteCreationMethod(..)
+  , JP.GifDisposalMethod(..)
 
-  -- , JP.GifDisposalMethod(..)
-  -- ,
   , decodeGIF
   , decodeWithMetadataGIF
   , decodeAutoGIF
@@ -45,7 +44,7 @@ import qualified Codec.Picture as JP
 import qualified Codec.Picture.ColorQuant as JP
 import qualified Codec.Picture.Gif as JP
 import qualified Codec.Picture.Metadata as JP
-import Data.Bifunctor (first, second)
+import Data.Bifunctor (first)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Massiv.Array as A
@@ -291,7 +290,9 @@ instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.Y Word8))
     where
       (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size . snd) gifs
 
-instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.RGB Word8)) where
+instance Writable (Sequence GIF) (NE.NonEmpty ( JP.GifDelay
+                                              , JP.GifDisposalMethod
+                                              , Image S CM.RGB Word8)) where
   encodeM _ SequenceGifOptions {sequenceGifLooping, sequenceGifPaletteOptions} gifs =
     encodeError $
     JP.encodeComplexGifImage $
@@ -302,7 +303,7 @@ instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.RGB Word8
       , JP.geBackground = Nothing
       , JP.geLooping = sequenceGifLooping
       , JP.geFrames =
-          flip fmap (NE.toList gifs) $ \(gifDelay, gif) ->
+          flip fmap (NE.toList gifs) $ \(gifDelay, disposalMethod, gif) ->
             let (img, palette) = JP.palettize sequenceGifPaletteOptions $ toJPImageRGB8 gif
              in JP.GifFrame
                   { JP.gfXOffset = 0
@@ -310,15 +311,20 @@ instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.RGB Word8
                   , JP.gfPalette = Just palette
                   , JP.gfTransparent = Nothing
                   , JP.gfDelay = gifDelay
-                  , JP.gfDisposal = JP.DisposalAny
+                  , JP.gfDisposal = disposalMethod
                   , JP.gfPixels = img
                   }
       }
     where
-      (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size . snd) gifs
+      (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (\(_, _, i) -> unSz $ size i) gifs
 
-instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha CM.RGB) Word8)) where
-  encodeM _ SequenceGifOptions {sequenceGifLooping} gifs =
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S CM.RGB Word8)) where
+  encodeM f opts = encodeM f opts . fmap (\(d, i) -> (d, JP.DisposalAny, i))
+
+instance Writable (Sequence GIF) (NE.NonEmpty ( JP.GifDelay
+                                              , JP.GifDisposalMethod
+                                              , Image S (Alpha CM.RGB) Word8)) where
+  encodeM _ SequenceGifOptions {sequenceGifLooping} gifsNE =
     encodeError $
     JP.encodeComplexGifImage $
     JP.GifEncode
@@ -328,19 +334,35 @@ instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha CM.RG
       , JP.geBackground = Nothing
       , JP.geLooping = sequenceGifLooping
       , JP.geFrames =
-          JP.palettizeWithAlpha (second toJPImageRGBA8 <$> NE.toList gifs) JP.DisposalAny
+          P.zipWith (\d f -> f {JP.gfDisposal = d}) disposals $
+          JP.palettizeWithAlpha (P.zip delays $ P.map toJPImageRGBA8 images) JP.DisposalAny
       }
     where
-      (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size . snd) gifs
+      (delays, disposals, images) = P.unzip3 $ NE.toList gifsNE
+      (rows :. cols) = foldl1 (liftIndex2 max) $ fmap (unSz . size) images
 
-instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha SRGB) Word8)) where
-  encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha CM.RGB) Word8)) where
+  encodeM f opts = encodeM f opts . fmap (\(d, i) -> (d, JP.DisposalRestoreBackground, i))
 
 instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Y D65) Word8)) where
   encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
 
 instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S SRGB Word8)) where
   encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
+
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha SRGB) Word8)) where
+  encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)
+
+instance Writable (Sequence GIF) (NE.NonEmpty ( JP.GifDelay
+                                              , JP.GifDisposalMethod
+                                              , Image S SRGB Word8)) where
+  encodeM f opts = encodeM f opts . fmap (\(dl, dp, i) -> (dl, dp, toImageBaseModel i))
+
+instance Writable (Sequence GIF) (NE.NonEmpty ( JP.GifDelay
+                                              , JP.GifDisposalMethod
+                                              , Image S (Alpha SRGB) Word8)) where
+  encodeM f opts = encodeM f opts . fmap (\(dl, dp, i) -> (dl, dp, toImageBaseModel i))
+
 
 instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
          Writable (Auto (Sequence GIF)) (NE.NonEmpty (JP.GifDelay, Image r cs e)) where
