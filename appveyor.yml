@@ -10,9 +10,10 @@ environment:
     STACK_WORK: ".w"
     WORK_DIR: "c:\\m"
   matrix:
-  - ARGS: "--resolver lts-12.26 --stack-yaml stack-lts-13.yaml"
-  - ARGS: "--resolver lts-13.30 --stack-yaml stack-lts-13.yaml"
-  - ARGS: "--resolver lts-14"
+  - ARGS: "--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml"
+  - ARGS: "--resolver lts-13.30 --stack-yaml stack-extra-deps.yaml"
+  - ARGS: "--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml"
+  - ARGS: "--resolver lts-15"
   - ARGS: "--resolver nightly"
 matrix:
   allow_failures:

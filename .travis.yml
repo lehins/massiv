@@ -106,38 +106,44 @@ matrix:
   #     apt:
   #       packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-12.14 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-12.14 --stack-yaml stack-lts-13.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-12.14 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-12.14 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.4.3 (lts-12.14)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-12.26 --stack-yaml stack-lts-13.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.4.4 (lts-12.26)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.9 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-13.9 --stack-yaml stack-lts-13.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-13.9 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-13.9 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.6.3 (lts-13.9)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.19 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-13.19 --stack-yaml stack-lts-13.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-13.19 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-13.19 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.6.4 (lts-13.19)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.30" COVERALLS_STACK_YAML="stack-lts-13.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-13.30" COVERALLS_STACK_YAML="stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.6.5 (lts-13.30)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-14"
-    compiler: ": #stack GHC-8.6.5 (lts-14)"
+  - env: BUILD=stack ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml"
+    compiler: ": #stack GHC-8.6.5 (lts-14.27)"
+    addons:
+      apt:
+        packages: [libgmp-dev]
+
+  - env: BUILD=stack ARGS="--resolver lts-15" DOCTEST_ARGS="--resolver lts-15"
+    compiler: ": #stack GHC-8.8.2 (lts-15)"
     addons:
       apt:
         packages: [libgmp-dev]
@@ -158,7 +164,7 @@ matrix:
   #   compiler: ": #stack GHC-8.2.2 (lts-11.22)"
   #   os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-lts-13.yaml" DOCTEST_ARGS="--resolver lts-12.26 --stack-yaml stack-lts-13.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.4.4 (lts-12.26)"
     os: osx
 

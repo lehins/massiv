@@ -1,9 +1,8 @@
-resolver: lts-14.4
+resolver: lts-15.1
 packages:
 - 'massiv/'
 - 'massiv-io/'
 - 'massiv-test/'
 flags: {}
 extra-package-dbs: []
-extra-deps:
-- Color-0.1.3.1@sha256:204cb6aeda71d61547266ecb7867ac574ae72cacdb6375b5cd90db9bdc50c0a2,8122
+extra-deps: []
