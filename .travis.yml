@@ -168,7 +168,7 @@ matrix:
     compiler: ": #stack GHC-8.4.4 (lts-12.26)"
     os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-14.27" DOCTEST_ARGS="--resolver lts-14.27"
+  - env: BUILD=stack ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.6.5 (lts-14.27)"
     os: osx
 
