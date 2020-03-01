@@ -168,8 +168,12 @@ matrix:
     compiler: ": #stack GHC-8.4.4 (lts-12.26)"
     os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-14" DOCTEST_ARGS="--resolver lts-14"
-    compiler: ": #stack GHC-8.6.5 (lts-14)"
+  - env: BUILD=stack ARGS="--resolver lts-14.27" DOCTEST_ARGS="--resolver lts-14.27"
+    compiler: ": #stack GHC-8.6.5 (lts-14.27)"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-15" DOCTEST_ARGS="--resolver lts-15"
+    compiler: ": #stack GHC-8.8.2 (lts-15)"
     os: osx
 
   allow_failures:
