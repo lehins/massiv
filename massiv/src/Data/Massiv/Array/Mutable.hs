@@ -532,7 +532,8 @@ generateArray ::
 generateArray comp sz f = generateArrayLinear comp sz (f . fromLinearIndex sz)
 {-# INLINE generateArray #-}
 
--- | Just like `generateArrayIO`, but action supplied will receive a row-major linear index.
+-- | Just like `generateArray`, except generating action will receive a row-major linear
+-- index.
 --
 -- @since 0.3.0
 generateArrayLinear ::

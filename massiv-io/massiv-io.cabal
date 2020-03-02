@@ -65,7 +65,9 @@ test-suite tests
   type:               exitcode-stdio-1.0
   hs-source-dirs:     tests
   main-is:            Main.hs
-  other-modules:      Data.Massiv.Array.IOSpec
+  other-modules:      Test.Massiv.Array.IO.Image.Common
+                    , Test.Massiv.Array.IO.Image.JuicyPixelsSpec
+                    , Test.Massiv.Array.IO.Image.AutoSpec
                     , Spec
   build-depends:      JuicyPixels
                     , QuickCheck
