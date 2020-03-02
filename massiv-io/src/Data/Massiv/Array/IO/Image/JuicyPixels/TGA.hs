@@ -64,6 +64,9 @@ instance Writable TGA (Image S (Alpha CM.RGB) Word8) where
   encodeM TGA _ img = pure $ JP.encodeTga (toJPImageRGBA8 img)
 
 
+instance Writable TGA (Image S Y' Word8) where
+  encodeM f opts = encodeM f opts . demoteLumaImage
+
 instance Writable TGA (Image S (Y D65) Word8) where
   encodeM f opts = encodeM f opts . toImageBaseModel
 
@@ -88,6 +91,9 @@ instance Readable TGA (Image S CM.RGB Word8) where
 instance Readable TGA (Image S (Alpha CM.RGB) Word8) where
   decodeWithMetadataM = decodeWithMetadataTGA
 
+
+instance Readable TGA (Image S Y' Word8) where
+  decodeWithMetadataM f = fmap (first promoteLumaImage) . decodeWithMetadataM f
 
 instance Readable TGA (Image S (Y D65) Word8) where
   decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
@@ -130,24 +136,19 @@ instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
   decodeWithMetadataM = decodeAutoWithMetadataTGA
 
 encodeTGA ::
-     forall r cs e m.
-     (ColorModel cs e, Source r Ix2 (Pixel cs e), MonadThrow m)
+     forall cs e m. (ColorModel cs e, MonadThrow m)
   => TGA
-  -> Image r cs e
+  -> Image S cs e
   -> m BL.ByteString
 encodeTGA f img =
-  fromMaybeEncode f (Proxy :: Proxy (Image r cs e)) $
-  msum
-    [ do Refl <- eqT :: Maybe (cs :~: CM.Y)
-         Refl <- eqT :: Maybe (e :~: Word8)
-         pure $ JP.encodeTga $ toJPImageY8 img
-    , do Refl <- eqT :: Maybe (cs :~: CM.RGB)
-         Refl <- eqT :: Maybe (e :~: Word8)
-         pure $ JP.encodeTga $ toJPImageRGB8 img
-    , do Refl <- eqT :: Maybe (cs :~: Alpha CM.RGB)
-         Refl <- eqT :: Maybe (e :~: Word8)
-         pure $ JP.encodeTga $ toJPImageRGBA8 img
-    ]
+  fromMaybeEncode f (Proxy :: Proxy (Image S cs e)) $ do
+    Refl <- eqT :: Maybe (e :~: Word8)
+    msum
+      [ JP.encodeTga <$> maybeJPImageY8 img
+      , JP.encodeTga <$> maybeJPImageRGB8 img
+      , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
+           JP.encodeTga <$> maybeJPImageRGBA8 img
+      ]
 
 
 encodeAutoTGA ::

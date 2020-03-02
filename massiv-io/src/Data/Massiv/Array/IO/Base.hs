@@ -31,11 +31,16 @@ module Data.Massiv.Array.IO.Base
   , convertImage
   , toImageBaseModel
   , fromImageBaseModel
+  , demoteLumaImage
+  , promoteLumaImage
+  , demoteLumaAlphaImage
+  , promoteLumaAlphaImage
   , defaultWriteOptions
   , encodeError
   , decodeError
   , toProxy
   , fromMaybeEncode
+  , fromMaybeDecodeM
   , fromMaybeDecode
   , convertEither
   , MonadThrow(..)
@@ -49,6 +54,7 @@ import qualified Data.ByteString.Lazy as BL (ByteString)
 import Data.Default.Class (Default(..))
 import Data.Massiv.Array as A
 import Data.Typeable
+import Graphics.Pixel as CM
 import Graphics.Pixel.ColorSpace
 
 type Image r cs e = Array r Ix2 (Pixel cs e)
@@ -198,6 +204,24 @@ fromMaybeDecode f showCS conv eImg =
       " image <" ++ showCS eImg ++ "> as " ++ showImageType (Proxy :: Proxy (Image r cs e))
     Just img -> pure img
 
+-- | Decode an image using the supplied function or throw an error in case of failure.
+fromMaybeDecodeM ::
+     forall r cs e a f m. (ColorModel cs e, FileFormat f, Typeable r, MonadThrow m)
+  => f
+  -> (a -> String)
+  -> (a -> m (Maybe (Image r cs e)))
+  -> a
+  -> m (Image r cs e)
+fromMaybeDecodeM f showCS conv eImg =
+  conv eImg >>= \case
+    Nothing ->
+      throwM $
+      ConvertError $
+      "Cannot decode " ++
+      show f ++
+      " image <" ++ showCS eImg ++ "> as " ++ showImageType (Proxy :: Proxy (Image r cs e))
+    Just img -> pure img
+
 
 -- | Convert an image using the supplied function and return ConvertError error in case of failure.
 convertEither ::
@@ -234,18 +258,47 @@ convertImage ::
   -> Image D cs e
 convertImage = A.map convertPixel
 
--- | Cast an array. This is theoretically unsafe operation, but for all current `ColorSpace`
--- instances this function is perfectly safe.
+-- | Cast an array. This is theoretically unsafe operation, but for all currently
+-- available `ColorSpace` instances this function is perfectly safe.
 --
 -- @since 0.2.0
 toImageBaseModel :: Array S Ix2 (Pixel cs e) -> Array S Ix2 (Pixel (BaseModel cs) e)
 toImageBaseModel = unsafeCoerce
 
 
--- | Cast an array. This is theoretically unsafe operation, but for all current `ColorSpace`
--- instances this function is perfectly safe.
+-- | Cast an array. This is theoretically unsafe operation, but for all currently
+-- available `ColorSpace` instances this function is perfectly safe.
 --
 -- @since 0.2.0
 fromImageBaseModel :: Array S Ix2 (Pixel (BaseModel cs) e) -> Array S Ix2 (Pixel cs e)
 fromImageBaseModel = unsafeCoerce
+
+
+-- | Cast an array with Luma pixels to an array with pixels in a plain single channel
+-- `CM.Y` color model
+--
+-- @since 0.2.1
+demoteLumaImage :: Array S Ix2 (Pixel Y' e) -> Array S Ix2 (Pixel CM.Y e)
+demoteLumaImage = unsafeCoerce
+
+
+-- | Cast an array with pixels in a plain single channel `CM.Y` color model to an array
+-- with Luma pixels
+--
+-- @since 0.2.1
+promoteLumaImage :: Array S Ix2 (Pixel CM.Y e) -> Array S Ix2 (Pixel Y' e)
+promoteLumaImage = unsafeCoerce
+
+-- | Same as `demoteLumaImage`, but with Alpha channel
+--
+-- @since 0.2.1
+demoteLumaAlphaImage :: Array S Ix2 (Pixel (Alpha Y') e) -> Array S Ix2 (Pixel (Alpha CM.Y) e)
+demoteLumaAlphaImage = unsafeCoerce
+
+
+-- | Same as `promoteLumaImage` but with Alpha channel
+--
+-- @since 0.2.1
+promoteLumaAlphaImage :: Array S Ix2 (Pixel (Alpha CM.Y) e) -> Array S Ix2 (Pixel (Alpha Y') e)
+promoteLumaAlphaImage = unsafeCoerce
 

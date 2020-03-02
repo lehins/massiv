@@ -119,17 +119,16 @@ instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
   decodeWithMetadataM = decodeAutoWithMetadataHDR
 
 encodeHDR ::
-     forall r cs e m.
-     (ColorModel cs e, Source r Ix2 (Pixel cs e), MonadThrow m)
+     forall cs e m.
+     (ColorModel cs e, MonadThrow m)
   => HDR
   -> HdrOptions
-  -> Image r cs e
+  -> Image S cs e
   -> m BL.ByteString
 encodeHDR f opts img =
-  fromMaybeEncode f (Proxy :: Proxy (Image r cs e)) $ do
+  fromMaybeEncode f (Proxy :: Proxy (Image S cs e)) $ do
     Refl <- eqT :: Maybe (e :~: Float)
-    Refl <- eqT :: Maybe (cs :~: CM.RGB)
-    pure $ getHdrEncoder opts $ toJPImageRGBF img
+    getHdrEncoder opts <$> maybeJPImageRGBF img
 
 
 

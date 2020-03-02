@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.IO.Image
@@ -79,15 +80,15 @@ encodeImageM formats path img = do
 
 
 -- | List of image formats that can be encoded without any color space conversion.
-imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorSpace cs i e) => [Encode (Image r cs e)]
+imageWriteFormats :: (Source r Ix2 (Pixel cs e), ColorModel cs e) => [Encode (Image r cs e)]
 imageWriteFormats =
-  [ EncodeAs BMP (\ f -> encodeBMP f def . toImageBaseModel . computeSource)
-  , EncodeAs GIF (\ f -> encodeGIF f def . toImageBaseModel . computeSource)
-  , EncodeAs HDR (\ f -> encodeHDR f def . toImageBaseModel . computeSource)
-  , EncodeAs JPG (\ f -> encodeJPG f def . toImageBaseModel . computeSource)
-  , EncodeAs PNG (\ f -> encodePNG f . toImageBaseModel . computeSource)
-  , EncodeAs TGA (\ f -> encodeTGA f . toImageBaseModel . computeSource)
-  , EncodeAs TIF (\ f -> encodeTIF f . toImageBaseModel . computeSource)
+  [ EncodeAs BMP (\ f -> encodeBMP f def . computeSource @S)
+  , EncodeAs GIF (\ f -> encodeGIF f def . computeSource @S)
+  , EncodeAs HDR (\ f -> encodeHDR f def . computeSource @S)
+  , EncodeAs JPG (\ f -> encodeJPG f def . computeSource @S)
+  , EncodeAs PNG (\ f -> encodePNG f . computeSource @S)
+  , EncodeAs TGA (\ f -> encodeTGA f . computeSource @S)
+  , EncodeAs TIF (\ f -> encodeTIF f . computeSource @S)
   ]
 
 -- | List of image formats that can be encoded with any necessary color space conversions.
@@ -142,18 +143,18 @@ decodeImageM formats path bs = do
     (f:_) -> decodeM f bs
 
 -- | List of image formats decodable with no color space conversion
-imageReadFormats :: ColorSpace cs i e => [Decode (Image S cs e)]
+imageReadFormats :: ColorModel cs e => [Decode (Image S cs e)]
 imageReadFormats =
-  [ DecodeAs BMP (\f -> fmap fromImageBaseModel . decodeBMP f)
-  , DecodeAs GIF (\f -> fmap fromImageBaseModel . decodeGIF f)
-  , DecodeAs HDR (\f -> fmap fromImageBaseModel . decodeHDR f)
-  , DecodeAs JPG (\f -> fmap fromImageBaseModel . decodeJPG f)
-  , DecodeAs PNG (\f -> fmap fromImageBaseModel . decodePNG f)
-  , DecodeAs TGA (\f -> fmap fromImageBaseModel . decodeTGA f)
-  , DecodeAs TIF (\f -> fmap fromImageBaseModel . decodeTIF f)
-  , DecodeAs PBM (\f -> fmap (fromImageBaseModel . fst) . decodeNetpbmImage f)
-  , DecodeAs PGM (\f -> fmap (fromImageBaseModel . fst) . decodeNetpbmImage f)
-  , DecodeAs PPM (\f -> fmap (fromImageBaseModel . fst) . decodeNetpbmImage f)
+  [ DecodeAs BMP decodeBMP
+  , DecodeAs GIF decodeGIF
+  , DecodeAs HDR decodeHDR
+  , DecodeAs JPG decodeJPG
+  , DecodeAs PNG decodePNG
+  , DecodeAs TGA decodeTGA
+  , DecodeAs TIF decodeTIF
+  , DecodeAs PBM (\f -> fmap fst . decodeNetpbmImage f)
+  , DecodeAs PGM (\f -> fmap fst . decodeNetpbmImage f)
+  , DecodeAs PPM (\f -> fmap fst . decodeNetpbmImage f)
   ]
 
 -- | List of image formats decodable with automatic colorspace conversion

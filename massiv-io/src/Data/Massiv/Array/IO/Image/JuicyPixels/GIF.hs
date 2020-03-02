@@ -83,6 +83,9 @@ instance Writable GIF (Image S CM.Y Word8) where
 instance Writable GIF (Image S CM.RGB Word8) where
   encodeM GIF = encodePalettizedRGB
 
+instance Writable GIF (Image S Y' Word8) where
+  encodeM GIF opts = encodeM GIF opts . demoteLumaImage
+
 instance Writable GIF (Image S (Y D65) Word8) where
   encodeM GIF opts = encodeM GIF opts . toImageBaseModel
 
@@ -152,17 +155,15 @@ instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
   decodeWithMetadataM = decodeAutoWithMetadataGIF
 
 encodeGIF ::
-     forall r cs e m.
-     (ColorModel cs e, Source r Ix2 (Pixel cs e), MonadThrow m)
+     forall cs e m. (ColorModel cs e, MonadThrow m)
   => GIF
   -> GifOptions
-  -> Image r cs e
+  -> Image S cs e
   -> m BL.ByteString
 encodeGIF f opts img =
   fallbackEncodePalettizedRGB $ do
-    Refl <- eqT :: Maybe (cs :~: CM.Y)
     Refl <- eqT :: Maybe (e :~: Word8)
-    pure $ JP.encodeGifImage $ toJPImageY8 img
+    JP.encodeGifImage <$> maybeJPImageY8 img
   where
     fallbackEncodePalettizedRGB =
       \case
@@ -170,7 +171,13 @@ encodeGIF f opts img =
         Nothing
           | Just Refl <- (eqT :: Maybe (e :~: Word8))
           , Just Refl <- (eqT :: Maybe (cs :~: CM.RGB)) -> encodePalettizedRGB opts img
-        Nothing -> fromMaybeEncode f (Proxy :: Proxy (Image r cs e)) Nothing
+          | Just Refl <- (eqT :: Maybe (e :~: Word8))
+          , Just Refl <- (eqT :: Maybe (cs :~: SRGB)) ->
+            encodePalettizedRGB opts $ toImageBaseModel img
+          | Just Refl <- (eqT :: Maybe (e :~: Word8))
+          , Just Refl <- (eqT :: Maybe (cs :~: AdobeRGB)) ->
+            encodePalettizedRGB opts $ toImageBaseModel img
+        Nothing -> fromMaybeEncode f (Proxy :: Proxy (Image S cs e)) Nothing
 
 
 encodeAutoGIF ::
@@ -343,6 +350,9 @@ instance Writable (Sequence GIF) (NE.NonEmpty ( JP.GifDelay
 
 instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Alpha CM.RGB) Word8)) where
   encodeM f opts = encodeM f opts . fmap (\(d, i) -> (d, JP.DisposalRestoreBackground, i))
+
+instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S Y' Word8)) where
+  encodeM f opts = encodeM f opts . fmap (fmap demoteLumaImage)
 
 instance Writable (Sequence GIF) (NE.NonEmpty (JP.GifDelay, Image S (Y D65) Word8)) where
   encodeM f opts = encodeM f opts . fmap (fmap toImageBaseModel)

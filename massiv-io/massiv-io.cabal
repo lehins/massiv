@@ -40,7 +40,7 @@ library
                      , Data.Massiv.Array.IO.Image.Netpbm
   build-depends:       base            >= 4.8 && < 5
                      , bytestring
-                     , Color           == 0.1.2 || > 0.1.3
+                     , Color           >= 0.1.4
                      , data-default-class
                      , deepseq
                      , exceptions

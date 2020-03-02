@@ -78,6 +78,18 @@ instance Writable PNG (Image S (Alpha CM.RGB) Word16) where
   encodeM PNG _ img = pure $ JP.encodePng (toJPImageRGBA16 img)
 
 
+instance Writable PNG (Image S Y' Word8) where
+  encodeM f opts = encodeM f opts . demoteLumaImage
+
+instance Writable PNG (Image S Y' Word16) where
+  encodeM f opts = encodeM f opts . demoteLumaImage
+
+instance Writable PNG (Image S (Alpha Y') Word8) where
+  encodeM f opts = encodeM f opts . demoteLumaAlphaImage
+
+instance Writable PNG (Image S (Alpha Y') Word16) where
+  encodeM f opts = encodeM f opts . demoteLumaAlphaImage
+
 instance Writable PNG (Image S (Y D65) Word8) where
   encodeM f opts = encodeM f opts . toImageBaseModel
 
@@ -131,6 +143,18 @@ instance Readable PNG (Image S (Alpha CM.RGB) Word8) where
 instance Readable PNG (Image S (Alpha CM.RGB) Word16) where
   decodeWithMetadataM = decodeWithMetadataPNG
 
+
+instance Readable PNG (Image S Y' Word8) where
+  decodeWithMetadataM f = fmap (first promoteLumaImage) . decodeWithMetadataPNG f
+
+instance Readable PNG (Image S Y' Word16) where
+  decodeWithMetadataM f = fmap (first promoteLumaImage) . decodeWithMetadataPNG f
+
+instance Readable PNG (Image S (Alpha Y') Word8) where
+  decodeWithMetadataM f = fmap (first promoteLumaAlphaImage) . decodeWithMetadataPNG f
+
+instance Readable PNG (Image S (Alpha Y') Word16) where
+  decodeWithMetadataM f = fmap (first promoteLumaAlphaImage) . decodeWithMetadataPNG f
 
 instance Readable PNG (Image S (Y D65) Word8) where
   decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataPNG f
@@ -188,41 +212,27 @@ instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
   decodeWithMetadataM = decodeAutoWithMetadataPNG
 
 encodePNG ::
-     forall r cs e m.
-     (ColorModel cs e, Source r Ix2 (Pixel cs e), MonadThrow m)
+     forall cs e m. (ColorModel cs e, MonadThrow m)
   => PNG
-  -> Image r cs e
+  -> Image S cs e
   -> m BL.ByteString
 encodePNG f img =
-  fromMaybeEncode f (Proxy :: Proxy (Image r cs e)) $
+  fromMaybeEncode f (Proxy :: Proxy (Image S cs e)) $
   msum
-    [ do Refl <- eqT :: Maybe (cs :~: CM.Y)
+    [ do Refl <- eqT :: Maybe (e :~: Word8)
          msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ JP.encodePng $ toJPImageY8 img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                pure $ JP.encodePng $ toJPImageY16 img
+           [ JP.encodePng <$> maybeJPImageY8 img
+           , JP.encodePng <$> maybeJPImageRGB8 img
+           , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
+                msum [JP.encodePng <$> maybeJPImageYA8 img, JP.encodePng <$> maybeJPImageRGBA8 img]
            ]
-    , do Refl <- eqT :: Maybe (cs :~: Alpha CM.Y)
+    , do Refl <- eqT :: Maybe (e :~: Word16)
          msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ JP.encodePng $ toJPImageYA8 img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                pure $ JP.encodePng $ toJPImageYA16 img
-           ]
-    , do Refl <- eqT :: Maybe (cs :~: CM.RGB)
-         msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ JP.encodePng $ toJPImageRGB8 img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                pure $ JP.encodePng $ toJPImageRGB16 img
-           ]
-    , do Refl <- eqT :: Maybe (cs :~: Alpha CM.RGB)
-         msum
-           [ do Refl <- eqT :: Maybe (e :~: Word8)
-                pure $ JP.encodePng $ toJPImageRGBA8 img
-           , do Refl <- eqT :: Maybe (e :~: Word16)
-                pure $ JP.encodePng $ toJPImageRGBA16 img
+           [ JP.encodePng <$> maybeJPImageY16 img
+           , JP.encodePng <$> maybeJPImageRGB16 img
+           , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
+                msum
+                  [JP.encodePng <$> maybeJPImageYA16 img, JP.encodePng <$> maybeJPImageRGBA16 img]
            ]
     ]
 

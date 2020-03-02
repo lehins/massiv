@@ -57,10 +57,14 @@ import Data.Massiv.Array.IO.Base as Base (Auto(..), ConvertError(..),
                                           Readable(..), Sequence(..),
                                           Writable(..), convertEither,
                                           convertImage, decode', decodeError,
-                                          defaultWriteOptions, encode',
-                                          encodeError, fromImageBaseModel,
-                                          fromMaybeDecode, fromMaybeEncode,
-                                          toImageBaseModel, toProxy)
+                                          defaultWriteOptions,
+                                          demoteLumaAlphaImage, demoteLumaImage,
+                                          encode', encodeError,
+                                          fromImageBaseModel, fromMaybeDecode,
+                                          fromMaybeEncode,
+                                          promoteLumaAlphaImage,
+                                          promoteLumaImage, toImageBaseModel,
+                                          toProxy)
 import Data.Massiv.Array.IO.Image
 import Graphics.Pixel.ColorSpace
 import Prelude
@@ -166,7 +170,7 @@ writeArray format opts filepath arr =
 -- actual image file, `ConvertError` will be thrown.
 --
 -- >>> frog <- readImage "files/frog.jpg" :: IO (Image S SRGB Word8)
--- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S RGB Word8>"
+-- *** Exception: ConvertError "Cannot decode JPG image <Image S YCbCr Word8> as <Image S SRGB Word8>"
 --
 -- Whenever image is not in the color space or precision that we need, either use
 -- `readImageAuto` or manually convert to the desired one by using the appropriate
@@ -183,16 +187,16 @@ writeArray format opts filepath arr =
 --
 -- @since 0.1.0
 readImage ::
-     (ColorSpace cs i e, MonadIO m)
+     (ColorModel cs e, MonadIO m)
   => FilePath -- ^ File path for an image
   -> m (Image S cs e)
 readImage path = liftIO (B.readFile path >>= decodeImageM imageReadFormats path)
 {-# INLINE readImage #-}
 
 
--- | Similar to `readImage`, but works will perform all necessary color space conversion
+-- | Similar to `readImage`, but will perform all necessary color space conversion
 -- and precision adjustment in order to match the result image type. Very useful whenever
--- image format isn't known at compile time.
+-- image format isn't known ahead of time.
 --
 -- >>> frogCMYK <- readImageAuto "files/frog.jpg" :: IO (Image S (CMYK SRGB) Double)
 -- >>> size frogCMYK
@@ -220,7 +224,7 @@ readImageAuto path = liftIO (B.readFile path >>= decodeImageM imageReadAutoForma
 --
 -- @since 0.1.0
 writeImage ::
-     (Source r Ix2 (Pixel cs e), ColorSpace cs i e, MonadIO m) => FilePath -> Image r cs e -> m ()
+     (Source r Ix2 (Pixel cs e), ColorModel cs e, MonadIO m) => FilePath -> Image r cs e -> m ()
 writeImage path img = liftIO (encodeImageM imageWriteFormats path img >>= writeLazyAtomically path)
 
 

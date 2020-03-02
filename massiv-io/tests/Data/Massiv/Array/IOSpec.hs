@@ -16,6 +16,10 @@ import Test.Hspec.QuickCheck
 elevatorGen :: (Random e, Elevator e) => Gen e
 elevatorGen = choose (minValue, maxValue)
 
+instance (Arbitrary e, Random e, Elevator e) => Arbitrary (Pixel Y' e) where
+  arbitrary = PixelY' <$> elevatorGen
+instance (Arbitrary e, Random e, Elevator e) => Arbitrary (Pixel (Alpha Y') e) where
+  arbitrary = PixelY'A <$> elevatorGen <*> elevatorGen
 instance (Arbitrary e, Random e, Elevator e) => Arbitrary (Pixel (Y i) e) where
   arbitrary = PixelY <$> elevatorGen
 instance (Arbitrary e, Random e, Elevator e) => Arbitrary (Pixel (Alpha (Y i)) e) where
@@ -39,7 +43,7 @@ instance (Arbitrary e, Random e, Elevator e) => Arbitrary (Pixel (Alpha (CMYK cs
     PixelCMYKA <$> elevatorGen <*> elevatorGen <*> elevatorGen <*> elevatorGen <*> elevatorGen
 
 specEncodeNoError ::
-     forall cs e i f. (Writable f (Image S cs e), Arbitrary (Pixel cs e), ColorSpace cs i e)
+     forall cs e f. (Writable f (Image S cs e), Arbitrary (Pixel cs e), ColorModel cs e)
   => f
   -> Spec
 specEncodeNoError f =
@@ -52,11 +56,11 @@ specEncodeNoError f =
     bs' `shouldBe` bs
 
 specEncodeDecodeNoError ::
-     forall cs e i f.
+     forall cs e f.
      ( Readable f (Image S cs e)
      , Writable f (Image S cs e)
      , Arbitrary (Pixel cs e)
-     , ColorSpace cs i e
+     , ColorModel cs e
      )
   => f
   -> Spec
@@ -124,11 +128,13 @@ spec :: Spec
 spec = do
   describe "Readable/Writable" $ do
     describe "BMP" $ do
+      specEncodeNoError @Y' @Word8 BMP
       specEncodeNoError @(Y D65) @Word8 BMP
       --specEncodeDecodeNoError @(Y D65) @Word8 BMP
       specEncodeDecodeNoError @SRGB @Word8 BMP
       specEncodeDecodeNoError @(Alpha SRGB) @Word8 BMP
     describe "GIF" $ do
+      specEncodeNoError @Y' @Word8 GIF
       specEncodeNoError @(Y D65) @Word8 GIF
       specEncodeDecodeNoError @SRGB @Word8 GIF
       --specEncodeGifSequenceNoError @(Y D65) @Word8
@@ -140,12 +146,17 @@ spec = do
     -- describe "HDR" $ do
     --   specEncodeDecodeNoError @SRGB @Float HDR
     describe "JPG" $ do
+      specEncodeDecodeNoError @Y' @Word8 JPG
       specEncodeDecodeNoError @(Y D65) @Word8 JPG
       specEncodeDecodeNoError @SRGB @Word8 JPG
       specEncodeDecodeNoError @(CMYK SRGB) @Word8 JPG
       specEncodeDecodeNoError @(YCbCr SRGB) @Word8 JPG
       -- TODO: read YA8
     describe "PNG" $ do
+      specEncodeDecodeNoError @Y' @Word8 PNG
+      specEncodeDecodeNoError @Y' @Word16 PNG
+      specEncodeDecodeNoError @(Alpha Y') @Word8 PNG
+      specEncodeDecodeNoError @(Alpha Y') @Word16 PNG
       specEncodeDecodeNoError @(Y D65) @Word8 PNG
       specEncodeDecodeNoError @(Y D65) @Word16 PNG
       specEncodeDecodeNoError @(Alpha (Y D65)) @Word8 PNG
@@ -155,14 +166,21 @@ spec = do
       specEncodeDecodeNoError @(Alpha SRGB) @Word8 PNG
       specEncodeDecodeNoError @(Alpha SRGB) @Word16 PNG
     describe "TGA" $ do
+      specEncodeDecodeNoError @Y' @Word8 TGA
       specEncodeDecodeNoError @(Y D65) @Word8 TGA
       specEncodeDecodeNoError @SRGB @Word8 TGA
       specEncodeDecodeNoError @(Alpha SRGB) @Word8 TGA
     describe "TIF" $ do
+      specEncodeDecodeNoError @Y' @Word8 TIF
+      specEncodeDecodeNoError @Y' @Word16 TIF
+      specEncodeDecodeNoError @Y' @Word32 TIF
+      specEncodeDecodeNoError @Y' @Float TIF
       specEncodeDecodeNoError @(Y D65) @Word8 TIF
       specEncodeDecodeNoError @(Y D65) @Word16 TIF
       specEncodeDecodeNoError @(Y D65) @Word32 TIF
       specEncodeDecodeNoError @(Y D65) @Float TIF
+      specEncodeDecodeNoError @(Alpha Y') @Word8 TIF
+      specEncodeDecodeNoError @(Alpha Y') @Word16 TIF
       specEncodeDecodeNoError @(Alpha (Y D65)) @Word8 TIF
       specEncodeDecodeNoError @(Alpha (Y D65)) @Word16 TIF
       specEncodeDecodeNoError @SRGB @Word8 TIF

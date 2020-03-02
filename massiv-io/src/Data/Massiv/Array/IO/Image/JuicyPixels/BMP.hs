@@ -76,6 +76,9 @@ instance Writable BMP (Image S (Alpha CM.RGB) Word8) where
     pure . JP.encodeBitmapWithMetadata bitmapMetadata . toJPImageRGBA8
 
 
+instance Writable BMP (Image S Y' Word8) where
+  encodeM f opts = encodeM f opts . demoteLumaImage
+
 instance Writable BMP (Image S (Y D65) Word8) where
   encodeM f opts = encodeM f opts . toImageBaseModel
 
@@ -99,6 +102,8 @@ instance Readable BMP (Image S CM.RGB Word8) where
 instance Readable BMP (Image S (Alpha CM.RGB) Word8) where
   decodeWithMetadataM = decodeWithMetadataBMP
 
+instance Readable BMP (Image S Y' Word8) where
+  decodeWithMetadataM f = fmap (first promoteLumaImage) . decodeWithMetadataM f
 
 instance Readable BMP (Image S (Y D65) Word8) where
   decodeWithMetadataM f = fmap (first fromImageBaseModel) . decodeWithMetadataM f
@@ -141,22 +146,19 @@ instance (Mutable r Ix2 (Pixel cs e), ColorSpace cs i e) =>
   decodeWithMetadataM = decodeAutoWithMetadataBMP
 
 encodeBMP ::
-     forall r cs e m.
-     (ColorModel cs e, Source r Ix2 (Pixel cs e), MonadThrow m)
+     forall cs e m. (ColorModel cs e, MonadThrow m)
   => BMP
   -> BitmapOptions
-  -> Image r cs e
+  -> Image S cs e
   -> m BL.ByteString
 encodeBMP f BitmapOptions {bitmapMetadata} img =
-  fromMaybeEncode f (Proxy :: Proxy (Image r cs e)) $ do
+  fromMaybeEncode f (Proxy :: Proxy (Image S cs e)) $ do
     Refl <- eqT :: Maybe (e :~: Word8)
     msum
-      [ do Refl <- eqT :: Maybe (cs :~: CM.Y)
-           pure $ JP.encodeBitmapWithMetadata bitmapMetadata $ toJPImageY8 img
-      , do Refl <- eqT :: Maybe (cs :~: CM.RGB)
-           pure $ JP.encodeBitmapWithMetadata bitmapMetadata $ toJPImageRGB8 img
-      , do Refl <- eqT :: Maybe (cs :~: Alpha CM.RGB)
-           pure $ JP.encodeBitmapWithMetadata bitmapMetadata $ toJPImageRGBA8 img
+      [ JP.encodeBitmapWithMetadata bitmapMetadata <$> maybeJPImageY8 img
+      , JP.encodeBitmapWithMetadata bitmapMetadata <$> maybeJPImageRGB8 img
+      , do Refl <- eqT :: Maybe (cs :~: Alpha (Opaque cs))
+           JP.encodeBitmapWithMetadata bitmapMetadata <$> maybeJPImageRGBA8 img
       ]
 
 

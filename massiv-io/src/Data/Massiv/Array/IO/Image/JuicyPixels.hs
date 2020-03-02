@@ -38,6 +38,7 @@ module Data.Massiv.Array.IO.Image.JuicyPixels
   , toJPImageCMYK8
   , toJPImageCMYK16
   , fromDynamicImage
+  , fromDynamicImageM
   , fromDynamicImageAuto
   ) where
 
