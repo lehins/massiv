@@ -105,25 +105,25 @@ matrix:
   #     apt:
   #       packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-12.14 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-12.14 --stack-yaml stack-extra-deps.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-12.14 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.4.3 (lts-12.14)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.4.4 (lts-12.26)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.9 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-13.9 --stack-yaml stack-extra-deps.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-13.9 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.6.3 (lts-13.9)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-13.19 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-13.19 --stack-yaml stack-extra-deps.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-13.19 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.6.4 (lts-13.19)"
     addons:
       apt:
@@ -135,49 +135,28 @@ matrix:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml"
+  - env: BUILD=stack ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml"
     compiler: ": #stack GHC-8.6.5 (lts-14.27)"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  - env: BUILD=stack ARGS="--resolver lts-15" DOCTEST_ARGS="--resolver lts-15"
+  - env: BUILD=stack ARGS="--resolver lts-15"
     compiler: ": #stack GHC-8.8.2 (lts-15)"
     addons:
       apt:
         packages: [libgmp-dev]
 
   # Nightly builds are allowed to fail
-  - env: BUILD=stack ARGS="--resolver nightly" DOCTEST_ARGS="--resolver nightly"
+  - env: BUILD=stack ARGS="--resolver nightly"
     compiler: ": #stack nightly"
     addons:
       apt:
         packages: [libgmp-dev]
 
-  # # Build on macOS in addition to Linux
-  # - env: BUILD=stack ARGS="--resolver lts-9.21 --stack-yaml stack-ghc-8.0.yaml"
-  #   compiler: ": #stack GHC-8.0.2 (lts-9.21)"
-  #   os: osx
-
-  # - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
-  #   compiler: ": #stack GHC-8.2.2 (lts-11.22)"
-  #   os: osx
-
-  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml"
-    compiler: ": #stack GHC-8.4.4 (lts-12.26)"
-    os: osx
-
-  - env: BUILD=stack ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml" DOCTEST_ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml"
-    compiler: ": #stack GHC-8.6.5 (lts-14.27)"
-    os: osx
-
-  - env: BUILD=stack ARGS="--resolver lts-15" DOCTEST_ARGS="--resolver lts-15"
-    compiler: ": #stack GHC-8.8.2 (lts-15)"
-    os: osx
-
   allow_failures:
   - env: BUILD=cabal GHCVER=head CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
-  - env: BUILD=stack ARGS="--resolver nightly" DOCTEST_ARGS="--resolver nightly"
+  - env: BUILD=stack ARGS="--resolver nightly"
 
 before_install:
 # Using compiler above sets CC to an invalid value, so unset it
@@ -234,20 +213,21 @@ script:
   set -ex
   case "$BUILD" in
     stack)
+      BUILD_ARGS="--bench --no-run-benchmarks --haddock --no-haddock-deps --flag massiv:unsafe-checks"
       if [ -n "${COVERALLS_STACK_YAML}" ] && [ -n "${COVERALLS_REPO_TOKEN}" ]; then
-         stack --stack-yaml $COVERALLS_STACK_YAML test --no-run-tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
-
-         stack --stack-yaml $COVERALLS_STACK_YAML test massiv-test:tests --coverage --haddock --no-haddock-deps --flag massiv:unsafe-checks
+         stack --stack-yaml $COVERALLS_STACK_YAML test massiv-test:tests --coverage $BUILD_ARGS
 
          stack --stack-yaml $COVERALLS_STACK_YAML hpc report --all
          travis_retry curl -L https://github.com/lehins/stack-hpc-coveralls/releases/download/0.0.5.0/shc.tar.gz | tar xz shc
          STACK_YAML="$COVERALLS_STACK_YAML" ./shc --repo-token=$COVERALLS_REPO_TOKEN combined custom
+         if [ -z "$DOCTESTS_DISABLED" ]; then
+           stack --stack-yaml $COVERALLS_STACK_YAML $ARGS test massiv:doctests --coverage $BUILD_ARGS
+         fi
       else
-        stack $ARGS test --no-run-tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
-        stack $ARGS test massiv-test:tests --haddock --no-haddock-deps --flag massiv:unsafe-checks
-      fi
-      if [ "${DOCTEST_ARGS}" ]; then
-         stack $DOCTEST_ARGS test massiv:doctests --haddock --no-haddock-deps --flag massiv:unsafe-checks
+        stack $ARGS test massiv-test:tests $BUILD_ARGS
+        if [ -z "$DOCTESTS_DISABLED" ]; then
+           stack $ARGS test massiv:doctests $BUILD_ARGS
+        fi
       fi
       ;;
     cabal)

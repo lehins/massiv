@@ -47,14 +47,14 @@ before_test:
 
 test_script:
   - cd "%WORK_DIR%"
-  - stack %ARGS% --verbosity warn setup --no-reinstall > nul
-  - stack %ARGS% test massiv:doctests
+  #- stack %ARGS% --verbosity warn setup --no-reinstall > nul
+  - stack %ARGS% test massiv-test:tests
       -j 2
       --flag massiv:unsafe-checks
       --no-terminal
       --haddock
       --no-haddock-deps
-  - stack %ARGS% test massiv-test:tests
+  - stack %ARGS% test massiv:doctests
       -j 2
       --flag massiv:unsafe-checks
       --no-terminal
