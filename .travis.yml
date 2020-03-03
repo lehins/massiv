@@ -79,6 +79,28 @@ matrix:
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
 
+
+  # # Build on macOS in addition to Linux
+  # - env: BUILD=stack ARGS="--resolver lts-9.21 --stack-yaml stack-ghc-8.0.yaml"
+  #   compiler: ": #stack GHC-8.0.2 (lts-9.21)"
+  #   os: osx
+
+  # - env: BUILD=stack ARGS="--resolver lts-11.22 --stack-yaml stack-ghc-8.0.yaml --no-run-tests"
+  #   compiler: ": #stack GHC-8.2.2 (lts-11.22)"
+  #   os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-12.26 --stack-yaml stack-extra-deps.yaml"
+    compiler: ": #stack GHC-8.4.4 (lts-12.26)"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-14.27 --stack-yaml stack-extra-deps.yaml"
+    compiler: ": #stack GHC-8.6.5 (lts-14.27)"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-15"
+    compiler: ": #stack GHC-8.8.2 (lts-15)"
+    os: osx
+
   # A few test cases hit bugs in ghc causing the test suite failure. Make sure it at least compiles
   # for ghc-8.0
   # - env: BUILD=stack ARGS="--resolver lts-7.24 --stack-yaml stack-ghc-8.0.yaml" # --no-run-tests"
