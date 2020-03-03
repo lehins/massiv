@@ -1,9 +1,13 @@
-resolver: lts-14.4
+resolver: lts-15.2
 packages:
 - '.'
-extra-deps: []
-# - '../massiv/'
-# - '../massiv-io/'
+extra-deps:
+- '../massiv/'
+- Color-0.1.4
+- github: lehins/massiv-io
+  commit: HEAD
+  subdirs:
+    - massiv-io
 flags: {}
 extra-package-dbs: []
 nix:

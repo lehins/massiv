@@ -3,10 +3,9 @@ module Main where
 import Data.Massiv.Array
 import Data.Massiv.Array.IO
 import Examples.Convolution
-import Graphics.ColorSpace
 
 
-identity :: Elevator a => Stencil Ix2 (Pixel RGB a) (Pixel RGB a)
+identity :: Elevator a => Stencil Ix2 (Pixel SRGB a) (Pixel SRGB a)
 identity =
   makeStencil sz c $ \get -> get (0 :. 0)
   where
@@ -14,7 +13,7 @@ identity =
     sz = Sz (3 :. 3)
 {-# INLINE identity #-}
 
-box :: (Elevator a, Fractional a) => Stencil Ix2 (Pixel RGB a) (Pixel RGB a)
+box :: (Elevator a, Fractional a) => Stencil Ix2 (Pixel SRGB a) (Pixel SRGB a)
 box =
   makeStencil sz c $ \get ->
     ( get  (-1 :. -1) + get  (-1 :. 0) + get (-1 :. 1)
@@ -27,7 +26,7 @@ box =
 
 main :: IO ()
 main = do
-  frog <- readImageAuto "files/frog.jpg" :: IO (Image S RGB Double)
+  frog <- readImageAuto "files/frog.jpg" :: IO (Image S SRGB Double)
 
   -- Identity transformation
   writeImageAuto "files/frog_clone.png" $ computeAs S $ mapStencil Edge identity frog
