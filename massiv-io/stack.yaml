@@ -1,9 +1,0 @@
-resolver: lts-14.20
-packages:
-- '.'
-extra-deps:
-#- Color-0.1.2@sha256:d3710247aabd0f2dc40478949b2a9a8a8b25056e708521d08a6dffb5589ed1c5,8010
-- ../../Color/Color
-- JuicyPixels-3.3.5@sha256:5c67dc066d67f5045221a8202f701f4c77eab8220f44414c00fadcdc3e4f872b,3911
-flags: {}
-extra-package-dbs: []
