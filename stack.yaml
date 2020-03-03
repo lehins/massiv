@@ -1,13 +1,5 @@
 resolver: lts-15.1
 packages:
 - 'massiv/'
-- 'massiv-io/'
 - 'massiv-test/'
 flags: {}
-extra-package-dbs: []
-extra-deps:
-- JuicyPixels-3.3.5@sha256:5c67dc066d67f5045221a8202f701f4c77eab8220f44414c00fadcdc3e4f872b,3911
-- github: lehins/Color
-  commit: 0789765b964e984a3a8ba7dabc99466cb8157cba
-  subdirs:
-    - Color
