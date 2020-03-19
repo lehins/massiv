@@ -1320,7 +1320,7 @@ sfromList = fromSteps . S.fromList
 -- Array DS Seq (Sz1 5)
 --   [ 1, 2, 3, 4, 5 ]
 --
--- @since 0.5.0
+-- @since 0.5.1
 sfromListN :: Sz1 -> [e] -> Vector DS e
 sfromListN (Sz n) = fromSteps . S.fromListN n
 {-# INLINE sfromListN #-}
