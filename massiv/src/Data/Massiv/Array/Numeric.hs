@@ -26,6 +26,8 @@ module Data.Massiv.Array.Numeric
   , (|*|)
   , multiplyTransposed
   , identityMatrix
+  , lowerTriangular
+  , upperTriangular
   , negateA
   , absA
   , signumA
@@ -77,6 +79,7 @@ import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Ops.Fold as A
 import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Transform as A
+import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Operations
@@ -276,9 +279,62 @@ multiplyTransposed arr1 arr2
 --   ]
 --
 -- @since 0.3.6
-identityMatrix :: Sz1 -> Array DL Ix2 Int
-identityMatrix (Sz n) = makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
+identityMatrix :: Num e => Sz1 -> Matrix DL e
+identityMatrix (Sz n) =
+  makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
 {-# INLINE identityMatrix #-}
+
+-- | Create a lower triangular (LU) matrix of size @NxN@
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> lowerTriangular Seq 5 (\(i :. j) -> i + j)
+-- Array DL Seq (Sz (5 :. 5))
+--   [ [ 0, 0, 0, 0, 0 ]
+--   , [ 1, 2, 0, 0, 0 ]
+--   , [ 2, 3, 4, 0, 0 ]
+--   , [ 3, 4, 5, 6, 0 ]
+--   , [ 4, 5, 6, 7, 8 ]
+--   ]
+--
+-- @since 0.5.2
+lowerTriangular :: Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
+lowerTriangular comp (Sz1 n) f =
+  let sz = Sz2 n n
+   in unsafeMakeLoadArray comp sz (Just 0) $ \scheduler startAt wr ->
+        forM_ (0 ..: n) $ \i ->
+          scheduleWork scheduler $
+          forM_ (0 ... i) $ \j ->
+            let ix = i :. j
+             in wr (startAt + toLinearIndex sz ix) (f ix)
+{-# INLINE lowerTriangular #-}
+
+-- | Create an upper triangular (LU) matrix of size @NxN@
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> upperTriangular Par 5 (\(i :. j) -> i + j)
+-- Array DL Par (Sz (5 :. 5))
+--   [ [ 0, 1, 2, 3, 4 ]
+--   , [ 0, 2, 3, 4, 5 ]
+--   , [ 0, 0, 4, 5, 6 ]
+--   , [ 0, 0, 0, 6, 7 ]
+--   , [ 0, 0, 0, 0, 8 ]
+--   ]
+--
+-- @since 0.5.2
+upperTriangular :: Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
+upperTriangular comp (Sz1 n) f =
+  let sz = Sz2 n n
+   in unsafeMakeLoadArray comp sz (Just 0) $ \scheduler startAt wr ->
+        forM_ (0 ..: n) $ \i ->
+          scheduleWork scheduler $
+          forM_ (i ..: n) $ \j ->
+            let ix = i :. j
+             in wr (startAt + toLinearIndex sz ix) (f ix)
+{-# INLINE upperTriangular #-}
 
 
 negateA :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e

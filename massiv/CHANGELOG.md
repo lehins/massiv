@@ -1,3 +1,9 @@
+# 0.5.2
+
+* Addition of `lowerTriangular` and `upperTriangular`
+* Relax `identityMatrix` type to return an array of any `Num` type, not just `Int`.
+* Addition of `unsafeMakeLoadArrayAdjusted`
+
 # 0.5.1
 
 * Fix `sfromListN` accepting a plain `Int` instead of `Sz1`, as well as switch to upper bound.

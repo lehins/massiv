@@ -24,6 +24,7 @@ module Data.Massiv.Array.Delayed.Push
   , makeLoadArrayS
   , makeLoadArray
   , unsafeMakeLoadArray
+  , unsafeMakeLoadArrayAdjusted
   , fromStrideLoad
   , appendOuterM
   , concatOuterM
@@ -231,8 +232,7 @@ unsafeMakeLoadArray ::
   -> Maybe e
   -- ^ An element to use for initialization of the mutable array that will be created in
   -- the future
-  -> (forall m. Monad m =>
-                  Scheduler m () -> Int -> (Int -> e -> m ()) -> m ())
+  -> (forall m. Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ())
   -- ^ This function accepts:
   --
   -- * A scheduler that can be used for parallelization of loading
@@ -244,6 +244,21 @@ unsafeMakeLoadArray ::
   -> Array DL ix e
 unsafeMakeLoadArray = DLArray
 {-# INLINE unsafeMakeLoadArray #-}
+
+-- | Same as `unsafeMakeLoadArray`, except will ensure that starting index is correctly
+-- adjusted. Which means the writing function gets one less argument.
+--
+-- @since 0.5.2
+unsafeMakeLoadArrayAdjusted ::
+     Comp
+  -> Sz ix
+  -> Maybe e
+  -> (forall m. Monad m => Scheduler m () -> (Int -> e -> m ()) -> m ())
+  -> Array DL ix e
+unsafeMakeLoadArrayAdjusted comp sz mDefVal writer =
+  DLArray comp sz mDefVal $ \scheduler !startAt uWrite ->
+    writer scheduler (\i -> uWrite (startAt + i))
+{-# INLINE unsafeMakeLoadArrayAdjusted #-}
 
 -- | Convert any `Load`able array into `DL` representation.
 --

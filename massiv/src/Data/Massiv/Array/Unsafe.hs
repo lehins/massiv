@@ -14,6 +14,7 @@
 module Data.Massiv.Array.Unsafe
   ( -- * Creation
     unsafeMakeLoadArray
+  , unsafeMakeLoadArrayAdjusted
     -- * Indexing
   , Sz(SafeSz)
   , Stride(SafeStride)
@@ -86,7 +87,7 @@ module Data.Massiv.Array.Unsafe
   ) where
 
 import Data.Massiv.Array.Delayed.Pull (D)
-import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray)
+import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray, unsafeMakeLoadArrayAdjusted)
 import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
