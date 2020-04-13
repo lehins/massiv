@@ -284,7 +284,7 @@ identityMatrix (Sz n) =
   makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
 {-# INLINE identityMatrix #-}
 
--- | Create a lower triangular (LU) matrix of size @NxN@
+-- | Create a lower triangular (L in LU decomposition) matrix of size @NxN@
 --
 -- ==== __Example__
 --
@@ -302,15 +302,15 @@ identityMatrix (Sz n) =
 lowerTriangular :: Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
 lowerTriangular comp (Sz1 n) f =
   let sz = Sz2 n n
-   in unsafeMakeLoadArray comp sz (Just 0) $ \scheduler startAt wr ->
+   in unsafeMakeLoadArrayAdjusted comp sz (Just 0) $ \scheduler wr ->
         forM_ (0 ..: n) $ \i ->
           scheduleWork scheduler $
           forM_ (0 ... i) $ \j ->
             let ix = i :. j
-             in wr (startAt + toLinearIndex sz ix) (f ix)
+             in wr (toLinearIndex sz ix) (f ix)
 {-# INLINE lowerTriangular #-}
 
--- | Create an upper triangular (LU) matrix of size @NxN@
+-- | Create an upper triangular (U in LU decomposition) matrix of size @NxN@
 --
 -- ==== __Example__
 --
@@ -328,12 +328,12 @@ lowerTriangular comp (Sz1 n) f =
 upperTriangular :: Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
 upperTriangular comp (Sz1 n) f =
   let sz = Sz2 n n
-   in unsafeMakeLoadArray comp sz (Just 0) $ \scheduler startAt wr ->
+   in unsafeMakeLoadArrayAdjusted comp sz (Just 0) $ \scheduler wr ->
         forM_ (0 ..: n) $ \i ->
           scheduleWork scheduler $
           forM_ (i ..: n) $ \j ->
             let ix = i :. j
-             in wr (startAt + toLinearIndex sz ix) (f ix)
+             in wr (toLinearIndex sz ix) (f ix)
 {-# INLINE upperTriangular #-}
 
 
