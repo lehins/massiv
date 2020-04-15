@@ -198,7 +198,9 @@ liftNumericArray2M f a1 a2
 (.^) = powerPointwise
 {-# INLINE (.^) #-}
 
--- | Perform matrix multiplication. Inner dimensions must agree, otherwise `SizeMismatchException`.
+-- | Matrix multiplication
+--
+-- Inner dimensions must agree, otherwise `SizeMismatchException`.
 (|*|) ::
      (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (R r) Ix1 e, Num e, MonadThrow m)
   => Array r Ix2 e
@@ -211,6 +213,21 @@ liftNumericArray2M f a1 a2
 "multDoubleTranspose" [~1] forall arr1 arr2 . arr1 |*| transpose arr2 =
     multiplyTransposedFused arr1 (convert arr2)
  #-}
+
+-- | Matrix-vector product
+--
+-- Inner dimensions must agree, otherwise `SizeElementsMismatchException`
+(#>) :: (MonadThrow m, Source (R r') Ix1 e, Source r Ix1 e, Construct r' Ix1 e, Load r Ix1 e, Load r' Ix2 e, OuterSlice r' Ix2 e, Num e) => Array r' Ix2 e -> Array r Ix1 e -> m (Array r' Ix1 e)
+mm #> v
+  | mCols /= n = throwM $ SizeElementsMismatchException (size mm) (size v)
+  | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
+      foldlS (+) 0 (zipWith (*) (unsafeOuterSlice mm i) v)
+  where
+    Sz2 mRows mCols = size mm
+    Sz1 n = size v
+{-# INLINE [1] (#>) #-}
+
+
 
 multiplyTransposedFused ::
      ( Mutable r Ix2 e
