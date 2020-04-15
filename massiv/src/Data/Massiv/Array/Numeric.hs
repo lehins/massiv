@@ -224,7 +224,7 @@ liftNumericArray2M f a1 a2
 mm #> v
   | mCols /= n = throwM $ SizeElementsMismatchException (size mm) (size v)
   | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
-      foldlS (+) 0 (zipWith (*) (unsafeOuterSlice mm i) v)
+      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice mm i) v)
   where
     Sz2 mRows mCols = size mm
     Sz1 n = size v
