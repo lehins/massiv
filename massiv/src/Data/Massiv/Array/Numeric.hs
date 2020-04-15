@@ -23,6 +23,7 @@ module Data.Massiv.Array.Numeric
   , (.*)
   , (*.)
   , (.^)
+  , (#>)
   , (|*|)
   , multiplyTransposed
   , identityMatrix
@@ -258,8 +259,7 @@ multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
     arr2' = compute $ transpose arr2
 {-# INLINE multArrs #-}
 
--- | It is quite often that second matrix gets transposed before multiplication (eg. A * A'), but
--- due to layout of data in memory it is more efficient to transpose the second array again.
+-- | Computes the matrix-matrix transposed product (i.e. A * A')
 multiplyTransposed ::
      ( Manifest r Ix2 e
      , OuterSlice r Ix2 e
