@@ -1,3 +1,7 @@
+# 0.5.3
+
+* Add matrix-vector product (`(#>)`)
+
 # 0.5.2
 
 * Addition of `lowerTriangular` and `upperTriangular`
