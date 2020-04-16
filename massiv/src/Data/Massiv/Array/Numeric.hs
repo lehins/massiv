@@ -231,7 +231,7 @@ mm #> v
   where
     Sz2 mRows mCols = size mm
     Sz1 n = size v
-{-# INLINE [1] (#>) #-}
+{-# INLINE (#>) #-}
 
 
 
