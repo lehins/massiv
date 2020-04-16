@@ -220,10 +220,10 @@ liftNumericArray2M f a1 a2
 -- Inner dimensions must agree, otherwise `SizeMismatchException`
 --
 -- @since 0.5.2
-(#>) :: (MonadThrow m, Source (R r') Ix1 e, Source r Ix1 e, Construct r' Ix1 e, Load r Ix1 e, Load r' Ix2 e, OuterSlice r' Ix2 e, Num e)
-  => Array r' Ix2 e -- ^ Matrix
-  -> Array r Ix1 e -- ^ Vector
-  -> m (Array D Ix1 e)
+(#>) :: (MonadThrow m, Num e, Source (R r) Ix1 e, Manifest r' Ix1 e, OuterSlice r Ix2 e) =>
+        Array r Ix2 e -- ^ Matrix
+     -> Array r' Ix1 e -- ^ Vector
+     -> m (Array D Ix1 e)
 mm #> v
   | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
   | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
