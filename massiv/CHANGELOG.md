@@ -1,12 +1,9 @@
-# 0.5.3
-
-* Add matrix-vector product (`(#>)`)
-
 # 0.5.2
 
 * Addition of `lowerTriangular` and `upperTriangular`
 * Relax `identityMatrix` type to return an array of any `Num` type, not just `Int`.
 * Addition of `unsafeMakeLoadArrayAdjusted`
+* Add matrix-vector product (`(#>)`)
 
 # 0.5.1
 
