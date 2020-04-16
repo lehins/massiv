@@ -238,7 +238,6 @@ mm #> v
 multiplyTransposedFused ::
      ( Mutable r Ix2 e
      , OuterSlice r Ix2 e
-     
      , Source (R r) Ix1 e
      , Num e
      , MonadThrow m
