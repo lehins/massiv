@@ -4,6 +4,7 @@
 * Relax `identityMatrix` type to return an array of any `Num` type, not just `Int`.
 * Addition of `unsafeMakeLoadArrayAdjusted`
 * Add matrix-vector product (`(#>)`)
+* Addition of `siterate`
 
 # 0.5.1
 

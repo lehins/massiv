@@ -73,6 +73,7 @@ module Data.Massiv.Vector
   , sgenerate
   -- , iterateN
   -- , iiterateN
+  , siterate
   , siterateN
   -- ** Monadic initialization
   , sreplicateM
@@ -1016,10 +1017,28 @@ sgenerate (Sz n) = DSArray . S.generate n
 {-# INLINE sgenerate #-}
 
 
+-- | Create a delayed stream vector of infinite length by repeatedly apply a function to the
+-- initial value.
+--
+-- ==== __Examples__
+--
+-- >>> stake 10 $ siterate succ 'a'
+-- Array DS Seq (Sz1 10)
+--   [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j' ]
+--
+-- @since 0.5.2
+siterate :: (e -> e) -> e -> Vector DS e
+siterate f = fromSteps . S.unfoldr (\a -> Just (a, f a))
+{-# INLINE siterate #-}
+
 -- | Create a delayed stream vector of length @n@ by repeatedly apply a function to the
 -- initial value.
 --
 -- ==== __Examples__
+--
+-- >>> siterateN 10 succ 'a'
+-- Array DS Seq (Sz1 10)
+--   [ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j' ]
 --
 -- @since 0.5.0
 siterateN :: Sz1 -> (e -> e) -> e -> Vector DS e
