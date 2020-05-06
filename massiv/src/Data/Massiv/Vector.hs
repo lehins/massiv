@@ -1017,7 +1017,7 @@ sgenerate (Sz n) = DSArray . S.generate n
 {-# INLINE sgenerate #-}
 
 
--- | Create a delayed stream vector of infinite length by repeatedly apply a function to the
+-- | Create a delayed stream vector of infinite length by repeatedly applying a function to the
 -- initial value.
 --
 -- ==== __Examples__
@@ -1031,7 +1031,7 @@ siterate :: (e -> e) -> e -> Vector DS e
 siterate f = fromSteps . S.unfoldr (\a -> Just (a, f a))
 {-# INLINE siterate #-}
 
--- | Create a delayed stream vector of length @n@ by repeatedly apply a function to the
+-- | Create a delayed stream vector of length @n@ by repeatedly applying a function to the
 -- initial value.
 --
 -- ==== __Examples__

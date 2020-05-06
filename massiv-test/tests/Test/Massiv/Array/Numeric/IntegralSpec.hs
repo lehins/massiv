@@ -1,10 +1,10 @@
-module Data.Massiv.Array.Numeric.IntegralSpec
+module Test.Massiv.Array.Numeric.IntegralSpec
   ( spec
   ) where
 
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Numeric.Integral
-import Test.Hspec
+import Test.Massiv.Core
 
 gaussian :: Float -> Float
 gaussian x = exp (x ^ (2 :: Int))

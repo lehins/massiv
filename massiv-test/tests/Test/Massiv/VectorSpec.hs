@@ -851,6 +851,9 @@ spec =
             V.sgenerate (Sz k) (apply f) !==! VP.generate k (apply f)
           prop "siterateN" $ \n (f :: Fun Word Word) a ->
             V.siterateN (Sz n) (apply f) a !==! VP.iterateN n (apply f) a
+          prop "siterate" $ \n (f :: Fun Word Word) a ->
+            computeAs P (V.stake n (V.siterate (apply f) a)) ===
+            computeAs P (V.siterateN n (apply f) a)
         describe "Monadic initialization" $ do
           prop "sreplicateM" prop_sreplicateM
           prop "sgenerateM" prop_sgenerateM
