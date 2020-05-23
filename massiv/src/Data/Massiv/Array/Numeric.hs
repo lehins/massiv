@@ -445,7 +445,7 @@ cosA = unsafeLiftArray cos
 {-# INLINE cosA #-}
 
 tanA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-tanA = unsafeLiftArray cos
+tanA = unsafeLiftArray tan
 {-# INLINE tanA #-}
 
 asinA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -465,7 +465,7 @@ sinhA = unsafeLiftArray sinh
 {-# INLINE sinhA #-}
 
 tanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
-tanhA = unsafeLiftArray cos
+tanhA = unsafeLiftArray tanh
 {-# INLINE tanhA #-}
 
 coshA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
