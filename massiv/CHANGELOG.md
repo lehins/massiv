@@ -1,3 +1,7 @@
+# 0.5.3
+
+* Fix `tanA` and `tanhA`. [#96](https://github.com/lehins/massiv/pull/96)
+
 # 0.5.2
 
 * Addition of `lowerTriangular` and `upperTriangular`
