@@ -32,6 +32,7 @@ module Data.Massiv.Vector
   , sheadM
   , lastM
   , unconsM
+  , sunconsM
   , unsnocM
   -- ** Slicing
   , slice
@@ -66,6 +67,7 @@ module Data.Massiv.Vector
   , singleton
   , ssingleton
   , cons
+  , scons
   , snoc
   , A.replicate
   , sreplicate
@@ -498,7 +500,7 @@ sheadM v =
 -- | /O(1)/ - Take one element off of the `Source` vector from the left side, as well as
 -- the remaining part of the vector in delayed `D` representation.
 --
--- /Related/: `head'`, `shead'`, `headM`, `sheadM`, `cons`
+-- /Related/: `sunconsM`, `head'`, `shead'`, `headM`, `sheadM`, `cons`
 --
 -- /__Throws Exceptions__/: `SizeEmptyException`
 --
@@ -510,7 +512,7 @@ sheadM v =
 --
 -- /__Similar__/:
 --
--- [@Data.List.`Data.List.uncons`@] Same concept, except restricted to `Maybe` instead of
+-- [@Data.List.`Data.List.uncons`@] Same concept, except it is restricted to `Maybe` instead of
 -- the more general `MonadThrow`
 --
 -- @since 0.3.0
@@ -524,6 +526,32 @@ unconsM arr
   where
     !sz = size arr
 {-# INLINE unconsM #-}
+
+-- | /O(1)/ - Take one element off of the `Source` vector from the left side, as well as
+-- the remaining part of the vector in delayed `D` representation.
+--
+-- /Related/: `head'`, `shead'`, `headM`, `sheadM`, `unconsM`, `cons`
+--
+-- /__Throws Exceptions__/: `SizeEmptyException`
+--
+-- ==== __Examples__
+--
+-- >>> sunconsM (fromList Seq [1,2,3] :: Array P Ix1 Int)
+-- (1,Array DS Seq (Sz1 2)
+--   [ 2, 3 ])
+--
+-- /__Similar__/:
+--
+-- [@Data.List.`Data.List.uncons`@] Same concept, except it is restricted to `Maybe` instead of
+-- the more general `MonadThrow`
+--
+-- @since 0.5.3
+sunconsM :: (MonadThrow m, Stream r Ix1 e) => Vector r e -> m (e, Vector DS e)
+sunconsM v =
+  case S.unId (S.uncons (toStream v)) of
+    Nothing -> throwM $ SizeEmptyException (size v)
+    Just (e, stsTail) -> pure (e, fromSteps stsTail)
+{-# INLINE sunconsM #-}
 
 -- | /O(1)/ - Take one element off of the vector from the right side, as well as the
 -- remaining part of the vector.
@@ -960,29 +988,50 @@ ssingleton = DSArray . S.singleton
 -- | /O(1)/ - Add an element to the vector from the left side
 --
 -- @since 0.3.0
-cons :: e -> Vector DL e -> Vector DL e
-cons e arr =
-  arr
-    { dlSize = SafeSz (1 + unSz (dlSize arr))
-    , dlLoad =
-        \scheduler startAt uWrite ->
-          uWrite startAt e >> dlLoad arr scheduler (startAt + 1) uWrite
-    }
+cons :: Load r Ix1 e => e -> Vector r e -> Vector DL e
+cons e v =
+  let dv = toLoadArray v
+   in dv
+        { dlSize = SafeSz (1 + unSz (dlSize dv))
+        , dlLoad =
+            \scheduler startAt uWrite ->
+              uWrite startAt e >> dlLoad dv scheduler (startAt + 1) uWrite
+        }
 {-# INLINE cons #-}
+
+-- | /O(1)/ - Add an element to the streamed vector from the left side
+--
+-- /Related/: `cons`, `snoc`
+--
+-- ==== __Examples__
+--
+-- >>> scons 0 (fromList Seq [1,2,3] :: Array P Ix1 Int)
+-- Array DS Seq (Sz1 4)
+--   [ 0, 1, 2, 3 ]
+--
+-- /__Similar__/:
+--
+-- [@Data.List.`(Data.List.:)`@] Same concept
+--
+-- @since 0.5.3
+scons :: Stream r Ix1 e => e -> Vector r e -> Vector DS e
+scons e v = fromSteps $ S.cons e $ toStream v
+{-# INLINE scons #-}
 
 
 -- | /O(1)/ - Add an element to the vector from the right side
 --
 -- @since 0.3.0
-snoc :: Vector DL e -> e -> Vector DL e
-snoc arr e =
-  arr
-    { dlSize = SafeSz (1 + k)
-    , dlLoad =
-        \scheduler startAt uWrite -> dlLoad arr scheduler startAt uWrite >> uWrite (k + startAt) e
-    }
-  where
-    !k = unSz (size arr)
+snoc :: Load r Ix1 e => Vector r e -> e -> Vector DL e
+snoc v e =
+  let dv = toLoadArray v
+      !k = unSz (size dv)
+   in dv
+        { dlSize = SafeSz (1 + k)
+        , dlLoad =
+            \scheduler startAt uWrite ->
+              dlLoad dv scheduler startAt uWrite >> uWrite (k + startAt) e
+        }
 {-# INLINE snoc #-}
 
 

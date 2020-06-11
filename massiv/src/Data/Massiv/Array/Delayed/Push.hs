@@ -267,7 +267,8 @@ toLoadArray :: Load r ix e => Array r ix e -> Array DL ix e
 toLoadArray arr =
   DLArray (getComp arr) (size arr) Nothing $ \scheduler startAt dlWrite ->
     loadArrayM scheduler arr (dlWrite . (+ startAt))
-{-# INLINE toLoadArray #-}
+{-# INLINE[1] toLoadArray #-}
+{-# RULES "toLoadArray/id" toLoadArray = id #-}
 
 -- | Convert an array that can be loaded with stride into `DL` representation.
 --

@@ -366,8 +366,8 @@ fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
 
 -- | Same as `compute`, but with `Stride`.
 --
--- /O(n div k)/ - Where @n@ is numer of elements in the source array and @k@ is number of elemts in
--- the stride.
+-- /O(n div k)/ - Where @n@ is numer of elements in the source array and @k@ is number of
+-- elements in the stride.
 --
 -- @since 0.3.0
 computeWithStride ::

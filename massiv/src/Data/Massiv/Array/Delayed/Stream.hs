@@ -149,7 +149,8 @@ instance S.Stream DS Ix1 e where
 -- @since 0.4.1
 toStreamArray :: Source r ix e => Array r ix e -> Array DS Ix1 e
 toStreamArray = DSArray . S.steps
-{-# INLINE toStreamArray #-}
+{-# INLINE[1] toStreamArray #-}
+{-# RULES "toStreamArray/id" toStreamArray = id #-}
 
 -- | /O(1)/ - Convert an array into monadic `Steps`
 --

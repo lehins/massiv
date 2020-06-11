@@ -105,10 +105,11 @@ import Data.Vector.Fusion.Util
 
 #include "massiv.h"
 
--- | The array family. Representations @r@ describes how data is arranged or computed. All arrays
--- have a common property that each index @ix@ always maps to the same unique element, even if that
--- element does not exist in memory and has to be computed upon lookup. Data is always arranged in a
--- nested fashion, depth of which is controlled by @`Rank` ix@.
+-- | The array family. Representations @r@ describe how data is arranged or computed. All
+-- arrays have a common property that each index @ix@ always maps to the same unique
+-- element, even if that element does not yet exist in memory and the arry has to be
+-- computed in order to get access to that element. Data is always arranged in a nested
+-- row-major fashion, depth of which is controlled by @`Rank` ix@.
 data family Array r ix e :: *
 
 -- | Type synonym for a single dimension array, or simply a flat vector.

@@ -391,10 +391,9 @@ cons :: Monad m => e -> Steps m e -> Steps m e
 cons e (Steps str k) = Steps (S.cons e str) (k + 1)
 {-# INLINE cons #-}
 
+-- | First element of the `Steps` or `Nothing` if empty
 uncons :: Monad m => Steps m e -> m (Maybe (e, Steps m e))
-uncons sts@(Steps str _) = do
-  mx <- str S.!? 0
-  pure $ fmap (, drop 1 sts) mx
+uncons sts = (\mx -> (\x -> (x, drop 1 sts)) <$> mx) <$> headMaybe sts
 {-# INLINE uncons #-}
 
 snoc :: Monad m => Steps m e -> e -> Steps m e

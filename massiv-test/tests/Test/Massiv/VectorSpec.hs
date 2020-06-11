@@ -797,6 +797,9 @@ spec =
           prop "last'" $ \(arr :: Array P Ix1 Int) ->
             (singleton (last' arr) :: Array D Ix1 Int) !!==!!
             VP.singleton (VP.last (toPrimitiveVector arr))
+          prop "unconsM" $ \(v :: Vector D Int) ->
+            fmap (computeAs P <$>) (V.sunconsM v :: Maybe (Int, Vector DS Int)) ===
+            fmap (computeAs P <$>) (V.unconsM v :: Maybe (Int, Vector D Int))
         describe "Slicing" $ do
           prop "slice" $ \i sz (arr :: Array P Ix1 Word) ->
             V.slice i sz arr !!==!! VP.take (unSz sz) (VP.drop i (toPrimitiveVector arr))
@@ -854,6 +857,10 @@ spec =
           prop "siterate" $ \n (f :: Fun Word Word) a ->
             computeAs P (V.stake n (V.siterate (apply f) a)) ===
             computeAs P (V.siterateN n (apply f) a)
+          prop "scons" $ \e (v :: Vector P Word) ->
+            let vp = computeAs P (V.scons e v)
+            in vp !!==!! VP.cons e (toPrimitiveVector v) .&&.
+               vp === computeAs P (V.cons e v)
         describe "Monadic initialization" $ do
           prop "sreplicateM" prop_sreplicateM
           prop "sgenerateM" prop_sgenerateM

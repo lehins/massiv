@@ -26,6 +26,8 @@ main = do
         "cons"
         [ bench ("Array DL Ix1 Int (" ++ show kSmall ++ ")") $
           nf (A.computeAs P . consArray kSmall) empty
+        , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
+          nf (A.computeAs P . sconsArray kSmall) empty
         , bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (consVector kSmall) VP.empty
         , bench ("[Int] (" ++ show kSmall ++ ")") $ nf (consList kSmall) []
         ]
@@ -38,14 +40,14 @@ main = do
         ]
     , bgroup
         "unfoldr"
-        [ bench "Array (DS)" $ whnf (A.computeAs P . A.unfoldr firstK) 0
+        [ bench "Array (DS)" $ whnf (A.computeAs P . A.sunfoldr firstK) 0
         , bench "Vector" $ whnf (VP.unfoldr firstK) 0
         ]
     , bgroup
         "unfoldrN"
         [ bench "Array (DL)" $ whnf (A.computeAs P . unfoldrS_ (Sz k) (\i -> (i :: Int, i + 1))) 0
         , bench "Array (DS)" $
-          whnf (A.computeAs P . A.unfoldrN (Sz k) (\i -> Just (i :: Int, i + 1))) 0
+          whnf (A.computeAs P . A.sunfoldrN (Sz k) (\i -> Just (i :: Int, i + 1))) 0
         , bench "Vector" $ whnf (VP.unfoldrN k (\i -> Just (i :: Int, i + 1))) 0
         ]
     ]
@@ -62,6 +64,9 @@ main = do
     consArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
     consArray 0 !acc = acc
     consArray !n !acc = consArray (n - 1) (n `A.cons` acc)
+    sconsArray :: Int -> Array DS Ix1 Int -> Array DS Ix1 Int
+    sconsArray 0 !acc = acc
+    sconsArray !n !acc = sconsArray (n - 1) (n `A.scons` acc)
     consVector :: Int -> VP.Vector Int -> VP.Vector Int
     consVector 0 !acc = acc
     consVector !n !acc = consVector (n - 1) (n `VP.cons` acc)
