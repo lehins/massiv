@@ -4,32 +4,47 @@ module Main where
 
 import Criterion.Main
 import qualified Data.DList as DL
+import qualified Data.List as List
 import Data.Massiv.Array as A
+import Data.Massiv.Array.Manifest.Vector as A
 import Data.Massiv.Bench as A
+import Data.Maybe
 import qualified Data.Vector.Primitive as VP
 import Prelude as P
 
 main :: IO ()
 main = do
   let !sz = Sz (600 :. 1000)
-      !arr = computeAs P $ resize' (Sz $ totalElem sz) $ arrRLightIx2 DL Par sz
+      !len = totalElem sz
+      !arr = computeAs P $ resize' (Sz k) $ arrRLightIx2 DL Par sz
   defaultMain
     [ mkAppendBenchGroup "LeftToRight" (Dim 1) sz
     , mkAppendBenchGroup "TopToBottom" (Dim 2) sz
     , bgroup
         "Monoid"
         [ bench "mappend" $ whnf (\a -> A.computeAs P (toLoadArray a <> toLoadArray a)) arr
-        , bench "appendDL" $ whnfIO (A.computeAs P <$> appendOuterM (toLoadArray arr) (toLoadArray arr))
+        , bench "appendDL" $
+          whnfIO (A.computeAs P <$> appendOuterM (toLoadArray arr) (toLoadArray arr))
         , bench "mconcat" $ whnf (\a -> A.computeAs P (mconcat [toLoadArray a, toLoadArray a])) arr
         ]
     , bgroup
         "cons"
         [ bench ("Array DL Ix1 Int (" ++ show kSmall ++ ")") $
           nf (A.computeAs P . consArray kSmall) empty
-        , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
-          nf (A.computeAs P . sconsArray kSmall) empty
+        -- , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
+          --   nf (A.computeAs P . sconsArray kSmall) empty
         , bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (consVector kSmall) VP.empty
         , bench ("[Int] (" ++ show kSmall ++ ")") $ nf (consList kSmall) []
+        ]
+    , bgroup
+        "uncons"
+        [ bench ("Array D Ix1 Int (" ++ show kSmall ++ ")") $ nf (unconsArray kSmall . delay) arr
+        , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
+          nf (sunconsArray kSmall . toStreamArray) arr
+        , env (pure (A.toVector arr :: VP.Vector Double)) $ \v ->
+            bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (unconsVector kSmall) v
+        , env (pure (toList arr :: [Double])) $ \xs ->
+            bench ("[Int] (" ++ show kSmall ++ ")") $ nf (unconsList kSmall) xs
         ]
     , bgroup
         "snoc"
@@ -64,9 +79,9 @@ main = do
     consArray :: Int -> Array DL Ix1 Int -> Array DL Ix1 Int
     consArray 0 !acc = acc
     consArray !n !acc = consArray (n - 1) (n `A.cons` acc)
-    sconsArray :: Int -> Array DS Ix1 Int -> Array DS Ix1 Int
-    sconsArray 0 !acc = acc
-    sconsArray !n !acc = sconsArray (n - 1) (n `A.scons` acc)
+    -- sconsArray :: Int -> Array DS Ix1 Int -> Array DS Ix1 Int
+    -- sconsArray 0 !acc = acc
+    -- sconsArray !n !acc = sconsArray (n - 1) (n `A.scons` acc)
     consVector :: Int -> VP.Vector Int -> VP.Vector Int
     consVector 0 !acc = acc
     consVector !n !acc = consVector (n - 1) (n `VP.cons` acc)
@@ -79,6 +94,32 @@ main = do
     snocVector :: Int -> VP.Vector Int -> VP.Vector Int
     snocVector 0 !acc = acc
     snocVector !n !acc = snocVector (n - 1) (acc `VP.snoc` n)
+    unconsArray n arr
+      | 1 < n =
+        case unconsM arr of
+          Nothing -> error "Unexpected end of delayed array"
+          Just (!_e, arr') -> unconsArray (n - 1) arr'
+      | otherwise = fst $ fromJust $ unconsM arr
+    sunconsArray n arr
+      | 1 < n =
+        case sunconsM arr of
+          Nothing -> error "Unexpected end of stream array"
+          Just (!_e, arr') -> sunconsArray (n - 1) arr'
+      | otherwise = fst $ fromJust $ sunconsM arr
+    unconsVector :: Prim a => Int -> VP.Vector a -> a
+    unconsVector n xs
+      | 1 < n =
+        case unconsVP xs of
+          Nothing -> error "Unexpected end of vector"
+          Just (!_e, xs') -> unconsVector (n - 1) xs'
+      | otherwise = fst $ fromJust $ unconsVP xs
+    unconsList :: Int -> [a] -> a
+    unconsList n xs
+      | 1 < n =
+        case List.uncons xs of
+          Nothing -> error "Unexpected end of list"
+          Just (!_e, xs') -> unconsList (n - 1) xs'
+      | otherwise = fst $ fromJust $ List.uncons xs
 
 mkAppendBenchGroup :: String -> Dim -> Sz2 -> Benchmark
 mkAppendBenchGroup gname dim sz =
@@ -101,3 +142,7 @@ mkAppendBenchGroup gname dim sz =
           -- , bench "appendPull" $ whnf (A.computeAs P . fromJust . appendPull dim arr) arr
           ]
     ]
+
+
+unconsVP :: Prim a => VP.Vector a -> Maybe (a, VP.Vector a)
+unconsVP xs = flip (,) (VP.unsafeTail xs) <$> xs VP.!? 0
