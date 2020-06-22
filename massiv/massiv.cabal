@@ -9,7 +9,7 @@ author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
 copyright:           2018-2020 Alexey Kuleshevich
 category:            Data, Data Structures, Parallelism
-build-type:          Custom
+build-type:          Simple
 extra-source-files:  README.md
                    , CHANGELOG.md
 cabal-version:       >=1.10
@@ -25,12 +25,6 @@ flag unsafe-checks
                significant performance penalty
   default: False
   manual: True
-
-custom-setup
-  setup-depends:
-      base
-    , Cabal
-    , cabal-doctest >=1.0.6
 
 library
   hs-source-dirs:      src

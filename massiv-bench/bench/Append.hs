@@ -15,16 +15,18 @@ import Prelude as P
 main :: IO ()
 main = do
   let !sz = Sz (600 :. 1000)
-      !len = totalElem sz
-      !arr = computeAs P $ resize' (Sz len) $ arrRLightIx2 DL Par sz
+      !arr2D = computeAs P $ arrRLightIx2 DL Par sz
+      !arr = computeAs P $ resize' (Sz $ totalElem sz) arr2D
   defaultMain
     [ mkAppendBenchGroup "LeftToRight" (Dim 1) sz
     , mkAppendBenchGroup "TopToBottom" (Dim 2) sz
     , bgroup
-        "Monoid"
+        "Append"
         [ bench "mappend" $ whnf (\a -> A.computeAs P (toLoadArray a <> toLoadArray a)) arr
-        , bench "appendDL" $
-          whnfIO (A.computeAs P <$> appendOuterM (toLoadArray arr) (toLoadArray arr))
+        , bench "appendOuterM" $
+          whnfIO (A.computeAs P <$> appendOuterM (toLoadArray arr2D) (toLoadArray arr2D))
+        , bench "appendM (inner)" $ whnfIO (A.computeAs P <$> A.appendM 1 arr2D arr2D)
+        , bench "appendM (outer)" $ whnfIO (A.computeAs P <$> A.appendM 2 arr2D arr2D)
         , bench "mconcat" $ whnf (\a -> A.computeAs P (mconcat [toLoadArray a, toLoadArray a])) arr
         ]
     , bgroup
