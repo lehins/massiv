@@ -9,10 +9,14 @@
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.VectorSpec (spec) where
 
+import Control.Arrow (first)
 import Control.Applicative
 import Control.DeepSeq
 import Control.Exception
 import Data.Bits
+import Data.Int
+import qualified Data.Tuple as Tuple
+import qualified Data.List as List
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Vector as V
@@ -23,7 +27,6 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import Data.Word
-import Data.Int
 import Test.Massiv.Core
 
 import System.Random.MWC as MWC
@@ -798,8 +801,13 @@ spec =
             (singleton (last' arr) :: Array D Ix1 Int) !!==!!
             VP.singleton (VP.last (toPrimitiveVector arr))
           prop "unconsM" $ \(v :: Vector D Int) ->
-            fmap (computeAs P <$>) (V.sunconsM v :: Maybe (Int, Vector DS Int)) ===
-            fmap (computeAs P <$>) (V.unconsM v :: Maybe (Int, Vector D Int))
+            fmap (computeAs P <$>) (A.unconsM v :: Maybe (Int, Vector D Int)) ===
+            fmap (fmap (A.fromList Seq)) (List.uncons (A.toList v))
+          prop "unsnocM" $ \(v :: Vector D Int) ->
+            fmap (first (computeAs P)) (A.unsnocM v :: Maybe (Vector D Int, Int)) ===
+            fmap
+              (Tuple.swap . fmap (A.fromList Seq . List.reverse))
+              (List.uncons (A.toList (A.reverse Dim1 v)))
         describe "Slicing" $ do
           prop "slice" $ \i sz (arr :: Array P Ix1 Word) ->
             V.slice i sz arr !!==!! VP.take (unSz sz) (VP.drop i (toPrimitiveVector arr))
@@ -857,10 +865,8 @@ spec =
           prop "siterate" $ \n (f :: Fun Word Word) a ->
             computeAs P (V.stake n (V.siterate (apply f) a)) ===
             computeAs P (V.siterateN n (apply f) a)
-          prop "scons" $ \e (v :: Vector P Word) ->
-            let vp = computeAs P (V.scons e v)
-            in vp !!==!! VP.cons e (toPrimitiveVector v) .&&.
-               vp === computeAs P (V.cons e v)
+          prop "cons" $ \e (v :: Vector P Word) ->
+            computeAs P (V.cons e v) !!==!! VP.cons e (toPrimitiveVector v)
         describe "Monadic initialization" $ do
           prop "sreplicateM" prop_sreplicateM
           prop "sgenerateM" prop_sgenerateM

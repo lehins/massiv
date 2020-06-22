@@ -16,7 +16,7 @@ main :: IO ()
 main = do
   let !sz = Sz (600 :. 1000)
       !len = totalElem sz
-      !arr = computeAs P $ resize' (Sz k) $ arrRLightIx2 DL Par sz
+      !arr = computeAs P $ resize' (Sz len) $ arrRLightIx2 DL Par sz
   defaultMain
     [ mkAppendBenchGroup "LeftToRight" (Dim 1) sz
     , mkAppendBenchGroup "TopToBottom" (Dim 2) sz
@@ -38,9 +38,9 @@ main = do
         ]
     , bgroup
         "uncons"
-        [ bench ("Array D Ix1 Int (" ++ show kSmall ++ ")") $ nf (unconsArray kSmall . delay) arr
-        , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
-          nf (sunconsArray kSmall . toStreamArray) arr
+        [ bench ("Array P Ix1 Int (" ++ show kSmall ++ ")") $ nf (unconsArray kSmall) arr
+        -- , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
+        --   nf (sunconsArray kSmall . toStreamArray) arr
         , env (pure (A.toVector arr :: VP.Vector Double)) $ \v ->
             bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (unconsVector kSmall) v
         , env (pure (toList arr :: [Double])) $ \xs ->
@@ -100,12 +100,12 @@ main = do
           Nothing -> error "Unexpected end of delayed array"
           Just (!_e, arr') -> unconsArray (n - 1) arr'
       | otherwise = fst $ fromJust $ unconsM arr
-    sunconsArray n arr
-      | 1 < n =
-        case sunconsM arr of
-          Nothing -> error "Unexpected end of stream array"
-          Just (!_e, arr') -> sunconsArray (n - 1) arr'
-      | otherwise = fst $ fromJust $ sunconsM arr
+    -- sunconsArray n arr
+    --   | 1 < n =
+    --     case sunconsM arr of
+    --       Nothing -> error "Unexpected end of stream array"
+    --       Just (!_e, arr') -> sunconsArray (n - 1) arr'
+    --   | otherwise = fst $ fromJust $ sunconsM arr
     unconsVector :: Prim a => Int -> VP.Vector a -> a
     unconsVector n xs
       | 1 < n =

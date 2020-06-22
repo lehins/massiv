@@ -1,8 +1,9 @@
 # 0.5.3
 
 * Fix `tanA` and `tanhA`. [#96](https://github.com/lehins/massiv/pull/96)
-* Add `scons` and `sunconsM`
 * Relax argument of `snoc` and `cons` constraint to `Load` vectors
+* Improve `unsnocM` and `unconsM` by switching to `unsafeLinearSlice`, instead of delaying
+  the array.
 
 # 0.5.2
 
