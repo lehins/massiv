@@ -866,7 +866,7 @@ spec =
             computeAs P (V.stake n (V.siterate (apply f) a)) ===
             computeAs P (V.siterateN n (apply f) a)
           prop "cons" $ \e (v :: Vector P Word) ->
-            computeAs P (V.cons e v) !!==!! VP.cons e (toPrimitiveVector v)
+            computeAs P (V.cons e (toLoadArray v)) !!==!! VP.cons e (toPrimitiveVector v)
         describe "Monadic initialization" $ do
           prop "sreplicateM" prop_sreplicateM
           prop "sgenerateM" prop_sgenerateM

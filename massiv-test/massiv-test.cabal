@@ -78,7 +78,7 @@ test-suite tests
                     , data-default
                     , deepseq
                     , genvalidity-hspec
-                    , massiv
+                    , massiv >= 0.5.2
                     , massiv-test
                     , mwc-random
                     , hspec
