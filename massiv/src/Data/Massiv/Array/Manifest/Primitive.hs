@@ -580,6 +580,7 @@ unsafeAtomicXorIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 {-# INLINE unsafeAtomicXorIntArray #-}
 
 
+#if !MIN_VERSION_primitive(0,7,1)
 shrinkMutableByteArray :: forall m. (PrimMonad m)
   => MutableByteArray (PrimState m)
   -> Int -- ^ new size
@@ -587,7 +588,7 @@ shrinkMutableByteArray :: forall m. (PrimMonad m)
 shrinkMutableByteArray (MutableByteArray arr#) (I# n#)
   = primitive_ (shrinkMutableByteArray# arr# n#)
 {-# INLINE shrinkMutableByteArray #-}
-
+#endif
 
 resizeMutableByteArrayCompat ::
   PrimMonad m => MutableByteArray (PrimState m) -> Int -> m (MutableByteArray (PrimState m))

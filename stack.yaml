@@ -3,3 +3,6 @@ packages:
 - 'massiv/'
 - 'massiv-test/'
 flags: {}
+extra-deps:
+- primitive-0.7.1.0
+- scheduler-1.4.2.3
