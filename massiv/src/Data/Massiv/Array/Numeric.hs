@@ -84,7 +84,6 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Operations
-import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Prelude as P
 
 

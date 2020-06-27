@@ -26,15 +26,13 @@ module Data.Massiv.Array.Delayed.Windowed
   , makeWindowedArray
   ) where
 
-import Control.Exception (Exception(..))
 import Control.Monad (when)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal (Sz(..))
-import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
+import Data.Massiv.Core.List (showArrayList, showsArrayPrec)
 import Data.Maybe (fromMaybe)
 import GHC.TypeLits
 

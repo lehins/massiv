@@ -1,15 +1,15 @@
-{-# LANGUAGE BangPatterns           #-}
-{-# LANGUAGE CPP                    #-}
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE FlexibleContexts       #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE PatternSynonyms        #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE TypeOperators          #-}
-{-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Ix
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -44,16 +44,18 @@ module Data.Massiv.Core.Index.Ix
   , pattern Sz5
   ) where
 
-import           Control.Monad.Catch             (MonadThrow(..))
-import           Control.DeepSeq
-import           Control.Monad                   (liftM)
-import           Data.Massiv.Core.Index.Internal
-import           Data.Monoid                     ((<>))
-import           Data.Proxy
-import qualified Data.Vector.Generic             as V
-import qualified Data.Vector.Generic.Mutable     as VM
-import qualified Data.Vector.Unboxed             as VU
-import           GHC.TypeLits
+import Control.Monad.Catch (MonadThrow(..))
+import Control.DeepSeq
+import Control.Monad (liftM)
+import Data.Massiv.Core.Index.Internal
+import Data.Proxy
+import qualified Data.Vector.Generic as V
+import qualified Data.Vector.Generic.Mutable as VM
+import qualified Data.Vector.Unboxed as VU
+import GHC.TypeLits
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup
+#endif
 
 
 infixr 5 :>, :.

@@ -70,7 +70,6 @@ import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse, take, drop)
 
 

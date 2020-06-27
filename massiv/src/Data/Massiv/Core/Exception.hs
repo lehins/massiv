@@ -6,6 +6,8 @@ module Data.Massiv.Core.Exception
   , throwImpossible
   , Uninitialized(..)
   , guardNumberOfElements
+  , Exception(..)
+  , SomeException
   ) where
 
 import Control.Exception

@@ -99,7 +99,6 @@ import Data.Massiv.Array.Manifest.Storable
 import Data.Massiv.Array.Manifest.Unboxed
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal (Sz(..))
 import Data.Word (Word8)
 
 

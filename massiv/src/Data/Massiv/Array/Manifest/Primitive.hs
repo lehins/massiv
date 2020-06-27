@@ -49,7 +49,7 @@ module Data.Massiv.Array.Manifest.Primitive
   ) where
 
 import Control.DeepSeq (NFData(..), deepseq)
-import Control.Monad.Primitive (PrimMonad(primitive), PrimState, primitive_)
+import Control.Monad.Primitive (PrimMonad(..), primitive_)
 import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
@@ -58,12 +58,10 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Maybe (fromMaybe)
-import Data.Primitive (sizeOf)
+import Data.Primitive (sizeOf, Prim)
 import Data.Primitive.ByteArray
-import Data.Primitive.Types
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Primitive.Mutable as MVP
-import GHC.Base (Int(..))
 import GHC.Exts as GHC
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)

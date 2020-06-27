@@ -67,14 +67,12 @@ module Data.Massiv.Array.Ops.Map
   ) where
 
 import Control.Monad (void)
-import Control.Monad.Primitive (PrimMonad)
 import Control.Scheduler
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct (makeArrayA, makeArrayLinearA)
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal (Sz(..))
 import Prelude hiding (map, mapM, mapM_, sequenceA, traverse, unzip, unzip3,
                 zip, zip3, zipWith, zipWith3)
 

@@ -38,8 +38,6 @@ module Data.Massiv.Core
   -- * Exceptions
   , MonadThrow(..)
   , throw
-  , Exception(..)
-  , SomeException
   , IndexException(..)
   , SizeException(..)
   , ShapeException(..)
@@ -50,7 +48,6 @@ module Data.Massiv.Core
   , PrimMonad(PrimState)
   ) where
 
-import Control.Exception (Exception(..), SomeException)
 import Control.Scheduler (initWorkerStates)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index

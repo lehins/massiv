@@ -94,7 +94,6 @@ import Data.Massiv.Array.Manifest.Storable
 import Data.Massiv.Array.Mutable.Internal
 import Data.Massiv.Array.Ops.Sort (unsafeUnstablePartitionRegionM)
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Massiv.Core.Index.Stride (Stride(SafeStride))
 import Data.Massiv.Vector.Unsafe
 import Data.Massiv.Array.Stencil.Unsafe

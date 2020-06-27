@@ -1,5 +1,5 @@
 name:                massiv-test
-version:             0.1.3
+version:             0.1.4
 synopsis:            Library that contains generators, properties and tests for Massiv Array Library.
 description:         This library is designed for users of massiv library that need random generators for writing custom property tests and reusing some of the predefined ones.
 homepage:            https://github.com/lehins/massiv
@@ -57,7 +57,9 @@ test-suite tests
                     , Test.Massiv.Array.MutableSpec
                     , Test.Massiv.Array.Ops.TransformSpec
                     , Test.Massiv.Array.Ops.SortSpec
+                    , Test.Massiv.Array.Ops.MapSpec
                     , Test.Massiv.Array.Numeric.IntegralSpec
+                    , Test.Massiv.Array.StencilSpec
                     , Test.Massiv.VectorSpec
                       -- TODO: Below should be moved to Test.Massiv.Array
                     , Data.Massiv.Array.Delayed.InterleavedSpec
@@ -68,9 +70,7 @@ test-suite tests
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
                     , Data.Massiv.Array.Ops.FoldSpec
-                    , Data.Massiv.Array.Ops.MapSpec
                     , Data.Massiv.Array.Ops.SliceSpec
-                    , Data.Massiv.Array.StencilSpec
                     , Data.Massiv.ArraySpec
   build-depends:      base
                     , bytestring

@@ -3,16 +3,15 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-module Data.Massiv.Array.Ops.MapSpec (spec) where
+module Test.Massiv.Array.Ops.MapSpec (spec) where
 
-import Data.IORef
 import Control.Monad.ST
 import Data.Foldable as F
 import Data.Massiv.Array.Unsafe
 import Data.Massiv.Array as A
 import Test.Massiv.Core
 import Prelude as P
-import Control.Scheduler.Internal
+import Control.Scheduler
 
 prop_zipUnzip ::
      (Index ix, Show (Array D ix Int))
@@ -116,11 +115,13 @@ prop_MapWS :: (Show (Array U ix Int), Index ix) => Array U ix Int -> Property
 prop_MapWS arr =
   monadicIO $
   run $ do
-    states <- initWorkerStates (getComp arr) (\_ -> newIORef 0)
+    let comp = getComp arr
+    count <- getCompWorkers comp
+    arrStates <- new @P (Sz count)
+    states <- initWorkerStates comp (\(WorkerId i) -> pure $ \f -> modifyM_ arrStates f i)
     arr' <-
-      forWS states arr $ \e ref -> do
-        acc <- readIORef ref
-        writeIORef ref (acc + e)
+      forWS states arr $ \e smod -> do
+        smod $ \acc -> pure (acc + e)
         pure e
-    accsArr <- A.mapM @P readIORef (evalArray Seq (_workerStatesArray states))
+    accsArr <- freeze Seq arrStates
     pure (A.sum arr' === A.sum accsArr .&&. arr === arr')

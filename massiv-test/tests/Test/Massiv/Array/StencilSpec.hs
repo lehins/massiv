@@ -5,11 +5,9 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-module Data.Massiv.Array.StencilSpec (spec) where
+module Test.Massiv.Array.StencilSpec (spec) where
 
 import Prelude as P
-import Control.DeepSeq (deepseq)
-import Data.Default (Default(def))
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as A
 import Test.Massiv.Core

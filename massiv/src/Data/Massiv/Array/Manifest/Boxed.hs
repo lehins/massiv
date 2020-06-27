@@ -64,7 +64,6 @@ import Data.Massiv.Core.List
 import qualified Data.Primitive.Array as A
 import qualified Data.Vector as VB
 import qualified Data.Vector.Mutable as MVB
-import GHC.Base (build)
 import GHC.Exts as GHC
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
