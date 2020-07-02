@@ -312,13 +312,13 @@ loadArrayWithIx2 with arr stride sz uWrite = do
   with $ iterM_ (strideStart stride (ib :. 0)) (m :. n) strideIx (<) writeB
   with $ iterM_ (strideStart stride (it :. 0)) (ib :. jt) strideIx (<) writeB
   with $ iterM_ (strideStart stride (it :. jb)) (ib :. n) strideIx (<) writeB
-  f <-
-    if is > 1 || blockHeight <= 1 -- Turn off unrolling for vertical strides
-      then return $ \(it' :. ib') ->
-             iterM_ (strideStart stride (it' :. jt)) (ib' :. jb) strideIx (<) writeW
-      else return $ \(it' :. ib') ->
-             unrollAndJam blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
-  return (f, it :. ib)
+  let f (it' :. ib')
+        | is > 1 || blockHeight <= 1 -- Turn off unrolling for vertical strides
+         = iterM_ (strideStart stride (it' :. jt)) (ib' :. jb) strideIx (<) writeW
+        | otherwise =
+          unrollAndJam blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
+      {-# INLINE f #-}
+  return (with . f, it :. ib)
 {-# INLINE loadArrayWithIx2 #-}
 
 
