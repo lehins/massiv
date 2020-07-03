@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 module Main where
 
 import Data.Massiv.Array
@@ -5,7 +7,9 @@ import Data.Massiv.Array.IO
 import Examples.Convolution
 
 
-identity :: Elevator a => Stencil Ix2 (Pixel SRGB a) (Pixel SRGB a)
+type SRGBPixel = (SRGB 'Linear)
+
+identity :: Elevator a => Stencil Ix2 (Pixel SRGBPixel a) (Pixel SRGBPixel a)
 identity =
   makeStencil sz c $ \get -> get (0 :. 0)
   where
@@ -13,7 +17,7 @@ identity =
     sz = Sz (3 :. 3)
 {-# INLINE identity #-}
 
-box :: (Elevator a, Fractional a) => Stencil Ix2 (Pixel SRGB a) (Pixel SRGB a)
+box :: (Elevator a, Fractional a) => Stencil Ix2 (Pixel SRGBPixel a) (Pixel SRGBPixel a)
 box =
   makeStencil sz c $ \get ->
     ( get  (-1 :. -1) + get  (-1 :. 0) + get (-1 :. 1)
@@ -26,7 +30,7 @@ box =
 
 main :: IO ()
 main = do
-  frog <- readImageAuto "files/frog.jpg" :: IO (Image S SRGB Double)
+  frog <- readImageAuto "files/frog.jpg" :: IO (Image S SRGBPixel Double)
 
   -- Identity transformation
   writeImageAuto "files/frog_clone.png" $ computeAs S $ mapStencil Edge identity frog

@@ -28,9 +28,14 @@ life :: Array S Ix2 Word8 -> Array S Ix2 Word8
 life = compute . A.mapStencil Wrap lifeStencil
 
 initLife :: Sz2 -> Array S Ix2 Word8 -> Array S Ix2 Word8
-initLife sz arr =
-  compute $
-  insertWindow (A.replicate Par sz 0) (Window ix0 (size arr) (index' arr . subtract ix0) Nothing)
+initLife sz arr = arr
+  -- The replicate call is failing with:
+  --   Couldn't match type ‘DL’ with ‘D’
+  --   Expected type: Array D Ix2 Word8
+  --     Actual type: Array DL Ix2 Word8
+  -- And using `delay` doesn't seem to work...
+  -- compute $
+  -- insertWindow (A.replicate Par sz 0) (Window ix0 (size arr) (index' arr . subtract ix0) Nothing)
   where
     ix0 = liftIndex (`div` 2) (unSz (sz - size arr))
 
