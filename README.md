@@ -458,7 +458,7 @@ life = compute . mapStencil Wrap lifeStencil
 <!-- TODO: add a gif with a few iterations -->
 
 The full working example that uses GLUT and OpenGL is located in
-[massiv-examples](massiv-examples/app/GameOfLife.hs)
+[GameOfLife](massiv-examples/GameOfLife/app/GameOfLife.hs)
 
 # massiv-io
 
@@ -477,31 +477,40 @@ The previous example wasn't particularly interesting, since we couldn't visualiz
 what is actually going on, so let's expend on it:
 
 ```haskell
+import Data.Massiv.Array
 import Data.Massiv.Array.IO
-import Graphics.ColorSpace
 
 main :: IO ()
 main = do
-  let arr = arrLightIx2 Par (Sz (600 :. 800))
-      img = computeAs S $ fmap PixelY arr -- convert an array into a grayscale image
-  writeImage "files/light.png" img
-  writeImage "files/light_avg.png" $ computeAs S $ mapStencil Edge average3x3Filter img
+  let arr = computeAs S $ arrLightIx2 Par (600 :. 800)
+      toImage ::
+           (Functor (Array r Ix2), Load r Ix2 (Pixel Y' Word8))
+        => Array r Ix2 Double
+        -> Image S Y' Word8
+      toImage = computeAs S . fmap (PixelY' . toWord8)
+      lightPath = "files/light.png"
+      lightAvgPath = "files/light_avg.png"
+      lightSumPath = "files/light_sum.png"
+  writeImage lightPath $ toImage $ delay arr
+  putStrLn $ "written: " ++ lightPath
+  writeImage lightAvgPath $ toImage $ mapStencil Edge average3x3Filter arr
+  putStrLn $ "written: " ++ lightAvgPath
 ```
 
-`massiv-examples/files/light.png`:
+`massiv-examples/vision/files/light.png`:
 
-![Light](massiv-examples/files/light.png)
+![Light](massiv-examples/vision/files/light.png)
 
-`massiv-examples/files/light_avg.png`:
+`massiv-examples/vision/files/light_avg.png`:
 
-![Light](massiv-examples/files/light_avg.png)
+![Light](massiv-examples/vision/files/light_avg.png)
 
 
-The full example is in the [massiv-examples](massiv-examples) package and if you have stack installed
-you can run it as:
+The full example is in the [vision](massiv-examples/vision/app/AvgSum.hs) package and if
+you have stack installed you can run it as:
 
 ```bash
-$ cd massiv-examples/ && stack build && stack exec -- examples
+$ cd massiv-examples/vision && stack build && stack exec -- avg-sum
 ```
 
 # Other libraries
