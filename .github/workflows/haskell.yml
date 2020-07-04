@@ -1,4 +1,4 @@
-name: Haskell CI
+name: massiv-examples
 
 on:
   push:
@@ -13,28 +13,32 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-haskell@v1
-      with:
-        ghc-version: '8.8.2'
-        cabal-version: '3.0'
+
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_ACTOR}/${GITHUB_REF#refs/heads/})"
+      id: extract_branch
 
     - name: Cache
-      uses: actions/cache@v1
-      env:
-        cache-name: cache-cabal
+      uses: actions/cache@v2.0.0
       with:
-        path: ~/.cabal
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
+        # A list of files, directories, and wildcard patterns to cache and restore
+        path: |
+          "~/.stack"
+          "massiv-examples/.stack-work"
+          "massiv-examples/*/.stack-work"
+        # An explicit key for restoring and saving the cache
+        key: "${{ steps.extract_branch.outputs.branch }}"
+        restore-keys: "*/master"
 
     - name: Install dependencies
       run: |
-        cabal update
-        cabal build --only-dependencies --enable-tests --enable-benchmarks
-    - name: Build
-      run: cabal build --enable-tests --enable-benchmarks all
-    - name: Run tests
-      run: cabal test all
+        sudo apt-get install freeglut3-dev
+        cd massiv-examples
+        curl -sSL https://get.haskellstack.org/ | sh -s - -f
+        # curl -sSL https://gist.githubusercontent.com/lehins/fd36a8cc8bf853173437b17f6b6426ad/raw/d9ddb32cac2f0dc6800be4fa54d450f0dcda6c60/git-modtime.hs -o git-modtime.hs
+        # stack script git-modtime.hs
+        stack setup
+    - name: Test
+      run: |
+        stack test --bench --no-run-benchmarks --haddock --no-haddock-deps
