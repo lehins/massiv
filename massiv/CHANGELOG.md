@@ -1,3 +1,7 @@
+# 0.5.4
+
+* Add `Eq` and `Ord` instance to `Value`.
+
 # 0.5.3
 
 * Fix `tanA` and `tanhA`. [#96](https://github.com/lehins/massiv/pull/96)

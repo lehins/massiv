@@ -67,6 +67,16 @@ instance Monoid a => Monoid (Value a) where
   Value a `mappend` Value b = Value (a `mappend` b)
   {-# INLINE mappend #-}
 
+-- | @since 0.5.4
+instance Eq e => Eq (Value e) where
+  (Value a) == (Value b) = a == b
+  {-# INLINE (==) #-}
+
+-- | @since 0.5.4
+instance Ord e => Ord (Value e) where
+  compare (Value a) (Value b) = compare a b
+  {-# INLINE compare #-}
+
 instance Num e => Num (Value e) where
   (+) = liftA2 (+)
   {-# INLINE (+) #-}
