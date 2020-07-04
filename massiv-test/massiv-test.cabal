@@ -52,6 +52,7 @@ test-suite tests
   other-modules:      Spec
                     , Test.Massiv.Core.IndexSpec
                     , Test.Massiv.Core.ListSpec
+                    , Test.Massiv.Core.OperationsSpec
                     , Test.Massiv.Core.SchedulerSpec
                     , Test.Massiv.Array.Delayed.StreamSpec
                     , Test.Massiv.Array.MutableSpec

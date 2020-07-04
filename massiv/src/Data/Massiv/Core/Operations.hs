@@ -19,6 +19,37 @@ import Data.Massiv.Core.Common
 -- import Data.Massiv.Array.Ops.Fold.Internal
 
 
+-- | Numeric operation on Array
+--
+-- ==== __Examples__
+-- >>> import Data.Massiv.Array as A
+-- >>> let arr = A.makeArray Par (Sz2 1 5) (const 2) :: Array D Ix2 Int
+-- >>> arr
+-- Array D Par (Sz (1 :. 5))
+--   [ [ 2, 2, 2, 2, 2 ]
+--   ]
+--
+-- >>> plusScalar arr 40
+-- Array D Par (Sz (1 :. 5))
+--   [ [ 42, 42, 42, 42, 42 ]
+--   ]
+--
+-- >>> let negArr = minusScalar arr 25
+-- >>> negArr
+-- Array D Par (Sz (1 :. 5))
+--   [ [ -23, -23, -23, -23, -23 ]
+--   ]
+--
+-- >>> absPointwise negArr
+-- Array D Par (Sz (1 :. 5))
+--   [ [ 23, 23, 23, 23, 23 ]
+--   ]
+--
+-- >>> powerPointwise arr 8
+-- Array D Par (Sz (1 :. 5))
+--   [ [ 256, 256, 256, 256, 256 ]
+--   ]
+
 class Num e => Numeric r e where
 
   {-# MINIMAL unsafeLiftArray, unsafeLiftArray2 #-}
