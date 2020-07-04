@@ -11,10 +11,10 @@ isGrowingStencil = A.makeStencil 2 1 $ \get -> (<=) <$> get (-1) <*> get 0
 prop_Sorted :: Comp -> Positive Int -> Positive Int -> Property
 prop_Sorted comp (Positive m) (Positive n) =
   forAllShrink (infiniteList :: Gen [Int]) shrink $ \xs ->
-    let sz = m :. n
-        arr = resize' sz (A.fromList comp (take (totalElem sz) xs) :: Array U Ix1 Int)
+    let sz = Sz (m :. n)
+        arr = resize' sz (A.fromList comp (Prelude.take (totalElem sz) xs) :: Array U Ix1 Int)
         sortedArr = sortRows arr
-     in A.and $ makeArrayR D Seq (Ix1 m) $ \i ->
+     in A.and $ makeArrayR D Seq (Sz1 m) $ \i ->
           A.and $ A.computeAs U (A.mapStencil (Fill minBound) isGrowingStencil (sortedArr !> i))
 
 

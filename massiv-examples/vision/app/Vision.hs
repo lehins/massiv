@@ -4,7 +4,6 @@ module Main where
 
 import Data.Massiv.Array
 import Data.Massiv.Array.IO
-import Examples.Convolution
 
 
 type SRGBPixel = (SRGB 'Linear)

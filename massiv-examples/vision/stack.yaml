@@ -1,0 +1,7 @@
+resolver: lts-16.3
+packages:
+- .
+- ../../massiv
+extra-deps:
+- Color-0.2.0@sha256:94c43c4d8f943ba0642ee58a9b8a665b01a3ac2893c40a16ffdabaacb956c58f,8159
+- massiv-io-0.3.0.1@sha256:393df632ea8c3b0549a2b3a2fbaa6a9ef1202a05dd9b3f44555a9f6a31327652,3667
