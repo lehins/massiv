@@ -30,7 +30,9 @@ life = compute . A.mapStencil Wrap lifeStencil
 initLife :: Sz2 -> Array S Ix2 Word8 -> Array S Ix2 Word8
 initLife sz arr =
   compute $
-  insertWindow (A.replicate Par sz 0) (Window ix0 (size arr) (index' arr . subtract ix0) Nothing)
+  insertWindow
+    (makeArrayR D Par sz (const 0))
+    (Window ix0 (size arr) (index' arr . subtract ix0) Nothing)
   where
     ix0 = liftIndex (`div` 2) (unSz (sz - size arr))
 

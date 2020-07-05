@@ -1,0 +1,8 @@
+resolver: lts-16.3
+
+packages:
+- .
+extra-deps:
+- ../../massiv
+nix:
+  packages: [ zlib libGLU ]
