@@ -4,6 +4,7 @@
 * Relax argument of `snoc` and `cons` constraint to `Load` vectors
 * Improve `unsnocM` and `unconsM` by switching to `unsafeLinearSlice`, instead of delaying
   the array.
+* Fix massiv doctests not being able to find massiv.h under NixOS
 
 # 0.5.2
 
