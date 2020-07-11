@@ -1,7 +1,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
-module Data.Massiv.Array.Delayed.InterleavedSpec
+module Test.Massiv.Array.Delayed.InterleavedSpec
   ( spec
   ) where
 

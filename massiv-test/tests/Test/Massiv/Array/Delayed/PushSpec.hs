@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Data.Massiv.Array.Delayed.PushSpec (spec) where
+module Test.Massiv.Array.Delayed.PushSpec (spec) where
 
 -- import Data.Massiv.Array.Delayed
 -- import Data.Massiv.Array.Unsafe

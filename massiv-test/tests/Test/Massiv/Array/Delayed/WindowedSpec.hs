@@ -6,44 +6,12 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Data.Massiv.Array.Delayed.WindowedSpec (spec) where
+module Test.Massiv.Array.Delayed.WindowedSpec (spec) where
 
 import Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Unsafe
 import Data.Massiv.Array as A
 import Test.Massiv.Core
-
-
-data ArrDW ix e = ArrDW (Array D ix e) (Array DW ix e)
-
-instance (Show ix, Index ix, Show (Array D ix e), Show (Array DW ix e)) => Show (ArrDW ix e) where
-  show (ArrDW d dw) =
-    "Delayed:\n" ++
-    show d ++
-    "\nCorresponding Windowed:\n" ++
-    --show dw ++
-    windowInfo
-    where
-      windowInfo =
-        maybe
-          "\n No Window"
-          (\Window {windowStart, windowSize} ->
-             "\n With Window starting index (" ++
-             show windowStart ++ ") and size (" ++ show windowSize ++ ")") $
-        getWindow dw
-
-instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
-         Arbitrary (ArrDW ix e) where
-  arbitrary = do
-    ArrTiny (arr :: Array D ix e) <- arbitrary
-    let sz = size arr
-    ArrDW arr <$>
-      if totalElem sz == 0
-        then return (makeArray (getComp arr) sz (unsafeIndex arr))
-        else do
-          wix <- flip (liftIndex2 mod) (unSz sz) <$> arbitrary
-          wsz <- liftIndex (+1) . flip (liftIndex2 mod) (liftIndex2 (-) (unSz sz) wix) <$> arbitrary
-          return $ makeWindowedArray arr wix (Sz wsz) (unsafeIndex arr)
 
 
 prop_EqDelayed ::

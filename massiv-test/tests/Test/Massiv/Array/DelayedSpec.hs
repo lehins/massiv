@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Data.Massiv.Array.DelayedSpec (spec) where
+module Test.Massiv.Array.DelayedSpec (spec) where
 
 import Data.Massiv.Array.Unsafe
 import Data.Massiv.Array as A
