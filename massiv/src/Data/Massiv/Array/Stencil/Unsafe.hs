@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -13,6 +14,7 @@
 module Data.Massiv.Array.Stencil.Unsafe
   ( -- * Stencil
     makeUnsafeStencil
+  , unsafeTransformStencil
   , unsafeMapStencil
   -- ** Deprecated
   , mapStencilUnsafe
@@ -123,3 +125,83 @@ makeUnsafeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
       Value $ inline $ relStencil ix (unValue . getVal . liftIndex2 (+) ix)
     {-# INLINE stencil #-}
 {-# INLINE makeUnsafeStencil #-}
+
+
+-- | Same as `Data.Massiv.Array.transformStencil`, but does not perform validation of the
+-- modified stencil.
+--
+-- @since 0.5.4
+unsafeTransformStencil ::
+     (Sz ix' -> Sz ix)
+  -- ^ Forward modifier for the size
+  -> (ix' -> ix)
+  -- ^ Forward index modifier
+  -> (((ix' -> Value e) -> ix' -> Value a) -> (ix -> Value e) -> ix -> Value a)
+  -- ^ Inverse stencil function modifier
+  -> Stencil ix' e a
+  -- ^ Original stencil.
+  -> Stencil ix e a
+unsafeTransformStencil transformSize transformIndex transformFunc Stencil {..} =
+  Stencil
+    { stencilSize = transformSize stencilSize
+    , stencilCenter = transformIndex stencilCenter
+    , stencilFunc = transformFunc stencilFunc
+    }
+{-# INLINE unsafeTransformStencil #-}
+
+
+
+{-
+
+Invalid stencil transformer function.
+
+TODO: figure out if there is a safe way to do stencil index trnasformation.
+
+
+-- | Perform isomorphic transformation of a stencil. This stencil modifier can be used for
+-- example to turn a vector stencil into a matrix stencil implement, or transpose a matrix
+-- stencil.
+--
+-- ====__Examples__
+--
+-- Convert a 1D stencil into a row matrix stencil
+--
+-- >>> import Data.Massiv.Array
+-- >>> let arr = compute $ iterateN 3 succ 0 :: Array P Ix2 Int
+-- >>> arr
+-- Array P Seq (Sz (3 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   , [ 7, 8, 9 ]
+--   ]
+-- >>> let toColumnStencil = transformStencil (\(Sz n) -> Sz (n :. 1)) (:. 0) headDim
+-- >>> applyStencil noPadding (toColumnStencil (sumStencil (Sz1 3))) arr
+-- Array DW Seq (Sz (1 :. 3))
+--   [ [ 12, 12, 12 ]
+--   ]
+-- >>> let toRowStencil = transformStencil (consSz 1) (0 :.) tailDim
+-- >>> applyStencil noPadding (toRowStencil (sumStencil (Sz1 3))) arr
+-- Array DW Seq (Sz (3 :. 1))
+--   [ [ 6 ]
+--   , [ 6 ]
+--   , [ 6 ]
+--   ]
+--
+-- @since 0.5.4
+transformStencil ::
+     (Default e, Index ix)
+  => (Sz ix' -> Sz ix)
+  -- ^ Forward modifier for the size
+  -> (ix' -> ix)
+  -- ^ Forward index modifier
+  -> (ix -> ix')
+  -- ^ Inverse index modifier
+  -> Stencil ix' e a
+  -- ^ Original stencil.
+  -> Stencil ix e a
+transformStencil transformSize transformIndex transformIndex' stencil =
+  validateStencil def $! unsafeTransformStencil transformSize transformIndex transformIndex' stencil
+{-# INLINE transformStencil #-}
+
+
+-}
