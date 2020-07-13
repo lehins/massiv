@@ -168,7 +168,6 @@ import Prelude as P hiding (all, and, any, enumFromTo, foldl, foldr, mapM,
                             mapM_, maximum, minimum, or, product, replicate, splitAt,
                             sum, zip)
 
-
 {- $folding
 
 All folding is done in a row-major order.

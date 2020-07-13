@@ -274,6 +274,7 @@ idStencil :: Index ix => Stencil ix e e
 idStencil = makeUnsafeStencil oneSz zeroIndex $ \ _ get -> get zeroIndex
 {-# INLINE idStencil #-}
 
+
 -- | Stencil that does a left fold in a row-major order. Regardless of the supplied size
 -- resulting stencil will be centered at zero, although by using `Padding` it is possible
 -- to overcome this limitation.
@@ -334,6 +335,9 @@ foldrStencil f acc0 sz =
 {-# INLINE foldrStencil #-}
 
 
+-- | Create a stencil that will fold all elements in the region monoidally.
+--
+-- @since 0.4.3
 foldStencil :: (Monoid e, Index ix) => Sz ix -> Stencil ix e e
 foldStencil = foldlStencil mappend mempty
 {-# INLINE foldStencil #-}

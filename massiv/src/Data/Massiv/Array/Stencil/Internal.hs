@@ -35,6 +35,7 @@ data Stencil ix e a = Stencil
   , stencilFunc   :: (ix -> Value e) -> ix -> Value a
   }
 
+
 instance Index ix => NFData (Stencil ix e a) where
   rnf (Stencil sz ix f) = sz `deepseq` ix `deepseq` f `seq` ()
 
