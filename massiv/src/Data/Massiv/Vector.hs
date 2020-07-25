@@ -1433,7 +1433,7 @@ sfilterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 
 -- | Similar to `filterM`, but map with an index aware function.
 --
--- Corresponds to: @filterM (uncurry f) . imap (,)@
+-- Corresponds to: @`filterM` (uncurry f) . `simap` (,)@
 --
 -- ==== __Examples__
 --
