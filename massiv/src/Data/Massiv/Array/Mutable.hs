@@ -418,7 +418,6 @@ createArray comp sz action = do
 --   [ 10, 12 ]
 --
 -- @since 0.3.0
---
 createArrayS_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Sz ix -- ^ Size of the newly created array
@@ -431,7 +430,6 @@ createArrayS_ sz action = snd <$> createArrayS sz action
 -- | Just like `createArray_`, but together with `Array` it returns the result of the filling action.
 --
 -- @since 0.3.0
---
 createArrayS ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Sz ix -- ^ Size of the newly created array
@@ -448,7 +446,6 @@ createArrayS sz action = do
 -- | Just like `createArrayS_`, but restricted to `ST`.
 --
 -- @since 0.3.0
---
 createArrayST_ ::
      forall r ix e a. Mutable r ix e
   => Sz ix
@@ -461,7 +458,6 @@ createArrayST_ sz action = runST $ createArrayS_ sz action
 -- | Just like `createArrayS`, but restricted to `ST`.
 --
 -- @since 0.2.6
---
 createArrayST ::
      forall r ix e a. Mutable r ix e
   => Sz ix
@@ -476,8 +472,6 @@ createArrayST sz action = runST $ createArrayS sz action
 -- computation strategy is set to `Seq`. Element producing function no longer has to be pure
 -- but is a stateful action, becuase it is restricted to `PrimMonad` thus allows for sharing
 -- the state between computation of each element.
---
--- @since 0.2.6
 --
 -- ====__Examples__
 --
@@ -496,6 +490,7 @@ createArrayST sz action = runST $ createArrayS sz action
 -- >>> readIORef ref
 -- 15
 --
+-- @since 0.2.6
 generateArrayS ::
      forall r ix e m. (Mutable r ix e, PrimMonad m)
   => Sz ix -- ^ Resulting size of the array
@@ -603,7 +598,6 @@ generateArrayWS states sz make = generateArrayLinearWS states sz (make . fromLin
 --   [ 0, 1, 1, 2, 3, 5, 8, 13, 21, 34 ]
 --
 -- @since 0.3.0
---
 unfoldrPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Sz ix -- ^ Size of the desired array
@@ -616,7 +610,6 @@ unfoldrPrimM_ sz gen acc0 = snd <$> unfoldrPrimM sz gen acc0
 -- | Same as `unfoldrPrimM_` but do the unfolding with index aware function.
 --
 -- @since 0.3.0
---
 iunfoldrPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Sz ix -- ^ Size of the desired array
@@ -686,7 +679,6 @@ unfoldrPrimM sz gen acc0 =
 --   [ 34, 21, 13, 8, 5, 3, 2, 1, 1, 0 ]
 --
 -- @since 0.3.0
---
 unfoldlPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Sz ix -- ^ Size of the desired array
@@ -699,7 +691,6 @@ unfoldlPrimM_ sz gen acc0 = snd <$> unfoldlPrimM sz gen acc0
 -- | Same as `unfoldlPrimM_` but do the unfolding with index aware function.
 --
 -- @since 0.3.0
---
 iunfoldlPrimM_ ::
      forall r ix e a m. (Mutable r ix e, PrimMonad m)
   => Sz ix -- ^ Size of the desired array
