@@ -106,7 +106,6 @@ prop_UnsafeLinearCopyPart ::
      , Show (Array r ix e)
      , Mutable r ix e
      , Mutable r Ix1 e
-     , Resize r ix
      )
   => ArrIx r ix e
   -> NonNegative Ix1
@@ -147,7 +146,6 @@ prop_UnsafeArrayLinearCopyPart ::
      , Show (Vector r e)
      , Mutable r ix e
      , Mutable r Ix1 e
-     , Resize r ix
      )
   => ArrIx r ix e
   -> NonNegative Ix1
@@ -173,7 +171,6 @@ prop_UnsafeLinearSet ::
      , Show (Vector r e)
      , Mutable r ix e
      , Mutable r Ix1 e
-     , Resize r ix
      )
   => Comp
   -> SzIx ix
@@ -198,7 +195,6 @@ prop_UnsafeLinearShrink ::
      , Show (Vector r e)
      , Mutable r ix e
      , Source r Ix1 e
-     , Resize r ix
      )
   => ArrIx r ix e
   -> Property
@@ -222,7 +218,6 @@ prop_UnsafeLinearGrow ::
      , Show (Vector r e)
      , Mutable r ix e
      , Source r Ix1 e
-     , Resize r ix
      )
   => ArrIx r ix e
   -> e
@@ -260,7 +255,6 @@ unsafeMutableSpec ::
      , Arbitrary ix
      , Typeable e
      , Typeable ix
-     , Resize r ix
      )
   => Spec
 unsafeMutableSpec =

@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -44,6 +43,9 @@ module Data.Massiv.Array.Ops.Transform
   , concatOuterM
   , concatM
   , concat'
+  , stackSlicesM
+  , stackOuterSlicesM
+  , stackInnerSlicesM
   , splitAtM
   , splitAt'
   , splitExtractM
@@ -63,7 +65,7 @@ module Data.Massiv.Array.Ops.Transform
 import Control.Scheduler (traverse_)
 import Control.Monad as M (foldM_, unless, forM_)
 import Data.Bifunctor (bimap)
-import Data.Foldable as F (foldl', foldrM, toList)
+import Data.Foldable as F (foldl', foldrM, toList, length)
 import qualified Data.List as L (uncons)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
@@ -394,7 +396,7 @@ backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 -- an allowed exception of the dimension they are being appended along, otherwise `Nothing` is
 -- returned.
 --
--- ===__Examples__
+-- ====__Examples__
 --
 -- Append two 2D arrays along both dimensions. Note that they do agree on inner dimensions.
 --
@@ -492,7 +494,7 @@ concatM n !arrsF =
     Nothing -> pure empty
     Just (a, arrs) -> do
       let sz = unSz (size a)
-          szs = P.map (unSz . size) arrs
+          szs = unSz . size <$> arrs
       (k, szl) <- pullOutDimM sz n
       -- / remove the dimension out of all sizes along which concatenation will happen
       (ks, szls) <-
@@ -507,21 +509,190 @@ concatM n !arrsF =
           load scheduler startAt dlWrite =
             let arrayLoader !kAcc (kCur, arr) = do
                   scheduleWork scheduler $
-                    iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
+                    iforM_ arr $ \ix e ->
                       let i = getDim' ix n
                           ix' = setDim' ix n (i + kAcc)
-                       in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr ix)
+                       in dlWrite (startAt + toLinearIndex newSz ix') e
                   pure (kAcc + kCur)
              in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
           {-# INLINE load #-}
       return $
+        DLArray {dlComp = foldMap getComp arrs, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
+{-# INLINE concatM #-}
+
+
+-- | Stack slices on top of each other along the specified dimension.
+--
+-- /__Exceptions__/: `IndexDimensionException`, `SizeMismatchException`
+--
+-- ====__Examples__
+--
+-- Here are the three different ways to stack up two 2D Matrix pages into a 3D array.
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> x = compute (iterateN 3 succ 0) :: Matrix P Int
+-- >>> y = compute (iterateN 3 succ 9) :: Matrix P Int
+-- >>> x
+-- Array P Seq (Sz (3 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   , [ 7, 8, 9 ]
+--   ]
+-- >>> y
+-- Array P Seq (Sz (3 :. 3))
+--   [ [ 10, 11, 12 ]
+--   , [ 13, 14, 15 ]
+--   , [ 16, 17, 18 ]
+--   ]
+-- >>> stackSlicesM 1 [x, y] :: IO (Array DL Ix3 Int)
+-- Array DL Seq (Sz (3 :> 3 :. 2))
+--   [ [ [ 1, 10 ]
+--     , [ 2, 11 ]
+--     , [ 3, 12 ]
+--     ]
+--   , [ [ 4, 13 ]
+--     , [ 5, 14 ]
+--     , [ 6, 15 ]
+--     ]
+--   , [ [ 7, 16 ]
+--     , [ 8, 17 ]
+--     , [ 9, 18 ]
+--     ]
+--   ]
+-- >>> stackSlicesM 2 [x, y] :: IO (Array DL Ix3 Int)
+-- Array DL Seq (Sz (3 :> 2 :. 3))
+--   [ [ [ 1, 2, 3 ]
+--     , [ 10, 11, 12 ]
+--     ]
+--   , [ [ 4, 5, 6 ]
+--     , [ 13, 14, 15 ]
+--     ]
+--   , [ [ 7, 8, 9 ]
+--     , [ 16, 17, 18 ]
+--     ]
+--   ]
+-- >>> stackSlicesM 3 [x, y] :: IO (Array DL Ix3 Int)
+-- Array DL Seq (Sz (2 :> 3 :. 3))
+--   [ [ [ 1, 2, 3 ]
+--     , [ 4, 5, 6 ]
+--     , [ 7, 8, 9 ]
+--     ]
+--   , [ [ 10, 11, 12 ]
+--     , [ 13, 14, 15 ]
+--     , [ 16, 17, 18 ]
+--     ]
+--   ]
+--
+-- @since 0.5.4
+stackSlicesM ::
+     (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
+  => Dim
+  -> f (Array r (Lower ix) e)
+  -> m (Array DL ix e)
+stackSlicesM dim !arrsF = do
+  case L.uncons (F.toList arrsF) of
+    Nothing -> pure empty
+    Just (a, arrs) -> do
+      let sz = size a
+          len = SafeSz (F.length arrsF)
+      -- / make sure all arrays have the same size
+      M.forM_ arrsF $ \arr ->
+        let sz' = size arr
+         in unless (sz == sz') $ throwM (SizeMismatchException sz sz')
+      newSz <- insertSzM sz dim len
+      return $
         DLArray
-          { dlComp = mconcat $ P.map getComp arrs
+          { dlComp = foldMap getComp arrs
           , dlSize = newSz
           , dlDefault = Nothing
-          , dlLoad = load
+          , dlLoad =
+              \scheduler startAt dlWrite ->
+                let loadIndex k ix = dlWrite (toLinearIndex newSz (insertDim' ix dim k) + startAt)
+                    arrayLoader !k arr =
+                      (k + 1) <$ scheduleWork scheduler (imapM_ (loadIndex k) arr)
+                 in M.foldM_ arrayLoader 0 arrsF
           }
-{-# INLINE concatM #-}
+{-# INLINE stackSlicesM #-}
+
+-- | Specialized `stackOuterM` to handling stacking from the outside. It is the inverse of
+-- `Data.Massiv.Array.outerSlices`.
+--
+-- /__Exceptions__/: `SizeMismatchException`
+--
+-- ====__Examples__
+--
+-- In this example we stack vectors as row of a matrix from top to bottom:
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> x = compute (iterateN 3 succ 0) :: Matrix P Int
+-- >>> x
+-- Array P Seq (Sz (3 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   , [ 7, 8, 9 ]
+--   ]
+-- >>> rows = outerSlices x
+-- >>> A.mapM_ print rows
+-- Array M Seq (Sz1 3)
+--   [ 1, 2, 3 ]
+-- Array M Seq (Sz1 3)
+--   [ 4, 5, 6 ]
+-- Array M Seq (Sz1 3)
+--   [ 7, 8, 9 ]
+-- >>> stackOuterSlicesM rows :: IO (Matrix DL Int)
+-- Array DL Seq (Sz (3 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   , [ 7, 8, 9 ]
+--   ]
+--
+-- @since 0.5.4
+stackOuterSlicesM ::
+     forall r ix e f m. (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
+  => f (Array r (Lower ix) e)
+  -> m (Array DL ix e)
+stackOuterSlicesM = stackSlicesM (dimensions (Proxy :: Proxy ix))
+{-# INLINE stackOuterSlicesM #-}
+
+-- | Specialized `stackOuterM` to handling stacking from the inside. It is the inverse of
+-- `Data.Massiv.Array.outerSlices`.
+--
+-- /__Exceptions__/: `SizeMismatchException`
+--
+-- ====__Examples__
+--
+-- In this example we stack vectors as columns of a matrix from left to right:
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> x = compute (iterateN 3 succ 0) :: Matrix P Int
+-- >>> x
+-- Array P Seq (Sz (3 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   , [ 7, 8, 9 ]
+--   ]
+-- >>> columns = innerSlices x
+-- >>> A.mapM_ print columns
+-- Array M Seq (Sz1 3)
+--   [ 1, 4, 7 ]
+-- Array M Seq (Sz1 3)
+--   [ 2, 5, 8 ]
+-- Array M Seq (Sz1 3)
+--   [ 3, 6, 9 ]
+-- >>> stackInnerSlicesM columns :: IO (Matrix DL Int)
+-- Array DL Seq (Sz (3 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   , [ 7, 8, 9 ]
+--   ]
+--
+-- @since 0.5.4
+stackInnerSlicesM ::
+     forall r ix e f m. (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
+  => f (Array r (Lower ix) e)
+  -> m (Array DL ix e)
+stackInnerSlicesM = stackSlicesM 1
+{-# INLINE stackInnerSlicesM #-}
 
 
 -- | /O(1)/ - Split an array into two at an index along a specified dimension.

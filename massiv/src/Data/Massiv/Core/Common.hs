@@ -235,7 +235,7 @@ class Load r ix e => Extract r ix e where
 
 
 -- | Arrays that can be used as source to practically any manipulation function.
-class Load r ix e => Source r ix e where
+class (Resize r ix, Load r ix e) => Source r ix e where
   {-# MINIMAL (unsafeIndex|unsafeLinearIndex), unsafeLinearSlice #-}
 
   -- | Lookup element in the array. No bounds check is performed and access of
@@ -392,7 +392,7 @@ class Load r ix e => Slice r ix e where
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
 -- @(`!`)@, @(`!?`)@, etc. are constrained to manifest arrays only.
-class (Load r ix e, Source r ix e) => Manifest r ix e where
+class Source r ix e => Manifest r ix e where
 
   unsafeLinearIndexM :: Array r ix e -> Int -> e
 

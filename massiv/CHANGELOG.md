@@ -2,6 +2,9 @@
 
 * Addition of `unsafeTransformStencil`
 * Add `zip4`, `unzip4`, `zipWith4`  and `izipWith4`
+* Make `Resize` a superclass of `Source`
+* Addition of `outerSlices`, `innerSlices`, `withinSlices` and `withinSlicesM`
+* Addition of `stackSlicesM`, `stackOuterSlicesM` and `stackInnerSlicesM`
 
 # 0.5.3
 
