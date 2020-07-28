@@ -53,6 +53,46 @@ prop_zipFlip3 ::
 prop_zipFlip3 arr1 arr2 arr3 =
   A.zip3 arr1 arr2 arr3 === A.map (\(e3, e2, e1) -> (e1, e2, e3)) (A.zip3 arr3 arr2 arr1)
 
+prop_zipUnzip4 ::
+     (Index ix, Show (Array D ix Int))
+  => Array D ix Int
+  -> Array D ix Int
+  -> Array D ix Int
+  -> Array D ix Int
+  -> Property
+prop_zipUnzip4 arr1 arr2 arr3 arr4 =
+  ( extract' zeroIndex sz arr1
+  , extract' zeroIndex sz arr2
+  , extract' zeroIndex sz arr3
+  , extract' zeroIndex sz arr4) ===
+  A.unzip4 (A.zip4 arr1 arr2 arr3 arr4)
+  where
+    sz = sfoldl (liftSz2 min) (size arr1) $ smap size $ sfromList [arr2, arr3, arr4]
+
+prop_zipFlip4 ::
+     (Index ix, Show (Array D ix (Int, Int, Int, Int)))
+  => Array D ix Int
+  -> Array D ix Int
+  -> Array D ix Int
+  -> Array D ix Int
+  -> Property
+prop_zipFlip4 arr1 arr2 arr3 arr4 =
+  A.zip4 arr1 arr2 arr3 arr4 ===
+  A.map (\(e4, e3, e2, e1) -> (e1, e2, e3, e4)) (A.zip4 arr4 arr3 arr2 arr1)
+
+
+prop_zip4 ::
+     (Index ix, Show (Array D ix (Int, Int, Int, Int)))
+  => Array D ix Int
+  -> Array D ix Int
+  -> Array D ix Int
+  -> Array D ix Int
+  -> Property
+prop_zip4 arr1 arr2 arr3 arr4 =
+  let f = (,,,)
+   in A.zip4 arr1 arr2 arr3 arr4 ===
+      A.zipWith (\(e1, e2) (e3, e4) -> f e1 e2 e3 e4) (A.zip arr1 arr2) (A.zip arr3 arr4)
+
 
 
 prop_itraverseA ::
@@ -72,6 +112,7 @@ mapSpec ::
      , Show (Array D ix Int)
      , Show (Array D ix (Int, Int))
      , Show (Array D ix (Int, Int, Int))
+     , Show (Array D ix (Int, Int, Int, Int))
      )
   => Spec
 mapSpec = do
@@ -80,6 +121,9 @@ mapSpec = do
     it "zipFlip" $ property $ prop_zipFlip @ix
     it "zipUnzip3" $ property $ prop_zipUnzip3 @ix
     it "zipFlip3" $ property $ prop_zipFlip3 @ix
+    it "zipUnzip4" $ property $ prop_zipUnzip4 @ix
+    it "zipFlip4" $ property $ prop_zipFlip4 @ix
+    it "zip" $ property $ prop_zip4 @ix
   describe "Traversing" $
     it "itraverseA" $ property $ prop_itraverseA @ix
   describe "StatefulMapping" $
