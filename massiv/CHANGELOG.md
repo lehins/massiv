@@ -1,6 +1,7 @@
 # 0.5.4
 
 * Addition of `unsafeTransformStencil`
+* Add `zip4`, `unzip4`, `zipWith4`  and `izipWith4`
 
 # 0.5.3
 
