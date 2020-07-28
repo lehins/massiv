@@ -52,12 +52,16 @@ module Data.Massiv.Array.Ops.Map
   -- ** Zipping
   , zip
   , zip3
+  , zip4
   , unzip
   , unzip3
+  , unzip4
   , zipWith
   , zipWith3
+  , zipWith4
   , izipWith
   , izipWith3
+  , izipWith4
   , liftArray2
   -- *** Applicative
   , zipWithA
@@ -102,6 +106,19 @@ zip3 :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3)
 zip3 = zipWith3 (,,)
 {-# INLINE zip3 #-}
 
+-- | Zip four arrays
+--
+-- @since 0.5.4
+zip4 ::
+     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Source r4 ix e4)
+  => Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> Array r4 ix e4
+  -> Array D ix (e1, e2, e3, e4)
+zip4 = zipWith4 (,,,)
+{-# INLINE zip4 #-}
+
 -- | Unzip two arrays
 unzip :: Source r ix (e1, e2) => Array r ix (e1, e2) -> (Array D ix e1, Array D ix e2)
 unzip arr = (map fst arr, map snd arr)
@@ -112,6 +129,18 @@ unzip3 :: Source r ix (e1, e2, e3)
        => Array r ix (e1, e2, e3) -> (Array D ix e1, Array D ix e2, Array D ix e3)
 unzip3 arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_, _, e) -> e) arr)
 {-# INLINE unzip3 #-}
+
+-- | Unzip four arrays
+--
+-- @since 0.5.4
+unzip4 :: Source r ix (e1, e2, e3, e4)
+       => Array r ix (e1, e2, e3, e4) -> (Array D ix e1, Array D ix e2, Array D ix e3, Array D ix e4)
+unzip4 arr =
+  ( map (\(e, _, _, _) -> e) arr
+  , map (\(_, e, _, _) -> e) arr
+  , map (\(_, _, e, _) -> e) arr
+  , map (\(_, _, _, e) -> e) arr)
+{-# INLINE unzip4 #-}
 
 --------------------------------------------------------------------------------
 -- zipWith ---------------------------------------------------------------------
@@ -161,6 +190,48 @@ izipWith3 f arr1 arr2 arr3 =
           (coerce (size arr3)))) $ \ !ix ->
     f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
 {-# INLINE izipWith3 #-}
+
+
+
+-- | Just like `zipWith`, except zip four arrays with a function.
+--
+-- @since 0.5.4
+zipWith4 ::
+     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Source r4 ix e4)
+  => (e1 -> e2 -> e3 -> e4 -> e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> Array r4 ix e4
+  -> Array D ix e
+zipWith4 f = izipWith4 (\ _ e1 e2 e3 e4 -> f e1 e2 e3 e4)
+{-# INLINE zipWith4 #-}
+
+
+-- | Just like `zipWith4`, except with an index aware function.
+--
+-- @since 0.5.4
+izipWith4
+  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Source r4 ix e4)
+  => (ix -> e1 -> e2 -> e3 -> e4 -> e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> Array r4 ix e4
+  -> Array D ix e
+izipWith4 f arr1 arr2 arr3 arr4 =
+  DArray
+    (getComp arr1 <> getComp arr2 <> getComp arr3 <> getComp arr4)
+    (SafeSz
+       (liftIndex2
+          min
+          (liftIndex2
+             min
+             (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))
+             (coerce (size arr3)))
+          (coerce (size arr4)))) $ \ !ix ->
+    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix) (unsafeIndex arr4 ix)
+{-# INLINE izipWith4 #-}
 
 
 -- | Similar to `zipWith`, except does it sequentially and using the `Applicative`. Note that
