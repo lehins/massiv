@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 module Test.Massiv.Array.Ops.TransformSpec (spec) where
 
 import Data.Foldable as F (foldl', toList)
@@ -14,6 +15,7 @@ import Data.Maybe
 import Data.Sequence as S
 import Prelude as P
 import Test.Massiv.Core
+import Test.Massiv.Array.Delayed (stackSlices')
 
 prop_TransposeOuterInner :: Array D Ix2 Int -> Property
 prop_TransposeOuterInner arr = transposeOuter arr === transpose arr
@@ -109,6 +111,63 @@ prop_ExtractSizeMismatch (ArrTiny arr) (Positive n) =
     sz = size arr
     sz' = Sz (totalElem sz + n)
 
+-- FIXME: deal with overlapping instances for slices, see #106
+-- prop_stackInnerSlices ::
+--      forall ix.
+--      ( Index ix
+--      , Index (Lower ix)
+--      , Elt M ix Int ~ Array M (Lower ix) Int
+--      , Elt P ix Int ~ Array M (Lower ix) Int
+--      , Show (Array P ix Int)
+--      )
+--   => ArrNE P ix Int
+--   -> Property
+-- prop_stackInnerSlices (ArrNE arr) =
+--   arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+--   arr === compute (stackSlices' 1 (innerSlices arr))
+prop_stackInnerSlicesIx2 :: ArrNE P Ix2 Int -> Property
+prop_stackInnerSlicesIx2 (ArrNE arr) =
+  arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+  arr === compute (stackSlices' 1 (innerSlices arr))
+prop_stackInnerSlicesIx3 :: ArrNE P Ix3 Int -> Property
+prop_stackInnerSlicesIx3 (ArrNE arr) =
+  arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+  arr === compute (stackSlices' 1 (innerSlices arr))
+prop_stackInnerSlicesIx4 :: ArrNE P Ix4 Int -> Property
+prop_stackInnerSlicesIx4 (ArrNE arr) =
+  arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+  arr === compute (stackSlices' 1 (innerSlices arr))
+
+-- prop_stackOuterSlices ::
+--      forall ix.
+--      ( Index ix
+--      , Index (Lower ix)
+--      , Elt M ix Int ~ Array M (Lower ix) Int
+--      , Elt P ix Int ~ Array M (Lower ix) Int
+--      , Show (Array P ix Int)
+--      )
+--   => ArrNE P ix Int
+--   -> Property
+-- prop_stackOuterSlices (ArrNE arr) =
+--   arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+--   arr === compute (stackSlices' (dimensions (Proxy :: Proxy ix)) (outerSlices arr))
+prop_stackOuterSlicesIx2 :: ArrNE P Ix2 Int -> Property
+prop_stackOuterSlicesIx2 (ArrNE arr) =
+  arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+  arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix2)) (outerSlices arr))
+prop_stackOuterSlicesIx3 :: ArrNE P Ix3 Int -> Property
+prop_stackOuterSlicesIx3 (ArrNE arr) =
+  arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+  arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix3)) (outerSlices arr))
+prop_stackOuterSlicesIx4 :: ArrNE P Ix4 Int -> Property
+prop_stackOuterSlicesIx4 (ArrNE arr) =
+  arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+  arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix4)) (outerSlices arr))
+
+
+
+
+
 prop_ZoomWithGridStrideCompute ::
      forall r ix e.
      ( Eq (Array r ix e)
@@ -195,6 +254,19 @@ spec = do
   describe "Sequence" $ do
     it "ConsSnoc" $ property prop_ConsSnoc
     it "UnconsUnsnoc" $ property prop_UnconsUnsnoc
+  describe "slice+stack" $ do
+    -- prop "Ix2 - Inner" (prop_stackInnerSlices @Ix2)
+    -- prop "Ix3 - Inner" (prop_stackInnerSlices @Ix3)
+    -- prop "Ix4 - Inner" (prop_stackInnerSlices @Ix4)
+    -- prop "Ix2 - Outer" (prop_stackOuterSlices @Ix2)
+    -- prop "Ix3 - Outer" (prop_stackOuterSlices @Ix3)
+    -- prop "Ix4 - Outer" (prop_stackOuterSlices @Ix4)
+    prop "Ix2 - Inner" prop_stackInnerSlicesIx2
+    prop "Ix3 - Inner" prop_stackInnerSlicesIx3
+    prop "Ix4 - Inner" prop_stackInnerSlicesIx4
+    prop "Ix2 - Outer" prop_stackOuterSlicesIx2
+    prop "Ix3 - Outer" prop_stackOuterSlicesIx3
+    prop "Ix4 - Outer" prop_stackOuterSlicesIx4
 
 
 prop_UnconsUnsnoc :: Array D Ix1 Int -> Bool -> Property

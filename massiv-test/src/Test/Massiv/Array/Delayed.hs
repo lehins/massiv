@@ -16,6 +16,8 @@ module Test.Massiv.Array.Delayed
   , prop_smapMaybe
   , prop_takeDrop
   , prop_sunfoldr
+  -- * Random reimplementations
+  , stackSlices'
   ) where
 
 
@@ -27,6 +29,17 @@ import Test.Massiv.Core.Common ()
 import Test.Massiv.Utils as T
 import qualified GHC.Exts as Exts
 import Data.List as L
+
+-- | Alternative implementation of `stackSlicesM` with `concat'`. Useful for testing and benchmarks
+stackSlices' ::
+     (Functor f, Foldable f, Resize r (Lower ix), Source r ix e, Load r (Lower ix) e)
+  => Dim
+  -> f (Array r (Lower ix) e)
+  -> Array DL ix e
+stackSlices' dim arrsF =
+  let fixupSize arr = resize' (Sz (insertDim' (unSz (size arr)) dim 1)) arr
+   in concat' dim $ fmap fixupSize arrsF
+
 
 compareAsListAndLoaded ::
      (Eq e, Show e, Foldable (Array r' Ix1), Load r' Ix1 e) => Array r' Ix1 e -> [e] -> Property

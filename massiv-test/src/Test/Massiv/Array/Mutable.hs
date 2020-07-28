@@ -69,7 +69,6 @@ prop_Shrink ::
      forall r ix e.
      ( Show (Array r ix e)
      , Mutable r ix e
-     , Resize r ix
      , Source r Ix1 e
      , Arbitrary ix
      , Arbitrary e
@@ -170,7 +169,6 @@ mutableSpec ::
      , Mutable r ix e
      , Mutable r Ix1 e
      , Extract r ix e
-     , Resize r ix
      , CoArbitrary ix
      , Arbitrary e
      , CoArbitrary e
