@@ -85,6 +85,7 @@ module Data.Massiv.Array
   , setComp
   , compute
   , computeS
+  , computeP
   , computeIO
   , computePrimM
   , computeAs
