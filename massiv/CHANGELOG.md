@@ -5,6 +5,9 @@
 * Make `Resize` a superclass of `Source`
 * Addition of `outerSlices`, `innerSlices`, `withinSlices` and `withinSlicesM`
 * Addition of `stackSlicesM`, `stackOuterSlicesM` and `stackInnerSlicesM`
+* Addition of `computeP`
+* Fix perfomrmance issue of folding functions applied to arrays with `Seq` computation
+  strategy.
 
 # 0.5.3
 

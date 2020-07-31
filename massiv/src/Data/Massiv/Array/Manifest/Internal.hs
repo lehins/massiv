@@ -23,6 +23,7 @@ module Data.Massiv.Array.Manifest.Internal
   , toManifest
   , compute
   , computeS
+  , computeP
   , computeIO
   , computePrimM
   , computeAs
@@ -221,6 +222,19 @@ compute !arr = unsafePerformIO $ computeIO arr
 computeS :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -> Array r ix e
 computeS !arr = runST $ computePrimM arr
 {-# INLINE computeS #-}
+
+
+-- | Compute array in parallel using all cores disregarding predefined computation
+-- strategy. Computation stategy of the resulting array will match the source, despite
+-- that it is diregarded.
+--
+-- @since 0.5.4
+computeP ::
+     forall r ix e r'. (Mutable r ix e, Construct r' ix e, Load r' ix e)
+  => Array r' ix e
+  -> Array r ix e
+computeP arr = setComp (getComp arr) $ compute (setComp Par arr)
+{-# INLINE computeP #-}
 
 -- | Very similar to `compute`, but computes an array inside the `IO` monad. Despite being
 -- deterministic and referentially transparent, because this is an `IO` action it
