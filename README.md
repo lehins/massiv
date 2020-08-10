@@ -1,7 +1,7 @@
 # massiv
 
 `massiv` is a Haskell library for array manipulation. Performance is one of its main goals, thus it
-is capable of seemless parallelization of almost all of operations.
+is capable of seamless parallelization of almost all of operations.
 
 The name for this library comes from the Russian word Massiv (Масси́в), which means an Array.
 
@@ -378,8 +378,7 @@ divides the result by 9, i.e. finds the average of a 3 by 3 square.
 
 ```haskell
 arrLightIx2 :: Comp -> Sz Ix2 -> Array D Ix2 Double
-arrLightIx2 comp arrSz =
-  makeArray comp arrSz $ \ (i :. j) -> sin (fromIntegral (i ^ (2 :: Int) + j ^ (2 :: Int)) :: Double)
+arrLightIx2 comp arrSz = makeArray comp arrSz $ \ (i :. j) -> sin (fromIntegral (i * i + j * j))
 {-# INLINE arrLightIx2 #-}
 
 average3x3Filter :: (Default a, Fractional a) => Stencil Ix2 a a
