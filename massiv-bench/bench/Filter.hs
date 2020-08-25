@@ -5,7 +5,7 @@ module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
-import Data.Massiv.Array.Delayed.Stream
+--import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Manifest.Vector as A
 import Data.Massiv.Bench as A
 import qualified Data.Vector.Primitive as VP
@@ -24,7 +24,7 @@ main = do
           -- , bench "traverse" $ nf (VP.mapM Just) v
           ]
     , env (pure arrP) $ \arr ->
-        bgroup "Array" [bench "filterS" $ nf (computeAs P . filterS (> 0)) arr]
+        bgroup "Array" [bench "filterS" $ nf (computeAs P . sfilter (> 0)) arr]
     ]
 
 -- -- Really slow

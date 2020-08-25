@@ -19,7 +19,7 @@ main = do
              in bgroup
                   "Seq"
                   [ bench "(+) D" $ whnf (A.computeAs U . (+) arrD) arrD
-                  , bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
+                  --, bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
                   , bench "zipWith (+)" $ whnf (A.computeAs U . A.zipWith (+) arr) arr
                   ]
         , env (return (arrRLightIx2 U Par sz)) $ \arr ->
@@ -27,7 +27,7 @@ main = do
              in bgroup
                   "Par"
                   [ bench "(+) D" $ whnf (A.computeAs U . (+) arrD) arrD
-                  , bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
+                  --, bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
                   , bench "zipWith (+)" $ whnf (A.computeAs U . A.zipWith (+) arr) arr
                   ]
         ]

@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Main where
 
 import Criterion.Main
@@ -27,7 +28,7 @@ main = do
       incNotNaNT x
         | isNaN x = MaybeT (return Nothing)
         | otherwise = MaybeT (return (Just (x + 1)))
-      toPrimArray :: Array P ix e -> PrimArray e
+      toPrimArray :: (Prim e, Index ix) => Array P ix e -> PrimArray e
       toPrimArray a =
         case toByteArray a of
           ByteArray ba -> PrimArray ba
@@ -37,7 +38,7 @@ main = do
         [ env (return arr) $ \arr' ->
             bench "Array (P)" $ nf (A.traverseA @P incNotNaN) arr'
         , env (return arr) $ \arr' ->
-            bench "Array (DS)" $ nf (fmap (A.computeAs P) . A.traverseS incNotNaN) arr'
+            bench "Array (DS)" $ nf (fmap (A.computeAs P) . A.straverse incNotNaN) arr'
         , env (return (toVector arr)) $ \v ->
             bench "Vector (VP)" $ nf (VP.mapM incNotNaN) v
         , env (return (toPrimArray arr)) $ \v ->

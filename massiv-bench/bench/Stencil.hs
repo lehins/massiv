@@ -3,7 +3,6 @@
 module Main where
 
 import Data.Massiv.Array as A
-import Data.Massiv.Array.Stencil.Unsafe as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
 import Criterion.Main
