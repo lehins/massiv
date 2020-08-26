@@ -2,6 +2,7 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 -- |
@@ -425,23 +426,22 @@ backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 -- *** Exception: SizeMismatchException: (Sz (2 :. 3)) vs (Sz (2 :. 4))
 --
 -- @since 0.3.0
-appendM :: (MonadThrow m, Source r1 ix e, Source r2 ix e) =>
-          Dim -> Array r1 ix e -> Array r2 ix e -> m (Array DL ix e)
+appendM ::
+     forall r1 r2 ix e m. (MonadThrow m, Source r1 ix e, Source r2 ix e)
+  => Dim
+  -> Array r1 ix e
+  -> Array r2 ix e
+  -> m (Array DL ix e)
 appendM n !arr1 !arr2 = do
   let !sz1 = size arr1
       !sz2 = size arr2
   (k1, szl1) <- pullOutSzM sz1 n
   (k2, szl2) <- pullOutSzM sz2 n
   unless (szl1 == szl2) $ throwM $ SizeMismatchException sz1 sz2
-  let k1' = unSz k1
+  let !k1' = unSz k1
   newSz <- insertSzM szl1 n (SafeSz (k1' + unSz k2))
-  return $
-    DLArray
-      { dlComp = getComp arr1 <> getComp arr2
-      , dlSize = newSz
-      , dlDefault = Nothing
-      , dlLoad =
-          \scheduler startAt dlWrite -> do
+  let load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
+      load scheduler !startAt dlWrite = do
             scheduleWork scheduler $
               iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
                 dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
@@ -450,6 +450,13 @@ appendM n !arr1 !arr2 = do
                 let i = getDim' ix n
                     ix' = setDim' ix n (i + k1')
                  in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr2 ix)
+      {-# INLINE load #-}
+  return $
+    DLArray
+      { dlComp = getComp arr1 <> getComp arr2
+      , dlSize = newSz
+      , dlDefault = Nothing
+      , dlLoad = load
       }
 {-# INLINE appendM #-}
 
@@ -476,7 +483,10 @@ concat' n arrs = either throw id $ concatM n arrs
 --
 -- @since 0.3.0
 concatM ::
-     (MonadThrow m, Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> m (Array DL ix e)
+     forall r ix e f m. (MonadThrow m, Foldable f, Source r ix e)
+  => Dim
+  -> f (Array r ix e)
+  -> m (Array DL ix e)
 concatM n !arrsF =
   case L.uncons (F.toList arrsF) of
     Nothing -> pure empty
@@ -493,21 +503,23 @@ concatM n !arrsF =
         (dropWhile ((== szl) . snd) $ P.zip szs szls)
       let kTotal = SafeSz $ F.foldl' (+) k ks
       newSz <- insertSzM (SafeSz szl) n kTotal
+      let load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
+          load scheduler startAt dlWrite =
+            let arrayLoader !kAcc (kCur, arr) = do
+                  scheduleWork scheduler $
+                    iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
+                      let i = getDim' ix n
+                          ix' = setDim' ix n (i + kAcc)
+                       in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr ix)
+                  pure (kAcc + kCur)
+             in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
+          {-# INLINE load #-}
       return $
         DLArray
           { dlComp = mconcat $ P.map getComp arrs
           , dlSize = newSz
           , dlDefault = Nothing
-          , dlLoad =
-              \scheduler startAt dlWrite ->
-                let arrayLoader !kAcc (kCur, arr) = do
-                      scheduleWork scheduler $
-                        iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ix ->
-                          let i = getDim' ix n
-                              ix' = setDim' ix n (i + kAcc)
-                           in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr ix)
-                      pure (kAcc + kCur)
-                 in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
+          , dlLoad = load
           }
 {-# INLINE concatM #-}
 
@@ -669,51 +681,84 @@ deleteColumnsM = deleteRegionM 1
 -- | Discard elements from the source array according to the stride.
 --
 -- @since 0.3.0
-downsample :: Source r ix e => Stride ix -> Array r ix e -> Array DL ix e
+downsample ::
+     forall r ix e. Source r ix e
+  => Stride ix
+  -> Array r ix e
+  -> Array DL ix e
 downsample stride arr =
-  DLArray
-    { dlComp = getComp arr
-    , dlSize = resultSize
-    , dlDefault = defaultElement arr
-    , dlLoad =
-        \scheduler startAt dlWrite ->
-          splitLinearlyWithStartAtM_
-            scheduler
-            startAt
-            (totalElem resultSize)
-            (pure . unsafeLinearWriteWithStride)
-            dlWrite
-    }
+  DLArray {dlComp = getComp arr, dlSize = resultSize, dlDefault = defaultElement arr, dlLoad = load}
   where
     resultSize = strideSize stride (size arr)
     strideIx = unStride stride
     unsafeLinearWriteWithStride =
       unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
     {-# INLINE unsafeLinearWriteWithStride #-}
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load scheduler startAt dlWrite =
+      splitLinearlyWithStartAtM_
+        scheduler
+        startAt
+        (totalElem resultSize)
+        (pure . unsafeLinearWriteWithStride)
+        dlWrite
+    {-# INLINE load #-}
 {-# INLINE downsample #-}
 
 
--- | Insert the same element into a `Load`able array according to the stride.
+-- | Insert the same element into a `Load`able array according to the supplied stride.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> arr = iterateN (Sz2 3 2) succ (0 :: Int)
+-- >>> arr
+-- Array DL Seq (Sz (3 :. 2))
+--   [ [ 1, 2 ]
+--   , [ 3, 4 ]
+--   , [ 5, 6 ]
+--   ]
+-- >>> upsample 0 (Stride (2 :. 3)) arr
+-- Array DL Seq (Sz (6 :. 6))
+--   [ [ 1, 0, 0, 2, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0 ]
+--   , [ 3, 0, 0, 4, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0 ]
+--   , [ 5, 0, 0, 6, 0, 0 ]
+--   , [ 0, 0, 0, 0, 0, 0 ]
+--   ]
+-- >>> upsample 9 (Stride (1 :. 2)) arr
+-- Array DL Seq (Sz (3 :. 4))
+--   [ [ 1, 9, 2, 9 ]
+--   , [ 3, 9, 4, 9 ]
+--   , [ 5, 9, 6, 9 ]
+--   ]
 --
 -- @since 0.3.0
-upsample
-  :: Load r ix e => e -> Stride ix -> Array r ix e -> Array DL ix e
+upsample ::
+     forall r ix e. Load r ix e
+  => e -- ^ Element to use for filling the newly added cells
+  -> Stride ix -- ^ Fill cells according to this stride
+  -> Array r ix e -- ^ Array that will have cells added to
+  -> Array DL ix e
 upsample !fillWith safeStride arr =
   DLArray
     { dlComp = getComp arr
     , dlSize = newsz
     , dlDefault = Just fillWith
-    , dlLoad =
-        \scheduler startAt dlWrite -> do
-          M.forM_ (defaultElement arr) $ \prevFillWith ->
-            loopM_
-              startAt
-              (< totalElem sz)
-              (+ 1)
-              (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
-          loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
+    , dlLoad = load
     }
   where
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load scheduler !startAt dlWrite = do
+      M.forM_ (defaultElement arr) $ \prevFillWith ->
+        loopM_
+          startAt
+          (< totalElem sz)
+          (+ 1)
+          (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
+      loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
+    {-# INLINE load #-}
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
     {-# INLINE adjustLinearStride #-}
     timesStride !ix = liftIndex2 (*) stride ix
@@ -819,21 +864,23 @@ transform2' getSz get arr1 arr2 =
 --
 -- @since 0.3.1
 zoomWithGrid ::
-     Source r ix e
+     forall r ix e. Source r ix e
   => e -- ^ Value to use for the grid
   -> Stride ix -- ^ Scaling factor
   -> Array r ix e -- ^ Source array
   -> Array DL ix e
-zoomWithGrid gridVal (Stride zoomFactor) arr =
-  unsafeMakeLoadArray Seq newSz (Just gridVal) $ \scheduler _ writeElement ->
-    iforSchedulerM_ scheduler arr $ \ !ix !e -> do
-      let !kix = liftIndex2 (*) ix kx
-      mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
-        range Seq (liftIndex (+1) kix) (liftIndex2 (+) kix kx)
+zoomWithGrid gridVal (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz (Just gridVal) load
   where
-    !kx = liftIndex (+1) zoomFactor
+    !kx = liftIndex (+ 1) zoomFactor
     !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
-    !newSz = Sz (liftIndex (+1) lastNewIx)
+    !newSz = Sz (liftIndex (+ 1) lastNewIx)
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load scheduler _ writeElement =
+      iforSchedulerM_ scheduler arr $ \ !ix !e ->
+        let !kix = liftIndex2 (*) ix kx
+         in mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
+            range Seq (liftIndex (+ 1) kix) (liftIndex2 (+) kix kx)
+    {-# INLINE load #-}
 {-# INLINE zoomWithGrid #-}
 
 -- | Increaze the size of the array accoridng to the stride multiplier while replicating
@@ -871,17 +918,19 @@ zoomWithGrid gridVal (Stride zoomFactor) arr =
 --
 -- @since 0.4.4
 zoom ::
-     Source r ix e
+     forall r ix e. Source r ix e
   => Stride ix -- ^ Scaling factor
   -> Array r ix e -- ^ Source array
   -> Array DL ix e
-zoom (Stride zoomFactor) arr =
-  unsafeMakeLoadArray Seq newSz Nothing $ \scheduler _ writeElement ->
-    iforSchedulerM_ scheduler arr $ \ !ix !e -> do
-      let !kix = liftIndex2 (*) ix zoomFactor
-      mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
-        range Seq kix (liftIndex2 (+) kix zoomFactor)
+zoom (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz Nothing load
   where
     !lastNewIx = liftIndex2 (*) zoomFactor $ unSz (size arr)
     !newSz = Sz lastNewIx
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load scheduler _ writeElement =
+      iforSchedulerM_ scheduler arr $ \ !ix !e ->
+        let !kix = liftIndex2 (*) ix zoomFactor
+         in mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
+            range Seq kix (liftIndex2 (+) kix zoomFactor)
+    {-# INLINE load #-}
 {-# INLINE zoom #-}

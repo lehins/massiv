@@ -225,21 +225,21 @@ unfoldrS_ sz f = iunfoldrS_ sz (\a _ -> f a)
 -- | Right unfold of a delayed load array with index aware function
 --
 -- @since 0.3.0
-iunfoldrS_
-  :: Construct DL ix e => Sz ix -> (a -> ix -> (e, a)) -> a -> Array DL ix e
-iunfoldrS_ sz f acc0 =
-  DLArray
-    { dlComp = Seq
-    , dlSize = sz
-    , dlDefault = Nothing
-    , dlLoad =
-        \_ startAt dlWrite ->
-          void $
-          loopM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
-            let (e, acc') = f acc $ fromLinearIndex sz (i - startAt)
-            dlWrite i e
-            pure acc'
-    }
+iunfoldrS_ ::
+     forall ix e a. Construct DL ix e
+  => Sz ix
+  -> (a -> ix -> (e, a))
+  -> a
+  -> Array DL ix e
+iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlDefault = Nothing, dlLoad = load}
+  where
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load _ startAt dlWrite =
+      void $
+      loopM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc ->
+        let (e, acc') = f acc $ fromLinearIndex sz (i - startAt)
+         in acc' <$ dlWrite i e
+    {-# INLINE load #-}
 {-# INLINE iunfoldrS_ #-}
 
 
@@ -255,20 +255,21 @@ unfoldlS_ sz f = iunfoldlS_ sz (const f)
 -- | Unfold sequentially from the right with an index aware function.
 --
 -- @since 0.3.0
-iunfoldlS_
-  :: Construct DL ix e => Sz ix -> (ix -> a -> (a, e)) -> a -> Array DL ix e
-iunfoldlS_ sz f acc0 =
-  DLArray
-    { dlComp = Seq
-    , dlSize = sz
-    , dlDefault = Nothing
-    , dlLoad =
-        \ _ startAt dlWrite ->
-          void $ loopDeepM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc -> do
-            let (acc', e) = f (fromLinearIndex sz (i - startAt)) acc
-            dlWrite i e
-            pure acc'
-    }
+iunfoldlS_ ::
+     forall ix e a. Construct DL ix e
+  => Sz ix
+  -> (ix -> a -> (a, e))
+  -> a
+  -> Array DL ix e
+iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlDefault = Nothing, dlLoad = load}
+  where
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load _ startAt dlWrite =
+      void $
+      loopDeepM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc ->
+        let (acc', e) = f (fromLinearIndex sz (i - startAt)) acc
+         in acc' <$ dlWrite i e
+    {-# INLINE load #-}
 {-# INLINE iunfoldlS_ #-}
 
 
@@ -312,28 +313,28 @@ randomArray ::
   -> Comp -- ^ Computation strategy.
   -> Sz ix -- ^ Resulting size of the array.
   -> Array DL ix e
-randomArray gen splitGen nextRandom comp sz =
-  unsafeMakeLoadArray comp sz Nothing $ \scheduler startAt writeAt ->
-    splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-      let slackStartAt = slackStart + startAt
-          writeRandom k genII = do
-            let (e, genII') = nextRandom genII
-            writeAt k e
-            pure genII'
-      genForSlack <-
-        loopM startAt (< slackStartAt) (+ chunkLength) gen $ \start genI -> do
-          let (genI0, genI1) =
-                if numWorkers scheduler == 1
-                  then (genI, genI)
-                  else splitGen genI
-          scheduleWork_ scheduler $
-            void $ loopM start (< (start + chunkLength)) (+ 1) genI0 writeRandom
-          pure genI1
-      when (slackStartAt < totalLength + startAt) $
-        scheduleWork_ scheduler $
-        void $ loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
+randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothing load
   where
     !totalLength = totalElem sz
+    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load scheduler startAt writeAt =
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        let slackStartAt = slackStart + startAt
+            writeRandom k genII =
+              let (e, genII') = nextRandom genII
+               in genII' <$ writeAt k e
+        genForSlack <-
+          loopM startAt (< slackStartAt) (+ chunkLength) gen $ \start genI -> do
+            let (genI0, genI1) =
+                  if numWorkers scheduler == 1
+                    then (genI, genI)
+                    else splitGen genI
+            scheduleWork_ scheduler $
+              void $ loopM start (< (start + chunkLength)) (+ 1) genI0 writeRandom
+            pure genI1
+        when (slackStartAt < totalLength + startAt) $
+          scheduleWork_ scheduler $
+          void $ loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
 {-# INLINE randomArray #-}
 
 -- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
@@ -421,7 +422,7 @@ randomArrayWS states sz genRandom = generateArrayLinearWS states sz (const genRa
 
 infix 4 ..., ..:
 
--- | Handy synonym for `rangeInclusive` `Seq`
+-- | Handy synonym for @`rangeInclusive` `Seq`@. Similar to @..@ for list.
 --
 -- >>> Ix1 4 ... 10
 -- Array D Seq (Sz1 7)
@@ -432,7 +433,7 @@ infix 4 ..., ..:
 (...) = rangeInclusive Seq
 {-# INLINE (...) #-}
 
--- | Handy synonym for `range` `Seq`
+-- | Handy synonym for @`range` `Seq`@
 --
 -- >>> Ix1 4 ..: 10
 -- Array D Seq (Sz1 6)

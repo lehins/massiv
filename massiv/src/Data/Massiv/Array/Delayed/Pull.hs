@@ -110,6 +110,8 @@ instance (Ord e, Index ix) => Ord (Array D ix e) where
 instance Functor (Array D ix) where
   fmap f (DArray c sz g) = DArray c sz (f . g)
   {-# INLINE fmap #-}
+  (<$) e (DArray c sz _) = DArray c sz (const e)
+  {-# INLINE (<$) #-}
 
 
 instance Index ix => Applicative (Array D ix) where
@@ -148,8 +150,7 @@ instance Index ix => Load D ix e where
   {-# INLINE size #-}
   getComp = dComp
   {-# INLINE getComp #-}
-  loadArrayM !scheduler !arr =
-    splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
 instance Index ix => StrideLoad D ix e

@@ -3,5 +3,3 @@ packages:
 - '.'
 extra-deps:
 - '../massiv/'
-- ../../haskell-scheduler/scheduler
-- pvar-0.2.0.0@sha256:786ab43a3e7921d0086e723e620120543200c57b53f5e0f6ef1cb570c94a9144,1825

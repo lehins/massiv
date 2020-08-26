@@ -959,12 +959,9 @@ ssingleton = DSArray . S.singleton
 cons :: Load r Ix1 e => e -> Vector r e -> Vector DL e
 cons e v =
   let dv = toLoadArray v
-   in dv
-        { dlSize = SafeSz (1 + unSz (dlSize dv))
-        , dlLoad =
-            \scheduler startAt uWrite ->
-              uWrite startAt e >> dlLoad dv scheduler (startAt + 1) uWrite
-        }
+      load scheduler startAt uWrite = uWrite startAt e >> dlLoad dv scheduler (startAt + 1) uWrite
+      {-# INLINE load #-}
+   in dv {dlSize = SafeSz (1 + unSz (dlSize dv)), dlLoad = load}
 {-# INLINE cons #-}
 
 -- | /O(1)/ - Add an element to the vector from the right side
@@ -974,12 +971,9 @@ snoc :: Load r Ix1 e => Vector r e -> e -> Vector DL e
 snoc v e =
   let dv = toLoadArray v
       !k = unSz (size dv)
-   in dv
-        { dlSize = SafeSz (1 + k)
-        , dlLoad =
-            \scheduler startAt uWrite ->
-              dlLoad dv scheduler startAt uWrite >> uWrite (k + startAt) e
-        }
+      load scheduler startAt uWrite = dlLoad dv scheduler startAt uWrite >> uWrite (k + startAt) e
+      {-# INLINE load #-}
+   in dv {dlSize = SafeSz (1 + k), dlLoad = load}
 {-# INLINE snoc #-}
 
 
