@@ -444,22 +444,18 @@ appendM n !arr1 !arr2 = do
   newSz <- insertSzM szl1 n (SafeSz (k1' + unSz k2))
   let load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
       load scheduler !startAt dlWrite = do
-            scheduleWork scheduler $
-              iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
-                dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
-            scheduleWork scheduler $
-              iterM_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
-                let i = getDim' ix n
-                    ix' = setDim' ix n (i + k1')
-                 in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr2 ix)
+        scheduleWork scheduler $
+          iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
+            dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
+        scheduleWork scheduler $
+          iterM_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
+            let i = getDim' ix n
+                ix' = setDim' ix n (i + k1')
+             in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr2 ix)
       {-# INLINE load #-}
   return $
     DLArray
-      { dlComp = getComp arr1 <> getComp arr2
-      , dlSize = newSz
-      , dlDefault = Nothing
-      , dlLoad = load
-      }
+      {dlComp = getComp arr1 <> getComp arr2, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
 {-# INLINE appendM #-}
 
 
@@ -517,7 +513,7 @@ concatM n !arrsF =
              in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
           {-# INLINE load #-}
       return $
-        DLArray {dlComp = foldMap getComp arrs, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
+        DLArray {dlComp = foldMap getComp arrsF, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
 {-# INLINE concatM #-}
 
 
@@ -585,7 +581,7 @@ concatM n !arrsF =
 --
 -- @since 0.5.4
 stackSlicesM ::
-     (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
+     forall r ix e f m. (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
   => Dim
   -> f (Array r (Lower ix) e)
   -> m (Array DL ix e)
@@ -600,18 +596,14 @@ stackSlicesM dim !arrsF = do
         let sz' = size arr
          in unless (sz == sz') $ throwM (SizeMismatchException sz sz')
       newSz <- insertSzM sz dim len
+      let load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
+          load scheduler startAt dlWrite =
+            let loadIndex k ix = dlWrite (toLinearIndex newSz (insertDim' ix dim k) + startAt)
+                arrayLoader !k arr = (k + 1) <$ scheduleWork scheduler (imapM_ (loadIndex k) arr)
+             in M.foldM_ arrayLoader 0 arrsF
+          {-# INLINE load #-}
       return $
-        DLArray
-          { dlComp = foldMap getComp arrs
-          , dlSize = newSz
-          , dlDefault = Nothing
-          , dlLoad =
-              \scheduler startAt dlWrite ->
-                let loadIndex k ix = dlWrite (toLinearIndex newSz (insertDim' ix dim k) + startAt)
-                    arrayLoader !k arr =
-                      (k + 1) <$ scheduleWork scheduler (imapM_ (loadIndex k) arr)
-                 in M.foldM_ arrayLoader 0 arrsF
-          }
+        DLArray {dlComp = foldMap getComp arrs, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
 {-# INLINE stackSlicesM #-}
 
 -- | Specialized `stackOuterM` to handling stacking from the outside. It is the inverse of
