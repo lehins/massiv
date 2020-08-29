@@ -281,7 +281,7 @@ toLoadArray ::
      forall r ix e. Load r ix e
   => Array r ix e
   -> Array DL ix e
-toLoadArray arr = DLArray (getComp arr) (size arr) Nothing load
+toLoadArray arr = DLArray (getComp arr) (size arr) (defaultElement arr) load
   where
     load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
     load scheduler !startAt dlWrite = loadArrayM scheduler arr (dlWrite . (+ startAt))
