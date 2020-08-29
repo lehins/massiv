@@ -606,7 +606,7 @@ stackSlicesM dim !arrsF = do
         DLArray {dlComp = foldMap getComp arrs, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
 {-# INLINE stackSlicesM #-}
 
--- | Specialized `stackOuterM` to handling stacking from the outside. It is the inverse of
+-- | Specialized `stackSlicesM` to handling stacking from the outside. It is the inverse of
 -- `Data.Massiv.Array.outerSlices`.
 --
 -- /__Exceptions__/: `SizeMismatchException`
@@ -646,8 +646,8 @@ stackOuterSlicesM ::
 stackOuterSlicesM = stackSlicesM (dimensions (Proxy :: Proxy ix))
 {-# INLINE stackOuterSlicesM #-}
 
--- | Specialized `stackOuterM` to handling stacking from the inside. It is the inverse of
--- `Data.Massiv.Array.outerSlices`.
+-- | Specialized `stackSlicesM` to handling stacking from the inside. It is the inverse of
+-- `Data.Massiv.Array.innerSlices`.
 --
 -- /__Exceptions__/: `SizeMismatchException`
 --
