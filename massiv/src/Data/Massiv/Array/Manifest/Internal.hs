@@ -361,8 +361,8 @@ fromRaggedArrayM arr =
       unsafePerformIO $ do
         marr <- unsafeNew sz
         traverse (\_ -> unsafeFreeze (getComp arr) marr) =<<
-          try (withScheduler_ (getComp arr) $ \scheduler ->
-                  loadRagged (scheduleWork scheduler) (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
+          try (withMassivScheduler_ (getComp arr) $ \scheduler ->
+                 loadRagged (scheduleWork scheduler) (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
 {-# INLINE fromRaggedArrayM #-}
 
 

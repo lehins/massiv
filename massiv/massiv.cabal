@@ -81,7 +81,7 @@ library
                      , data-default-class
                      , deepseq
                      , exceptions
-                     , scheduler >= 1.4.0
+                     , scheduler >= 1.5.0
                      , primitive
                      , unliftio-core
                      , vector

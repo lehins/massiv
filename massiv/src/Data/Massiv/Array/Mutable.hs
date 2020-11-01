@@ -162,7 +162,7 @@ thaw arr =
     let sz = size arr
         totalLength = totalElem sz
     marr <- unsafeNew sz
-    withScheduler_ (getComp arr) $ \scheduler ->
+    withMassivScheduler_ (getComp arr) $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork_ scheduler $ unsafeArrayLinearCopy arr start marr start (SafeSz chunkLength)
@@ -223,7 +223,7 @@ freeze comp smarr =
     let sz = msize smarr
         totalLength = totalElem sz
     tmarr <- unsafeNew sz
-    withScheduler_ comp $ \scheduler ->
+    withMassivScheduler_ comp $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork_ scheduler $ unsafeLinearCopy smarr start tmarr start (SafeSz chunkLength)
@@ -298,7 +298,8 @@ computeInto !mArr !arr =
   liftIO $ do
     unless (totalElem (msize mArr) == totalElem (size arr)) $
       throwM $ SizeElementsMismatchException (msize mArr) (size arr)
-    withScheduler_ (getComp arr) $ \scheduler -> loadArrayM scheduler arr (unsafeLinearWrite mArr)
+    withMassivScheduler_ (getComp arr) $ \scheduler ->
+      loadArrayM scheduler arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
 
 

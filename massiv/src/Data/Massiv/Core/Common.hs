@@ -38,6 +38,7 @@ module Data.Massiv.Core.Common
   , numWorkers
   , scheduleWork
   , scheduleWork_
+  , withMassivScheduler_
   , WorkerStates
   , unsafeRead
   , unsafeWrite
@@ -95,6 +96,7 @@ import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
 import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
                           scheduleWork, scheduleWork_, withScheduler_, trivialScheduler_)
+import Control.Scheduler.Global
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
@@ -329,12 +331,11 @@ class (Typeable r, Index ix) => Load r ix e where
     => MArray (PrimState m) r' ix e
     -> Array r ix e
     -> m (MArray (PrimState m) r' ix e)
-  unsafeLoadIntoS marr arr = do
-    loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
-    pure marr
+  unsafeLoadIntoS marr arr =
+    marr <$ loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
   {-# INLINE unsafeLoadIntoS #-}
 
-  -- | Same as `unsafeLoadIntoS`, but with respect of computation startegy.
+  -- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
   --
   -- @since 0.5.0
   unsafeLoadInto ::
@@ -343,11 +344,18 @@ class (Typeable r, Index ix) => Load r ix e where
     -> Array r ix e
     -> m (MArray RealWorld r' ix e)
   unsafeLoadInto marr arr = do
-    liftIO $ withScheduler_ (getComp arr) $ \scheduler ->
+    liftIO $ withMassivScheduler_ (getComp arr) $ \scheduler ->
       loadArrayM scheduler arr (unsafeLinearWrite marr)
     pure marr
   {-# INLINE unsafeLoadInto #-}
 
+-- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
+withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()
+withMassivScheduler_ comp f =
+  case comp of
+    Par -> withGlobalScheduler_ globalScheduler f
+    Seq -> f trivialScheduler_
+    _ -> withScheduler_ comp f
 
 class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
