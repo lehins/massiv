@@ -901,7 +901,7 @@ dropWhile f v = drop (go 0) v
     !k = elemsCount v
     go !i
       | i < k && f (unsafeLinearIndex v i) = go (i + 1)
-      | otherwise = SafeSz (k - i)
+      | otherwise = SafeSz i
 {-# INLINE dropWhile #-}
 
 
