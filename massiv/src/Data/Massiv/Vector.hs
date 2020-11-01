@@ -53,9 +53,11 @@ module Data.Massiv.Vector
   , take
   , take'
   , takeM
+  , takeWhile
   , stake
   -- *** Drop
   , drop
+  , dropWhile
   , drop'
   , dropM
   , sdrop
@@ -182,8 +184,8 @@ module Data.Massiv.Vector
   , scatMaybes
   , simapMaybe
   , simapMaybeM
-  -- , takeWhile
-  -- , dropWhile
+  -- , stakeWhile
+  -- , sdropWhile
   -- -- ** Partitioning
   -- , partition
   -- , unstablePartition
@@ -194,7 +196,7 @@ module Data.Massiv.Vector
   -- , elem
   -- , notElem
   -- , find
-  -- , findIndex
+  , findIndex
   -- , findIndices
   -- , elemIndex
   -- , elemIndices
@@ -309,7 +311,8 @@ import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Vector.Unsafe
-import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take)
+import Data.Maybe
+import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take, takeWhile, dropWhile)
 
 -- ========= --
 -- Accessors --
@@ -813,6 +816,23 @@ take :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
 take k = fst . sliceAt k
 {-# INLINE take #-}
 
+
+-- | Slice a manifest vector in such a way that it will contain all initial elements that
+-- satisfy the supplied predicate.
+--
+-- @since 0.5.5
+takeWhile :: Manifest r Ix1 e => (e -> Bool) -> Vector r e -> Vector r e
+takeWhile f v = take (go 0) v
+  where
+    !k = elemsCount v
+    go !i
+      | i < k && f (unsafeLinearIndex v i) = go (i + 1)
+      | otherwise = SafeSz i
+{-# INLINE takeWhile #-}
+
+
+
+
 -- | /O(1)/ - Get the vector with the first @n@ elements. Throws an error size is less
 -- than @n@.
 --
@@ -869,6 +889,21 @@ stake n = fromSteps . S.take (unSz n) . S.toStream
 drop :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
 drop k = snd . sliceAt k
 {-# INLINE drop #-}
+
+
+-- | Slice a manifest vector in such a way that it will not contain all initial elements
+-- that satisfy the supplied predicate.
+--
+-- @since 0.5.5
+dropWhile :: Manifest r Ix1 e => (e -> Bool) -> Vector r e -> Vector r e
+dropWhile f v = drop (go 0) v
+  where
+    !k = elemsCount v
+    go !i
+      | i < k && f (unsafeLinearIndex v i) = go (i + 1)
+      | otherwise = SafeSz (k - i)
+{-# INLINE dropWhile #-}
+
 
 -- | Keep all but the first @n@ elements from the delayed stream vector.
 --

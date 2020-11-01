@@ -828,12 +828,16 @@ spec =
             V.tail' arr !!==!! VP.tail (toPrimitiveVector arr)
           prop "take" $ \n (arr :: Array P Ix1 Word) ->
             V.take (Sz n) arr !==! VP.take n (toPrimitiveVector arr)
+          prop "takeWhile" $ \f (arr :: Array P Ix1 Word) ->
+            V.takeWhile (applyFun f) arr !==! VP.takeWhile (applyFun f) (toPrimitiveVector arr)
           prop "take'" $ \sz@(Sz n) (arr :: Array P Ix1 Word) ->
             V.take' sz arr !!==!! VP.slice 0 n (toPrimitiveVector arr)
           prop "stake" $ \n (arr :: Array P Ix1 Word) ->
             V.stake (Sz n) arr !==! VP.take n (toPrimitiveVector arr)
           prop "drop" $ \n (arr :: Array P Ix1 Word) ->
             V.drop (Sz n) arr !==! VP.drop n (toPrimitiveVector arr)
+          prop "dropWhile" $ \f (arr :: Array P Ix1 Word) ->
+            V.dropWhile (applyFun f) arr !==! VP.dropWhile (applyFun f) (toPrimitiveVector arr)
           prop "drop'" $ \sz@(Sz n) (arr :: Array P Ix1 Word) ->
             V.drop' sz arr !!==!! VP.slice n (unSz (size arr) - n) (toPrimitiveVector arr)
           prop "sdrop" $ \n (arr :: Array P Ix1 Word) ->
@@ -905,6 +909,9 @@ spec =
           prop "sconcat" $ \(vs :: [Vector P Int]) ->
             V.sconcat vs !==! VP.concat (fmap toPrimitiveVector vs)
       describe "Predicates" $ do
+        describe "Searching" $ do
+          prop "sfilter" $ \(v :: Vector P Word) (f :: Fun Word Bool) ->
+            V.findIndex (apply f) v === VP.findIndex (apply f) (toPrimitiveVector v)
         describe "Filtering" $ do
           prop "sfilter" $ \(v :: Vector P Word) (f :: Fun Word Bool) ->
             V.sfilter (apply f) v !==! VP.filter (apply f) (toPrimitiveVector v)

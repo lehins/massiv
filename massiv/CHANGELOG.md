@@ -1,3 +1,7 @@
+# 0.5.5
+
+* Add `takeWhile`, `dropWhile` and `findIndex`
+
 # 0.5.4
 
 * Addition of `unsafeTransformStencil`

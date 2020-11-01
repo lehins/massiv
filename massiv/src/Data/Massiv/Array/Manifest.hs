@@ -1,10 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -23,6 +23,8 @@ module Data.Massiv.Array.Manifest
   , B(..)
   , N(..)
   , Uninitialized(..)
+  -- ** Access
+  , findIndex
   -- ** Conversion
   -- $boxed_conversion_note
   , unwrapNormalForm
@@ -88,7 +90,8 @@ module Data.Massiv.Array.Manifest
   , castToBuilder
   ) where
 
-import Data.ByteString as S
+import Control.Monad
+import Data.ByteString as S hiding (findIndex)
 import Data.ByteString.Builder
 import Data.ByteString.Internal
 import Data.ByteString.Unsafe as SU
@@ -100,7 +103,6 @@ import Data.Massiv.Array.Manifest.Unboxed
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Core.Common
 import Data.Word (Word8)
-
 
 -- | /O(1)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
 -- doesn't match the total number of elements of new array.
@@ -164,3 +166,23 @@ castFromByteString comp (PS fp offset len) = unsafeArrayFromForeignPtr comp fp o
 -- `Data.Primitive.Array.Array`, which holds the pointers to values isn't copied around, it is always
 -- kept as the same array. Conversion to Massiv boxed array will undergo evaluation during which
 -- computation strategies will be respected.
+
+
+
+-- | /O(n)/ - Perform a row-major search starting at @0@ for an element. Returns the index
+-- of the first occurance of an element or `Nothing` if a predicate could not be satisifed
+-- after it was applyied to all elements of the array.
+--
+-- @since 0.5.5
+findIndex :: Manifest r ix e => (e -> Bool) -> Array r ix e -> Maybe ix
+findIndex f arr = go 0
+  where
+    !sz = size arr
+    !k = totalElem sz
+    go !i = do
+      guard (i < k)
+      if f (unsafeLinearIndex arr i)
+        then Just $ fromLinearIndex sz i
+        else go (i + 1)
+{-# INLINE findIndex #-}
+
