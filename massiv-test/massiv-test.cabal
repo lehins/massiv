@@ -59,9 +59,10 @@ test-suite tests
                     , Test.Massiv.Array.Delayed.WindowedSpec
                     , Test.Massiv.Array.DelayedSpec
                     , Test.Massiv.Array.MutableSpec
-                    , Test.Massiv.Array.Ops.TransformSpec
-                    , Test.Massiv.Array.Ops.SortSpec
+                    , Test.Massiv.Array.Ops.FoldSpec
                     , Test.Massiv.Array.Ops.MapSpec
+                    , Test.Massiv.Array.Ops.SortSpec
+                    , Test.Massiv.Array.Ops.TransformSpec
                     , Test.Massiv.Array.Numeric.IntegralSpec
                     , Test.Massiv.Array.StencilSpec
                     , Test.Massiv.VectorSpec
@@ -69,7 +70,6 @@ test-suite tests
                     , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
-                    , Data.Massiv.Array.Ops.FoldSpec
                     , Data.Massiv.Array.Ops.SliceSpec
                     , Data.Massiv.ArraySpec
   build-depends:      base

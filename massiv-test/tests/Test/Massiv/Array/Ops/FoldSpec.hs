@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-module Data.Massiv.Array.Ops.FoldSpec (spec) where
+module Test.Massiv.Array.Ops.FoldSpec (spec) where
 
 import qualified Data.Foldable as F
 import Data.Massiv.Array as A
@@ -24,11 +24,7 @@ prop_ProdSEqProdP :: Index ix => Array D ix Int -> Bool
 prop_ProdSEqProdP arr = product arr == product (setComp Par arr)
 
 
-foldOpsProp ::
-     (Source P ix Int)
-  => Fun Int Bool
-  -> ArrTinyNE P ix Int
-  -> Property
+foldOpsProp :: Source P ix Int => Fun Int Bool -> ArrTinyNE P ix Int -> Property
 foldOpsProp f (ArrTinyNE arr) =
   (A.maximum' arr === getMax (foldMono Max arr)) .&&.
   (A.minimum' arr === getMin (foldSemi Min maxBound arr)) .&&.
