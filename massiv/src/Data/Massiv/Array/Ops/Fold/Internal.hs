@@ -42,6 +42,8 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldlIO
   , ifoldrIO
   -- , splitReduce
+  , anySu
+  , anyPu
   ) where
 
 import Control.Monad (void, when)
@@ -381,3 +383,76 @@ ifoldrIO f !initAcc g !tAcc !arr
                 f ix (unsafeLinearIndex arr i) acc
     F.foldlM (flip g) tAcc results
 {-# INLINE ifoldrIO #-}
+
+-- | Sequential implementation of `any` with unrolling
+anySu :: Source r ix a => (a -> Bool) -> Array r ix a -> Bool
+anySu f arr = go 0
+  where
+    !k = elemsCount arr
+    !k4 = k - (k `rem` 4)
+    go !i
+      | i < k4 =
+        f (unsafeLinearIndex arr i      ) ||
+        f (unsafeLinearIndex arr (i + 1)) ||
+        f (unsafeLinearIndex arr (i + 2)) ||
+        f (unsafeLinearIndex arr (i + 3)) ||
+        go (i + 4)
+      | i < k = f (unsafeLinearIndex arr i) || go (i + 1)
+      | otherwise = False
+{-# INLINE anySu #-}
+
+
+-- | Implementaton of `any` on a slice of an array with short-circuiting using batch cancellation.
+anySliceSuM ::
+     Source r ix a
+  => Scheduler IO Bool
+  -> BatchId
+  -> Ix1
+  -> Sz1
+  -> (a -> Bool)
+  -> Array r ix a
+  -> IO Bool
+anySliceSuM scheduler batchId ix0 (Sz k) f arr = go ix0
+  where
+    !k' = k - ix0
+    !k4 = ix0 + (k' - (k' `rem` 4))
+    go !i
+      | i < k4 = do
+        let r =
+              f (unsafeLinearIndex arr i) ||
+              f (unsafeLinearIndex arr (i + 1)) ||
+              f (unsafeLinearIndex arr (i + 2)) ||
+              f (unsafeLinearIndex arr (i + 3))
+         in if r
+              then cancelBatchWith scheduler batchId True
+              else do
+                done <- hasBatchFinished scheduler batchId
+                if done
+                  then pure True
+                  else go (i + 4)
+      | i < k =
+        if f (unsafeLinearIndex arr i)
+          then cancelBatchWith scheduler batchId True
+          else go (i + 1)
+      | otherwise = pure False
+{-# INLINE anySliceSuM #-}
+
+
+
+-- | Parallelizable implementation of `any` with unrolling
+anyPu :: Source r ix e => (e -> Bool) -> Array r ix e -> IO Bool
+anyPu f arr = do
+  let !sz = size arr
+      !totalLength = totalElem sz
+  results <-
+    withScheduler (getComp arr) $ \scheduler -> do
+      batchId <- getCurrentBatchId scheduler
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $ do
+            anySliceSuM scheduler batchId start (Sz (start + chunkLength)) f arr
+        when (slackStart < totalLength) $
+          scheduleWork scheduler $ do
+            anySliceSuM scheduler batchId slackStart (Sz totalLength) f arr
+  pure $ F.foldl' (||) False results
+{-# INLINE anyPu #-}

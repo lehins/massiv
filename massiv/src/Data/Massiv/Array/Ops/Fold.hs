@@ -103,6 +103,7 @@ import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or, product, sum)
+import System.IO.Unsafe (unsafePerformIO)
 
 -- | /O(n)/ - Monoidal fold over an array with an index aware function. Also known as reduce.
 --
@@ -459,7 +460,7 @@ product = foldlInternal (*) 1 (*) 1
 --
 -- @since 0.1.0
 and :: Source r ix Bool => Array r ix Bool -> Bool
-and = foldlInternal (&&) True (&&) True
+and = all id
 {-# INLINE and #-}
 
 
@@ -467,22 +468,25 @@ and = foldlInternal (&&) True (&&) True
 --
 -- @since 0.1.0
 or :: Source r ix Bool => Array r ix Bool -> Bool
-or = foldlInternal (||) False (||) False
+or = any id
 {-# INLINE or #-}
 
 
--- | /O(n)/ - Determines whether all element of the array satisfy the predicate.
+-- | /O(n)/ - Determines whether all elements of the array satisfy a predicate.
 --
 -- @since 0.1.0
 all :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
-all f = foldlInternal (\acc e -> acc && f e) True (&&) True
+all f = not . any (not . f)
 {-# INLINE all #-}
 
--- | /O(n)/ - Determines whether any element of the array satisfies the predicate.
+-- | /O(n)/ - Determines whether any element of the array satisfies a predicate.
 --
 -- @since 0.1.0
 any :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
-any f = foldlInternal (\acc e -> acc || f e) False (||) False
+any f arr =
+  case getComp arr of
+    Seq -> anySu f arr
+    _ -> unsafePerformIO $ anyPu f arr
 {-# INLINE any #-}
 
 

@@ -12,9 +12,18 @@ import qualified Data.Vector.Primitive as VP
 main :: IO ()
 main =
   defaultMain
-    [ anyBench "None" arrayNone
-    , anyBench "Late" arrayLate
-    , anyBench "Early" arrayEarly
+    [ bgroup
+        "Any"
+        [ anyBench "None" arrayEvenNone
+        , anyBench "Late" arrayEvenLate
+        , anyBench "Early" arrayEvenEarly
+        ]
+    , bgroup
+        "All"
+        [ allBench "None" arrayEvenNone
+        , allBench "Late" arrayEvenLate
+        , allBench "Early" arrayEvenEarly
+        ]
     ]
 
 
@@ -32,26 +41,40 @@ anyBench name arr =
     , bench "any (D - Par)" $ whnf (A.any even . delay) (setComp Par arr)
     ]
 
+allBench :: String -> Vector P Int -> Benchmark
+allBench name arr =
+  bgroup
+    name
+    [ env (pure (A.toList arr)) $ \ ls -> bench "list" $ whnf (F.all odd) ls
+    , env (pure (A.toVector arr)) $ \ vec -> bench "vector" $ whnf (VP.all odd) vec
+    , bench "F.all (DS)" $ whnf (F.all odd . toStreamArray) arr
+    , bench "sall (DS)" $ whnf (sall odd . toStreamArray) arr
+    , bench "F.all (D - Seq)" $ whnf (F.all odd . delay) arr
+    , bench "F.all (D - Par)" $ whnf (F.all odd . delay) (setComp Par arr)
+    , bench "all (D - Seq)" $ whnf (A.all odd . delay) arr
+    , bench "all (D - Par)" $ whnf (A.all odd . delay) (setComp Par arr)
+    ]
+
 
 -- Has no even numbers will not short-circuit
-arrayNone :: Array P Ix1 Int
-arrayNone = computeAs P $ A.enumFromStepN Seq 1 2 8000000
-{-# NOINLINE arrayNone #-}
+arrayEvenNone :: Array P Ix1 Int
+arrayEvenNone = computeAs P $ A.enumFromStepN Seq 1 2 8000000
+{-# NOINLINE arrayEvenNone #-}
 
 -- Has an even number in the middle of the first 1/8th portion of the array. Should
 -- short-circuit quickly with or without parallelization
-arrayEarly :: Array P Ix1 Int
-arrayEarly =
+arrayEvenEarly :: Array P Ix1 Int
+arrayEvenEarly =
   computeAs P $
   concat' 1 [A.enumFromStepN Seq 1 2 1000000, A.singleton 2, A.enumFromStepN Seq 1 2 6999999]
-{-# NOINLINE arrayEarly #-}
+{-# NOINLINE arrayEvenEarly #-}
 
 -- Has an even number in the beginning of the last 1/8th portion of the array. Should
 -- short-circuit quickly with parallelization on 8 cores, but not too fast when compured
 -- sequentially
-arrayLate :: Array P Ix1 Int
-arrayLate =
+arrayEvenLate :: Array P Ix1 Int
+arrayEvenLate =
   computeAs P $
   concat' 1 [A.enumFromStepN Seq 1 2 4000000, A.singleton 2, A.enumFromStepN Seq 1 2 3999999]
-{-# NOINLINE arrayLate #-}
+{-# NOINLINE arrayEvenLate #-}
 

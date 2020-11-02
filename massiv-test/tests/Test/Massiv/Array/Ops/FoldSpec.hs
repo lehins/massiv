@@ -24,17 +24,17 @@ prop_ProdSEqProdP :: Index ix => Array D ix Int -> Bool
 prop_ProdSEqProdP arr = product arr == product (setComp Par arr)
 
 
-foldOpsProp :: Source P ix Int => Fun Int Bool -> ArrTinyNE P ix Int -> Property
-foldOpsProp f (ArrTinyNE arr) =
-  (A.maximum' arr === getMax (foldMono Max arr)) .&&.
-  (A.minimum' arr === getMin (foldSemi Min maxBound arr)) .&&.
-  (A.sum arr === F.sum ls) .&&.
-  (A.product (A.map ((+ 0.1) . (fromIntegral :: Int -> Double)) arr) ===
-   getProduct (foldMono (Product . (+ 0.1) . fromIntegral) arr)) .&&.
-  (A.all (apply f) arr === F.all (apply f) ls) .&&.
-  (A.any (apply f) arr === F.any (apply f) ls) .&&.
-  (A.or (A.map (apply f) arr) === F.or (fmap (apply f) ls)) .&&.
-  (A.and (A.map (apply f) arr) === F.and (fmap (apply f) ls))
+foldOpsProp :: Source P ix Int => Fun Int Bool -> ArrTinyNE P ix Int -> Expectation
+foldOpsProp f (ArrTinyNE arr) = do
+  A.maximum' arr `shouldBe` getMax (foldMono Max arr)
+  A.minimum' arr `shouldBe` getMin (foldSemi Min maxBound arr)
+  A.sum arr `shouldBe` F.sum ls
+  A.product (A.map ((+ 0.1) . (fromIntegral :: Int -> Double)) arr) `shouldBe`
+    getProduct (foldMono (Product . (+ 0.1) . fromIntegral) arr)
+  A.all (apply f) arr `shouldBe` F.all (apply f) ls
+  A.and (A.map (apply f) arr) `shouldBe` F.and (fmap (apply f) ls)
+  A.any (apply f) arr `shouldBe` F.any (apply f) ls
+  A.or (A.map (apply f) arr) `shouldBe` F.or (fmap (apply f) ls)
   where
     ls = toList arr
 
@@ -49,9 +49,9 @@ specFold ::
   -> Spec
 specFold dimStr =
   describe dimStr $ do
-    it "sumS Eq sumP" $ property $ prop_SumSEqSumP @ix
-    it "prodS Eq prodP" $ property $ prop_ProdSEqProdP @ix
-    it "foldOps" $ property $ foldOpsProp @ix
+    prop "sumS Eq sumP" $ prop_SumSEqSumP @ix
+    prop "prodS Eq prodP" $ prop_ProdSEqProdP @ix
+    prop "foldOps" $ foldOpsProp @ix
 
 
 prop_foldOuterSliceToList ::

@@ -6,7 +6,8 @@ flags: {}
 extra-deps:
 - primitive-0.7.1.0
 - pvar-1.0.0.0@sha256:3d4a6855b0960baee78f6956f082eb8aa1cede52d2955b7faef186d1133f7964,1893
-- github: lehins/haskell-scheduler
-  commit: 9ded5137025cac5be6024d24c2618865de51f334
-  subdirs:
-    - scheduler
+- ../haskell-scheduler/scheduler
+# - github: lehins/haskell-scheduler
+#   commit: 9ded5137025cac5be6024d24c2618865de51f334
+#   subdirs:
+#     - scheduler
