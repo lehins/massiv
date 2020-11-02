@@ -42,6 +42,7 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , ifoldlIO
   , ifoldrIO
   -- , splitReduce
+  , any
   , anySu
   , anyPu
   ) where
@@ -51,7 +52,7 @@ import Control.Scheduler
 import qualified Data.Foldable as F
 import Data.Functor.Identity (runIdentity)
 import Data.Massiv.Core.Common
-import Prelude hiding (foldl, foldr)
+import Prelude hiding (foldl, foldr, any)
 import System.IO.Unsafe (unsafePerformIO)
 
 
@@ -456,3 +457,15 @@ anyPu f arr = do
             anySliceSuM scheduler batchId slackStart (Sz totalLength) f arr
   pure $ F.foldl' (||) False results
 {-# INLINE anyPu #-}
+
+
+
+-- | /O(n)/ - Determines whether any element of the array satisfies a predicate.
+--
+-- @since 0.1.0
+any :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
+any f arr =
+  case getComp arr of
+    Seq -> anySu f arr
+    _ -> unsafePerformIO $ anyPu f arr
+{-# INLINE any #-}

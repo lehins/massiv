@@ -141,6 +141,8 @@ instance Index ix => Foldable (Array D ix) where
   {-# INLINE null #-}
   length = totalElem . size
   {-# INLINE length #-}
+  elem e = A.any (e ==)
+  {-# INLINE elem #-}
   toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 

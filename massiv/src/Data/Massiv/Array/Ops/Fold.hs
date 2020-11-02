@@ -35,6 +35,7 @@ module Data.Massiv.Array.Ops.Fold
   , or
   , all
   , any
+  , elem
 
   -- ** Single dimension folds
   -- *** Safe inner most
@@ -102,8 +103,8 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
-import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or, product, sum)
-import System.IO.Unsafe (unsafePerformIO)
+import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or, product, sum, elem)
+
 
 -- | /O(n)/ - Monoidal fold over an array with an index aware function. Also known as reduce.
 --
@@ -479,15 +480,12 @@ all :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
 all f = not . any (not . f)
 {-# INLINE all #-}
 
--- | /O(n)/ - Determines whether any element of the array satisfies a predicate.
+-- | /O(n)/ - Determines whether an element is present in the array.
 --
--- @since 0.1.0
-any :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
-any f arr =
-  case getComp arr of
-    Seq -> anySu f arr
-    _ -> unsafePerformIO $ anyPu f arr
-{-# INLINE any #-}
+-- @since 0.5.5
+elem :: (Eq e, Source r ix e) => e -> Array r ix e -> Bool
+elem e = any (e ==)
+{-# INLINE elem #-}
 
 
 {- $unstruct_folds

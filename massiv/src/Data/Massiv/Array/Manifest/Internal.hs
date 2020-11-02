@@ -50,7 +50,7 @@ import Control.Scheduler
 import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
-import Data.Massiv.Array.Ops.Fold.Internal
+import Data.Massiv.Array.Ops.Fold.Internal as A
 import Data.Massiv.Array.Mutable.Internal (unsafeCreateArray_)
 import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Core.Common
@@ -122,6 +122,8 @@ instance Index ix => Foldable (Array M ix) where
   {-# INLINE null #-}
   length = totalElem . size
   {-# INLINE length #-}
+  elem e = A.any (e ==)
+  {-# INLINE elem #-}
   toList arr = build (\ c n -> foldrFB c n arr)
   {-# INLINE toList #-}
 

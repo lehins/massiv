@@ -1,6 +1,8 @@
 # 0.5.5
 
 * Add `takeWhile`, `dropWhile` and `findIndex`
+* Improve performance of `any`, `and`, `or`, `all`
+* Add `elem`
 
 # 0.5.4
 
