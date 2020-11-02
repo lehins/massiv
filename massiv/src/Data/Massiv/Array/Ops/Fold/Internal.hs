@@ -337,10 +337,10 @@ ifoldlIO f !initAcc g !tAcc !arr
 -- -- them. Number of chunks will depend on the computation strategy. Results of each action
 -- -- will be combined with a folding function.
 -- --
--- -- @since 0.4.1
+-- -- @since 0.6.0
 -- splitReduce ::
 --      (MonadUnliftIO m, Source r ix e)
---   => (Scheduler m a -> Array r Ix1 e -> m a)
+--   => (Scheduler m a -> BatchId -> Array r Ix1 e -> m a)
 --   -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
 --   -> b -- ^ Accumulator for chunks folding
 --   -> Array r ix e
@@ -349,13 +349,15 @@ ifoldlIO f !initAcc g !tAcc !arr
 --   let !sz = size arr
 --       !totalLength = totalElem sz
 --   results <-
---     withScheduler (getComp arr) $ \scheduler ->
+--     withScheduler (getComp arr) $ \scheduler -> do
+--       batchId <- getCurrentBatchId scheduler
 --       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
 --         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
---           scheduleWork scheduler $ f scheduler $ unsafeLinearSlice start (SafeSz chunkLength) arr
+--           scheduleWork scheduler $ f scheduler batchId $
+--             unsafeLinearSlice start (SafeSz chunkLength) arr
 --         when (slackStart < totalLength) $
---           scheduleWork scheduler $
---           f scheduler $ unsafeLinearSlice slackStart (SafeSz (totalLength - slackStart)) arr
+--           scheduleWork scheduler $ f scheduler batchId $
+--             unsafeLinearSlice slackStart (SafeSz (totalLength - slackStart)) arr
 --   F.foldlM g tAcc results
 -- {-# INLINE splitReduce #-}
 
