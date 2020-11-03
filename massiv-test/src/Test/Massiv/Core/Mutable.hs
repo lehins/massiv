@@ -25,7 +25,7 @@ import Test.Massiv.Utils
 
 prop_UnsafeNewMsize ::
      forall r ix e.
-     (Arbitrary ix, Mutable r ix e)
+     (Arbitrary ix, Index ix, Mutable r e)
   => Property
 prop_UnsafeNewMsize = property $ \ sz -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
@@ -33,7 +33,7 @@ prop_UnsafeNewMsize = property $ \ sz -> do
 
 prop_UnsafeNewLinearWriteRead ::
      forall r ix e.
-     (Eq e, Show e, Mutable r ix e, Arbitrary ix, Arbitrary e)
+     (Eq e, Show e, Mutable r e, Index ix, Arbitrary ix, Arbitrary e)
   => Property
 prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
@@ -46,7 +46,7 @@ prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
 
 prop_UnsafeThawFreeze ::
      forall r ix e.
-     (Eq (Array r ix e), Show (Array r ix e), Mutable r ix e)
+     (Eq (Array r ix e), Show (Array r ix e), Index ix, Mutable r e)
   => Array r ix e -> Property
 prop_UnsafeThawFreeze arr = arr === runST (unsafeFreeze (getComp arr) =<< unsafeThaw arr)
 
@@ -58,7 +58,8 @@ prop_UnsafeInitializeNew ::
      , Show e
      , Arbitrary e
      , Arbitrary ix
-     , Mutable r ix e
+     , Index ix
+     , Mutable r e
      )
   => Property
 prop_UnsafeInitializeNew =
@@ -71,7 +72,8 @@ prop_UnsafeInitialize ::
      ( Eq (Array r ix e)
      , Show (Array r ix e)
      , Arbitrary ix
-     , Mutable r ix e
+     , Index ix
+     , Mutable r e
      )
   => Property
 prop_UnsafeInitialize =
@@ -84,7 +86,7 @@ prop_UnsafeInitialize =
 
 
 prop_UnsafeLinearCopy ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Mutable r ix e)
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Mutable r e)
   => Array r ix e
   -> Property
 prop_UnsafeLinearCopy arr =
@@ -104,8 +106,8 @@ prop_UnsafeLinearCopyPart ::
      , Show (Vector r e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Mutable r ix e
-     , Mutable r Ix1 e
+     , Mutable r e
+     , Index ix
      )
   => ArrIx r ix e
   -> NonNegative Ix1
@@ -128,7 +130,7 @@ prop_UnsafeLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
 
 
 prop_UnsafeArrayLinearCopy ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Mutable r ix e)
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Mutable r e)
   => Array r ix e
   -> Property
 prop_UnsafeArrayLinearCopy arr =
@@ -141,12 +143,7 @@ prop_UnsafeArrayLinearCopy arr =
 
 
 prop_UnsafeArrayLinearCopyPart ::
-     forall r ix e.
-     ( Eq (Vector r e)
-     , Show (Vector r e)
-     , Mutable r ix e
-     , Mutable r Ix1 e
-     )
+     forall r ix e. (Eq (Vector r e), Show (Vector r e), Index ix, Mutable r e)
   => ArrIx r ix e
   -> NonNegative Ix1
   -> Ix1
@@ -169,8 +166,8 @@ prop_UnsafeLinearSet ::
      forall r ix e.
      ( Eq (Vector r e)
      , Show (Vector r e)
-     , Mutable r ix e
-     , Mutable r Ix1 e
+     , Index ix
+     , Mutable r e
      )
   => Comp
   -> SzIx ix
@@ -193,8 +190,8 @@ prop_UnsafeLinearShrink ::
      forall r ix e.
      ( Eq (Vector r e)
      , Show (Vector r e)
-     , Mutable r ix e
-     , Source r Ix1 e
+     , Mutable r e
+     , Index ix
      )
   => ArrIx r ix e
   -> Property
@@ -216,8 +213,8 @@ prop_UnsafeLinearGrow ::
      , Show (Array r ix e)
      , Eq (Vector r e)
      , Show (Vector r e)
-     , Mutable r ix e
-     , Source r Ix1 e
+     , Mutable r e
+     , Index ix
      )
   => ArrIx r ix e
   -> e
@@ -247,10 +244,10 @@ unsafeMutableSpec ::
      , Show (Vector r e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Mutable r ix e
-     , Mutable r Ix1 e
+     , Mutable r e
      , Show e
      , Eq e
+     , Construct r ix e
      , Arbitrary e
      , Arbitrary ix
      , Typeable e
@@ -273,7 +270,14 @@ unsafeMutableSpec =
 
 unsafeMutableUnboxedSpec ::
      forall r ix e.
-     (Typeable e, Typeable ix, Eq (Array r ix e), Show (Array r ix e), Arbitrary ix, Mutable r ix e)
+     ( Typeable e
+     , Typeable ix
+     , Eq (Array r ix e)
+     , Show (Array r ix e)
+     , Index ix
+     , Arbitrary ix
+     , Mutable r e
+     )
   => Spec
 unsafeMutableUnboxedSpec =
   describe ("Mutable Unboxed (" ++ showsArrayType @r @ix @e ") (Unsafe)") $

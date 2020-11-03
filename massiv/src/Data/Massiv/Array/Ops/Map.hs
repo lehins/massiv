@@ -85,7 +85,9 @@ import Prelude hiding (map, mapM, mapM_, sequenceA, traverse, unzip, unzip3,
 --------------------------------------------------------------------------------
 
 -- | Map a function over an array
-map :: Source r ix e' => (e' -> e) -> Array r ix e' -> Array D ix e
+--
+-- @since 0.1.0
+map :: (Index ix, Source r e') => (e' -> e) -> Array r ix e' -> Array D ix e
 map f = imap (const f)
 {-# INLINE map #-}
 
@@ -95,13 +97,17 @@ map f = imap (const f)
 --------------------------------------------------------------------------------
 
 -- | Zip two arrays
-zip :: (Source r1 ix e1, Source r2 ix e2)
+--
+-- @since 0.1.0
+zip :: (Index ix, Source r1 e1, Source r2 e2)
     => Array r1 ix e1 -> Array r2 ix e2 -> Array D ix (e1, e2)
 zip = zipWith (,)
 {-# INLINE zip #-}
 
 -- | Zip three arrays
-zip3 :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3)
+--
+-- @since 0.1.0
+zip3 :: (Index ix, Source r1 e1, Source r2 e2, Source r3 e3)
      => Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array D ix (e1, e2, e3)
 zip3 = zipWith3 (,,)
 {-# INLINE zip3 #-}
@@ -110,7 +116,7 @@ zip3 = zipWith3 (,,)
 --
 -- @since 0.5.4
 zip4 ::
-     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Source r4 ix e4)
+     (Index ix, Source r1 e1, Source r2 e2, Source r3 e3, Source r4 e4)
   => Array r1 ix e1
   -> Array r2 ix e2
   -> Array r3 ix e3
@@ -120,12 +126,16 @@ zip4 = zipWith4 (,,,)
 {-# INLINE zip4 #-}
 
 -- | Unzip two arrays
-unzip :: Source r ix (e1, e2) => Array r ix (e1, e2) -> (Array D ix e1, Array D ix e2)
+--
+-- @since 0.1.0
+unzip :: (Index ix, Source r (e1, e2)) => Array r ix (e1, e2) -> (Array D ix e1, Array D ix e2)
 unzip arr = (map fst arr, map snd arr)
 {-# INLINE unzip #-}
 
 -- | Unzip three arrays
-unzip3 :: Source r ix (e1, e2, e3)
+--
+-- @since 0.1.0
+unzip3 :: (Index ix, Source r (e1, e2, e3))
        => Array r ix (e1, e2, e3) -> (Array D ix e1, Array D ix e2, Array D ix e3)
 unzip3 arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_, _, e) -> e) arr)
 {-# INLINE unzip3 #-}
@@ -133,7 +143,7 @@ unzip3 arr = (map (\ (e, _, _) -> e) arr, map (\ (_, e, _) -> e) arr, map (\ (_,
 -- | Unzip four arrays
 --
 -- @since 0.5.4
-unzip4 :: Source r ix (e1, e2, e3, e4)
+unzip4 :: (Index ix, Source r (e1, e2, e3, e4))
        => Array r ix (e1, e2, e3, e4) -> (Array D ix e1, Array D ix e2, Array D ix e3, Array D ix e4)
 unzip4 arr =
   ( map (\(e, _, _, _) -> e) arr
@@ -148,14 +158,14 @@ unzip4 arr =
 
 -- | Zip two arrays with a function. Resulting array will be an intersection of
 -- source arrays in case their dimensions do not match.
-zipWith :: (Source r1 ix e1, Source r2 ix e2)
+zipWith :: (Index ix, Source r1 e1, Source r2 e2)
         => (e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
 zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
 {-# INLINE zipWith #-}
 
 
 -- | Just like `zipWith`, except with an index aware function.
-izipWith :: (Source r1 ix e1, Source r2 ix e2)
+izipWith :: (Index ix, Source r1 e1, Source r2 e2)
          => (ix -> e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
 izipWith f arr1 arr2 =
   DArray
@@ -166,7 +176,7 @@ izipWith f arr1 arr2 =
 
 
 -- | Just like `zipWith`, except zip three arrays with a function.
-zipWith3 :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3)
+zipWith3 :: (Index ix, Source r1 e1, Source r2 e2, Source r3 e3)
          => (e1 -> e2 -> e3 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array D ix e
 zipWith3 f = izipWith3 (\ _ e1 e2 e3 -> f e1 e2 e3)
 {-# INLINE zipWith3 #-}
@@ -174,7 +184,7 @@ zipWith3 f = izipWith3 (\ _ e1 e2 e3 -> f e1 e2 e3)
 
 -- | Just like `zipWith3`, except with an index aware function.
 izipWith3
-  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3)
+  :: (Index ix, Source r1 e1, Source r2 e2, Source r3 e3)
   => (ix -> e1 -> e2 -> e3 -> e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -197,7 +207,7 @@ izipWith3 f arr1 arr2 arr3 =
 --
 -- @since 0.5.4
 zipWith4 ::
-     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Source r4 ix e4)
+     (Index ix, Source r1 e1, Source r2 e2, Source r3 e3, Source r4 e4)
   => (e1 -> e2 -> e3 -> e4 -> e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -212,7 +222,7 @@ zipWith4 f = izipWith4 (\ _ e1 e2 e3 e4 -> f e1 e2 e3 e4)
 --
 -- @since 0.5.4
 izipWith4
-  :: (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Source r4 ix e4)
+  :: (Index ix, Source r1 e1, Source r2 e2, Source r3 e3, Source r4 e4)
   => (ix -> e1 -> e2 -> e3 -> e4 -> e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -239,7 +249,7 @@ izipWith4 f arr1 arr2 arr3 arr4 =
 --
 -- @since 0.3.0
 zipWithA ::
-     (Source r1 ix e1, Source r2 ix e2, Applicative f, Mutable r ix e)
+     (Source r1 e1, Source r2 e2, Applicative f, Mutable r e, Index ix)
   => (e1 -> e2 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -252,7 +262,7 @@ zipWithA f = izipWithA (const f)
 --
 -- @since 0.3.0
 izipWithA ::
-     (Source r1 ix e1, Source r2 ix e2, Applicative f, Mutable r ix e)
+     (Source r1 e1, Source r2 e2, Applicative f, Mutable r e, Index ix)
   => (ix -> e1 -> e2 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -268,7 +278,7 @@ izipWithA f arr1 arr2 =
 --
 -- @since 0.3.0
 zipWith3A ::
-     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Applicative f, Mutable r ix e)
+     (Source r1 e1, Source r2 e2, Source r3 e3, Applicative f, Mutable r e, Index ix)
   => (e1 -> e2 -> e3 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -281,7 +291,7 @@ zipWith3A f = izipWith3A (const f)
 --
 -- @since 0.3.0
 izipWith3A ::
-     (Source r1 ix e1, Source r2 ix e2, Source r3 ix e3, Applicative f, Mutable r ix e)
+     (Source r1 e1, Source r2 e2, Source r3 e3, Applicative f, Mutable r e, Index ix)
   => (ix -> e1 -> e2 -> e3 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -304,7 +314,7 @@ izipWith3A f arr1 arr2 arr3 =
 --
 -- @since 0.1.4
 liftArray2
-  :: (Source r1 ix a, Source r2 ix b)
+  :: (Index ix, Source r1 a, Source r2 b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2 f !arr1 !arr2
   | sz1 == oneSz = map (f (unsafeIndex arr1 zeroIndex)) arr2
@@ -329,7 +339,7 @@ liftArray2 f !arr1 !arr2
 -- @since 0.2.6
 --
 traverseA ::
-     forall r ix e r' a f . (Source r' ix a, Mutable r ix e, Applicative f)
+     forall r ix e r' a f . (Source r' a, Mutable r e, Index ix, Applicative f)
   => (a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
@@ -340,7 +350,11 @@ traverseA f arr = makeArrayLinearA (size arr) (f . unsafeLinearIndex arr)
 --
 -- @since 0.3.0
 --
-traverseA_ :: forall r ix e a f . (Source r ix e, Applicative f) => (e -> f a) -> Array r ix e -> f ()
+traverseA_ ::
+     forall r ix e a f. (Index ix, Source r e, Applicative f)
+  => (e -> f a)
+  -> Array r ix e
+  -> f ()
 traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearIndex arr)
 {-# INLINE traverseA_ #-}
 
@@ -349,7 +363,7 @@ traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearInde
 -- @since 0.3.0
 --
 sequenceA ::
-     forall r ix e r' f. (Source r' ix (f e), Mutable r ix e, Applicative f)
+     forall r ix e r' f. (Source r' (f e), Mutable r e, Index ix, Applicative f)
   => Array r' ix (f e)
   -> f (Array r ix e)
 sequenceA = traverseA id
@@ -359,7 +373,10 @@ sequenceA = traverseA id
 --
 -- @since 0.3.0
 --
-sequenceA_ :: forall r ix e f . (Source r ix (f e), Applicative f) => Array r ix (f e) -> f ()
+sequenceA_ ::
+     forall r ix e f. (Index ix, Source r (f e), Applicative f)
+  => Array r ix (f e)
+  -> f ()
 sequenceA_ = traverseA_ id
 {-# INLINE sequenceA_ #-}
 
@@ -369,7 +386,7 @@ sequenceA_ = traverseA_ id
 -- @since 0.2.6
 --
 itraverseA ::
-     forall r ix e r' a f . (Source r' ix a, Mutable r ix e, Applicative f)
+     forall r ix e r' a f . (Source r' a, Mutable r e, Index ix, Applicative f)
   => (ix -> a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
@@ -383,7 +400,7 @@ itraverseA f arr =
 -- @since 0.2.6
 --
 itraverseA_ ::
-     forall r ix e a f. (Source r ix a, Applicative f)
+     forall r ix e a f. (Source r a, Index ix, Applicative f)
   => (ix -> a -> f e)
   -> Array r ix a
   -> f ()
@@ -399,7 +416,7 @@ itraverseA_ f arr =
 -- @since 0.3.0
 --
 traversePrim ::
-     forall r ix b r' a m . (Source r' ix a, Mutable r ix b, PrimMonad m)
+     forall r ix b r' a m . (Source r' a, Mutable r b, Index ix, PrimMonad m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -411,7 +428,7 @@ traversePrim f = itraversePrim (const f)
 -- @since 0.3.0
 --
 itraversePrim ::
-     forall r ix b r' a m . (Source r' ix a, Mutable r ix b, PrimMonad m)
+     forall r ix b r' a m . (Source r' a, Mutable r b, Index ix, PrimMonad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -432,7 +449,7 @@ itraversePrim f arr =
 --
 -- @since 0.2.6
 mapM ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
   => (a -> m b) -- ^ Mapping action
   -> Array r' ix a -- ^ Source array
   -> m (Array r ix b)
@@ -444,7 +461,7 @@ mapM = traverseA
 --
 -- @since 0.2.6
 forM ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -456,7 +473,7 @@ forM = flip traverseA
 --
 -- @since 0.2.6
 imapM ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -468,7 +485,7 @@ imapM = itraverseA
 --
 -- @since 0.5.1
 iforM ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, Monad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)
@@ -489,7 +506,7 @@ iforM = flip itraverseA
 -- 58
 --
 -- @since 0.1.0
-mapM_ :: (Source r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
+mapM_ :: (Source r a, Index ix, Monad m) => (a -> m b) -> Array r ix a -> m ()
 mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeIndex arr)
 {-# INLINE mapM_ #-}
 
@@ -508,13 +525,13 @@ mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeI
 -- >>> readIORef ref
 -- 499500
 --
-forM_ :: (Source r ix a, Monad m) => Array r ix a -> (a -> m b) -> m ()
+forM_ :: (Source r a, Index ix, Monad m) => Array r ix a -> (a -> m b) -> m ()
 forM_ = flip mapM_
 {-# INLINE forM_ #-}
 
 
 -- | Just like `imapM_`, except with flipped arguments.
-iforM_ :: (Source r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
+iforM_ :: (Source r a, Index ix, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
 iforM_ = flip imapM_
 {-# INLINE iforM_ #-}
 
@@ -525,7 +542,7 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -536,14 +553,14 @@ mapIO action = imapIO (const action)
 -- array, therefore it is faster. Use this instead of `mapIO` when result is irrelevant.
 --
 -- @since 0.2.6
-mapIO_ :: (Source r b e, MonadUnliftIO m) => (e -> m a) -> Array r b e -> m ()
+mapIO_ :: (Index ix, Source r e, MonadUnliftIO m) => (e -> m a) -> Array r ix e -> m ()
 mapIO_ action = imapIO_ (const action)
 {-# INLINE mapIO_ #-}
 
 -- | Same as `mapIO_`, but map an index aware action instead.
 --
 -- @since 0.2.6
-imapIO_ :: (Source r ix e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
+imapIO_ :: (Index ix, Source r e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
 imapIO_ action arr =
   withScheduler_ (getComp arr) $ \scheduler -> imapSchedulerM_ scheduler action arr
 {-# INLINE imapIO_ #-}
@@ -552,7 +569,7 @@ imapIO_ action arr =
 --
 -- @since 0.3.1
 imapSchedulerM_ ::
-     (Source r ix e, Monad m) => Scheduler m () -> (ix -> e -> m a) -> Array r ix e -> m ()
+     (Index ix, Source r e, Monad m) => Scheduler m () -> (ix -> e -> m a) -> Array r ix e -> m ()
 imapSchedulerM_ scheduler action arr = do
   let sz = size arr
   splitLinearlyWith_
@@ -567,7 +584,7 @@ imapSchedulerM_ scheduler action arr = do
 --
 -- @since 0.3.1
 iforSchedulerM_ ::
-     (Source r ix e, Monad m) => Scheduler m () -> Array r ix e -> (ix -> e -> m a) -> m ()
+     (Index ix, Source r e, Monad m) => Scheduler m () -> Array r ix e -> (ix -> e -> m a) -> m ()
 iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 {-# INLINE iforSchedulerM_ #-}
 
@@ -576,7 +593,7 @@ iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 --
 -- @since 0.2.6
 imapIO ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -587,7 +604,7 @@ imapIO action arr = generateArray (getComp arr) (size arr) $ \ix -> action ix (u
 --
 -- @since 0.2.6
 forIO ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -602,7 +619,7 @@ forIO = flip mapIO
 --
 -- @since 0.3.4
 imapWS ::
-     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> (ix -> a -> s -> m b)
   -> Array r' ix a
@@ -614,7 +631,7 @@ imapWS states f arr = generateArrayWS states (size arr) (\ix s -> f ix (unsafeIn
 --
 -- @since 0.3.4
 mapWS ::
-     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> (a -> s -> m b)
   -> Array r' ix a
@@ -627,7 +644,7 @@ mapWS states f = imapWS states (\ _ -> f)
 --
 -- @since 0.3.4
 iforWS ::
-     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> Array r' ix a
   -> (ix -> a -> s -> m b)
@@ -639,7 +656,7 @@ iforWS states f arr = imapWS states arr f
 --
 -- @since 0.3.4
 forWS ::
-     forall r ix b r' a s m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> Array r' ix a
   -> (a -> s -> m b)
@@ -664,7 +681,7 @@ forWS states arr f = imapWS states (\ _ -> f) arr
 -- 499500
 --
 -- @since 0.2.6
-forIO_ :: (Source r ix e, MonadUnliftIO m) => Array r ix e -> (e -> m a) -> m ()
+forIO_ :: (Index ix, Source r e, MonadUnliftIO m) => Array r ix e -> (e -> m a) -> m ()
 forIO_ = flip mapIO_
 {-# INLINE forIO_ #-}
 
@@ -672,7 +689,7 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     forall r ix b r' a m. (Source r' ix a, Mutable r ix b, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)
@@ -682,6 +699,6 @@ iforIO = flip imapIO
 -- | Same as `imapIO_` but with arguments flipped.
 --
 -- @since 0.2.6
-iforIO_ :: (Source r ix a, MonadUnliftIO m) => Array r ix a -> (ix -> a -> m b) -> m ()
+iforIO_ :: (Source r a, Index ix, MonadUnliftIO m) => Array r ix a -> (ix -> a -> m b) -> m ()
 iforIO_ = flip imapIO_
 {-# INLINE iforIO_ #-}

@@ -47,7 +47,15 @@ instance (Ragged L ix e, Show e) => Show (Array D ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
 
-instance Index ix => Resize D ix where
+instance Index ix => Shape D ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+instance Size D where
+  size = dSize
+  {-# INLINE size #-}
+
+instance Resize D where
   unsafeResize !sz !arr =
     DArray (dComp arr) sz $ \ !ix ->
       unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
@@ -59,16 +67,18 @@ instance Index ix => Extract D ix e where
       unsafeIndex arr (liftIndex2 (+) ix sIx)
   {-# INLINE unsafeExtract #-}
 
-
-instance Index ix => Construct D ix e where
+instance Strategy D where
   setComp c arr = arr { dComp = c }
   {-# INLINE setComp #-}
+  getComp = dComp
+  {-# INLINE getComp #-}
 
+instance Index ix => Construct D ix e where
   makeArray = DArray
   {-# INLINE makeArray #-}
 
 
-instance Index ix => Source D ix e where
+instance Source D e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
   unsafeLinearSlice !o !sz arr =
@@ -147,10 +157,6 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix e where
-  size = dSize
-  {-# INLINE size #-}
-  getComp = dComp
-  {-# INLINE getComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -163,7 +169,7 @@ instance Index ix => Stream D ix e where
   {-# INLINE toStreamIx #-}
 
 -- | Map an index aware function over an array
-imap :: Source r ix e' => (ix -> e' -> e) -> Array r ix e' -> Array D ix e
+imap :: (Index ix, Source r e') => (ix -> e' -> e) -> Array r ix e' -> Array D ix e
 imap f !arr = DArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE imap #-}
 
@@ -239,7 +245,7 @@ instance Floating e => NumericFloat D e
 
 
 -- | /O(1)/ Conversion from a source array to `D` representation.
-delay :: Source r ix e => Array r ix e -> Array D ix e
+delay :: (Index ix, Source r e) => Array r ix e -> Array D ix e
 delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 {-# INLINE [1] delay #-}
 
@@ -250,8 +256,8 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 -- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
 --
 -- @since 0.5.7
-eqArrays :: (Source r1 ix e1, Source r2 ix e2) =>
-      (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
+eqArrays :: (Index ix, Source r1 e1, Source r2 e2) =>
+            (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eqArrays f arr1 arr2 =
   (size arr1 == size arr2) &&
   not (A.any not
@@ -264,7 +270,7 @@ eqArrays f arr1 arr2 =
 -- you need an ordering but do not care about which one is used.
 --
 -- @since 0.5.7
-compareArrays :: (Source r1 ix e1, Source r2 ix e2) =>
+compareArrays :: (Index ix, Source r1 e1, Source r2 e2) =>
        (e1 -> e2 -> Ordering) -> Array r1 ix e1 -> Array r2 ix e2 -> Ordering
 compareArrays f arr1 arr2 =
   compare (size arr1) (size arr2) <>
@@ -275,7 +281,7 @@ compareArrays f arr1 arr2 =
 
 
 liftArray2Matching
-  :: (Source r1 ix a, Source r2 ix b)
+  :: (Index ix, Source r1 a, Source r2 b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2Matching f !arr1 !arr2
   | sz1 == sz2 =

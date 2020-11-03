@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -24,7 +23,7 @@ prop_ProdSEqProdP :: Index ix => Array D ix Int -> Bool
 prop_ProdSEqProdP arr = product arr == product (setComp Par arr)
 
 
-foldOpsProp :: Source P ix Int => Fun Int Bool -> ArrTinyNE P ix Int -> Expectation
+foldOpsProp :: Index ix => Fun Int Bool -> ArrTinyNE P ix Int -> Expectation
 foldOpsProp f (ArrTinyNE arr) = do
   A.maximum' arr `shouldBe` getMax (foldMono Max arr)
   A.minimum' arr `shouldBe` getMin (foldSemi Min maxBound arr)

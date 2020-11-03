@@ -8,7 +8,7 @@ import Data.Massiv.Array as A
 import Test.Massiv.Core
 
 
-downsampleArr :: Source r ix e => Stride ix -> Array r ix e -> Array D ix e
+downsampleArr :: (Index ix, Source r e) => Stride ix -> Array r ix e -> Array D ix e
 downsampleArr stride arr =
   unsafeBackpermute (strideSize stride (size arr)) (liftIndex2 (*) (unStride stride)) arr
 

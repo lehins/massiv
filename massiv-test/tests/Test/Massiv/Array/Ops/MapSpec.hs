@@ -139,8 +139,8 @@ spec = do
 
 
 alt_imapM
-  :: (Applicative f, Mutable r2 t1 b, Source r1 t1 t2) =>
-     (t1 -> t2 -> f b) -> Array r1 t1 t2 -> f (Array r2 t1 b)
+  :: (Applicative f, Index ix, Mutable r2 b, Source r1 a) =>
+     (ix -> a -> f b) -> Array r1 ix a -> f (Array r2 ix b)
 alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWithIndex arr)
   where
     loadList xs =
@@ -150,7 +150,7 @@ alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWit
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
 
-zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
+zipWithIndex :: forall r ix e . (Index ix, Source r e) => Array r ix e -> Array D ix (ix, e)
 zipWithIndex arr = A.zip (range Seq zeroIndex (unSz (size arr))) arr
 {-# INLINE zipWithIndex #-}
 

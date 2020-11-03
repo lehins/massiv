@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -25,38 +26,33 @@ singletonStencil f =
   makeStencil oneSz zeroIndex $ \ get -> f (get zeroIndex)
 
 
-prop_MapSingletonStencil ::
-     (Load DW ix Int, Manifest U ix Int, Show (Array U ix Int))
-  => Proxy ix
-  -> Fun Int Int
-  -> Border Int
-  -> ArrNE U ix Int
-  -> Property
+prop_MapSingletonStencil :: (Load DW ix Int, Show (Array P ix Int)) =>
+                            Proxy ix -> Fun Int Int -> Border Int -> ArrNE P ix Int -> Property
 prop_MapSingletonStencil _ f b (ArrNE arr) =
-  computeAs U (mapStencil b (singletonStencil (apply f)) arr) === computeAs U (A.map (apply f) arr)
+  computeAs P (mapStencil b (singletonStencil (apply f)) arr) === computeAs P (A.map (apply f) arr)
 
 prop_ApplyZeroStencil ::
-     (Load DW ix Int, Show (Array U ix Int), Manifest U ix Int)
+     (Load DW ix Int, Show (Array P ix Int))
   => Proxy ix
   -> Int
-  -> Array U ix Int
+  -> Array P ix Int
   -> Property
 prop_ApplyZeroStencil _ e arr =
-  computeAs U (applyStencil noPadding zeroStencil arr) === makeArray Seq (size arr) (const e)
+  computeAs P (applyStencil noPadding zeroStencil arr) === makeArray Seq (size arr) (const e)
   where
     zeroStencil = makeStencil zeroSz zeroIndex $ const e
 
 
 prop_MapSingletonStencilWithStride ::
-     (StrideLoad DW ix Int, Manifest U ix Int, Show (Array U ix Int))
+     (StrideLoad DW ix Int, Show (Array P ix Int))
   => Proxy ix
   -> Fun Int Int
   -> Border Int
-  -> ArrNE U ix Int
+  -> ArrNE P ix Int
   -> Property
 prop_MapSingletonStencilWithStride _ f b (ArrNE arr) =
   computeWithStride oneStride (mapStencil b (singletonStencil (apply f)) arr) ===
-  computeAs U (A.map (apply f) arr)
+  computeAs P (A.map (apply f) arr)
 
 -- Tests out of bounds stencil indexing
 prop_DangerousStencil ::
@@ -81,6 +77,28 @@ prop_DangerousStencil _ (DimIx r) (SzIx sz center) =
 instance Index ix => Show (Stencil ix a b) where
   show stencil =
     "Stencil " ++ show (getStencilSize stencil) ++ " " ++ show (getStencilCenter stencil)
+
+unsafeMapStencil ::
+     (Index ix, Manifest r e)
+  => Border e
+  -> Sz ix
+  -> ix
+  -> (ix -> (ix -> e) -> a)
+  -> Array r ix e
+  -> Array DW ix a
+unsafeMapStencil b sSz sCenter stencilF !arr = insertWindow warr window
+  where
+    !warr = makeArray (getComp arr) sz (stencil (borderIndex b arr))
+    !window =
+      Window
+        { windowStart = sCenter
+        , windowSize = windowSz
+        , windowIndex = stencil (unsafeIndex arr)
+        , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
+        }
+    !sz = size arr
+    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
+    stencil getVal !ix = stencilF ix $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
 
 
 prop_MapEqApplyStencil ::
@@ -131,7 +149,6 @@ stencilSpec = do
     it "Ix2" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2)
     it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
-    it "Ix2T" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2T)
   describe "MapSingletonStencilWithStride" $ do
     it "Ix1" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix2)
@@ -141,7 +158,6 @@ stencilSpec = do
     it "Ix2" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix2)
     it "Ix3" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix4)
-    it "Ix2T" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix2T)
   describe "DangerousStencil" $ do
     it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
@@ -165,23 +181,23 @@ stencilSpec = do
       let stencil = makeStencil sz ix ($ Ix1 0) :: Stencil Ix1 Int Int
       in getStencilSize stencil === sz .&&. getStencilCenter stencil === ix
 
-stencilDirection :: Ix2 -> Array U Ix2 Int -> Array U Ix2 Int
-stencilDirection ix = computeAs U . mapStencil (Fill 0) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
+stencilDirection :: Ix2 -> Matrix P Int -> Matrix P Int
+stencilDirection ix = computeAs P . mapStencil (Fill 0) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
 
 
-stencilCorners :: Ix2 -> Ix2 -> Array U Ix2 Int -> Array U Ix2 Int
-stencilCorners ixC ix = computeAs U . mapStencil (Fill 0) (makeStencil (Sz 3) ixC $ \f -> f ix)
+stencilCorners :: Ix2 -> Ix2 -> Matrix P Int -> Matrix P Int
+stencilCorners ixC ix = computeAs P . mapStencil (Fill 0) (makeStencil (Sz 3) ixC $ \f -> f ix)
 
 
 stencilConvolution :: Spec
 stencilConvolution = do
-  let xs3 :: Array U Ix1 Int
+  let xs3 :: Array P Ix1 Int
       xs3 = [1, 2, 3]
       xs3f f = f (-1) 1 . f 0 2 . f 1 3
-      xs4 :: Array U Ix1 Int
+      xs4 :: Array P Ix1 Int
       xs4 = [1, 2, 3, 4]
       xs4f f = f (-2) 1 . f (-1) 2 . f 0 3 . f 1 4
-      ys :: Array U Ix1 Int
+      ys :: Array P Ix1 Int
       ys = [1, 2, 3, 4, 5]
       ysConvXs3 = [4, 10, 16, 22, 22]
       ysConvXs4 = [10, 20, 30, 34, 31]
@@ -190,12 +206,12 @@ stencilConvolution = do
       ysConvXs4' = [4, 10, 20, 30, 34]
       ysCorrXs4' = [20, 30, 40, 26, 14]
       xs4f' f = f (-1) 1 . f 0 2 . f 1 3 . f 2 4
-      mapStencil1 :: Stencil Ix1 Int Int -> Array U Ix1 Int -> Array U Ix1 Int
-      mapStencil1 s = computeAs U . mapStencil (Fill 0) s
-      mapStencil2 :: Stencil Ix2 Int Int -> Array U Ix2 Int -> Array U Ix2 Int
-      mapStencil2 s = computeAs U . mapStencil (Fill 0) s
-      applyStencil1 :: Stencil Ix1 Int Int -> Array U Ix1 Int -> Array U Ix1 Int
-      applyStencil1 s = computeAs U . applyStencil noPadding s
+      mapStencil1 :: Stencil Ix1 Int Int -> Array P Ix1 Int -> Array P Ix1 Int
+      mapStencil1 s = computeAs P . mapStencil (Fill 0) s
+      mapStencil2 :: Stencil Ix2 Int Int -> Array P Ix2 Int -> Array P Ix2 Int
+      mapStencil2 s = computeAs P . mapStencil (Fill 0) s
+      applyStencil1 :: Stencil Ix1 Int Int -> Array P Ix1 Int -> Array P Ix1 Int
+      applyStencil1 s = computeAs P . applyStencil noPadding s
   describe "makeConvolutionStencilFromKernel" $ do
     it "1x3 map" $ mapStencil1 (makeConvolutionStencilFromKernel xs3) ys `shouldBe` ysConvXs3
     it "1x4 map" $ mapStencil1 (makeConvolutionStencilFromKernel xs4) ys `shouldBe` ysConvXs4
@@ -218,41 +234,41 @@ stencilConvolution = do
     it "1x4" $ mapStencil1 (makeCorrelationStencil (Sz1 4) 1 xs4f') ys `shouldBe` ysCorrXs4'
   describe "makeConvolutionStencil == makeConvolutionStencilFromKernel" $ do
     it "Sobel Horizontal" $
-      property $ \(arr :: Array U Ix2 Int) ->
+      property $ \(arr :: Array P Ix2 Int) ->
         mapStencil2 (makeConvolutionStencil (Sz 3) 1 sobelX) arr ===
         mapStencil2 (makeConvolutionStencilFromKernel sobelKernelX) arr
     it "1x3" $
-      property $ \(arr :: Array U Ix1 Int) ->
+      property $ \(arr :: Array P Ix1 Int) ->
         mapStencil1 (makeConvolutionStencil (Sz1 3) 1 xs3f) arr ===
         mapStencil1 (makeConvolutionStencilFromKernel xs3) arr
     it "1x4" $
-      property $ \(arr :: Array U Ix1 Int) ->
+      property $ \(arr :: Array P Ix1 Int) ->
         mapStencil1 (makeConvolutionStencil (Sz1 4) 2 xs4f) arr ===
         mapStencil1 (makeConvolutionStencilFromKernel xs4) arr
   describe "makeCorrelationStencil == makeCorrelationStencilFromKernel" $ do
     it "Sobel Horizontal" $
-      property $ \(arr :: Array U Ix2 Int) ->
+      property $ \(arr :: Array P Ix2 Int) ->
         mapStencil2 (makeCorrelationStencil (Sz 3) 1 sobelX) arr ===
         mapStencil2 (makeCorrelationStencilFromKernel sobelKernelX) arr
     it "1x3" $
-      property $ \(arr :: Array U Ix1 Int) ->
+      property $ \(arr :: Array P Ix1 Int) ->
         mapStencil1 (makeCorrelationStencil (Sz1 3) 1 xs3f) arr ===
         mapStencil1 (makeCorrelationStencilFromKernel xs3) arr
     it "1x4" $
-      property $ \(arr :: Array U Ix1 Int) ->
+      property $ \(arr :: Array P Ix1 Int) ->
         mapStencil1 (makeCorrelationStencil (Sz1 4) 2 xs4f) arr ===
         mapStencil1 (makeCorrelationStencilFromKernel xs4) arr
   describe "makeConvolutionStencil == makeCorrelationStencil . rotate180" $ do
     it "Sobel Horizontal" $
-      property $ \(arr :: Array U Ix2 Int) ->
+      property $ \(arr :: Array P Ix2 Int) ->
         mapStencil2 (makeConvolutionStencilFromKernel sobelKernelX) arr ===
         mapStencil2 (makeCorrelationStencilFromKernel (rotate180 sobelKernelX)) arr
     it "1x3" $
-      property $ \(arr :: Array U Ix1 Int) ->
+      property $ \(arr :: Array P Ix1 Int) ->
         mapStencil1 (makeConvolutionStencilFromKernel xs3) arr ===
         mapStencil1 (makeCorrelationStencilFromKernel (rotate180 xs3)) arr
     it "1x5" $
-      property $ \(arr :: Array U Ix1 Int) ->
+      property $ \(arr :: Array P Ix1 Int) ->
         mapStencil1 (makeConvolutionStencilFromKernel ys) arr ===
         mapStencil1 (makeCorrelationStencilFromKernel (rotate180 ys)) arr
 
@@ -260,7 +276,7 @@ spec :: Spec
 spec = do
   describe "Stencil" $ do
     stencilSpec
-    let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array U Ix2 Int
+    let arr = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] :: Array P Ix2 Int
     describe "Unit tests Ix2" $ do
       it "Direction Left" $
         stencilDirection (0 :. 1) arr `shouldBe` [[2, 3, 0], [5, 6, 0], [8, 9, 0]]
@@ -268,7 +284,7 @@ spec = do
         stencilDirection (0 :. -1) arr `shouldBe` [[0, 1, 2], [0, 4, 5], [0, 7, 8]]
       it "Direction Down" $
         stencilDirection (1 :. 0) arr `shouldBe` [[4, 5, 6], [7, 8, 9], [0, 0, 0]]
-      it "Direction Up" $
+      it "Direction Pp" $
         stencilDirection (-1 :. 0) arr `shouldBe` [[0, 0, 0], [1, 2, 3], [4, 5, 6]]
       it "Direction Left/Top Corner" $
         stencilCorners (0 :. 0) (2 :. 2) arr `shouldBe` [[9, 0, 0], [0, 0, 0], [0, 0, 0]]
@@ -279,16 +295,16 @@ spec = do
       it "Direction Left/Bottom Corner" $
         stencilCorners (2 :. 0) (-2 :. 2) arr `shouldBe` [[0, 0, 0], [0, 0, 0], [3, 0, 0]]
     describe "mapStencil with stride" $ do
-      let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array U Ix2 Int
+      let kernel = [[-1, 0, 1], [0, 1, 0], [-1, 0, 1]] :: Array P Ix2 Int
           stencil = makeConvolutionStencilFromKernel kernel
           stride = Stride 2
       it "map stencil with stride on small array" $
         let strideArr = mapStencil (Fill 0) stencil arr
-         in computeWithStrideAs U stride strideArr `shouldBe` [[-4, 8], [2, 14]]
+         in computeWithStrideAs P stride strideArr `shouldBe` [[-4, 8], [2, 14]]
       it "map stencil with stride on larger array" $
-        let largeArr = makeArrayR U Seq (Sz 5) (succ . toLinearIndex (Sz 5))
+        let largeArr = makeArrayR P Seq (Sz 5) (succ . toLinearIndex (Sz 5))
             strideArr = mapStencil (Fill 0) stencil largeArr
-         in computeWithStrideAs U stride strideArr `shouldBe`
+         in computeWithStrideAs P stride strideArr `shouldBe`
             [[-6, 1, 14], [-13, 9, 43], [4, 21, 44]]
   stencilConvolution
 
@@ -297,10 +313,10 @@ sobelX f = f (-1 :. -1) (-1) . f (-1 :. 1) 1 .
            f ( 0 :. -1) (-2) . f ( 0 :. 1) 2 .
            f ( 1 :. -1) (-1) . f ( 1 :. 1) 1
 
-sobelKernelX :: Array U Ix2 Int
+sobelKernelX :: Array P Ix2 Int
 sobelKernelX = [ [-1, 0, 1]
                , [-2, 0, 2]
                , [-1, 0, 1] ]
 
-rotate180 :: (Num ix, Index ix) => Array U ix Int -> Array U ix Int
-rotate180 = computeAs U . transform' (\sz -> (sz, sz)) (\(Sz sz) f ix -> f (sz - 1 - ix))
+rotate180 :: (Num ix, Index ix) => Array P ix Int -> Array P ix Int
+rotate180 = computeAs P . transform' (\sz -> (sz, sz)) (\(Sz sz) f ix -> f (sz - 1 - ix))

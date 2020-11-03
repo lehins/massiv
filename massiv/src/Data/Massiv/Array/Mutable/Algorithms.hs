@@ -28,16 +28,16 @@ import Data.Massiv.Core.Common
 -- >>> import Data.Massiv.Array.Mutable.Algorithms
 -- >>> :set -XOverloadedLists
 -- >>> m <- thaw ([2,1,50,10,20,8] :: Array P Ix1 Int)
--- >>> unstablePartitionM m (<= 10)
+-- >>> unstablePartitionM m (pure . (<= 10))
 -- 4
 -- >>> freeze Seq m
 -- Array P Seq (Sz1 6)
 --   [ 2, 1, 8, 10, 20, 50 ]
 --
--- @since 0.3.2
+-- @since 1.0.0
 unstablePartitionM ::
-     forall r e m. (Mutable r Ix1 e, PrimMonad m)
+     forall r e m. (Mutable r e, PrimMonad m)
   => MVector (PrimState m) r e
-  -> (e -> Bool) -- ^ Predicate
+  -> (e -> m Bool) -- ^ Predicate
   -> m Ix1
 unstablePartitionM marr f = unsafeUnstablePartitionRegionM marr f 0 (unSz (msize marr) - 1)

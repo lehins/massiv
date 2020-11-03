@@ -112,7 +112,7 @@ instance (Show ix, Index ix, Ragged L ix e, Load DW ix e, Show e) =>
              show windowStart ++ ") and size (" ++ show windowSize ++ ")") $
         getWindow dw
 
-instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
+instance (Arbitrary ix, CoArbitrary ix, Load DW ix e, Arbitrary e, Typeable e) =>
          Arbitrary (ArrDW ix e) where
   arbitrary = do
     ArrTiny (arr :: Array D ix e) <- arbitrary

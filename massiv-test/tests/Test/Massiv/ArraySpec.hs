@@ -13,7 +13,7 @@ import Test.Massiv.Core
 
 
 prop_Construct_makeArray_Manifest ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, Source r ix Int, Construct r ix Int)
+     forall r ix. (Load D ix Int, Ragged L ix Int, Source r Int, Construct r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -23,7 +23,7 @@ prop_Construct_makeArray_Manifest comp sz f =
   delay (setComp Seq (makeArray comp sz (apply f . toLinearIndex sz) :: Array r ix Int))
 
 prop_Construct_makeArray_Delayed ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, Load r ix Int, Construct r ix Int)
+     forall r ix. (Load D ix Int, Ragged L ix Int, Construct r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -34,7 +34,7 @@ prop_Construct_makeArray_Delayed comp sz f =
 
 prop_Functor ::
      forall r ix.
-     (Load D ix Int, Ragged L ix Int, Load r ix Int, Construct r ix Int, Functor (Array r ix))
+     (Load D ix Int, Ragged L ix Int, Construct r ix Int, Functor (Array r ix))
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -70,7 +70,7 @@ prop_IxUnbox ::
      ( Load D ix ix
      , Ragged L ix ix
      , Construct U ix ix
-     , Source U ix ix
+     , Source U ix
      )
   => Comp
   -> Sz ix

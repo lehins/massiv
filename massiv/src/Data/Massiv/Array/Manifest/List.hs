@@ -13,8 +13,7 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest.List
-  (
-  -- ** List
+  ( -- ** List
     fromList
   , fromListsM
   , fromLists'
@@ -36,7 +35,7 @@ import GHC.Exts (build)
 --
 -- @since 0.1.0
 fromList ::
-     forall r e. Mutable r Ix1 e
+     forall r e. Mutable r e
   => Comp -- ^ Computation startegy to use
   -> [e] -- ^ Flat list
   -> Array r Ix1 e
@@ -81,7 +80,7 @@ fromList = fromLists'
 -- *** Exception: DimTooShortException: expected (Sz1 3), got (Sz1 2)
 --
 -- @since 0.3.0
-fromListsM :: forall r ix e m . (Nested LN ix e, Ragged L ix e, Mutable r ix e, MonadThrow m)
+fromListsM :: forall r ix e m . (Nested LN ix e, Ragged L ix e, Mutable r e, MonadThrow m)
            => Comp -> [ListItem ix e] -> m (Array r ix e)
 fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 {-# INLINE fromListsM #-}
@@ -122,7 +121,7 @@ fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 -- Array U *** Exception: DimTooLongException
 --
 -- @since 0.1.0
-fromLists' :: forall r ix e . (Nested LN ix e, Ragged L ix e, Mutable r ix e)
+fromLists' :: forall r ix e . (Nested LN ix e, Ragged L ix e, Mutable r e)
          => Comp -- ^ Computation startegy to use
          -> [ListItem ix e] -- ^ Nested list
          -> Array r ix e
@@ -145,7 +144,7 @@ throughNested xs = fromNested (fromNested xs :: Array LN ix e)
 -- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
 --
 -- @since 0.1.0
-toList :: Source r ix e => Array r ix e -> [e]
+toList :: (Index ix, Source r e) => Array r ix e -> [e]
 toList !arr = build (\ c n -> foldrFB c n arr)
 {-# INLINE toList #-}
 
@@ -171,7 +170,7 @@ toList !arr = build (\ c n -> foldrFB c n arr)
 -- [[[0 :> 0 :. 0,0 :> 0 :. 1,0 :> 0 :. 2]],[[1 :> 0 :. 0,1 :> 0 :. 1,1 :> 0 :. 2]]]
 --
 -- @since 0.1.0
-toLists :: (Nested LN ix e, Construct L ix e, Source r ix e)
+toLists :: (Nested LN ix e, Construct L ix e, Load r ix e, Source r e)
        => Array r ix e
        -> [ListItem ix e]
 toLists = toNested . toNested . toListArray
@@ -191,7 +190,7 @@ toLists = toNested . toNested . toListArray
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
 -- @since 0.1.0
-toLists2 :: (Source r ix e, Index (Lower ix)) => Array r ix e -> [[e]]
+toLists2 :: (Index ix, Source r e, Index (Lower ix)) => Array r ix e -> [[e]]
 toLists2 = toList . foldrInner (:) []
 {-# INLINE toLists2 #-}
 
@@ -200,7 +199,8 @@ toLists2 = toList . foldrInner (:) []
 -- get flattened.
 --
 -- @since 0.1.0
-toLists3 :: (Index (Lower (Lower ix)), Index (Lower ix), Source r ix e) => Array r ix e -> [[[e]]]
+toLists3 ::
+     (Index (Lower (Lower ix)), Index (Lower ix), Index ix, Source r e) => Array r ix e -> [[[e]]]
 toLists3 = toList . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists3 #-}
 
@@ -212,7 +212,8 @@ toLists4 ::
      ( Index (Lower (Lower (Lower ix)))
      , Index (Lower (Lower ix))
      , Index (Lower ix)
-     , Source r ix e
+     , Index ix
+     , Source r e
      )
   => Array r ix e
   -> [[[[e]]]]

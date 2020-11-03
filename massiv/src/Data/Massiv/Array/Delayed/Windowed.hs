@@ -62,11 +62,14 @@ instance (Ragged L ix e, Load DW ix e, Show e) => Show (Array DW ix e) where
   showsPrec = showsArrayPrec (computeAs B)
   showList = showArrayList
 
-
-instance Index ix => Construct DW ix e where
-
+instance Strategy DW where
   setComp c arr = arr { dwArray = (dwArray arr) { dComp = c } }
   {-# INLINE setComp #-}
+  getComp = dComp . dwArray
+  {-# INLINE getComp #-}
+
+
+instance Load DW ix e => Construct DW ix e where
 
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
   {-# INLINE makeArray #-}
@@ -122,7 +125,7 @@ instance Functor (Array DW ix) where
 --
 -- @since 0.1.3
 makeWindowedArray
-  :: Source r ix e
+  :: (Index ix, Source r e)
   => Array r ix e -- ^ Source array that will have a window inserted into it
   -> ix -- ^ Start index for the window
   -> Sz ix -- ^ Size of the window
@@ -138,7 +141,7 @@ makeWindowedArray !arr wStart wSize wIndex =
 --
 -- @since 0.3.0
 insertWindow
-  :: Source D ix e
+  :: Index ix
   => Array D ix e -- ^ Source array that will have a window inserted into it
   -> Window ix e -- ^ Window to place inside the delayed array
   -> Array DW ix e
@@ -209,12 +212,16 @@ loadWithIx1 with (DWArray (DArray _ sz indexB) mWindow) uWrite = do
   return (\from to -> with $ iterM_ from to 1 (<) $ \ !i -> uWrite i (indexW i), it, wEnd)
 {-# INLINE loadWithIx1 #-}
 
+instance Index ix => Shape DW ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
 
-instance Load DW Ix1 e where
+
+instance Size DW where
   size = dSize . dwArray
   {-# INLINE size #-}
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
+
+instance Load DW Ix1 e where
   loadArrayM scheduler arr uWrite = do
     (loadWindow, wStart, wEnd) <- loadWithIx1 (scheduleWork scheduler) arr uWrite
     let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
@@ -335,10 +342,6 @@ loadWindowIx2 nWorkers loadWindow (it :. ib) = do
 
 
 instance Load DW Ix2 e where
-  size = dSize . dwArray
-  {-# INLINE size #-}
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
   loadArrayM scheduler arr uWrite =
     loadWithIx2 (scheduleWork scheduler) arr uWrite >>=
     uncurry (loadWindowIx2 (numWorkers scheduler))
@@ -352,10 +355,6 @@ instance StrideLoad DW Ix2 e where
 
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
-  size = dSize . dwArray
-  {-# INLINE size #-}
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
   loadArrayM = loadWithIxN
   {-# INLINE loadArrayM #-}
 
@@ -479,79 +478,3 @@ unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
 
 
 -- TODO: Implement Hilbert curve
-
-toIx2Window :: Window Ix2T e -> Window Ix2 e
-toIx2Window Window {..} =
-  Window
-    { windowStart = toIx2 windowStart
-    , windowSize = SafeSz (toIx2 $ unSz windowSize)
-    , windowIndex = windowIndex . fromIx2
-    , windowUnrollIx2 = windowUnrollIx2
-    }
-{-# INLINE toIx2Window #-}
-
-toIx2ArrayDW :: Array DW Ix2T e -> Array DW Ix2 e
-toIx2ArrayDW DWArray {dwArray, dwWindow} =
-  DWArray
-    { dwArray =
-        dwArray {dIndex = dIndex dwArray . fromIx2, dSize = SafeSz (toIx2 (unSz (dSize dwArray)))}
-    , dwWindow = fmap toIx2Window dwWindow
-    }
-{-# INLINE toIx2ArrayDW #-}
-
-
-instance Load DW Ix2T e where
-  size = dSize . dwArray
-  {-# INLINE size #-}
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
-  loadArrayM scheduler arr =
-    loadArrayWithStrideM scheduler oneStride (size arr) arr
-  {-# INLINE loadArrayM #-}
-
-instance StrideLoad DW Ix2T e where
-  loadArrayWithStrideM scheduler stride sz arr =
-    loadArrayWithStrideM
-      scheduler
-      (Stride $ toIx2 $ unStride stride)
-      (SafeSz (toIx2 (unSz sz)))
-      (toIx2ArrayDW arr)
-  {-# INLINE loadArrayWithStrideM #-}
-
-instance Load DW Ix3T e where
-  size = dSize . dwArray
-  {-# INLINE size #-}
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
-  loadArrayM scheduler arr =
-    loadArrayWithStrideM scheduler oneStride (size arr) arr
-  {-# INLINE loadArrayM #-}
-
-instance StrideLoad DW Ix3T e where
-  loadArrayWithStrideM = loadArrayWithIxN
-  {-# INLINE loadArrayWithStrideM #-}
-
-
-instance Load DW Ix4T e where
-  size = dSize . dwArray
-  {-# INLINE size #-}
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
-  loadArrayM scheduler arr = loadArrayWithStrideM scheduler oneStride (size arr) arr
-  {-# INLINE loadArrayM #-}
-
-instance StrideLoad DW Ix4T e where
-  loadArrayWithStrideM = loadArrayWithIxN
-  {-# INLINE loadArrayWithStrideM #-}
-
-
-instance Load DW Ix5T e where
-  size = dSize . dwArray
-  {-# INLINE size #-}
-  getComp = dComp . dwArray
-  {-# INLINE getComp #-}
-  loadArrayM scheduler arr = loadArrayWithStrideM scheduler oneStride (size arr) arr
-  {-# INLINE loadArrayM #-}
-instance StrideLoad DW Ix5T e where
-  loadArrayWithStrideM = loadArrayWithIxN
-  {-# INLINE loadArrayWithStrideM #-}

@@ -61,7 +61,7 @@ makeConvolutionStencil !sz !sCenter relStencil =
 --
 -- @since 0.1.0
 makeConvolutionStencilFromKernel
-  :: (Manifest r ix e, Num e)
+  :: (Manifest r e, Index ix, Num e)
   => Array r ix e
   -> Stencil ix e e
 makeConvolutionStencilFromKernel kArr = Stencil sz sInvertCenter stencil
@@ -104,7 +104,7 @@ makeCorrelationStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
 --
 -- @since 0.1.5
 makeCorrelationStencilFromKernel
-  :: (Manifest r ix e, Num e)
+  :: (Manifest r e, Index ix, Num e)
   => Array r ix e
   -> Stencil ix e e
 makeCorrelationStencilFromKernel kArr = Stencil sz sCenter stencil

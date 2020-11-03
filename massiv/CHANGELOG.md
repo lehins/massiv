@@ -1,3 +1,18 @@
+# 1.0.0
+
+* Introduce `Shape`, the parent of `Size`
+* Move `size` from `Load` into new class `Size`
+* Removed `maxSize` and replaced it with `maxLinearSize`
+* Remove specialized `DW` instances that used tuples as indices.
+* Remove `OuterSlice L` instance
+* Add `Strategy` and move `setComp` (from `Construct`) and `getComp` (from `Load`) in there.
+* Remove `ix` from `Mutable`
+* Remove `ix` from `Manifest`
+* Remove `ix` from `Source`
+* Remove `ix` from `Resize`
+* Prevent `showsArrayPrec` from changing index type
+* Change function argument to monadic action for `unstablePartitionM` and `unsafeUnstablePartitionM`
+
 # 0.6.1
 
 * Addition of `withLoadMArray_`, `withLoadMArrayS`, `withLoadMArrayS_`,
@@ -5,6 +20,7 @@
 * Addition of `replaceSlice` and `replaceOuterSlice`
 * Addition of `quicksortBy`, `quicksortByM` and `quicksortByM_`
 * Fix performance regression for `quicksort` and `quicksortM_` introduced in previous release.
+
 
 # 0.6.0
 
