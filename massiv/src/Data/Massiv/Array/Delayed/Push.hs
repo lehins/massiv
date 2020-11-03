@@ -53,9 +53,14 @@ data instance Array DL ix e = DLArray
               -> m ()
   }
 
-instance Index ix => Construct DL ix e where
+instance Strategy DL where
+  getComp = dlComp
+  {-# INLINE getComp #-}
   setComp c arr = arr {dlComp = c}
   {-# INLINE setComp #-}
+
+
+instance Index ix => Construct DL ix e where
   makeArrayLinear comp sz f = DLArray comp sz load
     where
       load :: Monad m =>
@@ -67,7 +72,16 @@ instance Index ix => Construct DL ix e where
   replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
   {-# INLINE replicate #-}
 
-instance Index ix => Resize DL ix where
+instance Index ix => Shape DL ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+
+instance Size DL where
+  size = dlSize
+  {-# INLINE size #-}
+
+instance Resize DL where
   unsafeResize !sz arr = arr { dlSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -277,7 +291,7 @@ unsafeMakeLoadArrayAdjusted comp sz mDefVal writer = DLArray comp sz load
 --
 -- @since 0.3.0
 toLoadArray ::
-     forall r ix e. Load r ix e
+     forall r ix e. (Size r, Load r ix e)
   => Array r ix e
   -> Array DL ix e
 toLoadArray arr = DLArray (getComp arr) sz load
@@ -295,7 +309,7 @@ toLoadArray arr = DLArray (getComp arr) sz load
 --
 -- @since 0.3.0
 fromStrideLoad ::
-     forall r ix e. StrideLoad r ix e
+     forall r ix e. (StrideLoad r ix e)
   => Stride ix
   -> Array r ix e
   -> Array DL ix e
@@ -311,10 +325,6 @@ fromStrideLoad stride arr =
 {-# INLINE fromStrideLoad #-}
 
 instance Index ix => Load DL ix e where
-  size = dlSize
-  {-# INLINE size #-}
-  getComp = dlComp
-  {-# INLINE getComp #-}
   loadArrayWithSetM scheduler DLArray {dlLoad} = dlLoad scheduler 0
   {-# INLINE loadArrayWithSetM #-}
 

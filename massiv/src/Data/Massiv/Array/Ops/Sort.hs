@@ -44,7 +44,7 @@ import System.IO.Unsafe
 --   [ (1,1), (2,3), (3,1), (4,2), (5,1) ]
 --
 -- @since 0.4.4
-tally :: (Mutable r Ix1 e, Resize r ix, Load r ix e, Ord e) => Array r ix e -> Vector DS (e, Int)
+tally :: (Mutable r e, Load r ix e, Ord e) => Array r ix e -> Vector DS (e, Int)
 tally arr
   | isEmpty arr = setComp (getComp arr) empty
   | otherwise = scatMaybes $ sunfoldrN (sz + 1) count (0, 0, sorted ! 0)
@@ -62,14 +62,18 @@ tally arr
 {-# INLINE tally #-}
 
 
-unsafeUnstablePartitionRegionM' ::
-     forall r e m. (Mutable r Ix1 e, PrimMonad m)
-  => MArray (PrimState m) r Ix1 e
+
+-- | Partition a segment of a vector. Starting and ending indices are unchecked.
+--
+-- @since 1.0.0
+unsafeUnstablePartitionRegionM ::
+     forall r e m. (Mutable r e, PrimMonad m)
+  => MVector (PrimState m) r e
   -> (e -> m Bool)
   -> Ix1 -- ^ Start index of the region
   -> Ix1 -- ^ End index of the region
   -> m Ix1
-unsafeUnstablePartitionRegionM' marr f start end = fromLeft start (end + 1)
+unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
   where
     fromLeft i j
       | i == j = pure i
@@ -89,21 +93,6 @@ unsafeUnstablePartitionRegionM' marr f start end = fromLeft start (end + 1)
             unsafeLinearWrite marr i x
             fromLeft (i + 1) j
           else fromRight i (j - 1)
-{-# INLINE unsafeUnstablePartitionRegionM' #-}
-
-
--- TODO: Replace `unsafeUnstablePartitionRegionM` with `unsafeUnstablePartitionRegionM'`
--- | Partition a segment of a vector. Starting and ending indices are unchecked.
---
--- @since 0.3.2
-unsafeUnstablePartitionRegionM ::
-     forall r e m. (Mutable r Ix1 e, PrimMonad m)
-  => MVector (PrimState m) r e
-  -> (e -> Bool)
-  -> Ix1 -- ^ Start index of the region
-  -> Ix1 -- ^ End index of the region
-  -> m Ix1
-unsafeUnstablePartitionRegionM marr f = unsafeUnstablePartitionRegionM' marr (pure . f)
 {-# INLINE unsafeUnstablePartitionRegionM #-}
 
 
@@ -115,7 +104,7 @@ unsafeUnstablePartitionRegionM marr f = unsafeUnstablePartitionRegionM' marr (pu
 --
 -- @since 0.3.2
 quicksort ::
-     (Mutable r Ix1 e, Ord e) => Array r Ix1 e -> Array r Ix1 e
+     (Mutable r e, Ord e) => Vector r e -> Vector r e
 quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 {-# INLINE quicksort #-}
 
@@ -124,15 +113,14 @@ quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 --
 -- @since 0.6.1
 quicksortByM ::
-     (Mutable r Ix1 e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
+     (Mutable r e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
 quicksortByM f arr = withRunInIO $ \run -> withMArray_ arr (quicksortByM_ (\x y -> run (f x y)))
 {-# INLINE quicksortByM #-}
 
 -- | Same as `quicksortBy`, but instead of `Ord` constraint expects a custom `Ordering`.
 --
 -- @since 0.6.1
-quicksortBy ::
-     (Mutable r Ix1 e) => (e -> e -> Ordering) -> Vector r e -> Vector r e
+quicksortBy :: Mutable r e => (e -> e -> Ordering) -> Vector r e -> Vector r e
 quicksortBy f arr =
   unsafePerformIO $ withMArray_ arr (quicksortByM_ (\x y -> pure $ f x y))
 {-# INLINE quicksortBy #-}
@@ -141,7 +129,7 @@ quicksortBy f arr =
 --
 -- @since 0.3.2
 quicksortM_ ::
-     (Ord e, Mutable r Ix1 e, PrimMonad m)
+     (Ord e, Mutable r e, PrimMonad m)
   => Scheduler m ()
   -> MVector (PrimState m) r e
   -> m ()
@@ -153,7 +141,7 @@ quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e
 --
 -- @since 0.6.1
 quicksortByM_ ::
-     (Mutable r Ix1 e, PrimMonad m)
+     (Mutable r e, PrimMonad m)
   => (e -> e -> m Ordering)
   -> Scheduler m ()
   -> MVector (PrimState m) r e
@@ -164,7 +152,7 @@ quicksortByM_ compareM =
 
 
 quicksortInternalM_ ::
-     (Mutable r Ix1 e, PrimMonad m)
+     (Mutable r e, PrimMonad m)
   => (e -> e -> m Bool)
   -> (e -> e -> m Bool)
   -> Scheduler m ()
@@ -193,8 +181,8 @@ quicksortInternalM_ fLT fEQ scheduler marr =
     qsort !n !lo !hi =
       when (lo < hi) $ do
         p <- getPivot lo hi
-        l <- unsafeUnstablePartitionRegionM' marr (`fLT` p) lo (hi - 1)
-        h <- unsafeUnstablePartitionRegionM' marr (`fEQ` p) l hi
+        l <- unsafeUnstablePartitionRegionM marr (`fLT` p) lo (hi - 1)
+        h <- unsafeUnstablePartitionRegionM marr (`fEQ` p) l hi
         if n > 0
           then do
             let !n' = n - 1

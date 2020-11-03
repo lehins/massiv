@@ -115,7 +115,7 @@ makeVectorR _ = makeArray
 
 newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
 
-runSTA :: Mutable r ix e => Sz ix -> STA r ix e -> Array r ix e
+runSTA :: (Mutable r e, Index ix) => Sz ix -> STA r ix e -> Array r ix e
 runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 {-# INLINE runSTA  #-}
 
@@ -127,7 +127,7 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 --
 -- @since 0.2.6
 makeArrayA ::
-     forall r ix e f. (Mutable r ix e, Applicative f)
+     forall r ix e f. (Mutable r e, Index ix, Applicative f)
   => Sz ix
   -> (ix -> f e)
   -> f (Array r ix e)
@@ -147,7 +147,7 @@ makeArrayA !sz f =
 --
 -- @since 0.4.5
 makeArrayLinearA ::
-     forall r ix e f. (Mutable r ix e, Applicative f)
+     forall r ix e f. (Mutable r e, Index ix, Applicative f)
   => Sz ix
   -> (Int -> f e)
   -> f (Array r ix e)
@@ -165,7 +165,7 @@ makeArrayLinearA !sz f =
 --
 -- @since 0.2.6
 makeArrayAR ::
-     forall r ix e f. (Mutable r ix e, Applicative f)
+     forall r ix e f. (Mutable r e, Index ix, Applicative f)
   => r
   -> Sz ix
   -> (ix -> f e)
@@ -364,7 +364,7 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
 --
 -- @since 0.3.4
 randomArrayS ::
-     forall r ix e g. Mutable r ix e
+     forall r ix e g. (Mutable r e, Index ix)
   => g -- ^ Initial random value generator
   -> Sz ix -- ^ Resulting size of the array.
   -> (g -> (e, g))
@@ -404,7 +404,7 @@ randomArrayS gen sz nextRandom =
 --
 -- @since 0.3.4
 randomArrayWS ::
-     forall r ix e g m. (Mutable r ix e, MonadUnliftIO m, PrimMonad m)
+     forall r ix e g m. (Mutable r e, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates g -- ^ Use `initWorkerStates` to initialize you per thread generators
   -> Sz ix -- ^ Resulting size of the array
   -> (g -> m e) -- ^ Generate the value using the per thread generator.
@@ -662,7 +662,7 @@ enumFromStepN comp !from !step !sz = makeArrayLinear comp sz $ \ i -> from + fro
 --
 -- @since 0.2.6
 expandWithin ::
-     forall ix e r n a. (IsIndexDimension ix n, Manifest r (Lower ix) a)
+     forall ix e r n a. (IsIndexDimension ix n, Index (Lower ix), Manifest r a)
   => Dimension n
   -> Sz1
   -> (a -> Ix1 -> e)
@@ -682,7 +682,7 @@ expandWithin dim (Sz k) f arr =
 --
 -- @since 0.2.6
 expandWithin'
-  :: (Index ix, Manifest r (Lower ix) a)
+  :: (Index ix, Index (Lower ix), Manifest r a)
   => Dim
   -> Sz1
   -> (a -> Ix1 -> b)
@@ -696,7 +696,7 @@ expandWithin' dim k f arr = either throw id $ expandWithinM dim k f arr
 --
 -- @since 0.4.0
 expandWithinM
-  :: (Index ix, Manifest r (Lower ix) a, MonadThrow m)
+  :: (Index ix, Index (Lower ix), Manifest r a, MonadThrow m)
   => Dim
   -> Sz1
   -> (a -> Ix1 -> b)
@@ -714,7 +714,7 @@ expandWithinM dim k f arr = do
 --
 -- @since 0.2.6
 expandOuter
-  :: (Index ix, Manifest r (Lower ix) a)
+  :: (Index ix, Index (Lower ix), Manifest r a)
   => Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
@@ -732,7 +732,7 @@ expandOuter k f arr =
 --
 -- @since 0.2.6
 expandInner
-  :: (Index ix, Manifest r (Lower ix) a)
+  :: (Index ix, Index (Lower ix), Manifest r a)
   => Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a

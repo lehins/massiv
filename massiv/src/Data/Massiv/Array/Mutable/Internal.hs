@@ -21,7 +21,7 @@ import Data.Massiv.Core.Common
 --
 -- @since 0.5.0
 unsafeCreateArrayS ::
-     forall r ix e a m. (Mutable r ix e, PrimMonad m)
+     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
   => Sz ix -- ^ Size of the newly created array
   -> (MArray (PrimState m) r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
@@ -38,7 +38,7 @@ unsafeCreateArrayS sz action = do
 --
 -- @since 0.5.0
 unsafeCreateArray ::
-     forall r ix e a m b. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m b. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (Scheduler m a -> MArray (PrimState m) r ix e -> m b)
@@ -56,7 +56,7 @@ unsafeCreateArray comp sz action = do
 --
 -- @since 0.5.0
 unsafeCreateArray_ ::
-     forall r ix e a m b. (Mutable r ix e, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m b. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
   -> (Scheduler m a -> MArray (PrimState m) r ix e -> m b)

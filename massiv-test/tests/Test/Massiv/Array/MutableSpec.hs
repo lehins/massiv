@@ -29,9 +29,9 @@ type MutableArraySpec r ix e
      , Show (Array (R r) Ix1 e)
      , Load (R r) ix e
      , Extract r ix e
-     , Resize r ix
+     , Resize r
      , Arbitrary (Array r ix e)
-     , Mutable r ix e
+     , Mutable r e
      , Stream r ix e
      , Construct r ix e)
 
@@ -84,7 +84,12 @@ specUnboxedMutableR = do
   unsafeMutableUnboxedSpec @r @Ix4 @e
   unsafeMutableUnboxedSpec @r @Ix5 @e
 
-prop_Write :: (Mutable r ix e, Eq e, Show e) => Array r ix e -> ix -> e -> Property
+prop_Write ::
+     forall r ix e. (Index ix, Mutable r e, Eq e, Show e)
+  => Array r ix e
+  -> ix
+  -> e
+  -> Property
 prop_Write arr ix e =
   monadicIO $
   run $ do
@@ -112,7 +117,12 @@ prop_Write arr ix e =
           index' arr'' ix `shouldBe` e
 
 
-prop_Modify :: (Mutable r ix e, Eq e, Show e) => Array r ix e -> Fun e e -> ix -> Property
+prop_Modify ::
+     forall r ix e. (Index ix, Mutable r e, Eq e, Show e)
+  => Array r ix e
+  -> Fun e e
+  -> ix
+  -> Property
 prop_Modify arr f ix =
   monadicIO $
   run $ do
@@ -143,7 +153,12 @@ prop_Modify arr f ix =
           arr'' <- withMArrayS_ arr (\ma -> modify_ ma fM ix)
           index' arr'' ix `shouldBe` fe
 
-prop_Swap :: (Mutable r ix e, Eq e, Show e) => Array r ix e -> ix -> ix -> Property
+prop_Swap ::
+     forall r ix e. (Index ix, Mutable r e, Eq e, Show e)
+  => Array r ix e
+  -> ix
+  -> ix
+  -> Property
 prop_Swap arr ix1 ix2 =
   monadicIO $
   run $ do

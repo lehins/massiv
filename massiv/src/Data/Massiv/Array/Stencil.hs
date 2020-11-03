@@ -70,7 +70,7 @@ getStencilCenter = stencilCenter
 --
 -- @since 0.1.0
 mapStencil ::
-     (Source r ix e, Manifest r ix e)
+     (Index ix, Manifest r e)
   => Border e -- ^ Border resolution technique
   -> Stencil ix e a -- ^ Stencil to map over the array
   -> Array r ix e -- ^ Source array
@@ -179,7 +179,7 @@ samePadding (Stencil (Sz sSz) sCenter _) border =
 --
 -- @since 0.4.3
 applyStencil ::
-     (Source r ix e, Manifest r ix e)
+     (Index ix, Manifest r e)
   => Padding ix e
   -- ^ Padding to be applied to the source array. This will dictate the resulting size of
   -- the array. No padding will cause it to shrink by the size of the stencil

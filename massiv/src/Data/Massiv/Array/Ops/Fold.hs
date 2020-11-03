@@ -112,7 +112,7 @@ import Prelude hiding (all, and, any, foldl, foldr, map, maximum, minimum, or, p
 --
 -- @since 0.2.4
 ifoldMono ::
-     (Source r ix e, Monoid m)
+     (Index ix, Source r e, Monoid m)
   => (ix -> e -> m) -- ^ Convert each element of an array to an appropriate `Monoid`.
   -> Array r ix e -- ^ Source array
   -> m
@@ -124,7 +124,7 @@ ifoldMono f = ifoldlInternal (\a ix e -> a `mappend` f ix e) mempty mappend memp
 --
 -- @since 0.2.4
 ifoldSemi ::
-     (Source r ix e, Semigroup m)
+     (Index ix, Source r e, Semigroup m)
   => (ix -> e -> m) -- ^ Convert each element of an array to an appropriate `Semigroup`.
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
@@ -137,7 +137,7 @@ ifoldSemi f m = ifoldlInternal (\a ix e -> a <> f ix e) m (<>) m
 --
 -- @since 0.1.6
 foldSemi ::
-     (Source r ix e, Semigroup m)
+     (Index ix, Source r e, Semigroup m)
   => (e -> m) -- ^ Convert each element of an array to an appropriate `Semigroup`.
   -> m -- ^ Initial element that must be neutral to the (`<>`) function.
   -> Array r ix e -- ^ Source array
@@ -149,7 +149,7 @@ foldSemi f m = foldlInternal (\a e -> a <> f e) m (<>) m
 -- | Left fold along a specified dimension with an index aware function.
 --
 -- @since 0.2.4
-ifoldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+ifoldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r e) =>
   Dimension n -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 {-# INLINE ifoldlWithin #-}
@@ -175,7 +175,7 @@ ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 --   [ [5,0], [6,1], [7,2], [8,3], [9,4] ]
 --
 -- @since 0.2.4
-foldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+foldlWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r e) =>
   Dimension n -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldlWithin dim f = ifoldlWithin dim (const f)
 {-# INLINE foldlWithin #-}
@@ -184,7 +184,7 @@ foldlWithin dim f = ifoldlWithin dim (const f)
 -- | Right fold along a specified dimension with an index aware function.
 --
 -- @since 0.2.4
-ifoldrWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+ifoldrWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r e) =>
   Dimension n -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrWithin dim = ifoldrWithin' (fromDimension dim)
 {-# INLINE ifoldrWithin #-}
@@ -193,7 +193,7 @@ ifoldrWithin dim = ifoldrWithin' (fromDimension dim)
 -- | Right fold along a specified dimension.
 --
 -- @since 0.2.4
-foldrWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r ix e) =>
+foldrWithin :: (Index (Lower ix), IsIndexDimension ix n, Source r e) =>
   Dimension n -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldrWithin dim f = ifoldrWithin dim (const f)
 {-# INLINE foldrWithin #-}
@@ -203,7 +203,7 @@ foldrWithin dim f = ifoldrWithin dim (const f)
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-ifoldlWithin' :: (Index (Lower ix), Source r ix e) =>
+ifoldlWithin' :: (Index (Lower ix), Index ix, Source r e) =>
   Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlWithin' dim f acc0 arr =
   makeArray (getComp arr) (SafeSz szl) $ \ixl ->
@@ -224,7 +224,7 @@ ifoldlWithin' dim f acc0 arr =
 -- throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-foldlWithin' :: (Index (Lower ix), Source r ix e) =>
+foldlWithin' :: (Index (Lower ix), Index ix, Source r e) =>
   Dim -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldlWithin' dim f = ifoldlWithin' dim (const f)
 {-# INLINE foldlWithin' #-}
@@ -235,7 +235,7 @@ foldlWithin' dim f = ifoldlWithin' dim (const f)
 --
 --
 -- @since 0.2.4
-ifoldrWithin' :: (Index (Lower ix), Source r ix e) =>
+ifoldrWithin' :: (Index (Lower ix), Index ix, Source r e) =>
   Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrWithin' dim f acc0 arr =
   makeArray (getComp arr) (SafeSz szl) $ \ixl ->
@@ -255,7 +255,7 @@ ifoldrWithin' dim f acc0 arr =
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-foldrWithin' :: (Index (Lower ix), Source r ix e) =>
+foldrWithin' :: (Index (Lower ix), Index ix, Source r e) =>
   Dim -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldrWithin' dim f = ifoldrWithin' dim (const f)
 {-# INLINE foldrWithin' #-}
@@ -264,7 +264,7 @@ foldrWithin' dim f = ifoldrWithin' dim (const f)
 -- | Left fold over the inner most dimension with index aware function.
 --
 -- @since 0.2.4
-ifoldlInner :: (Index (Lower ix), Source r ix e) =>
+ifoldlInner :: (Index (Lower ix), Index ix, Source r e) =>
   (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlInner = ifoldlWithin' 1
 {-# INLINE ifoldlInner #-}
@@ -272,7 +272,7 @@ ifoldlInner = ifoldlWithin' 1
 -- | Left fold over the inner most dimension.
 --
 -- @since 0.2.4
-foldlInner :: (Index (Lower ix), Source r ix e) =>
+foldlInner :: (Index (Lower ix), Index ix, Source r e) =>
   (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldlInner = foldlWithin' 1
 {-# INLINE foldlInner #-}
@@ -280,7 +280,7 @@ foldlInner = foldlWithin' 1
 -- | Right fold over the inner most dimension with index aware function.
 --
 -- @since 0.2.4
-ifoldrInner :: (Index (Lower ix), Source r ix e) =>
+ifoldrInner :: (Index (Lower ix), Index ix, Source r e) =>
   (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrInner = ifoldrWithin' 1
 {-# INLINE ifoldrInner #-}
@@ -288,7 +288,7 @@ ifoldrInner = ifoldrWithin' 1
 -- | Right fold over the inner most dimension.
 --
 -- @since 0.2.4
-foldrInner :: (Index (Lower ix), Source r ix e) =>
+foldrInner :: (Index (Lower ix), Index ix, Source r e) =>
   (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldrInner = foldrWithin' 1
 {-# INLINE foldrInner #-}
@@ -296,7 +296,7 @@ foldrInner = foldrWithin' 1
 -- | Monoidal fold over the inner most dimension.
 --
 -- @since 0.4.3
-foldInner :: (Monoid e, Index (Lower ix), Source r ix e) => Array r ix e -> Array D (Lower ix) e
+foldInner :: (Monoid e, Index (Lower ix), Index ix, Source r e) => Array r ix e -> Array D (Lower ix) e
 foldInner = foldlInner mappend mempty
 {-# INLINE foldInner #-}
 
@@ -304,7 +304,7 @@ foldInner = foldlInner mappend mempty
 --
 -- @since 0.4.3
 foldWithin ::
-     (Source r ix a, Monoid a, Index (Lower ix), IsIndexDimension ix n)
+     (Source r a, Monoid a, Index (Lower ix), IsIndexDimension ix n)
   => Dimension n
   -> Array r ix a
   -> Array D (Lower ix) a
@@ -316,7 +316,7 @@ foldWithin dim = foldlWithin dim mappend mempty
 --
 -- @since 0.4.3
 foldWithin' ::
-     (Source r ix a, Monoid a, Index (Lower ix))
+     (Index ix, Source r a, Monoid a, Index (Lower ix))
   => Dim
   -> Array r ix a
   -> Array D (Lower ix) a
@@ -397,7 +397,7 @@ ifoldInnerSlice f arr = foldMono g $ range (getComp arr) 0 (unSz k)
 -- | /O(n)/ - Compute maximum of all elements.
 --
 -- @since 0.3.0
-maximumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
+maximumM :: (MonadThrow m, Load r ix e, Source r e, Ord e) => Array r ix e -> m e
 maximumM arr =
     if isEmpty arr
       then throwM (SizeEmptyException (size arr))
@@ -409,7 +409,7 @@ maximumM arr =
 -- | /O(n)/ - Compute maximum of all elements.
 --
 -- @since 0.3.0
-maximum' :: (Source r ix e, Ord e) => Array r ix e -> e
+maximum' :: (Load r ix e, Source r e, Ord e) => Array r ix e -> e
 maximum' = either throw id . maximumM
 {-# INLINE maximum' #-}
 
@@ -417,7 +417,7 @@ maximum' = either throw id . maximumM
 -- | /O(n)/ - Compute minimum of all elements.
 --
 -- @since 0.3.0
-minimumM :: (MonadThrow m, Source r ix e, Ord e) => Array r ix e -> m e
+minimumM :: (MonadThrow m, Load r ix e, Source r e, Ord e) => Array r ix e -> m e
 minimumM arr =
     if isEmpty arr
       then throwM (SizeEmptyException (size arr))
@@ -428,7 +428,7 @@ minimumM arr =
 -- | /O(n)/ - Compute minimum of all elements.
 --
 -- @since 0.3.0
-minimum' :: (Source r ix e, Ord e) => Array r ix e -> e
+minimum' :: (Load r ix e, Source r e, Ord e) => Array r ix e -> e
 minimum' = either throw id . minimumM
 {-# INLINE minimum' #-}
 
@@ -437,7 +437,7 @@ minimum' = either throw id . minimumM
 -- --
 -- -- @since 0.1.0
 -- sum' ::
---      forall r ix e. (Source r ix e, Numeric r e)
+--      forall r ix e. (Index ix, Source r e, Numeric r e)
 --   => Array r ix e
 --   -> IO e
 -- sum' = splitReduce (\_ -> pure . sumArray) (\x y -> pure (x + y)) 0
@@ -446,7 +446,7 @@ minimum' = either throw id . minimumM
 -- | /O(n)/ - Compute sum of all elements.
 --
 -- @since 0.1.0
-sum :: (Source r ix e, Num e) => Array r ix e -> e
+sum :: (Index ix, Source r e, Num e) => Array r ix e -> e
 sum = foldlInternal (+) 0 (+) 0
 {-# INLINE sum #-}
 
@@ -454,7 +454,7 @@ sum = foldlInternal (+) 0 (+) 0
 -- | /O(n)/ - Compute product of all elements.
 --
 -- @since 0.1.0
-product :: (Source r ix e, Num e) => Array r ix e -> e
+product :: (Index ix, Source r e, Num e) => Array r ix e -> e
 product = foldlInternal (*) 1 (*) 1
 {-# INLINE product #-}
 
@@ -462,7 +462,7 @@ product = foldlInternal (*) 1 (*) 1
 -- | /O(n)/ - Compute conjunction of all elements.
 --
 -- @since 0.1.0
-and :: Source r ix Bool => Array r ix Bool -> Bool
+and :: (Index ix, Source r Bool) => Array r ix Bool -> Bool
 and = all id
 {-# INLINE and #-}
 
@@ -470,7 +470,7 @@ and = all id
 -- | /O(n)/ - Compute disjunction of all elements.
 --
 -- @since 0.1.0
-or :: Source r ix Bool => Array r ix Bool -> Bool
+or :: (Index ix, Source r Bool) => Array r ix Bool -> Bool
 or = any id
 {-# INLINE or #-}
 
@@ -478,14 +478,14 @@ or = any id
 -- | /O(n)/ - Determines whether all elements of the array satisfy a predicate.
 --
 -- @since 0.1.0
-all :: Source r ix e => (e -> Bool) -> Array r ix e -> Bool
+all :: (Index ix, Source r e) => (e -> Bool) -> Array r ix e -> Bool
 all f = not . any (not . f)
 {-# INLINE all #-}
 
 -- | /O(n)/ - Determines whether an element is present in the array.
 --
 -- @since 0.5.5
-elem :: (Eq e, Source r ix e) => e -> Array r ix e -> Bool
+elem :: (Eq e, Index ix, Source r e) => e -> Array r ix e -> Bool
 elem e = any (e ==)
 {-# INLINE elem #-}
 
