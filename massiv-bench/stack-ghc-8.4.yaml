@@ -4,10 +4,10 @@ packages:
 - '.'
 extra-deps:
 - '../massiv/'
-#- '../../haskell-scheduler/scheduler'
+# - '../../haskell-scheduler/scheduler'
 - pvar-1.0.0.0@sha256:3d4a6855b0960baee78f6956f082eb8aa1cede52d2955b7faef186d1133f7964,1893
 - primitive-0.7.1.0@sha256:6a237bb338bcc43193077ff8e8c0f0ce2de14c652231496a15672e8b563a07e2,2604
 - github: lehins/haskell-scheduler
-  commit: 9ded5137025cac5be6024d24c2618865de51f334
+  commit: 64ac5947a2ba07d2eca9c077f81f33c20d646f21
   subdirs:
     - scheduler

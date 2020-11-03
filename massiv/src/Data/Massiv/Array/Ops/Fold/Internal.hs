@@ -408,14 +408,13 @@ anySu f arr = go 0
 -- | Implementaton of `any` on a slice of an array with short-circuiting using batch cancellation.
 anySliceSuM ::
      Source r ix a
-  => Scheduler IO Bool
-  -> BatchId
+  => Batch IO Bool
   -> Ix1
   -> Sz1
   -> (a -> Bool)
   -> Array r ix a
   -> IO Bool
-anySliceSuM scheduler batchId ix0 (Sz k) f arr = go ix0
+anySliceSuM batch ix0 (Sz k) f arr = go ix0
   where
     !k' = k - ix0
     !k4 = ix0 + (k' - (k' `rem` 4))
@@ -427,15 +426,15 @@ anySliceSuM scheduler batchId ix0 (Sz k) f arr = go ix0
               f (unsafeLinearIndex arr (i + 2)) ||
               f (unsafeLinearIndex arr (i + 3))
          in if r
-              then cancelBatchWith scheduler batchId True
+              then cancelBatchWith batch True
               else do
-                done <- hasBatchFinished scheduler batchId
+                done <- hasBatchFinished batch
                 if done
                   then pure True
                   else go (i + 4)
       | i < k =
         if f (unsafeLinearIndex arr i)
-          then cancelBatchWith scheduler batchId True
+          then cancelBatchWith batch True
           else go (i + 1)
       | otherwise = pure False
 {-# INLINE anySliceSuM #-}
@@ -449,14 +448,12 @@ anyPu f arr = do
       !totalLength = totalElem sz
   results <-
     withScheduler (getComp arr) $ \scheduler -> do
-      batchId <- getCurrentBatchId scheduler
+      batch <- getCurrentBatch scheduler
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-          scheduleWork scheduler $ do
-            anySliceSuM scheduler batchId start (Sz (start + chunkLength)) f arr
+          scheduleWork scheduler $ anySliceSuM batch start (Sz (start + chunkLength)) f arr
         when (slackStart < totalLength) $
-          scheduleWork scheduler $ do
-            anySliceSuM scheduler batchId slackStart (Sz totalLength) f arr
+          scheduleWork scheduler $ anySliceSuM batch slackStart (Sz totalLength) f arr
   pure $ F.foldl' (||) False results
 {-# INLINE anyPu #-}
 

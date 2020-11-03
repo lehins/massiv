@@ -9,6 +9,6 @@ extra-deps:
 - pvar-0.2.0.0@sha256:786ab43a3e7921d0086e723e620120543200c57b53f5e0f6ef1cb570c94a9144,1825
 - primitive-0.6.4.0@sha256:5b6a2c3cc70a35aabd4565fcb9bb1dd78fe2814a36e62428a9a1aae8c32441a1,2079
 - github: lehins/haskell-scheduler
-  commit: 9ded5137025cac5be6024d24c2618865de51f334
+  commit: 64ac5947a2ba07d2eca9c077f81f33c20d646f21
   subdirs:
     - scheduler
