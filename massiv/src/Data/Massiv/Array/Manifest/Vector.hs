@@ -59,7 +59,7 @@ type family VRepr r :: * -> * where
 -- return `Nothing` if there is a size mismatch or if some non-standard vector type is
 -- supplied. Is suppplied is the boxed `Data.Vector.Vector` then it's all elements will be
 -- evaluated toWHNF, therefore complexity will be /O(n)/
-castFromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Mutable r ix e, ARepr v ~ r)
+castFromVector :: forall v r ix e. (VG.Vector v e, Typeable v, Index ix, ARepr v ~ r)
                => Comp
                -> Sz ix -- ^ Size of the result Array
                -> v e -- ^ Source Vector
@@ -90,12 +90,7 @@ castFromVector comp sz vector = do
 --
 -- @since 0.3.0
 fromVectorM ::
-     ( MonadThrow m
-     , Typeable v
-     , VG.Vector v a
-     , Mutable (ARepr v) ix a
-     , Mutable r ix a
-     )
+     (MonadThrow m, Typeable v, VG.Vector v a, Mutable r a, Load (ARepr v) ix a, Construct r ix a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
@@ -113,7 +108,7 @@ fromVectorM comp sz v =
 --
 -- @since 0.3.0
 fromVector' ::
-     (Typeable v, VG.Vector v a, Mutable (ARepr v) ix a, Mutable r ix a)
+     (Typeable v, VG.Vector v a, Load (ARepr v) ix a, Construct r ix a, Mutable r a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
@@ -125,7 +120,7 @@ fromVector' comp sz = either throw id . fromVectorM comp sz
 -- return `Nothing` only if source array representation was not one of `B`, `N`,
 -- `P`, `S` or `U`.
 castToVector ::
-     forall v r ix e. (Mutable r ix e, VRepr r ~ v)
+     forall v r ix e. (Mutable r e, Index ix, VRepr r ~ v)
   => Array r ix e
   -> Maybe (v e)
 castToVector arr =
@@ -175,8 +170,9 @@ castToVector arr =
 --
 toVector ::
      forall r ix e v.
-     ( Manifest r ix e
-     , Mutable (ARepr v) ix e
+     ( Manifest r e
+     , Load r ix e
+     , Mutable (ARepr v) e
      , VG.Vector v e
      , VRepr (ARepr v) ~ v
      )

@@ -15,7 +15,7 @@ module Data.Massiv.Vector
   -- * Accessors
   -- *** Size
   , slength
-  , maxSize
+  , maxLinearSize
   , size
   , snull
   -- *** Indexing
@@ -273,21 +273,6 @@ module Data.Massiv.Vector
   -- , unsafeFreeze
   -- , unsafeThaw
   -- , unsafeCopy
-  -- * Deprecated
-  , takeS
-  , dropS
-  , unfoldr
-  , unfoldrN
-  , filterS
-  , ifilterS
-  , filterM
-  , ifilterM
-  , mapMaybeS
-  , imapMaybeS
-  , mapMaybeM
-  , imapMaybeM
-  , catMaybesS
-  , traverseS
   -- ** Re-exports
   , module Data.Massiv.Core
   , module Data.Massiv.Array.Delayed
@@ -306,13 +291,14 @@ import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List (fromList)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
-import qualified Data.Massiv.Array.Ops.Construct as A (makeArrayR, replicate)
+import qualified Data.Massiv.Array.Ops.Construct as A (replicate)
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Vector.Unsafe
 import Data.Maybe
-import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take, takeWhile, dropWhile)
+import Prelude hiding (drop, dropWhile, init, length, null, replicate, splitAt,
+                tail, take, takeWhile)
 
 -- ========= --
 -- Accessors --
@@ -358,8 +344,8 @@ import Prelude hiding (drop, init, length, null, replicate, splitAt, tail, take,
 slength :: Stream r ix e => Array r ix e -> Maybe Sz1
 slength v =
   case stepsSize (toStream v) of
-    Exact sz -> Just (SafeSz sz)
-    _        -> Nothing
+    LengthExact sz -> Just sz
+    _              -> Nothing
 {-# INLINE slength #-}
 
 -- | /O(1)/ - Check whether a `Stream` array is empty or not. It only looks at the exact size
@@ -420,7 +406,7 @@ snull = isEmpty
 -- cause materialization of the full vector if any other function is applied to the vector.
 --
 -- @since 0.5.0
-head' :: Source r Ix1 e => Vector r e -> e
+head' :: Source r e => Vector r e -> e
 head' = either throw id . headM
 {-# INLINE head' #-}
 
@@ -448,9 +434,9 @@ head' = either throw id . headM
 -- except it is restricted to `Maybe`
 --
 -- @since 0.5.0
-headM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
+headM :: (Source r e, MonadThrow m) => Vector r e -> m e
 headM v
-  | isEmpty v = throwM $ SizeEmptyException (size v)
+  | elemsCount v == 0 = throwM $ SizeEmptyException (size v)
   | otherwise = pure $ unsafeLinearIndex v 0
 {-# INLINE headM #-}
 
@@ -493,7 +479,7 @@ shead' = either throw id . sheadM
 sheadM :: (Stream r Ix1 e, MonadThrow m) => Vector r e -> m e
 sheadM v =
   case S.unId (S.headMaybe (toStream v)) of
-    Nothing -> throwM $ SizeEmptyException (size v)
+    Nothing -> throwM $ SizeEmptyException (zeroSz :: Sz1)
     Just e  -> pure e
 {-# INLINE sheadM #-}
 
@@ -517,7 +503,7 @@ sheadM v =
 -- the more general `MonadThrow`
 --
 -- @since 0.3.0
-unconsM :: (MonadThrow m, Source r Ix1 e) => Vector r e -> m (e, Vector r e)
+unconsM :: (MonadThrow m, Source r e) => Vector r e -> m (e, Vector r e)
 unconsM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise = pure (unsafeLinearIndex arr 0, unsafeLinearSlice 1 (SafeSz (unSz sz - 1)) arr)
@@ -539,7 +525,7 @@ unconsM arr
 --   [ 1, 2 ],3)
 --
 -- @since 0.3.0
-unsnocM :: (MonadThrow m, Source r Ix1 e) => Vector r e -> m (Vector r e, e)
+unsnocM :: (MonadThrow m, Source r e) => Vector r e -> m (Vector r e, e)
 unsnocM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise = pure (unsafeLinearSlice 0 (SafeSz k) arr, unsafeLinearIndex arr k)
@@ -569,7 +555,7 @@ unsnocM arr
 -- cause materialization of the full vector if any other function is applied to the vector.
 --
 -- @since 0.5.0
-last' :: Source r Ix1 e => Vector r e -> e
+last' :: Source r e => Vector r e -> e
 last' = either throw id . lastM
 {-# INLINE last' #-}
 
@@ -590,7 +576,7 @@ last' = either throw id . lastM
 -- "SizeEmptyException: (Sz1 0) corresponds to an empty array"
 --
 -- @since 0.5.0
-lastM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m e
+lastM :: (Source r e, MonadThrow m) => Vector r e -> m e
 lastM v
   | k == 0 = throwM $ SizeEmptyException (size v)
   | otherwise = pure $ unsafeLinearIndex v (k - 1)
@@ -613,7 +599,7 @@ lastM v
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
 -- @since 0.5.0
-slice :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
+slice :: Source r e => Ix1 -> Sz1 -> Vector r e -> Vector r e
 slice !i (Sz k) v = unsafeLinearSlice i' newSz v
   where
     !i' = min n (max 0 i)
@@ -639,7 +625,7 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
 -- @since 0.5.0
-slice' :: Source r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector r e
+slice' :: Source r e => Ix1 -> Sz1 -> Vector r e -> Vector r e
 slice' i k = either throw id . sliceM i k
 {-# INLINE slice' #-}
 
@@ -652,7 +638,7 @@ slice' i k = either throw id . sliceM i k
 --
 --
 -- @since 0.5.0
-sliceM :: (Source r Ix1 e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
+sliceM :: (Source r e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
 sliceM i newSz@(Sz k) v
   | i >= 0 && k <= n - i = pure $ unsafeLinearSlice i newSz v
   | otherwise = throwM $ SizeSubregionException sz i newSz
@@ -686,7 +672,7 @@ sliceM i newSz@(Sz k) v
 --
 -- @since 0.5.0
 sslice :: Stream r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector DS e
-sslice !i (Sz k) = fromSteps . S.slice i k . S.toStream
+sslice !i !k = fromSteps . S.slice i k . S.toStream
 {-# INLINE sslice #-}
 
 
@@ -702,7 +688,7 @@ sslice !i (Sz k) = fromSteps . S.slice i k . S.toStream
 --   [  ]
 --
 -- @since 0.5.0
-init :: Source r Ix1 e => Vector r e -> Vector r e
+init :: Source r e => Vector r e -> Vector r e
 init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 {-# INLINE init #-}
 
@@ -717,7 +703,7 @@ init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 -- Array D *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-init' :: Source r Ix1 e => Vector r e -> Vector r e
+init' :: Source r e => Vector r e -> Vector r e
 init' = either throw id . initM
 {-# INLINE init' #-}
 
@@ -734,9 +720,9 @@ init' = either throw id . initM
 -- 0
 --
 -- @since 0.5.0
-initM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
+initM :: (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
 initM v = do
-  when (isEmpty v) $ throwM $ SizeEmptyException $ size v
+  when (elemsCount v == 0) $ throwM $ SizeEmptyException $ size v
   pure $ unsafeInit v
 {-# INLINE initM #-}
 
@@ -754,7 +740,7 @@ initM v = do
 --   [  ]
 --
 -- @since 0.5.0
-tail :: Source r Ix1 e => Vector r e -> Vector r e
+tail :: Source r e => Vector r e -> Vector r e
 tail = drop 1
 {-# INLINE tail #-}
 
@@ -770,7 +756,7 @@ tail = drop 1
 -- Array D *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-tail' :: Source r Ix1 e => Vector r e -> Vector r e
+tail' :: Source r e => Vector r e -> Vector r e
 tail' = either throw id . tailM
 {-# INLINE tail' #-}
 
@@ -788,9 +774,9 @@ tail' = either throw id . tailM
 -- 0
 --
 -- @since 0.5.0
-tailM :: (Source r Ix1 e, MonadThrow m) => Vector r e -> m (Vector r e)
+tailM :: (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
 tailM v = do
-  when (isEmpty v) $ throwM $ SizeEmptyException $ size v
+  when (elemsCount v == 0) $ throwM $ SizeEmptyException $ size v
   pure $ unsafeTail v
 {-# INLINE tailM #-}
 
@@ -812,7 +798,7 @@ tailM v = do
 -- >>>
 --
 -- @since 0.5.0
-take :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+take :: Source r e => Sz1 -> Vector r e -> Vector r e
 take k = fst . sliceAt k
 {-# INLINE take #-}
 
@@ -821,7 +807,7 @@ take k = fst . sliceAt k
 -- satisfy the supplied predicate.
 --
 -- @since 0.5.5
-takeWhile :: Manifest r Ix1 e => (e -> Bool) -> Vector r e -> Vector r e
+takeWhile :: Manifest r e => (e -> Bool) -> Vector r e -> Vector r e
 takeWhile f v = take (go 0) v
   where
     !k = elemsCount v
@@ -848,7 +834,7 @@ takeWhile f v = take (go 0) v
 -- Array D *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
 --
 -- @since 0.5.0
-take' :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+take' :: Source r e => Sz1 -> Vector r e -> Vector r e
 take' k = either throw id . takeM k
 {-# INLINE take' #-}
 
@@ -865,7 +851,7 @@ take' k = either throw id . takeM k
 -- -1
 --
 -- @since 0.5.0
-takeM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
+takeM :: (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
 takeM k v = do
   let sz = size v
   when (k > sz) $ throwM $ SizeSubregionException sz 0 k
@@ -878,7 +864,7 @@ takeM k v = do
 --
 -- @since 0.5.0
 stake :: Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
-stake n = fromSteps . S.take (unSz n) . S.toStream
+stake n = fromSteps . S.take n . S.toStream
 {-# INLINE stake #-}
 
 -- |
@@ -886,7 +872,7 @@ stake n = fromSteps . S.take (unSz n) . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-drop :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+drop :: Source r e => Sz1 -> Vector r e -> Vector r e
 drop k = snd . sliceAt k
 {-# INLINE drop #-}
 
@@ -895,7 +881,7 @@ drop k = snd . sliceAt k
 -- that satisfy the supplied predicate.
 --
 -- @since 0.5.5
-dropWhile :: Manifest r Ix1 e => (e -> Bool) -> Vector r e -> Vector r e
+dropWhile :: Manifest r e => (e -> Bool) -> Vector r e -> Vector r e
 dropWhile f v = drop (go 0) v
   where
     !k = elemsCount v
@@ -911,7 +897,7 @@ dropWhile f v = drop (go 0) v
 --
 -- @since 0.5.0
 sdrop :: Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
-sdrop n = fromSteps . S.drop (unSz n) . S.toStream
+sdrop n = fromSteps . S.drop n . S.toStream
 {-# INLINE sdrop #-}
 
 -- |
@@ -919,7 +905,7 @@ sdrop n = fromSteps . S.drop (unSz n) . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-drop' :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+drop' :: Source r e => Sz1 -> Vector r e -> Vector r e
 drop' k = either throw id . dropM k
 {-# INLINE drop' #-}
 
@@ -928,7 +914,7 @@ drop' k = either throw id . dropM k
 -- ==== __Examples__
 --
 -- @since 0.5.0
-dropM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
+dropM :: (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
 dropM k@(Sz d) v = do
   let sz@(Sz n) = size v
   when (k > sz) $ throwM $ SizeSubregionException sz d (sz - k)
@@ -942,7 +928,7 @@ dropM k@(Sz d) v = do
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAt :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+sliceAt :: Source r e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
 sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
   where
     !n = coerce (size v)
@@ -954,7 +940,7 @@ sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAt' :: Source r Ix1 e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+sliceAt' :: Source r e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
 sliceAt' k = either throw id . sliceAtM k
 {-# INLINE sliceAt' #-}
 
@@ -963,7 +949,7 @@ sliceAt' k = either throw id . sliceAtM k
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAtM :: (Source r Ix1 e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
+sliceAtM :: (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
 sliceAtM k v = do
   l <- takeM k v
   pure (l, unsafeDrop k v)
@@ -991,7 +977,7 @@ ssingleton = DSArray . S.singleton
 -- | /O(1)/ - Add an element to the vector from the left side
 --
 -- @since 0.3.0
-cons :: Load r Ix1 e => e -> Vector r e -> Vector DL e
+cons :: (Size r, Load r Ix1 e) => e -> Vector r e -> Vector DL e
 cons e v =
   let dv = toLoadArray v
       load scheduler startAt uWrite uSet =
@@ -1003,7 +989,7 @@ cons e v =
 -- | /O(1)/ - Add an element to the vector from the right side
 --
 -- @since 0.3.0
-snoc :: Load r Ix1 e => Vector r e -> e -> Vector DL e
+snoc :: (Size r, Load r Ix1 e) => Vector r e -> e -> Vector DL e
 snoc v e =
   let dv = toLoadArray v
       !k = unSz (size dv)
@@ -1021,7 +1007,7 @@ snoc v e =
 --
 -- @since 0.5.0
 sreplicate :: Sz1 -> e -> Vector DS e
-sreplicate (Sz n) = DSArray . S.replicate n
+sreplicate n = DSArray . S.replicate n
 {-# INLINE sreplicate #-}
 
 -- | Create a delayed vector of length @n@ with a function that maps an index to an
@@ -1041,7 +1027,7 @@ generate = makeArrayLinear
 --
 -- @since 0.5.0
 sgenerate :: Sz1 -> (Ix1 -> e) -> Vector DS e
-sgenerate (Sz n) = DSArray . S.generate n
+sgenerate n = DSArray . S.generate n
 {-# INLINE sgenerate #-}
 
 
@@ -1070,7 +1056,7 @@ siterate f = fromSteps . S.unfoldr (\a -> Just (a, f a))
 --
 -- @since 0.5.0
 siterateN :: Sz1 -> (e -> e) -> e -> Vector DS e
-siterateN n f a = fromSteps $ S.iterateN (unSz n) f a
+siterateN n f a = fromSteps $ S.iterateN n f a
 {-# INLINE siterateN #-}
 
 
@@ -1080,7 +1066,7 @@ siterateN n f a = fromSteps $ S.iterateN (unSz n) f a
 --
 -- @since 0.5.0
 sreplicateM :: Monad m => Sz1 -> m e -> m (Vector DS e)
-sreplicateM n f = fromStepsM $ S.replicateM (unSz n) f
+sreplicateM n f = fromStepsM $ S.replicateM n f
 {-# INLINE sreplicateM #-}
 
 
@@ -1091,7 +1077,7 @@ sreplicateM n f = fromStepsM $ S.replicateM (unSz n) f
 --
 -- @since 0.5.0
 sgenerateM :: Monad m => Sz1 -> (Ix1 -> m e) -> m (Vector DS e)
-sgenerateM n f = fromStepsM $ S.generateM (unSz n) f
+sgenerateM n f = fromStepsM $ S.generateM n f
 {-# INLINE sgenerateM #-}
 
 
@@ -1102,7 +1088,7 @@ sgenerateM n f = fromStepsM $ S.generateM (unSz n) f
 --
 -- @since 0.5.0
 siterateNM :: Monad m => Sz1 -> (e -> m e) -> e -> m (Vector DS e)
-siterateNM n f a = fromStepsM $ S.iterateNM (unSz n) f a
+siterateNM n f a = fromStepsM $ S.iterateNM n f a
 {-# INLINE siterateNM #-}
 
 
@@ -1143,7 +1129,7 @@ sunfoldrN ::
   -- is reached.
   -> s -- ^ Inititial element.
   -> Vector DS e
-sunfoldrN (Sz n) f = DSArray . S.unfoldrN n f
+sunfoldrN n f = DSArray . S.unfoldrN n f
 {-# INLINE sunfoldrN #-}
 
 -- | /O(n)/ - Same as `unfoldr`, but with monadic generating function.
@@ -1199,7 +1185,7 @@ sunfoldrNM (Sz n) f = fromStepsM . S.unfoldrNM n f
 --
 -- @since 0.5.0
 sunfoldrExactN :: Sz1 -> (s -> (e, s)) -> s -> Vector DS e
-sunfoldrExactN (Sz n) f = fromSteps . S.unfoldrExactN n f
+sunfoldrExactN n f = fromSteps . S.unfoldrExactN n f
 {-# INLINE sunfoldrExactN #-}
 
 -- | /O(n)/ - Similar to `unfoldrNM`, except the length of the resulting vector will be exactly @n@
@@ -1217,7 +1203,7 @@ sunfoldrExactN (Sz n) f = fromSteps . S.unfoldrExactN n f
 --
 -- @since 0.5.0
 sunfoldrExactNM :: Monad m => Sz1 -> (s -> m (e, s)) -> s -> m (Vector DS e)
-sunfoldrExactNM (Sz n) f = fromStepsM . S.unfoldrExactNM n f
+sunfoldrExactNM n f = fromStepsM . S.unfoldrExactNM n f
 {-# INLINE sunfoldrExactNM #-}
 
 
@@ -1246,7 +1232,7 @@ senumFromN ::
   => e -- ^ @x@ - starting number
   -> Sz1 -- ^ @n@ - length of resulting vector
   -> Vector DS e
-senumFromN x (Sz n) = DSArray $ S.enumFromStepN x 1 n
+senumFromN x n = DSArray $ S.enumFromStepN x 1 n
 {-# INLINE senumFromN #-}
 
 -- | /O(n)/ - Enumerate from a starting number @x@ exactly @n@ times with a custom step value @dx@
@@ -1272,7 +1258,7 @@ senumFromStepN ::
   -> e -- ^ @dx@ - Step
   -> Sz1 -- ^ @n@ - length of resulting vector
   -> Vector DS e
-senumFromStepN x step (Sz n) = DSArray $ S.enumFromStepN x step n
+senumFromStepN x step n = DSArray $ S.enumFromStepN x step n
 {-# INLINE senumFromStepN #-}
 
 
@@ -2373,8 +2359,8 @@ sfoldl1' f = either throw id . sfoldl1M (\e -> pure . f e)
 sfoldl1M :: (Stream r ix e, MonadThrow m) => (e -> e -> m e) -> Array r ix e -> m e
 sfoldl1M f arr = do
   let str = S.transStepsId $ toStream arr
-  nullStream <- S.null str
-  when nullStream $ throwM $ SizeEmptyException (size arr)
+  isNullStream <- S.null str
+  when isNullStream $ throwM $ SizeEmptyException (outerSize arr)
   S.foldl1M f str
 {-# INLINE sfoldl1M #-}
 
@@ -2514,136 +2500,3 @@ sminimum' = sfoldl1' min
 sminimumM :: (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
 sminimumM = sfoldl1M (\e acc -> pure (min e acc))
 {-# INLINE sminimumM #-}
-
-
-
--- | See `stake`.
---
--- @since 0.4.1
-takeS :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
-takeS n = fromSteps . S.take (unSz n) . S.toStream
-{-# INLINE takeS #-}
-{-# DEPRECATED takeS "In favor of `stake`" #-}
-
--- | See `sdrop`.
---
--- @since 0.4.1
-dropS :: Stream r ix e => Sz1 -> Array r ix e -> Array DS Ix1 e
-dropS n = fromSteps . S.drop (unSz n) . S.toStream
-{-# INLINE dropS #-}
-{-# DEPRECATED dropS "In favor of `sdrop`" #-}
-
--- | See `sunfoldr`
---
--- @since 0.4.1
-unfoldr :: (s -> Maybe (e, s)) -> s -> Vector DS e
-unfoldr = sunfoldr
-{-# INLINE unfoldr #-}
-{-# DEPRECATED unfoldr "In favor of `sunfoldr`" #-}
-
-
--- | See `sunfoldrN`
---
--- @since 0.4.1
-unfoldrN :: Sz1 -> (s -> Maybe (e, s)) -> s -> Vector DS e
-unfoldrN = unfoldrN
-{-# INLINE unfoldrN #-}
-{-# DEPRECATED unfoldrN "In favor of `sunfoldrN`" #-}
-
-
--- | See `sfilterM`
---
--- @since 0.4.1
-filterM :: (S.Stream r ix e, Applicative f) => (e -> f Bool) -> Array r ix e -> f (Vector DS e)
-filterM f arr = DSArray <$> S.filterA f (S.toStream arr)
-{-# INLINE filterM #-}
-{-# DEPRECATED filterM "In favor of `sfilterM`" #-}
-
--- | See `sfilter`
---
--- @since 0.4.1
-filterS :: S.Stream r ix e => (e -> Bool) -> Array r ix e -> Array DS Ix1 e
-filterS = sfilter
-{-# INLINE filterS #-}
-{-# DEPRECATED filterS "In favor of `sfilter`" #-}
-
-
--- | See `smapMaybe`
---
--- @since 0.4.1
-mapMaybeS :: S.Stream r ix a => (a -> Maybe b) -> Array r ix a -> Vector DS b
-mapMaybeS = smapMaybe
-{-# INLINE mapMaybeS #-}
-{-# DEPRECATED mapMaybeS "In favor of `smapMaybe`" #-}
-
--- | See `scatMaybes`
---
--- @since 0.4.4
-catMaybesS :: S.Stream r ix (Maybe a) => Array r ix (Maybe a) -> Vector DS a
-catMaybesS = scatMaybes
-{-# INLINE catMaybesS #-}
-{-# DEPRECATED catMaybesS "In favor of `scatMaybes`" #-}
-
--- | See `smapMaybeM`
---
--- @since 0.4.1
-mapMaybeM ::
-     (S.Stream r ix a, Applicative f) => (a -> f (Maybe b)) -> Array r ix a -> f (Vector DS b)
-mapMaybeM = smapMaybeM
-{-# INLINE mapMaybeM #-}
-{-# DEPRECATED mapMaybeM "In favor of `smapMaybeM`" #-}
-
--- | See `traverseS`
---
--- @since 0.4.5
-traverseS :: (S.Stream r ix a, Applicative f) => (a -> f b) -> Array r ix a -> f (Vector DS b)
-traverseS = straverse
-{-# INLINE traverseS #-}
-{-# DEPRECATED traverseS "In favor of `straverse`" #-}
-
--- | See `simapMaybe`
---
--- @since 0.4.1
-imapMaybeS :: Source r ix a => (ix -> a -> Maybe b) -> Array r ix a -> Array DS Ix1 b
-imapMaybeS f arr =
-  mapMaybeS (uncurry f) $ A.makeArrayR D (getComp arr) (size arr) $ \ix -> (ix, unsafeIndex arr ix)
-{-# INLINE imapMaybeS #-}
-{-# DEPRECATED imapMaybeS "In favor of `simapMaybe`" #-}
-
--- | See `simapMaybeM`
---
--- @since 0.4.1
-imapMaybeM ::
-     (Source r ix a, Applicative f) => (ix -> a -> f (Maybe b)) -> Array r ix a -> f (Array DS Ix1 b)
-imapMaybeM f arr =
-  mapMaybeM (uncurry f) $ A.makeArrayR D (getComp arr) (size arr) $ \ix -> (ix, unsafeIndex arr ix)
-{-# INLINE imapMaybeM #-}
-{-# DEPRECATED imapMaybeM "In favor of `simapMaybeM`" #-}
-
--- | Similar to `filterS`, but map with an index aware function.
---
--- @since 0.4.1
-ifilterS :: Source r ix a => (ix -> a -> Bool) -> Array r ix a -> Array DS Ix1 a
-ifilterS f =
-  imapMaybeS $ \ix e ->
-    if f ix e
-      then Just e
-      else Nothing
-{-# INLINE ifilterS #-}
-{-# DEPRECATED ifilterS "In favor of `sifilter`" #-}
-
-
--- | Similar to `filterM`, but map with an index aware function.
---
--- @since 0.4.1
-ifilterM ::
-     (Source r ix a, Applicative f) => (ix -> a -> f Bool) -> Array r ix a -> f (Array DS Ix1 a)
-ifilterM f =
-  imapMaybeM $ \ix e ->
-    (\p ->
-       if p
-         then Just e
-         else Nothing) <$>
-    f ix e
-{-# INLINE ifilterM #-}
-{-# DEPRECATED ifilterM "In favor of `sifilterM`" #-}

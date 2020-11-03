@@ -61,6 +61,6 @@ import Data.Massiv.Core.Exception
 -- | Append computation strategy using `Comp`'s `Monoid` instance.
 --
 -- @since 0.6.0
-appComp :: (Construct r ix e, Load r ix e) => Comp -> Array r ix e -> Array r ix e
+appComp :: Strategy r => Comp -> Array r ix e -> Array r ix e
 appComp comp arr = setComp (comp <> getComp arr) arr
 {-# INLINEABLE appComp #-}

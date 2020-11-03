@@ -17,45 +17,11 @@ module Data.Massiv.Array.Stencil.Unsafe
   , makeUnsafeConvolutionStencil
   , makeUnsafeCorrelationStencil
   , unsafeTransformStencil
-  -- ** Deprecated
-  , unsafeMapStencil
   ) where
 
-import Data.Massiv.Array.Delayed.Windowed (Array(..), DW, Window(..),
-                                           insertWindow)
 import Data.Massiv.Array.Stencil.Internal
 import Data.Massiv.Core.Common
 import GHC.Exts (inline)
-
-
--- | This is an unsafe version of `Data.Massiv.Array.Stencil.mapStencil`, which does not
--- take a `Stencil`, but instead accepts all necessary information as separate arguments.
---
--- @since 0.5.0
-unsafeMapStencil ::
-     Manifest r ix e
-  => Border e
-  -> Sz ix
-  -> ix
-  -> (ix -> (ix -> e) -> a)
-  -> Array r ix e
-  -> Array DW ix a
-unsafeMapStencil b sSz sCenter stencilF !arr = insertWindow warr window
-  where
-    !warr = DArray (getComp arr) sz (stencil (borderIndex b arr))
-    !window =
-      Window
-        { windowStart = sCenter
-        , windowSize = windowSz
-        , windowIndex = stencil (unsafeIndex arr)
-        , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
-        }
-    !sz = size arr
-    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
-    stencil getVal !ix = inline (stencilF ix) $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
-    {-# INLINE stencil #-}
-{-# INLINE unsafeMapStencil #-}
-{-# DEPRECATED unsafeMapStencil "In favor of `Data.Massiv.Array.mapStencil` that is applied to stencil created with `makeUnsafeStencil`" #-}
 
 
 -- | Similar to `Data.Massiv.Array.Stencil.makeStencil`, but there are no guarantees that the

@@ -1,3 +1,19 @@
+# 1.0.0
+
+* Introduce `Shape`, the parent of `Size`
+* Move `size` from `Load` into new class `Size`
+* Removed `maxSize` and replaced it with `maxLinearSize`
+* Remove specialized `DW` instances that used tuples as indices.
+* Remove `OuterSlice L` instance
+* Add `Strategy` and move `setComp` (from `Construct`) and `getComp` (from `Load`) in there.
+* Remove `ix` from `Mutable`
+* Remove `ix` from `Manifest`
+* Remove `ix` from `Source`
+* Remove `ix` from `Resize`
+* Prevent `showsArrayPrec` from changing index type
+* Remove all deprecated functions:
+  * `|*|`, `#>`
+
 # 0.6.0
 
 * Fix semantics of `Applicative`, `Num` and `Fractional` instance for `D` arrays:

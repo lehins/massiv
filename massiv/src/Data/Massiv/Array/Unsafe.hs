@@ -100,7 +100,7 @@ import Data.Massiv.Vector.Unsafe
 import Data.Massiv.Array.Stencil.Unsafe
 
 
-unsafeBackpermute :: (Source r' ix' e, Index ix) =>
+unsafeBackpermute :: (Index ix', Source r' e, Index ix) =>
                      Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
 unsafeBackpermute !sz ixF !arr =
   makeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
@@ -111,7 +111,7 @@ unsafeBackpermute !sz ixF !arr =
 --
 -- @since 0.3.0
 unsafeTransform ::
-     (Source r' ix' e', Index ix)
+     (Index ix', Source r' e', Index ix)
   => (Sz ix' -> (Sz ix, a))
   -> (a -> (ix' -> e') -> ix -> e)
   -> Array r' ix' e'
@@ -126,7 +126,7 @@ unsafeTransform getSz get arr = makeArray (getComp arr) sz (get a (unsafeIndex a
 --
 -- @since 0.3.0
 unsafeTransform2 ::
-     (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
+     (Index ix1, Source r1 e1, Index ix2, Source r2 e2, Index ix)
   => (Sz ix1 -> Sz ix2 -> (Sz ix, a))
   -> (a -> (ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1

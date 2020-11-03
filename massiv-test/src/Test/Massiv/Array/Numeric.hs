@@ -18,7 +18,7 @@ import Test.Massiv.Core.Common ()
 
 
 naiveMatrixMatrixMultiply ::
-     (Num e, Source (R r1) Ix1 e, Source (R r2) Ix1 e, OuterSlice r1 Ix2 e, InnerSlice r2 Ix2 e)
+     (Num e, Source (R r1) e, Source (R r2) e, OuterSlice r1 Ix2 e, InnerSlice r2 Ix2 e)
   => Array r1 Ix2 e
   -> Array r2 Ix2 e
   -> Array D Ix2 e
@@ -38,7 +38,7 @@ naiveMatrixMatrixMultiply arr1 arr2
 
 
 prop_MatrixMatrixMultiply ::
-     forall r e. (Numeric r e, Mutable r Ix2 e, Eq (Matrix r e), Show (Matrix r e))
+     forall r e. (Numeric r e, Mutable r e, Eq (Matrix r e), Show (Matrix r e))
   => Fun e e
   -> Matrix r e
   -> Property
@@ -55,9 +55,8 @@ prop_MatrixVectorMultiply ::
      forall r e.
      ( Numeric r e
      , InnerSlice r Ix2 e
-     , Mutable r Ix2 e
-     , Source (R r) Ix1 e
-     , Source r Ix1 e
+     , Mutable r e
+     , Source (R r) e
      , Construct r Ix1 e
      , Eq e
      , Show e
@@ -77,9 +76,11 @@ prop_VectorMatrixMultiply ::
      forall r e.
      ( Numeric r e
      , OuterSlice r Ix2 e
-     , Mutable r Ix2 e
-     , Source (R r) Ix1 e
-     , Mutable r Ix1 e
+     , Construct r Ix1 e
+     , Source (R r) e
+     , Mutable r e
+     , Eq e
+     , Show e
      , Show (Vector r e)
      , Eq (Vector r e)
      )
@@ -97,7 +98,7 @@ prop_VectorMatrixMultiply f arr =
       (== SizeMismatchException (Sz2 1 (m + 1)) (size arr))
 
 prop_DotProduct ::
-     forall r e. (Numeric r e, Mutable r Ix1 e, Eq e, Show e)
+     forall r e. (Numeric r e, Mutable r e, Eq e, Show e, Construct r Ix1 e)
   => Fun e e
   -> Vector r e
   -> Property
@@ -109,7 +110,7 @@ prop_DotProduct f v =
       (== SizeMismatchException (size v) (size v + 1))
 
 prop_Norm ::
-     forall r e. (NumericFloat r e, Mutable r Ix1 e, RealFloat e, Show e)
+     forall r e. (NumericFloat r e, Mutable r e, RealFloat e, Show e)
   => e
   -> Vector r e
   -> Property
@@ -119,7 +120,7 @@ prop_Norm eps v = epsilonEq eps (sqrt (v !.! v)) (normL2 v)
 
 prop_Plus ::
      forall r e.
-     (Numeric r e, Mutable r Ix2 e, Show (Array r Ix2 e), Eq (Array r Ix2 e))
+     (Numeric r e, Mutable r e, Show (Matrix r e), Eq (Matrix r e))
   => Fun e e
   -> Matrix r e
   -> e
@@ -135,7 +136,7 @@ prop_Plus f arr e = expectProp $ do
 
 prop_Minus ::
      forall r e.
-     (Numeric r e, Mutable r Ix2 e, Show (Array r Ix2 e), Eq (Array r Ix2 e))
+     (Numeric r e, Mutable r e, Show (Array r Ix2 e), Eq (Array r Ix2 e))
   => Fun e e
   -> Matrix r e
   -> e
@@ -151,7 +152,7 @@ prop_Minus f arr e = expectProp $ do
 
 prop_Times ::
      forall r e.
-     (Numeric r e, Mutable r Ix2 e, Show (Array r Ix2 e), Eq (Array r Ix2 e))
+     (Numeric r e, Mutable r e, Show (Matrix r e), Eq (Matrix r e))
   => Fun e e
   -> Matrix r e
   -> e
@@ -168,11 +169,11 @@ prop_Times f arr e = expectProp $ do
 prop_Divide ::
      forall r e.
      ( NumericFloat r e
-     , Mutable r Ix2 e
+     , Mutable r e
      , Show e
      , RealFloat e
-     , Show (Array r Ix2 e)
-     , Eq (Array r Ix2 e)
+     , Show (Matrix r e)
+     , Eq (Matrix r e)
      )
   => e -- ^ Epsilon
   -> Fun e e
@@ -190,7 +191,7 @@ prop_Divide eps f arr e = e /= 0 ==> expectProp $ do
     arr ./. compute (transpose arr) `shouldThrow` (== SizeMismatchException (size arr) (Sz2 n m))
 
 prop_Floating ::
-     forall r e. (RealFloat e, Source r Ix2 e, NumericFloat r e, Show e)
+     forall r e. (RealFloat e, Source r e, NumericFloat r e, Show e)
   => e
   -> Matrix r e
   -> Property
@@ -215,7 +216,7 @@ prop_Floating eps arr = expectProp $ do
   epsilonFoldableExpect eps (delay (atanhA arr)) (A.map atanh arr)
 
 prop_Floating2 ::
-     forall r e. (RealFloat e, Mutable r Ix2 e, NumericFloat r e, Show e)
+     forall r e. (RealFloat e, Mutable r e, NumericFloat r e, Show e)
   => e
   -> Matrix r e
   -> Fun e e
@@ -231,11 +232,12 @@ prop_Floating2 eps arr1 f = expectProp $ do
 mutableNumericSpec ::
      forall r e.
      ( Numeric r e
-     , Mutable r Ix2 e
+     , Mutable r e
+     , Construct r Ix1 e
+     , Construct r Ix2 e
      , InnerSlice r Ix2 e
      , OuterSlice r Ix2 e
-     , Source (R r) Ix1 e
-     , Mutable r Ix1 e
+     , Source (R r) e
      , Eq e
      , Show e
      , Function e
@@ -273,21 +275,19 @@ mutableNumericSpec =
 mutableNumericFloatSpec ::
      forall r.
      ( NumericFloat r Float
-     , Mutable r Ix1 Float
-     , Mutable r Ix2 Float
-     , Arbitrary (Array r Ix1 Float)
-     , Arbitrary (Array r Ix2 Float)
-     , Show (Array r Ix1 Float)
-     , Show (Array r Ix2 Float)
-     , Eq (Array r Ix2 Float)
+     , Mutable r Float
+     , Arbitrary (Vector r Float)
+     , Arbitrary (Matrix r Float)
+     , Show (Vector r Float)
+     , Show (Matrix r Float)
+     , Eq (Matrix r Float)
      , NumericFloat r Double
-     , Mutable r Ix1 Double
-     , Mutable r Ix2 Double
-     , Arbitrary (Array r Ix1 Double)
-     , Arbitrary (Array r Ix2 Double)
-     , Show (Array r Ix1 Double)
-     , Show (Array r Ix2 Double)
-     , Eq (Array r Ix2 Double)
+     , Mutable r Double
+     , Arbitrary (Vector r Double)
+     , Arbitrary (Matrix r Double)
+     , Show (Vector r Double)
+     , Show (Matrix r Double)
+     , Eq (Matrix r Double)
      )
   => Spec
 mutableNumericFloatSpec = do
@@ -308,6 +308,6 @@ mutableNumericFloatSpec = do
       prop "Power" $ prop_Power @r ed
 
 prop_Power ::
-     (Numeric r e, Source r Ix2 e, RealFloat e, Show e) => e -> Matrix r e -> Int -> Property
+     (Numeric r e, Source r e, RealFloat e, Show e) => e -> Matrix r e -> Int -> Property
 prop_Power eps arr p = expectProp $
   epsilonFoldableExpect eps (delay (arr .^^ p)) (A.map (^^ p) arr)

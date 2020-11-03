@@ -159,11 +159,12 @@ toPrimV6 f v1 = toPrimV5 (f (toPrimitiveVector v1))
 (!==!) :: (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
 (!==!) arr vec = toPrimitiveVector (convert arr) === vec
 
-(!!==!!) :: (Eq e, Show e, Prim e, Source r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
+(!!==!!) ::
+     (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
 (!!==!!) arr vec = property $ do
   eRes <- try (pure $! vec)
   case eRes of
-    Right vec' -> toPrimitiveVector (computeSource arr) `shouldBe` vec'
+    Right vec' -> toPrimitiveVector (compute arr) `shouldBe` vec'
     Left (_exc :: ErrorCall) ->
       shouldThrow (pure $! computeAs P arr) sizeException
 
@@ -955,7 +956,7 @@ spec =
           prop "fmap" $ \(v :: Vector DS Word) (f :: Fun Word Int) ->
             fmap (apply f) v !==! VP.map (apply f) (toPrimitiveVector (compute v))
           prop "<$" $ \(v :: Vector DS Word) (a :: Char) ->
-            (a <$ v) !==! VP.replicate (totalElem (size v)) a
+            (a <$ v) !==! VP.replicate (length v) a
           prop "smap" $ \(v :: Vector P Word) (f :: Fun Word Int) ->
             V.smap (apply f) v !==! VP.map (apply f) (toPrimitiveVector v)
           prop "simap" $ \(v :: Vector P Word) (f :: Fun (Int, Word) Int) ->

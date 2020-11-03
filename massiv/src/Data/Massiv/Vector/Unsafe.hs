@@ -56,14 +56,14 @@ import qualified Data.Massiv.Vector.Stream as S
 -- |
 --
 -- @since 0.5.0
-unsafeHead :: Source r Ix1 e => Vector r e -> e
+unsafeHead :: Source r e => Vector r e -> e
 unsafeHead = (`unsafeLinearIndex` 0)
 {-# INLINE unsafeHead #-}
 
 -- |
 --
 -- @since 0.5.0
-unsafeLast :: Source r Ix1 e => Vector r e -> e
+unsafeLast :: Source r e => Vector r e -> e
 unsafeLast v = unsafeLinearIndex v (max 0 (unSz (size v) - 1))
 {-# INLINE unsafeLast #-}
 
@@ -74,7 +74,7 @@ unsafeLast v = unsafeLinearIndex v (max 0 (unSz (size v) - 1))
 -- |
 --
 -- @since 0.5.0
-unsafeIndexM :: (Source r Ix1 e, Monad m) => Vector r e -> Ix1 -> m e
+unsafeIndexM :: (Source r e, Monad m) => Vector r e -> Ix1 -> m e
 unsafeIndexM v i = pure $! unsafeLinearIndex v i
 {-# INLINE unsafeIndexM #-}
 
@@ -82,14 +82,14 @@ unsafeIndexM v i = pure $! unsafeLinearIndex v i
 -- |
 --
 -- @since 0.5.0
-unsafeHeadM :: Monad m => Source r Ix1 e => Vector r e -> m e
+unsafeHeadM :: (Monad m, Source r e) => Vector r e -> m e
 unsafeHeadM v = pure $! unsafeHead v
 {-# INLINE unsafeHeadM #-}
 
 -- |
 --
 -- @since 0.5.0
-unsafeLastM :: Monad m => Source r Ix1 e => Vector r e -> m e
+unsafeLastM :: (Monad m, Source r e) => Vector r e -> m e
 unsafeLastM v = pure $! unsafeLast v
 {-# INLINE unsafeLastM #-}
 
@@ -102,7 +102,7 @@ unsafeLastM v = pure $! unsafeLast v
 -- |
 --
 -- @since 0.5.0
-unsafeInit :: Source r Ix1 e => Vector r e -> Vector r e
+unsafeInit :: Source r e => Vector r e -> Vector r e
 unsafeInit v = unsafeLinearSlice 0 (SafeSz (coerce (size v) - 1)) v
 {-# INLINE unsafeInit #-}
 
@@ -110,7 +110,7 @@ unsafeInit v = unsafeLinearSlice 0 (SafeSz (coerce (size v) - 1)) v
 -- |
 --
 -- @since 0.5.0
-unsafeTail :: Source r Ix1 e => Vector r e -> Vector r e
+unsafeTail :: Source r e => Vector r e -> Vector r e
 unsafeTail = unsafeDrop 1
 {-# INLINE unsafeTail #-}
 
@@ -118,14 +118,14 @@ unsafeTail = unsafeDrop 1
 -- |
 --
 -- @since 0.5.0
-unsafeTake :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+unsafeTake :: Source r e => Sz1 -> Vector r e -> Vector r e
 unsafeTake = unsafeLinearSlice 0
 {-# INLINE unsafeTake #-}
 
 -- |
 --
 -- @since 0.5.0
-unsafeDrop :: Source r Ix1 e => Sz1 -> Vector r e -> Vector r e
+unsafeDrop :: Source r e => Sz1 -> Vector r e -> Vector r e
 unsafeDrop (Sz d) v = unsafeLinearSlice d (SafeSz (coerce (size v) - d)) v
 {-# INLINE unsafeDrop #-}
 
@@ -139,7 +139,7 @@ unsafeDrop (Sz d) v = unsafeLinearSlice d (SafeSz (coerce (size v) - d)) v
 --
 -- @since 0.5.1
 unsafeFromListN :: Sz1 -> [e] -> Vector DS e
-unsafeFromListN (Sz n) = fromSteps . S.unsafeFromListN n
+unsafeFromListN n = fromSteps . S.unsafeFromListN n
 {-# INLINE unsafeFromListN #-}
 
 -- | /O(n)/ - Right unfolding function with at most @n@ number of elements.
@@ -158,7 +158,7 @@ unsafeUnfoldrN ::
   -- is reached.
   -> s -- ^ Inititial element.
   -> Vector DS e
-unsafeUnfoldrN (Sz n) f = DSArray . S.unsafeUnfoldrN n f
+unsafeUnfoldrN n f = DSArray . S.unsafeUnfoldrN n f
 {-# INLINE unsafeUnfoldrN #-}
 
 
@@ -172,5 +172,5 @@ unsafeUnfoldrN (Sz n) f = DSArray . S.unsafeUnfoldrN n f
 --
 -- @since 0.5.1
 unsafeUnfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
-unsafeUnfoldrNM (Sz n) f = fromStepsM . S.unsafeUnfoldrNM n f
+unsafeUnfoldrNM n f = fromStepsM . S.unsafeUnfoldrNM n f
 {-# INLINE unsafeUnfoldrNM #-}

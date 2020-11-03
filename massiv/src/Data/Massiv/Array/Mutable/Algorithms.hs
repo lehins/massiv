@@ -35,8 +35,8 @@ import Data.Massiv.Core.Common
 --
 -- @since 0.3.2
 unstablePartitionM ::
-     forall r e m. (Mutable r Ix1 e, PrimMonad m)
-  => MArray (PrimState m) r Ix1 e
+     forall r e m. (Mutable r e, PrimMonad m)
+  => MVector (PrimState m) r e
   -> (e -> Bool) -- ^ Predicate
   -> m Ix1
 unstablePartitionM marr f = unsafeUnstablePartitionRegionM marr f 0 (unSz (msize marr) - 1)

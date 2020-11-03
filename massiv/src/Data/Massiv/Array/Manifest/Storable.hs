@@ -87,25 +87,35 @@ instance (Storable e, Ord e, Index ix) => Ord (Array S ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
-instance (Storable e, Index ix) => Construct S ix e where
+instance Strategy S where
+  getComp = sComp
+  {-# INLINE getComp #-}
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
+instance (Storable e, Index ix) => Construct S ix e where
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-
-instance (Storable e, Index ix) => Source S ix e where
+instance VS.Storable e => Source S e where
   unsafeLinearIndex (SArray _ _ v) =
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
   unsafeLinearSlice i k (SArray c _ v) = SArray c k $ VS.unsafeSlice i (unSz k) v
   {-# INLINE unsafeLinearSlice #-}
 
-instance Index ix => Resize S ix where
+instance Index ix => Shape S ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+instance Size S where
+  size = sSize
+  {-# INLINE size #-}
+
+instance Resize S where
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -140,18 +150,21 @@ instance {-# OVERLAPPING #-} Storable e => Slice S Ix1 e where
   {-# INLINE unsafeSlice #-}
 
 
-instance (Index ix, Storable e) => Manifest S ix e where
+instance Storable e => Manifest S e where
 
   unsafeLinearIndexM (SArray _ _ v) =
     INDEX_CHECK("(Manifest S ix e).unsafeLinearIndexM", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (Index ix, Storable e) => Mutable S ix e where
+instance Storable e => Mutable S e where
   data MArray s S ix e = MSArray !(Sz ix) !(VS.MVector s e)
 
   msize (MSArray sz _) = sz
   {-# INLINE msize #-}
+
+  munsafeResize sz (MSArray _ mvec) = MSArray sz mvec
+  {-# INLINE munsafeResize #-}
 
   unsafeThaw (SArray _ sz v) = MSArray sz <$> VS.unsafeThaw v
   {-# INLINE unsafeThaw #-}
@@ -213,10 +226,6 @@ instance (Index ix, Storable e) => Mutable S ix e where
 
 instance (Index ix, Storable e) => Load S ix e where
   type R S = M
-  size = sSize
-  {-# INLINE size #-}
-  getComp = sComp
-  {-# INLINE getComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 

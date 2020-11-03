@@ -135,7 +135,7 @@ extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 --
 -- @since 0.3.0
 resizeM ::
-     (MonadThrow m, Index ix', Load r ix e, Resize r ix)
+     (MonadThrow m, Index ix', Index ix, Resize r)
   => Sz ix'
   -> Array r ix e
   -> m (Array r ix' e)
@@ -145,14 +145,14 @@ resizeM sz arr = guardNumberOfElements (size arr) sz >> pure (unsafeResize sz ar
 -- | Same as `resizeM`, but will throw an error if supplied dimensions are incorrect.
 --
 -- @since 0.1.0
-resize' :: (Index ix', Load r ix e, Resize r ix) => Sz ix' -> Array r ix e -> Array r ix' e
+resize' :: (Index ix', Index ix, Resize r) => Sz ix' -> Array r ix e -> Array r ix' e
 resize' sz = either throw id . resizeM sz
 {-# INLINE resize' #-}
 
 -- | /O(1)/ - Reduce a multi-dimensional array into a flat vector
 --
 -- @since 0.3.1
-flatten :: (Load r ix e, Resize r ix) => Array r ix e -> Array r Ix1 e
+flatten :: (Index ix, Resize r) => Array r ix e -> Vector r e
 flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
 {-# INLINE flatten #-}
 
@@ -176,7 +176,7 @@ flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
 --   ]
 --
 -- @since 0.1.0
-transpose :: Source r Ix2 e => Array r Ix2 e -> Array D Ix2 e
+transpose :: Source r e => Matrix r e -> Matrix D e
 transpose = transposeInner
 {-# INLINE [1] transpose #-}
 
@@ -218,8 +218,8 @@ transpose = transposeInner
 --   ]
 --
 -- @since 0.1.0
-transposeInner :: (Index (Lower ix), Source r' ix e)
-               => Array r' ix e -> Array D ix e
+transposeInner :: (Index (Lower ix), Index ix, Source r e)
+               => Array r ix e -> Array D ix e
 transposeInner !arr = makeArray (getComp arr) newsz newVal
   where
     transInner !ix =
@@ -269,8 +269,8 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 --
 --
 -- @since 0.1.0
-transposeOuter :: (Index (Lower ix), Source r' ix e)
-               => Array r' ix e -> Array D ix e
+transposeOuter :: (Index (Lower ix), Index ix, Source r e)
+               => Array r ix e -> Array D ix e
 transposeOuter !arr = makeArray (getComp arr) newsz newVal
   where
     transOuter !ix =
@@ -314,7 +314,7 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --   ]
 --
 -- @since 0.4.1
-reverse :: (IsIndexDimension ix n, Source r ix e) => Dimension n -> Array r ix e -> Array D ix e
+reverse :: (IsIndexDimension ix n, Index ix, Source r e) => Dimension n -> Array r ix e -> Array D ix e
 reverse dim = reverse' (fromDimension dim)
 {-# INLINE reverse #-}
 
@@ -322,7 +322,7 @@ reverse dim = reverse' (fromDimension dim)
 -- `IndexDimensionException` for an incorrect dimension.
 --
 -- @since 0.4.1
-reverseM :: (MonadThrow m, Source r ix e) => Dim -> Array r ix e -> m (Array D ix e)
+reverseM :: (MonadThrow m, Index ix, Source r e) => Dim -> Array r ix e -> m (Array D ix e)
 reverseM dim arr = do
   let sz = size arr
   k <- getDimM (unSz sz) dim
@@ -334,7 +334,7 @@ reverseM dim arr = do
 -- `IndexDimensionException` from pure code.
 --
 -- @since 0.4.1
-reverse' :: Source r ix e => Dim -> Array r ix e -> Array D ix e
+reverse' :: (Index ix, Source r e) => Dim -> Array r ix e -> Array D ix e
 reverse' dim = either throw id . reverseM dim
 {-# INLINE reverse' #-}
 
@@ -368,7 +368,7 @@ reverse' dim = either throw id . reverseM dim
 -- @since 0.3.0
 backpermuteM ::
      forall r ix e r' ix' m.
-     (Mutable r ix e, Source r' ix' e, MonadUnliftIO m, PrimMonad m, MonadThrow m)
+     (Mutable r e, Index ix, Source r' e, Index ix', MonadUnliftIO m, PrimMonad m, MonadThrow m)
   => Sz ix -- ^ Size of the result array
   -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
   -> Array r' ix' e -- ^ Source array.
@@ -383,11 +383,11 @@ backpermuteM sz ixF !arr = generateArray (getComp arr) sz (evaluateM arr . ixF)
 -- * Throws a runtime `IndexOutOfBoundsException` from pure code.
 --
 -- @since 0.3.0
-backpermute' :: (Source r' ix' e, Index ix) =>
-                Sz ix -- ^ Size of the result array
-             -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
-             -> Array r' ix' e -- ^ Source array.
-             -> Array D ix e
+backpermute' :: (Source r e, Index ix, Index ix') =>
+                Sz ix' -- ^ Size of the result array
+             -> (ix' -> ix) -- ^ A function that maps indices of the new array into the source one.
+             -> Array r ix e -- ^ Source array.
+             -> Array D ix' e
 backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 {-# INLINE backpermute' #-}
 
@@ -429,7 +429,7 @@ backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 --
 -- @since 0.3.0
 appendM ::
-     forall r1 r2 ix e m. (MonadThrow m, Source r1 ix e, Source r2 ix e)
+     forall r1 r2 ix e m. (MonadThrow m, Index ix, Source r1 e, Source r2 e)
   => Dim
   -> Array r1 ix e
   -> Array r2 ix e
@@ -463,7 +463,7 @@ appendM n !arr1 !arr2 = do
 -- | Same as `appendM`, but will throw an exception in pure code on mismatched sizes.
 --
 -- @since 0.3.0
-append' :: (Source r1 ix e, Source r2 ix e) =>
+append' :: (Index ix, Source r1 e, Source r2 e) =>
            Dim -> Array r1 ix e -> Array r2 ix e -> Array DL ix e
 append' dim arr1 arr2 = either throw id $ appendM dim arr1 arr2
 {-# INLINE append' #-}
@@ -471,7 +471,7 @@ append' dim arr1 arr2 = either throw id $ appendM dim arr1 arr2
 -- | Concat many arrays together along some dimension.
 --
 -- @since 0.3.0
-concat' :: (Foldable f, Source r ix e) => Dim -> f (Array r ix e) -> Array DL ix e
+concat' :: (Foldable f, Index ix, Source r e) => Dim -> f (Array r ix e) -> Array DL ix e
 concat' n arrs = either throw id $ concatM n arrs
 {-# INLINE concat' #-}
 
@@ -482,7 +482,7 @@ concat' n arrs = either throw id $ concatM n arrs
 --
 -- @since 0.3.0
 concatM ::
-     forall r ix e f m. (MonadThrow m, Foldable f, Source r ix e)
+     forall r ix e f m. (MonadThrow m, Foldable f, Index ix, Source r e)
   => Dim
   -> f (Array r ix e)
   -> m (Array DL ix e)
@@ -583,7 +583,7 @@ concatM n !arrsF =
 --
 -- @since 0.5.4
 stackSlicesM ::
-     forall r ix e f m. (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
+     forall r ix e f m. (Foldable f, MonadThrow m, Index (Lower ix), Source r e, Index ix)
   => Dim
   -> f (Array r (Lower ix) e)
   -> m (Array DL ix e)
@@ -643,7 +643,7 @@ stackSlicesM dim !arrsF = do
 --
 -- @since 0.5.4
 stackOuterSlicesM ::
-     forall r ix e f m. (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
+     forall r ix e f m. (Foldable f, MonadThrow m, Index (Lower ix), Source r e, Index ix)
   => f (Array r (Lower ix) e)
   -> m (Array DL ix e)
 stackOuterSlicesM = stackSlicesM (dimensions (Proxy :: Proxy ix))
@@ -683,7 +683,7 @@ stackOuterSlicesM = stackSlicesM (dimensions (Proxy :: Proxy ix))
 --
 -- @since 0.5.4
 stackInnerSlicesM ::
-     forall r ix e f m. (Foldable f, MonadThrow m, Source r (Lower ix) e, Index ix)
+     forall r ix e f m. (Foldable f, MonadThrow m, Index (Lower ix), Source r e, Index ix)
   => f (Array r (Lower ix) e)
   -> m (Array DL ix e)
 stackInnerSlicesM = stackSlicesM 1
@@ -731,7 +731,7 @@ splitAt' dim i arr = either throw id $ splitAtM dim i arr
 --
 -- @since 0.3.5
 splitExtractM ::
-     (MonadThrow m, Extract r ix e, Source (R r) ix e)
+     (MonadThrow m, Extract r ix e, Source (R r) e)
   => Dim -- ^ Dimension along which to do the extraction
   -> Ix1 -- ^ Start index along the dimension that needs to be extracted
   -> Sz Ix1 -- ^ Size of the extracted array along the dimension that it will be extracted
@@ -774,7 +774,7 @@ splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
 --
 -- @since 0.3.5
 deleteRegionM ::
-     (MonadThrow m, Extract r ix e, Source (R r) ix e)
+     (MonadThrow m, Extract r ix e, Source (R r) e)
   => Dim -- ^ Along which axis should the removal happen
   -> Ix1 -- ^ At which index to start dropping slices
   -> Sz Ix1 -- ^ Number of slices to drop
@@ -806,7 +806,7 @@ deleteRegionM dim ix sz arr = do
 --
 -- @since 0.3.5
 deleteRowsM ::
-     (MonadThrow m, Extract r ix e, Source (R r) ix e, Index (Lower ix))
+     (MonadThrow m, Extract r ix e, Source (R r) e, Index (Lower ix))
   => Ix1
   -> Sz Ix1
   -> Array r ix e
@@ -835,7 +835,7 @@ deleteRowsM = deleteRegionM 2
 --
 -- @since 0.3.5
 deleteColumnsM ::
-     (MonadThrow m, Extract r ix e, Source (R r) ix e)
+     (MonadThrow m, Extract r ix e, Source (R r) e)
   => Ix1
   -> Sz Ix1
   -> Array r ix e
@@ -848,7 +848,7 @@ deleteColumnsM = deleteRegionM 1
 --
 -- @since 0.3.0
 downsample ::
-     forall r ix e. Source r ix e
+     forall r ix e. (Source r e, Load r ix e)
   => Stride ix
   -> Array r ix e
   -> Array DL ix e
@@ -903,7 +903,7 @@ downsample stride arr =
 --
 -- @since 0.3.0
 upsample ::
-     forall r ix e. Load r ix e
+     forall r ix e. (Resize r, Load r ix e)
   => e -- ^ Element to use for filling the newly added cells
   -> Stride ix -- ^ Fill cells according to this stride
   -> Array r ix e -- ^ Array that will have cells added to
@@ -936,7 +936,7 @@ upsample !fillWith safeStride arr =
 -- @since 0.3.0
 transformM ::
      forall r ix e r' ix' e' a m.
-     (Mutable r ix e, Source r' ix' e', MonadUnliftIO m, PrimMonad m, MonadThrow m)
+     (Mutable r e, Index ix, Source r' e', Index ix', MonadUnliftIO m, PrimMonad m, MonadThrow m)
   => (Sz ix' -> m (Sz ix, a))
   -> (a -> (ix' -> m e') -> ix -> m e)
   -> Array r' ix' e'
@@ -951,7 +951,7 @@ transformM getSzM getM arr = do
 --
 -- @since 0.3.0
 transform' ::
-     (Source r' ix' e', Index ix)
+     (Source r' e', Index ix', Index ix)
   => (Sz ix' -> (Sz ix, a))
   -> (a -> (ix' -> e') -> ix -> e)
   -> Array r' ix' e'
@@ -965,7 +965,16 @@ transform' getSz get arr = makeArray (getComp arr) sz (get a (evaluate' arr))
 --
 -- @since 0.3.0
 transform2M ::
-     (Mutable r ix e, Source r1 ix1 e1, Source r2 ix2 e2, MonadUnliftIO m, PrimMonad m, MonadThrow m)
+     ( Mutable r e
+     , Index ix
+     , Source r1 e1
+     , Source r2 e2
+     , Index ix1
+     , Index ix2
+     , MonadUnliftIO m
+     , PrimMonad m
+     , MonadThrow m
+     )
   => (Sz ix1 -> Sz ix2 -> m (Sz ix, a))
   -> (a -> (ix1 -> m e1) -> (ix2 -> m e2) -> ix -> m e)
   -> Array r1 ix1 e1
@@ -981,7 +990,7 @@ transform2M getSzM getM arr1 arr2 = do
 --
 -- @since 0.3.0
 transform2' ::
-     (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
+     (Source r1 e1, Source r2 e2, Index ix, Index ix1, Index ix2)
   => (Sz ix1 -> Sz ix2 -> (Sz ix, a))
   -> (a -> (ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1
@@ -1026,7 +1035,7 @@ transform2' getSz get arr1 arr2 =
 --
 -- @since 0.3.1
 zoomWithGrid ::
-     forall r ix e. Source r ix e
+     forall r ix e. (Index ix, Source r e)
   => e -- ^ Value to use for the grid
   -> Stride ix -- ^ Scaling factor
   -> Array r ix e -- ^ Source array
@@ -1080,7 +1089,7 @@ zoomWithGrid gridVal (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz (Ju
 --
 -- @since 0.4.4
 zoom ::
-     forall r ix e. Source r ix e
+     forall r ix e. (Index ix, Source r e)
   => Stride ix -- ^ Scaling factor
   -> Array r ix e -- ^ Source array
   -> Array DL ix e

@@ -2,6 +2,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -22,10 +23,13 @@ module Data.Massiv.Core.Common
   , Elt
   , Steps(..)
   , Stream(..)
+  , Strategy(..)
   , Construct(..)
   , Source(..)
   , Load(..)
   , StrideLoad(..)
+  , Size(..)
+  , Shape(..)
   , Resize(..)
   , Extract(..)
   , Slice(..)
@@ -54,10 +58,10 @@ module Data.Massiv.Core.Common
   , singleton
   -- * Size
   , elemsCount
-  , linearSize
+  , isNull
   , isNotEmpty
   , Sz(SafeSz)
-  , Size(..)
+  , LengthHint(..)
   -- * Indexing
   , (!?)
   , index
@@ -69,6 +73,9 @@ module Data.Massiv.Core.Common
   , borderIndex
   , evaluateM
   , evaluate'
+  , inline0
+  , inline1
+  , inline2
   , module Data.Massiv.Core.Index
   -- * Common Operations
   , imapM_
@@ -99,13 +106,13 @@ import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
-                          scheduleWork, scheduleWork_, withScheduler_, trivialScheduler_)
+                          scheduleWork, scheduleWork_, trivialScheduler_,
+                          withScheduler_)
 import Control.Scheduler.Global
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Typeable
-import Data.Vector.Fusion.Bundle.Size
 import qualified Data.Vector.Fusion.Stream.Monadic as S (Stream)
 import Data.Vector.Fusion.Util
 
@@ -157,14 +164,10 @@ class Load r ix e => Stream r ix e where
 
 data Steps m e = Steps
   { stepsStream :: S.Stream m e
-  , stepsSize   :: Size
+  , stepsSize   :: LengthHint
   }
 
-
--- | Array types that can be constructed.
-class (Typeable r, Index ix) => Construct r ix e where
-  {-# MINIMAL setComp,(makeArray|makeArrayLinear) #-}
-
+class Typeable r => Strategy r where
   -- | Set computation strategy for this array
   --
   -- ==== __Example__
@@ -180,6 +183,17 @@ class (Typeable r, Index ix) => Construct r ix e where
   --   [ 0 ]
   --
   setComp :: Comp -> Array r ix e -> Array r ix e
+
+  -- | Get computation strategy of this array
+  --
+  -- @since 0.1.0
+  getComp :: Array r ix e -> Comp
+
+-- TODO: rename to ConstructP
+
+-- | Array types that can be constructed.
+class Load r ix e => Construct r ix e where
+  {-# MINIMAL (makeArray|makeArrayLinear) #-}
 
   -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
   -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
@@ -226,60 +240,87 @@ class (Typeable r, Index ix) => Construct r ix e where
   makeArrayLinear comp sz f = makeArray comp sz (f . toLinearIndex sz)
   {-# INLINE makeArrayLinear #-}
 
+
   replicate :: Comp -> Sz ix -> e -> Array r ix e
   replicate comp sz !e = makeArray comp sz (const e)
   {-# INLINE replicate #-}
 
-class Index ix => Resize r ix where
-  -- | /O(1)/ - Change the size of an array. Total number of elements should be the same, but it is
-  -- not validated.
-  unsafeResize :: Index ix' => Sz ix' -> Array r ix e -> Array r ix' e
+
+-- | Size hint
+--
+-- @since 0.6.0
+data LengthHint
+  = LengthExact Sz1 -- ^ Exact known size
+  | LengthMax Sz1 -- ^ Upper bound on the size
+  | LengthUnknown -- ^ Unknown size
+  deriving (Eq, Show)
 
 
-class Load r ix e => Extract r ix e where
-  -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
-  -- not validated.
-  unsafeExtract :: ix -> Sz ix -> Array r ix e -> Array (R r) ix e
+-- | A shape of an array.
+--
+-- @since 0.6.0
+class Index ix => Shape r ix where
 
+  -- | /O(1)/ - Check what do we know about the number of elements without doing any work
+  --
+  -- @since 0.6.0
+  linearSizeHint :: Array r ix e -> LengthHint
+  default linearSizeHint :: Size r => Array r ix e -> LengthHint
+  linearSizeHint = LengthExact . SafeSz . elemsCount
+  {-# INLINE linearSizeHint #-}
 
--- | Arrays that can be used as source to practically any manipulation function.
-class (Resize r ix, Load r ix e) => Source r ix e where
-  {-# MINIMAL (unsafeIndex|unsafeLinearIndex), unsafeLinearSlice #-}
+  -- | /O(n)/ - possibly iterate over the whole array before producing the answer
+  --
+  -- @since 0.5.8
+  linearSize :: Array r ix e -> Sz1
+  default linearSize :: Size r => Array r ix e -> Sz1
+  linearSize = SafeSz . elemsCount
+  {-# INLINE linearSize #-}
 
-  -- | Lookup element in the array. No bounds check is performed and access of
-  -- arbitrary memory is possible when invalid index is supplied.
+  -- | /O(n)/ - Rectangular size of an array that is inferred from looking at the first row in
+  -- each dimensions. For rectangular arrays this is the same as `size`
+  --
+  -- @since 0.6.0
+  outerSize :: Array r ix e -> Sz ix
+  default outerSize :: Size r => Array r ix e -> Sz ix
+  outerSize = size
+  {-# INLINE outerSize #-}
+
+  -- | /O(1)/ - Get the possible maximum linear size of an immutabe array. If the lookup
+  -- of size in constant time is not possible, `Nothing` will be returned. This value
+  -- will be used as the initial size of the mutable array into which the loading will
+  -- happen.
+  --
+  -- @since 0.6.0
+  maxLinearSize :: Array r ix e -> Maybe Sz1
+  maxLinearSize = lengthHintUpperBound . linearSizeHint
+  {-# INLINE maxLinearSize #-}
+
+  -- | /O(1)/ - Check if an array has no elements.
+  --
+  -- ==== __Examples__
+  --
+  -- >>> import Data.Massiv.Array
+  -- >>> isEmpty $ range Seq (Ix2 10 20) (11 :. 21)
+  -- False
+  -- >>> isEmpty $ range Seq (Ix2 10 20) (10 :. 21)
+  -- True
   --
   -- @since 0.1.0
-  unsafeIndex :: Array r ix e -> ix -> e
-  unsafeIndex =
-    INDEX_CHECK("(Source r ix e).unsafeIndex",
-                size, \ !arr -> unsafeLinearIndex arr . toLinearIndex (size arr))
-  {-# INLINE unsafeIndex #-}
+  isEmpty :: Array r ix e -> Bool
+  isEmpty = (0 ==) . linearSize
+  {-# INLINE isEmpty #-}
 
-  -- | Lookup element in the array using flat index in a row-major fashion. No
-  -- bounds check is performed
-  --
-  -- @since 0.1.0
-  unsafeLinearIndex :: Array r ix e -> Int -> e
-  unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
-  {-# INLINE unsafeLinearIndex #-}
 
-  -- | /O(1)/ - Source arrays also give us ability to look at their linear slices in
-  -- constant time
-  --
-  -- @since 0.5.0
-  unsafeLinearSlice :: Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
+lengthHintUpperBound :: LengthHint -> Maybe Sz1
+lengthHintUpperBound = \case
+    LengthExact sz -> Just sz
+    LengthMax sz   -> Just sz
+    LengthUnknown  -> Nothing
+{-# INLINE lengthHintUpperBound #-}
 
--- | Any array that can be computed and loaded into memory
-class (Typeable r, Index ix) => Load r ix e where
-  type family R r :: *
-  type instance R r = r
-  {-# MINIMAL getComp, size, (loadArrayM | loadArrayWithSetM) #-}
 
-  -- | Get computation strategy of this array
-  --
-  -- @since 0.1.0
-  getComp :: Array r ix e -> Comp
+class Size r where
 
   -- | Get the exact size of an immutabe array. Most of the time will produce the size in
   -- constant time, except for `DS` representation, which could result in evaluation of
@@ -287,6 +328,53 @@ class (Typeable r, Index ix) => Load r ix e where
   --
   -- @since 0.1.0
   size :: Array r ix e -> Sz ix
+
+class Size r => Resize r where
+  -- | /O(1)/ - Change the size of an array. Total number of elements should be the same, but it is
+  -- not validated.
+  unsafeResize :: (Index ix, Index ix') => Sz ix' -> Array r ix e -> Array r ix' e
+
+
+
+class (Size r, Index ix) => Extract r ix e where
+  -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
+  -- not validated.
+  unsafeExtract :: ix -> Sz ix -> Array r ix e -> Array (R r) ix e
+
+
+-- | Arrays that can be used as source to practically any manipulation function.
+class (Strategy r, Size r) => Source r e where
+  {-# MINIMAL (unsafeIndex|unsafeLinearIndex), unsafeLinearSlice #-}
+
+  -- | Lookup element in the array. No bounds check is performed and access of
+  -- arbitrary memory is possible when invalid index is supplied.
+  --
+  -- @since 0.1.0
+  unsafeIndex :: Index ix => Array r ix e -> ix -> e
+  unsafeIndex =
+    INDEX_CHECK("(Source r e).unsafeIndex",
+                size, \ !arr -> unsafeLinearIndex arr . toLinearIndex (size arr))
+  {-# INLINE unsafeIndex #-}
+
+  -- | Lookup element in the array using flat index in a row-major fashion. No
+  -- bounds check is performed
+  --
+  -- @since 0.1.0
+  unsafeLinearIndex :: Index ix => Array r ix e -> Int -> e
+  unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
+  {-# INLINE unsafeLinearIndex #-}
+
+  -- | /O(1)/ - Source arrays also give us ability to look at their linear slices in
+  -- constant time
+  --
+  -- @since 0.5.0
+  unsafeLinearSlice :: Index ix => Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
+
+-- | Any array that can be computed and loaded into memory
+class (Strategy r, Shape r ix) => Load r ix e where
+  type family R r :: *
+  type instance R r = r
+  {-# MINIMAL (loadArrayM | loadArrayWithSetM) #-}
 
   -- | Load an array into memory.
   --
@@ -318,59 +406,33 @@ class (Typeable r, Index ix) => Load r ix e where
   loadArrayWithSetM scheduler arr uWrite _ = loadArrayM scheduler arr uWrite
   {-# INLINE loadArrayWithSetM #-}
 
-  -- | /O(1)/ - Get the possible maximum size of an immutabe array. If the lookup of size
-  -- in constant time is not possible, `Nothing` will be returned. This value will be used
-  -- as the initial size of the mutable array into which the loading will happen.
-  --
-  -- @since 0.5.0
-  maxSize :: Array r ix e -> Maybe (Sz ix)
-  maxSize = Just . size
-  {-# INLINE maxSize #-}
-
-
-  -- | /O(1)/ - Check if an array has no elements.
-  --
-  -- ==== __Examples__
-  --
-  -- >>> import Data.Massiv.Array
-  -- >>> isEmpty $ range Seq (Ix2 10 20) (11 :. 21)
-  -- False
-  -- >>> isEmpty $ range Seq (Ix2 10 20) (10 :. 21)
-  -- True
-  --
-  -- @since 0.1.0
-  isEmpty :: Array r ix e -> Bool
-  isEmpty !arr = 0 == elemsCount arr
-  {-# INLINE isEmpty #-}
-
 
   -- | Load into a supplied mutable array sequentially. Returned array does not have to be
   -- the same
   --
   -- @since 0.5.7
   unsafeLoadIntoS ::
-       (Mutable r' ix e, PrimMonad m)
-    => MArray (PrimState m) r' ix e
+       (Mutable r' e, PrimMonad m)
+    => MVector (PrimState m) r' e
     -> Array r ix e
     -> m (MArray (PrimState m) r' ix e)
   unsafeLoadIntoS marr arr =
-    marr <$ loadArrayWithSetM trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
+    munsafeResize (outerSize arr) marr <$ loadArrayWithSetM trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
   {-# INLINE unsafeLoadIntoS #-}
 
   -- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
   --
   -- @since 0.5.7
   unsafeLoadIntoM ::
-       (Mutable r' ix e, MonadIO m)
-    => MArray RealWorld r' ix e
+       (Mutable r' e, MonadIO m)
+    => MVector RealWorld r' e
     -> Array r ix e
     -> m (MArray RealWorld r' ix e)
   unsafeLoadIntoM marr arr = do
     liftIO $ withMassivScheduler_ (getComp arr) $ \scheduler ->
       loadArrayWithSetM scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
-    pure marr
+    pure $ munsafeResize (outerSize arr) marr
   {-# INLINE unsafeLoadIntoM #-}
-
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
 withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()
@@ -378,9 +440,9 @@ withMassivScheduler_ comp f =
   case comp of
     Par -> withGlobalScheduler_ globalScheduler f
     Seq -> f trivialScheduler_
-    _ -> withScheduler_ comp f
+    _   -> withScheduler_ comp f
 
-class Load r ix e => StrideLoad r ix e where
+class (Size r, Load r ix e) => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
   -- `Source`.
   loadArrayWithStrideM
@@ -392,7 +454,7 @@ class Load r ix e => StrideLoad r ix e where
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
   default loadArrayWithStrideM
-    :: (Source r ix e, Monad m) =>
+    :: (Source r e, Monad m) =>
        Scheduler m ()
     -> Stride ix
     -> Sz ix
@@ -408,68 +470,87 @@ class Load r ix e => StrideLoad r ix e where
       {-# INLINE unsafeLinearWriteWithStride #-}
   {-# INLINE loadArrayWithStrideM #-}
 
+-- class (Load r ix e) => StrideLoad r ix e where
+-- class (Size r, StrideLoad r ix e) => StrideLoadP r ix e where
+  --
+  -- unsafeLoadIntoWithStrideST ::
+  --      Mutable r' ix e
+  --   => Array r ix e
+  --   -> Stride ix -- ^ Stride to use
+  --   -> MArray RealWorld r' ix e
+  --   -> m (MArray RealWorld r' ix e)
 
-class Load r ix e => OuterSlice r ix e where
+
+--TODO: rethink Size here to support outer slicing (Something like OuterSize?) Affects
+--only ragged arrays (L, LN and DS don't count, since they don't have constant time
+--slicing anyways)
+
+class (Size r, Load r ix e) => OuterSlice r ix e where
   -- | /O(1)/ - Take a slice out of an array from the outside
   unsafeOuterSlice :: Array r ix e -> Int -> Elt r ix e
 
-class Load r ix e => InnerSlice r ix e where
+class (Size r, Load r ix e) => InnerSlice r ix e where
   unsafeInnerSlice :: Array r ix e -> (Sz (Lower ix), Sz Int) -> Int -> Elt r ix e
 
-class Load r ix e => Slice r ix e where
+class (Size r, Load r ix e) => Slice r ix e where
   unsafeSlice :: MonadThrow m => Array r ix e -> ix -> Sz ix -> Dim -> m (Elt r ix e)
 
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
 -- @(`!`)@, @(`!?`)@, etc. are constrained to manifest arrays only.
-class Source r ix e => Manifest r ix e where
+class (Resize r, Source r e) => Manifest r e where
 
-  unsafeLinearIndexM :: Array r ix e -> Int -> e
+  unsafeLinearIndexM :: Index ix => Array r ix e -> Int -> e
 
 
-class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
+class Manifest r e => Mutable r e where
   data MArray s r ix e :: *
 
   -- | Get the size of a mutable array.
   --
   -- @since 0.1.0
-  msize :: MArray s r ix e -> Sz ix
+  msize :: Index ix => MArray s r ix e -> Sz ix
+
+  -- | Get the size of a mutable array.
+  --
+  -- @since 0.1.0
+  munsafeResize :: (Index ix', Index ix) => Sz ix' -> MArray s r ix e -> MArray s r ix' e
 
   -- | Convert immutable array into a mutable array without copy.
   --
   -- @since 0.1.0
-  unsafeThaw :: PrimMonad m => Array r ix e -> m (MArray (PrimState m) r ix e)
+  unsafeThaw :: (Index ix, PrimMonad m) => Array r ix e -> m (MArray (PrimState m) r ix e)
 
   -- | Convert mutable array into an immutable array without copy.
   --
   -- @since 0.1.0
-  unsafeFreeze :: PrimMonad m => Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
+  unsafeFreeze :: (Index ix, PrimMonad m) => Comp -> MArray (PrimState m) r ix e -> m (Array r ix e)
 
   -- | Create new mutable array, leaving it's elements uninitialized. Size isn't validated either.
   --
   -- @since 0.1.0
-  unsafeNew :: PrimMonad m => Sz ix -> m (MArray (PrimState m) r ix e)
+  unsafeNew :: (Index ix, PrimMonad m) => Sz ix -> m (MArray (PrimState m) r ix e)
 
   -- | Read an element at linear row-major index
   --
   -- @since 0.1.0
-  unsafeLinearRead :: PrimMonad m => MArray (PrimState m) r ix e -> Int -> m e
+  unsafeLinearRead :: (Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> Int -> m e
 
   -- | Write an element into mutable array with linear row-major index
   --
   -- @since 0.1.0
-  unsafeLinearWrite :: PrimMonad m => MArray (PrimState m) r ix e -> Int -> e -> m ()
+  unsafeLinearWrite :: (Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> Int -> e -> m ()
 
   -- | Initialize mutable array to some default value.
   --
   -- @since 0.3.0
-  initialize :: PrimMonad m => MArray (PrimState m) r ix e -> m ()
+  initialize :: (Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> m ()
 
   -- | Create new mutable array while initializing all elements to some default value.
   --
   -- @since 0.3.0
-  initializeNew :: PrimMonad m => Maybe e -> Sz ix -> m (MArray (PrimState m) r ix e)
+  initializeNew :: (Index ix, PrimMonad m) => Maybe e -> Sz ix -> m (MArray (PrimState m) r ix e)
   initializeNew Nothing sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
   initializeNew (Just e) sz = newMArray sz e
   {-# INLINE initializeNew #-}
@@ -477,7 +558,7 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   -- | Create new mutable array while initializing all elements to the specified value.
   --
   -- @since 0.6.0
-  newMArray :: PrimMonad m => Sz ix -> e -> m (MArray (PrimState m) r ix e)
+  newMArray :: (Index ix, PrimMonad m) => Sz ix -> e -> m (MArray (PrimState m) r ix e)
   newMArray sz e = do
     marr <- unsafeNew sz
     marr <$ unsafeLinearSet marr 0 (SafeSz (totalElem sz)) e
@@ -486,7 +567,7 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   -- | Set all cells in the mutable array within the range to a specified value.
   --
   -- @since 0.3.0
-  unsafeLinearSet :: PrimMonad m =>
+  unsafeLinearSet :: (Index ix, PrimMonad m) =>
                      MArray (PrimState m) r ix e -> Ix1 -> Sz1 -> e -> m ()
   unsafeLinearSet marr offset len e =
     loopM_ offset (< (offset + unSz len)) (+1) (\i -> unsafeLinearWrite marr i e)
@@ -495,7 +576,7 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   -- | Copy part of one mutable array into another
   --
   -- @since 0.3.6
-  unsafeLinearCopy :: (Mutable r ix' e, PrimMonad m) =>
+  unsafeLinearCopy :: (Index ix', Index ix, PrimMonad m) =>
                       MArray (PrimState m) r ix' e -- ^ Source mutable array
                    -> Ix1 -- ^ Starting index at source array
                    -> MArray (PrimState m) r ix e -- ^ Target mutable array
@@ -511,7 +592,7 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   -- | Copy a part of a pure array into a mutable array
   --
   -- @since 0.3.6
-  unsafeArrayLinearCopy :: (Mutable r ix' e, PrimMonad m) =>
+  unsafeArrayLinearCopy :: (Index ix', Index ix, PrimMonad m) =>
                            Array r ix' e -- ^ Source pure array
                         -> Ix1 -- ^ Starting index at source array
                         -> MArray (PrimState m) r ix e -- ^ Target mutable array
@@ -529,7 +610,7 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   -- no longer be used.
   --
   -- @since 0.3.6
-  unsafeLinearShrink :: PrimMonad m =>
+  unsafeLinearShrink :: (Index ix, PrimMonad m) =>
                         MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
   unsafeLinearShrink = unsafeDefaultLinearShrink
   {-# INLINE unsafeLinearShrink #-}
@@ -539,7 +620,7 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   -- should no longer be used.
   --
   -- @since 0.3.6
-  unsafeLinearGrow :: PrimMonad m =>
+  unsafeLinearGrow :: (Index ix, PrimMonad m) =>
                       MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
   unsafeLinearGrow marr sz = do
     marr' <- unsafeNew sz
@@ -549,7 +630,7 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
 
 
 unsafeDefaultLinearShrink ::
-     (Mutable r ix e, PrimMonad m)
+     (Mutable r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> Sz ix
   -> m (MArray (PrimState m) r ix e)
@@ -563,7 +644,7 @@ unsafeDefaultLinearShrink marr sz = do
 -- | Read an array element
 --
 -- @since 0.1.0
-unsafeRead :: (Mutable r ix e, PrimMonad m) =>
+unsafeRead :: (Mutable r e, Index ix, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> m e
 unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeRead #-}
@@ -571,7 +652,7 @@ unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
 -- | Write an element into array
 --
 -- @since 0.1.0
-unsafeWrite :: (Mutable r ix e, PrimMonad m) =>
+unsafeWrite :: (Mutable r e, Index ix, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> e -> m ()
 unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeWrite #-}
@@ -580,7 +661,7 @@ unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
 -- | Modify an element in the array with a monadic action. Returns the previous value.
 --
 -- @since 0.4.0
-unsafeLinearModify :: (Mutable r ix e, PrimMonad m) =>
+unsafeLinearModify :: (Mutable r e, Index ix, PrimMonad m) =>
                       MArray (PrimState m) r ix e -> (e -> m e) -> Int -> m e
 unsafeLinearModify !marr f !i = do
   v <- unsafeLinearRead marr i
@@ -592,7 +673,7 @@ unsafeLinearModify !marr f !i = do
 -- | Modify an element in the array with a monadic action. Returns the previous value.
 --
 -- @since 0.4.0
-unsafeModify :: (Mutable r ix e, PrimMonad m) =>
+unsafeModify :: (Mutable r e, Index ix, PrimMonad m) =>
                 MArray (PrimState m) r ix e -> (e -> m e) -> ix -> m e
 unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (msize marr) ix)
 {-# INLINE unsafeModify #-}
@@ -601,8 +682,8 @@ unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (msize marr) i
 -- values.
 --
 -- @since 0.4.0
-unsafeSwap :: (Mutable r ix e, PrimMonad m) =>
-                    MArray (PrimState m) r ix e -> ix -> ix -> m (e, e)
+unsafeSwap :: (Mutable r e, Index ix, PrimMonad m) =>
+              MArray (PrimState m) r ix e -> ix -> ix -> m (e, e)
 unsafeSwap !marr !ix1 !ix2 = unsafeLinearSwap marr (toLinearIndex sz ix1) (toLinearIndex sz ix2)
   where sz = msize marr
 {-# INLINE unsafeSwap #-}
@@ -612,7 +693,7 @@ unsafeSwap !marr !ix1 !ix2 = unsafeLinearSwap marr (toLinearIndex sz ix1) (toLin
 -- previous values.
 --
 -- @since 0.4.0
-unsafeLinearSwap :: (Mutable r ix e, PrimMonad m) =>
+unsafeLinearSwap :: (Mutable r e, Index ix, PrimMonad m) =>
                     MArray (PrimState m) r ix e -> Int -> Int -> m (e, e)
 unsafeLinearSwap !marr !i1 !i2 = do
   val1 <- unsafeLinearRead marr i1
@@ -632,23 +713,17 @@ class Construct r ix e => Ragged r ix e where
 
   emptyR :: Comp -> Array r ix e
 
-  isNull :: Array r ix e -> Bool
-
   consR :: Elt r ix e -> Array r ix e -> Array r ix e
 
   unconsR :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
 
   generateRaggedM :: Monad m => Comp -> Sz ix -> (ix -> m e) -> m (Array r ix e)
 
-  edgeSize :: Array r ix e -> Sz ix
-
   flattenRagged :: Array r ix e -> Array r Ix1 e
 
   loadRagged ::
     Monad m => (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Sz ix -> Array r ix e -> m ()
 
-  -- TODO: test property:
-  -- (read $ raggedFormat show "\n" (ls :: Array L (IxN n) Int)) == ls
   raggedFormat :: (e -> String) -> String -> Array r ix e -> String
 
 
@@ -722,7 +797,7 @@ infixl 4 !, !?, ??
 -- *** Exception: IndexOutOfBoundsException: (0 :. 3) is not safe for (Sz (2 :. 3))
 --
 -- @since 0.1.0
-(!) :: Manifest r ix e => Array r ix e -> ix -> e
+(!) :: (Index ix, Manifest r e) => Array r ix e -> ix -> e
 (!) = index'
 {-# INLINE (!) #-}
 
@@ -749,7 +824,7 @@ infixl 4 !, !?, ??
 -- Nothing
 --
 -- @since 0.1.0
-(!?) :: (Manifest r ix e, MonadThrow m) => Array r ix e -> ix -> m e
+(!?) :: (Index ix, Manifest r e, MonadThrow m) => Array r ix e -> ix -> m e
 (!?) = indexM
 {-# INLINE (!?) #-}
 
@@ -784,7 +859,7 @@ infixl 4 !, !?, ??
 -- Just 6
 --
 -- @since 0.1.0
-(??) :: (Manifest r ix e, MonadThrow m) => m (Array r ix e) -> ix -> m e
+(??) :: (Index ix, Manifest r e, MonadThrow m) => m (Array r ix e) -> ix -> m e
 (??) marr ix = marr >>= (!? ix)
 {-# INLINE (??) #-}
 
@@ -793,7 +868,7 @@ infixl 4 !, !?, ??
 -- general and it can just as well be used with `Maybe`.
 --
 -- @since 0.1.0
-index :: Manifest r ix e => Array r ix e -> ix -> Maybe e
+index :: (Index ix, Manifest r e) => Array r ix e -> ix -> Maybe e
 index = indexM
 {-# INLINE index #-}
 
@@ -802,7 +877,7 @@ index = indexM
 -- /__Exceptions__/: `IndexOutOfBoundsException`
 --
 -- @since 0.3.0
-indexM :: (Manifest r ix e, MonadThrow m) => Array r ix e -> ix -> m e
+indexM :: (Index ix, Manifest r e, MonadThrow m) => Array r ix e -> ix -> m e
 indexM = evaluateM
 {-# INLINE indexM #-}
 
@@ -820,7 +895,7 @@ indexM = evaluateM
 -- 999
 --
 -- @since 0.1.0
-defaultIndex :: Manifest r ix e => e -> Array r ix e -> ix -> e
+defaultIndex :: (Index ix, Manifest r e) => e -> Array r ix e -> ix -> e
 defaultIndex defVal = borderIndex (Fill defVal)
 {-# INLINE defaultIndex #-}
 
@@ -837,7 +912,7 @@ defaultIndex defVal = borderIndex (Fill defVal)
 --   [ 99, 100, 0, 1, 2 ]
 --
 -- @since 0.1.0
-borderIndex :: Manifest r ix e => Border e -> Array r ix e -> ix -> e
+borderIndex :: (Index ix, Manifest r e) => Border e -> Array r ix e -> ix -> e
 borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 {-# INLINE borderIndex #-}
 
@@ -855,7 +930,7 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 -- *** Exception: IndexOutOfBoundsException: 150 is not safe for (Sz1 101)
 --
 -- @since 0.1.0
-index' :: Manifest r ix e => Array r ix e -> ix -> e
+index' :: (Index ix, Manifest r e) => Array r ix e -> ix -> e
 index' = evaluate'
 {-# INLINE index' #-}
 
@@ -874,7 +949,7 @@ index' = evaluate'
 -- Left (IndexOutOfBoundsException: (150 :. 150) is not safe for (Sz (90 :. 190)))
 --
 -- @since 0.3.0
-evaluateM :: (Source r ix e, MonadThrow m) => Array r ix e -> ix -> m e
+evaluateM :: (Index ix, Source r e, MonadThrow m) => Array r ix e -> ix -> m e
 evaluateM arr ix =
   handleBorderIndex
     (Fill (throwM (IndexOutOfBoundsException (size arr) ix)))
@@ -894,7 +969,7 @@ evaluateM arr ix =
 -- *** Exception: IndexOutOfBoundsException: (150 :. 150) is not safe for (Sz (90 :. 190))
 --
 -- @since 0.3.0
-evaluate' :: Source r ix e => Array r ix e -> ix -> e
+evaluate' :: (Index ix, Source r e) => Array r ix e -> ix -> e
 evaluate' arr ix =
   handleBorderIndex
     (Fill (throw (IndexOutOfBoundsException (size arr) ix)))
@@ -917,10 +992,44 @@ evaluate' arr ix =
 -- (4,14)
 --
 -- @since 0.1.0
-imapM_ :: (Source r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
+imapM_ :: (Index ix, Source r a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
 imapM_ f !arr =
   iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ !ix -> f ix (unsafeIndex arr ix)
 {-# INLINE imapM_ #-}
+
+
+
+-- | /O(1)/ - Check if array has elements.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> isNotEmpty (singleton 1 :: Array D Ix2 Int)
+-- True
+-- >>> isNotEmpty (empty :: Array D Ix2 Int)
+-- False
+--
+-- @since 0.5.1
+isNotEmpty :: Shape r ix => Array r ix e -> Bool
+isNotEmpty = not . isEmpty
+{-# INLINE isNotEmpty #-}
+
+
+
+-- | /O(1)/ - Check if array has elements.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> isNotEmpty (singleton 1 :: Array D Ix2 Int)
+-- True
+-- >>> isNotEmpty (empty :: Array D Ix2 Int)
+-- False
+--
+-- @since 0.5.1
+isNull :: (Index ix, Size r) => Array r ix e -> Bool
+isNull = (==0) . elemsCount
+{-# INLINE isNull #-}
 
 
 -- | /O(1)/ - Get the number of elements in the array.
@@ -935,30 +1044,19 @@ imapM_ f !arr =
 -- 5
 --
 -- @since 0.1.0
-elemsCount :: Load r ix e => Array r ix e -> Int
+elemsCount :: (Index ix, Size r) => Array r ix e -> Int
 elemsCount = totalElem . size
 {-# INLINE elemsCount #-}
 
 
--- | Get the number of elements in the array
---
--- @since 0.5.8
-linearSize :: Load r ix e => Array r ix e -> Sz1
-linearSize = toLinearSz . size
-{-# INLINE linearSize #-}
+inline0 :: (a -> b) -> a -> b
+inline0 f = f
+{-# INLINE [0] inline0 #-}
 
+inline1 :: (a -> b) -> a -> b
+inline1 f = f
+{-# INLINE [1] inline1 #-}
 
--- | /O(1)/ - Check if array has elements.
---
--- ==== __Examples__
---
--- >>> import Data.Massiv.Array
--- >>> isNotEmpty (singleton 1 :: Array D Ix2 Int)
--- True
--- >>> isNotEmpty (empty :: Array D Ix2 Int)
--- False
---
--- @since 0.5.1
-isNotEmpty :: Load r ix e => Array r ix e -> Bool
-isNotEmpty = not . isEmpty
-{-# INLINE isNotEmpty #-}
+inline2 :: (a -> b) -> a -> b
+inline2 f = f
+{-# INLINE [2] inline2 #-}

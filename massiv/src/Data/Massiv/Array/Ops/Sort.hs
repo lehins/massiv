@@ -40,7 +40,7 @@ import System.IO.Unsafe
 --   [ (1,1), (2,3), (3,1), (4,2), (5,1) ]
 --
 -- @since 0.4.4
-tally :: (Mutable r Ix1 e, Resize r ix, Load r ix e, Ord e) => Array r ix e -> Array DS Ix1 (e, Int)
+tally :: (Mutable r e, Load r ix e, Ord e) => Array r ix e -> Vector DS (e, Int)
 tally arr
   | isEmpty arr = setComp (getComp arr) empty
   | otherwise = scatMaybes $ sunfoldrN (sz + 1) count (0, 0, sorted ! 0)
@@ -63,8 +63,8 @@ tally arr
 --
 -- @since 0.3.2
 unsafeUnstablePartitionRegionM ::
-     forall r e m. (Mutable r Ix1 e, PrimMonad m)
-  => MArray (PrimState m) r Ix1 e
+     forall r e m. (Mutable r e, PrimMonad m)
+  => MVector (PrimState m) r e
   -> (e -> Bool)
   -> Ix1 -- ^ Start index of the region
   -> Ix1 -- ^ End index of the region
@@ -99,7 +99,7 @@ unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
 --
 -- @since 0.3.2
 quicksort ::
-     (Mutable r Ix1 e, Ord e) => Array r Ix1 e -> Array r Ix1 e
+     (Mutable r e, Ord e) => Vector r e -> Vector r e
 quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 {-# INLINE quicksort #-}
 
@@ -109,9 +109,9 @@ quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 --
 -- @since 0.3.2
 quicksortM_ ::
-     (Ord e, Mutable r Ix1 e, PrimMonad m)
+     (Ord e, Mutable r e, PrimMonad m)
   => Scheduler m ()
-  -> MArray (PrimState m) r Ix1 e
+  -> MVector (PrimState m) r e
   -> m ()
 quicksortM_ scheduler marr =
   scheduleWork scheduler $ qsort (numWorkers scheduler) 0 (unSz (msize marr) - 1)

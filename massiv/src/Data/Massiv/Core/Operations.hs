@@ -24,7 +24,10 @@ module Data.Massiv.Core.Operations
 import Data.Massiv.Core.Common
 
 
-class Num e => FoldNumeric r e where
+
+class (Size r, Num e) => FoldNumeric r e where
+
+  {-# MINIMAL foldArray, powerSumArray, unsafeDotProduct #-}
 
   -- | Compute sum of all elements in the array
   --
@@ -57,7 +60,7 @@ class Num e => FoldNumeric r e where
 
 
 defaultUnsafeDotProduct ::
-     (Num e, Source r ix e) => Array r ix e -> Array r ix e -> e
+     (Num e, Index ix, Source r e) => Array r ix e -> Array r ix e -> e
 defaultUnsafeDotProduct a1 a2 = go 0 0
   where
     !len = totalElem (size a1)
@@ -66,7 +69,7 @@ defaultUnsafeDotProduct a1 a2 = go 0 0
       | otherwise = acc
 {-# INLINE defaultUnsafeDotProduct #-}
 
-defaultPowerSumArray :: (Source r ix e, Num e) => Array r ix e -> Int -> e
+defaultPowerSumArray :: (Index ix, Source r e, Num e) => Array r ix e -> Int -> e
 defaultPowerSumArray arr p = go 0 0
   where
     !len = totalElem (size arr)
@@ -75,7 +78,7 @@ defaultPowerSumArray arr p = go 0 0
       | otherwise = acc
 {-# INLINE defaultPowerSumArray #-}
 
-defaultFoldArray :: Source r ix e => (e -> e -> e) -> e -> Array r ix e -> e
+defaultFoldArray :: (Index ix, Source r e) => (e -> e -> e) -> e -> Array r ix e -> e
 defaultFoldArray f !initAcc arr = go initAcc 0
   where
     !len = totalElem (size arr)
@@ -134,13 +137,13 @@ class FoldNumeric r e => Numeric r e where
 
 
 defaultUnsafeLiftArray ::
-     (Construct r ix e, Source r ix e) => (e -> e) -> Array r ix e -> Array r ix e
+     (Construct r ix e, Source r e) => (e -> e) -> Array r ix e -> Array r ix e
 defaultUnsafeLiftArray f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
 {-# INLINE defaultUnsafeLiftArray #-}
 
 
 defaultUnsafeLiftArray2 ::
-     (Construct r ix e, Source r ix e)
+     (Construct r ix e, Source r e)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e

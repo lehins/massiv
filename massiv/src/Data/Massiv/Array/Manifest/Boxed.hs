@@ -129,9 +129,14 @@ instance (Index ix, Ord e) => Ord (Array BL ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
-instance Index ix => Construct BL ix e where
+instance Strategy BL where
   setComp c arr = arr { blComp = c }
   {-# INLINE setComp #-}
+  getComp = blComp
+  {-# INLINE getComp #-}
+
+
+instance Index ix => Construct BL ix e where
 
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
@@ -139,7 +144,7 @@ instance Index ix => Construct BL ix e where
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-instance Index ix => Source BL ix e where
+instance Source BL e where
   unsafeLinearIndex (BLArray _ _sz o a) i =
     INDEX_CHECK("(Source BL ix e).unsafeLinearIndex",
                 SafeSz . sizeofArray, A.indexArray) a (i + o)
@@ -149,7 +154,7 @@ instance Index ix => Source BL ix e where
   {-# INLINE unsafeLinearSlice #-}
 
 
-instance Index ix => Resize BL ix where
+instance Resize BL where
   unsafeResize !sz !arr = arr { blSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -181,7 +186,7 @@ instance {-# OVERLAPPING #-} Slice BL Ix1 e where
   {-# INLINE unsafeSlice #-}
 
 
-instance Index ix => Manifest BL ix e where
+instance Manifest BL e where
 
   unsafeLinearIndexM (BLArray _ _sz o a) i =
     INDEX_CHECK("(Manifest BL ix e).unsafeLinearIndexM",
@@ -189,11 +194,14 @@ instance Index ix => Manifest BL ix e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance Index ix => Mutable BL ix e where
+instance Mutable BL e where
   data MArray s BL ix e = MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
 
   msize (MBLArray sz _ _) = sz
   {-# INLINE msize #-}
+
+  munsafeResize sz (MBLArray _ off marr) = MBLArray sz off marr
+  {-# INLINE munsafeResize #-}
 
   unsafeThaw (BLArray _ sz o a) = MBLArray sz o <$> A.unsafeThawArray a
   {-# INLINE unsafeThaw #-}
@@ -220,12 +228,16 @@ instance Index ix => Mutable BL ix e where
                 SafeSz . sizeofMutableArray, A.writeArray) ma (i + o) e
   {-# INLINE unsafeLinearWrite #-}
 
-instance Index ix => Load BL ix e where
-  type R BL = M
+instance Size BL where
   size = blSize
   {-# INLINE size #-}
-  getComp = blComp
-  {-# INLINE getComp #-}
+
+instance Index ix => Shape BL ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+instance Index ix => Load BL ix e where
+  type R BL = M
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -324,27 +336,38 @@ instance (Index ix, Ord e) => Ord (Array B ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
-instance Index ix => Construct B ix e where
-  setComp c = coerce (\arr -> arr { blComp = c })
-  {-# INLINE setComp #-}
 
+instance Index ix => Construct B ix e where
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-instance Index ix => Source B ix e where
-  unsafeLinearIndex arr = unsafeLinearIndex (coerce arr :: Array BL ix e)
+instance Source B e where
+  unsafeLinearIndex arr = unsafeLinearIndex (toLazyArray arr)
   {-# INLINE unsafeLinearIndex #-}
 
-  unsafeLinearSlice i k arr = coerce (unsafeLinearSlice i k (coerce arr :: Array BL ix e))
+  unsafeLinearSlice i k arr = coerce (unsafeLinearSlice i k (toLazyArray arr))
   {-# INLINE unsafeLinearSlice #-}
 
+instance Strategy B where
+  getComp = blComp . coerce
+  {-# INLINE getComp #-}
+  setComp c arr = coerceBoxedArray (coerce arr) { blComp = c }
+  {-# INLINE setComp #-}
 
-instance Index ix => Resize B ix where
+
+instance Resize B where
   unsafeResize sz = coerce (\arr -> arr { blSize = sz })
-  {-# INLINE unsafeResize #-}
+
+instance Index ix => Shape B ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+instance Size B where
+  size = blSize . coerce
+  {-# INLINE size #-}
 
 instance Index ix => Extract B ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
@@ -374,17 +397,20 @@ instance {-# OVERLAPPING #-} Slice B Ix1 e where
   {-# INLINE unsafeSlice #-}
 
 
-instance Index ix => Manifest B ix e where
+instance Manifest B e where
 
   unsafeLinearIndexM = coerce unsafeLinearIndexM
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance Index ix => Mutable B ix e where
+instance Mutable B e where
   newtype MArray s B ix e = MBArray (MArray s BL ix e)
 
   msize = msize . coerce
   {-# INLINE msize #-}
+
+  munsafeResize sz = MBArray . munsafeResize sz . coerce
+  {-# INLINE munsafeResize #-}
 
   unsafeThaw arr = MBArray <$> unsafeThaw (coerce arr)
   {-# INLINE unsafeThaw #-}
@@ -409,10 +435,6 @@ instance Index ix => Mutable B ix e where
 
 instance Index ix => Load B ix e where
   type R B = M
-  size = blSize . coerce
-  {-# INLINE size #-}
-  getComp = blComp . coerce
-  {-# INLINE getComp #-}
   loadArrayM scheduler = coerce (loadArrayM scheduler)
   {-# INLINE loadArrayM #-}
 
@@ -499,10 +521,10 @@ pattern N :: N
 pattern N = BN
 {-# COMPLETE N #-}
 
-newtype instance Array N ix e = BNArray { bArray :: Array BL ix e }
+newtype instance Array BN ix e = BNArray (Array BL ix e)
 
 instance (Ragged L ix e, Show e, NFData e) => Show (Array BN ix e) where
-  showsPrec = showsArrayPrec bArray
+  showsPrec = showsArrayPrec coerce
   showList = showArrayList
 
 -- | /O(1)/ - `BN` is already in normal form
@@ -518,24 +540,35 @@ instance (Index ix, NFData e, Ord e) => Ord (Array BN ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
+instance Strategy N where
+  setComp c = coerce (setComp c)
+  {-# INLINE setComp #-}
+  getComp = blComp . coerce
+  {-# INLINE getComp #-}
 
 instance (Index ix, NFData e) => Construct BN ix e where
-  setComp c (BNArray arr) = BNArray (arr {blComp = c})
-  {-# INLINE setComp #-}
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-instance (Index ix, NFData e) => Source BN ix e where
+instance NFData e => Source BN e where
   unsafeLinearIndex (BNArray arr) = unsafeLinearIndex arr
   {-# INLINE unsafeLinearIndex #-}
   unsafeLinearSlice i k (BNArray a) = BNArray $ unsafeLinearSlice i k a
   {-# INLINE unsafeLinearSlice #-}
 
 
-instance Index ix => Resize BN ix where
-  unsafeResize !sz = BNArray . unsafeResize sz . bArray
+instance Index ix => Shape BN ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+instance Size BN where
+  size = blSize . coerce
+  {-# INLINE size #-}
+
+instance Resize BN where
+  unsafeResize !sz = coerce . unsafeResize sz . coerce
   {-# INLINE unsafeResize #-}
 
 instance (Index ix, NFData e) => Extract BN ix e where
@@ -568,17 +601,19 @@ instance {-# OVERLAPPING #-} NFData e => Slice BN Ix1 e where
   {-# INLINE unsafeSlice #-}
 
 
-instance (Index ix, NFData e) => Manifest BN ix e where
-
+instance NFData e => Manifest BN e where
   unsafeLinearIndexM arr = unsafeLinearIndexM (coerce arr)
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (Index ix, NFData e) => Mutable BN ix e where
+instance NFData e => Mutable BN e where
   newtype MArray s BN ix e = MBNArray (MArray s BL ix e)
 
   msize = msize . coerce
   {-# INLINE msize #-}
+
+  munsafeResize sz = coerce . munsafeResize sz . coerce
+  {-# INLINE munsafeResize #-}
 
   unsafeThaw arr = MBNArray <$> unsafeThaw (coerce arr)
   {-# INLINE unsafeThaw #-}
@@ -603,10 +638,6 @@ instance (Index ix, NFData e) => Mutable BN ix e where
 
 instance (Index ix, NFData e) => Load BN ix e where
   type R BN = M
-  size = blSize . coerce
-  {-# INLINE size #-}
-  getComp = blComp . coerce
-  {-# INLINE getComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 

@@ -154,7 +154,7 @@ toByteString = castToByteString .
 -- | /O(n)/ - Conversion of array monoidally into a ByteString `Builder`.
 --
 -- @since 0.2.1
-toBuilder :: Source r ix e => (e -> Builder) -> Array r ix e -> Builder
+toBuilder :: (Index ix, Source r e) => (e -> Builder) -> Array r ix e -> Builder
 toBuilder = foldMono
 {-# INLINE toBuilder #-}
 
@@ -193,7 +193,7 @@ castFromByteString comp (PS fp offset len) = unsafeArrayFromForeignPtr comp fp o
 -- after it was applyied to all elements of the array.
 --
 -- @since 0.5.5
-findIndex :: Manifest r ix e => (e -> Bool) -> Array r ix e -> Maybe ix
+findIndex :: (Index ix, Manifest r e) => (e -> Bool) -> Array r ix e -> Maybe ix
 findIndex f arr = go 0
   where
     !sz = size arr
@@ -211,7 +211,7 @@ findIndex f arr = go 0
 -- programs.
 --
 -- @since 0.5.9
-mallocCompute :: forall r ix e. (Source r ix e, Storable e) => Array r ix e -> IO (Array S ix e)
+mallocCompute :: forall r ix e. (Size r, Load r ix e, Storable e) => Array r ix e -> IO (Array S ix e)
 mallocCompute arr = do
   let sz = size arr
   marr <- unsafeMallocMArray sz

@@ -58,11 +58,13 @@ instance NFData ix => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
-
-instance (VU.Unbox e, Index ix) => Construct U ix e where
+instance Strategy U where
+  getComp = uComp
+  {-# INLINE getComp #-}
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
+instance (VU.Unbox e, Index ix) => Construct U ix e where
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 
@@ -79,15 +81,22 @@ instance (VU.Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
   {-# INLINE compare #-}
 
 
-instance (VU.Unbox e, Index ix) => Source U ix e where
+instance VU.Unbox e => Source U e where
   unsafeLinearIndex (UArray _ _ v) =
     INDEX_CHECK("(Source U ix e).unsafeLinearIndex", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
   unsafeLinearSlice i k (UArray c _ v) = UArray c k $ VU.unsafeSlice i (unSz k) v
   {-# INLINE unsafeLinearSlice #-}
 
+instance Index ix => Shape U ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
 
-instance Index ix => Resize U ix where
+instance Size U where
+  size = uSize
+  {-# INLINE size #-}
+
+instance Resize U where
   unsafeResize !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeResize #-}
 
@@ -97,10 +106,6 @@ instance (VU.Unbox e, Index ix) => Extract U ix e where
 
 instance (VU.Unbox e, Index ix) => Load U ix e where
   type R U = M
-  size = uSize
-  {-# INLINE size #-}
-  getComp = uComp
-  {-# INLINE getComp #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -151,18 +156,21 @@ instance ( VU.Unbox e
   unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
   {-# INLINE unsafeInnerSlice #-}
 
-instance (VU.Unbox e, Index ix) => Manifest U ix e where
+instance VU.Unbox e => Manifest U e where
 
   unsafeLinearIndexM (UArray _ _ v) =
     INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (VU.Unbox e, Index ix) => Mutable U ix e where
+instance VU.Unbox e => Mutable U e where
   data MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
   msize (MUArray sz _) = sz
   {-# INLINE msize #-}
+
+  munsafeResize sz (MUArray _ mvec) = MUArray sz mvec
+  {-# INLINE munsafeResize #-}
 
   unsafeThaw (UArray _ sz v) = MUArray sz <$> VU.unsafeThaw v
   {-# INLINE unsafeThaw #-}

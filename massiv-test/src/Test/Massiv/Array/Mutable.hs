@@ -30,13 +30,13 @@ import Test.Massiv.Utils as T
 import UnliftIO.Async
 
 
--- prop_MapMapM :: forall r ix(Show (Array r ix Word), Eq (Array r ix Word), Mutable r ix Word) =>
+-- prop_MapMapM :: forall r ix(Show (Array r ix Word), Eq (Array r ix Word), Mutable r ix) =>
 --                 Fun Word Word -> ArrTiny D ix Word -> Property
 -- prop_MapMapM r _ f (ArrTiny arr) =
 --   computeAs r (A.map (apply f) arr) === runIdentity (A.mapMR r (return . apply f) arr)
 
 prop_iMapiMapM ::
-     forall r ix e. (Show (Array r ix e), Eq (Array r ix e), Mutable r ix e)
+     forall r ix e. (Show (Array r ix e), Eq (Array r ix e), Mutable r e, Index ix)
   => Fun (ix, e) e
   -> Array D ix e
   -> Property
@@ -48,7 +48,8 @@ prop_GenerateArray ::
      forall r ix e.
      ( Show (Array r ix e)
      , Eq (Array r ix e)
-     , Mutable r ix e
+     , Mutable r e
+     , Construct r ix e
      , Show e
      , Arbitrary e
      , Arbitrary ix
@@ -67,13 +68,7 @@ prop_GenerateArray =
 
 prop_Shrink ::
      forall r ix e.
-     ( Show (Array r ix e)
-     , Mutable r ix e
-     , Source r Ix1 e
-     , Arbitrary ix
-     , Arbitrary e
-     , Eq e
-     )
+     (Show (Array r ix e), Mutable r e, Construct r ix e, Arbitrary ix, Arbitrary e, Eq e)
   => Property
 prop_Shrink  =
   property $ \ (ArrIx arr ix) -> runST $ do
@@ -87,8 +82,9 @@ prop_GrowShrink ::
      ( Eq (Array r ix e)
      , Show (Array r ix e)
      , Load (R r) ix e
-     , Mutable r ix e
+     , Mutable r e
      , Extract r ix e
+     , Construct r ix e
      , Arbitrary ix
      , Arbitrary e
      , Show e
@@ -114,12 +110,11 @@ prop_unfoldrList ::
      forall r ix e.
      ( Show (Array r Ix1 e)
      , Eq (Array r Ix1 e)
+     , Index ix
      , Arbitrary ix
      , Arbitrary e
      , Show e
-     , Resize r ix
-     , Mutable r ix e
-     , Mutable r Ix1 e
+     , Mutable r e
      )
   => Property
 prop_unfoldrList =
@@ -133,11 +128,11 @@ prop_unfoldrReverseUnfoldl ::
      forall r ix e.
      ( Show (Array r ix e)
      , Eq (Array r ix e)
+     , Index ix
      , Arbitrary ix
      , Arbitrary e
      , Show e
-     , Source r ix e
-     , Mutable r ix e
+     , Mutable r e
      )
   => Property
 prop_unfoldrReverseUnfoldl =
@@ -150,7 +145,9 @@ prop_unfoldrReverseUnfoldl =
            rev a1 `shouldBe` a2
 
 prop_toStreamArrayMutable ::
-     (Mutable r ix e, Show (Array r ix e), Eq (Array r ix e)) => Array r ix e -> Property
+     forall r ix e. (Mutable r e, Index ix, Show (Array r ix e), Eq (Array r ix e))
+  => Array r ix e
+  -> Property
 prop_toStreamArrayMutable arr =
   arr === S.unstreamExact (size arr) (S.stepsStream (toSteps (toStreamArray arr)))
 
@@ -166,9 +163,9 @@ mutableSpec ::
      , Typeable e
      , Show e
      , Eq e
-     , Mutable r ix e
-     , Mutable r Ix1 e
+     , Mutable r e
      , Extract r ix e
+     , Construct r ix e
      , CoArbitrary ix
      , Arbitrary e
      , CoArbitrary e

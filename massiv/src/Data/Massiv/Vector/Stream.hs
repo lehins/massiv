@@ -1,8 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK hide, not-home #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -123,7 +125,6 @@ module Data.Massiv.Vector.Stream
   , transSteps
   , transStepsId
   -- * Useful re-exports
-  , module Data.Vector.Fusion.Bundle.Size
   , module Data.Vector.Fusion.Util
   , Id(..)
   ) where
@@ -132,10 +133,11 @@ import qualified Control.Monad as M
 import Control.Monad.ST
 import qualified Data.Foldable as F
 import Data.Massiv.Core.Common hiding (empty, singleton, replicate)
+import Data.Coerce
 import Data.Maybe (catMaybes)
 import qualified Data.Traversable as Traversable (traverse)
 import qualified Data.Vector.Fusion.Bundle.Monadic as B
-import Data.Vector.Fusion.Bundle.Size
+import qualified Data.Vector.Fusion.Bundle.Size as B
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
 import Prelude hiding (and, concatMap, drop, filter, foldl, foldl1, foldr,
@@ -148,8 +150,8 @@ instance Monad m => Functor (Steps m) where
   {-# INLINE fmap #-}
   (<$) e str =
     case stepsSize str of
-      Exact n -> str {stepsStream = S.replicate n e}
-      _       -> fmap (const e) str
+      LengthExact n -> str {stepsStream = S.replicate (coerce n) e}
+      _             -> fmap (const e) str
   {-# INLINE (<$) #-}
 
 instance Monad m => Semigroup (Steps m e) where
@@ -191,8 +193,8 @@ instance Foldable (Steps Id) where
 
 
 -- TODO: benchmark: `fmap snd . isteps`
-steps :: forall r ix e m . (Monad m, Source r ix e) => Array r ix e -> Steps m e
-steps arr = k `seq` arr `seq` Steps (S.Stream step 0) (Exact k)
+steps :: forall r ix e m . (Monad m, Index ix, Source r e) => Array r ix e -> Steps m e
+steps arr = k `seq` arr `seq` Steps (S.Stream step 0) (LengthExact (coerce k))
   where
     k = totalElem $ size arr
     step i
@@ -204,8 +206,8 @@ steps arr = k `seq` arr `seq` Steps (S.Stream step 0) (Exact k)
 {-# INLINE steps #-}
 
 
-isteps :: forall r ix e m . (Monad m, Source r ix e) => Array r ix e -> Steps m (ix, e)
-isteps arr = k `seq` arr `seq` Steps (S.Stream step 0) (Exact k)
+isteps :: forall r ix e m . (Monad m, Index ix, Source r e) => Array r ix e -> Steps m (ix, e)
+isteps arr = k `seq` arr `seq` Steps (S.Stream step 0) (LengthExact (coerce k))
   where
     sz = size arr
     k = totalElem sz
@@ -217,39 +219,39 @@ isteps arr = k `seq` arr `seq` Steps (S.Stream step 0) (Exact k)
     {-# INLINE step #-}
 {-# INLINE isteps #-}
 
-toBundle :: (Monad m, Source r ix e) => Array r ix e -> B.Bundle m v e
+toBundle :: (Monad m, Index ix, Source r e) => Array r ix e -> B.Bundle m v e
 toBundle arr =
   let Steps str k = steps arr
-   in B.fromStream str k
+   in B.fromStream str (sizeHintToBundleSize k)
 {-# INLINE toBundle #-}
 
-fromBundle :: Mutable r Ix1 e => B.Bundle Id v e -> Array r Ix1 e
+fromBundle :: Mutable r e => B.Bundle Id v e -> Vector r e
 fromBundle bundle = fromStream (B.sSize bundle) (B.sElems bundle)
 {-# INLINE fromBundle #-}
 
 
-fromBundleM :: (Monad m, Mutable r Ix1 e) => B.Bundle m v e -> m (Array r Ix1 e)
+fromBundleM :: (Monad m, Mutable r e) => B.Bundle m v e -> m (Vector r e)
 fromBundleM bundle = fromStreamM (B.sSize bundle) (B.sElems bundle)
 {-# INLINE fromBundleM #-}
 
 
-fromStream :: forall r e . Mutable r Ix1 e => Size -> S.Stream Id e -> Array r Ix1 e
+fromStream :: forall r e . Mutable r e => B.Size -> S.Stream Id e -> Vector r e
 fromStream sz str =
-  case upperBound sz of
+  case B.upperBound sz of
     Nothing -> unstreamUnknown str
     Just k  -> unstreamMax k str
 {-# INLINE fromStream #-}
 
-fromStreamM :: forall r e m. (Monad m, Mutable r Ix1 e) => Size -> S.Stream m e -> m (Array r Ix1 e)
+fromStreamM :: forall r e m. (Monad m, Mutable r e) => B.Size -> S.Stream m e -> m (Vector r e)
 fromStreamM sz str = do
   xs <- S.toList str
-  case upperBound sz of
+  case B.upperBound sz of
     Nothing -> pure $! unstreamUnknown (S.fromList xs)
     Just k  -> pure $! unstreamMax k (S.fromList xs)
 {-# INLINE fromStreamM #-}
 
 fromStreamExactM ::
-     forall r ix e m. (Monad m, Mutable r ix e)
+     forall r ix e m. (Monad m, Mutable r e, Index ix)
   => Sz ix
   -> S.Stream m e
   -> m (Array r ix e)
@@ -260,25 +262,25 @@ fromStreamExactM sz str = do
 
 
 unstreamIntoM ::
-     (Mutable r Ix1 a, PrimMonad m)
-  => MArray (PrimState m) r Ix1 a
-  -> Size
+     (Mutable r a, PrimMonad m)
+  => MVector (PrimState m) r a
+  -> LengthHint
   -> S.Stream Id a
-  -> m (MArray (PrimState m) r Ix1 a)
+  -> m (MVector (PrimState m) r a)
 unstreamIntoM marr sz str =
   case sz of
-    Exact _ -> marr <$ unstreamMaxM marr str
-    Max _   -> unsafeLinearShrink marr . SafeSz =<< unstreamMaxM marr str
-    Unknown -> unstreamUnknownM marr str
+    LengthExact _ -> marr <$ unstreamMaxM marr str
+    LengthMax _   -> unsafeLinearShrink marr . SafeSz =<< unstreamMaxM marr str
+    LengthUnknown -> unstreamUnknownM marr str
 {-# INLINE unstreamIntoM #-}
 
 
 
 unstreamMax ::
-     forall r e. (Mutable r Ix1 e)
+     forall r e. (Mutable r e)
   => Int
   -> S.Stream Id e
-  -> Array r Ix1 e
+  -> Vector r e
 unstreamMax kMax str =
   runST $ do
     marr <- unsafeNew (SafeSz kMax)
@@ -288,7 +290,7 @@ unstreamMax kMax str =
 
 
 unstreamMaxM ::
-     (Mutable r ix a, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
+     (Mutable r a, Index ix, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
 unstreamMaxM marr (S.Stream step s) = stepLoad s 0
   where
     stepLoad t i =
@@ -302,7 +304,7 @@ unstreamMaxM marr (S.Stream step s) = stepLoad s 0
 {-# INLINE unstreamMaxM #-}
 
 
-unstreamUnknown :: Mutable r Ix1 a => S.Stream Id a -> Array r Ix1 a
+unstreamUnknown :: Mutable r a => S.Stream Id a -> Vector r a
 unstreamUnknown str =
   runST $ do
     marr <- unsafeNew zeroSz
@@ -311,10 +313,10 @@ unstreamUnknown str =
 
 
 unstreamUnknownM ::
-     (Mutable r Ix1 a, PrimMonad m)
-  => MArray (PrimState m) r Ix1 a
+     (Mutable r a, PrimMonad m)
+  => MVector (PrimState m) r a
   -> S.Stream Id a
-  -> m (MArray (PrimState m) r Ix1 a)
+  -> m (MVector (PrimState m) r a)
 unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (msize marrInit)) marrInit
   where
     stepLoad t i kMax marr
@@ -334,7 +336,7 @@ unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (msize marrInit
 
 
 unstreamExact ::
-     forall r ix e. (Mutable r ix e)
+     forall r ix e. (Mutable r e, Index ix)
   => Sz ix
   -> S.Stream Id e
   -> Array r ix e
@@ -348,28 +350,28 @@ unstreamExact sz str =
 length :: Monad m => Steps m a -> m Int
 length (Steps str sz) =
   case sz of
-    Exact k -> pure k
-    _       -> S.length str
+    LengthExact k -> pure $ coerce k
+    _             -> S.length str
 {-# INLINE length #-}
 
 
 null :: Monad m => Steps m a -> m Bool
 null (Steps str sz) =
   case sz of
-    Exact k -> pure (k == 0)
-    _       -> S.null str
+    LengthExact k -> pure (k == 0)
+    _         -> S.null str
 {-# INLINE null #-}
 
 empty :: Monad m => Steps m e
-empty = Steps S.empty (Exact 0)
+empty = Steps S.empty (LengthExact 0)
 {-# INLINE empty #-}
 
 singleton :: Monad m => e -> Steps m e
-singleton e = Steps (S.singleton e) (Exact 1)
+singleton e = Steps (S.singleton e) (LengthExact 1)
 {-# INLINE singleton #-}
 
-generate :: Monad m => Int -> (Int -> e) -> Steps m e
-generate k f = Steps (S.generate k f) (Exact k)
+generate :: Monad m => Sz1 -> (Int -> e) -> Steps m e
+generate k f = Steps (S.generate (coerce k) f) (LengthExact k)
 {-# INLINE generate #-}
 
 -- | First element of the 'Stream' or error if empty
@@ -387,16 +389,16 @@ headMaybe (Steps (S.Stream step t) _) = headMaybeLoop S.SPEC t
 
 
 cons :: Monad m => e -> Steps m e -> Steps m e
-cons e (Steps str k) = Steps (S.cons e str) (k + 1)
+cons e (Steps str k) = Steps (S.cons e str) (k `addInt` 1)
 {-# INLINE cons #-}
 
 -- | First element of the `Steps` or `Nothing` if empty
 uncons :: Monad m => Steps m e -> m (Maybe (e, Steps m e))
-uncons sts = (\mx -> (\x -> (x, drop 1 sts)) <$> mx) <$> headMaybe sts
+uncons sts = (\mx -> (, drop 1 sts) <$> mx) <$> headMaybe sts
 {-# INLINE uncons #-}
 
 snoc :: Monad m => Steps m e -> e -> Steps m e
-snoc (Steps str k) e = Steps (S.snoc str e) (k + 1)
+snoc (Steps str k) e = Steps (S.snoc str e) (k `addInt` 1)
 {-# INLINE snoc #-}
 
 traverse :: (Monad m, Applicative f) => (e -> f a) -> Steps Id e -> f (Steps m a)
@@ -404,7 +406,7 @@ traverse f (Steps str k) = (`Steps` k) <$> liftListA (Traversable.traverse f) st
 {-# INLINE traverse #-}
 
 append :: Monad m => Steps m e -> Steps m e -> Steps m e
-append (Steps str1 k1) (Steps str2 k2) = Steps (str1 S.++ str2) (k1 + k2)
+append (Steps str1 k1) (Steps str2 k2) = Steps (str1 S.++ str2) (k1 `addLengthHint` k2)
 {-# INLINE append #-}
 
 map :: Monad m => (e -> a) -> Steps m e -> Steps m a
@@ -424,18 +426,18 @@ mapM_ f (Steps str _) = S.mapM_ f str
 {-# INLINE mapM_ #-}
 
 zipWith :: Monad m => (a -> b -> e) -> Steps m a -> Steps m b -> Steps m e
-zipWith f (Steps sa ka) (Steps sb kb) = Steps (S.zipWith f sa sb) (smaller ka kb)
+zipWith f (Steps sa ka) (Steps sb kb) = Steps (S.zipWith f sa sb) (minLengthHint ka kb)
 {-# INLINE zipWith #-}
 
 zipWith3 :: Monad m => (a -> b -> c -> d) -> Steps m a -> Steps m b -> Steps m c -> Steps m d
 zipWith3 f (Steps sa ka) (Steps sb kb) (Steps sc kc) =
-  Steps (S.zipWith3 f sa sb sc) (smaller ka (smaller kb kc))
+  Steps (S.zipWith3 f sa sb sc) (minLengthHint ka (minLengthHint kb kc))
 {-# INLINE zipWith3 #-}
 
 zipWith4 ::
   Monad m => (a -> b -> c -> d -> e) -> Steps m a -> Steps m b -> Steps m c -> Steps m d -> Steps m e
 zipWith4 f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) =
-  Steps (S.zipWith4 f sa sb sc sd) (smaller ka (smaller kb (smaller kc kd)))
+  Steps (S.zipWith4 f sa sb sc sd) (minLengthHint ka (minLengthHint kb (minLengthHint kc kd)))
 {-# INLINE zipWith4 #-}
 
 zipWith5 ::
@@ -448,7 +450,7 @@ zipWith5 ::
   -> Steps m e
   -> Steps m f
 zipWith5 f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) =
-  Steps (S.zipWith5 f sa sb sc sd se) (smaller ka (smaller kb (smaller kc (smaller kd ke))))
+  Steps (S.zipWith5 f sa sb sc sd se) (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd ke))))
 {-# INLINE zipWith5 #-}
 
 zipWith6 ::
@@ -464,17 +466,17 @@ zipWith6 ::
 zipWith6 f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) (Steps sf kf) =
   Steps
     (S.zipWith6 f sa sb sc sd se sf)
-    (smaller ka (smaller kb (smaller kc (smaller kd (smaller ke kf)))))
+    (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd (minLengthHint ke kf)))))
 {-# INLINE zipWith6 #-}
 
 zipWithM :: Monad m => (a -> b -> m c) -> Steps m a -> Steps m b -> Steps m c
-zipWithM f (Steps sa ka) (Steps sb kb) = Steps (S.zipWithM f sa sb) (smaller ka kb)
+zipWithM f (Steps sa ka) (Steps sb kb) = Steps (S.zipWithM f sa sb) (minLengthHint ka kb)
 {-# INLINE zipWithM #-}
 
 
 zipWith3M :: Monad m => (a -> b -> c -> m d) -> Steps m a -> Steps m b -> Steps m c -> Steps m d
 zipWith3M f (Steps sa ka) (Steps sb kb) (Steps sc kc) =
-  Steps (S.zipWith3M f sa sb sc) (smaller ka (smaller kb kc))
+  Steps (S.zipWith3M f sa sb sc) (minLengthHint ka (minLengthHint kb kc))
 {-# INLINE zipWith3M #-}
 
 zipWith4M ::
@@ -486,7 +488,7 @@ zipWith4M ::
   -> Steps m d
   -> Steps m e
 zipWith4M f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) =
-  Steps (S.zipWith4M f sa sb sc sd) (smaller ka (smaller kb (smaller kc kd)))
+  Steps (S.zipWith4M f sa sb sc sd) (minLengthHint ka (minLengthHint kb (minLengthHint kc kd)))
 {-# INLINE zipWith4M #-}
 
 zipWith5M ::
@@ -499,7 +501,7 @@ zipWith5M ::
   -> Steps m e
   -> Steps m f
 zipWith5M f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) =
-  Steps (S.zipWith5M f sa sb sc sd se) (smaller ka (smaller kb (smaller kc (smaller kd ke))))
+  Steps (S.zipWith5M f sa sb sc sd se) (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd ke))))
 {-# INLINE zipWith5M #-}
 
 zipWith6M ::
@@ -515,7 +517,7 @@ zipWith6M ::
 zipWith6M f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) (Steps sf kf) =
   Steps
     (S.zipWith6M f sa sb sc sd se sf)
-    (smaller ka (smaller kb (smaller kc (smaller kd (smaller ke kf)))))
+    (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd (minLengthHint ke kf)))))
 {-# INLINE zipWith6M #-}
 
 
@@ -582,10 +584,10 @@ transStepsId (Steps sts k) = Steps (S.trans (pure . unId) sts) k
 {-# INLINE transStepsId #-}
 
 transSteps :: (Monad m, Monad n) => Steps m e -> m (Steps n e)
-transSteps (Steps strM sz@(Exact _)) = (`Steps` sz) <$> transListM strM
+transSteps (Steps strM sz@(LengthExact _)) = (`Steps` sz) <$> transListM strM
 transSteps (Steps strM _) = do
   (n, strN) <- transListNM strM
-  pure (Steps strN (Exact n))
+  pure (Steps strN (LengthExact n))
 {-# INLINE transSteps #-}
 
 
@@ -655,20 +657,20 @@ and = S.and . stepsStream
 
 
 mapMaybe :: Monad m => (a -> Maybe e) -> Steps m a -> Steps m e
-mapMaybe f (Steps str k) = Steps (S.mapMaybe f str) (toMax k)
+mapMaybe f (Steps str k) = Steps (S.mapMaybe f str) (toLengthMax k)
 {-# INLINE mapMaybe #-}
 
 concatMap :: Monad m => (a -> Steps m e) -> Steps m a -> Steps m e
-concatMap f (Steps str _) = Steps (S.concatMap (stepsStream . f) str) Unknown
+concatMap f (Steps str _) = Steps (S.concatMap (stepsStream . f) str) LengthUnknown
 {-# INLINE concatMap #-}
 
 
 mapMaybeA :: (Monad m, Applicative f) => (a -> f (Maybe e)) -> Steps Id a -> f (Steps m e)
-mapMaybeA f (Steps str k) = (`Steps` toMax k) <$> liftListA (mapMaybeListA f) str
+mapMaybeA f (Steps str k) = (`Steps` toLengthMax k) <$> liftListA (mapMaybeListA f) str
 {-# INLINE mapMaybeA #-}
 
 mapMaybeM :: Monad m => (a -> m (Maybe b)) -> Steps m a -> Steps m b
-mapMaybeM f (Steps str k) = Steps (mapMaybeStreamM f str) (toMax k)
+mapMaybeM f (Steps str k) = Steps (mapMaybeStreamM f str) (toLengthMax k)
 {-# INLINE mapMaybeM #-}
 
 mapMaybeListA :: Applicative f => (a -> f (Maybe b)) -> [a] -> f [b]
@@ -693,87 +695,87 @@ mapMaybeStreamM f (S.Stream step t) = S.Stream step' t
 {-# INLINE mapMaybeStreamM #-}
 
 filter :: Monad m => (a -> Bool) -> Steps m a -> Steps m a
-filter f (Steps str k) = Steps (S.filter f str) (toMax k)
+filter f (Steps str k) = Steps (S.filter f str) (toLengthMax k)
 {-# INLINE filter #-}
 
 
 filterA :: (Monad m, Applicative f) => (e -> f Bool) -> Steps Id e -> f (Steps m e)
-filterA f (Steps str k) = (`Steps` toMax k) <$> liftListA (M.filterM f) str
+filterA f (Steps str k) = (`Steps` toLengthMax k) <$> liftListA (M.filterM f) str
 {-# INLINE filterA #-}
 
 filterM :: Monad m => (e -> m Bool) -> Steps m e -> Steps m e
-filterM f (Steps str k) = Steps (S.filterM f str) (toMax k)
+filterM f (Steps str k) = Steps (S.filterM f str) (toLengthMax k)
 {-# INLINE filterM #-}
 
-take :: Monad m => Int -> Steps m a -> Steps m a
+take :: Monad m => Sz1 -> Steps m a -> Steps m a
 take n (Steps str sz) =
-  Steps (S.take n str) $!
+  Steps (S.take (coerce n) str) $!
   case sz of
-    Exact k -> Exact (min n k)
-    Max k -> Max (min n k)
-    Unknown -> Unknown
+    LengthExact k -> LengthExact (inline0 min n k)
+    LengthMax k -> LengthMax (inline0 min n k)
+    LengthUnknown -> LengthUnknown
 {-# INLINE take #-}
 
-drop :: Monad m => Int -> Steps m a -> Steps m a
-drop n (Steps str k) = Steps (S.drop n str) (k `clampedSubtract` Exact n)
+drop :: Monad m => Sz1 -> Steps m a -> Steps m a
+drop n (Steps str k) = Steps (S.drop (coerce n) str) (k `subtractLengthHint` LengthExact n)
 {-# INLINE drop #-}
 
-slice :: Monad m => Int -> Int -> Steps m a -> Steps m a
-slice i k (Steps str _) = Steps (S.slice i k str) (Max k)
+slice :: Monad m => Int -> Sz1 -> Steps m a -> Steps m a
+slice i k (Steps str _) = Steps (S.slice i (coerce k) str) (LengthMax k)
 {-# INLINE slice #-}
 
-iterateN :: Monad m => Int -> (a -> a) -> a -> Steps m a
-iterateN n f a = Steps (S.iterateN n f a) (Exact n)
+iterateN :: Monad m => Sz1 -> (a -> a) -> a -> Steps m a
+iterateN n f a = Steps (S.iterateN (coerce n) f a) (LengthExact n)
 {-# INLINE iterateN #-}
 
-iterateNM :: Monad m => Int -> (a -> m a) -> a -> Steps m a
-iterateNM n f a = Steps (S.iterateNM n f a) (Exact n)
+iterateNM :: Monad m => Sz1 -> (a -> m a) -> a -> Steps m a
+iterateNM n f a = Steps (S.iterateNM (coerce n) f a) (LengthExact n)
 {-# INLINE iterateNM #-}
 
-replicate :: Monad m => Int -> a -> Steps m a
-replicate n a = Steps (S.replicate n a) (Exact n)
+replicate :: Monad m => Sz1 -> a -> Steps m a
+replicate n a = Steps (S.replicate (coerce n) a) (LengthExact n)
 {-# INLINE replicate #-}
 
-replicateM :: Monad m => Int -> m a -> Steps m a
-replicateM n f = Steps (S.replicateM n f) (Exact n)
+replicateM :: Monad m => Sz1 -> m a -> Steps m a
+replicateM n f = Steps (S.replicateM (coerce n) f) (LengthExact n)
 {-# INLINE replicateM #-}
 
 
-generateM :: Monad m => Int -> (Int -> m a) -> Steps m a
-generateM n f = Steps (S.generateM n f) (Exact n)
+generateM :: Monad m => Sz1 -> (Int -> m a) -> Steps m a
+generateM n f = Steps (S.generateM (coerce n) f) (LengthExact n)
 {-# INLINE generateM #-}
 
 
 unfoldr :: Monad m => (s -> Maybe (e, s)) -> s -> Steps m e
-unfoldr f e0 = Steps (S.unfoldr f e0) Unknown
+unfoldr f e0 = Steps (S.unfoldr f e0) LengthUnknown
 {-# INLINE unfoldr #-}
 
-unfoldrN :: Monad m => Int -> (s -> Maybe (e, s)) -> s -> Steps m e
-unfoldrN n f e0 = Steps (S.unfoldrN n f e0) Unknown
+unfoldrN :: Monad m => Sz1 -> (s -> Maybe (e, s)) -> s -> Steps m e
+unfoldrN n f e0 = Steps (S.unfoldrN (coerce n) f e0) LengthUnknown
 {-# INLINE unfoldrN #-}
 
-unsafeUnfoldrN :: Monad m => Int -> (s -> Maybe (e, s)) -> s -> Steps m e
-unsafeUnfoldrN n f e0 = Steps (S.unfoldrN n f e0) (Max n)
+unsafeUnfoldrN :: Monad m => Sz1 -> (s -> Maybe (e, s)) -> s -> Steps m e
+unsafeUnfoldrN n f e0 = Steps (S.unfoldrN (coerce n) f e0) (LengthMax n)
 {-# INLINE unsafeUnfoldrN #-}
 
 unfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> Steps m e
-unfoldrM f e0 = Steps (S.unfoldrM f e0) Unknown
+unfoldrM f e0 = Steps (S.unfoldrM f e0) LengthUnknown
 {-# INLINE unfoldrM #-}
 
 unfoldrNM :: Monad m => Int -> (s -> m (Maybe (e, s))) -> s -> Steps m e
-unfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) Unknown
+unfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) LengthUnknown
 {-# INLINE unfoldrNM #-}
 
-unsafeUnfoldrNM :: Monad m => Int -> (s -> m (Maybe (e, s))) -> s -> Steps m e
-unsafeUnfoldrNM n f e0 = Steps (S.unfoldrNM n f e0) (Max n)
+unsafeUnfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> Steps m e
+unsafeUnfoldrNM n f e0 = Steps (S.unfoldrNM (coerce n) f e0) (LengthMax n)
 {-# INLINE unsafeUnfoldrNM #-}
 
-unfoldrExactN :: Monad m => Int -> (s -> (a, s)) -> s -> Steps m a
+unfoldrExactN :: Monad m => Sz1 -> (s -> (a, s)) -> s -> Steps m a
 unfoldrExactN n f = unfoldrExactNM n (pure . f)
 {-# INLINE unfoldrExactN #-}
 
-unfoldrExactNM :: Monad m => Int -> (s -> m (a, s)) -> s -> Steps m a
-unfoldrExactNM n f t = Steps (S.Stream step (t, n)) (Exact n)
+unfoldrExactNM :: Monad m => Sz1 -> (s -> m (a, s)) -> s -> Steps m a
+unfoldrExactNM n f t = Steps (S.Stream step (t, n)) (LengthExact n)
   where
     step (s, i)
       | i <= 0 = pure S.Done
@@ -782,8 +784,8 @@ unfoldrExactNM n f t = Steps (S.Stream step (t, n)) (Exact n)
 {-# INLINE unfoldrExactNM #-}
 
 
-enumFromStepN :: (Num a, Monad m) => a -> a -> Int -> Steps m a
-enumFromStepN x step k = Steps (S.enumFromStepN x step k) (Exact k)
+enumFromStepN :: (Num a, Monad m) => a -> a -> Sz1 -> Steps m a
+enumFromStepN x step k = Steps (S.enumFromStepN x step (coerce k)) (LengthExact k)
 {-# INLINE enumFromStepN #-}
 
 
@@ -794,15 +796,15 @@ toList (Steps str _) = unId (S.toList str)
 {-# INLINE toList #-}
 
 fromList :: Monad m => [e] -> Steps m e
-fromList = (`Steps` Unknown) . S.fromList
+fromList = (`Steps` LengthUnknown) . S.fromList
 {-# INLINE fromList #-}
 
 fromListN :: Monad m => Int -> [e] -> Steps m e
-fromListN n  = (`Steps` Unknown) . S.fromListN n
+fromListN n  = (`Steps` LengthUnknown) . S.fromListN n
 {-# INLINE fromListN #-}
 
-unsafeFromListN :: Monad m => Int -> [e] -> Steps m e
-unsafeFromListN n  = (`Steps` Max n) . S.fromListN n
+unsafeFromListN :: Monad m => Sz1 -> [e] -> Steps m e
+unsafeFromListN n  = (`Steps` LengthMax n) . S.fromListN (coerce n)
 {-# INLINE unsafeFromListN #-}
 
 liftListA :: (Monad m, Functor f) => ([a] -> f [b]) -> S.Stream Id a -> f (S.Stream m b)
@@ -816,14 +818,76 @@ transListM str = do
   pure $ S.fromList xs
 {-# INLINE transListM #-}
 
-transListNM :: (Monad m, Monad n) => S.Stream m a -> m (Int, S.Stream n a)
+transListNM :: (Monad m, Monad n) => S.Stream m a -> m (Sz1, S.Stream n a)
 transListNM str = do
   (n, xs) <- toListN str
-  pure (n, S.fromList xs)
+  pure (coerce n, S.fromList xs)
 {-# INLINE transListNM #-}
 
 
 toListN :: Monad m => S.Stream m a -> m (Int, [a])
 toListN = S.foldr (\x (i, xs) -> (i + 1, x:xs)) (0, [])
 {-# INLINE toListN #-}
+
+
+sizeHintToBundleSize :: LengthHint -> B.Size
+sizeHintToBundleSize =
+  \case
+    LengthExact k -> B.Exact (coerce k)
+    LengthMax k   -> B.Max (coerce k)
+    LengthUnknown -> B.Unknown
+{-# INLINE sizeHintToBundleSize #-}
+
+addHint :: (Sz1 -> LengthHint) -> Int -> Int -> LengthHint
+addHint hint m n
+  | k == coerce sz = hint sz
+  | otherwise = LengthUnknown -- overflow
+  where
+    k = m + n
+    sz = Sz k
+{-# INLINE addHint #-}
+
+
+
+addInt :: LengthHint -> Int -> LengthHint
+addInt (LengthExact m) n = addHint LengthExact (coerce m) (coerce n)
+addInt (LengthMax   m) n = addHint LengthExact (coerce m) n
+addInt _               _ = LengthUnknown
+{-# INLINE addInt #-}
+
+addLengthHint :: LengthHint -> LengthHint -> LengthHint
+addLengthHint (LengthExact m) (LengthExact n) = addHint LengthExact (coerce m) (coerce n)
+addLengthHint (LengthMax   m) (LengthExact n) = addHint LengthMax (coerce m) (coerce n)
+addLengthHint (LengthExact m) (LengthMax   n) = addHint LengthMax (coerce m) (coerce n)
+addLengthHint (LengthMax   m) (LengthMax   n) = addHint LengthMax (coerce m) (coerce n)
+addLengthHint _               _               = LengthUnknown
+{-# INLINE addLengthHint #-}
+
+subtractLengthHint :: LengthHint -> LengthHint -> LengthHint
+subtractLengthHint (LengthExact m) (LengthExact n) = LengthExact (m - n)
+subtractLengthHint (LengthMax   m) (LengthExact n) = LengthMax (m - n)
+subtractLengthHint (LengthExact m) (LengthMax   _) = LengthMax m
+subtractLengthHint (LengthMax   m) (LengthMax   _) = LengthMax m
+subtractLengthHint _               _               = LengthUnknown
+{-# INLINE subtractLengthHint #-}
+
+
+minLengthHint :: LengthHint -> LengthHint -> LengthHint
+minLengthHint (LengthExact m) (LengthExact n) = LengthExact (inline0 min m n)
+minLengthHint (LengthExact m) (LengthMax   n) = LengthMax   (inline0 min m n)
+minLengthHint (LengthExact m) LengthUnknown   = LengthMax   m
+minLengthHint (LengthMax   m) (LengthExact n) = LengthMax   (inline0 min m n)
+minLengthHint (LengthMax   m) (LengthMax   n) = LengthMax   (inline0 min m n)
+minLengthHint (LengthMax   m) LengthUnknown   = LengthMax   m
+minLengthHint LengthUnknown   (LengthExact n) = LengthMax   n
+minLengthHint LengthUnknown   (LengthMax   n) = LengthMax   n
+minLengthHint LengthUnknown   LengthUnknown   = LengthUnknown
+{-# INLINE minLengthHint #-}
+
+toLengthMax :: LengthHint -> LengthHint
+toLengthMax (LengthExact n) = LengthMax n
+toLengthMax (LengthMax   n) = LengthMax n
+toLengthMax LengthUnknown   = LengthUnknown
+{-# INLINE toLengthMax #-}
+
 

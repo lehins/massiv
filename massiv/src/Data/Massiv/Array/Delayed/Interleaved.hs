@@ -36,14 +36,27 @@ instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
   showsPrec = showsArrayPrec diArray
   showList = showArrayList
 
-instance Index ix => Construct DI ix e where
+instance Strategy DI where
   setComp c arr = arr { diArray = (diArray arr) { dComp = c } }
   {-# INLINE setComp #-}
+  getComp = dComp . diArray
+  {-# INLINE getComp #-}
 
+
+instance Index ix => Construct DI ix e where
   makeArray c sz = DIArray . makeArray c sz
   {-# INLINE makeArray #-}
 
-instance Index ix => Resize DI ix where
+instance Index ix => Shape DI ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+
+instance Size DI where
+  size (DIArray arr) = size arr
+  {-# INLINE size #-}
+
+instance Resize DI where
   unsafeResize sz = DIArray . unsafeResize sz . diArray
   {-# INLINE unsafeResize #-}
 
@@ -53,10 +66,6 @@ instance Index ix => Extract DI ix e where
 
 
 instance Index ix => Load DI ix e where
-  size (DIArray arr) = size arr
-  {-# INLINE size #-}
-  getComp = dComp . diArray
-  {-# INLINE getComp #-}
   loadArrayM scheduler (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       scheduleWork scheduler $
@@ -75,7 +84,7 @@ instance Index ix => StrideLoad DI ix e where
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out
 -- of order (interleaved amongst cores), hence making unbalanced computation better parallelizable.
-toInterleaved :: Source r ix e => Array r ix e -> Array DI ix e
+toInterleaved :: (Index ix, Source r e) => Array r ix e -> Array DI ix e
 toInterleaved = DIArray . delay
 {-# INLINE toInterleaved #-}
 

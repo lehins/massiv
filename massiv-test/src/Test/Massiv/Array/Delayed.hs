@@ -32,7 +32,7 @@ import Data.List as L
 
 -- | Alternative implementation of `stackSlicesM` with `concat'`. Useful for testing and benchmarks
 stackSlices' ::
-     (Functor f, Foldable f, Resize r (Lower ix), Source r ix e, Load r (Lower ix) e)
+     (Functor f, Foldable f, Resize r, Source r e, Index ix, Load r (Lower ix) e)
   => Dim
   -> f (Array r (Lower ix) e)
   -> Array DL ix e
@@ -48,7 +48,7 @@ compareAsListAndLoaded str ls =
 
 -- | Compare `toStream` and `A.toList`
 prop_toStream ::
-     forall r ix e. (Source r ix e, Stream r ix e, Show e, Eq e)
+     forall r ix e. (Source r e, Stream r ix e, Show e, Eq e)
   => Array r ix e
   -> Property
 prop_toStream arr =
@@ -132,7 +132,7 @@ prop_takeDrop ::
      forall r e.
      ( Eq e
      , Show e
-     , Source r Ix1 e
+     , Source r e
      , Foldable (Array r Ix1)
      )
   => Vector r e
