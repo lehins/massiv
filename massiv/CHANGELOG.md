@@ -1,3 +1,17 @@
+# 0.5.6
+
+* Fix `(-.)` (it was incorrectly implemented as a flip of `(.-)`
+* Addition of numeric functions:
+  * Partial: `!+!`, `!-!`, `!*!`, `!/!`
+  * Reciprocal division `/.`
+  * More efficient matrix-matrix multiplication: `.><.` and `!><!` (also helpers
+    `multiplyMatrices` and `multiplyMatricesTransposed`)
+  * More efficient matrix-vector multiplication: `.><` and `!><`
+  * New vector-matrix multiplication: `><.` and `><!`
+  * Dot product `dotM` and `!.!`
+  * Norm `normL2`
+* Deprecated `|*|` and `#>`
+
 # 0.5.5
 
 * Add `takeWhile`, `dropWhile` and `findIndex`

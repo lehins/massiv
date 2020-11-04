@@ -21,22 +21,32 @@ import Data.Massiv.Core.Common
 
 class Num e => Numeric r e where
 
-  {-# MINIMAL unsafeLiftArray, unsafeLiftArray2 #-}
+  {-# MINIMAL foldArray, unsafeLiftArray, unsafeLiftArray2 #-}
 
-  -- sumArray :: Array r Ix1 e -> e
-  -- default sumArray :: Source r Ix1 e => Array r Ix1 e -> e
-  -- sumArray = foldlS (+) 0
-  -- {-# INLINE sumArray #-}
+  -- | Compute sum of all elements in the array
+  --
+  -- @since 0.5.6
+  sumArray :: Index ix => Array r ix e -> e
+  sumArray = foldArray (+) 0
+  {-# INLINE sumArray #-}
 
-  -- productArray :: Array r Ix1 e -> e
-  -- default productArray :: Source r Ix1 e => Array r Ix1 e -> e
-  -- productArray = foldlS (*) 1
-  -- {-# INLINE productArray #-}
+  -- | Compute product of all elements in the array
+  --
+  -- @since 0.5.6
+  productArray :: Index ix => Array r ix e -> e
+  productArray = foldArray (*) 1
+  {-# INLINE productArray #-}
 
   -- -- | Raise each element in the array to some non-negative power and sum the results
   -- powerSumArray :: Array r Ix1 e -> Int -> e
 
-  -- unsafeDotProduct :: Array r Ix1 e -> Array r Ix1 e -> e
+  -- | Compute dot product without any extraneous checks
+  --
+  -- @since 0.5.6
+  unsafeDotProduct :: Index ix => Array r ix e -> Array r ix e -> e
+  unsafeDotProduct v1 v2 = sumArray $ unsafeLiftArray2 (*) v1 v2
+  {-# INLINE unsafeDotProduct #-}
+
 
   plusScalar :: Index ix => Array r ix e -> e -> Array r ix e
   plusScalar arr e = unsafeLiftArray (+ e) arr
@@ -45,6 +55,10 @@ class Num e => Numeric r e where
   minusScalar :: Index ix => Array r ix e -> e -> Array r ix e
   minusScalar arr e = unsafeLiftArray (subtract e) arr
   {-# INLINE minusScalar #-}
+
+  scalarMinus :: Index ix => e -> Array r ix e -> Array r ix e
+  scalarMinus e arr = unsafeLiftArray (e -) arr
+  {-# INLINE scalarMinus #-}
 
   multiplyScalar :: Index ix => Array r ix e -> e -> Array r ix e
   multiplyScalar arr e = unsafeLiftArray (* e) arr
@@ -71,10 +85,14 @@ class Num e => Numeric r e where
   powerPointwise arr pow = unsafeLiftArray (^ pow) arr
   {-# INLINE powerPointwise #-}
 
+  -- | Fold over an array
+  --
+  -- @since 0.5.6
+  foldArray :: Index ix => (e -> e -> e) -> e -> Array r ix e -> e
 
-  unsafeLiftArray :: Index ix => (a -> e) -> Array r ix a -> Array r ix e
+  unsafeLiftArray :: Index ix => (e -> e) -> Array r ix e -> Array r ix e
 
-  unsafeLiftArray2 :: Index ix => (a -> b -> e) -> Array r ix a -> Array r ix b -> Array r ix e
+  unsafeLiftArray2 :: Index ix => (e -> e -> e) -> Array r ix e -> Array r ix e -> Array r ix e
 
 
 
@@ -83,6 +101,10 @@ class (Numeric r e, Floating e) => NumericFloat r e where
   divideScalar :: Index ix => Array r ix e -> e -> Array r ix e
   divideScalar arr e = unsafeLiftArray (/ e) arr
   {-# INLINE divideScalar #-}
+
+  scalarDivide :: Index ix => e -> Array r ix e -> Array r ix e
+  scalarDivide e arr = unsafeLiftArray (e /) arr
+  {-# INLINE scalarDivide #-}
 
   divisionPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix e
   divisionPointwise = unsafeLiftArray2 (/)

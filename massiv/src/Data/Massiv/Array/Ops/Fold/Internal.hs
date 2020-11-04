@@ -153,10 +153,12 @@ ifoldrM_ f !acc !arr = void $ ifoldrM f acc arr
 --
 -- @since 0.1.0
 lazyFoldlS :: Source r ix e => (a -> e -> a) -> a -> Array r ix e -> a
-lazyFoldlS f initAcc arr = go initAcc 0 where
+lazyFoldlS f initAcc arr = go initAcc 0
+  where
     len = totalElem (size arr)
-    go acc k | k < len = go (f acc (unsafeLinearIndex arr k)) (k + 1)
-             | otherwise = acc
+    go acc k
+      | k < len = go (f acc (unsafeLinearIndex arr k)) (k + 1)
+      | otherwise = acc
 {-# INLINE lazyFoldlS #-}
 
 

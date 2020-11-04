@@ -1,3 +1,7 @@
+# 0.1.5
+
+* Add numeric tests
+
 # 0.1.4
 
 * Add `ArrDW`

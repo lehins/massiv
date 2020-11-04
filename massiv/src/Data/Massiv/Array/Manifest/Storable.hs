@@ -18,7 +18,7 @@
 module Data.Massiv.Array.Manifest.Storable
   ( S (..)
   , Array(..)
-  , VS.Storable
+  , Storable
   , toStorableVector
   , toStorableMVector
   , fromStorableVector
@@ -45,6 +45,7 @@ import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Storable.Mutable as MVS
@@ -67,7 +68,7 @@ data instance Array S ix e = SArray { sComp :: !Comp
                                     , sData :: !(VS.Vector e)
                                     }
 
-instance (Ragged L ix e, Show e, VS.Storable e) => Show (Array S ix e) where
+instance (Ragged L ix e, Show e, Storable e) => Show (Array S ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
 
@@ -75,15 +76,15 @@ instance NFData ix => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
-instance (VS.Storable e, Eq e, Index ix) => Eq (Array S ix e) where
+instance (Storable e, Eq e, Index ix) => Eq (Array S ix e) where
   (==) = eq (==)
   {-# INLINE (==) #-}
 
-instance (VS.Storable e, Ord e, Index ix) => Ord (Array S ix e) where
+instance (Storable e, Ord e, Index ix) => Ord (Array S ix e) where
   compare = ord compare
   {-# INLINE compare #-}
 
-instance (VS.Storable e, Index ix) => Construct S ix e where
+instance (Storable e, Index ix) => Construct S ix e where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
@@ -91,7 +92,7 @@ instance (VS.Storable e, Index ix) => Construct S ix e where
   {-# INLINE makeArray #-}
 
 
-instance (VS.Storable e, Index ix) => Source S ix e where
+instance (Storable e, Index ix) => Source S ix e where
   unsafeLinearIndex (SArray _ _ v) =
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
@@ -102,13 +103,13 @@ instance Index ix => Resize S ix where
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
 
-instance (VS.Storable e, Index ix) => Extract S ix e where
+instance (Storable e, Index ix) => Extract S ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
 
 
-instance ( VS.Storable e
+instance ( Storable e
          , Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
@@ -118,7 +119,7 @@ instance ( VS.Storable e
   unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( VS.Storable e
+instance ( Storable e
          , Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
@@ -128,19 +129,19 @@ instance ( VS.Storable e
   unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
   {-# INLINE unsafeInnerSlice #-}
 
-instance {-# OVERLAPPING #-} VS.Storable e => Slice S Ix1 e where
+instance {-# OVERLAPPING #-} Storable e => Slice S Ix1 e where
   unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
 
-instance (Index ix, VS.Storable e) => Manifest S ix e where
+instance (Index ix, Storable e) => Manifest S ix e where
 
   unsafeLinearIndexM (SArray _ _ v) =
     INDEX_CHECK("(Manifest S ix e).unsafeLinearIndexM", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (Index ix, VS.Storable e) => Mutable S ix e where
+instance (Index ix, Storable e) => Mutable S ix e where
   data MArray s S ix e = MSArray !(Sz ix) !(VS.MVector s e)
 
   msize (MSArray sz _) = sz
@@ -204,7 +205,7 @@ instance (Index ix, VS.Storable e) => Mutable S ix e where
   {-# INLINE unsafeLinearGrow #-}
 
 
-instance (Index ix, VS.Storable e) => Load S ix e where
+instance (Index ix, Storable e) => Load S ix e where
   type R S = M
   size = sSize
   {-# INLINE size #-}
@@ -213,16 +214,44 @@ instance (Index ix, VS.Storable e) => Load S ix e where
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
-instance (Index ix, VS.Storable e) => StrideLoad S ix e
+instance (Index ix, Storable e) => StrideLoad S ix e
 
-instance (Index ix, VS.Storable e) => Stream S ix e where
+instance (Index ix, Storable e) => Stream S ix e where
   toStream = S.steps
   {-# INLINE toStream #-}
   toStreamIx = S.isteps
   {-# INLINE toStreamIx #-}
 
 
-instance ( VS.Storable e
+instance (Storable e, Num e) => Numeric S e where
+  unsafeDotProduct a1 a2 = go 0 0
+    where
+      !len = totalElem (size a1)
+      go !acc i
+        | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
+        | otherwise = acc
+  {-# INLINE unsafeDotProduct #-}
+  foldArray f !initAcc arr = go initAcc 0
+    where
+      !len = totalElem (size arr)
+      go !acc i
+        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
+        | otherwise = acc
+  {-# INLINE foldArray #-}
+  unsafeLiftArray f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 f a1 a2 =
+    makeArrayLinear
+      (getComp a1 <> getComp a2)
+      (SafeSz (liftIndex2 min (unSz (size a1)) (unSz (size a2)))) $ \ !i ->
+      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
+  {-# INLINE unsafeLiftArray2 #-}
+
+
+instance (Storable e, Floating e) => NumericFloat S e
+
+
+instance ( Storable e
          , IsList (Array L ix e)
          , Nested LN ix e
          , Nested L ix e
@@ -239,7 +268,7 @@ instance ( VS.Storable e
 -- referential transparency.
 --
 -- @since 0.1.3
-unsafeWithPtr :: (MonadUnliftIO m, VS.Storable a) => Array S ix a -> (Ptr a -> m b) -> m b
+unsafeWithPtr :: (MonadUnliftIO m, Storable a) => Array S ix a -> (Ptr a -> m b) -> m b
 unsafeWithPtr arr f = withRunInIO $ \run -> VS.unsafeWith (sData arr) (run . f)
 {-# INLINE unsafeWithPtr #-}
 
@@ -247,7 +276,7 @@ unsafeWithPtr arr f = withRunInIO $ \run -> VS.unsafeWith (sData arr) (run . f)
 -- | A pointer to the beginning of the mutable array.
 --
 -- @since 0.1.3
-withPtr :: (MonadUnliftIO m, VS.Storable a) => MArray RealWorld S ix a -> (Ptr a -> m b) -> m b
+withPtr :: (MonadUnliftIO m, Storable a) => MArray RealWorld S ix a -> (Ptr a -> m b) -> m b
 withPtr (MSArray _ mv) f = withRunInIO $ \run -> MVS.unsafeWith mv (run . f)
 {-# INLINE withPtr #-}
 
@@ -285,21 +314,21 @@ fromStorableMVector mv@(MVS.MVector len _) = MSArray (SafeSz len) mv
 -- | /O(1)/ - Yield the underlying `ForeignPtr` together with its length.
 --
 -- @since 0.3.0
-unsafeArrayToForeignPtr :: VS.Storable e => Array S ix e -> (ForeignPtr e, Int)
+unsafeArrayToForeignPtr :: Storable e => Array S ix e -> (ForeignPtr e, Int)
 unsafeArrayToForeignPtr = VS.unsafeToForeignPtr0 . toStorableVector
 {-# INLINE unsafeArrayToForeignPtr #-}
 
 -- | /O(1)/ - Yield the underlying `ForeignPtr` together with its length.
 --
 -- @since 0.3.0
-unsafeMArrayToForeignPtr :: VS.Storable e => MArray s S ix e -> (ForeignPtr e, Int)
+unsafeMArrayToForeignPtr :: Storable e => MArray s S ix e -> (ForeignPtr e, Int)
 unsafeMArrayToForeignPtr = MVS.unsafeToForeignPtr0 . toStorableMVector
 {-# INLINE unsafeMArrayToForeignPtr #-}
 
 -- | /O(1)/ - Wrap a `ForeignPtr` and it's size into a pure storable array.
 --
 -- @since 0.3.0
-unsafeArrayFromForeignPtr0 :: VS.Storable e => Comp -> ForeignPtr e -> Sz1 -> Array S Ix1 e
+unsafeArrayFromForeignPtr0 :: Storable e => Comp -> ForeignPtr e -> Sz1 -> Array S Ix1 e
 unsafeArrayFromForeignPtr0 comp ptr sz =
   SArray {sComp = comp, sSize = sz, sData = VS.unsafeFromForeignPtr0 ptr (unSz sz)}
 {-# INLINE unsafeArrayFromForeignPtr0 #-}
@@ -307,7 +336,7 @@ unsafeArrayFromForeignPtr0 comp ptr sz =
 -- | /O(1)/ - Wrap a `ForeignPtr`, an offset and it's size into a pure storable array.
 --
 -- @since 0.3.0
-unsafeArrayFromForeignPtr :: VS.Storable e => Comp -> ForeignPtr e -> Int -> Sz1 -> Array S Ix1 e
+unsafeArrayFromForeignPtr :: Storable e => Comp -> ForeignPtr e -> Int -> Sz1 -> Array S Ix1 e
 unsafeArrayFromForeignPtr comp ptr offset sz =
   SArray {sComp = comp, sSize = sz, sData = VS.unsafeFromForeignPtr ptr offset (unSz sz)}
 {-# INLINE unsafeArrayFromForeignPtr #-}
@@ -317,7 +346,7 @@ unsafeArrayFromForeignPtr comp ptr offset sz =
 -- modify the pointer, unless the array gets frozen prior to modification.
 --
 -- @since 0.3.0
-unsafeMArrayFromForeignPtr0 :: VS.Storable e => ForeignPtr e -> Sz1 -> MArray s S Ix1 e
+unsafeMArrayFromForeignPtr0 :: Storable e => ForeignPtr e -> Sz1 -> MArray s S Ix1 e
 unsafeMArrayFromForeignPtr0 fp sz =
   MSArray sz (MVS.unsafeFromForeignPtr0 fp (unSz sz))
 {-# INLINE unsafeMArrayFromForeignPtr0 #-}
@@ -327,7 +356,7 @@ unsafeMArrayFromForeignPtr0 fp sz =
 -- still safe to modify the pointer, unless the array gets frozen prior to modification.
 --
 -- @since 0.3.0
-unsafeMArrayFromForeignPtr :: VS.Storable e => ForeignPtr e -> Int -> Sz1 -> MArray s S Ix1 e
+unsafeMArrayFromForeignPtr :: Storable e => ForeignPtr e -> Int -> Sz1 -> MArray s S Ix1 e
 unsafeMArrayFromForeignPtr fp offset sz =
   MSArray sz (MVS.unsafeFromForeignPtr fp offset (unSz sz))
 {-# INLINE unsafeMArrayFromForeignPtr #-}

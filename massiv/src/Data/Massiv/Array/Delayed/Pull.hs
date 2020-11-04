@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -219,26 +218,13 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 
 
 instance Num e => Numeric D e where
-  -- plusScalar arr e = unsafeLiftArray (+ e) arr
-  -- {-# INLINE plusScalar #-}
-  -- minusScalar arr e = unsafeLiftArray (subtract e) arr
-  -- {-# INLINE minusScalar #-}
-  -- multiplyScalar arr e = unsafeLiftArray (* e) arr
-  -- {-# INLINE multiplyScalar #-}
-  -- absPointwise = unsafeLiftArray abs
-  -- {-# INLINE absPointwise #-}
-  -- additionPointwise = unsafeLiftArray2 (+)
-  -- {-# INLINE additionPointwise #-}
-  -- subtractionPointwise = unsafeLiftArray2 (-)
-  -- {-# INLINE subtractionPointwise #-}
-  -- multiplicationPointwise = unsafeLiftArray2 (*)
-  -- {-# INLINE multiplicationPointwise #-}
-  -- powerPointwise arr pow = unsafeLiftArray (^ pow) arr
-  -- {-# INLINE powerPointwise #-}
-  -- powerSumArray arr = sumArray . powerPointwise arr
-  -- {-# INLINE powerSumArray #-}
-  -- unsafeDotProduct a1 a2 = sumArray (multiplicationPointwise a1 a2)
-  -- {-# INLINE unsafeDotProduct #-}
+  foldArray f !initAcc arr = go initAcc 0
+    where
+      !len = totalElem (dSize arr)
+      go !acc i
+        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
+        | otherwise = acc
+  {-# INLINE foldArray #-}
   unsafeLiftArray f arr = arr {dIndex = f . dIndex arr}
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 f a1 a2 =
@@ -247,19 +233,7 @@ instance Num e => Numeric D e where
   {-# INLINE unsafeLiftArray2 #-}
 
 
-instance Floating e => NumericFloat D e where
-  -- recipPointwise = liftDArray recip
-  -- {-# INLINE recipPointwise #-}
-  -- sqrtPointwise = liftDArray sqrt
-  -- {-# INLINE sqrtPointwise #-}
-  -- floorPointwise = liftDArray floor
-  -- {-# INLINE floorPointwise #-}
-  -- ceilingPointwise = liftDArray ceiling
-  -- {-# INLINE ceilingPointwise #-}
-  -- divisionPointwise = liftDArray2 (/)
-  -- {-# INLINE divisionPointwise #-}
-  -- divideScalar arr e = liftDArray (/ e) arr
-  -- {-# INLINE divideScalar #-}
+instance Floating e => NumericFloat D e
 
 
 
@@ -272,15 +246,14 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 "delay" [~1] forall (arr :: Array D ix e) . delay arr = arr
  #-}
 
--- TODO: switch to zipWith
 -- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
 eq :: (Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eq f arr1 arr2 =
   (size arr1 == size arr2) &&
-  F.and
-    (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
-       f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  not (A.any not
+       (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
+           f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)))
 {-# INLINE eq #-}
 
 -- | /O(min (n1, n2))/ - Compute array ordering by applying a comparing function to each element.
