@@ -50,11 +50,12 @@ module Data.Massiv.Array.Manifest.Primitive
 
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.Primitive (PrimMonad(..), primitive_)
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Pull -- (eq, ord)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
+import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List
 import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Maybe (fromMaybe)
@@ -97,8 +98,8 @@ instance (Prim e, Index ix) => Construct P ix e where
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (return . f)
+  {-# INLINE makeArrayLinear #-}
 
 instance (Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex _arr@(PArray _ _ o a) i =
@@ -244,6 +245,35 @@ instance (Prim e, Index ix) => Stream P ix e where
   {-# INLINE toStream #-}
   toStreamIx = S.isteps
   {-# INLINE toStreamIx #-}
+
+
+instance (Prim e, Num e) => Numeric P e where
+  unsafeDotProduct a1 a2 = go 0 0
+    where
+      !len = unSz (size a1)
+      go !acc i
+        | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
+        | otherwise = acc
+  {-# INLINE unsafeDotProduct #-}
+  foldArray f !initAcc arr = go initAcc 0
+    where
+      !len = totalElem (size arr)
+      go !acc i
+        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
+        | otherwise = acc
+  {-# INLINE foldArray #-}
+  unsafeLiftArray f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 f a1 a2 =
+    makeArrayLinear
+      (getComp a1 <> getComp a2)
+      (SafeSz (liftIndex2 min (unSz (size a1)) (unSz (size a2)))) $ \ !i ->
+      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
+  {-# INLINE unsafeLiftArray2 #-}
+
+
+instance (Prim e, Floating e) => NumericFloat P e
+
 
 instance ( Prim e
          , IsList (Array L ix e)

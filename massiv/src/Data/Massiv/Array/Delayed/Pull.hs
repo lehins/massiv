@@ -219,26 +219,13 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 
 
 instance Num e => Numeric D e where
-  -- plusScalar arr e = unsafeLiftArray (+ e) arr
-  -- {-# INLINE plusScalar #-}
-  -- minusScalar arr e = unsafeLiftArray (subtract e) arr
-  -- {-# INLINE minusScalar #-}
-  -- multiplyScalar arr e = unsafeLiftArray (* e) arr
-  -- {-# INLINE multiplyScalar #-}
-  -- absPointwise = unsafeLiftArray abs
-  -- {-# INLINE absPointwise #-}
-  -- additionPointwise = unsafeLiftArray2 (+)
-  -- {-# INLINE additionPointwise #-}
-  -- subtractionPointwise = unsafeLiftArray2 (-)
-  -- {-# INLINE subtractionPointwise #-}
-  -- multiplicationPointwise = unsafeLiftArray2 (*)
-  -- {-# INLINE multiplicationPointwise #-}
-  -- powerPointwise arr pow = unsafeLiftArray (^ pow) arr
-  -- {-# INLINE powerPointwise #-}
-  -- powerSumArray arr = sumArray . powerPointwise arr
-  -- {-# INLINE powerSumArray #-}
-  -- unsafeDotProduct a1 a2 = sumArray (multiplicationPointwise a1 a2)
-  -- {-# INLINE unsafeDotProduct #-}
+  foldArray f !initAcc arr = go initAcc 0
+    where
+      !len = totalElem (dSize arr)
+      go !acc i
+        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
+        | otherwise = acc
+  {-# INLINE foldArray #-}
   unsafeLiftArray f arr = arr {dIndex = f . dIndex arr}
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 f a1 a2 =
@@ -247,19 +234,7 @@ instance Num e => Numeric D e where
   {-# INLINE unsafeLiftArray2 #-}
 
 
-instance Floating e => NumericFloat D e where
-  -- recipPointwise = liftDArray recip
-  -- {-# INLINE recipPointwise #-}
-  -- sqrtPointwise = liftDArray sqrt
-  -- {-# INLINE sqrtPointwise #-}
-  -- floorPointwise = liftDArray floor
-  -- {-# INLINE floorPointwise #-}
-  -- ceilingPointwise = liftDArray ceiling
-  -- {-# INLINE ceilingPointwise #-}
-  -- divisionPointwise = liftDArray2 (/)
-  -- {-# INLINE divisionPointwise #-}
-  -- divideScalar arr e = liftDArray (/ e) arr
-  -- {-# INLINE divideScalar #-}
+instance Floating e => NumericFloat D e
 
 
 

@@ -1,9 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Data.Massiv.Core.Exception
   ( ImpossibleException(..)
   , throwImpossible
+  , throwEither
   , Uninitialized(..)
   , guardNumberOfElements
   , Exception(..)
@@ -32,6 +34,13 @@ newtype ImpossibleException =
 throwImpossible :: Exception e => e -> a
 throwImpossible = throw . ImpossibleException . toException
 {-# NOINLINE throwImpossible #-}
+
+throwEither :: Either SomeException a -> a
+throwEither =
+  \case
+    Left exc -> throw exc
+    Right res -> res
+{-# INLINE throwEither #-}
 
 instance Exception ImpossibleException where
   displayException (ImpossibleException exc) =

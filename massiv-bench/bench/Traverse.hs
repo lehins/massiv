@@ -13,10 +13,7 @@ import Data.Primitive.ByteArray
 import Data.Primitive.PrimArray
 import Prelude as P
 import Control.Monad.Trans.Maybe
-import Control.DeepSeq
 
-instance Prim a => NFData (PrimArray a) where
-  rnf (PrimArray _) = ()
 
 main :: IO ()
 main = do

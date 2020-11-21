@@ -14,7 +14,7 @@ import Data.Semigroup
 --import Statistics.Matrix.Fast as SF
 
 
-multArrsAlt :: Array U Ix2 Double -> Array U Ix2 Double -> Array U Ix2 Double
+multArrsAlt :: Array P Ix2 Double -> Array P Ix2 Double -> Array P Ix2 Double
 multArrsAlt arr1 arr2
   | n1 /= m2 =
     error $
@@ -33,19 +33,21 @@ multArrsAlt arr1 arr2
 main :: IO ()
 main = do
   let !sz@(Sz2 _m _n) = Sz2 600 600
-      !arr = arrRLightIx2 U Seq sz
+      !arr = arrRLightIx2 P Seq sz
       -- !arr2 = computeAs U arr
       -- !mat = S.Matrix m n $ A.toVector arr
       -- !mat' = S.transpose mat
       -- !arrV = arrRLightIx2 V Seq sz
       -- !arrV2 = computeAs V arrV
   defaultMain
-    [ env (return (computeAs U (A.transpose arr))) $ \ arr' ->
+    [ env (return (computeAs P (A.transpose arr))) $ \arr' ->
         bgroup
           "Mult"
           [ bgroup
               "Seq"
-              [ bench "(|*|)" $ whnfIO (setComp Seq arr |*| arr')
+              [ bench "(!><!)" $
+                whnfIO (computeIO =<< (setComp Seq arr .><. delay arr') :: IO (Matrix P Double))
+              , bench "(|*|)" $ whnfIO (setComp Seq arr |*| arr')
               -- , bench "multiplyTranspose" $
               --   whnf (computeAs U . multiplyTransposed (setComp Seq arr)) arr2
               -- , bench "multiplyTransposeSIMD" $
@@ -55,7 +57,9 @@ main = do
               ]
           , bgroup
               "Par"
-              [ bench "(|*|)" $ whnfIO (setComp Par arr |*| arr')
+              [ bench "(!><!)" $
+                whnfIO (computeIO =<< (setComp Par arr .><. arr') :: IO (Matrix P Double))
+              , bench "(|*|)" $ whnfIO (setComp Par arr |*| arr')
               , bench "fused (|*|)" $ whnfIO (setComp Par arr |*| A.transpose arr)
               -- , bench "multiplyTranspose" $
               --   whnf (computeAs U . multiplyTransposed (setComp Par arr)) arr2
