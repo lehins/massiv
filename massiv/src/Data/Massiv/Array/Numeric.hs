@@ -186,7 +186,7 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.5.6
 (!+!) :: (Load r ix e, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!+!) a1 a2 = throwEither $ liftNumericArray2M additionPointwise a1 a2
+(!+!) a1 a2 = throwEither (a1 .+. a2)
 {-# INLINE (!+!) #-}
 
 -- | Add a scalar to each element of the array. Array is on the left.
@@ -230,7 +230,7 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.5.6
 (!-!) :: (Load r ix e, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!-!) a1 a2 = throwEither $ liftNumericArray2M subtractionPointwise a1 a2
+(!-!) a1 a2 = throwEither (a1 .-. a2)
 {-# INLINE (!-!) #-}
 
 -- | Subtract a scalar from each element of the array. Array is on the left.
@@ -275,7 +275,7 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.5.6
 (!*!) :: (Load r ix e, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!*!) a1 a2 = throwEither $ liftNumericArray2M multiplicationPointwise a1 a2
+(!*!) a1 a2 = throwEither (a1 .*. a2)
 {-# INLINE (!*!) #-}
 
 
@@ -765,7 +765,7 @@ fromIntegerA = singleton . fromInteger
 --
 -- @since 0.5.6
 (!/!) :: (Load r ix e, NumericFloat r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!/!) a1 a2 = throwEither $ liftNumericArray2M divisionPointwise a1 a2
+(!/!) a1 a2 = throwEither (a1 ./. a2)
 {-# INLINE (!/!) #-}
 
 -- | Divide a scalar value by each element of the array.

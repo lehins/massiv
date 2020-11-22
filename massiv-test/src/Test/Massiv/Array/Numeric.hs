@@ -13,6 +13,7 @@ module Test.Massiv.Array.Numeric
 
 import Data.Massiv.Array as A
 import Test.Massiv.Utils as T
+import Test.Massiv.Core.Common ()
 
 
 naiveMatrixMatrixMultiply ::
@@ -42,6 +43,7 @@ prop_MatrixMatrixMultiply ::
 prop_MatrixMatrixMultiply f arr = expectProp $ do
   let arr' = A.transpose (A.map (applyFun f) arr)
   arr !><! arr' `shouldBe` naiveMatrixMatrixMultiply (delay arr) arr'
+  arr !><! transpose arr `shouldBe` naiveMatrixMatrixMultiply (delay arr) (transpose arr)
   let Sz2 m n = size arr
   when (m /= n) $
     arr .><. arr `shouldThrow` (== SizeMismatchException (size arr) (Sz2 m n))
@@ -188,6 +190,8 @@ prop_Floating ::
   -> Matrix r e
   -> Property
 prop_Floating eps arr = expectProp $ do
+  epsilonFoldableExpect eps (delay (absA arr)) (A.map abs arr)
+  epsilonFoldableExpect eps (delay (signumA arr)) (A.map signum arr)
   epsilonFoldableExpect eps (delay (recipA arr)) (A.map recip arr)
   epsilonFoldableExpect eps (delay (expA arr)) (A.map exp arr)
   epsilonFoldableExpect eps (delay (sqrtA arr)) (A.map sqrt arr)
@@ -245,9 +249,20 @@ mutableNumericSpec =
     prop "Minus" $ prop_Minus @r @e
     prop "Times" $ prop_Times @r @e
     prop "DotProduct" $ prop_DotProduct @r @e
+    prop "Power" $ \(arr :: Array r Ix2 e) (NonNegative p) -> expectProp $
+      arr .^ p `shouldBe` compute (A.map (^ p) arr)
     prop "MatrixMatrixMultiply" $ prop_MatrixMatrixMultiply @r @e
     prop "MatrixVectorMultiply" $ prop_MatrixVectorMultiply @r @e
     prop "VectorMatrixMultiply" $ prop_VectorMatrixMultiply @r @e
+    prop "Identity" $ \ n -> expectProp $ do
+      computeIO (identityMatrix (Sz n)) `shouldReturn`
+        makeArray @r Seq (Sz2 n n) (\ (i :. j) -> if i == j then 1 else 0 :: e)
+    prop "LowerTriangular" $ \ comp n f -> expectProp $ do
+      computeIO (lowerTriangular comp (Sz n) (applyFun f . fromIx2)) `shouldReturn`
+        makeArray @r Seq (Sz2 n n) (\ (i :. j) -> if i >= j then applyFun f (i, j) else 0 :: e)
+    prop "UpperTriangular" $ \ comp n f -> expectProp $ do
+      computeIO (upperTriangular comp (Sz n) (applyFun f . fromIx2)) `shouldReturn`
+        makeArray @r Seq (Sz2 n n) (\ (i :. j) -> if i <= j then applyFun f (i, j) else 0 :: e)
 
 mutableNumericFloatSpec ::
      forall r.
@@ -278,8 +293,15 @@ mutableNumericFloatSpec = do
       prop "Floating" $ prop_Floating @r ef
       prop "Floating2" $ prop_Floating2 @r ef
       prop "Norm" $ prop_Norm @r ef
+      prop "Power" $ prop_Power @r ef
     describe "Double" $ do
       prop "Divide" $ prop_Divide @r ed
       prop "Floating" $ prop_Floating @r ed
       prop "Floating2" $ prop_Floating2 @r ed
       prop "Norm" $ prop_Norm @r ed
+      prop "Power" $ prop_Power @r ed
+
+prop_Power ::
+     (Numeric r e, Source r Ix2 e, RealFloat e, Show e) => e -> Matrix r e -> Int -> Property
+prop_Power eps arr p = expectProp $
+  epsilonFoldableExpect eps (delay (arr .^^ p)) (A.map (^^ p) arr)
