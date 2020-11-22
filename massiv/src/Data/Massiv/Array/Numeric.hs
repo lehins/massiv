@@ -13,8 +13,10 @@
 --
 module Data.Massiv.Array.Numeric
   ( -- * Numeric
+    Numeric
+  , NumericFloat
     -- ** Pointwise addition
-    (.+)
+  , (.+)
   , (+.)
   , (.+.)
   , (!+!)
@@ -29,6 +31,9 @@ module Data.Massiv.Array.Numeric
   , (.*.)
   , (!*!)
   , (.^)
+  -- ** Dot product
+  , (!.!)
+  , dotM
   -- ** Matrix multiplication
   , (.><)
   , (!><)
@@ -39,6 +44,7 @@ module Data.Massiv.Array.Numeric
   , (#>)
   , (|*|)
   , multiplyTransposed
+  , multiplyMatricesTransposed
   -- ** Simple matrices
   , identityMatrix
   , lowerTriangular
@@ -89,6 +95,7 @@ module Data.Massiv.Array.Numeric
   -- * RealFloat
   , atan2A
   ) where
+
 import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
@@ -97,11 +104,15 @@ import Data.Massiv.Array.Ops.Fold as A
 import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Transform as A
 import Data.Massiv.Array.Ops.Construct
+import Data.Massiv.Array.Ops.Slice
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Operations
 import Prelude as P
-
+import System.IO.Unsafe
+import Control.Scheduler
+import Control.Monad (when)
+import qualified Data.Foldable as F
 
 infixr 8  .^, .^^
 infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
@@ -149,7 +160,7 @@ liftNumericArray2M f a1 a2
 -- | Add two arrays together pointwise. Same as `!+!` but produces monadic computation
 -- that allows for handling failure.
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when array sizes do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
 (.+.) ::
@@ -192,7 +203,7 @@ liftNumericArray2M f a1 a2
 -- | Subtract two arrays pointwise. Same as `!-!` but produces monadic computation that
 -- allows for handling failure.
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when array sizes do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
 (.-.) ::
@@ -237,7 +248,7 @@ liftNumericArray2M f a1 a2
 -- | Multiply two arrays together pointwise. Same as `!*!` but produces monadic
 -- computation that allows for handling failure.
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when array sizes do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
 (.*.) ::
@@ -338,10 +349,51 @@ mm #> v
 {-# DEPRECATED (#>) "In favor of (`.><`)" #-}
 
 
+-- | Dot product of two vectors.
+--
+-- [Partial] Throws an impure exception when lengths of vectors do not match
+--
+-- @since 0.5.6
+(!.!) :: (Numeric r e, Source r Ix1 e) => Vector r e -> Vector r e -> e
+(!.!) v1 v2 = throwEither $ dotM v1 v2
+{-# INLINE (!.!) #-}
+
+-- | Dot product of two vectors.
+--
+-- /__Throws Exception__/: `SizeMismatchException` when lengths of vectors do not match
+--
+-- @since 0.5.6
+dotM :: (Numeric r e, Source r Ix1 e, MonadThrow m) => Vector r e -> Vector r e -> m e
+dotM v1 v2
+  | size v1 /= size v2 = throwM $ SizeMismatchException (size v1) (size v2)
+  | comp == Seq = pure $! unsafeDotProduct v1 v2
+  | otherwise =
+    pure $!
+    unsafePerformIO $ do
+      results <-
+        withScheduler comp $ \scheduler ->
+          splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+            let n = SafeSz chunkLength
+            loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+              scheduleWork scheduler $
+              pure $! unsafeDotProduct (unsafeLinearSlice start n v1) (unsafeLinearSlice start n v2)
+            when (slackStart < totalLength) $ do
+              let k = SafeSz (totalLength - slackStart)
+              scheduleWork scheduler $
+                pure $!
+                unsafeDotProduct
+                  (unsafeLinearSlice slackStart k v1)
+                  (unsafeLinearSlice slackStart k v2)
+      pure $! F.foldl' (+) 0 results
+  where
+    totalLength = unSz (size v1)
+    comp = getComp v1 <> getComp v2
+{-# INLINE dotM #-}
+
 -- | Multiply a matrix by a column vector. Same as `!><` but produces monadic
 -- computation that allows for handling failure.
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when inner dimensions of arrays do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
 (.><) :: (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e) =>
@@ -375,7 +427,7 @@ mm #> v
 -- | Multiply a row vector by a matrix. Same as `><!` but produces monadic computation
 -- that allows for handling failure.
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when inner dimensions of arrays do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
 (><.) :: (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e) =>
@@ -417,7 +469,7 @@ mm #> v
 -- >>> a1 = makeArrayR P Seq (Sz2 5 6) $ \(i :. j) -> i + j
 -- >>> a2 = makeArrayR D Seq (Sz2 6 5) $ \(i :. j) -> i - j
 -- >>> a1 !><! a2
--- Array P Seq (Sz (5 :. 5))
+-- Array D Seq (Sz (5 :. 5))
 --   [ [ 55, 40, 25, 10, -5 ]
 --   , [ 70, 49, 28, 7, -14 ]
 --   , [ 85, 58, 31, 4, -23 ]
@@ -433,7 +485,7 @@ mm #> v
 -- | Matrix multiplication. Same as `!><!` but produces monadic computation that allows
 -- for handling failure.
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when inner dimensions of arrays do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
 (.><.) ::
@@ -475,7 +527,7 @@ multiplyMatricesTransposed arr1 arr2
   | otherwise =
     pure $
     DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
-      unsafeDotProduct (unsafeLinearSlice i n arr1) (unsafeLinearSlice j n arr2)
+      unsafeDotProduct (unsafeLinearSlice (i * n1) n arr1) (unsafeLinearSlice (j * n1) n arr2)
   where
     n = SafeSz n1
     SafeSz (m1 :. n1) = size arr1
@@ -493,7 +545,7 @@ multiplyMatricesTransposedFused arr1 arr2 = multiplyMatricesTransposed arr1 arr2
 
 -- | Matrix multiplication
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when inner dimensions of arrays do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.4.0
 (|*|) ::
@@ -664,7 +716,7 @@ fromIntegerA = singleton . fromInteger
 -- | Divide each element of one array by another pointwise. Same as `!/!` but produces
 -- monadic computation that allows for handling failure.
 --
--- /__Throws Exceptions__/: `SizeMismatchException` when array sizes do not match.
+-- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
 (./.) ::
