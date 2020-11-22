@@ -89,6 +89,25 @@ prop_VectorMatrixMultiply f arr =
     makeArray Seq (Sz (m + 1)) (applyFun f) ><. arr `shouldThrow`
       (== SizeMismatchException (Sz2 1 (m + 1)) (size arr))
 
+prop_DotProduct ::
+     forall r e. (Numeric r e, Mutable r Ix1 e, Eq e, Show e)
+  => Fun e e
+  -> Vector r e
+  -> Property
+prop_DotProduct f v =
+  expectProp $ do
+    let v' = A.map (applyFun f) v
+    v !.! compute v' `shouldBe` A.sum (A.zipWith (*) v v')
+    dotM v (makeArray Seq (size v + 1) (const 0)) `shouldThrow`
+      (== SizeMismatchException (size v) (size v + 1))
+
+prop_Norm ::
+     forall r e. (NumericFloat r e, Mutable r Ix1 e, RealFloat e, Show e)
+  => e
+  -> Vector r e
+  -> Property
+prop_Norm eps v = epsilonEq eps (sqrt (v !.! v)) (normL2 v)
+
 
 
 prop_Plus ::
@@ -213,9 +232,11 @@ mutableNumericSpec ::
      , Function e
      , CoArbitrary e
      , Arbitrary e
+     , Arbitrary (Array r Ix1 e)
      , Arbitrary (Array r Ix2 e)
      , Show (Array r Ix2 e)
      , Eq (Array r Ix2 e)
+     , Show (Array r Ix1 e)
      )
   => Spec
 mutableNumericSpec =
@@ -223,6 +244,7 @@ mutableNumericSpec =
     prop "Plus" $ prop_Plus @r @e
     prop "Minus" $ prop_Minus @r @e
     prop "Times" $ prop_Times @r @e
+    prop "DotProduct" $ prop_DotProduct @r @e
     prop "MatrixMatrixMultiply" $ prop_MatrixMatrixMultiply @r @e
     prop "MatrixVectorMultiply" $ prop_MatrixVectorMultiply @r @e
     prop "VectorMatrixMultiply" $ prop_VectorMatrixMultiply @r @e
@@ -230,13 +252,19 @@ mutableNumericSpec =
 mutableNumericFloatSpec ::
      forall r.
      ( NumericFloat r Float
+     , Mutable r Ix1 Float
      , Mutable r Ix2 Float
+     , Arbitrary (Array r Ix1 Float)
      , Arbitrary (Array r Ix2 Float)
+     , Show (Array r Ix1 Float)
      , Show (Array r Ix2 Float)
      , Eq (Array r Ix2 Float)
      , NumericFloat r Double
+     , Mutable r Ix1 Double
      , Mutable r Ix2 Double
+     , Arbitrary (Array r Ix1 Double)
      , Arbitrary (Array r Ix2 Double)
+     , Show (Array r Ix1 Double)
      , Show (Array r Ix2 Double)
      , Eq (Array r Ix2 Double)
      )
@@ -249,7 +277,9 @@ mutableNumericFloatSpec = do
       prop "Divide" $ prop_Divide @r ef
       prop "Floating" $ prop_Floating @r ef
       prop "Floating2" $ prop_Floating2 @r ef
+      prop "Norm" $ prop_Norm @r ef
     describe "Double" $ do
       prop "Divide" $ prop_Divide @r ed
       prop "Floating" $ prop_Floating @r ed
       prop "Floating2" $ prop_Floating2 @r ed
+      prop "Norm" $ prop_Norm @r ed
