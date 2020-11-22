@@ -539,6 +539,8 @@ multiplyMatrices arr1 arr2 = multiplyMatricesTransposed arr1 arr2'
 -- x N')
 --
 -- > m1 .><. transpose m2 == multiplyMatricesTransposed m1 m2
+--
+-- @since 0.5.6
 multiplyMatricesTransposed ::
      (Numeric r e, Manifest r Ix2 e, MonadThrow m)
   => Matrix r e
@@ -905,7 +907,7 @@ logBaseA = liftArray2Matching logBase
 
 -- | Apply sine function to each element of the array.
 --
--- > sinA arr == `A.map` `sin` arr
+-- > sinA arr == map sin arr
 --
 -- @since 0.4.0
 sinA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -914,7 +916,7 @@ sinA = unsafeLiftArray sin
 
 -- | Apply cosine function to each element of the array.
 --
--- > cosA arr == `A.map` `cos` arr
+-- > cosA arr == map cos arr
 --
 -- @since 0.4.0
 cosA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -923,7 +925,7 @@ cosA = unsafeLiftArray cos
 
 -- | Apply tangent function to each element of the array.
 --
--- > tanA arr == `A.map` `tan` arr
+-- > tanA arr == map tan arr
 --
 -- @since 0.4.0
 tanA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -932,7 +934,7 @@ tanA = unsafeLiftArray tan
 
 -- | Apply arcsine function to each element of the array.
 --
--- > asinA arr == `A.map` `asin` arr
+-- > asinA arr == map asin arr
 --
 -- @since 0.4.0
 asinA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -941,7 +943,7 @@ asinA = unsafeLiftArray asin
 
 -- | Apply arctangent function to each element of the array.
 --
--- > atanA arr == `A.map` `atan` arr
+-- > atanA arr == map atan arr
 --
 -- @since 0.4.0
 atanA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -950,7 +952,7 @@ atanA = unsafeLiftArray atan
 
 -- | Apply arccosine function to each element of the array.
 --
--- > acosA arr == `A.map` `acos` arr
+-- > acosA arr == map acos arr
 --
 -- @since 0.4.0
 acosA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -959,7 +961,7 @@ acosA = unsafeLiftArray acos
 
 -- | Apply hyperbolic sine function to each element of the array.
 --
--- > sinhA arr == `A.map` `sinh` arr
+-- > sinhA arr == map sinh arr
 --
 -- @since 0.4.0
 sinhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -968,7 +970,7 @@ sinhA = unsafeLiftArray sinh
 
 -- | Apply hyperbolic tangent function to each element of the array.
 --
--- > tanhA arr == `A.map` `tanh` arr
+-- > tanhA arr == map tanh arr
 --
 -- @since 0.4.0
 tanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -977,7 +979,7 @@ tanhA = unsafeLiftArray tanh
 
 -- | Apply hyperbolic cosine function to each element of the array.
 --
--- > coshA arr == `A.map` `cosh` arr
+-- > coshA arr == map cosh arr
 --
 -- @since 0.4.0
 coshA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -986,7 +988,7 @@ coshA = unsafeLiftArray cosh
 
 -- | Apply inverse hyperbolic sine function to each element of the array.
 --
--- > asinhA arr == `A.map` `asinh` arr
+-- > asinhA arr == map asinh arr
 --
 -- @since 0.4.0
 asinhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -995,7 +997,7 @@ asinhA = unsafeLiftArray asinh
 
 -- | Apply inverse hyperbolic cosine function to each element of the array.
 --
--- > acoshA arr == `A.map` `acosh` arr
+-- > acoshA arr == map acosh arr
 --
 -- @since 0.4.0
 acoshA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -1004,7 +1006,7 @@ acoshA = unsafeLiftArray acosh
 
 -- | Apply inverse hyperbolic tangent function to each element of the array.
 --
--- > atanhA arr == `A.map` `atanh` arr
+-- > atanhA arr == map atanh arr
 --
 -- @since 0.4.0
 atanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
@@ -1015,9 +1017,11 @@ atanhA = unsafeLiftArray atanh
 -- | Perform a pointwise quotient where first array contains numerators and the second
 -- one denominators
 --
--- > quotA arr1 arr2 == `A.zipWith` `quot` arr1 arr2
+-- > quotA arr1 arr2 == zipWith quot arr1 arr2
 --
--- @since 0.4.0
+-- [Partial] Mismatched array sizes will result in an impure exception being thrown.
+--
+-- @since 0.1.0
 quotA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -1027,9 +1031,11 @@ quotA = liftArray2Matching quot
 
 -- | Perform a pointwise remainder computation
 --
--- > remA arr1 arr2 == `A.zipWith` `rem` arr1 arr2
+-- > remA arr1 arr2 == zipWith rem arr1 arr2
 --
--- @since 0.4.0
+-- [Partial] Mismatched array sizes will result in an impure exception being thrown.
+--
+-- @since 0.1.0
 remA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -1039,9 +1045,11 @@ remA = liftArray2Matching rem
 -- | Perform a pointwise integer division where first array contains numerators and the
 -- second one denominators
 --
--- > divA arr1 arr2 == `A.zipWith` `div` arr1 arr2
+-- > divA arr1 arr2 == zipWith div arr1 arr2
 --
--- @since 0.4.0
+-- [Partial] Mismatched array sizes will result in an impure exception being thrown.
+--
+-- @since 0.1.0
 divA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -1054,9 +1062,11 @@ divA = liftArray2Matching div
 
 -- | Perform a pointwise modulo computation
 --
--- > modA arr1 arr2 == `A.zipWith` `mod` arr1 arr2
+-- > modA arr1 arr2 == zipWith mod arr1 arr2
 --
--- @since 0.4.0
+-- [Partial] Mismatched array sizes will result in an impure exception being thrown.
+--
+-- @since 0.1.0
 modA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -1068,9 +1078,11 @@ modA = liftArray2Matching mod
 -- | Perform a pointwise quotient with remainder where first array contains numerators
 -- and the second one denominators
 --
--- > quotRemA arr1 arr2 == `A.zipWith` `quotRem` arr1 arr2
+-- > quotRemA arr1 arr2 == zipWith quotRem arr1 arr2
 --
--- @since 0.4.0
+-- [Partial] Mismatched array sizes will result in an impure exception being thrown.
+--
+-- @since 0.1.0
 quotRemA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
@@ -1081,9 +1093,11 @@ quotRemA arr1 = A.unzip . liftArray2Matching (quotRem) arr1
 -- | Perform a pointwise integer division with modulo where first array contains
 -- numerators and the second one denominators
 --
--- > divModA arr1 arr2 == `A.zipWith` `divMod` arr1 arr2
+-- > divModA arr1 arr2 == zipWith divMod arr1 arr2
 --
--- @since 0.4.0
+-- [Partial] Mismatched array sizes will result in an impure exception being thrown.
+--
+-- @since 0.1.0
 divModA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
@@ -1094,7 +1108,7 @@ divModA arr1 = A.unzip . liftArray2Matching (divMod) arr1
 
 -- | Truncate each element of the array.
 --
--- > truncateA arr == `A.map` `truncate` arr
+-- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
 truncateA
@@ -1106,7 +1120,7 @@ truncateA = A.map truncate
 
 -- | Round each element of the array.
 --
--- > truncateA arr == `A.map` `truncate` arr
+-- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
 roundA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
@@ -1116,7 +1130,7 @@ roundA = A.map round
 
 -- | Ceiling of each element of the array.
 --
--- > truncateA arr == `A.map` `truncate` arr
+-- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
 ceilingA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
@@ -1126,7 +1140,7 @@ ceilingA = A.map ceiling
 
 -- | Floor each element of the array.
 --
--- > truncateA arr == `A.map` `truncate` arr
+-- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
 floorA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
@@ -1135,7 +1149,9 @@ floorA = A.map floor
 
 -- | Perform atan2 pointwise
 --
--- > atan2A arr1 arr2 == `A.zipWith` `atan2` arr1 arr2
+-- > atan2A arr1 arr2 == zipWith atan2 arr1 arr2
+--
+-- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.1.0
 atan2A ::
