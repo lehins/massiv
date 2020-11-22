@@ -455,11 +455,12 @@ unsafeDotProductIO v1 v2 = do
       -> m (Vector D e)
 (><.) v mm
   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
-  | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mCols) $ \i ->
+  | otherwise = do
+    let !mm' = compute (transpose mm)
+    pure $ makeArray (getComp mm <> getComp v) (Sz1 mCols) $ \i ->
       unsafeDotProduct (unsafeLinearSlice (i * n) sz mm') v
   where
     Sz2 mRows mCols = size mm
-    mm' = compute (transpose mm)
     sz@(Sz1 n) = size v
 {-# INLINE (><.) #-}
 
