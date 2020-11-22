@@ -26,14 +26,14 @@ class Num e => Numeric r e where
   -- | Compute sum of all elements in the array
   --
   -- @since 0.5.6
-  sumArray :: Array r Ix1 e -> e
+  sumArray :: Index ix => Array r ix e -> e
   sumArray = foldArray (+) 0
   {-# INLINE sumArray #-}
 
   -- | Compute product of all elements in the array
   --
   -- @since 0.5.6
-  productArray :: Array r Ix1 e -> e
+  productArray :: Index ix => Array r ix e -> e
   productArray = foldArray (*) 1
   {-# INLINE productArray #-}
 
@@ -43,7 +43,7 @@ class Num e => Numeric r e where
   -- | Compute dot product without any extraneous checks
   --
   -- @since 0.5.6
-  unsafeDotProduct :: Array r Ix1 e -> Array r Ix1 e -> e
+  unsafeDotProduct :: Index ix => Array r ix e -> Array r ix e -> e
   unsafeDotProduct v1 v2 = sumArray $ unsafeLiftArray2 (*) v1 v2
   {-# INLINE unsafeDotProduct #-}
 
@@ -55,6 +55,10 @@ class Num e => Numeric r e where
   minusScalar :: Index ix => Array r ix e -> e -> Array r ix e
   minusScalar arr e = unsafeLiftArray (subtract e) arr
   {-# INLINE minusScalar #-}
+
+  scalarMinus :: Index ix => e -> Array r ix e -> Array r ix e
+  scalarMinus e arr = unsafeLiftArray (e -) arr
+  {-# INLINE scalarMinus #-}
 
   multiplyScalar :: Index ix => Array r ix e -> e -> Array r ix e
   multiplyScalar arr e = unsafeLiftArray (* e) arr

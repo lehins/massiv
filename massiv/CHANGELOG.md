@@ -1,3 +1,7 @@
+# 0.5.6
+
+* Fix `(-.)` (it was incorrectly implemented as a flip of `(.-)`
+
 # 0.5.5
 
 * Add `takeWhile`, `dropWhile` and `findIndex`

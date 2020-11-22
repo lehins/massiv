@@ -12,9 +12,18 @@ module Test.Massiv.Utils
   , toStringException
   , ExpectedException(..)
   , applyFun2Compat
+  , expectProp
+  -- * Epsilon comparison
+  , epsilonExpect
+  , epsilonFoldableExpect
+  , epsilonMaybeEq
+  , epsilonEq
+  , epsilonEqDouble
+  , epsilonEqFloat
   , module X
   ) where
 
+import qualified Data.Foldable as F
 import Control.Monad as X
 import Control.Monad.ST as X
 import Data.Maybe as X (fromMaybe, isJust, isNothing)
@@ -93,3 +102,72 @@ applyFun2Compat (Fun _ f) a b = f (a, b)
 instance Function Word where
   function = functionMap fromIntegral fromInteger
 #endif
+
+-- | Convert an hspec Expectation to a quickcheck Property.
+--
+-- @since 1.5.0
+expectProp :: Expectation -> Property
+expectProp = monadicIO . run
+
+
+epsilonExpect ::
+     (HasCallStack, Show a, RealFloat a)
+  => a -- ^ Epsilon, a maximum tolerated error. Sign is ignored.
+  -> a -- ^ Expected result.
+  -> a -- ^ Tested value.
+  -> Expectation
+epsilonExpect epsilon x y =
+  X.forM_ (epsilonMaybeEq epsilon x y) $ \errMsg ->
+    expectationFailure $ "Expected: " ++ show x ++ " but got: " ++ show y ++ "\n   " ++ errMsg
+
+
+epsilonFoldableExpect ::
+     (HasCallStack, Foldable f, Show (f e), Show e, RealFloat e) => e -> f e -> f e -> Expectation
+epsilonFoldableExpect epsilon x y = do
+  F.length x `shouldBe` F.length y
+  unless (F.null x) $
+    X.forM_ (zipWithM (epsilonMaybeEq epsilon) (F.toList x) (F.toList y)) $ \errMsgs ->
+      expectationFailure $
+      "Expected: " ++ show x ++ " but got: " ++ show y ++ "\n" ++ unlines (fmap ("    " ++) errMsgs)
+
+
+epsilonMaybeEq ::
+     (Show a, RealFloat a)
+  => a -- ^ Epsilon, a maximum tolerated error. Sign is ignored.
+  -> a -- ^ Expected result.
+  -> a -- ^ Tested value.
+  -> Maybe String
+epsilonMaybeEq epsilon x y
+  | isNaN x && not (isNaN y) = Just $ "Expected NaN, but got: " ++ show y
+  | x == y = Nothing
+  | diff > n = Just $ concat [show x, " /= ", show y, " (Tolerance: ", show diff, " > ", show n, ")"]
+  | otherwise = Nothing
+  where
+    (absx, absy) = (abs x, abs y)
+    n = epsilon * (1 + max absx absy)
+    diff = abs (y - x)
+
+
+epsilonEq ::
+     (Show a, RealFloat a)
+  => a -- ^ Epsilon, a maximum tolerated error. Sign is ignored.
+  -> a -- ^ Expected result.
+  -> a -- ^ Tested value.
+  -> Property
+epsilonEq epsilon x y = property $ epsilonExpect epsilon x y
+
+epsilonEqDouble ::
+     Double -- ^ Expected result.
+  -> Double -- ^ Tested value.
+  -> Property
+epsilonEqDouble = epsilonEq epsilon
+  where
+    epsilon = 1e-12
+
+epsilonEqFloat ::
+     Float -- ^ Expected result.
+  -> Float -- ^ Tested value.
+  -> Property
+epsilonEqFloat = epsilonEq epsilon
+  where
+    epsilon = 1e-6

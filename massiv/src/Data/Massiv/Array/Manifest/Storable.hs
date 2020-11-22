@@ -226,7 +226,7 @@ instance (Index ix, Storable e) => Stream S ix e where
 instance (Storable e, Num e) => Numeric S e where
   unsafeDotProduct a1 a2 = go 0 0
     where
-      !len = unSz (size a1)
+      !len = totalElem (size a1)
       go !acc i
         | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
         | otherwise = acc

@@ -41,10 +41,14 @@ module Data.Massiv.Array.Numeric
   , (><!)
   , (.><.)
   , (!><!)
+  , multiplyMatrices
+  , multiplyMatricesTransposed
+  -- Deprecated:
   , (#>)
   , (|*|)
   , multiplyTransposed
-  , multiplyMatricesTransposed
+  -- * Norms
+  , normL2
   -- ** Simple matrices
   , identityMatrix
   , lowerTriangular
@@ -104,7 +108,6 @@ import Data.Massiv.Array.Ops.Fold as A
 import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Transform as A
 import Data.Massiv.Array.Ops.Construct
-import Data.Massiv.Array.Ops.Slice
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Operations
@@ -237,11 +240,11 @@ liftNumericArray2M f a1 a2
 (.-) = minusScalar
 {-# INLINE (.-) #-}
 
--- | Subtract a scalar from each element of the array. Array is on the right.
+-- | Subtract each element of the array from a scalar. Array is on the right.
 --
--- @since 0.4.0
+-- @since 0.5.6
 (-.) :: (Index ix, Numeric r e) => e -> Array r ix e -> Array r ix e
-(-.) = flip minusScalar
+(-.) = scalarMinus
 {-# INLINE (-.) #-}
 
 
@@ -367,28 +370,44 @@ dotM :: (Numeric r e, Source r Ix1 e, MonadThrow m) => Vector r e -> Vector r e 
 dotM v1 v2
   | size v1 /= size v2 = throwM $ SizeMismatchException (size v1) (size v2)
   | comp == Seq = pure $! unsafeDotProduct v1 v2
-  | otherwise =
-    pure $!
-    unsafePerformIO $ do
-      results <-
-        withScheduler comp $ \scheduler ->
-          splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-            let n = SafeSz chunkLength
-            loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-              scheduleWork scheduler $
-              pure $! unsafeDotProduct (unsafeLinearSlice start n v1) (unsafeLinearSlice start n v2)
-            when (slackStart < totalLength) $ do
-              let k = SafeSz (totalLength - slackStart)
-              scheduleWork scheduler $
-                pure $!
-                unsafeDotProduct
-                  (unsafeLinearSlice slackStart k v1)
-                  (unsafeLinearSlice slackStart k v2)
-      pure $! F.foldl' (+) 0 results
+  | otherwise = pure $! unsafePerformIO $ unsafeDotProductIO v1 v2
   where
-    totalLength = unSz (size v1)
     comp = getComp v1 <> getComp v2
 {-# INLINE dotM #-}
+
+-- | Compute L2 norm of an array.
+--
+-- @since 0.5.6
+normL2 :: (NumericFloat r e, Source r ix e) => Array r ix e -> e
+normL2 v
+  | getComp v == Seq = sqrt $! unsafeDotProduct v v
+  | otherwise = sqrt $! unsafePerformIO $ unsafeDotProductIO v v
+{-# INLINE normL2 #-}
+
+unsafeDotProductIO ::
+     (MonadUnliftIO m, Numeric r b, Source r ix b)
+  => Array r ix b
+  -> Array r ix b
+  -> m b
+unsafeDotProductIO v1 v2 = do
+  results <-
+    withScheduler comp $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        let n = SafeSz chunkLength
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $
+          pure $! unsafeDotProduct (unsafeLinearSlice start n v1) (unsafeLinearSlice start n v2)
+        when (slackStart < totalLength) $ do
+          let k = SafeSz (totalLength - slackStart)
+          scheduleWork scheduler $
+            pure $!
+            unsafeDotProduct (unsafeLinearSlice slackStart k v1) (unsafeLinearSlice slackStart k v2)
+  pure $! F.foldl' (+) 0 results
+  where
+    totalLength = totalElem (size v1)
+    comp = getComp v1 <> getComp v2
+{-# INLINE unsafeDotProductIO #-}
+
 
 -- | Multiply a matrix by a column vector. Same as `!><` but produces monadic
 -- computation that allows for handling failure.
@@ -403,7 +422,7 @@ dotM v1 v2
 (.><) mm v
   | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
   | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
-      unsafeDotProduct (unsafeLinearSlice i sz mm) v
+      unsafeDotProduct (unsafeLinearSlice (i * n) sz mm) v
   where
     Sz2 mRows mCols = size mm
     sz@(Sz1 n) = size v
@@ -437,7 +456,7 @@ dotM v1 v2
 (><.) v mm
   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
   | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mCols) $ \i ->
-      unsafeDotProduct (unsafeLinearSlice i sz mm') v
+      unsafeDotProduct (unsafeLinearSlice (i * n) sz mm') v
   where
     Sz2 mRows mCols = size mm
     mm' = compute (transpose mm)
@@ -497,7 +516,9 @@ dotM v1 v2
 {-# INLINE (.><.) #-}
 
 
-
+-- | Synonym for `.><.`
+--
+-- @since 0.5.6
 multiplyMatrices ::
      forall r r' e m. (Numeric r e, Mutable r Ix2 e, Source r' Ix2 e, MonadThrow m)
   => Matrix r e
@@ -514,7 +535,8 @@ multiplyMatrices arr1 arr2 = multiplyMatricesTransposed arr1 arr2'
     multiplyMatricesTransposedFused arr1 (convert arr2)
  #-}
 
--- | Computes the matrix-matrix product where second matrix is transposed (i.e. M x N')
+-- | Computes the matrix-matrix multiplication where second matrix is transposed (i.e. M
+-- x N')
 --
 -- > m1 .><. transpose m2 == multiplyMatricesTransposed m1 m2
 multiplyMatricesTransposed ::
@@ -523,7 +545,7 @@ multiplyMatricesTransposed ::
   -> Matrix r  e
   -> m (Matrix D e)
 multiplyMatricesTransposed arr1 arr2
-  | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (size arr2)
+  | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (Sz2 m2 n2)
   | otherwise =
     pure $
     DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
@@ -788,10 +810,11 @@ fromIntegerA = singleton . fromInteger
 (.^^) arr n = unsafeLiftArray (^^ n) arr
 {-# INLINE (.^^) #-}
 
--- | Apply reciprical to each element of the array.
+-- | Apply reciprocal to each element of the array.
 --
 -- > recipA arr == 1 /. arr
 --
+-- @since 0.4.0
 recipA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 recipA = recipPointwise
 {-# INLINE recipA #-}
@@ -802,88 +825,199 @@ fromRationalA
   => Rational -> Array D ix e
 fromRationalA = singleton . fromRational
 {-# INLINE fromRationalA #-}
+{-# DEPRECATED fromRationalA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
 
 piA
   :: (Index ix, Floating e)
   => Array D ix e
 piA = singleton pi
 {-# INLINE piA #-}
+{-# DEPRECATED piA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
 
+
+-- | Apply exponent to each element of the array.
+--
+-- > expA arr == map exp arr
+--
+-- @since 0.4.0
 expA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 expA = unsafeLiftArray exp
 {-# INLINE expA #-}
 
+-- | Apply square root to each element of the array.
+--
+-- > sqrtA arr == map sqrt arr
+--
+-- @since 0.4.0
 sqrtA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 sqrtA = unsafeLiftArray sqrt
 {-# INLINE sqrtA #-}
 
+-- | Apply logarithm to each element of the array.
+--
+-- > logA arr == map log arr
+--
+-- @since 0.4.0
 logA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 logA = unsafeLiftArray log
 {-# INLINE logA #-}
 
+
+-- | Apply logarithm to each element of the array where the base is in the same cell in
+-- the second array.
+--
+-- > logBaseA arr1 arr2 == zipWith logBase arr1 arr2
+--
+-- [Partial] Throws an error when arrays do not have matching sizes
+--
+-- @since 0.4.0
 logBaseA
   :: (Source r1 ix e, Source r2 ix e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
 logBaseA = liftArray2Matching logBase
 {-# INLINE logBaseA #-}
+-- TODO: siwtch to
+-- (breaking) logBaseA :: Array r ix e -> e -> Array D ix e
+-- logBasesM :: Array r ix e -> Array r ix e -> m (Array D ix e)
 
+
+
+
+-- | Apply power to each element of the array where the power value is in the same cell
+-- in the second array.
+--
+-- > arr1 .** arr2 == zipWith (**) arr1 arr2
+--
+-- [Partial] Throws an error when arrays do not have matching sizes
+--
+-- @since 0.4.0
 (.**)
   :: (Source r1 ix e, Source r2 ix e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
 (.**) = liftArray2Matching (**)
 {-# INLINE (.**) #-}
+-- TODO:
+-- !**! :: Array r1 ix e -> Array r2 ix e -> Array D ix e
+-- .**. :: Array r1 ix e -> Array r2 ix e -> m (Array D ix e)
+-- (breaking) .** :: Array r1 ix e -> e -> Array D ix e
 
 
 
+-- | Apply sine function to each element of the array.
+--
+-- > sinA arr == `A.map` `sin` arr
+--
+-- @since 0.4.0
 sinA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 sinA = unsafeLiftArray sin
 {-# INLINE sinA #-}
 
+-- | Apply cosine function to each element of the array.
+--
+-- > cosA arr == `A.map` `cos` arr
+--
+-- @since 0.4.0
 cosA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 cosA = unsafeLiftArray cos
 {-# INLINE cosA #-}
 
+-- | Apply tangent function to each element of the array.
+--
+-- > tanA arr == `A.map` `tan` arr
+--
+-- @since 0.4.0
 tanA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 tanA = unsafeLiftArray tan
 {-# INLINE tanA #-}
 
+-- | Apply arcsine function to each element of the array.
+--
+-- > asinA arr == `A.map` `asin` arr
+--
+-- @since 0.4.0
 asinA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 asinA = unsafeLiftArray asin
 {-# INLINE asinA #-}
 
+-- | Apply arctangent function to each element of the array.
+--
+-- > atanA arr == `A.map` `atan` arr
+--
+-- @since 0.4.0
 atanA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 atanA = unsafeLiftArray atan
 {-# INLINE atanA #-}
 
+-- | Apply arccosine function to each element of the array.
+--
+-- > acosA arr == `A.map` `acos` arr
+--
+-- @since 0.4.0
 acosA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 acosA = unsafeLiftArray acos
 {-# INLINE acosA #-}
 
+-- | Apply hyperbolic sine function to each element of the array.
+--
+-- > sinhA arr == `A.map` `sinh` arr
+--
+-- @since 0.4.0
 sinhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 sinhA = unsafeLiftArray sinh
 {-# INLINE sinhA #-}
 
+-- | Apply hyperbolic tangent function to each element of the array.
+--
+-- > tanhA arr == `A.map` `tanh` arr
+--
+-- @since 0.4.0
 tanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 tanhA = unsafeLiftArray tanh
 {-# INLINE tanhA #-}
 
+-- | Apply hyperbolic cosine function to each element of the array.
+--
+-- > coshA arr == `A.map` `cosh` arr
+--
+-- @since 0.4.0
 coshA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 coshA = unsafeLiftArray cosh
 {-# INLINE coshA #-}
 
+-- | Apply inverse hyperbolic sine function to each element of the array.
+--
+-- > asinhA arr == `A.map` `asinh` arr
+--
+-- @since 0.4.0
 asinhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 asinhA = unsafeLiftArray asinh
 {-# INLINE asinhA #-}
 
+-- | Apply inverse hyperbolic cosine function to each element of the array.
+--
+-- > acoshA arr == `A.map` `acosh` arr
+--
+-- @since 0.4.0
 acoshA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 acoshA = unsafeLiftArray acosh
 {-# INLINE acoshA #-}
 
+-- | Apply inverse hyperbolic tangent function to each element of the array.
+--
+-- > atanhA arr == `A.map` `atanh` arr
+--
+-- @since 0.4.0
 atanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 atanhA = unsafeLiftArray atanh
 {-# INLINE atanhA #-}
 
 
+-- | Perform a pointwise quotient where first array contains numerators and the second
+-- one denominators
+--
+-- > quotA arr1 arr2 == `A.zipWith` `quot` arr1 arr2
+--
+-- @since 0.4.0
 quotA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -891,18 +1025,38 @@ quotA = liftArray2Matching quot
 {-# INLINE quotA #-}
 
 
+-- | Perform a pointwise remainder computation
+--
+-- > remA arr1 arr2 == `A.zipWith` `rem` arr1 arr2
+--
+-- @since 0.4.0
 remA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
 remA = liftArray2Matching rem
 {-# INLINE remA #-}
 
+-- | Perform a pointwise integer division where first array contains numerators and the
+-- second one denominators
+--
+-- > divA arr1 arr2 == `A.zipWith` `div` arr1 arr2
+--
+-- @since 0.4.0
 divA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
 divA = liftArray2Matching div
 {-# INLINE divA #-}
+-- TODO:
+--  * Array r ix e -> Array r ix e -> m (Array r ix e)
+--  * Array r ix e -> e -> Array r ix e
+--  * e -> Array r ix e -> Array r ix e
 
+-- | Perform a pointwise modulo computation
+--
+-- > modA arr1 arr2 == `A.zipWith` `mod` arr1 arr2
+--
+-- @since 0.4.0
 modA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -911,6 +1065,12 @@ modA = liftArray2Matching mod
 
 
 
+-- | Perform a pointwise quotient with remainder where first array contains numerators
+-- and the second one denominators
+--
+-- > quotRemA arr1 arr2 == `A.zipWith` `quotRem` arr1 arr2
+--
+-- @since 0.4.0
 quotRemA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
@@ -918,6 +1078,12 @@ quotRemA arr1 = A.unzip . liftArray2Matching (quotRem) arr1
 {-# INLINE quotRemA #-}
 
 
+-- | Perform a pointwise integer division with modulo where first array contains
+-- numerators and the second one denominators
+--
+-- > divModA arr1 arr2 == `A.zipWith` `divMod` arr1 arr2
+--
+-- @since 0.4.0
 divModA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
@@ -926,6 +1092,11 @@ divModA arr1 = A.unzip . liftArray2Matching (divMod) arr1
 
 
 
+-- | Truncate each element of the array.
+--
+-- > truncateA arr == `A.map` `truncate` arr
+--
+-- @since 0.1.0
 truncateA
   :: (Source r ix a, RealFrac a, Integral e)
   => Array r ix a -> Array D ix e
@@ -933,20 +1104,40 @@ truncateA = A.map truncate
 {-# INLINE truncateA #-}
 
 
+-- | Round each element of the array.
+--
+-- > truncateA arr == `A.map` `truncate` arr
+--
+-- @since 0.1.0
 roundA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 roundA = A.map round
 {-# INLINE roundA #-}
 
 
+-- | Ceiling of each element of the array.
+--
+-- > truncateA arr == `A.map` `truncate` arr
+--
+-- @since 0.1.0
 ceilingA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 ceilingA = A.map ceiling
 {-# INLINE ceilingA #-}
 
 
+-- | Floor each element of the array.
+--
+-- > truncateA arr == `A.map` `truncate` arr
+--
+-- @since 0.1.0
 floorA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 floorA = A.map floor
 {-# INLINE floorA #-}
 
+-- | Perform atan2 pointwise
+--
+-- > atan2A arr1 arr2 == `A.zipWith` `atan2` arr1 arr2
+--
+-- @since 0.1.0
 atan2A ::
      (Load r ix e, Numeric r e, RealFloat e, MonadThrow m)
   => Array r ix e
