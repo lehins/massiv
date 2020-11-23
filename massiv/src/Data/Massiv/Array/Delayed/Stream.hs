@@ -204,8 +204,8 @@ instance Load DS Ix1 e where
     S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
   {-# INLINE unsafeLoadIntoS #-}
 
-  unsafeLoadInto marr arr = liftIO $ unsafeLoadIntoS marr arr
-  {-# INLINE unsafeLoadInto #-}
+  unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoS marr arr
+  {-# INLINE unsafeLoadIntoM #-}
 
 
 -- cons :: e -> Array DS Ix1 e -> Array DS Ix1 e

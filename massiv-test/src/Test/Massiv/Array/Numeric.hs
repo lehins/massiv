@@ -79,6 +79,8 @@ prop_VectorMatrixMultiply ::
      , Mutable r Ix1 e
      , Eq e
      , Show e
+     , Show (Vector r e)
+     , Eq (Vector r e)
      )
   => Fun Int e
   -> Matrix r e
@@ -88,6 +90,7 @@ prop_VectorMatrixMultiply f arr =
     let Sz2 m _ = size arr
         v = makeArray Seq (Sz m) (applyFun f)
     v ><! arr `shouldBe` flatten (naiveMatrixMatrixMultiply (resize' (Sz2 1 m) v) (delay arr))
+    multiplyVectorByMatrix v arr `shouldReturn` compute (v ><! arr)
     makeArray Seq (Sz (m + 1)) (applyFun f) ><. arr `shouldThrow`
       (== SizeMismatchException (Sz2 1 (m + 1)) (size arr))
 
@@ -236,11 +239,12 @@ mutableNumericSpec ::
      , Function e
      , CoArbitrary e
      , Arbitrary e
-     , Arbitrary (Array r Ix1 e)
-     , Arbitrary (Array r Ix2 e)
-     , Show (Array r Ix2 e)
-     , Eq (Array r Ix2 e)
-     , Show (Array r Ix1 e)
+     , Arbitrary (Matrix r e)
+     , Arbitrary (Vector r e)
+     , Show (Matrix r e)
+     , Eq (Matrix r e)
+     , Show (Vector r e)
+     , Eq (Vector r e)
      )
   => Spec
 mutableNumericSpec =

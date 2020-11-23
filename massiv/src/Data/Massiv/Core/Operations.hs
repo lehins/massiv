@@ -1,4 +1,3 @@
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -16,7 +15,6 @@ module Data.Massiv.Core.Operations
   ) where
 
 import Data.Massiv.Core.Common
--- import Data.Massiv.Array.Ops.Fold.Internal
 
 
 class Num e => Numeric r e where
@@ -37,8 +35,12 @@ class Num e => Numeric r e where
   productArray = foldArray (*) 1
   {-# INLINE productArray #-}
 
-  -- -- | Raise each element in the array to some non-negative power and sum the results
-  -- powerSumArray :: Array r Ix1 e -> Int -> e
+  -- | Raise each element in the array to some non-negative power and sum the results
+  --
+  -- @since 0.5.7
+  powerSumArray :: Index ix => Array r ix e -> Int -> e
+  powerSumArray arr p = sumArray $ unsafeLiftArray (^ p) arr
+  {-# INLINE powerSumArray #-}
 
   -- | Compute dot product without any extraneous checks
   --

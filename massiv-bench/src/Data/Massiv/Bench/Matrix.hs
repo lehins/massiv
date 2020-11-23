@@ -161,73 +161,13 @@ benchVxM mxv@VxM {..} =
   bgroup (showsType @(VxM r e) (" - (" <> showSizeVxM mxv <> ")"))
   [ bench "Seq" $ whnfIO (computeIO @r =<< aVxM ><. bVxM)
   , bench "Par" $ whnfIO (computeIO @r =<< aVxM ><. setComp Par bVxM)
-  -- , bgroup "vectorMatrixMultiply"
-  --   [ bench "Seq" $ whnfIO (vectorMatrixMultiply aVxM bVxM)
-  --   , bench "Par" $ whnfIO (vectorMatrixMultiply aVxM (setComp Par bVxM))
-  --   ]
+  , bgroup "vectorMatrixMultiply"
+    [ bench "Seq" $ whnfIO (multiplyVectorByMatrix aVxM bVxM)
+    , bench "Par" $ whnfIO (multiplyVectorByMatrix aVxM (setComp Par bVxM))
+    ]
   ]
 {-# INLINEABLE benchVxM #-}
 
-
--- -- | This is an experimental version of `><.` which is slower but uses
--- -- contiguous chunk of memory needed for SIMD
--- vectorMatrixMultiply ::
---      ( MonadThrow m
---      , Numeric r e
---      , Mutable r Ix1 e
---      , Mutable r Ix2 e
---      , Load (R r) Ix1 e
---      , InnerSlice r Ix2 e
---      )
---   => Vector r e -- ^ Row vector
---   -> Matrix r e -- ^ Matrix
---   -> m (Vector r e)
--- vectorMatrixMultiply v mm
---   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
---   | otherwise =
---     pure $!
---     unsafePerformIO $ do
---       states <- initWorkerStates comp $ \_ -> unsafeNew sz
---       generateArrayLinearWS states (Sz1 mCols) $ \i tmpVector -> do
---         mv' <- unsafeLoadIntoS tmpVector (unsafeInnerSlice mm kSlice i)
---         v' <- unsafeFreeze Seq mv'
---         pure $! unsafeDotProduct v' v
---   where
---     comp = getComp mm <> getComp v
---     Sz2 mRows mCols = size mm
---     kSlice = (SafeSz mRows, SafeSz mCols)
---     sz@(Sz1 n) = size v
--- {-# INLINE vectorMatrixMultiply #-}
-
---  No performance difference from ><.
--- vectorMatrixMultiplyUnrolled :: (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e) =>
---          Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
---       -> Matrix r e -- ^ Matrix
---       -> m (Vector D e)
--- vectorMatrixMultiplyUnrolled v mm
---   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
---   | otherwise =
---     pure $ makeArray (getComp mm <> getComp v) (Sz1 mCols) $ \i ->
---       let go j !acc
---             | j < n4 =
---               let !j0' = j * mCols + i
---                   !j1' = j0' + mCols
---                   !j2' = j1' + mCols
---                   !j3' = j2' + mCols
---                   !acc' = unsafeLinearIndex v j       * unsafeLinearIndex mm j0' +
---                           unsafeLinearIndex v (j + 1) * unsafeLinearIndex mm j1' +
---                           unsafeLinearIndex v (j + 2) * unsafeLinearIndex mm j2' +
---                           unsafeLinearIndex v (j + 3) * unsafeLinearIndex mm j3' +
---                           acc
---               in go (j + 4) acc'
---             | j < n = go (j + 1) (unsafeLinearIndex v j * unsafeLinearIndex mm (j * mCols + i) + acc)
---             | otherwise = acc
---       in go 0 0
---   where
---     Sz2 mRows mCols = size mm
---     Sz1 n = size v
---     n4 = n - (n `rem` 4)
--- {-# INLINE vectorMatrixMultiplyUnrolled #-}
 
 
 

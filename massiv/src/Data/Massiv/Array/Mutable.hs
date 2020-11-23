@@ -280,7 +280,7 @@ loadArray ::
 loadArray arr =
   liftIO $ do
     marr <- newMaybeInitialized arr
-    unsafeLoadInto marr arr
+    unsafeLoadIntoM marr arr
 {-# INLINE loadArray #-}
 
 

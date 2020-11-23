@@ -338,16 +338,16 @@ class (Typeable r, Index ix) => Load r ix e where
   -- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
   --
   -- @since 0.5.7
-  unsafeLoadInto ::
+  unsafeLoadIntoM ::
        (Mutable r' ix e, MonadIO m)
     => MArray RealWorld r' ix e
     -> Array r ix e
     -> m (MArray RealWorld r' ix e)
-  unsafeLoadInto marr arr = do
+  unsafeLoadIntoM marr arr = do
     liftIO $ withMassivScheduler_ (getComp arr) $ \scheduler ->
       loadArrayM scheduler arr (unsafeLinearWrite marr)
     pure marr
-  {-# INLINE unsafeLoadInto #-}
+  {-# INLINE unsafeLoadIntoM #-}
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
 withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()

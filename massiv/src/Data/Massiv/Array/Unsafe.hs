@@ -36,6 +36,8 @@ module Data.Massiv.Array.Unsafe
   , unsafeThaw
   , unsafeFreeze
   , unsafeNew
+  , unsafeLoadIntoS
+  , unsafeLoadIntoM
   , unsafeCreateArray
   , unsafeCreateArray_
   , unsafeCreateArrayS

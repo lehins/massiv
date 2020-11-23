@@ -37,8 +37,10 @@ module Data.Massiv.Array.Numeric
   -- ** Matrix multiplication
   , (.><)
   , (!><)
+  , multiplyMatrixByVector
   , (><.)
   , (><!)
+  , multiplyVectorByMatrix
   , (.><.)
   , (!><!)
   , multiplyMatrices
@@ -117,6 +119,7 @@ import System.IO.Unsafe
 import Control.Scheduler
 import Control.Monad (when)
 import qualified Data.Foldable as F
+import Data.Function
 
 infixr 8  .^, .^^
 infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
@@ -416,10 +419,11 @@ unsafeDotProductIO v1 v2 = do
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(.><) :: (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e) =>
-         Matrix r e -- ^ Matrix
-      -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
-      -> m (Vector D e)
+(.><) ::
+     (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e)
+  => Matrix r e -- ^ Matrix
+  -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
+  -> m (Vector D e)
 (.><) mm v
   | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
   | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
@@ -428,6 +432,19 @@ unsafeDotProductIO v1 v2 = do
     Sz2 mRows mCols = size mm
     sz@(Sz1 n) = size v
 {-# INLINE (.><) #-}
+
+-- | Multiply matrix by a column vector. Same as `.><` but returns computed version of a vector
+--
+-- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
+--
+-- @since 0.5.7
+multiplyMatrixByVector ::
+     (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
+  => Matrix r e -- ^ Matrix
+  -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
+  -> m (Vector r e)
+multiplyMatrixByVector mm v = compute <$> mm .>< v
+{-# INLINE multiplyMatrixByVector #-}
 
 
 -- | Multiply a matrix by a column vector
@@ -450,19 +467,48 @@ unsafeDotProductIO v1 v2 = do
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(><.) :: (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e) =>
-         Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
+(><.) :: (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e) =>
+         Vector r e -- ^ Row vector
       -> Matrix r e -- ^ Matrix
       -> m (Vector D e)
-(><.) v mm
+(><.) v mm = delay <$> multiplyVectorByMatrix v mm
+{-# INLINE (><.) #-}
+
+-- | Multiply a row vector by a matrix. Same as `><.` but returns computed vector instead of
+-- a delayed one.
+--
+-- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
+--
+-- @since 0.5.7
+multiplyVectorByMatrix ::
+     (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
+  => Vector r e -- ^ Row vector
+  -> Matrix r e -- ^ Matrix
+  -> m (Vector r e)
+multiplyVectorByMatrix v mm
   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
   | otherwise =
-    pure $ makeArray (getComp mm <> getComp v) (Sz1 mCols) $ \i ->
-      ifoldlS (\ acc j e -> acc + e * unsafeLinearIndex mm (j * mCols + i)) 0 v
+    pure $!
+    unsafePerformIO $ do
+      mv <- new (Sz mCols)
+      withMassivScheduler_ comp $ \scheduler -> do
+        let loopCols x ivto =
+              fix $ \go im iv ->
+                when (iv < ivto) $ do
+                  _ <- unsafeLinearModify mv (\a -> pure $ a + unsafeLinearIndex mm im * x) iv
+                  go (im + 1) (iv + 1)
+            loopRows i0 from to =
+              flip fix i0 $ \go i ->
+                when (i < mRows) $ do
+                  loopCols (unsafeLinearIndex v i) to (i * mCols + from) from
+                  go (i + 1)
+        splitLinearlyM_ scheduler mCols (loopRows 0)
+      unsafeFreeze comp mv
   where
+    comp = getComp mm <> getComp v
     Sz2 mRows mCols = size mm
     Sz1 n = size v
-{-# INLINE (><.) #-}
+{-# INLINE multiplyVectorByMatrix #-}
 
 
 -- | Multiply a row vector by a matrix.
@@ -471,7 +517,7 @@ unsafeDotProductIO v1 v2 = do
 --
 -- @since 0.5.6
 (><!) ::
-     (Numeric r e, Source r Ix1 e, Source r Ix2 e)
+     (Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
   => Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
   -> Matrix r e -- ^ Matrix
   -> Vector D e
