@@ -325,7 +325,7 @@ class (Typeable r, Index ix) => Load r ix e where
   -- | Load into a supplied mutable array sequentially. Returned array does not have to be
   -- the same
   --
-  -- @since 0.5.0
+  -- @since 0.5.7
   unsafeLoadIntoS ::
        (Mutable r' ix e, PrimMonad m)
     => MArray (PrimState m) r' ix e
@@ -337,7 +337,7 @@ class (Typeable r, Index ix) => Load r ix e where
 
   -- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
   --
-  -- @since 0.5.0
+  -- @since 0.5.7
   unsafeLoadInto ::
        (Mutable r' ix e, MonadIO m)
     => MArray RealWorld r' ix e

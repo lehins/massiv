@@ -100,6 +100,7 @@ module Data.Massiv.Array.Numeric
   , atan2A
   ) where
 
+import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
@@ -449,19 +450,18 @@ unsafeDotProductIO v1 v2 = do
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(><.) :: (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e) =>
-         Vector r e -- ^ Row vector
+(><.) :: (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e) =>
+         Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
       -> Matrix r e -- ^ Matrix
       -> m (Vector D e)
 (><.) v mm
   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
-  | otherwise = do
-    let !mm' = compute (transpose mm)
+  | otherwise =
     pure $ makeArray (getComp mm <> getComp v) (Sz1 mCols) $ \i ->
-      unsafeDotProduct (unsafeLinearSlice (i * n) sz mm') v
+      ifoldlS (\ acc j e -> acc + e * unsafeLinearIndex mm (j * mCols + i)) 0 v
   where
     Sz2 mRows mCols = size mm
-    sz@(Sz1 n) = size v
+    Sz1 n = size v
 {-# INLINE (><.) #-}
 
 
@@ -471,8 +471,8 @@ unsafeDotProductIO v1 v2 = do
 --
 -- @since 0.5.6
 (><!) ::
-     (Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
-  => Vector r e -- ^ Row vector
+     (Numeric r e, Source r Ix1 e, Source r Ix2 e)
+  => Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
   -> Matrix r e -- ^ Matrix
   -> Vector D e
 (><!) v mm = throwEither (v ><. mm)

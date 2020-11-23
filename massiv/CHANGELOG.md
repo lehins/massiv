@@ -1,3 +1,7 @@
+# 0.5.6.1
+
+* Improve performance of `><.` and `><!` while making their constraints a bit more relaxed.
+
 # 0.5.6
 
 * Fix `(-.)` (it was incorrectly implemented as a flip of `(.-)`

@@ -71,8 +71,6 @@ benchmark mult
                      , criterion
                      , massiv
                      , massiv-bench
-                     -- , massiv-simd
-                     , dense-linear-algebra
   default-language:    Haskell2010
 
 benchmark arithmetic
@@ -84,7 +82,6 @@ benchmark arithmetic
                      , criterion
                      , massiv
                      , massiv-bench
-                     -- , massiv-simd
   default-language:    Haskell2010
 
 benchmark minmax

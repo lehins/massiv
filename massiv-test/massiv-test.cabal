@@ -98,6 +98,60 @@ test-suite tests
                      -threaded
                      -with-rtsopts=-N2
 
+
+test-suite tests-O0
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     tests
+  main-is:            Main.hs
+  other-modules:      Spec
+                    , Test.Massiv.Core.IndexSpec
+                    , Test.Massiv.Core.ListSpec
+                    , Test.Massiv.Core.SchedulerSpec
+                    , Test.Massiv.Array.Delayed.StreamSpec
+                    , Test.Massiv.Array.Delayed.InterleavedSpec
+                    , Test.Massiv.Array.Delayed.PushSpec
+                    , Test.Massiv.Array.Delayed.WindowedSpec
+                    , Test.Massiv.Array.DelayedSpec
+                    , Test.Massiv.Array.MutableSpec
+                    , Test.Massiv.Array.Ops.FoldSpec
+                    , Test.Massiv.Array.Ops.MapSpec
+                    , Test.Massiv.Array.Ops.SortSpec
+                    , Test.Massiv.Array.Ops.TransformSpec
+                    , Test.Massiv.Array.NumericSpec
+                    , Test.Massiv.Array.Numeric.IntegralSpec
+                    , Test.Massiv.Array.StencilSpec
+                    , Test.Massiv.VectorSpec
+                      -- TODO: Below should be moved to Test.Massiv.Array
+                    , Data.Massiv.Array.Manifest.VectorSpec
+                    , Data.Massiv.Array.ManifestSpec
+                    , Data.Massiv.Array.Ops.ConstructSpec
+                    , Data.Massiv.Array.Ops.SliceSpec
+                    , Data.Massiv.ArraySpec
+  build-depends:      base
+                    , bytestring
+                    , containers
+                    , data-default
+                    , deepseq
+                    , genvalidity-hspec
+                    , massiv >= 0.5.2
+                    , massiv-test
+                    , mwc-random
+                    , hspec
+                    , primitive
+                    , scheduler
+                    , QuickCheck
+                    , vector
+
+  default-language:   Haskell2010
+  ghc-options:       -Wall
+                     -Wincomplete-record-updates
+                     -Wincomplete-uni-patterns
+                     -Wredundant-constraints
+                     -fno-warn-orphans
+                     -threaded
+                     -with-rtsopts=-N2
+                     -O0
+
 source-repository head
   type:     git
   location: https://github.com/lehins/massiv

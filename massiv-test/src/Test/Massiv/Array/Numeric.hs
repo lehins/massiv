@@ -244,7 +244,7 @@ mutableNumericSpec ::
      )
   => Spec
 mutableNumericSpec =
-  describe "Numerc Operations" $ do
+  describe "Numeric Operations" $ do
     prop "Plus" $ prop_Plus @r @e
     prop "Minus" $ prop_Minus @r @e
     prop "Times" $ prop_Times @r @e
