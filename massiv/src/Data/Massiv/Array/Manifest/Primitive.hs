@@ -255,6 +255,13 @@ instance (Prim e, Num e) => Numeric P e where
         | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
         | otherwise = acc
   {-# INLINE unsafeDotProduct #-}
+  powerSumArray arr p = go 0 0
+    where
+      !len = totalElem (size arr)
+      go !acc i
+        | i < len = go (acc + unsafeLinearIndex arr i ^ p) (i + 1)
+        | otherwise = acc
+  {-# INLINE powerSumArray #-}
   foldArray f !initAcc arr = go initAcc 0
     where
       !len = totalElem (size arr)

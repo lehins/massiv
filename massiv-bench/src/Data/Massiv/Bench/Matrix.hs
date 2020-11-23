@@ -15,6 +15,7 @@ module Data.Massiv.Bench.Matrix
   , randomVxM
   , benchVxM
   , showsType
+  , stdGen
   ) where
 
 import Data.Massiv.Array

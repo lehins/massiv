@@ -379,14 +379,6 @@ dotM v1 v2
     comp = getComp v1 <> getComp v2
 {-# INLINE dotM #-}
 
--- | Compute L2 norm of an array.
---
--- @since 0.5.6
-normL2 :: (NumericFloat r e, Source r ix e) => Array r ix e -> e
-normL2 v
-  | getComp v == Seq = sqrt $! unsafeDotProduct v v
-  | otherwise = sqrt $! unsafePerformIO $ unsafeDotProductIO v v
-{-# INLINE normL2 #-}
 
 unsafeDotProductIO ::
      (MonadUnliftIO m, Numeric r b, Source r ix b)
@@ -411,6 +403,36 @@ unsafeDotProductIO v1 v2 = do
     totalLength = totalElem (size v1)
     comp = getComp v1 <> getComp v2
 {-# INLINE unsafeDotProductIO #-}
+
+
+-- | Compute L2 norm of an array.
+--
+-- @since 0.5.6
+normL2 :: (Floating e, Numeric r e, Source r ix e) => Array r ix e -> e
+normL2 v
+  | getComp v == Seq = sqrt $! powerSumArray v 2
+  | otherwise = sqrt $! unsafePerformIO $ powerSumArrayIO v 2
+{-# INLINE normL2 #-}
+
+powerSumArrayIO ::
+     (MonadUnliftIO m, Numeric r b, Source r ix b)
+  => Array r ix b
+  -> Int
+  -> m b
+powerSumArrayIO v p = do
+  results <-
+    withScheduler (getComp v) $ \scheduler ->
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+        let n = SafeSz chunkLength
+        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          scheduleWork scheduler $ pure $! powerSumArray (unsafeLinearSlice start n v) p
+        when (slackStart < totalLength) $ do
+          let k = SafeSz (totalLength - slackStart)
+          scheduleWork scheduler $ pure $! powerSumArray (unsafeLinearSlice slackStart k v) p
+  pure $! F.foldl' (+) 0 results
+  where
+    totalLength = totalElem (size v)
+{-# INLINE powerSumArrayIO #-}
 
 
 -- | Multiply a matrix by a column vector. Same as `!><` but produces monadic

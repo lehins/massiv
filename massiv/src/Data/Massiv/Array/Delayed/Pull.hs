@@ -218,6 +218,13 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
 
 
 instance Num e => Numeric D e where
+  unsafeDotProduct a1 a2 = go 0 0
+    where
+      !len = totalElem (size a1)
+      go !acc i
+        | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
+        | otherwise = acc
+  {-# INLINE unsafeDotProduct #-}
   foldArray f !initAcc arr = go initAcc 0
     where
       !len = totalElem (dSize arr)

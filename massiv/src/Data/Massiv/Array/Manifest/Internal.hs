@@ -128,7 +128,6 @@ instance Index ix => Foldable (Array M ix) where
   {-# INLINE toList #-}
 
 
-
 instance Index ix => Source M ix e where
   unsafeLinearIndex = mLinearIndex
   {-# INLINE unsafeLinearIndex #-}
