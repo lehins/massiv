@@ -36,6 +36,8 @@ module Data.Massiv.Array.Ops.Fold
   , all
   , any
   , elem
+  , eqArrays
+  , compareArrays
 
   -- ** Single dimension folds
   -- *** Safe inner most

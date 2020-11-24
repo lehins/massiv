@@ -36,7 +36,7 @@ module Data.Massiv.Array.Manifest.Storable
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (unsafePrimToPrim)
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Pull (eqArrays, compareArrays)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.Primitive (shrinkMutableByteArray)
 import Data.Primitive.ByteArray (MutableByteArray(..))
@@ -77,11 +77,11 @@ instance NFData ix => NFData (Array S ix e) where
   {-# INLINE rnf #-}
 
 instance (Storable e, Eq e, Index ix) => Eq (Array S ix e) where
-  (==) = eq (==)
+  (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
 instance (Storable e, Ord e, Index ix) => Ord (Array S ix e) where
-  compare = ord compare
+  compare = compareArrays compare
   {-# INLINE compare #-}
 
 instance (Storable e, Index ix) => Construct S ix e where

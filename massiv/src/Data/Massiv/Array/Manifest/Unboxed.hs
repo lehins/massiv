@@ -26,7 +26,7 @@ module Data.Massiv.Array.Manifest.Unboxed
   ) where
 
 import Control.DeepSeq (NFData(..), deepseq)
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
+import Data.Massiv.Array.Delayed.Pull (eqArrays, compareArrays)
 import Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Vector.Stream as S (steps, isteps)
@@ -68,11 +68,11 @@ instance (VU.Unbox e, Index ix) => Construct U ix e where
 
 
 instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
-  (==) = eq (==)
+  (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
 instance (VU.Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
-  compare = ord compare
+  compare = compareArrays compare
   {-# INLINE compare #-}
 
 

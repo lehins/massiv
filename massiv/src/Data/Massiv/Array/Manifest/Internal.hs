@@ -90,11 +90,11 @@ instance (Ragged L ix e, Show e) => Show (Array M ix e) where
 
 
 instance (Eq e, Index ix) => Eq (Array M ix e) where
-  (==) = eq (==)
+  (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
 instance (Ord e, Index ix) => Ord (Array M ix e) where
-  compare = ord compare
+  compare = compareArrays compare
   {-# INLINE compare #-}
 
 

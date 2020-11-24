@@ -153,8 +153,6 @@ benchVxM ::
      , Numeric r e
      , Mutable r Ix1 e
      , Mutable r Ix2 e
-     , Load (R r) Ix1 e
-     , InnerSlice r Ix2 e
      )
   => VxM r e
   -> Benchmark

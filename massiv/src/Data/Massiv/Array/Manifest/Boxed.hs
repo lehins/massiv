@@ -49,7 +49,6 @@ import Control.Monad ((>=>))
 import Control.Monad.Primitive
 import Control.Monad.ST (runST)
 import qualified Data.Foldable as F (Foldable(..))
-import Data.Massiv.Array.Delayed.Pull (eq, ord)
 import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
 import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
@@ -112,11 +111,11 @@ instance (Index ix, NFData e) => NFData (Array B ix e) where
   {-# INLINE rnf #-}
 
 instance (Index ix, Eq e) => Eq (Array B ix e) where
-  (==) = eq (==)
+  (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
 instance (Index ix, Ord e) => Ord (Array B ix e) where
-  compare = ord compare
+  compare = compareArrays compare
   {-# INLINE compare #-}
 
 instance Index ix => Construct B ix e where
@@ -284,11 +283,11 @@ instance (Index ix, NFData e) => NFData (Array N ix e) where
   {-# INLINE rnf #-}
 
 instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
-  (==) = eq (==)
+  (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
 instance (Index ix, NFData e, Ord e) => Ord (Array N ix e) where
-  compare = ord compare
+  compare = compareArrays compare
   {-# INLINE compare #-}
 
 

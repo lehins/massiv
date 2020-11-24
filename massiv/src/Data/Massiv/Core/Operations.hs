@@ -82,6 +82,9 @@ class Num e => Numeric r e where
   multiplicationPointwise = unsafeLiftArray2 (*)
   {-# INLINE multiplicationPointwise #-}
 
+  -- TODO:
+  --  - rename to powerScalar
+  --  - add? powerPointwise :: Array r ix e -> Array r ix Int -> Array r ix e
   -- | Raise each element of the array to the power
   powerPointwise :: Index ix => Array r ix e -> Int -> Array r ix e
   powerPointwise arr pow = unsafeLiftArray (^ pow) arr

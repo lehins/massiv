@@ -18,8 +18,8 @@ module Data.Massiv.Array.Delayed.Pull
   ( D(..)
   , Array(..)
   , delay
-  , eq
-  , ord
+  , eqArrays
+  , compareArrays
   , imap
   ) where
 
@@ -99,11 +99,11 @@ instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e wher
 
 
 instance (Eq e, Index ix) => Eq (Array D ix e) where
-  (==) = eq (==)
+  (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
 instance (Ord e, Index ix) => Ord (Array D ix e) where
-  compare = ord compare
+  compare = compareArrays compare
   {-# INLINE compare #-}
 
 instance Functor (Array D ix) where
@@ -254,26 +254,30 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
  #-}
 
 -- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
-eq :: (Source r1 ix e1, Source r2 ix e2) =>
+--
+-- @since 0.5.7
+eqArrays :: (Source r1 ix e1, Source r2 ix e2) =>
       (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
-eq f arr1 arr2 =
+eqArrays f arr1 arr2 =
   (size arr1 == size arr2) &&
   not (A.any not
        (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
            f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)))
-{-# INLINE eq #-}
+{-# INLINE eqArrays #-}
 
 -- | /O(min (n1, n2))/ - Compute array ordering by applying a comparing function to each element.
 -- The exact ordering is unspecified so this is only intended for use in maps and the like where
 -- you need an ordering but do not care about which one is used.
-ord :: (Source r1 ix e1, Source r2 ix e2) =>
+--
+-- @since 0.5.7
+compareArrays :: (Source r1 ix e1, Source r2 ix e2) =>
        (e1 -> e2 -> Ordering) -> Array r1 ix e1 -> Array r2 ix e2 -> Ordering
-ord f arr1 arr2 =
+compareArrays f arr1 arr2 =
   compare (size arr1) (size arr2) <>
   A.fold
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-{-# INLINE ord #-}
+{-# INLINE compareArrays #-}
 
 
 -- -- | The usual map.

@@ -87,11 +87,11 @@ instance Index ix => NFData (Array P ix e) where
   {-# INLINE rnf #-}
 
 instance (Prim e, Eq e, Index ix) => Eq (Array P ix e) where
-  (==) = eq (==)
+  (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
 instance (Prim e, Ord e, Index ix) => Ord (Array P ix e) where
-  compare = ord compare
+  compare = compareArrays compare
   {-# INLINE compare #-}
 
 instance (Prim e, Index ix) => Construct P ix e where

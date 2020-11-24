@@ -1,7 +1,8 @@
 # 0.5.7
 
 * Improve performance of `><.` and `><!` while making their constraints a bit more relaxed.
-* Export `unsafeLoadIntoM` and `unsafeLoadIntoS`
+* Expose `unsafeLoadIntoM` and `unsafeLoadIntoS`
+* Expose `eqArrays` and `compareArrays`
 * Add `multiplyMatrixByVector` and `multiplyVectorByMatrix`
 
 # 0.5.6
