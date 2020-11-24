@@ -264,8 +264,10 @@ liftNumericArray2M f a1 a2
 {-# INLINE (.*.) #-}
 
 
--- | Multiplication of two arrays pointwise. Prefer to use monadic version of this
--- function `.*.` whenever possible, because it is better to avoid partial functions.
+-- | Multiplication of two arrays pointwise,
+-- i.e. <https://en.wikipedia.org/wiki/Hadamard_product_(matrices) Hadamard product>.
+-- Prefer to use monadic version of this function `.*.` whenever possible,
+-- because it is better to avoid partial functions.
 --
 -- [Partial] Mismatched array sizes will result in an impure exception being thrown.
 --
