@@ -99,3 +99,52 @@ The `Within` suffix signals that the function operates on a particular dimension
 and it allows you to pick any dimension you want. Functions with the `Outer`
 suffix use dimension `n` in an n-dimensional index don't take a dimension
 argument. Functions with the `Inner` suffix use dimension `1`.
+
+
+## Examples
+
+### Conversion from `array`
+
+Here is an example of how to convert a nested boxed array from `array` package to a
+rectangular `Matrix` with parallellization:
+
+
+```haskell
+import Data.Massiv.Array as A
+import Data.Massiv.Array.Unsafe as A
+import Control.Scheduler (scheduleWork_)
+import qualified Data.Array.IArray as IA
+
+toPrimArray :: IA.Array Int (IA.Array Int Float) -> IO (Array P Ix2 Float)
+toPrimArray arr = do
+  let m = IA.rangeSize (IA.bounds arr)
+      n | m > 0 = IA.rangeSize (IA.bounds (arr IA.! 0))
+        | otherwise = 0
+  createArray_ Par (Sz2 m n) $ \scheduler marr ->
+    A.forM_ (0 ..: m) $ \i -> do
+      let vec = arr IA.! i
+      scheduleWork_ scheduler $ A.forM_ (0 ..: n) $ \j ->
+        unsafeWrite marr (i :. j) (vec IA.! j)
+```
+
+Sample run:
+
+```haskell
+squareRaggedArray :: IA.Array Int (IA.Array Int Float)
+squareRaggedArray =
+  IA.listArray (0, m - 1)
+  [ IA.listArray (0, n - 1) [fromIntegral (x + y) | x <- [0 .. n]] | y <- [0 .. m]]
+  where
+    (m, n) = (3, 4)
+```
+
+```haskell
+λ> squareRaggedArray
+array (0,2) [(0,array (0,3) [(0,0.0),(1,1.0),(2,2.0),(3,3.0)]),(1,array (0,3) [(0,1.0),(1,2.0),(2,3.0),(3,4.0)]),(2,array (0,3) [(0,2.0),(1,3.0),(2,4.0),(3,5.0)])]
+λ> toPrimArray squareRaggedArray
+Array P Par (Sz (3 :. 4))
+  [ [ 0.0, 1.0, 2.0, 3.0 ]
+  , [ 1.0, 2.0, 3.0, 4.0 ]
+  , [ 2.0, 3.0, 4.0, 5.0 ]
+  ]
+```
