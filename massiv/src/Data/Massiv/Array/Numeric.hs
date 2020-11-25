@@ -712,7 +712,6 @@ multiplyMatricesTransposed arr1 arr2
 {-# INLINE multiplyMatricesTransposed #-}
 
 
-
 -- | Create an indentity matrix.
 --
 -- ==== __Example__
