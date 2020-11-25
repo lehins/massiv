@@ -1,3 +1,9 @@
+# 0.6.0
+
+* 20% Speed of matrix multiplication: `multiplyMatrices`, `.><.` and `!><!`. Type
+  signature has changed to `Mutable` for both arguments, thus a breaking change.
+* Switch `><.` and `><!` from returning a delayed array.
+
 # 0.5.9
 
 * Add `mallocCompute`, `mallocCopy` and `unsafeMallocMArray`

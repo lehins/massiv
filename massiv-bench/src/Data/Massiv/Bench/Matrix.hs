@@ -19,6 +19,7 @@ module Data.Massiv.Bench.Matrix
   ) where
 
 import Control.DeepSeq
+import Control.Scheduler
 import Criterion.Main
 import Data.Massiv.Array
 import Data.Massiv.Bench.Common
@@ -27,6 +28,7 @@ import System.Random
 
 aMxMsize :: Sz2
 aMxMsize = Sz2 500 800
+--aMxMsize = Sz2 8 16
 
 bMxMsize :: Sz2
 bMxMsize =
@@ -105,9 +107,19 @@ benchMxV ::
   -> Benchmark
 benchMxV mxv@MxV {..} =
   bgroup (showsType @(MxV r e) (" - (" <> showSizeMxV mxv <> ")"))
-  [ bench "Seq" $ whnfIO (computeIO @r =<< aMxV .>< bMxV)
-  , bench "Par" $ whnfIO (computeIO @r =<< aMxV .>< setComp Par bMxV)
+  [ bgroup ".><"
+    [ bench "Seq" $ whnfIO (computeIO @r =<< aMxV .>< bMxV)
+    , bench "Par" $ whnfIO (computeIO @r =<< aMxV .>< setComp Par bMxV)
+    ]
+  , bgroup ".><."
+    [ bench "Seq" $ whnfIO (computeIO @r =<< aMxV .><. bMxV')
+    , bench "Par" $ whnfIO (computeIO @r =<< aMxV .><. setComp Par bMxV')
+    ]
   ]
+  where
+    Sz2 _ n = aMxVsize
+    bMxV' = resize' (Sz2 n 1) bMxV
+{-# INLINEABLE benchMxV #-}
 
 
 
@@ -152,17 +164,19 @@ benchVxM ::
   -> Benchmark
 benchVxM mxv@VxM {..} =
   bgroup (showsType @(VxM r e) (" - (" <> showSizeVxM mxv <> ")"))
-  [ bench "Seq" $ whnfIO (computeIO @r =<< aVxM ><. bVxM)
-  , bench "Par" $ whnfIO (computeIO @r =<< aVxM ><. setComp Par bVxM)
-  , bgroup "vectorMatrixMultiply"
-    [ bench "Seq" $ whnfIO (multiplyVectorByMatrix aVxM bVxM)
-    , bench "Par" $ whnfIO (multiplyVectorByMatrix aVxM (setComp Par bVxM))
+  [ bgroup "><."
+    [ bench "Seq" $ whnfIO (computeIO @r =<< aVxM ><. bVxM)
+    , bench "Par" $ whnfIO (computeIO @r =<< aVxM ><. setComp Par bVxM)
+    ]
+  , bgroup ".><."
+    [ bench "Seq" $ whnfIO (computeIO @r =<< aVxM' .><. bVxM)
+    , bench "Par" $ whnfIO (computeIO @r =<< aVxM' .><. setComp Par bVxM)
     ]
   ]
+  where
+    Sz1 m = aVxMsize
+    aVxM' = resize' (Sz2 1 m) aVxM
 {-# INLINEABLE benchVxM #-}
-
-
-
 
 -- squareMsize :: Sz1
 -- squareMsize = Sz1 1000

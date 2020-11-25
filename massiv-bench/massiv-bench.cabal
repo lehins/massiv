@@ -27,6 +27,7 @@ library
                      , deepseq
                      , massiv
                      , random >= 1.2
+                     , scheduler
   default-language:    Haskell2010
   ghc-options:         -Wall
 
