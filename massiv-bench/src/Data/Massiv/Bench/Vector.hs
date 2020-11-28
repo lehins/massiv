@@ -17,6 +17,7 @@ import Control.DeepSeq
 import Criterion.Main
 import Data.Massiv.Array
 import Data.Massiv.Bench.Common
+import Data.Massiv.Bench.Matrix
 import Data.Typeable
 import System.Random
 
