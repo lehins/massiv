@@ -371,7 +371,6 @@ class (Typeable r, Index ix) => Load r ix e where
     pure marr
   {-# INLINE unsafeLoadIntoM #-}
 
-
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
 withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()
 withMassivScheduler_ comp f =
