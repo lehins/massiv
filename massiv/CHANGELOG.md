@@ -4,6 +4,7 @@
   signature has changed to `Mutable` for both arguments, thus a breaking change.
 * Switch `><.` and `><!` from returning a delayed array.
 
+
 # 0.5.9
 
 * Add `mallocCompute`, `mallocCopy` and `unsafeMallocMArray`

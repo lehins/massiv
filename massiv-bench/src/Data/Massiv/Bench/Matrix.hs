@@ -19,7 +19,6 @@ module Data.Massiv.Bench.Matrix
   ) where
 
 import Control.DeepSeq
-import Control.Scheduler
 import Criterion.Main
 import Data.Massiv.Array
 import Data.Massiv.Bench.Common
