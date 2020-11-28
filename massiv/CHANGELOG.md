@@ -54,6 +54,10 @@
 
 * Improve loading of push arrays by adding `loadArrayWithSetM` and deprecating `defaultElement`.
 
+# 0.5.8
+
+* Improve loading of push arrays by adding `loadArrayWithSetM` and deprecating `defaultElement`.
+
 # 0.5.7
 
 * Improve performance of `><.` and `><!` while making their constraints a bit more relaxed.
