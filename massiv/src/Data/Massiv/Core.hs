@@ -31,6 +31,8 @@ module Data.Massiv.Core
   , L(..)
   , LN
   , ListItem
+  , Scheduler
+  , SchedulerWS
   , Comp(Seq, Par, Par', ParOn, ParN)
   , WorkerStates
   , initWorkerStates
@@ -48,7 +50,7 @@ module Data.Massiv.Core
   , PrimMonad(PrimState)
   ) where
 
-import Control.Scheduler (initWorkerStates)
+import Control.Scheduler (SchedulerWS, initWorkerStates)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.List

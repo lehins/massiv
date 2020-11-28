@@ -231,12 +231,13 @@ iunfoldrS_ ::
   -> (a -> ix -> (e, a))
   -> a
   -> Array DL ix e
-iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlDefault = Nothing, dlLoad = load}
+iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
   where
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
-    load _ startAt dlWrite =
+    load :: Monad m =>
+      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load _ startAt dlWrite _ =
       void $
-      loopM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc ->
+      loopM startAt (< totalElem sz + startAt) (+ 1) acc0 $ \ !i !acc ->
         let (e, acc') = f acc $ fromLinearIndex sz (i - startAt)
          in acc' <$ dlWrite i e
     {-# INLINE load #-}
@@ -261,12 +262,13 @@ iunfoldlS_ ::
   -> (ix -> a -> (a, e))
   -> a
   -> Array DL ix e
-iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlDefault = Nothing, dlLoad = load}
+iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
   where
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
-    load _ startAt dlWrite =
+    load :: Monad m =>
+      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load _ startAt dlWrite _ =
       void $
-      loopDeepM startAt (< (totalElem sz + startAt)) (+ 1) acc0 $ \ !i !acc ->
+      loopDeepM startAt (< totalElem sz + startAt) (+ 1) acc0 $ \ !i !acc ->
         let (acc', e) = f (fromLinearIndex sz (i - startAt)) acc
          in acc' <$ dlWrite i e
     {-# INLINE load #-}
@@ -330,7 +332,7 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
                     then (genI, genI)
                     else splitGen genI
             scheduleWork_ scheduler $
-              void $ loopM start (< (start + chunkLength)) (+ 1) genI0 writeRandom
+              void $ loopM start (< start + chunkLength) (+ 1) genI0 writeRandom
             pure genI1
         when (slackStartAt < totalLength + startAt) $
           scheduleWork_ scheduler $

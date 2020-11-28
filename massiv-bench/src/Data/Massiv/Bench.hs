@@ -1,8 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
-module Data.Massiv.Bench where
+module Data.Massiv.Bench
+  ( module Data.Massiv.Bench
+  , module Data.Massiv.Bench.Common
+  ) where
 
 import Data.Massiv.Array
+import Data.Massiv.Bench.Common
 
 lightFunc :: Int -> Int -> Double
 lightFunc !i !j =
@@ -11,7 +15,7 @@ lightFunc !i !j =
 
 heavyFunc :: Int -> Int -> Double
 heavyFunc !i !j =
-  sin (sqrt (sqrt ((fromIntegral i) ** 2 + (fromIntegral j) ** 2)))
+  sin (sqrt (sqrt (fromIntegral i ** 2 + fromIntegral j ** 2)))
 {-# INLINE heavyFunc #-}
 
 lightFuncIx2 :: Ix2 -> Double

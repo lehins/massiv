@@ -54,6 +54,7 @@ module Data.Massiv.Core.Common
   , singleton
   -- * Size
   , elemsCount
+  , linearSize
   , isNotEmpty
   , Sz(SafeSz)
   , Size(..)
@@ -268,6 +269,7 @@ class (Resize r ix, Load r ix e) => Source r ix e where
 class (Typeable r, Index ix) => Load r ix e where
   type family R r :: *
   type instance R r = r
+  {-# MINIMAL getComp, size, (loadArrayM | loadArrayWithSetM) #-}
 
   -- | Get computation strategy of this array
   --
@@ -281,7 +283,6 @@ class (Typeable r, Index ix) => Load r ix e where
   -- @since 0.1.0
   size :: Array r ix e -> Sz ix
 
-
   -- | Load an array into memory.
   --
   -- @since 0.3.0
@@ -291,6 +292,26 @@ class (Typeable r, Index ix) => Load r ix e where
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
     -> m ()
+  loadArrayM scheduler arr uWrite =
+    loadArrayWithSetM scheduler arr uWrite $ \offset sz e ->
+      loopM_ offset (< (offset + unSz sz)) (+1) (\i -> uWrite i e)
+  {-# INLINE loadArrayM #-}
+
+  -- | Load an array into memory, just like `loadArrayM`. Except it also accepts a
+  -- function that is potentially optimized for setting many cells in a region to the same
+  -- value
+  --
+  -- @since 0.5.8
+  loadArrayWithSetM
+    :: Monad m =>
+       Scheduler m ()
+    -> Array r ix e -- ^ Array that is being loaded
+    -> (Ix1 -> e -> m ()) -- ^ Function that writes an element into target array
+    -> (Ix1 -> Sz1 -> e -> m ()) -- ^ Function that efficiently sets a region of an array
+                                 -- to the supplied value target array
+    -> m ()
+  loadArrayWithSetM scheduler arr uWrite _ = loadArrayM scheduler arr uWrite
+  {-# INLINE loadArrayWithSetM #-}
 
   defaultElement :: Array r ix e -> Maybe e
   defaultElement _ = Nothing
@@ -332,7 +353,7 @@ class (Typeable r, Index ix) => Load r ix e where
     -> Array r ix e
     -> m (MArray (PrimState m) r' ix e)
   unsafeLoadIntoS marr arr =
-    marr <$ loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
+    marr <$ loadArrayWithSetM trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
   {-# INLINE unsafeLoadIntoS #-}
 
   -- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
@@ -345,9 +366,12 @@ class (Typeable r, Index ix) => Load r ix e where
     -> m (MArray RealWorld r' ix e)
   unsafeLoadIntoM marr arr = do
     liftIO $ withMassivScheduler_ (getComp arr) $ \scheduler ->
-      loadArrayM scheduler arr (unsafeLinearWrite marr)
+      loadArrayWithSetM scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
     pure marr
   {-# INLINE unsafeLoadIntoM #-}
+
+{-# DEPRECATED defaultElement "This is no longer used by any of the loading functions and will be removed in massiv-0.6" #-}
+
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
 withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()
@@ -910,6 +934,14 @@ imapM_ f !arr =
 elemsCount :: Load r ix e => Array r ix e -> Int
 elemsCount = totalElem . size
 {-# INLINE elemsCount #-}
+
+
+-- | Get the number of elements in the array
+--
+-- @since 0.5.8
+linearSize :: Load r ix e => Array r ix e -> Sz1
+linearSize = toLinearSz . size
+{-# INLINE linearSize #-}
 
 
 -- | /O(1)/ - Check if array has elements.

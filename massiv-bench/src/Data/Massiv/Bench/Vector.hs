@@ -13,12 +13,13 @@ module Data.Massiv.Bench.Vector
   , showsType
   ) where
 
+import Control.DeepSeq
+import Criterion.Main
 import Data.Massiv.Array
+import Data.Massiv.Bench.Common
 import Data.Massiv.Bench.Matrix
 import Data.Typeable
-import Criterion.Main
 import System.Random
-import Control.DeepSeq
 
 v1size :: Sz1
 v1size = Sz1 1000000

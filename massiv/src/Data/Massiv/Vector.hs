@@ -994,7 +994,8 @@ ssingleton = DSArray . S.singleton
 cons :: Load r Ix1 e => e -> Vector r e -> Vector DL e
 cons e v =
   let dv = toLoadArray v
-      load scheduler startAt uWrite = uWrite startAt e >> dlLoad dv scheduler (startAt + 1) uWrite
+      load scheduler startAt uWrite uSet =
+        uWrite startAt e >> dlLoad dv scheduler (startAt + 1) uWrite uSet
       {-# INLINE load #-}
    in dv {dlSize = SafeSz (1 + unSz (dlSize dv)), dlLoad = load}
 {-# INLINE cons #-}
@@ -1006,7 +1007,8 @@ snoc :: Load r Ix1 e => Vector r e -> e -> Vector DL e
 snoc v e =
   let dv = toLoadArray v
       !k = unSz (size dv)
-      load scheduler startAt uWrite = dlLoad dv scheduler startAt uWrite >> uWrite (k + startAt) e
+      load scheduler startAt uWrite uSet =
+        dlLoad dv scheduler startAt uWrite uSet >> uWrite (k + startAt) e
       {-# INLINE load #-}
    in dv {dlSize = SafeSz (1 + k), dlLoad = load}
 {-# INLINE snoc #-}

@@ -251,10 +251,10 @@ freezeS smarr = do
 {-# INLINE freezeS #-}
 
 
-newMaybeInitialized ::
+unsafeNewUninitialized ::
      (Load r' ix e, Mutable r ix e, PrimMonad m) => Array r' ix e -> m (MArray (PrimState m) r ix e)
-newMaybeInitialized !arr = initializeNew (defaultElement arr) (fromMaybe zeroSz (maxSize arr))
-{-# INLINE newMaybeInitialized #-}
+unsafeNewUninitialized !arr = unsafeNew (fromMaybe zeroSz (maxSize arr))
+{-# INLINE unsafeNewUninitialized #-}
 
 
 -- | Load sequentially a pure array into the newly created mutable array.
@@ -265,7 +265,7 @@ loadArrayS ::
   => Array r' ix e
   -> m (MArray (PrimState m) r ix e)
 loadArrayS arr = do
-  marr <- newMaybeInitialized arr
+  marr <- unsafeNewUninitialized arr
   unsafeLoadIntoS marr arr
 {-# INLINE loadArrayS #-}
 
@@ -279,7 +279,7 @@ loadArray ::
   -> m (MArray RealWorld r ix e)
 loadArray arr =
   liftIO $ do
-    marr <- newMaybeInitialized arr
+    marr <- unsafeNewUninitialized arr
     unsafeLoadIntoM marr arr
 {-# INLINE loadArray #-}
 

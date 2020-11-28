@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns    #-}
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE GADTs           #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeOperators   #-}
+{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Core.Index
 -- Copyright   : (c) Alexey Kuleshevich 2018-2019
@@ -40,6 +40,7 @@ module Data.Massiv.Core.Index
   , setSzM
   , insertSzM
   , pullOutSzM
+  , toLinearSz
   -- ** Dimension
   , Dim(..)
   , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)
@@ -97,6 +98,7 @@ module Data.Massiv.Core.Index
 import Control.DeepSeq
 import Control.Exception (throw)
 import Control.Monad.Catch (MonadThrow(..))
+import Data.Coerce
 import Data.Functor.Identity (runIdentity)
 import Data.Massiv.Core.Exception (guardNumberOfElements)
 import Data.Massiv.Core.Index.Internal
@@ -224,6 +226,13 @@ isNonEmpty !sz = isSafeIndex sz zeroIndex
 -- - foldlIndex (*) 1 (unSz sz) /= 0
 -- - foldlIndex (\a x -> a && x /= 0) True (unSz sz)
 -- - totalElem sz == 0
+
+-- | Convert a size to a linear size.
+--
+-- @since 0.5.8
+toLinearSz :: Index ix => Sz ix -> Sz1
+toLinearSz = coerce . totalElem
+{-# INLINE [1] toLinearSz #-}
 
 -- | Get the outmost dimension of the index.
 --

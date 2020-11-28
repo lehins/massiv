@@ -499,9 +499,8 @@ class ( Eq ix
   toLinearIndex ::
        Sz ix -- ^ Size
     -> ix -- ^ Index
-    -> Int
-  default toLinearIndex :: Index (Lower ix) =>
-    Sz ix -> ix -> Int
+    -> Ix1
+  default toLinearIndex :: Index (Lower ix) => Sz ix -> ix -> Ix1
   toLinearIndex (SafeSz sz) !ix = toLinearIndex (SafeSz szL) ixL * n + i
     where
       !(szL, n) = unsnocDim sz
@@ -512,9 +511,8 @@ class ( Eq ix
   -- likley be removed in future versions.
   --
   -- @since 0.1.0
-  toLinearIndexAcc :: Int -> ix -> ix -> Int
-  default toLinearIndexAcc :: Index (Lower ix) =>
-    Int -> ix -> ix -> Int
+  toLinearIndexAcc :: Ix1 -> ix -> ix -> Ix1
+  default toLinearIndexAcc :: Index (Lower ix) => Ix1 -> ix -> ix -> Ix1
   toLinearIndexAcc !acc !sz !ix = toLinearIndexAcc (acc * n + i) szL ixL
     where
       !(n, szL) = unconsDim sz
@@ -524,9 +522,8 @@ class ( Eq ix
   -- | Compute an index from size and linear index
   --
   -- @since 0.1.0
-  fromLinearIndex :: Sz ix -> Int -> ix
-  default fromLinearIndex :: Index (Lower ix) =>
-    Sz ix -> Int -> ix
+  fromLinearIndex :: Sz ix -> Ix1 -> ix
+  default fromLinearIndex :: Index (Lower ix) => Sz ix -> Ix1 -> ix
   fromLinearIndex (SafeSz sz) k = consDim q ixL
     where
       !(q, ixL) = fromLinearIndexAcc (snd (unconsDim sz)) k
@@ -536,9 +533,8 @@ class ( Eq ix
   -- tail recursion while getting the index computed.
   --
   -- @since 0.1.0
-  fromLinearIndexAcc :: ix -> Int -> (Int, ix)
-  default fromLinearIndexAcc :: Index (Lower ix) =>
-    ix -> Int -> (Int, ix)
+  fromLinearIndexAcc :: ix -> Ix1 -> (Int, ix)
+  default fromLinearIndexAcc :: Index (Lower ix) => ix -> Ix1 -> (Ix1, ix)
   fromLinearIndexAcc ix' !k = (q, consDim r ixL)
     where
       !(m, ix) = unconsDim ix'
