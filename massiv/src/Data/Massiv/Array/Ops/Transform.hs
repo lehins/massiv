@@ -442,8 +442,9 @@ appendM n !arr1 !arr2 = do
   unless (szl1 == szl2) $ throwM $ SizeMismatchException sz1 sz2
   let !k1' = unSz k1
   newSz <- insertSzM szl1 n (SafeSz (k1' + unSz k2))
-  let load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
-      load scheduler !startAt dlWrite = do
+  let load :: Monad n =>
+        Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+      load scheduler !startAt dlWrite _dlSet = do
         scheduleWork scheduler $
           iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
             dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
@@ -455,7 +456,7 @@ appendM n !arr1 !arr2 = do
       {-# INLINE load #-}
   return $
     DLArray
-      {dlComp = getComp arr1 <> getComp arr2, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
+      {dlComp = getComp arr1 <> getComp arr2, dlSize = newSz, dlLoad = load}
 {-# INLINE appendM #-}
 
 
@@ -501,8 +502,9 @@ concatM n !arrsF =
         (dropWhile ((== szl) . snd) $ P.zip szs szls)
       let kTotal = SafeSz $ F.foldl' (+) k ks
       newSz <- insertSzM (SafeSz szl) n kTotal
-      let load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
-          load scheduler startAt dlWrite =
+      let load :: Monad n =>
+            Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+          load scheduler startAt dlWrite _dlSet =
             let arrayLoader !kAcc (kCur, arr) = do
                   scheduleWork scheduler $
                     iforM_ arr $ \ix e ->
@@ -513,7 +515,7 @@ concatM n !arrsF =
              in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
           {-# INLINE load #-}
       return $
-        DLArray {dlComp = foldMap getComp arrsF, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
+        DLArray {dlComp = foldMap getComp arrsF, dlSize = newSz, dlLoad = load}
 {-# INLINE concatM #-}
 
 
@@ -593,17 +595,18 @@ stackSlicesM dim !arrsF = do
           len = SafeSz (F.length arrsF)
       -- / make sure all arrays have the same size
       M.forM_ arrsF $ \arr ->
-        let sz' = size arr
-         in unless (sz == sz') $ throwM (SizeMismatchException sz sz')
+         unless (sz == size arr) $ throwM (SizeMismatchException sz (size arr))
       newSz <- insertSzM sz dim len
-      let load :: Monad n => Scheduler n () -> Int -> (Int -> e -> n ()) -> n ()
-          load scheduler startAt dlWrite =
+      let load :: Monad n =>
+            Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+          load scheduler startAt dlWrite _dlSet =
             let loadIndex k ix = dlWrite (toLinearIndex newSz (insertDim' ix dim k) + startAt)
                 arrayLoader !k arr = (k + 1) <$ scheduleWork scheduler (imapM_ (loadIndex k) arr)
+                {-# INLINE arrayLoader #-}
              in M.foldM_ arrayLoader 0 arrsF
           {-# INLINE load #-}
       return $
-        DLArray {dlComp = foldMap getComp arrs, dlSize = newSz, dlDefault = Nothing, dlLoad = load}
+        DLArray {dlComp = foldMap getComp arrs, dlSize = newSz, dlLoad = load}
 {-# INLINE stackSlicesM #-}
 
 -- | Specialized `stackSlicesM` to handling stacking from the outside. It is the inverse of
@@ -850,15 +853,16 @@ downsample ::
   -> Array r ix e
   -> Array DL ix e
 downsample stride arr =
-  DLArray {dlComp = getComp arr, dlSize = resultSize, dlDefault = defaultElement arr, dlLoad = load}
+  DLArray {dlComp = getComp arr, dlSize = resultSize, dlLoad = load}
   where
     resultSize = strideSize stride (size arr)
     strideIx = unStride stride
     unsafeLinearWriteWithStride =
       unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
     {-# INLINE unsafeLinearWriteWithStride #-}
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
-    load scheduler startAt dlWrite =
+    load :: Monad m =>
+      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load scheduler startAt dlWrite _ =
       splitLinearlyWithStartAtM_
         scheduler
         startAt
@@ -908,19 +912,14 @@ upsample !fillWith safeStride arr =
   DLArray
     { dlComp = getComp arr
     , dlSize = newsz
-    , dlDefault = Just fillWith
     , dlLoad = load
     }
   where
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
-    load scheduler !startAt dlWrite = do
-      M.forM_ (defaultElement arr) $ \prevFillWith ->
-        loopM_
-          startAt
-          (< totalElem sz)
-          (+ 1)
-          (\i -> dlWrite (adjustLinearStride (i + startAt)) prevFillWith)
-      loadArrayM scheduler arr (\i -> dlWrite (adjustLinearStride (i + startAt)))
+    load :: Monad m =>
+      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load scheduler startAt uWrite uSet = do
+      uSet startAt (toLinearSz newsz) fillWith
+      loadArrayM scheduler arr (\i -> uWrite (adjustLinearStride (i + startAt)))
     {-# INLINE load #-}
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
     {-# INLINE adjustLinearStride #-}

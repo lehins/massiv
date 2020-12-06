@@ -18,18 +18,12 @@ module Data.Massiv.Bench.Matrix
   , stdGen
   ) where
 
-import Data.Massiv.Array
-import Data.Typeable
-import Criterion.Main
-import System.Random
 import Control.DeepSeq
-
-stdGen :: StdGen
-stdGen = mkStdGen 2020
-
--- | Use Typeable to show the type.
-showsType :: forall t . Typeable t => ShowS
-showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
+import Criterion.Main
+import Data.Massiv.Array
+import Data.Massiv.Bench.Common
+import Data.Typeable
+import System.Random
 
 aMxMsize :: Sz2
 aMxMsize = Sz2 500 800
