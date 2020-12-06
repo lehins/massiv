@@ -49,7 +49,7 @@ data instance Array DL ix e = DLArray
               => Scheduler m ()
               -> Ix1 -- start loading at this linear index
               -> (Ix1 -> e -> m ()) -- linear element writing action
-              -> (Ix1 -> Sz1 -> e -> m ()) -- linear element writing action
+              -> (Ix1 -> Sz1 -> e -> m ()) -- linear region setting action
               -> m ()
   }
 

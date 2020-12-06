@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2018-2020

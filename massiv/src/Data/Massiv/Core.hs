@@ -14,7 +14,7 @@ module Data.Massiv.Core
   , MMatrix
   , Elt
   , Construct
-  , Load(R, loadArrayM, defaultElement)
+  , Load(R, loadArrayM, loadArrayWithSetM, defaultElement)
   , Stream(..)
   , Source
   , Resize
