@@ -560,9 +560,9 @@ multiplyVectorByMatrix v mm
 -- ====__Examples__
 --
 -- >>> a1 = makeArrayR P Seq (Sz2 5 6) $ \(i :. j) -> i + j
--- >>> a2 = makeArrayR D Seq (Sz2 6 5) $ \(i :. j) -> i - j
+-- >>> a2 = makeArrayR P Seq (Sz2 6 5) $ \(i :. j) -> i - j
 -- >>> a1 !><! a2
--- Array D Seq (Sz (5 :. 5))
+-- Array P Seq (Sz (5 :. 5))
 --   [ [ 55, 40, 25, 10, -5 ]
 --   , [ 70, 49, 28, 7, -14 ]
 --   , [ 85, 58, 31, 4, -23 ]

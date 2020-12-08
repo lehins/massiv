@@ -35,6 +35,7 @@ module Data.Massiv.Array.Manifest.Storable
   ) where
 
 import Control.DeepSeq (NFData(..), deepseq)
+import Control.Exception
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (unsafePrimToPrim)
 import Data.Massiv.Array.Delayed.Pull (compareArrays, eqArrays)
@@ -50,16 +51,15 @@ import Data.Primitive.ByteArray (MutableByteArray(..))
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Storable.Mutable as MVS
-import Foreign.ForeignPtr (withForeignPtr, newForeignPtr)
-import Foreign.Marshal.Array (advancePtr, copyArray)
+import Foreign.ForeignPtr (newForeignPtr, withForeignPtr)
 import Foreign.Marshal.Alloc
+import Foreign.Marshal.Array (advancePtr, copyArray)
 import Foreign.Ptr
 import Foreign.Storable
 import GHC.Exts as GHC (IsList(..))
 import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
-import Control.Exception
 
 #include "massiv.h"
 
@@ -359,10 +359,10 @@ unsafeMArrayFromForeignPtr fp offset sz =
 --
 -- @since 0.5.9
 unsafeMallocMArray ::
-     forall ix e. (Index ix, Storable e)
+     forall ix e m. (Index ix, Storable e, MonadIO m)
   => Sz ix
-  -> IO (MArray RealWorld S ix e)
-unsafeMallocMArray sz = do
+  -> m (MArray RealWorld S ix e)
+unsafeMallocMArray sz = liftIO $ do
   let n = totalElem sz
   foreignPtr <- mask_ $ do
     ptr <- mallocBytes (sizeOf (undefined :: e) * n)
