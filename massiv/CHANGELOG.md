@@ -1,3 +1,7 @@
+# 0.5.9
+
+* Add `mallocCompute`, `mallocCopy` and `unsafeMallocMArray`
+
 # 0.5.8
 
 * Improve loading of push arrays by adding `loadArrayWithSetM` and deprecating `defaultElement`.
