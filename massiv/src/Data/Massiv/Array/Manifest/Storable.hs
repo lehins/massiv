@@ -59,7 +59,7 @@ import GHC.Exts as GHC (IsList(..))
 import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
-import UnliftIO.Exception
+import Control.Exception
 
 #include "massiv.h"
 
