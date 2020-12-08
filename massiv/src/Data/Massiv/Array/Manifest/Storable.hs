@@ -25,6 +25,7 @@ module Data.Massiv.Array.Manifest.Storable
   , fromStorableMVector
   , withPtr
   , unsafeWithPtr
+  , unsafeMallocMArray
   , unsafeArrayToForeignPtr
   , unsafeMArrayToForeignPtr
   , unsafeArrayFromForeignPtr
@@ -36,27 +37,29 @@ module Data.Massiv.Array.Manifest.Storable
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (unsafePrimToPrim)
-import Data.Massiv.Array.Delayed.Pull (eqArrays, compareArrays)
+import Data.Massiv.Array.Delayed.Pull (compareArrays, eqArrays)
 import Data.Massiv.Array.Manifest.Internal
-import Data.Massiv.Array.Manifest.Primitive (shrinkMutableByteArray)
-import Data.Primitive.ByteArray (MutableByteArray(..))
 import Data.Massiv.Array.Manifest.List as A
-import Data.Massiv.Vector.Stream as S (steps, isteps)
+import Data.Massiv.Array.Manifest.Primitive (shrinkMutableByteArray)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import Data.Massiv.Core.Operations
+import Data.Massiv.Vector.Stream as S (isteps, steps)
+import Data.Primitive.ByteArray (MutableByteArray(..))
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Storable.Mutable as MVS
+import Foreign.ForeignPtr (withForeignPtr, newForeignPtr)
+import Foreign.Marshal.Array (advancePtr, copyArray)
+import Foreign.Marshal.Alloc
 import Foreign.Ptr
-import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
-import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Storable
-import Foreign.Marshal.Array (copyArray, advancePtr)
 import GHC.Exts as GHC (IsList(..))
+import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
+import UnliftIO.Exception
 
 #include "massiv.h"
 
@@ -368,3 +371,19 @@ unsafeMArrayFromForeignPtr fp offset sz =
   MSArray sz (MVS.unsafeFromForeignPtr fp offset (unSz sz))
 {-# INLINE unsafeMArrayFromForeignPtr #-}
 
+
+-- | Allocate memory using @malloc@ on C heap, instead of on Haskell heap. Memory is left
+-- uninitialized
+--
+-- @since 0.5.9
+unsafeMallocMArray ::
+     forall ix e. (Index ix, Storable e)
+  => Sz ix
+  -> IO (MArray RealWorld S ix e)
+unsafeMallocMArray sz = do
+  let n = totalElem sz
+  foreignPtr <- mask_ $ do
+    ptr <- mallocBytes (sizeOf (undefined :: e) * n)
+    newForeignPtr finalizerFree ptr
+  pure $ MSArray sz (MVS.unsafeFromForeignPtr0 foreignPtr n)
+{-# INLINE unsafeMallocMArray #-}

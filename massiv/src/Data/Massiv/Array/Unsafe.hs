@@ -60,6 +60,7 @@ module Data.Massiv.Array.Unsafe
   , unsafeLinearShrink
   , unsafeLinearGrow
     -- * Pointer access
+  , unsafeMallocMArray
   , unsafeWithPtr
   , unsafeArrayToForeignPtr
   , unsafeMArrayToForeignPtr

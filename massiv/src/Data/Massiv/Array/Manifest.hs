@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -65,6 +65,8 @@ module Data.Massiv.Array.Manifest
   -- * Storable
   , S(..)
   , Storable
+  , mallocCompute
+  , mallocCopy
   -- ** Conversion
   -- *** Primitive Vector
   , toStorableVector
@@ -91,6 +93,7 @@ module Data.Massiv.Array.Manifest
   ) where
 
 import Control.Monad
+import Data.Massiv.Array.Mutable
 import Data.ByteString as S hiding (findIndex)
 import Data.ByteString.Builder
 import Data.ByteString.Internal
@@ -186,3 +189,27 @@ findIndex f arr = go 0
         else go (i + 1)
 {-# INLINE findIndex #-}
 
+
+-- | Very similar to @`computeAs` `S`@ except load the source array into memory allocated
+-- with @malloc@ on C heap. It can potentially be useful when iteroperating with some C
+-- programs.
+--
+-- @since 0.5.9
+mallocCompute :: forall r ix e. (Source r ix e, Storable e) => Array r ix e -> IO (Array S ix e)
+mallocCompute arr = do
+  let sz = size arr
+  marr <- unsafeMallocMArray sz
+  computeInto marr arr
+  unsafeFreeze (getComp arr) marr
+{-# INLINE mallocCompute #-}
+
+-- | Allocate memory on C heap with @malloc@ and copy the source array over.
+--
+-- @since 0.5.9
+mallocCopy :: forall ix e. (Index ix, Storable e) => Array S ix e -> IO (Array S ix e)
+mallocCopy arr = do
+  let sz = size arr
+  marr <- unsafeMallocMArray sz
+  unsafeArrayLinearCopy arr 0 marr 0 (SafeSz (totalElem sz))
+  unsafeFreeze (getComp arr) marr
+{-# INLINE mallocCopy #-}
