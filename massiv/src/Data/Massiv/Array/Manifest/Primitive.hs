@@ -137,49 +137,16 @@ instance (Prim e, Index ix) => Extract P ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
-
-instance {-# OVERLAPPING #-} Prim e => Slice P Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
+instance (Prim e, Elt P ix e ~ Elt M ix e, Slice M ix e) => Slice P ix e where
+  unsafeSlice = unsafeSlice . toManifest
   {-# INLINE unsafeSlice #-}
 
-
-instance ( Prim e
-         , Index ix
-         , Index (Lower ix)
-         , Elt P ix e ~ Elt M ix e
-         , Elt M ix e ~ Array M (Lower ix) e
-         ) =>
-         Slice P ix e where
-  unsafeSlice arr = unsafeSlice (toManifest arr)
-  {-# INLINE unsafeSlice #-}
-
-instance {-# OVERLAPPING #-} Prim e => OuterSlice P Ix1 e where
-  unsafeOuterSlice = unsafeLinearIndex
+instance (Prim e, Elt P ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice P ix e where
+  unsafeOuterSlice = unsafeOuterSlice . toManifest
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( Prim e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt P ix e ~ Array M (Lower ix) e
-         ) =>
-         OuterSlice P ix e where
-  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
-  {-# INLINE unsafeOuterSlice #-}
-
-
-instance {-# OVERLAPPING #-} Prim e => InnerSlice P Ix1 e where
-  unsafeInnerSlice arr _ = unsafeLinearIndex arr
-  {-# INLINE unsafeInnerSlice #-}
-
-instance ( Prim e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt P ix e ~ Array M (Lower ix) e
-         ) =>
-         InnerSlice P ix e where
-  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+instance (Prim e, Elt P ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice P ix e where
+  unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
 
 instance Prim e => Manifest P e where

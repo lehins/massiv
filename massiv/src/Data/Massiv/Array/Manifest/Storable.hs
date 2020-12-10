@@ -125,29 +125,17 @@ instance (Storable e, Index ix) => Extract S ix e where
 
 
 
-instance ( Storable e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt S ix e ~ Array M (Lower ix) e
-         ) =>
-         OuterSlice S ix e where
-  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+instance (Storable e, Elt S ix e ~ Elt M ix e, Slice M ix e) => Slice S ix e where
+  unsafeSlice = unsafeSlice . toManifest
+  {-# INLINE unsafeSlice #-}
+
+instance (Storable e, Elt S ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice S ix e where
+  unsafeOuterSlice = unsafeOuterSlice . toManifest
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( Storable e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt S ix e ~ Array M (Lower ix) e
-         ) =>
-         InnerSlice S ix e where
-  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+instance (Storable e, Elt S ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice S ix e where
+  unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
-
-instance {-# OVERLAPPING #-} Storable e => Slice S Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
-  {-# INLINE unsafeSlice #-}
 
 
 instance Storable e => Manifest S e where

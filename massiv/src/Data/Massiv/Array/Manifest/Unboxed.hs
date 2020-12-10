@@ -16,7 +16,7 @@
 --
 module Data.Massiv.Array.Manifest.Unboxed
   ( U (..)
-  , VU.Unbox
+  , Unbox
   , Array(..)
   , toUnboxedVector
   , toUnboxedMVector
@@ -33,6 +33,7 @@ import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import Data.Massiv.Core.Operations
+import Data.Vector.Unboxed (Unbox)
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as MVU
@@ -50,7 +51,7 @@ data instance Array U ix e = UArray { uComp :: !Comp
                                     , uData :: !(VU.Vector e)
                                     }
 
-instance (Ragged L ix e, Show e, VU.Unbox e) => Show (Array U ix e) where
+instance (Ragged L ix e, Show e, Unbox e) => Show (Array U ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
 
@@ -72,16 +73,16 @@ instance (VU.Unbox e, Index ix) => Construct U ix e where
   {-# INLINE replicate #-}
 
 
-instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
+instance (Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
   (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
-instance (VU.Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
+instance (Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
 
-instance VU.Unbox e => Source U e where
+instance Unbox e => Source U e where
   unsafeLinearIndex (UArray _ _ v) =
     INDEX_CHECK("(Source U ix e).unsafeLinearIndex", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
@@ -100,70 +101,39 @@ instance Resize U where
   unsafeResize !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeResize #-}
 
-instance (VU.Unbox e, Index ix) => Extract U ix e where
+instance (Unbox e, Index ix) => Extract U ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
-instance (VU.Unbox e, Index ix) => Load U ix e where
+instance (Unbox e, Index ix) => Load U ix e where
   type R U = M
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
-instance (VU.Unbox e, Index ix) => StrideLoad U ix e
+instance (Unbox e, Index ix) => StrideLoad U ix e
 
 
-instance {-# OVERLAPPING #-} VU.Unbox e => Slice U Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
+instance (Unbox e, Elt U ix e ~ Elt M ix e, Slice M ix e) => Slice U ix e where
+  unsafeSlice = unsafeSlice . toManifest
   {-# INLINE unsafeSlice #-}
 
-
-instance ( VU.Unbox e
-         , Index ix
-         , Index (Lower ix)
-         , Elt U ix e ~ Elt M ix e
-         , Elt M ix e ~ Array M (Lower ix) e
-         ) =>
-         Slice U ix e where
-  unsafeSlice arr = unsafeSlice (toManifest arr)
-  {-# INLINE unsafeSlice #-}
-
-
-instance {-# OVERLAPPING #-} VU.Unbox e => OuterSlice U Ix1 e where
-  unsafeOuterSlice = unsafeLinearIndex
+instance (Unbox e, Elt U ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice U ix e where
+  unsafeOuterSlice = unsafeOuterSlice . toManifest
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( VU.Unbox e
-         , Index ix
-         , Index (Lower ix)
-         , Elt U ix e ~ Elt M ix e
-         , Elt M ix e ~ Array M (Lower ix) e
-         ) =>
-         OuterSlice U ix e where
-  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
-  {-# INLINE unsafeOuterSlice #-}
-
-instance {-# OVERLAPPING #-} VU.Unbox e => InnerSlice U Ix1 e where
-  unsafeInnerSlice arr _ = unsafeLinearIndex arr
+instance (Unbox e, Elt U ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice U ix e where
+  unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
 
-instance ( VU.Unbox e
-         , Index ix
-         , Index (Lower ix)
-         , Elt U ix e ~ Elt M ix e
-         , Elt M ix e ~ Array M (Lower ix) e
-         ) =>
-         InnerSlice U ix e where
-  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
-  {-# INLINE unsafeInnerSlice #-}
 
-instance VU.Unbox e => Manifest U e where
+instance Unbox e => Manifest U e where
 
   unsafeLinearIndexM (UArray _ _ v) =
     INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance VU.Unbox e => Mutable U e where
+instance Unbox e => Mutable U e where
   data MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
   msize (MUArray sz _) = sz
@@ -200,14 +170,14 @@ instance VU.Unbox e => Mutable U e where
   {-# INLINE unsafeLinearGrow #-}
 
 
-instance (Index ix, VU.Unbox e) => Stream U ix e where
+instance (Index ix, Unbox e) => Stream U ix e where
   toStream = S.steps
   {-# INLINE toStream #-}
   toStreamIx = S.isteps
   {-# INLINE toStreamIx #-}
 
 
-instance ( VU.Unbox e
+instance ( Unbox e
          , IsList (Array L ix e)
          , Nested LN ix e
          , Nested L ix e
@@ -256,7 +226,7 @@ toUnboxedMVector (MUArray _ mv) = mv
 -- | /O(1)/ - Wrap an unboxed vector and produce an unboxed flat array.
 --
 -- @since 0.6.0
-fromUnboxedVector :: VU.Unbox e => Comp -> VU.Vector e -> Array U Ix1 e
+fromUnboxedVector :: VU.Unbox e => Comp -> VU.Vector e -> Vector U e
 fromUnboxedVector comp v = UArray comp (SafeSz (VU.length v)) v
 {-# INLINE fromUnboxedVector #-}
 
@@ -264,6 +234,6 @@ fromUnboxedVector comp v = UArray comp (SafeSz (VU.length v)) v
 -- | /O(1)/ - Wrap an unboxed mutable vector and produce a mutable unboxed flat array.
 --
 -- @since 0.5.0
-fromUnboxedMVector :: VU.Unbox e => VU.MVector s e -> MArray s U Ix1 e
+fromUnboxedMVector :: Unbox e => VU.MVector s e -> MVector s U e
 fromUnboxedMVector mv = MUArray (SafeSz (MVU.length mv)) mv
 {-# INLINE fromUnboxedMVector #-}

@@ -17,6 +17,7 @@ module Data.Massiv.Core.Index
   , pattern Ix1
   , type Ix2(Ix2, (:.))
   , IxN((:>), Ix3, Ix4, Ix5)
+  , HighIxN
   , type Ix3
   , type Ix4
   , type Ix5
