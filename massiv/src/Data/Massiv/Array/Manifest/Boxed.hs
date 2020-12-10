@@ -163,27 +163,17 @@ instance Index ix => Extract BL ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance ( Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt BL ix e ~ Array M (Lower ix) e
-         ) =>
-         OuterSlice BL ix e where
-  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+instance (Elt BL ix e ~ Elt M ix e, Slice M ix e) => Slice BL ix e where
+  unsafeSlice = unsafeSlice . toManifest
+  {-# INLINE unsafeSlice #-}
+
+instance (Elt BL ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice BL ix e where
+  unsafeOuterSlice = unsafeOuterSlice . toManifest
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt BL ix e ~ Array M (Lower ix) e
-         ) =>
-         InnerSlice BL ix e where
-  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+instance (Elt BL ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice BL ix e where
+  unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
-
-instance {-# OVERLAPPING #-} Slice BL Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
-  {-# INLINE unsafeSlice #-}
 
 
 instance Manifest BL e where
@@ -374,27 +364,17 @@ instance Index ix => Extract B ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance ( Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt B ix e ~ Array M (Lower ix) e
-         ) =>
-         OuterSlice B ix e where
-  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
+instance (Elt B ix e ~ Elt M ix e, Slice M ix e) => Slice B ix e where
+  unsafeSlice = unsafeSlice . toManifest
+  {-# INLINE unsafeSlice #-}
+
+instance (Elt B ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice B ix e where
+  unsafeOuterSlice = unsafeOuterSlice . toManifest
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt B ix e ~ Array M (Lower ix) e
-         ) =>
-         InnerSlice B ix e where
-  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
+instance (Elt B ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice B ix e where
+  unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
-
-instance {-# OVERLAPPING #-} Slice B Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
-  {-# INLINE unsafeSlice #-}
 
 
 instance Manifest B e where
@@ -576,30 +556,17 @@ instance (Index ix, NFData e) => Extract BN ix e where
   {-# INLINE unsafeExtract #-}
 
 
-instance ( NFData e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt BN ix e ~ Array M (Lower ix) e
-         ) =>
-         OuterSlice BN ix e where
+instance (NFData e, Elt BN ix e ~ Elt M ix e, Slice M ix e) => Slice BN ix e where
+  unsafeSlice = unsafeSlice . toManifest
+  {-# INLINE unsafeSlice #-}
+
+instance (NFData e, Elt BN ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice BN ix e where
   unsafeOuterSlice = unsafeOuterSlice . toManifest
   {-# INLINE unsafeOuterSlice #-}
 
-instance ( NFData e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt BN ix e ~ Array M (Lower ix) e
-         ) =>
-         InnerSlice BN ix e where
+instance (NFData e, Elt BN ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice BN ix e where
   unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
-
-instance {-# OVERLAPPING #-} NFData e => Slice BN Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
-  {-# INLINE unsafeSlice #-}
-
 
 instance NFData e => Manifest BN e where
   unsafeLinearIndexM arr = unsafeLinearIndexM (coerce arr)

@@ -163,19 +163,6 @@ instance Shape L Ix2 where
   outerSize = outerSize . lData
   {-# INLINE outerSize #-}
 
--- instance Shape LN Ix3 where
---   linearSize = SafeSz . getSum . foldMap (Sum . unSz . linearSize) . unList
---   {-# INLINE linearSize #-}
---   linearSizeHint = lengthHintList . unList
---   {-# INLINE linearSizeHint #-}
---   isEmpty = null . unList
---   {-# INLINE isEmpty #-}
---   outerSize arr =
---     case unList arr of
---       [] -> zeroSz
---       (x:xs) -> SafeSz ((1 + length xs) :> unSz (outerSize x))
---   {-# INLINE outerSize #-}
-
 instance (Shape LN (Ix (n - 1)), Index (IxN n)) => Shape LN (IxN n) where
   linearSize = SafeSz . getSum . foldMap (Sum . unSz . linearSize) . unList
   {-# INLINE linearSize #-}
@@ -291,14 +278,7 @@ instance Ragged L Ix2 e where
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L Ix1 e)) sep (coerce xs)
 
 
--- Ragged L (Lower ix) e
---          , Elt L ix e ~ Array L (Lower ix) e
---          , Elt LN ix e ~ Array LN (Lower ix) e
---          , 
-instance ( Shape L (IxN n)
-         , Shape LN (Ix (n - 1))
-         , Ragged L (Ix (n - 1)) e
-         ) =>
+instance (Shape L (IxN n), Shape LN (Ix (n - 1)), Ragged L (Ix (n - 1)) e) =>
          Ragged L (IxN n) e where
   emptyR comp = LArray comp (List [])
   {-# INLINE emptyR #-}

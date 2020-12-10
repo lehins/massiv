@@ -42,6 +42,9 @@ module Data.Massiv.Array.Manifest.Internal
   , sizeofMutableArray
   , iterateUntil
   , iterateUntilM
+  , unsafeSliceN
+  , unsafeOuterSliceN
+  , unsafeInnerSliceN
   ) where
 
 import Control.Exception (try)
@@ -165,43 +168,138 @@ instance Index ix => Extract M ix e where
   {-# INLINE unsafeExtract #-}
 
 
+unsafeSliceN ::
+     (MonadThrow m, Resize (R r), Extract r ix e, Index (Lower ix))
+  => Array r ix e
+  -> ix
+  -> Sz ix
+  -> Dim
+  -> m (Array (R r) (Lower ix) e)
+unsafeSliceN arr start cutSz dim = do
+  (_, newSz) <- pullOutSzM cutSz dim
+  return $ unsafeResize newSz (unsafeExtract start cutSz arr)
+{-# INLINE unsafeSliceN #-}
 
-instance {-# OVERLAPPING #-} Slice M Ix1 e where
+instance Slice M Ix1 e where
   unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
-instance ( Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         ) =>
-         Slice M ix e where
-  unsafeSlice arr start cutSz dim = do
-    (_, newSz) <- pullOutSzM cutSz dim
-    return $ unsafeResize newSz (unsafeExtract start cutSz arr)
+instance Slice M Ix2 e where
+  unsafeSlice = unsafeSliceN
   {-# INLINE unsafeSlice #-}
 
-instance {-# OVERLAPPING #-} OuterSlice M Ix1 e where
+instance {-# OVERLAPPING #-} Slice M Ix3 e where
+  unsafeSlice = unsafeSliceN
+  {-# INLINE unsafeSlice #-}
+
+instance HighIxN n => Slice M (IxN n) e where
+  unsafeSlice = unsafeSliceN
+  {-# INLINE unsafeSlice #-}
+
+instance Slice M Ix2T e where
+  unsafeSlice = unsafeSliceN
+  {-# INLINE unsafeSlice #-}
+
+instance Slice M Ix3T e where
+  unsafeSlice = unsafeSliceN
+  {-# INLINE unsafeSlice #-}
+
+instance Slice M Ix4T e where
+  unsafeSlice = unsafeSliceN
+  {-# INLINE unsafeSlice #-}
+
+instance Slice M Ix5T e where
+  unsafeSlice = unsafeSliceN
+  {-# INLINE unsafeSlice #-}
+
+
+unsafeOuterSliceN ::
+     forall r ix e. (Source r e, Index ix, Index (Lower ix))
+  => Array r ix e
+  -> Int
+  -> Array M (Lower ix) e
+unsafeOuterSliceN !arr !i =
+  MArray (getComp arr) (snd (unconsSz (size arr))) (unsafeLinearIndex arr . (+ kStart))
+  where
+    !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
+{-# INLINE unsafeOuterSliceN #-}
+
+instance OuterSlice M Ix1 e where
   unsafeOuterSlice !arr = unsafeIndex arr
   {-# INLINE unsafeOuterSlice #-}
 
-instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => OuterSlice M ix e where
-  unsafeOuterSlice !arr !i =
-    MArray (getComp arr) (snd (unconsSz (size arr))) (unsafeLinearIndex arr . (+ kStart))
-    where
-      !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
+instance OuterSlice M Ix2 e where
+  unsafeOuterSlice = unsafeOuterSliceN
   {-# INLINE unsafeOuterSlice #-}
 
-instance {-# OVERLAPPING #-} InnerSlice M Ix1 e where
+instance {-# OVERLAPPING #-} OuterSlice M Ix3 e where
+  unsafeOuterSlice = unsafeOuterSliceN
+  {-# INLINE unsafeOuterSlice #-}
+
+instance HighIxN n => OuterSlice M (IxN n) e where
+  unsafeOuterSlice = unsafeOuterSliceN
+  {-# INLINE unsafeOuterSlice #-}
+
+instance OuterSlice M Ix2T e where
+  unsafeOuterSlice = unsafeOuterSliceN
+  {-# INLINE unsafeOuterSlice #-}
+
+instance OuterSlice M Ix3T e where
+  unsafeOuterSlice = unsafeOuterSliceN
+  {-# INLINE unsafeOuterSlice #-}
+
+instance OuterSlice M Ix4T e where
+  unsafeOuterSlice = unsafeOuterSliceN
+  {-# INLINE unsafeOuterSlice #-}
+
+instance OuterSlice M Ix5T e where
+  unsafeOuterSlice = unsafeOuterSliceN
+  {-# INLINE unsafeOuterSlice #-}
+
+
+instance InnerSlice M Ix1 e where
   unsafeInnerSlice !arr _ = unsafeIndex arr
   {-# INLINE unsafeInnerSlice #-}
 
-instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
-  unsafeInnerSlice !arr (szL, m) !i =
-    MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * unSz m + kStart))
-    where
-      !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
+unsafeInnerSliceN ::
+     forall r ix e. (Index ix, Index (Lower ix), Source r e)
+  => Array r ix e
+  -> (Sz (Lower ix), Sz Int)
+  -> Int
+  -> Array M (Lower ix) e
+unsafeInnerSliceN !arr (szL, m) !i =
+  MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * unSz m + kStart))
+  where
+    !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
+{-# INLINE unsafeInnerSliceN #-}
+
+instance InnerSlice M Ix2 e where
+  unsafeInnerSlice = unsafeInnerSliceN
   {-# INLINE unsafeInnerSlice #-}
 
+instance {-# OVERLAPPING #-} InnerSlice M Ix3 e where
+  unsafeInnerSlice = unsafeInnerSliceN
+  {-# INLINE unsafeInnerSlice #-}
+
+instance HighIxN n => InnerSlice M (IxN n) e where
+  unsafeInnerSlice = unsafeInnerSliceN
+  {-# INLINE unsafeInnerSlice #-}
+
+instance InnerSlice M Ix2T e where
+  unsafeInnerSlice = unsafeInnerSliceN
+  {-# INLINE unsafeInnerSlice #-}
+
+instance InnerSlice M Ix3T e where
+  unsafeInnerSlice = unsafeInnerSliceN
+  {-# INLINE unsafeInnerSlice #-}
+
+instance InnerSlice M Ix4T e where
+  unsafeInnerSlice = unsafeInnerSliceN
+  {-# INLINE unsafeInnerSlice #-}
+
+instance InnerSlice M Ix5T e where
+  unsafeInnerSlice = unsafeInnerSliceN
+  {-# INLINE unsafeInnerSlice #-}
 
 instance Index ix => Load M ix e where
   loadArrayM scheduler (MArray _ sz f) = splitLinearlyWith_ scheduler (totalElem sz) f
