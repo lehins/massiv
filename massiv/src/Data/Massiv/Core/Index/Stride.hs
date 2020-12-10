@@ -1,13 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
-
-#if __GLASGOW_HASKELL__ < 820
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-#endif
 -- |
 -- Module      : Data.Massiv.Core.Index.Stride
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

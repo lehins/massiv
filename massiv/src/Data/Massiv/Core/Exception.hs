@@ -2,6 +2,14 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+-- |
+-- Module      : Data.Massiv.Core.Exception
+-- Copyright   : (c) Alexey Kuleshevich 2019-2020
+-- License     : BSD3
+-- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
+-- Stability   : experimental
+-- Portability : non-portable
+--
 module Data.Massiv.Core.Exception
   ( ImpossibleException(..)
   , throwImpossible

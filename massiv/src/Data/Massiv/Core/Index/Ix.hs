@@ -1,18 +1,18 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Ix
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -42,11 +42,11 @@ module Data.Massiv.Core.Index.Ix
   , pattern Ix5
   , type Sz5
   , pattern Sz5
+  , HighIxN
   ) where
 
 import Control.Monad.Catch (MonadThrow(..))
 import Control.DeepSeq
-import Control.Monad (liftM)
 import Data.Massiv.Core.Index.Internal
 import Data.Proxy
 import qualified Data.Vector.Generic as V
@@ -216,15 +216,7 @@ instance Num Ix3 where
   fromInteger = pureIndex . fromInteger
   {-# INLINE [1] fromInteger #-}
 
-
-instance {-# OVERLAPPABLE #-} ( 1 <= n
-                              , 4 <= n
-                              , KnownNat n
-                              , KnownNat (n - 1)
-                              , Index (Ix (n - 1))
-                              , IxN (n - 1) ~ Ix (n - 1)
-                              ) =>
-                              Num (IxN n) where
+instance {-# OVERLAPPABLE #-} HighIxN n => Num (IxN n) where
   (+) = liftIndex2 (+)
   {-# INLINE [1] (+) #-}
   (-) = liftIndex2 (-)
@@ -254,14 +246,7 @@ instance Bounded Ix3 where
   maxBound = pureIndex maxBound
   {-# INLINE maxBound #-}
 
-instance {-# OVERLAPPABLE #-} ( 1 <= n
-                              , 4 <= n
-                              , KnownNat n
-                              , KnownNat (n - 1)
-                              , Index (Ix (n - 1))
-                              , IxN (n - 1) ~ Ix (n - 1)
-                              ) =>
-                              Bounded (IxN n) where
+instance {-# OVERLAPPABLE #-} HighIxN n => Bounded (IxN n) where
   minBound = pureIndex minBound
   {-# INLINE minBound #-}
   maxBound = pureIndex maxBound
@@ -387,14 +372,11 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
     repairIndex (SafeSz n) i rBelow rOver :> repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
 
-instance {-# OVERLAPPABLE #-} ( 1 <= n
-                              , 4 <= n
-                              , KnownNat n
-                              , KnownNat (n - 1)
-                              , Index (Ix (n - 1))
-                              , IxN (n - 1) ~ Ix (n - 1)
-                              ) =>
-                              Index (IxN n) where
+-- | Constraint synonym that encapsulates all constraints needed for dimension 4 and higher.
+type HighIxN n
+   = (4 <= n, KnownNat n, KnownNat (n - 1), Index (Ix (n - 1)), IxN (n - 1) ~ Ix (n - 1))
+
+instance {-# OVERLAPPABLE #-} HighIxN n => Index (IxN n) where
   type Dimensions (IxN n) = n
   dimensions _ = fromInteger $ natVal (Proxy :: Proxy n)
   {-# INLINE [1] dimensions #-}
@@ -454,11 +436,11 @@ instance VM.MVector VU.MVector Ix2 where
   {-# INLINE basicUnsafeSlice #-}
   basicOverlaps (MV_Ix2 mvec) (MV_Ix2 mvec') = VM.basicOverlaps mvec mvec'
   {-# INLINE basicOverlaps #-}
-  basicUnsafeNew len = MV_Ix2 `liftM` VM.basicUnsafeNew len
+  basicUnsafeNew len = MV_Ix2 <$> VM.basicUnsafeNew len
   {-# INLINE basicUnsafeNew #-}
-  basicUnsafeReplicate len (i :. j) = MV_Ix2 `liftM` VM.basicUnsafeReplicate len (i, j)
+  basicUnsafeReplicate len (i :. j) = MV_Ix2 <$> VM.basicUnsafeReplicate len (i, j)
   {-# INLINE basicUnsafeReplicate #-}
-  basicUnsafeRead (MV_Ix2 mvec) idx = uncurry (:.) `liftM` VM.basicUnsafeRead mvec idx
+  basicUnsafeRead (MV_Ix2 mvec) idx = uncurry (:.) <$> VM.basicUnsafeRead mvec idx
   {-# INLINE basicUnsafeRead #-}
   basicUnsafeWrite (MV_Ix2 mvec) idx (i :. j) = VM.basicUnsafeWrite mvec idx (i, j)
   {-# INLINE basicUnsafeWrite #-}
@@ -470,7 +452,7 @@ instance VM.MVector VU.MVector Ix2 where
   {-# INLINE basicUnsafeCopy #-}
   basicUnsafeMove (MV_Ix2 mvec) (MV_Ix2 mvec') = VM.basicUnsafeMove mvec mvec'
   {-# INLINE basicUnsafeMove #-}
-  basicUnsafeGrow (MV_Ix2 mvec) len = MV_Ix2 `liftM` VM.basicUnsafeGrow mvec len
+  basicUnsafeGrow (MV_Ix2 mvec) len = MV_Ix2 <$> VM.basicUnsafeGrow mvec len
   {-# INLINE basicUnsafeGrow #-}
 #if MIN_VERSION_vector(0,11,0)
   basicInitialize (MV_Ix2 mvec) = VM.basicInitialize mvec
@@ -481,15 +463,15 @@ instance VM.MVector VU.MVector Ix2 where
 newtype instance VU.Vector Ix2 = V_Ix2 (VU.Vector (Int, Int))
 
 instance V.Vector VU.Vector Ix2 where
-  basicUnsafeFreeze (MV_Ix2 mvec) = V_Ix2 `liftM` V.basicUnsafeFreeze mvec
+  basicUnsafeFreeze (MV_Ix2 mvec) = V_Ix2 <$> V.basicUnsafeFreeze mvec
   {-# INLINE basicUnsafeFreeze #-}
-  basicUnsafeThaw (V_Ix2 vec) = MV_Ix2 `liftM` V.basicUnsafeThaw vec
+  basicUnsafeThaw (V_Ix2 vec) = MV_Ix2 <$> V.basicUnsafeThaw vec
   {-# INLINE basicUnsafeThaw #-}
   basicLength (V_Ix2 vec) = V.basicLength vec
   {-# INLINE basicLength #-}
   basicUnsafeSlice idx len (V_Ix2 vec) = V_Ix2 (V.basicUnsafeSlice idx len vec)
   {-# INLINE basicUnsafeSlice #-}
-  basicUnsafeIndexM (V_Ix2 vec) idx = uncurry (:.) `liftM` V.basicUnsafeIndexM vec idx
+  basicUnsafeIndexM (V_Ix2 vec) idx = uncurry (:.) <$> V.basicUnsafeIndexM vec idx
   {-# INLINE basicUnsafeIndexM #-}
   basicUnsafeCopy (MV_Ix2 mvec) (V_Ix2 vec) = V.basicUnsafeCopy mvec vec
   {-# INLINE basicUnsafeCopy #-}
