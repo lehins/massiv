@@ -339,7 +339,7 @@ ifoldlIO f !initAcc g !tAcc !arr
 -- them. Number of chunks will depend on the computation strategy. Results of each action
 -- will be combined with a folding function.
 --
--- @since 0.6.0
+-- @since 1.0.0
 splitReduce ::
      (MonadUnliftIO m, Index ix, Source r e)
   => (Scheduler m a -> Vector r e -> m a)
