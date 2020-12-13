@@ -248,7 +248,7 @@ class Load r ix e => Construct r ix e where
 
 -- | Size hint
 --
--- @since 0.6.0
+-- @since 1.0.0
 data LengthHint
   = LengthExact Sz1 -- ^ Exact known size
   | LengthMax Sz1 -- ^ Upper bound on the size
@@ -258,12 +258,12 @@ data LengthHint
 
 -- | A shape of an array.
 --
--- @since 0.6.0
+-- @since 1.0.0
 class Index ix => Shape r ix where
 
   -- | /O(1)/ - Check what do we know about the number of elements without doing any work
   --
-  -- @since 0.6.0
+  -- @since 1.0.0
   linearSizeHint :: Array r ix e -> LengthHint
   default linearSizeHint :: Size r => Array r ix e -> LengthHint
   linearSizeHint = LengthExact . SafeSz . elemsCount
@@ -280,7 +280,7 @@ class Index ix => Shape r ix where
   -- | /O(n)/ - Rectangular size of an array that is inferred from looking at the first row in
   -- each dimensions. For rectangular arrays this is the same as `size`
   --
-  -- @since 0.6.0
+  -- @since 1.0.0
   outerSize :: Array r ix e -> Sz ix
   default outerSize :: Size r => Array r ix e -> Sz ix
   outerSize = size
@@ -291,7 +291,7 @@ class Index ix => Shape r ix where
   -- will be used as the initial size of the mutable array into which the loading will
   -- happen.
   --
-  -- @since 0.6.0
+  -- @since 1.0.0
   maxLinearSize :: Array r ix e -> Maybe Sz1
   maxLinearSize = lengthHintUpperBound . linearSizeHint
   {-# INLINE maxLinearSize #-}

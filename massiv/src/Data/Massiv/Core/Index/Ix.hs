@@ -374,7 +374,7 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
 
 -- | Constraint synonym that encapsulates all constraints needed for dimension 4 and higher.
 --
--- @since 0.6.0
+-- @since 1.0.0
 type HighIxN n
    = (4 <= n, KnownNat n, KnownNat (n - 1), Index (IxN (n - 1)), IxN (n - 1) ~ Ix (n - 1))
 
