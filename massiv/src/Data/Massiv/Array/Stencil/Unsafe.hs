@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -14,11 +14,11 @@
 module Data.Massiv.Array.Stencil.Unsafe
   ( -- * Stencil
     makeUnsafeStencil
+  , makeUnsafeConvolutionStencil
+  , makeUnsafeCorrelationStencil
   , unsafeTransformStencil
-  , unsafeMapStencil
   -- ** Deprecated
-  , mapStencilUnsafe
-  , forStencilUnsafe
+  , unsafeMapStencil
   ) where
 
 import Data.Massiv.Array.Delayed.Windowed (Array(..), DW, Window(..),
@@ -28,58 +28,8 @@ import Data.Massiv.Core.Common
 import GHC.Exts (inline)
 
 
--- | Just as `mapStencilUnsafe` this is an unsafe version of the stencil
--- mapping. Arguments are in slightly different order and the indexing function returns
--- `Nothing` for elements outside the border.
---
--- @since 0.1.7
-forStencilUnsafe ::
-     (Source r ix e, Manifest r ix e)
-  => Array r ix e
-  -> Sz ix -- ^ Size of the stencil
-  -> ix -- ^ Center of the stencil
-  -> ((ix -> Maybe e) -> a)
-  -- ^ Stencil function that receives a "get" function as it's argument that can
-  -- retrieve values of cells in the source array with respect to the center of
-  -- the stencil. Stencil function must return a value that will be assigned to
-  -- the cell in the result array. Offset supplied to the "get" function
-  -- cannot go outside the boundaries of the stencil.
-  -> Array DW ix a
-forStencilUnsafe !arr !sSz !sCenter relStencil =
-  insertWindow (DArray (getComp arr) sz (stencil (index arr))) window
-  where
-    !window =
-      Window
-        { windowStart = sCenter
-        , windowSize = windowSz
-        , windowIndex = stencil (Just . unsafeIndex arr)
-        , windowUnrollIx2 = unSz . fst <$> pullOutSzM windowSz 2
-        }
-    !sz = size arr
-    !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))
-    stencil getVal !ix = inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
-    {-# INLINE stencil #-}
-{-# INLINE forStencilUnsafe #-}
-{-# DEPRECATED forStencilUnsafe "In favor of `unsafeMapStencil`" #-}
-
-
-mapStencilUnsafe ::
-     Manifest r ix e
-  => Border e
-  -> Sz ix
-  -> ix
-  -> ((ix -> e) -> a)
-  -> Array r ix e
-  -> Array DW ix a
-mapStencilUnsafe b sz ix f = unsafeMapStencil b sz ix (const f)
-{-# INLINE mapStencilUnsafe #-}
-{-# DEPRECATED mapStencilUnsafe "In favor of `unsafeMapStencil`" #-}
-
 -- | This is an unsafe version of `Data.Massiv.Array.Stencil.mapStencil`, that does no
--- take `Stencil` as argument, as such it does no stencil validation. There is no
--- performance difference between the two, but the unsafe version has an advantage of not
--- requiring to deal with `Value` wrapper and has access to the actual index with the
--- array.
+-- take `Stencil` as argument, as such it does no stencil validation.
 --
 -- @since 0.5.0
 unsafeMapStencil ::
@@ -105,6 +55,7 @@ unsafeMapStencil b sSz sCenter stencilF !arr = insertWindow warr window
     stencil getVal !ix = inline (stencilF ix) $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
 {-# INLINE unsafeMapStencil #-}
+{-# DEPRECATED unsafeMapStencil "In favor of `Data.Massiv.Array.mapStencil` that is applied to stencil created with `makeUnsafeStencil`" #-}
 
 
 -- | Similar to `Data.Massiv.Array.Stencil.makeStencil`, but there are no guarantees that the
@@ -122,9 +73,46 @@ makeUnsafeStencil
 makeUnsafeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
   where
     stencil unsafeGetVal _getVal !ix =
-      Value $ inline $ relStencil ix (unsafeGetVal . liftIndex2 (+) ix)
+      inline $ relStencil ix (unsafeGetVal . liftIndex2 (+) ix)
     {-# INLINE stencil #-}
 {-# INLINE makeUnsafeStencil #-}
+
+-- | Same as `Data.Massiv.Array.Stencil.makeConvolutionStencil`, but will result in
+-- reading memory out of bounds and potential segfaults if supplied arguments are not valid.
+--
+-- @since 0.6.0
+makeUnsafeConvolutionStencil
+  :: (Index ix, Num e)
+  => Sz ix
+  -> ix
+  -> ((ix -> e -> e -> e) -> e -> e)
+  -> Stencil ix e e
+makeUnsafeConvolutionStencil !sz !sCenter relStencil =
+  Stencil sz sInvertCenter stencil
+  where
+    !sInvertCenter = liftIndex2 (-) (liftIndex (subtract 1) (unSz sz)) sCenter
+    stencil uget _ !ix =
+      (inline relStencil $ \ !ixD !kVal !acc -> uget (liftIndex2 (-) ix ixD) * kVal + acc) 0
+    {-# INLINE stencil #-}
+{-# INLINE makeUnsafeConvolutionStencil #-}
+
+-- | Same as `Data.Massiv.Array.Stencil.makeCorrelationStencil`, but will result in
+-- reading memory out of bounds and potential segfaults if supplied arguments are not
+-- valid.
+--
+-- @since 0.6.0
+makeUnsafeCorrelationStencil
+  :: (Index ix, Num e)
+  => Sz ix
+  -> ix
+  -> ((ix -> e -> e -> e) -> e -> e)
+  -> Stencil ix e e
+makeUnsafeCorrelationStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
+  where
+    stencil _ getVal !ix =
+      (inline relStencil $ \ !ixD !kVal !acc -> getVal (liftIndex2 (+) ix ixD) * kVal + acc) 0
+    {-# INLINE stencil #-}
+{-# INLINE makeUnsafeCorrelationStencil #-}
 
 
 -- | Perform an arbitrary transformation of a stencil. This stencil modifier can be used for
@@ -163,8 +151,8 @@ unsafeTransformStencil ::
   -- ^ Forward modifier for the size
   -> (ix' -> ix)
   -- ^ Forward index modifier
-  -> (((ix' -> e) -> (ix' -> Value e) -> ix' -> Value a)
-      -> (ix -> e) -> (ix -> Value e) -> ix -> Value a)
+  -> (((ix' -> e) -> (ix' -> e) -> ix' -> a)
+      -> (ix -> e) -> (ix -> e) -> ix -> a)
   -- ^ Inverse stencil function modifier
   -> Stencil ix' e a
   -- ^ Original stencil.

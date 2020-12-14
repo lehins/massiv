@@ -14,7 +14,6 @@
 module Data.Massiv.Array.Stencil
   ( -- * Stencil
     Stencil
-  , Value
   , makeStencil
   , makeStencilDef
   , getStencilSize
@@ -195,7 +194,7 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
       DArray
         (getComp arr)
         sz
-        (unValue . stencilF (borderIndex border arr) (Value . borderIndex border arr) . liftIndex2 (+) offset)
+        (stencilF (borderIndex border arr) (borderIndex border arr) . liftIndex2 (+) offset)
     -- Size by which the resulting array will shrink (not accounting for padding)
     !shrinkSz = Sz (liftIndex (subtract 1) (unSz sSz))
     !sz = liftSz2 (-) (SafeSz (liftIndex2 (+) po (liftIndex2 (+) pb (unSz (size arr))))) shrinkSz
@@ -204,7 +203,7 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
       Window
         { windowStart = po
         , windowSize = wsz
-        , windowIndex = unValue . stencilF (unsafeIndex arr) (Value . index' arr) . liftIndex2 (+) offset
+        , windowIndex = stencilF (unsafeIndex arr) (index' arr) . liftIndex2 (+) offset
         , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
         }
 {-# INLINE applyStencil #-}
@@ -227,7 +226,7 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
 --
 -- /Note/ - Make sure to add an @INLINE@ pragma, otherwise performance will be terrible.
 --
--- > average3x3Stencil :: (Default a, Fractional a) => Stencil Ix2 a a
+-- > average3x3Stencil :: Fractional a => Stencil Ix2 a a
 -- > average3x3Stencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
 -- >   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
 -- >      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
@@ -239,7 +238,7 @@ makeStencil
   :: Index ix
   => Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
-  -> ((ix -> Value e) -> Value a)
+  -> ((ix -> e) -> a)
   -- ^ Stencil function that receives a "get" function as it's argument that can
   -- retrieve values of cells in the source array with respect to the center of
   -- the stencil. Stencil function must return a value that will be assigned to
@@ -262,7 +261,7 @@ makeStencilDef
   => e -- ^ Default element that will be used for stencil validation only.
   -> Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
-  -> ((ix -> Value e) -> Value a)
+  -> ((ix -> e) -> a)
   -- ^ Stencil function.
   -> Stencil ix e a
 makeStencilDef _defVal !sSz !sCenter relStencil =

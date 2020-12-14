@@ -4,8 +4,9 @@
   signature has changed to `Mutable` for both arguments, thus a breaking change.
 * Switch `><.` and `><!` from returning a delayed array.
 * Addition of synonym `HighIxN` and removing redundant `1 <= n` constraint.
-* Deprecating `makeStencilDef` and fix dangers of invalid stencils reading
-  out of bounds. Partial fix for [#109](https://github.com/lehins/massiv/issues/109).
+* Deprecating `makeStencilDef`, `unsafeMapStencil` and fix dangers of invalid stencils
+  reading out of bounds. Get rid of `Value`. Fix for
+  [#109](https://github.com/lehins/massiv/issues/109).
 
 # 0.5.9
 

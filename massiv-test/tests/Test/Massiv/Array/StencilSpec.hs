@@ -22,7 +22,7 @@ avg3x3Stencil = (/9) <$> makeConvolutionStencil (Sz 3) (1 :. 1) $ \ get ->
 
 singletonStencil :: (Index ix) => (Int -> Int) -> Stencil ix Int Int
 singletonStencil f =
-  makeStencil oneSz zeroIndex $ \ get -> fmap f (get zeroIndex)
+  makeStencil oneSz zeroIndex $ \ get -> f (get zeroIndex)
 
 
 prop_MapSingletonStencil ::
@@ -44,7 +44,7 @@ prop_ApplyZeroStencil ::
 prop_ApplyZeroStencil _ e arr =
   computeAs U (applyStencil noPadding zeroStencil arr) === makeArray Seq (size arr) (const e)
   where
-    zeroStencil = makeStencil zeroSz zeroIndex $ \_get -> pure e
+    zeroStencil = makeStencil zeroSz zeroIndex $ const e
 
 
 prop_MapSingletonStencilWithStride ::
@@ -68,7 +68,7 @@ prop_DangerousStencil ::
 prop_DangerousStencil _ (DimIx r) (SzIx sz center) =
   assertException validateException arr
   where
-    stencil = makeStencil sz center $ \get -> get ix' :: Value Int
+    stencil = makeStencil sz center $ \get -> get ix' :: Int
     arr = computeAs P (mapStencil Edge stencil (makeArray Seq sz (const 0) :: Array P ix Int))
     ix' = liftIndex2 (-)
           (setDim' zeroIndex r (getDim' (unSz sz) r))
@@ -91,12 +91,14 @@ prop_MapEqApplyStencil ::
   -> Array P ix Int
   -> Property
 prop_MapEqApplyStencil stride (SzTiny sz) b arr =
-  forAll (elements (P.zip [0 ..] (toList $ A.map (\(n, _, _) -> n) stencils))) $ \(i, _) ->
-    let (_, stencil, g) = stencils ! i
-     in computeAs P (unsafeMapStencil b sz zeroIndex (const g) arr) ===
-        computeAs P (applyStencil (samePadding stencil b) stencil arr) .&&.
-        computeWithStrideAs P stride (unsafeMapStencil b sz zeroIndex (const g) arr) ===
-        computeWithStrideAs P stride (applyStencil (samePadding stencil b) stencil arr)
+  expectProp $
+  A.forM_ stencils $ \(_name, stencil, g) -> do
+    -- TODO: Instead of removing deprecated unsafeMapStencil move it here for testing when
+    -- removed from massiv.
+    computeAs P (unsafeMapStencil b sz zeroIndex (const g) arr) `shouldBe`
+      computeAs P (applyStencil (samePadding stencil b) stencil arr)
+    computeWithStrideAs P stride (unsafeMapStencil b sz zeroIndex (const g) arr) `shouldBe`
+      computeWithStrideAs P stride (applyStencil (samePadding stencil b) stencil arr)
   where
     stencils = mkCommonStencils sz
 
