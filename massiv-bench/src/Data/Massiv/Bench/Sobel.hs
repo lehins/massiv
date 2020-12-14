@@ -6,10 +6,11 @@ module Data.Massiv.Bench.Sobel
   ) where
 
 import Data.Massiv.Array
+import Data.Massiv.Array.Unsafe
 
 sobelX :: Num e => Stencil Ix2 e e
 sobelX =
-  makeConvolutionStencil (Sz 3) (1 :. 1) $
+  makeUnsafeConvolutionStencil (Sz 3) (1 :. 1) $
   \ f -> f (-1 :. -1) (-1) .
          f ( 0 :. -1) (-2) .
          f ( 1 :. -1) (-1) .
@@ -21,7 +22,7 @@ sobelX =
 
 sobelY :: Num e => Stencil Ix2 e e
 sobelY =
-  makeConvolutionStencil (Sz 3) (1 :. 1) $
+  makeUnsafeConvolutionStencil (Sz 3) (1 :. 1) $
   \ f -> f (-1 :. -1) (-1) .
          f (-1 :.  0) (-2) .
          f (-1 :.  1) (-1) .

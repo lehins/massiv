@@ -28,8 +28,8 @@ import Data.Massiv.Core.Common
 import GHC.Exts (inline)
 
 
--- | This is an unsafe version of `Data.Massiv.Array.Stencil.mapStencil`, that does no
--- take `Stencil` as argument, as such it does no stencil validation.
+-- | This is an unsafe version of `Data.Massiv.Array.Stencil.mapStencil`, which does not
+-- take a `Stencil`, but instead accepts all necessary information as separate arguments.
 --
 -- @since 0.5.0
 unsafeMapStencil ::
