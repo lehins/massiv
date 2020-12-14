@@ -42,10 +42,10 @@ makeConvolutionStencil
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
 makeConvolutionStencil !sz !sCenter relStencil =
-  validateStencil 0 $ Stencil sz sInvertCenter stencil
+  Stencil sz sInvertCenter stencil
   where
     !sInvertCenter = liftIndex2 (-) (liftIndex (subtract 1) (unSz sz)) sCenter
-    stencil getVal !ix =
+    stencil _ getVal !ix =
       (inline relStencil $ \ !ixD !kVal !acc -> getVal (liftIndex2 (-) ix ixD) * kVal + acc) 0
     {-# INLINE stencil #-}
 {-# INLINE makeConvolutionStencil #-}
@@ -66,10 +66,9 @@ makeConvolutionStencilFromKernel kArr = Stencil sz sInvertCenter stencil
     !szi1 = liftIndex (subtract 1) szi
     !sInvertCenter = liftIndex2 (-) szi1 sCenter
     !sCenter = liftIndex (`quot` 2) szi
-    stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
+    stencil uget _ !ix = Value (ifoldlS accum 0 kArr) where
       !ixOff = liftIndex2 (+) ix sCenter
-      accum !acc !kIx !kVal =
-        unValue (getVal (liftIndex2 (-) ixOff kIx)) * kVal + acc
+      accum !acc !kIx !kVal = uget (liftIndex2 (-) ixOff kIx) * kVal + acc
       {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE makeConvolutionStencilFromKernel #-}
@@ -84,9 +83,9 @@ makeCorrelationStencil
   -> ix
   -> ((ix -> Value e -> Value e -> Value e) -> Value e -> Value e)
   -> Stencil ix e e
-makeCorrelationStencil !sSz !sCenter relStencil = validateStencil 0 $ Stencil sSz sCenter stencil
+makeCorrelationStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
   where
-    stencil getVal !ix =
+    stencil _ getVal !ix =
       (inline relStencil $ \ !ixD !kVal !acc -> getVal (liftIndex2 (+) ix ixD) * kVal + acc) 0
     {-# INLINE stencil #-}
 {-# INLINE makeCorrelationStencil #-}
@@ -104,10 +103,9 @@ makeCorrelationStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = liftIndex (`div` 2) $ unSz sz
-    stencil getVal !ix = Value (ifoldlS accum 0 kArr) where
+    stencil uget _ !ix = Value (ifoldlS accum 0 kArr) where
       !ixOff = liftIndex2 (-) ix sCenter
-      accum !acc !kIx !kVal =
-        unValue (getVal (liftIndex2 (+) ixOff kIx)) * kVal + acc
+      accum !acc !kIx !kVal = uget (liftIndex2 (+) ixOff kIx) * kVal + acc
       {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE makeCorrelationStencilFromKernel #-}

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedLists #-}
@@ -24,15 +25,24 @@ singletonStencil f =
   makeStencil oneSz zeroIndex $ \ get -> fmap f (get zeroIndex)
 
 
-prop_MapSingletonStencil :: (Load DW ix Int, Manifest U ix Int, Show (Array U ix Int)) =>
-                            Proxy ix -> Fun Int Int -> Border Int -> ArrNE U ix Int -> Property
+prop_MapSingletonStencil ::
+     (Load DW ix Int, Manifest U ix Int, Show (Array U ix Int))
+  => Proxy ix
+  -> Fun Int Int
+  -> Border Int
+  -> ArrNE U ix Int
+  -> Property
 prop_MapSingletonStencil _ f b (ArrNE arr) =
   computeAs U (mapStencil b (singletonStencil (apply f)) arr) === computeAs U (A.map (apply f) arr)
 
 prop_ApplyZeroStencil ::
-     (Load DW ix Int, Manifest U ix Int) => Proxy ix -> Int -> Array U ix Int -> Property
+     (Load DW ix Int, Show (Array U ix Int), Manifest U ix Int)
+  => Proxy ix
+  -> Int
+  -> Array U ix Int
+  -> Property
 prop_ApplyZeroStencil _ e arr =
-  assertSomeException $ computeAs U (applyStencil noPadding zeroStencil arr)
+  computeAs U (applyStencil noPadding zeroStencil arr) === makeArray Seq (size arr) (const e)
   where
     zeroStencil = makeStencil zeroSz zeroIndex $ \_get -> pure e
 
@@ -50,11 +60,22 @@ prop_MapSingletonStencilWithStride _ f b (ArrNE arr) =
 
 -- Tests out of bounds stencil indexing
 prop_DangerousStencil ::
-     Index ix => Proxy ix -> NonZero Int -> DimIx ix -> SzIx ix -> Property
-prop_DangerousStencil _ (NonZero s) (DimIx r) (SzIx sz ix) =
-  ix' `deepseq` assertSomeException $ makeStencil sz ix $ \get -> get ix' :: Value Int
+     forall ix. Load DW ix Int
+  => Proxy ix
+  -> DimIx ix
+  -> SzIx ix
+  -> Property
+prop_DangerousStencil _ (DimIx r) (SzIx sz center) =
+  assertException validateException arr
   where
-    ix' = liftIndex (* signum s) (setDim' zeroIndex r (getDim' (unSz sz) r))
+    stencil = makeStencil sz center $ \get -> get ix' :: Value Int
+    arr = computeAs P (mapStencil Edge stencil (makeArray Seq sz (const 0) :: Array P ix Int))
+    ix' = liftIndex2 (-)
+          (setDim' zeroIndex r (getDim' (unSz sz) r))
+          (setDim' zeroIndex r (getDim' center r))
+    validateException = \case
+      IndexOutOfBoundsException _ _ -> pure ()
+      exc -> expectationFailure $ "Unexpected exception: " <> show exc
 
 
 instance Index ix => Show (Stencil ix a b) where
@@ -143,11 +164,11 @@ stencilSpec = do
       in getStencilSize stencil === sz .&&. getStencilCenter stencil === ix
 
 stencilDirection :: Ix2 -> Array U Ix2 Int -> Array U Ix2 Int
-stencilDirection ix = computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
+stencilDirection ix = computeAs U . mapStencil (Fill 0) (makeStencil (Sz 3) (1 :. 1) $ \f -> f ix)
 
 
 stencilCorners :: Ix2 -> Ix2 -> Array U Ix2 Int -> Array U Ix2 Int
-stencilCorners ixC ix = computeAs U . mapStencil (Fill def) (makeStencil (Sz 3) ixC $ \f -> f ix)
+stencilCorners ixC ix = computeAs U . mapStencil (Fill 0) (makeStencil (Sz 3) ixC $ \f -> f ix)
 
 
 stencilConvolution :: Spec

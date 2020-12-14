@@ -121,8 +121,8 @@ makeUnsafeStencil
   -> Stencil ix e a
 makeUnsafeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
   where
-    stencil getVal !ix =
-      Value $ inline $ relStencil ix (unValue . getVal . liftIndex2 (+) ix)
+    stencil unsafeGetVal _getVal !ix =
+      Value $ inline $ relStencil ix (unsafeGetVal . liftIndex2 (+) ix)
     {-# INLINE stencil #-}
 {-# INLINE makeUnsafeStencil #-}
 
@@ -144,14 +144,14 @@ makeUnsafeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
 --   , [ 4, 5, 6 ]
 --   , [ 7, 8, 9 ]
 --   ]
--- >>> let rowStencil = unsafeTransformStencil (\(Sz n) -> Sz (1 :. n)) (0 :.) $ \ f getVal (i :. j) -> f (getVal . (i :.)) j
+-- >>> let rowStencil = unsafeTransformStencil (\(Sz n) -> Sz (1 :. n)) (0 :.) $ \ f uget getVal (i :. j) -> f (uget  . (i :.)) (getVal . (i :.)) j
 -- >>> applyStencil noPadding (rowStencil (sumStencil (Sz1 3))) arr
 -- Array DW Seq (Sz (3 :. 1))
 --   [ [ 6 ]
 --   , [ 15 ]
 --   , [ 24 ]
 --   ]
--- >>> let columnStencil = unsafeTransformStencil (\(Sz n) -> Sz (n :. 1)) (:. 0) $ \ f getVal (i :. j) -> f (getVal . (:. j)) i
+-- >>> let columnStencil = unsafeTransformStencil (\(Sz n) -> Sz (n :. 1)) (:. 0) $ \ f uget getVal (i :. j) -> f (uget . (:. j)) (getVal . (:. j)) i
 -- >>> applyStencil noPadding (columnStencil (sumStencil (Sz1 3))) arr
 -- Array DW Seq (Sz (1 :. 3))
 --   [ [ 12, 15, 18 ]
@@ -163,7 +163,8 @@ unsafeTransformStencil ::
   -- ^ Forward modifier for the size
   -> (ix' -> ix)
   -- ^ Forward index modifier
-  -> (((ix' -> Value e) -> ix' -> Value a) -> (ix -> Value e) -> ix -> Value a)
+  -> (((ix' -> e) -> (ix' -> Value e) -> ix' -> Value a)
+      -> (ix -> e) -> (ix -> Value e) -> ix -> Value a)
   -- ^ Inverse stencil function modifier
   -> Stencil ix' e a
   -- ^ Original stencil.

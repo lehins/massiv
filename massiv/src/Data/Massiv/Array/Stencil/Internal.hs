@@ -2,11 +2,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2020
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -18,21 +17,20 @@ module Data.Massiv.Array.Stencil.Internal
   , dimapStencil
   , lmapStencil
   , rmapStencil
-  , validateStencil
   ) where
 
 import Control.Applicative
 import Control.DeepSeq
-import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Core.Common
 
--- | Stencil is abstract description of how to handle elements in the neighborhood of every array
--- cell in order to compute a value for the cells in the new array. Use `Data.Array.makeStencil` and
--- `Data.Array.makeConvolutionStencil` in order to create a stencil.
+-- | Stencil is abstract description of how to handle elements in the neighborhood of
+-- every array cell in order to compute a value for the cells in the new array. Use
+-- `Data.Massiv.Array.makeStencil` and `Data.Massiv.Array.makeConvolutionStencil` in order
+-- to create a stencil.
 data Stencil ix e a = Stencil
   { stencilSize   :: !(Sz ix)
   , stencilCenter :: !ix
-  , stencilFunc   :: (ix -> Value e) -> ix -> Value a
+  , stencilFunc   :: (ix -> e) -> (ix -> Value e) -> ix -> Value a
   }
 
 
@@ -144,7 +142,7 @@ instance Functor (Stencil ix e) where
 dimapStencil :: (c -> d) -> (a -> b) -> Stencil ix d a -> Stencil ix c b
 dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
-    sf' s = Value . g . unValue . sf (Value . f . unValue . s)
+    sf' us s = Value . g . unValue . sf (f . us) (Value . f . unValue . s)
     {-# INLINE sf' #-}
 {-# INLINE dimapStencil #-}
 
@@ -159,7 +157,7 @@ dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'
 lmapStencil :: (c -> d) -> Stencil ix d a -> Stencil ix c a
 lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
-    sf' s = sf (Value . f . unValue . s)
+    sf' us s = sf (f . us) (Value . f . unValue . s)
     {-# INLINE sf' #-}
 {-# INLINE lmapStencil #-}
 
@@ -171,7 +169,7 @@ lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
 rmapStencil :: (a -> b) -> Stencil ix e a -> Stencil ix e b
 rmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
   where
-    sf' s = Value . f . unValue . sf s
+    sf' us s = Value . f . unValue . sf us s
     {-# INLINE sf' #-}
 {-# INLINE rmapStencil #-}
 
@@ -184,11 +182,11 @@ rmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
 -- Stencil - both stencils are trusted, increasing the size will not affect the
 -- safety.
 instance Index ix => Applicative (Stencil ix e) where
-  pure a = Stencil oneSz zeroIndex (const (const (Value a)))
+  pure a = Stencil oneSz zeroIndex (\_ _ _ -> Value a)
   {-# INLINE pure #-}
   (<*>) (Stencil (SafeSz sSz1) sC1 f1) (Stencil (SafeSz sSz2) sC2 f2) = Stencil newSz maxCenter stF
     where
-      stF gV !ix = Value (unValue (f1 gV ix) (unValue (f2 gV ix)))
+      stF ug gV !ix = Value (unValue (f1 ug gV ix) (unValue (f2 ug gV ix)))
       {-# INLINE stF #-}
       !newSz =
         Sz
@@ -260,21 +258,3 @@ instance (Index ix, Floating a) => Floating (Stencil ix e a) where
   {-# INLINE acosh #-}
   atanh = fmap atanh
   {-# INLINE atanh #-}
-
-
-safeStencilIndex :: Index ix => Array D ix e -> ix -> e
-safeStencilIndex DArray {..} ix
-  | isSafeIndex dSize ix = dIndex ix
-  | otherwise = throw $ IndexOutOfBoundsException dSize ix
-
-
--- | Make sure constructed stencil doesn't index outside the allowed stencil size boundary.
-validateStencil
-  :: Index ix
-  => e -> Stencil ix e a -> Stencil ix e a
-validateStencil d s@(Stencil sSz sCenter stencil)
-  | isSafeIndex sSz sCenter =
-    let valArr = DArray Seq sSz (const d)
-     in stencil (Value . safeStencilIndex valArr) sCenter `seq` s
-  | otherwise = throw $ IndexOutOfBoundsException sSz sCenter
-{-# INLINE validateStencil #-}

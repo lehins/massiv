@@ -80,7 +80,7 @@ test-suite tests
                     , data-default
                     , deepseq
                     , genvalidity-hspec
-                    , massiv >= 0.5.2
+                    , massiv >= 0.6
                     , massiv-test
                     , mwc-random
                     , hspec
@@ -133,7 +133,7 @@ test-suite tests-O0
                     , data-default
                     , deepseq
                     , genvalidity-hspec
-                    , massiv >= 0.5.2
+                    , massiv >= 0.6
                     , massiv-test
                     , mwc-random
                     , hspec
