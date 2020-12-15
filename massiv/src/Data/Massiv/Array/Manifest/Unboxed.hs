@@ -33,6 +33,7 @@ import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as MVU
@@ -208,6 +209,21 @@ instance ( VU.Unbox e
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
+
+
+instance (VU.Unbox e, Num e) => FoldNumeric U e where
+  unsafeDotProduct = defaultUnsafeDotProduct
+  {-# INLINE unsafeDotProduct #-}
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
+  {-# INLINE foldArray #-}
+
+instance (VU.Unbox e, Num e) => Numeric U e where
+  unsafeLiftArray = defaultUnsafeLiftArray
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 = defaultUnsafeLiftArray2
+  {-# INLINE unsafeLiftArray2 #-}
 
 
 -- | /O(1)/ - Unwrap unboxed array and pull out the underlying unboxed vector.

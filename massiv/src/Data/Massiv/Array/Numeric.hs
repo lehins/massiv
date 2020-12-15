@@ -372,7 +372,7 @@ mm #> v
 -- /__Throws Exception__/: `SizeMismatchException` when lengths of vectors do not match
 --
 -- @since 0.5.6
-dotM :: (Numeric r e, Source r Ix1 e, MonadThrow m) => Vector r e -> Vector r e -> m e
+dotM :: (FoldNumeric r e, Source r Ix1 e, MonadThrow m) => Vector r e -> Vector r e -> m e
 dotM v1 v2
   | size v1 /= size v2 = throwM $ SizeMismatchException (size v1) (size v2)
   | comp == Seq = pure $! unsafeDotProduct v1 v2
@@ -383,7 +383,7 @@ dotM v1 v2
 
 
 unsafeDotProductIO ::
-     (MonadUnliftIO m, Numeric r b, Source r ix b)
+     (MonadUnliftIO m, FoldNumeric r b, Source r ix b)
   => Array r ix b
   -> Array r ix b
   -> m b
@@ -410,14 +410,14 @@ unsafeDotProductIO v1 v2 = do
 -- | Compute L2 norm of an array.
 --
 -- @since 0.5.6
-normL2 :: (Floating e, Numeric r e, Source r ix e) => Array r ix e -> e
+normL2 :: (Floating e, FoldNumeric r e, Source r ix e) => Array r ix e -> e
 normL2 v
   | getComp v == Seq = sqrt $! powerSumArray v 2
   | otherwise = sqrt $! unsafePerformIO $ powerSumArrayIO v 2
 {-# INLINE normL2 #-}
 
 powerSumArrayIO ::
-     (MonadUnliftIO m, Numeric r b, Source r ix b)
+     (MonadUnliftIO m, FoldNumeric r b, Source r ix b)
   => Array r ix b
   -> Int
   -> m b
@@ -444,7 +444,7 @@ powerSumArrayIO v p = do
 --
 -- @since 0.5.6
 (.><) ::
-     (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e)
+     (MonadThrow m, FoldNumeric r e, Source r Ix1 e, Source r Ix2 e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector D e)

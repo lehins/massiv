@@ -226,37 +226,19 @@ instance (Index ix, Storable e) => Stream S ix e where
   {-# INLINE toStreamIx #-}
 
 
-instance (Storable e, Num e) => Numeric S e where
-  unsafeDotProduct a1 a2 = go 0 0
-    where
-      !len = totalElem (size a1)
-      go !acc i
-        | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
-        | otherwise = acc
+instance (Storable e, Num e) => FoldNumeric S e where
+  unsafeDotProduct = defaultUnsafeDotProduct
   {-# INLINE unsafeDotProduct #-}
-  powerSumArray arr p = go 0 0
-    where
-      !len = totalElem (size arr)
-      go !acc i
-        | i < len = go (acc + unsafeLinearIndex arr i ^ p) (i + 1)
-        | otherwise = acc
+  powerSumArray = defaultPowerSumArray
   {-# INLINE powerSumArray #-}
-  foldArray f !initAcc arr = go initAcc 0
-    where
-      !len = totalElem (size arr)
-      go !acc i
-        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
-        | otherwise = acc
+  foldArray = defaultFoldArray
   {-# INLINE foldArray #-}
-  unsafeLiftArray f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
-  {-# INLINE unsafeLiftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    makeArrayLinear
-      (getComp a1 <> getComp a2)
-      (SafeSz (liftIndex2 min (unSz (size a1)) (unSz (size a2)))) $ \ !i ->
-      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
 
+instance (Storable e, Num e) => Numeric S e where
+  unsafeLiftArray = defaultUnsafeLiftArray
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 = defaultUnsafeLiftArray2
+  {-# INLINE unsafeLiftArray2 #-}
 
 instance (Storable e, Floating e) => NumericFloat S e
 

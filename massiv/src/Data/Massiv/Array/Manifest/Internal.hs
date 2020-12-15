@@ -55,6 +55,7 @@ import Data.Massiv.Array.Mutable.Internal (unsafeCreateArray_)
 import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
 import Data.Maybe (fromMaybe)
 import Data.Typeable
 import GHC.Base hiding (ord)
@@ -206,6 +207,14 @@ instance Index ix => Stream M ix e where
   toStreamIx = S.isteps
   {-# INLINE toStreamIx #-}
 
+
+instance Num e => FoldNumeric M e where
+  unsafeDotProduct = defaultUnsafeDotProduct
+  {-# INLINE unsafeDotProduct #-}
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
+  {-# INLINE foldArray #-}
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy

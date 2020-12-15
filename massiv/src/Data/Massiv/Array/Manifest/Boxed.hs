@@ -59,6 +59,7 @@ import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Array.Ops.Map (traverseA)
 import Data.Massiv.Core.Common
+import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List
 import qualified Data.Primitive.Array as A
 import qualified Data.Vector as VB
@@ -263,6 +264,20 @@ instance ( IsList (Array L ix e)
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
+instance Num e => FoldNumeric B e where
+  unsafeDotProduct = defaultUnsafeDotProduct
+  {-# INLINE unsafeDotProduct #-}
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
+  {-# INLINE foldArray #-}
+
+instance Num e => Numeric B e where
+  unsafeLiftArray = defaultUnsafeLiftArray
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 = defaultUnsafeLiftArray2
+  {-# INLINE unsafeLiftArray2 #-}
+
 -----------------------
 -- Boxed Normal Form --
 -----------------------
@@ -406,6 +421,19 @@ instance ( NFData e
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
+instance (NFData e, Num e) => FoldNumeric N e where
+  unsafeDotProduct = defaultUnsafeDotProduct
+  {-# INLINE unsafeDotProduct #-}
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
+  {-# INLINE foldArray #-}
+
+instance (NFData e, Num e) => Numeric N e where
+  unsafeLiftArray = defaultUnsafeLiftArray
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 = defaultUnsafeLiftArray2
+  {-# INLINE unsafeLiftArray2 #-}
 
 ----------------------
 -- Helper functions --

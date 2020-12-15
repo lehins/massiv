@@ -217,21 +217,15 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
   {-# INLINE acosh #-}
 
 
-instance Num e => Numeric D e where
-  unsafeDotProduct a1 a2 = go 0 0
-    where
-      !len = totalElem (size a1)
-      go !acc i
-        | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
-        | otherwise = acc
+instance Num e => FoldNumeric D e where
+  unsafeDotProduct = defaultUnsafeDotProduct
   {-# INLINE unsafeDotProduct #-}
-  foldArray f !initAcc arr = go initAcc 0
-    where
-      !len = totalElem (dSize arr)
-      go !acc i
-        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
-        | otherwise = acc
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
   {-# INLINE foldArray #-}
+
+instance Num e => Numeric D e where
   unsafeLiftArray f arr = arr {dIndex = f . dIndex arr}
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 f a1 a2 =
