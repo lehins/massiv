@@ -48,6 +48,7 @@ module Data.Massiv.Array.Manifest.Primitive
   , unsafeAtomicXorIntArray
   ) where
 
+import Control.Monad
 import Control.DeepSeq (NFData(..), deepseq)
 import Control.Monad.Primitive (PrimMonad(..), primitive_)
 import Data.Massiv.Array.Delayed.Pull -- (eq, ord)
@@ -192,7 +193,8 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeNew #-}
 
   initialize (MPArray sz o mba) =
-    fillByteArray mba o (totalElem sz * sizeOf (undefined :: e)) 0
+    let k = totalElem sz * sizeOf (undefined :: e)
+    in when (k > 0) $ fillByteArray mba o k 0
   {-# INLINE initialize #-}
 
   unsafeLinearRead _mpa@(MPArray _sz o ma) i =

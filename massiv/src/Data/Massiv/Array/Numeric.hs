@@ -450,9 +450,11 @@ powerSumArrayIO v p = do
   -> m (Vector D e)
 (.><) mm v
   | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
-  | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
+  | mRows == 0 || mCols == 0 = pure $ setComp comp empty
+  | otherwise = pure $ makeArray comp (Sz1 mRows) $ \i ->
       unsafeDotProduct (unsafeLinearSlice (i * n) sz mm) v
   where
+    comp = getComp mm <> getComp v
     Sz2 mRows mCols = size mm
     sz@(Sz1 n) = size v
 {-# INLINE (.><) #-}
@@ -511,6 +513,7 @@ multiplyVectorByMatrix ::
   -> m (Vector r e)
 multiplyVectorByMatrix v mm
   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
+  | mRows == 0 || mCols == 0 = pure $ setComp comp empty
   | otherwise =
     pure $!
     unsafePerformIO $ do
