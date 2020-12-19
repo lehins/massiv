@@ -1,7 +1,7 @@
 # 0.1.5
 
 * Add numeric tests
-* Add floating point comparisin with epsilon functions:
+* Add floating point comparison with epsilon functions:
   * `epsilonExpect`
   * `epsilonFoldableExpect`
   * `epsilonMaybeEq`
