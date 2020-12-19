@@ -26,6 +26,7 @@ naiveMatrixMatrixMultiply arr1 arr2
     error $
     "(|*|): Inner array dimensions must agree, but received: " ++
     show (size arr1) ++ " and " ++ show (size arr2)
+  | isEmpty arr1 || isEmpty arr2 = empty
   | otherwise =
     makeArrayR D Seq (Sz (m1 :. n2)) $ \(i :. j) ->
       A.foldlS (+) 0 (A.zipWith (*) (arr1 !> i) (arr2 <! j))

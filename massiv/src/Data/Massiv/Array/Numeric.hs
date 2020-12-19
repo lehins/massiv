@@ -622,11 +622,13 @@ multiplyMatricesTransposed ::
   -> m (Matrix D e)
 multiplyMatricesTransposed arr1 arr2
   | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (Sz2 m2 n2)
+  | isEmpty arr1 || isEmpty arr2 = pure $ setComp comp empty
   | otherwise =
     pure $
-    DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
+    DArray comp (SafeSz (m1 :. n2)) $ \(i :. j) ->
       unsafeDotProduct (unsafeLinearSlice (i * n1) n arr1) (unsafeLinearSlice (j * n1) n arr2)
   where
+    comp = getComp arr1 <> getComp arr2
     n = SafeSz n1
     SafeSz (m1 :. n1) = size arr1
     SafeSz (n2 :. m2) = size arr2

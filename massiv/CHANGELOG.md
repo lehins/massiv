@@ -1,7 +1,7 @@
 # 0.5.9
 
 * Add `mallocCompute`, `mallocCopy` and `unsafeMallocMArray`
-* Fix `><.` and `.><` on empty matrices.
+* Fix `.><.`, `><.` and `.><` on empty matrices. Result is now guaranteed to be empty too.
 
 # 0.5.8
 
