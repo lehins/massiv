@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-module Data.Massiv.Array.Manifest.PrimitiveSpec (spec) where
+module Test.Massiv.Array.Manifest.PrimitiveSpec (spec) where
 
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe

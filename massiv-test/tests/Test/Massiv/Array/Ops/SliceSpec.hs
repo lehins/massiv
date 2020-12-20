@@ -1,9 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
-module Data.Massiv.Array.Ops.SliceSpec (spec) where
+module Test.Massiv.Array.Ops.SliceSpec (spec) where
 
 import Control.Applicative ((<|>))
 import Control.Exception

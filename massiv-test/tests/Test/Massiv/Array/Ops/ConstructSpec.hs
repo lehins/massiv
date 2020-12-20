@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Data.Massiv.Array.Ops.ConstructSpec (spec) where
+module Test.Massiv.Array.Ops.ConstructSpec (spec) where
 
 import Data.List as L
 import Data.Massiv.Array as A

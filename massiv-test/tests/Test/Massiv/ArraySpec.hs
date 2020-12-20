@@ -3,8 +3,8 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
--- Here are contained tests for all instances for all main classes
-module Data.Massiv.ArraySpec
+-- Here are tests for all instances for all main classes
+module Test.Massiv.ArraySpec
   ( spec
   ) where
 

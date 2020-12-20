@@ -51,30 +51,29 @@ test-suite tests
   hs-source-dirs:     tests
   main-is:            Main.hs
   other-modules:      Spec
-                    , Test.Massiv.Core.IndexSpec
-                    , Test.Massiv.Core.ListSpec
-                    , Test.Massiv.Core.SchedulerSpec
                     , Test.Massiv.Array.Delayed.StreamSpec
                     , Test.Massiv.Array.Delayed.InterleavedSpec
                     , Test.Massiv.Array.Delayed.PushSpec
                     , Test.Massiv.Array.Delayed.WindowedSpec
                     , Test.Massiv.Array.DelayedSpec
                     , Test.Massiv.Array.MutableSpec
+                    , Test.Massiv.Array.Ops.ConstructSpec
                     , Test.Massiv.Array.Ops.FoldSpec
                     , Test.Massiv.Array.Ops.MapSpec
+                    , Test.Massiv.Array.Ops.SliceSpec
                     , Test.Massiv.Array.Ops.SortSpec
                     , Test.Massiv.Array.Ops.TransformSpec
+                    , Test.Massiv.Array.Manifest.PrimitiveSpec
+                    , Test.Massiv.Array.Manifest.VectorSpec
+                    , Test.Massiv.Array.ManifestSpec
                     , Test.Massiv.Array.NumericSpec
                     , Test.Massiv.Array.Numeric.IntegralSpec
                     , Test.Massiv.Array.StencilSpec
+                    , Test.Massiv.ArraySpec
                     , Test.Massiv.VectorSpec
-                      -- TODO: Below should be moved to Test.Massiv.Array
-                    , Data.Massiv.Array.Manifest.PrimitiveSpec
-                    , Data.Massiv.Array.Manifest.VectorSpec
-                    , Data.Massiv.Array.ManifestSpec
-                    , Data.Massiv.Array.Ops.ConstructSpec
-                    , Data.Massiv.Array.Ops.SliceSpec
-                    , Data.Massiv.ArraySpec
+                    , Test.Massiv.Core.IndexSpec
+                    , Test.Massiv.Core.ListSpec
+                    , Test.Massiv.Core.SchedulerSpec
   build-depends:      base
                     , bytestring
                     , containers
@@ -105,30 +104,29 @@ test-suite tests-O0
   hs-source-dirs:     tests
   main-is:            Main.hs
   other-modules:      Spec
-                    , Test.Massiv.Core.IndexSpec
-                    , Test.Massiv.Core.ListSpec
-                    , Test.Massiv.Core.SchedulerSpec
                     , Test.Massiv.Array.Delayed.StreamSpec
                     , Test.Massiv.Array.Delayed.InterleavedSpec
                     , Test.Massiv.Array.Delayed.PushSpec
                     , Test.Massiv.Array.Delayed.WindowedSpec
                     , Test.Massiv.Array.DelayedSpec
                     , Test.Massiv.Array.MutableSpec
+                    , Test.Massiv.Array.Ops.ConstructSpec
                     , Test.Massiv.Array.Ops.FoldSpec
                     , Test.Massiv.Array.Ops.MapSpec
+                    , Test.Massiv.Array.Ops.SliceSpec
                     , Test.Massiv.Array.Ops.SortSpec
                     , Test.Massiv.Array.Ops.TransformSpec
+                    , Test.Massiv.Array.Manifest.PrimitiveSpec
+                    , Test.Massiv.Array.Manifest.VectorSpec
+                    , Test.Massiv.Array.ManifestSpec
                     , Test.Massiv.Array.NumericSpec
                     , Test.Massiv.Array.Numeric.IntegralSpec
                     , Test.Massiv.Array.StencilSpec
+                    , Test.Massiv.ArraySpec
                     , Test.Massiv.VectorSpec
-                      -- TODO: Below should be moved to Test.Massiv.Array
-                    , Data.Massiv.Array.Manifest.PrimitiveSpec
-                    , Data.Massiv.Array.Manifest.VectorSpec
-                    , Data.Massiv.Array.ManifestSpec
-                    , Data.Massiv.Array.Ops.ConstructSpec
-                    , Data.Massiv.Array.Ops.SliceSpec
-                    , Data.Massiv.ArraySpec
+                    , Test.Massiv.Core.IndexSpec
+                    , Test.Massiv.Core.ListSpec
+                    , Test.Massiv.Core.SchedulerSpec
   build-depends:      base
                     , bytestring
                     , containers

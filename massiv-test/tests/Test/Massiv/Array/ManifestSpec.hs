@@ -3,7 +3,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeApplications #-}
-module Data.Massiv.Array.ManifestSpec (spec) where
+module Test.Massiv.Array.ManifestSpec (spec) where
 
 import Data.ByteString as S
 import Data.ByteString.Builder as S

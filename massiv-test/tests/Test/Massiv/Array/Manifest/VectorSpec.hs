@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-module Data.Massiv.Array.Manifest.VectorSpec (spec) where
+module Test.Massiv.Array.Manifest.VectorSpec (spec) where
 
 import Data.Massiv.Array.Manifest.Vector
 import Data.Massiv.Array as A
