@@ -364,7 +364,7 @@ unwrapMutableByteArray (MPArray _ _ mba) = mba
 
 -- | /O(n)/ - Try to cast a mutable array to `MutableByteArray`, if sizes do not match make
 -- a copy. Returns `True` if an array was converted without a copy, in which case it means
--- tha the source at the resulting array are still pointing to the same location in memory.
+-- that the source at the resulting array are still pointing to the same location in memory.
 --
 -- @since 0.5.0
 toMutableByteArray ::
