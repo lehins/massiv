@@ -1,3 +1,7 @@
+# 0.1.6
+
+* Fix expectations for matrix multiplications. Empty arrays now always produce empty arrays.
+
 # 0.1.5
 
 * Add numeric tests
