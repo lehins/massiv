@@ -6,7 +6,8 @@ packages:
 - examples
 extra-deps:
 - ../massiv
-- Color-0.2.0@sha256:94c43c4d8f943ba0642ee58a9b8a665b01a3ac2893c40a16ffdabaacb956c58f,8159
-- massiv-io-0.3.0.1@sha256:393df632ea8c3b0549a2b3a2fbaa6a9ef1202a05dd9b3f44555a9f6a31327652,3667
+- Color-0.3.0@sha256:6a0effd159b37938098533144f8558068fa9ccd5a25bfe00e96463626ceda709,8157
+- massiv-io-0.4.0.0@sha256:7d15b7c937573394c3221aa38364ae4a8f8aa0f317d5dd93a106cb3d5d906639,3667
+- scheduler-1.5.0@sha256:8b43f2991bf9a720b12192ba99525f705a44aeae9541a7bd73fbc7e7b56fd8f0,2437
 nix:
   packages: [ zlib libGLU ]

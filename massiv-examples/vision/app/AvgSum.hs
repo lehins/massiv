@@ -35,9 +35,9 @@ main :: IO ()
 main = do
   let arr = computeAs S $ arrLightIx2 Par (600 :. 800)
       toImage ::
-           (Functor (Array r Ix2), Load r Ix2 (Pixel Y' Word8))
+           (Functor (Array r Ix2), Load r Ix2 (Pixel (Y' SRGB) Word8))
         => Array r Ix2 Double
-        -> Image S Y' Word8
+        -> Image S (Y' SRGB) Word8
       toImage = computeAs S . fmap (PixelY' . toWord8)
       lightPath = "files/light.png"
       lightAvgPath = "files/light_avg.png"
