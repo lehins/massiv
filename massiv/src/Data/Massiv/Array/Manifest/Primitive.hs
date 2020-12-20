@@ -28,12 +28,16 @@ module Data.Massiv.Array.Manifest.Primitive
   , toByteArray
   , toByteArrayM
   , unwrapByteArray
+  , unwrapByteArrayOffset
   , unwrapMutableByteArray
+  , unwrapMutableByteArrayOffset
   , fromByteArray
   , fromByteArrayM
+  , fromByteArrayOffsetM
   , toMutableByteArray
   , toMutableByteArrayM
   , fromMutableByteArrayM
+  , fromMutableByteArrayOffsetM
   , fromMutableByteArray
   , shrinkMutableByteArray
   , unsafeAtomicReadIntArray
@@ -313,11 +317,12 @@ elemsMBA _ a = sizeofMutableByteArray a `div` sizeOf (undefined :: e)
 --
 -- @since 0.2.1
 toByteArray :: (Index ix, Prim e) => Array P ix e -> ByteArray
-toByteArray arr = fromMaybe (unwrapByteArray $ compute arr) $ toByteArrayM arr
+toByteArray arr = fromMaybe (unwrapByteArray $ clone arr) $ toByteArrayM arr
 {-# INLINE toByteArray #-}
 
--- | /O(1)/ - Extract the internal `ByteArray`. This will discard any possible slicing that has been
--- applied to the array. Use `toByteArray` in order to preserve slicing.
+-- | /O(1)/ - Extract the internal `ByteArray`. This will ignore any possible slicing that
+-- has been applied to the array. Use `toByteArray` in order to preserve slicing or
+-- `unwrapByteArrayOffset` to get ahold of the offset
 --
 -- @since 0.5.0
 unwrapByteArray :: Array P ix e -> ByteArray
@@ -325,26 +330,43 @@ unwrapByteArray = pData
 {-# INLINE unwrapByteArray #-}
 
 
+-- | /O(1)/ - Extract potential linear offset into the underlying `ByteArray`, which can
+-- also be extracted with `unwrapByteArray`.
+--
+-- @since 0.5.9
+unwrapByteArrayOffset :: Array P ix e -> Int
+unwrapByteArrayOffset = pOffset
+{-# INLINE unwrapByteArrayOffset #-}
+
+
 -- | /O(1)/ - Unwrap Ensure that the size matches the internal `ByteArray`.
 --
 -- @since 0.5.0
 toByteArrayM :: (Prim e, Index ix, MonadThrow m) => Array P ix e -> m ByteArray
 toByteArrayM arr@PArray {pSize, pData} = do
-  guardNumberOfElements pSize (Sz (elemsBA arr pData))
-  pure pData
+  pData <$ guardNumberOfElements pSize (Sz (elemsBA arr pData))
 {-# INLINE toByteArrayM #-}
 
 
--- | /O(1)/ - Construct a primitive array from the `ByteArray`. Will return `Nothing` if number of
--- elements doesn't match.
+-- | /O(1)/ - Construct a primitive array from the `ByteArray`. Will return `Nothing` if
+-- number of elements doesn't match.
 --
 -- @since 0.3.0
 fromByteArrayM :: (MonadThrow m, Index ix, Prim e) => Comp -> Sz ix -> ByteArray -> m (Array P ix e)
-fromByteArrayM comp sz ba =
-  guardNumberOfElements sz (Sz (elemsBA arr ba)) >> pure arr
-  where
-    arr = PArray comp sz 0 ba
+fromByteArrayM comp sz = fromByteArrayOffsetM comp sz 0
 {-# INLINE fromByteArrayM #-}
+
+-- | /O(1)/ - Construct a primitive array from the `ByteArray`. Will return `Nothing` if
+-- number of elements doesn't match.
+--
+-- @since 0.5.9
+fromByteArrayOffsetM ::
+     (MonadThrow m, Index ix, Prim e) => Comp -> Sz ix -> Int -> ByteArray -> m (Array P ix e)
+fromByteArrayOffsetM comp sz off ba =
+  arr <$ guardNumberOfElements sz (SafeSz (elemsBA arr ba - off))
+  where
+    arr = PArray comp sz off ba
+{-# INLINE fromByteArrayOffsetM #-}
 
 -- | /O(1)/ - Construct a flat Array from `ByteArray`
 --
@@ -361,6 +383,14 @@ fromByteArray comp ba = PArray comp (SafeSz (elemsBA (Proxy :: Proxy e) ba)) 0 b
 unwrapMutableByteArray :: MArray s P ix e -> MutableByteArray s
 unwrapMutableByteArray (MPArray _ _ mba) = mba
 {-# INLINE unwrapMutableByteArray #-}
+
+-- | /O(1)/ - Extract the linear offset into underlying `MutableByteArray`, which can aslo
+-- be extracted with `unwrapMutableByteArray`.
+--
+-- @since 0.5.9
+unwrapMutableByteArrayOffset :: MArray s P ix e -> Int
+unwrapMutableByteArrayOffset (MPArray _ off _) = off
+{-# INLINE unwrapMutableByteArrayOffset #-}
 
 -- | /O(n)/ - Try to cast a mutable array to `MutableByteArray`, if sizes do not match make
 -- a copy. Returns `True` if an array was converted without a copy, in which case it means
@@ -398,11 +428,21 @@ toMutableByteArrayM marr@(MPArray sz _ mba) =
 -- @since 0.3.0
 fromMutableByteArrayM ::
      (MonadThrow m, Index ix, Prim e) => Sz ix -> MutableByteArray s -> m (MArray s P ix e)
-fromMutableByteArrayM sz mba =
-  marr <$ guardNumberOfElements sz (Sz (elemsMBA marr mba))
-  where
-    marr = MPArray sz 0 mba
+fromMutableByteArrayM sz = fromMutableByteArrayOffsetM sz 0
 {-# INLINE fromMutableByteArrayM #-}
+
+-- | /O(1)/ - Construct a primitive mutable array from the `MutableByteArray`. Will throw
+-- `SizeElementsMismatchException` if number of elements doesn't match.
+--
+-- @since 0.5.9
+fromMutableByteArrayOffsetM ::
+     (MonadThrow m, Index ix, Prim e) => Sz ix -> Ix1 -> MutableByteArray s -> m (MArray s P ix e)
+fromMutableByteArrayOffsetM sz off mba =
+  marr <$ guardNumberOfElements sz (SafeSz (elemsMBA marr mba - off))
+  where
+    marr = MPArray sz off mba
+{-# INLINE fromMutableByteArrayOffsetM #-}
+
 
 -- | /O(1)/ - Construct a flat Array from `MutableByteArray`
 --

@@ -2,6 +2,8 @@
 
 * Add `mallocCompute`, `mallocCopy` and `unsafeMallocMArray`
 * Fix `.><.`, `><.` and `.><` on empty matrices. Result is now guaranteed to be empty too.
+* Add `unwrapByteArrayOffset` and `unwrapMutableByteArrayOffset`
+* Add `fromByteArrayOffsetM` and `fromMutableByteArrayOffsetM`
 
 # 0.5.8
 

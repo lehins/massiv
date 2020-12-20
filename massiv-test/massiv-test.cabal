@@ -69,6 +69,7 @@ test-suite tests
                     , Test.Massiv.Array.StencilSpec
                     , Test.Massiv.VectorSpec
                       -- TODO: Below should be moved to Test.Massiv.Array
+                    , Data.Massiv.Array.Manifest.PrimitiveSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Ops.ConstructSpec
@@ -122,6 +123,7 @@ test-suite tests-O0
                     , Test.Massiv.Array.StencilSpec
                     , Test.Massiv.VectorSpec
                       -- TODO: Below should be moved to Test.Massiv.Array
+                    , Data.Massiv.Array.Manifest.PrimitiveSpec
                     , Data.Massiv.Array.Manifest.VectorSpec
                     , Data.Massiv.Array.ManifestSpec
                     , Data.Massiv.Array.Ops.ConstructSpec

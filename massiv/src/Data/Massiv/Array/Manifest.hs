@@ -51,12 +51,16 @@ module Data.Massiv.Array.Manifest
   , toByteArray
   , toByteArrayM
   , unwrapByteArray
+  , unwrapByteArrayOffset
   , fromByteArray
   , fromByteArrayM
+  , fromByteArrayOffsetM
   , toMutableByteArray
   , unwrapMutableByteArray
+  , unwrapMutableByteArrayOffset
   , fromMutableByteArray
   , fromMutableByteArrayM
+  , fromMutableByteArrayOffsetM
   -- *** Primitive Vector
   , toPrimitiveVector
   , toPrimitiveMVector
