@@ -7,6 +7,12 @@
 * Deprecating `makeStencilDef`, `unsafeMapStencil` and fix dangers of invalid stencils
   reading out of bounds. Get rid of `Value`. Fix for
   [#109](https://github.com/lehins/massiv/issues/109).
+* Addition of `appComp`
+* Addition of `mkSzM`
+* Addition of `SizeOverflowException` and `SizeNegativeException`
+* Fix setting computation for boxed vector when converted with `fromVectorM` and `fromVector'`
+* Add computation strategy argument to `fromUnboxedVector`, just so it matches other
+  vector conversion functions.
 
 # 0.5.9
 

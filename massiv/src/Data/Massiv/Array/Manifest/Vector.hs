@@ -77,8 +77,7 @@ castFromVector comp sz vector = do
          return $ PArray {pComp = comp, pSize = sz, pOffset = o, pData = ba}
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
          bVector <- join $ gcast1 (Just vector)
-         let ba = unsafeFromBoxedVector bVector
-         ba `seqArray` pure (unsafeResize sz ba)
+         pure $ unsafeResize sz $ evalBoxedVector comp bVector
     ]
 {-# NOINLINE castFromVector #-}
 

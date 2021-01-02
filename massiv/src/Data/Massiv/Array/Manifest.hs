@@ -72,7 +72,7 @@ module Data.Massiv.Array.Manifest
   , mallocCompute
   , mallocCopy
   -- ** Conversion
-  -- *** Primitive Vector
+  -- *** Storable Vector
   , toStorableVector
   , toStorableMVector
   , fromStorableVector
@@ -83,6 +83,7 @@ module Data.Massiv.Array.Manifest
   , U(..)
   , Unbox
   -- ** Conversion
+  -- *** Unboxed Vector
   , toUnboxedVector
   , toUnboxedMVector
   , fromUnboxedVector

@@ -41,6 +41,7 @@ module Data.Massiv.Core.Index
   , insertSzM
   , pullOutSzM
   , toLinearSz
+  , mkSzM
   -- ** Dimension
   , Dim(..)
   , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)

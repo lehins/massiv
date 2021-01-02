@@ -245,9 +245,9 @@ toUnboxedMVector (MUArray _ mv) = mv
 
 -- | /O(1)/ - Wrap an unboxed vector and produce an unboxed flat array.
 --
--- @since 0.5.0
-fromUnboxedVector :: VU.Unbox e => VU.Vector e -> Array U Ix1 e
-fromUnboxedVector v = UArray Seq (SafeSz (VU.length v)) v
+-- @since 0.6.0
+fromUnboxedVector :: VU.Unbox e => Comp -> VU.Vector e -> Array U Ix1 e
+fromUnboxedVector comp v = UArray comp (SafeSz (VU.length v)) v
 {-# INLINE fromUnboxedVector #-}
 
 

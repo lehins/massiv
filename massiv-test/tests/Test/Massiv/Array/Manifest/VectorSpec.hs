@@ -43,7 +43,9 @@ prop_toFromVector ::
   -> ArrNE r ix Int
   -> Property
 prop_toFromVector _ _ _ (ArrNE arr) =
-  arr === fromVector' (getComp arr) (size arr) (toVector arr :: v Int)
+  let comp = getComp arr
+      arr' = fromVector' comp (size arr) (toVector arr :: v Int)
+  in arr' === arr .&&. (getComp arr' === comp)
 
 
 toFromVectorSpec :: Spec

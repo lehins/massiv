@@ -562,7 +562,7 @@ deepseqArray !arr t = foldlInternal (flip deepseq) () (flip seq) () arr `seq` t
 {-# INLINE deepseqArray #-}
 
 
--- | /O(n)/ - Compute all elements of a boxed array to NF (normal form)
+-- | /O(1)/ - Converts array from `N` to `B` representation.
 --
 -- @since 0.5.0
 unwrapNormalForm :: Array N ix e -> Array B ix e

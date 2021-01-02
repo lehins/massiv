@@ -37,54 +37,80 @@ sizeException :: SizeException -> Bool
 sizeException exc = exc `deepseq` True
 
 toUnboxV2 ::
-     Unbox e1
-  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e1)
-  -> Array U ix1 e2
-  -> Array U ix2 e3
-  -> Array U Ix1 e1
-toUnboxV2 f v1 v2 = fromUnboxedVector (f (toUnboxedVector v1) (toUnboxedVector v2))
+     (Unbox e, Unbox e1, Unbox e2, Index ix1, Index ix2)
+  => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e)
+  -> Array U ix1 e1
+  -> Array U ix2 e2
+  -> Array U Ix1 e
+toUnboxV2 f v1 v2 =
+  fromUnboxedVector (getComp v1 <> getComp v2) (f (toUnboxedVector v1) (toUnboxedVector v2))
 
 toUnboxV3 ::
-     Unbox e1
-  => (VU.Vector e -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e1)
-  -> Array U ix e
-  -> Array U ix1 e2
-  -> Array U ix2 e3
-  -> Array U Ix1 e1
-toUnboxV3 f v1 = toUnboxV2 (f (toUnboxedVector v1))
+     (Unbox e, Unbox e1, Unbox e2, Unbox e3, Index ix1, Index ix2, Index ix3)
+  => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e)
+  -> Array U ix1 e1
+  -> Array U ix2 e2
+  -> Array U ix3 e3
+  -> Array U Ix1 e
+toUnboxV3 f v1 v2 v3 = appComp (getComp v1) (toUnboxV2 (f (toUnboxedVector v1)) v2 v3)
 
 toUnboxV4 ::
-     Unbox e1
-  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e1)
-  -> Array U ix1 e2
-  -> Array U ix2 e3
-  -> Array U ix3 e4
-  -> Array U ix4 e5
-  -> Array U Ix1 e1
-toUnboxV4 f v1 = toUnboxV3 (f (toUnboxedVector v1))
+     (Unbox e, Unbox e1, Unbox e2, Unbox e3, Unbox e4, Index ix1, Index ix2, Index ix3, Index ix4)
+  => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e)
+  -> Array U ix1 e1
+  -> Array U ix2 e2
+  -> Array U ix3 e3
+  -> Array U ix4 e4
+  -> Array U Ix1 e
+toUnboxV4 f v1 v2 v3 v4 = appComp (getComp v1) (toUnboxV3 (f (toUnboxedVector v1)) v2 v3 v4)
 
 toUnboxV5 ::
-     Unbox e1
-  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e1)
-  -> Array U ix1 e2
-  -> Array U ix2 e3
-  -> Array U ix3 e4
-  -> Array U ix4 e5
-  -> Array U ix5 e6
-  -> Array U Ix1 e1
-toUnboxV5 f v1 = toUnboxV4 (f (toUnboxedVector v1))
+     ( Unbox e
+     , Unbox e1
+     , Unbox e2
+     , Unbox e3
+     , Unbox e4
+     , Unbox e5
+     , Index ix1
+     , Index ix2
+     , Index ix3
+     , Index ix4
+     , Index ix5
+     )
+  => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e)
+  -> Array U ix1 e1
+  -> Array U ix2 e2
+  -> Array U ix3 e3
+  -> Array U ix4 e4
+  -> Array U ix5 e5
+  -> Array U Ix1 e
+toUnboxV5 f v1 v2 v3 v4 v5 = appComp (getComp v1) (toUnboxV4 (f (toUnboxedVector v1)) v2 v3 v4 v5)
 
 toUnboxV6 ::
-     Unbox e1
-  => (VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e7 -> VU.Vector e1)
-  -> Array U ix1 e2
-  -> Array U ix2 e3
-  -> Array U ix3 e4
-  -> Array U ix4 e5
-  -> Array U ix5 e6
-  -> Array U ix6 e7
-  -> Array U Ix1 e1
-toUnboxV6 f v1 = toUnboxV5 (f (toUnboxedVector v1))
+     ( Unbox e
+     , Unbox e1
+     , Unbox e2
+     , Unbox e3
+     , Unbox e4
+     , Unbox e5
+     , Unbox e6
+     , Index ix1
+     , Index ix2
+     , Index ix3
+     , Index ix4
+     , Index ix5
+     , Index ix6
+     )
+  => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e)
+  -> Array U ix1 e1
+  -> Array U ix2 e2
+  -> Array U ix3 e3
+  -> Array U ix4 e4
+  -> Array U ix5 e5
+  -> Array U ix6 e6
+  -> Array U Ix1 e
+toUnboxV6 f v1 v2 v3 v4 v5 v6 =
+  appComp (getComp v1) (toUnboxV5 (f (toUnboxedVector v1)) v2 v3 v4 v5 v6)
 
 toPrimV2 :: (Index ix) => (VP.Vector e1 -> VP.Vector e2 -> t) -> Array P ix e1 -> Array P ix e2 -> t
 toPrimV2 f v1 v2 = f (toPrimitiveVector v1) (toPrimitiveVector v2)
