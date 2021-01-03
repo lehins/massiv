@@ -315,8 +315,6 @@ instance Index ix => Load DL ix e where
   {-# INLINE getComp #-}
   loadArrayWithSetM scheduler DLArray {dlLoad} = dlLoad scheduler 0
   {-# INLINE loadArrayWithSetM #-}
-  defaultElement _ = Nothing
-  {-# INLINE defaultElement #-}
 
 instance Index ix => Functor (Array DL ix) where
   fmap f arr = arr {dlLoad = loadFunctor arr f}

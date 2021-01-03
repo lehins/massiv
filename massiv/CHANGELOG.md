@@ -13,6 +13,7 @@
 * Fix setting computation for boxed vector when converted with `fromVectorM` and `fromVector'`
 * Add computation strategy argument to `fromUnboxedVector`, just so it matches other
   vector conversion functions.
+* Removed `defaultElement`
 
 # 0.5.9
 

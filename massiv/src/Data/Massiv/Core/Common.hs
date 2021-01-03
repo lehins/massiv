@@ -313,10 +313,6 @@ class (Typeable r, Index ix) => Load r ix e where
   loadArrayWithSetM scheduler arr uWrite _ = loadArrayM scheduler arr uWrite
   {-# INLINE loadArrayWithSetM #-}
 
-  defaultElement :: Array r ix e -> Maybe e
-  defaultElement _ = Nothing
-  {-# INLINE defaultElement #-}
-
   -- | /O(1)/ - Get the possible maximum size of an immutabe array. If the lookup of size
   -- in constant time is not possible, `Nothing` will be returned. This value will be used
   -- as the initial size of the mutable array into which the loading will happen.
@@ -369,8 +365,6 @@ class (Typeable r, Index ix) => Load r ix e where
       loadArrayWithSetM scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
     pure marr
   {-# INLINE unsafeLoadIntoM #-}
-
-{-# DEPRECATED defaultElement "This is no longer used by any of the loading functions and will be removed in massiv-0.6" #-}
 
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
