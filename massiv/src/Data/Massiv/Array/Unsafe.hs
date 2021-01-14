@@ -80,9 +80,8 @@ module Data.Massiv.Array.Unsafe
   , unsafeAtomicXorIntArray
   , unsafeCasIntArray
     -- ** Other operations
-  , unsafeBoxedArray
-  , unsafeNormalBoxedArray
-  , unsafeFromBoxedVector
+  , coerceBoxedArray
+  , coerceNormalBoxedArray
   , unsafeUnstablePartitionRegionM
   , module Data.Massiv.Vector.Unsafe
   , module Data.Massiv.Array.Stencil.Unsafe

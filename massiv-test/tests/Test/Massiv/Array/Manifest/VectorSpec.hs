@@ -53,7 +53,7 @@ toFromVectorSpec = do
   it_prop "Unboxed" U
   it_prop "Primitive" P
   it_prop "Storable" S
-  it_prop "BoxedStrict" B
+  it_prop "BoxedStrict" BL
   where
     it_prop name r =
       describe name $ do

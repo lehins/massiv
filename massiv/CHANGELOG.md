@@ -18,6 +18,17 @@
 * Removed `defaultElement`
 * Removed deprecated functions: `#>`, `|*|`, `multiplyTransposed`, `fromIntegerA`,
   `fromRationalA`, `piA`
+* Addition of `BL` representation and related functionality, fix for [#111](https://github.com/lehins/massiv/issues/111).
+  * Addition of functions: `wrapLazyArray`, `unwrapLazyArray`, `toLazyArray`,
+    `evalLazyArray`, `forceLazyArray`, `unwrapMutableLazyArray`, `fromBoxedVector`,
+    `fromBoxedMVector`.
+  * Rename:
+    * `unsafeNormalBoxedArray` -> `coerceNormalBoxedArray`
+    * `unsafeBoxedArray` -> `coerceBoxedArray`
+  * Remove `unsafeFromBoxedVector`
+  * Conversion from vector with `castFromVector` will return `BL` representation for boxed vector
+  * Change type `B` -> `BL` for functions: `toBoxedVector` and `toBoxedMVector`
+
 
 # 0.5.9
 

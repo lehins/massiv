@@ -14,25 +14,31 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest
-  (
-  -- * Manifest
+  ( -- * Manifest
     Manifest
   , toManifest
   , M
   -- * Boxed
   , B(..)
+  , BL(..)
   , N(..)
   , Uninitialized(..)
   -- ** Access
   , findIndex
   -- ** Conversion
   -- $boxed_conversion_note
+  , toLazyArray
+  , evalLazyArray
+  , forceLazyArray
   , unwrapNormalForm
   , evalNormalForm
   -- *** Primitive Boxed Array
+  , unwrapLazyArray
+  , wrapLazyArray
   , unwrapArray
   , evalArray
   , unwrapMutableArray
+  , unwrapMutableLazyArray
   , evalMutableArray
   , unwrapNormalFormArray
   , evalNormalFormArray
@@ -41,6 +47,8 @@ module Data.Massiv.Array.Manifest
   -- *** Boxed Vector
   , toBoxedVector
   , toBoxedMVector
+  , fromBoxedVector
+  , fromBoxedMVector
   , evalBoxedVector
   , evalBoxedMVector
   -- * Primitive

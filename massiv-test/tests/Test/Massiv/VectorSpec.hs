@@ -1,12 +1,10 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 module Test.Massiv.VectorSpec (spec) where
 
 import Control.Arrow (first)
@@ -295,11 +293,11 @@ prop_smapM seed a =
   withSeed @(V.Vector DS Word) seed (genWithMapM (`V.smapM` a))
   !==! withSeed seed (genWithMapM (`VP.mapM` toPrimitiveVector a))
 
-prop_smapMaybeM :: SeedVector -> Array B Ix2 Word -> Fun Word (Maybe Word16) -> Property
+prop_smapMaybeM :: SeedVector -> Array BL Ix2 Word -> Fun Word (Maybe Word16) -> Property
 prop_smapMaybeM seed a gm =
   withSeed @(V.Vector DS Word16) seed (genWithMapM (\ f -> V.smapMaybeM (fmap g . f) a))
-  !==! withSeed seed (genWithMapM
-                      (\f -> VP.convert . VB.mapMaybe id <$> VB.mapM (fmap g . f) (toBoxedVector a)))
+  !==! withSeed seed
+      (genWithMapM (\f -> VP.convert . VB.mapMaybe id <$> VB.mapM (fmap g . f) (toBoxedVector a)))
   where g = apply gm
 
 prop_sitraverse :: SeedVector -> Vector P Word -> Property
