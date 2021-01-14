@@ -1,8 +1,10 @@
 # 0.6.0
 
-* 20% Speed of matrix multiplication: `multiplyMatrices`, `.><.` and `!><!`. Type
-  signature has changed to `Mutable` for both arguments, thus a breaking change.
-* Switch `><.` and `><!` from returning a delayed array.
+* 20% speed improvement of matrix multiplication: `multiplyMatrices`, `.><.` and
+  `!><!`. Type signature has changed to `Mutable` for both arguments, thus it's a breaking
+  change.
+* Switch `><.` and `><!` from returning a delayed array to mutable, since that's what
+  `multiplyVectorByMatrix` returns.
 * Addition of synonym `HighIxN` and removing redundant `1 <= n` constraint.
 * Deprecating `makeStencilDef`, `unsafeMapStencil` and fix dangers of invalid stencils
   reading out of bounds. Get rid of `Value`. Fix for
@@ -14,6 +16,8 @@
 * Add computation strategy argument to `fromUnboxedVector`, just so it matches other
   vector conversion functions.
 * Removed `defaultElement`
+* Removed deprecated functions: `#>`, `|*|`, `multiplyTransposed`, `fromIntegerA`,
+  `fromRationalA`, `piA`
 
 # 0.5.9
 

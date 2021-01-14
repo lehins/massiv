@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -45,20 +45,15 @@ module Data.Massiv.Array.Numeric
   , (!><!)
   , multiplyMatrices
   , multiplyMatricesTransposed
-  -- Deprecated:
-  , (#>)
-  , (|*|)
-  , multiplyTransposed
   -- * Norms
   , normL2
-  -- ** Simple matrices
+  -- * Simple matrices
   , identityMatrix
   , lowerTriangular
   , upperTriangular
   , negateA
   , absA
   , signumA
-  , fromIntegerA
   -- * Integral
   , quotA
   , remA
@@ -73,9 +68,7 @@ module Data.Massiv.Array.Numeric
   , (!/!)
   , (.^^)
   , recipA
-  , fromRationalA
   -- * Floating
-  , piA
   , expA
   , logA
   , sqrtA
@@ -107,9 +100,7 @@ import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
-import Data.Massiv.Array.Ops.Fold as A
 import Data.Massiv.Array.Ops.Map as A
-import Data.Massiv.Array.Ops.Transform as A
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
@@ -337,25 +328,6 @@ liftNumericArray2M f a1 a2
 (.^) :: (Index ix, Numeric r e) => Array r ix e -> Int -> Array r ix e
 (.^) = powerPointwise
 {-# INLINE (.^) #-}
-
--- | Matrix-vector product
---
--- Inner dimensions must agree, otherwise `SizeMismatchException`
---
--- @since 0.5.2
-(#>) :: (MonadThrow m, Num e, Source (R r) Ix1 e, Manifest r' Ix1 e, OuterSlice r Ix2 e) =>
-        Array r Ix2 e -- ^ Matrix
-     -> Array r' Ix1 e -- ^ Vector
-     -> m (Array D Ix1 e)
-mm #> v
-  | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
-  | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
-      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice mm i) v)
-  where
-    Sz2 mRows mCols = size mm
-    Sz1 n = size v
-{-# INLINE (#>) #-}
-{-# DEPRECATED (#>) "In favor of (`.><`)" #-}
 
 
 -- | Dot product of two vectors.
@@ -756,79 +728,6 @@ multiplyMatricesTransposed arr1 arr2
 
 
 
---- Below is outdated
-
--- | Matrix multiplication
---
--- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
---
--- @since 0.4.0
-(|*|) ::
-     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (R r) Ix1 e, Num e, MonadThrow m)
-  => Array r Ix2 e
-  -> Array r' Ix2 e
-  -> m (Array r Ix2 e)
-(|*|) a1 a2 = compute <$> multArrs a1 a2
-{-# INLINE [1] (|*|) #-}
-{-# DEPRECATED (|*|) "In favor of `.><.`" #-}
-
-{-# RULES
-"multDoubleTranspose" [~1] forall arr1 arr2 . arr1 |*| transpose arr2 =
-    multiplyTransposedFused arr1 (convert arr2)
- #-}
-
-
-multiplyTransposedFused ::
-     ( Mutable r Ix2 e
-     , OuterSlice r Ix2 e
-     , Source (R r) Ix1 e
-     , Num e
-     , MonadThrow m
-     )
-  => Array r Ix2 e
-  -> Array r Ix2 e
-  -> m (Array r Ix2 e)
-multiplyTransposedFused arr1 arr2 = compute <$> multiplyTransposed arr1 arr2
-{-# INLINE multiplyTransposedFused #-}
-
-
-multArrs :: forall r r' e m.
-            ( Mutable r Ix2 e
-            , Source r' Ix2 e
-            , OuterSlice r Ix2 e
-            , Source (R r) Ix1 e
-            , Num e
-            , MonadThrow m
-            )
-         => Array r Ix2 e -> Array r' Ix2 e -> m (Array D Ix2 e)
-multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
-  where
-    arr2' :: Array r Ix2 e
-    arr2' = compute $ transpose arr2
-{-# INLINE multArrs #-}
-
--- | Computes the matrix-matrix transposed product (i.e. A * A')
-multiplyTransposed ::
-     ( Manifest r Ix2 e
-     , OuterSlice r Ix2 e
-     , Source (R r) Ix1 e
-     , Num e
-     , MonadThrow m
-     )
-  => Array r Ix2 e
-  -> Array r Ix2 e
-  -> m (Array D Ix2 e)
-multiplyTransposed arr1 arr2
-  | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (size arr2)
-  | otherwise =
-    pure $
-    DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
-      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
-  where
-    SafeSz (m1 :. n1) = size arr1
-    SafeSz (n2 :. m2) = size arr2
-{-# INLINE multiplyTransposed #-}
-
 -- | Create an indentity matrix.
 --
 -- ==== __Example__
@@ -922,12 +821,6 @@ signumA :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e
 signumA = unsafeLiftArray signum
 {-# INLINE signumA #-}
 
--- | Create a singleton array from an `Integer`
-fromIntegerA :: (Index ix, Num e) => Integer -> Array D ix e
-fromIntegerA = singleton . fromInteger
-{-# INLINE fromIntegerA #-}
-{-# DEPRECATED fromIntegerA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
-
 -- | Divide each element of one array by another pointwise. Same as `!/!` but produces
 -- monadic computation that allows for handling failure.
 --
@@ -1011,21 +904,6 @@ fromIntegerA = singleton . fromInteger
 recipA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 recipA = recipPointwise
 {-# INLINE recipA #-}
-
-
-fromRationalA
-  :: (Index ix, Fractional e)
-  => Rational -> Array D ix e
-fromRationalA = singleton . fromRational
-{-# INLINE fromRationalA #-}
-{-# DEPRECATED fromRationalA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
-
-piA
-  :: (Index ix, Floating e)
-  => Array D ix e
-piA = singleton pi
-{-# INLINE piA #-}
-{-# DEPRECATED piA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
 
 
 -- | Apply exponent to each element of the array.
