@@ -595,8 +595,8 @@ multiplyMatrices arrA arrB
    -- mA == 1 = -- TODO: call multiplyVectorByMatrix
    -- nA == 1 = -- TODO: call multiplyMatrixByVector
   | nA /= mB = throwM $ SizeMismatchException (size arrA) (size arrB)
+  | isEmpty arrA || isEmpty arrB = pure $ setComp comp empty
   | otherwise = pure $! unsafePerformIO $ do
-    let comp = getComp arrA <> getComp arrB
     marrC <- new (SafeSz (mA :. nB))
     withScheduler_ comp $ \scheduler -> do
       let withC00 iA jB f = let !ixC00 = iA * nB + jB
@@ -721,6 +721,7 @@ multiplyMatrices arrA arrB
 
     unsafeFreeze comp marrC
   where
+    comp = getComp arrA <> getComp arrB
     m2A = mA - mA `rem` 2
     m2B = mB - mB `rem` 2
     n2B = nB - nB `rem` 2
