@@ -81,22 +81,34 @@ rmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
     {-# INLINE sf' #-}
 {-# INLINE rmapStencil #-}
 
+unionStencilCenters :: Index ix => Stencil ix e1 a1 -> Stencil ix e2 a2 -> ix
+unionStencilCenters (Stencil _ sC1 _) (Stencil _ sC2 _) = liftIndex2 max sC1 sC2
+{-# INLINE unionStencilCenters #-}
 
+unionStencilSizes :: Index ix => ix -> Stencil ix e1 a1 -> Stencil ix e2 a2 -> Sz ix
+unionStencilSizes maxCenter (Stencil (SafeSz sSz1) sC1 _) (Stencil (SafeSz sSz2) sC2 _) =
+  Sz $ liftIndex2 (+) maxCenter $ liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2)
+{-# INLINE unionStencilSizes #-}
 
 -- TODO: Test interchange law (u <*> pure y = pure ($ y) <*> u)
 instance Index ix => Applicative (Stencil ix e) where
   pure a = Stencil oneSz zeroIndex (\_ _ _ -> a)
   {-# INLINE pure #-}
-  (<*>) (Stencil (SafeSz sSz1) sC1 f1) (Stencil (SafeSz sSz2) sC2 f2) = Stencil newSz maxCenter stF
+  (<*>) s1@(Stencil _ _ f1) s2@(Stencil _ _ f2) = Stencil newSz maxCenter stF
     where
       stF ug gV !ix = f1 ug gV ix (f2 ug gV ix)
       {-# INLINE stF #-}
-      !newSz =
-        Sz $
-        liftIndex2 (+) maxCenter $
-        liftIndex2 max (liftIndex2 (-) sSz1 sC1) (liftIndex2 (-) sSz2 sC2)
-      !maxCenter = liftIndex2 max sC1 sC2
+      !newSz = unionStencilSizes maxCenter s1 s2
+      !maxCenter = unionStencilCenters s1 s2
   {-# INLINE (<*>) #-}
+
+  liftA2 f s1@(Stencil _ _ f1) s2@(Stencil _ _ f2) = Stencil newSz maxCenter stF
+    where
+      stF ug gV !ix = f (f1 ug gV ix) (f2 ug gV ix)
+      {-# INLINE stF #-}
+      !newSz = unionStencilSizes maxCenter s1 s2
+      !maxCenter = unionStencilCenters s1 s2
+  {-# INLINE liftA2 #-}
 
 instance (Index ix, Num a) => Num (Stencil ix e a) where
   (+) = liftA2 (+)
