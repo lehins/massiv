@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -19,7 +20,9 @@
 module Data.Massiv.Array.Manifest.Boxed
   ( B(..)
   , BL(..)
-  , N(..)
+  , BN(..)
+  , N
+  , pattern N
   , Array(..)
   , wrapLazyArray
   , unwrapLazyArray
@@ -61,14 +64,14 @@ import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
 import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
 import Data.Massiv.Array.Manifest.List as L
-import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Array.Ops.Fold.Internal
 import Data.Massiv.Array.Ops.Map (traverseA)
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.Operations
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
+import Data.Massiv.Vector.Stream as S (isteps, steps)
 import qualified Data.Primitive.Array as A
 import qualified Data.Vector as VB
 import qualified Data.Vector.Mutable as MVB
@@ -472,7 +475,14 @@ instance Num e => Numeric B e where
 -- | Array representation for Boxed elements. This structure is element and
 -- spine strict, and elements are always in Normal Form (NF), therefore `NFData`
 -- instance is required.
-data N = N deriving Show
+data BN = BN deriving Show
+
+-- | Type and pattern `N` have been added for backwards compatibility and will be replaced
+-- in the future in favor of `BN`
+type N = BN
+pattern N :: N
+pattern N = BN
+{-# COMPLETE N #-}
 
 newtype instance Array N ix e = NArray { bArray :: Array BL ix e }
 

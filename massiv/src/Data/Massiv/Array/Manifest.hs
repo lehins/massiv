@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 -- |
@@ -21,7 +22,9 @@ module Data.Massiv.Array.Manifest
   -- * Boxed
   , B(..)
   , BL(..)
-  , N(..)
+  , BN(..)
+  , N
+  , pattern N
   , Uninitialized(..)
   -- ** Access
   , findIndex
@@ -106,7 +109,6 @@ module Data.Massiv.Array.Manifest
   ) where
 
 import Control.Monad
-import Data.Massiv.Array.Mutable
 import Data.ByteString as S hiding (findIndex)
 import Data.ByteString.Builder
 import Data.ByteString.Internal
@@ -116,6 +118,7 @@ import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
 import Data.Massiv.Array.Manifest.Unboxed
+import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Core.Common
 import Data.Word (Word8)

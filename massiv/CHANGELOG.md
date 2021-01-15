@@ -28,7 +28,7 @@
   * Remove `unsafeFromBoxedVector`
   * Conversion from vector with `castFromVector` will return `BL` representation for boxed vector
   * Change type `B` -> `BL` for functions: `toBoxedVector` and `toBoxedMVector`
-
+* Rename `N` -> `BN` and add backwards compatibility shim.
 
 # 0.5.9
 
