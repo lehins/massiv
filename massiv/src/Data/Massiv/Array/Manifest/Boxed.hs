@@ -118,9 +118,9 @@ instance Show e => Show (Array DS Ix1 e) where
   showList = showArrayList
 
 
--- instance (Index ix, NFData e) => NFData (Array BL ix e) where
---   rnf = (`deepseqArray` ())
---   {-# INLINE rnf #-}
+instance (Index ix, NFData e) => NFData (Array BL ix e) where
+  rnf = (`deepseqArray` ())
+  {-# INLINE rnf #-}
 
 instance (Index ix, Eq e) => Eq (Array BL ix e) where
   (==) = eqArrays (==)
@@ -305,9 +305,9 @@ instance (Ragged L ix e, Show e) => Show (Array B ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
 
--- instance (Index ix, NFData e) => NFData (Array B ix e) where
---   rnf = (`deepseqArray` ())
---   {-# INLINE rnf #-}
+instance (Index ix, NFData e) => NFData (Array B ix e) where
+  rnf = (`deepseqArray` ()) . coerce
+  {-# INLINE rnf #-}
 
 instance (Index ix, Eq e) => Eq (Array B ix e) where
   (==) = eqArrays (==)
@@ -486,41 +486,42 @@ pattern N = BN
 
 newtype instance Array N ix e = NArray { bArray :: Array BL ix e }
 
-instance (Ragged L ix e, Show e, NFData e) => Show (Array N ix e) where
+instance (Ragged L ix e, Show e, NFData e) => Show (Array BN ix e) where
   showsPrec = showsArrayPrec bArray
   showList = showArrayList
 
--- instance (Index ix, NFData e) => NFData (Array N ix e) where
---   rnf (NArray barr) = barr `deepseqArray` ()
---   {-# INLINE rnf #-}
+-- | /O(1)/ - `BN` is already in normal form
+instance NFData (Array BN ix e) where
+  rnf = (`seq` ())
+  {-# INLINE rnf #-}
 
-instance (Index ix, NFData e, Eq e) => Eq (Array N ix e) where
+instance (Index ix, NFData e, Eq e) => Eq (Array BN ix e) where
   (==) = eqArrays (==)
   {-# INLINE (==) #-}
 
-instance (Index ix, NFData e, Ord e) => Ord (Array N ix e) where
+instance (Index ix, NFData e, Ord e) => Ord (Array BN ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
 
-instance (Index ix, NFData e) => Construct N ix e where
+instance (Index ix, NFData e) => Construct BN ix e where
   setComp c (NArray arr) = NArray (arr {blComp = c})
   {-# INLINE setComp #-}
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 
-instance (Index ix, NFData e) => Source N ix e where
+instance (Index ix, NFData e) => Source BN ix e where
   unsafeLinearIndex (NArray arr) = unsafeLinearIndex arr
   {-# INLINE unsafeLinearIndex #-}
   unsafeLinearSlice i k (NArray a) = NArray $ unsafeLinearSlice i k a
   {-# INLINE unsafeLinearSlice #-}
 
 
-instance Index ix => Resize N ix where
+instance Index ix => Resize BN ix where
   unsafeResize !sz = NArray . unsafeResize sz . bArray
   {-# INLINE unsafeResize #-}
 
-instance (Index ix, NFData e) => Extract N ix e where
+instance (Index ix, NFData e) => Extract BN ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
@@ -529,9 +530,9 @@ instance ( NFData e
          , Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
-         , Elt N ix e ~ Array M (Lower ix) e
+         , Elt BN ix e ~ Array M (Lower ix) e
          ) =>
-         OuterSlice N ix e where
+         OuterSlice BN ix e where
   unsafeOuterSlice = unsafeOuterSlice . toManifest
   {-# INLINE unsafeOuterSlice #-}
 
@@ -539,25 +540,25 @@ instance ( NFData e
          , Index ix
          , Index (Lower ix)
          , Elt M ix e ~ Array M (Lower ix) e
-         , Elt N ix e ~ Array M (Lower ix) e
+         , Elt BN ix e ~ Array M (Lower ix) e
          ) =>
-         InnerSlice N ix e where
+         InnerSlice BN ix e where
   unsafeInnerSlice = unsafeInnerSlice . toManifest
   {-# INLINE unsafeInnerSlice #-}
 
-instance {-# OVERLAPPING #-} NFData e => Slice N Ix1 e where
+instance {-# OVERLAPPING #-} NFData e => Slice BN Ix1 e where
   unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
   {-# INLINE unsafeSlice #-}
 
 
-instance (Index ix, NFData e) => Manifest N ix e where
+instance (Index ix, NFData e) => Manifest BN ix e where
 
   unsafeLinearIndexM arr = unsafeLinearIndexM (coerce arr)
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance (Index ix, NFData e) => Mutable N ix e where
-  newtype MArray s N ix e = MNArray (MArray s BL ix e)
+instance (Index ix, NFData e) => Mutable BN ix e where
+  newtype MArray s BN ix e = MNArray (MArray s BL ix e)
 
   msize = msize . coerce
   {-# INLINE msize #-}
@@ -580,8 +581,8 @@ instance (Index ix, NFData e) => Mutable N ix e where
   unsafeLinearWrite ma i e = e `deepseq` unsafeLinearWrite (coerce ma) i e
   {-# INLINE unsafeLinearWrite #-}
 
-instance (Index ix, NFData e) => Load N ix e where
-  type R N = M
+instance (Index ix, NFData e) => Load BN ix e where
+  type R BN = M
   size = blSize . coerce
   {-# INLINE size #-}
   getComp = blComp . coerce
@@ -589,9 +590,9 @@ instance (Index ix, NFData e) => Load N ix e where
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
-instance (Index ix, NFData e) => StrideLoad N ix e
+instance (Index ix, NFData e) => StrideLoad BN ix e
 
-instance (Index ix, NFData e) => Stream N ix e where
+instance (Index ix, NFData e) => Stream BN ix e where
   toStream = toStream . coerce
   {-# INLINE toStream #-}
   toStreamIx = toStreamIx . coerce
@@ -604,14 +605,14 @@ instance ( NFData e
          , Nested L ix e
          , Ragged L ix e
          ) =>
-         IsList (Array N ix e) where
-  type Item (Array N ix e) = Item (Array L ix e)
+         IsList (Array BN ix e) where
+  type Item (Array BN ix e) = Item (Array L ix e)
   fromList = L.fromLists' Seq
   {-# INLINE fromList #-}
   toList = GHC.toList . toListArray
   {-# INLINE toList #-}
 
-instance (NFData e, Num e) => FoldNumeric N e where
+instance (NFData e, Num e) => FoldNumeric BN e where
   unsafeDotProduct = defaultUnsafeDotProduct
   {-# INLINE unsafeDotProduct #-}
   powerSumArray = defaultPowerSumArray
@@ -619,7 +620,7 @@ instance (NFData e, Num e) => FoldNumeric N e where
   foldArray = defaultFoldArray
   {-# INLINE foldArray #-}
 
-instance (NFData e, Num e) => Numeric N e where
+instance (NFData e, Num e) => Numeric BN e where
   unsafeLiftArray = defaultUnsafeLiftArray
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 = defaultUnsafeLiftArray2
