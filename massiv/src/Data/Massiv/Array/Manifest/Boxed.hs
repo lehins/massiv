@@ -162,7 +162,6 @@ instance Index ix => Extract BL ix e where
   unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
   {-# INLINE unsafeExtract #-}
 
-
 instance (Elt BL ix e ~ Elt M ix e, Slice M ix e) => Slice BL ix e where
   unsafeSlice = unsafeSlice . toManifest
   {-# INLINE unsafeSlice #-}
