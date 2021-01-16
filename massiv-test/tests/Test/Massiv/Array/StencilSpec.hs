@@ -32,11 +32,7 @@ prop_MapSingletonStencil _ f b (ArrNE arr) =
   computeAs P (mapStencil b (singletonStencil (apply f)) arr) === computeAs P (A.map (apply f) arr)
 
 prop_ApplyZeroStencil ::
-     (Load DW ix Int, Show (Array P ix Int))
-  => Proxy ix
-  -> Int
-  -> Array P ix Int
-  -> Property
+     (Load DW ix Int, Show (Array P ix Int)) => Proxy ix -> Int -> Array P ix Int -> Property
 prop_ApplyZeroStencil _ e arr =
   computeAs P (applyStencil noPadding zeroStencil arr) === makeArray Seq (size arr) (const e)
   where
