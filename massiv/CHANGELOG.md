@@ -1,6 +1,7 @@
 # 0.6.0
 
-* Fix semantics of `Applicative`, `Num` and `Fractional` instance for `D` arrays.
+* Fix semantics of `Applicative`, `Num` and `Fractional` instance for `D` arrays:
+  mismatched sizes will throw an error.
 * 20% speed improvement of matrix multiplication: `multiplyMatrices`, `.><.` and
   `!><!`. Type signature has changed to `Mutable` for both arguments, thus it's a breaking
   change.
@@ -234,6 +235,8 @@
   * `generateArrayS`
 * Redefined most of the numeric operators with `Numeric` and `NumericFloat`. Will be
   required for SIMD operations.
+* `Num`, `Fractional` and `Applicative` for `D` changed behavior: instead of treating
+  singleton as a special array of any size it is treated as singleton.
 
 # 0.3.6
 
