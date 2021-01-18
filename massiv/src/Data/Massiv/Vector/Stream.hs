@@ -131,7 +131,7 @@ module Data.Massiv.Vector.Stream
 import qualified Control.Monad as M
 import Control.Monad.ST
 import qualified Data.Foldable as F
-import Data.Massiv.Core.Common hiding (empty, singleton)
+import Data.Massiv.Core.Common hiding (empty, singleton, replicate)
 import Data.Maybe (catMaybes)
 import qualified Data.Traversable as Traversable (traverse)
 import qualified Data.Vector.Fusion.Bundle.Monadic as B

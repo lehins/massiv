@@ -103,8 +103,11 @@ instance (Prim e, Index ix) => Construct P ix e where
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (return . f)
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
 
 instance (Prim e, Index ix) => Source P ix e where
   unsafeLinearIndex _arr@(PArray _ _ o a) i =

@@ -64,6 +64,8 @@ instance Index ix => Construct DL ix e where
         splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
       {-# INLINE load #-}
   {-# INLINE makeArrayLinear #-}
+  replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
+  {-# INLINE replicate #-}
 
 instance Index ix => Resize DL ix where
   unsafeResize !sz arr = arr { dlSize = sz }

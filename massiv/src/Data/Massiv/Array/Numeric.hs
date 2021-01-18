@@ -474,7 +474,7 @@ multiplyVectorByMatrix v mm
   | otherwise =
     pure $!
     unsafePerformIO $ do
-      mv <- new (Sz mCols)
+      mv <- newMArray (Sz mCols) 0
       withMassivScheduler_ comp $ \scheduler -> do
         let loopCols x ivto =
               fix $ \go im iv ->
@@ -554,7 +554,7 @@ multiplyMatrices arrA arrB
   | nA /= mB = throwM $ SizeMismatchException (size arrA) (size arrB)
   | isEmpty arrA || isEmpty arrB = pure $ setComp comp empty
   | otherwise = pure $! unsafePerformIO $ do
-    marrC <- new (SafeSz (mA :. nB))
+    marrC <- newMArray (SafeSz (mA :. nB)) 0
     withScheduler_ comp $ \scheduler -> do
       let withC00 iA jB f = let !ixC00 = iA * nB + jB
                             in f ixC00 =<< unsafeLinearRead marrC ixC00

@@ -882,7 +882,8 @@ spec =
             toPrimitiveVector (compute (V.sempty :: V.Vector DS Word)) `shouldBe` VP.empty
           prop "singleton" $ \e -> (V.singleton e :: V.Vector P Word) !==! VP.singleton e
           prop "ssingleton" $ \(e :: Word) -> V.ssingleton e !==! VP.singleton e
-          prop "replicate" $ \comp k (e :: Word) -> V.replicate comp (Sz k) e !==! VP.replicate k e
+          prop "replicate" $ \comp k (e :: Word) ->
+            V.replicate @DL comp (Sz k) e !==! VP.replicate k e
           prop "sreplicate" $ \k (e :: Word) -> V.sreplicate (Sz k) e !==! VP.replicate k e
           prop "generate" $ \comp k (f :: Fun Int Word) ->
             V.generate comp (Sz k) (apply f) !==! VP.generate k (apply f)

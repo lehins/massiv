@@ -113,14 +113,6 @@ makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
 
--- | Replicate the same element
---
--- @since 0.3.0
-replicate :: forall ix e . Index ix => Comp -> Sz ix -> e -> Array DL ix e
-replicate comp sz e = makeLoadArray comp sz e $ \_ _ -> pure ()
-{-# INLINE replicate #-}
-
-
 newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
 
 runSTA :: Mutable r ix e => Sz ix -> STA r ix e -> Array r ix e

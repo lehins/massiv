@@ -30,6 +30,9 @@
   * Conversion from vector with `castFromVector` will return `BL` representation for boxed vector
   * Change type `B` -> `BL` for functions: `toBoxedVector` and `toBoxedMVector`
 * Rename `N` -> `BN` and add backwards compatibility shim.
+* Make `replicate` a function in `Construct` class
+* Add `newMArray`, `newMArray'` and deprecate `new`
+* Add custom implementation for `<$` in `Functor` instances for `BL` and `B`.
 
 # 0.5.9
 

@@ -35,12 +35,14 @@ module Data.Massiv.Array.Mutable
   , swap'
   -- ** Operations on @MArray@
   -- *** Immutable conversion
-  , new
   , thaw
   , thawS
   , freeze
   , freezeS
   -- *** Create mutable
+  , new
+  , newMArray
+  , newMArray'
   , makeMArray
   , makeMArrayLinear
   , makeMArrayS
@@ -109,10 +111,24 @@ import Prelude hiding (mapM, read)
 -- boxed arrays in will be a thunk with `Uninitialized` exception, while for others it will be
 -- simply zeros.
 --
+-- @since 0.1.0
+new ::
+     forall r ix e m. (Mutable r ix e, PrimMonad m)
+  => Sz ix
+  -> m (MArray (PrimState m) r ix e)
+new = initializeNew Nothing
+{-# INLINE new #-}
+{-# DEPRECATED new "In favor of a more robust and safer `newMArray` or a more consistently named `newMArray'`" #-}
+
+
+-- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
+-- boxed arrays in will be a thunk with `Uninitialized` exception, while for others it will be
+-- simply zeros. This is a partial function.
+--
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> marr <- new (Sz2 2 6) :: IO (MArray RealWorld P Ix2 Int)
+-- >>> marr <- newMArray' (Sz2 2 6) :: IO (MArray RealWorld P Ix2 Int)
 -- >>> freeze Seq marr
 -- Array P Seq (Sz (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
@@ -122,21 +138,22 @@ import Prelude hiding (mapM, read)
 -- Or using @TypeApplications@:
 --
 -- >>> :set -XTypeApplications
--- >>> new @P @Ix2 @Int (Sz2 2 6) >>= freezeS
+-- >>> newMArray' @P @Ix2 @Int (Sz2 2 6) >>= freezeS
 -- Array P Seq (Sz (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0 ]
 --   ]
--- >>> new @B @_ @Int (Sz2 2 6) >>= (`readM` 1)
+-- >>> newMArray' @B @_ @Int (Sz2 2 6) >>= (`readM` 1)
 -- *** Exception: Uninitialized
 --
--- @since 0.1.0
-new ::
+-- @since 0.6.0
+newMArray' ::
      forall r ix e m. (Mutable r ix e, PrimMonad m)
   => Sz ix
   -> m (MArray (PrimState m) r ix e)
-new = initializeNew Nothing
-{-# INLINE new #-}
+newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
+{-# INLINE newMArray' #-}
+
 
 -- | /O(n)/ - Make a mutable copy of a pure array. Keep in mind that both `freeze` and `thaw` trigger a
 -- copy of the full array.
@@ -204,7 +221,7 @@ thawS arr = do
 -- ==== __Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> marr <- new @P @_ @Int (Sz2 2 6)
+-- >>> marr <- newMArray @P @_ @Int (Sz2 2 6) 0
 -- >>> forM_ (range Seq 0 (Ix2 1 4)) $ \ix -> write marr ix 9
 -- >>> freeze Seq marr
 -- Array P Seq (Sz (2 :. 6))
@@ -1015,7 +1032,7 @@ modifyM marr f ix
 -- >>> :set -XTypeApplications
 -- >>> import Control.Monad.ST
 -- >>> import Data.Massiv.Array
--- >>> runST $ new @P @Ix1 @Int (Sz1 3) >>= (\ma -> modifyM_ ma (pure . (+10)) 1 >> freezeS ma)
+-- >>> runST $ newMArray' @P @Ix1 @Int (Sz1 3) >>= (\ma -> modifyM_ ma (pure . (+10)) 1 >> freezeS ma)
 -- Array P Seq (Sz1 3)
 --   [ 0, 10, 0 ]
 --

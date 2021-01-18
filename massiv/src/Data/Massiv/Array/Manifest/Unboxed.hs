@@ -63,8 +63,11 @@ instance (VU.Unbox e, Index ix) => Construct U ix e where
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
 
 
 instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where

@@ -91,8 +91,11 @@ instance (Storable e, Index ix) => Construct S ix e where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
 
 
 instance (Storable e, Index ix) => Source S ix e where
