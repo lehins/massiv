@@ -127,8 +127,8 @@ new = initializeNew Nothing
 
 
 -- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
--- boxed arrays in will be a thunk with `Uninitialized` exception, while for others it will be
--- simply zeros. This is a partial function.
+-- boxed arrays it will be a thunk with `Uninitialized` exception, while for others it will be
+-- simply zeros.
 --
 -- ==== __Examples__
 --
