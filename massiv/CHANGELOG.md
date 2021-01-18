@@ -1,5 +1,6 @@
 # 0.6.0
 
+* Fix semantics of `Applicative`, `Num` and `Fractional` instance for `D` arrays.
 * 20% speed improvement of matrix multiplication: `multiplyMatrices`, `.><.` and
   `!><!`. Type signature has changed to `Mutable` for both arguments, thus it's a breaking
   change.
