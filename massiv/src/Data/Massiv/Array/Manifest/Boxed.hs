@@ -692,7 +692,7 @@ wrapLazyArray a = BLArray Seq (SafeSz (sizeofArray a)) 0 a
 {-# INLINE wrapLazyArray #-}
 
 
--- | /O(n)/ - Evaluate all elements of a boxed lazy array to weak head normal form
+-- | /O(1)/ - Cast a strict boxed array into a lazy boxed array.
 --
 -- @since 0.6.0
 toLazyArray :: Array B ix e -> Array BL ix e
@@ -785,9 +785,9 @@ evalNormalFormMutableArray marr = MBNArray <$> fromMutableArraySeq deepseq marr
 {-# INLINE evalNormalFormMutableArray #-}
 
 
--- ----------------------
--- -- Helper functions --
--- ----------------------
+----------------------
+-- Helper functions --
+----------------------
 
 fromMutableArraySeq ::
      PrimMonad m
