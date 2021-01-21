@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -45,20 +45,15 @@ module Data.Massiv.Array.Numeric
   , (!><!)
   , multiplyMatrices
   , multiplyMatricesTransposed
-  -- Deprecated:
-  , (#>)
-  , (|*|)
-  , multiplyTransposed
   -- * Norms
   , normL2
-  -- ** Simple matrices
+  -- * Simple matrices
   , identityMatrix
   , lowerTriangular
   , upperTriangular
   , negateA
   , absA
   , signumA
-  , fromIntegerA
   -- * Integral
   , quotA
   , remA
@@ -73,9 +68,7 @@ module Data.Massiv.Array.Numeric
   , (!/!)
   , (.^^)
   , recipA
-  , fromRationalA
   -- * Floating
-  , piA
   , expA
   , logA
   , sqrtA
@@ -107,9 +100,7 @@ import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
-import Data.Massiv.Array.Ops.Fold as A
 import Data.Massiv.Array.Ops.Map as A
-import Data.Massiv.Array.Ops.Transform as A
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
@@ -124,21 +115,6 @@ import Data.Function
 infixr 8  .^, .^^
 infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
 infixl 6  !+!, .+., .+, +., !-!, .-., .-, -.
-
-liftArray2Matching
-  :: (Source r1 ix a, Source r2 ix b)
-  => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
-liftArray2Matching f !arr1 !arr2
-  | sz1 == sz2 =
-    makeArray
-      (getComp arr1 <> getComp arr2)
-      sz1
-      (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
-  where
-    sz1 = size arr1
-    sz2 = size arr2
-{-# INLINE liftArray2Matching #-}
 
 liftArray2M ::
      (Load r ix e, Numeric r e, MonadThrow m)
@@ -338,25 +314,6 @@ liftNumericArray2M f a1 a2
 (.^) = powerPointwise
 {-# INLINE (.^) #-}
 
--- | Matrix-vector product
---
--- Inner dimensions must agree, otherwise `SizeMismatchException`
---
--- @since 0.5.2
-(#>) :: (MonadThrow m, Num e, Source (R r) Ix1 e, Manifest r' Ix1 e, OuterSlice r Ix2 e) =>
-        Array r Ix2 e -- ^ Matrix
-     -> Array r' Ix1 e -- ^ Vector
-     -> m (Array D Ix1 e)
-mm #> v
-  | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
-  | otherwise = pure $ makeArray (getComp mm <> getComp v) (Sz1 mRows) $ \i ->
-      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice mm i) v)
-  where
-    Sz2 mRows mCols = size mm
-    Sz1 n = size v
-{-# INLINE (#>) #-}
-{-# DEPRECATED (#>) "In favor of (`.><`)" #-}
-
 
 -- | Dot product of two vectors.
 --
@@ -372,7 +329,7 @@ mm #> v
 -- /__Throws Exception__/: `SizeMismatchException` when lengths of vectors do not match
 --
 -- @since 0.5.6
-dotM :: (Numeric r e, Source r Ix1 e, MonadThrow m) => Vector r e -> Vector r e -> m e
+dotM :: (FoldNumeric r e, Source r Ix1 e, MonadThrow m) => Vector r e -> Vector r e -> m e
 dotM v1 v2
   | size v1 /= size v2 = throwM $ SizeMismatchException (size v1) (size v2)
   | comp == Seq = pure $! unsafeDotProduct v1 v2
@@ -383,7 +340,7 @@ dotM v1 v2
 
 
 unsafeDotProductIO ::
-     (MonadUnliftIO m, Numeric r b, Source r ix b)
+     (MonadUnliftIO m, FoldNumeric r b, Source r ix b)
   => Array r ix b
   -> Array r ix b
   -> m b
@@ -410,14 +367,14 @@ unsafeDotProductIO v1 v2 = do
 -- | Compute L2 norm of an array.
 --
 -- @since 0.5.6
-normL2 :: (Floating e, Numeric r e, Source r ix e) => Array r ix e -> e
+normL2 :: (Floating e, FoldNumeric r e, Source r ix e) => Array r ix e -> e
 normL2 v
   | getComp v == Seq = sqrt $! powerSumArray v 2
   | otherwise = sqrt $! unsafePerformIO $ powerSumArrayIO v 2
 {-# INLINE normL2 #-}
 
 powerSumArrayIO ::
-     (MonadUnliftIO m, Numeric r b, Source r ix b)
+     (MonadUnliftIO m, FoldNumeric r b, Source r ix b)
   => Array r ix b
   -> Int
   -> m b
@@ -444,7 +401,7 @@ powerSumArrayIO v p = do
 --
 -- @since 0.5.6
 (.><) ::
-     (MonadThrow m, Numeric r e, Source r Ix1 e, Source r Ix2 e)
+     (MonadThrow m, FoldNumeric r e, Source r Ix1 e, Source r Ix2 e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector D e)
@@ -496,8 +453,8 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 (><.) :: (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e) =>
          Vector r e -- ^ Row vector
       -> Matrix r e -- ^ Matrix
-      -> m (Vector D e)
-(><.) v mm = delay <$> multiplyVectorByMatrix v mm
+      -> m (Vector r e)
+(><.) = multiplyVectorByMatrix
 {-# INLINE (><.) #-}
 
 -- | Multiply a row vector by a matrix. Same as `><.` but returns computed vector instead of
@@ -517,7 +474,7 @@ multiplyVectorByMatrix v mm
   | otherwise =
     pure $!
     unsafePerformIO $ do
-      mv <- new (Sz mCols)
+      mv <- newMArray (Sz mCols) 0
       withMassivScheduler_ comp $ \scheduler -> do
         let loopCols x ivto =
               fix $ \go im iv ->
@@ -547,7 +504,7 @@ multiplyVectorByMatrix v mm
      (Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
   => Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
   -> Matrix r e -- ^ Matrix
-  -> Vector D e
+  -> Vector r e
 (><!) v mm = throwEither (v ><. mm)
 {-# INLINE (><!) #-}
 
@@ -560,9 +517,9 @@ multiplyVectorByMatrix v mm
 -- ====__Examples__
 --
 -- >>> a1 = makeArrayR P Seq (Sz2 5 6) $ \(i :. j) -> i + j
--- >>> a2 = makeArrayR D Seq (Sz2 6 5) $ \(i :. j) -> i - j
+-- >>> a2 = makeArrayR P Seq (Sz2 6 5) $ \(i :. j) -> i - j
 -- >>> a1 !><! a2
--- Array D Seq (Sz (5 :. 5))
+-- Array P Seq (Sz (5 :. 5))
 --   [ [ 55, 40, 25, 10, -5 ]
 --   , [ 70, 49, 28, 7, -14 ]
 --   , [ 85, 58, 31, 4, -23 ]
@@ -571,7 +528,7 @@ multiplyVectorByMatrix v mm
 --   ]
 --
 -- @since 0.5.6
-(!><!) :: (Numeric r e, Mutable r Ix2 e, Source r' Ix2 e) => Matrix r e -> Matrix r' e -> Matrix D e
+(!><!) :: (Numeric r e, Mutable r Ix2 e) => Matrix r e -> Matrix r e -> Matrix r e
 (!><!) a1 a2 = throwEither (a1 `multiplyMatrices` a2)
 {-# INLINE (!><!) #-}
 
@@ -581,11 +538,7 @@ multiplyVectorByMatrix v mm
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(.><.) ::
-     (Numeric r e, Mutable r Ix2 e, Source r' Ix2 e, MonadThrow m)
-  => Matrix r e
-  -> Matrix r' e
-  -> m (Matrix D e)
+(.><.) :: (Numeric r e, Mutable r Ix2 e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 (.><.) = multiplyMatrices
 {-# INLINE (.><.) #-}
 
@@ -594,20 +547,144 @@ multiplyVectorByMatrix v mm
 --
 -- @since 0.5.6
 multiplyMatrices ::
-     forall r r' e m. (Numeric r e, Mutable r Ix2 e, Source r' Ix2 e, MonadThrow m)
-  => Matrix r e
-  -> Matrix r' e
-  -> m (Matrix D e)
-multiplyMatrices arr1 arr2 = multiplyMatricesTransposed arr1 arr2'
-  where
-    arr2' :: Array r Ix2 e
-    arr2' = compute $ transpose arr2
-{-# INLINE [1] multiplyMatrices #-}
+     (Numeric r e, Mutable r Ix2 e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+multiplyMatrices arrA arrB
+   -- mA == 1 = -- TODO: call multiplyVectorByMatrix
+   -- nA == 1 = -- TODO: call multiplyMatrixByVector
+  | nA /= mB = throwM $ SizeMismatchException (size arrA) (size arrB)
+  | isEmpty arrA || isEmpty arrB = pure $ setComp comp empty
+  | otherwise = pure $! unsafePerformIO $ do
+    marrC <- newMArray (SafeSz (mA :. nB)) 0
+    withScheduler_ comp $ \scheduler -> do
+      let withC00 iA jB f = let !ixC00 = iA * nB + jB
+                            in f ixC00 =<< unsafeLinearRead marrC ixC00
+          withC01 ixC00 f = let !ixC01 = ixC00 + 1
+                            in f ixC01 =<< unsafeLinearRead marrC ixC01
+          withC10 ixC00 f = let !ixC10 = ixC00 + nB
+                            in f ixC10 =<< unsafeLinearRead marrC ixC10
+          withC11 ixC01 f = let !ixC11 = ixC01 + nB
+                            in f ixC11 =<< unsafeLinearRead marrC ixC11
+          withB00 iB jB f = let !ixB00 = iB * nB + jB
+                            in f ixB00 $! unsafeLinearIndex arrB ixB00
+          withB00B10 iB jB f =
+            withB00 iB jB $ \ixB00 b00 -> let !ixB10 = ixB00 + nB
+                                          in f ixB00 b00 ixB10 $! unsafeLinearIndex arrB ixB10
+          withA00 iA jA f = let !ixA00 = iA * nA + jA
+                            in f ixA00 $! unsafeLinearIndex arrA ixA00
+          withA00A10 iA jA f =
+            withA00 iA jA $ \ixA00 a00 -> let !ixA10 = ixA00 + nA
+                                          in f ixA00 a00 ixA10 $! unsafeLinearIndex arrA ixA10
+      let loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB jB
+            | jB < n2B = do
+              withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
+                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                    !b11 = unsafeLinearIndex arrB (ixB10 + 1)
+                withC00 iA jB $ \ixC00 c00 -> do
+                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
+                  withC01 ixC00 $ \ixC01 c01 -> do
+                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
+                    withC10 ixC00 $ \ixC10 c10 ->
+                      unsafeLinearWrite marrC ixC10 (c10 + a10 * b00 + a11 * b10)
+                    withC11 ixC01 $ \ixC11 c11 ->
+                      unsafeLinearWrite marrC ixC11 (c11 + a10 * b01 + a11 * b11)
+              loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB (jB + 2)
 
-{-# RULES
-"multiplyMatricesTransposed" [~1] forall arr1 arr2 . multiplyMatrices arr1 (transpose arr2) =
-    multiplyMatricesTransposedFused arr1 (convert arr2)
- #-}
+            | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
+                          withC00 iA jB $ \ixC00 c00 -> do
+                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
+                            withC10 ixC00 $ \ixC10 c10 ->
+                              unsafeLinearWrite marrC ixC10 (c10 + a10 * b00 + a11 * b10)
+            | otherwise = pure ()
+
+          loopColsB_UnRowBColA_RowA a00 a01 iA iB jB
+            | jB < n2B = do
+              withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
+                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                    !b11 = unsafeLinearIndex arrB (ixB10 + 1)
+                withC00 iA jB $ \ixC00 c00 -> do
+                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
+                  withC01 ixC00 $ \ixC01 c01 ->
+                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
+              loopColsB_UnRowBColA_RowA a00 a01 iA iB (jB + 2)
+
+            | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
+                          withC00 iA jB $ \ixC00 c00 ->
+                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
+            | otherwise = pure ()
+
+          loopColsB_RowBColA_UnRowA a00 a10 iA iB jB
+            | jB < n2B = do
+              withB00 iB jB $ \ixB00 b00 -> do
+                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                withC00 iA jB $ \ixC00 c00 -> do
+                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+                  withC01 ixC00 $ \ixC01 c01 -> do
+                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
+                    withC10 ixC00 $ \ixC10 c10 ->
+                      unsafeLinearWrite marrC ixC10 (c10 + a10 * b00)
+                    withC11 ixC01 $ \ixC11 c11 ->
+                      unsafeLinearWrite marrC ixC11 (c11 + a10 * b01)
+              loopColsB_RowBColA_UnRowA a00 a10 iA iB (jB + 2)
+
+            | jB < nB = withB00 iB jB $ \_ b00 ->
+                          withC00 iA jB $ \ixC00 c00 -> do
+                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+                            withC10 ixC00 $ \ixC10 c10 ->
+                              unsafeLinearWrite marrC ixC10 (c10 + a10 * b00)
+            | otherwise = pure ()
+
+          loopColsB_RowBColA_RowA a00 iA iB jB
+            | jB < n2B = do
+              withB00 iB jB $ \ixB00 b00 -> do
+                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                withC00 iA jB $ \ixC00 c00 -> do
+                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+                  withC01 ixC00 $ \ixC01 c01 -> do
+                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
+              loopColsB_RowBColA_RowA a00 iA iB (jB + 2)
+            | jB < nB = withB00 iB jB $ \_ b00 ->
+                          withC00 iA jB $ \ixC00 c00 ->
+                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+
+            | otherwise = pure ()
+
+          loopRowsB_UnRowA iA iB
+            | iB < m2B = do
+              withA00A10 iA iB $ \ixA00 a00 ixA10 a10 -> do
+                let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
+                    !a11 = unsafeLinearIndex arrA (ixA10 + 1)
+                loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB 0
+              loopRowsB_UnRowA iA (iB + 2)
+            | iB < mB =
+              withA00A10 iA iB $ \_ a00 _ a10 -> loopColsB_RowBColA_UnRowA a00 a10 iA iB 0
+            | otherwise = pure ()
+
+          loopRowsB_RowA iA iB
+            | iB < m2B = do
+              withA00 iA iB $ \ixA00 a00 -> do
+                let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
+                loopColsB_UnRowBColA_RowA a00 a01 iA iB 0
+              loopRowsB_RowA iA (iB + 2)
+            | iB < mB = withA00 iA iB $ \_ a00 -> loopColsB_RowBColA_RowA a00 iA iB 0
+            | otherwise = pure ()
+
+          loopRowsA iA
+            | iA < m2A = do
+              scheduleWork_ scheduler $ loopRowsB_UnRowA iA 0
+              loopRowsA (iA + 2)
+            | iA < mA = scheduleWork_ scheduler $ loopRowsB_RowA iA 0
+            | otherwise = pure ()
+      loopRowsA 0
+
+    unsafeFreeze comp marrC
+  where
+    comp = getComp arrA <> getComp arrB
+    m2A = mA - mA `rem` 2
+    m2B = mB - mB `rem` 2
+    n2B = nB - nB `rem` 2
+    Sz (mA :. nA) = size arrA
+    Sz (mB :. nB) = size arrB
+{-# INLINEABLE multiplyMatrices #-}
 
 -- | Computes the matrix-matrix multiplication where second matrix is transposed (i.e. M
 -- x N')
@@ -618,7 +695,7 @@ multiplyMatrices arr1 arr2 = multiplyMatricesTransposed arr1 arr2'
 multiplyMatricesTransposed ::
      (Numeric r e, Manifest r Ix2 e, MonadThrow m)
   => Matrix r e
-  -> Matrix r  e
+  -> Matrix r e
   -> m (Matrix D e)
 multiplyMatricesTransposed arr1 arr2
   | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (Sz2 m2 n2)
@@ -634,85 +711,7 @@ multiplyMatricesTransposed arr1 arr2
     SafeSz (n2 :. m2) = size arr2
 {-# INLINE multiplyMatricesTransposed #-}
 
-multiplyMatricesTransposedFused ::
-     (Manifest r Ix2 e, Numeric r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix D e)
-multiplyMatricesTransposedFused arr1 arr2 = multiplyMatricesTransposed arr1 arr2
-{-# INLINE multiplyMatricesTransposedFused #-}
 
-
-
---- Below is outdated
-
--- | Matrix multiplication
---
--- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
---
--- @since 0.4.0
-(|*|) ::
-     (Mutable r Ix2 e, Source r' Ix2 e, OuterSlice r Ix2 e, Source (R r) Ix1 e, Num e, MonadThrow m)
-  => Array r Ix2 e
-  -> Array r' Ix2 e
-  -> m (Array r Ix2 e)
-(|*|) a1 a2 = compute <$> multArrs a1 a2
-{-# INLINE [1] (|*|) #-}
-{-# DEPRECATED (|*|) "In favor of `.><.`" #-}
-
-{-# RULES
-"multDoubleTranspose" [~1] forall arr1 arr2 . arr1 |*| transpose arr2 =
-    multiplyTransposedFused arr1 (convert arr2)
- #-}
-
-
-multiplyTransposedFused ::
-     ( Mutable r Ix2 e
-     , OuterSlice r Ix2 e
-     , Source (R r) Ix1 e
-     , Num e
-     , MonadThrow m
-     )
-  => Array r Ix2 e
-  -> Array r Ix2 e
-  -> m (Array r Ix2 e)
-multiplyTransposedFused arr1 arr2 = compute <$> multiplyTransposed arr1 arr2
-{-# INLINE multiplyTransposedFused #-}
-
-
-multArrs :: forall r r' e m.
-            ( Mutable r Ix2 e
-            , Source r' Ix2 e
-            , OuterSlice r Ix2 e
-            , Source (R r) Ix1 e
-            , Num e
-            , MonadThrow m
-            )
-         => Array r Ix2 e -> Array r' Ix2 e -> m (Array D Ix2 e)
-multArrs arr1 arr2 = multiplyTransposed arr1 arr2'
-  where
-    arr2' :: Array r Ix2 e
-    arr2' = compute $ transpose arr2
-{-# INLINE multArrs #-}
-
--- | Computes the matrix-matrix transposed product (i.e. A * A')
-multiplyTransposed ::
-     ( Manifest r Ix2 e
-     , OuterSlice r Ix2 e
-     , Source (R r) Ix1 e
-     , Num e
-     , MonadThrow m
-     )
-  => Array r Ix2 e
-  -> Array r Ix2 e
-  -> m (Array D Ix2 e)
-multiplyTransposed arr1 arr2
-  | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (size arr2)
-  | otherwise =
-    pure $
-    DArray (getComp arr1 <> getComp arr2) (SafeSz (m1 :. n2)) $ \(i :. j) ->
-      A.foldlS (+) 0 (A.zipWith (*) (unsafeOuterSlice arr1 i) (unsafeOuterSlice arr2 j))
-  where
-    SafeSz (m1 :. n1) = size arr1
-    SafeSz (n2 :. m2) = size arr2
-{-# INLINE multiplyTransposed #-}
 
 -- | Create an indentity matrix.
 --
@@ -807,12 +806,6 @@ signumA :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e
 signumA = unsafeLiftArray signum
 {-# INLINE signumA #-}
 
--- | Create a singleton array from an `Integer`
-fromIntegerA :: (Index ix, Num e) => Integer -> Array D ix e
-fromIntegerA = singleton . fromInteger
-{-# INLINE fromIntegerA #-}
-{-# DEPRECATED fromIntegerA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
-
 -- | Divide each element of one array by another pointwise. Same as `!/!` but produces
 -- monadic computation that allows for handling failure.
 --
@@ -896,21 +889,6 @@ fromIntegerA = singleton . fromInteger
 recipA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 recipA = recipPointwise
 {-# INLINE recipA #-}
-
-
-fromRationalA
-  :: (Index ix, Fractional e)
-  => Rational -> Array D ix e
-fromRationalA = singleton . fromRational
-{-# INLINE fromRationalA #-}
-{-# DEPRECATED fromRationalA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
-
-piA
-  :: (Index ix, Floating e)
-  => Array D ix e
-piA = singleton pi
-{-# INLINE piA #-}
-{-# DEPRECATED piA "This almost never a desired behavior. Use `Data.Massiv.Array.Ops.Construct.replicate` instead" #-}
 
 
 -- | Apply exponent to each element of the array.
@@ -1162,7 +1140,7 @@ modA = liftArray2Matching mod
 quotRemA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-quotRemA arr1 = A.unzip . liftArray2Matching (quotRem) arr1
+quotRemA arr1 = A.unzip . liftArray2Matching quotRem arr1
 {-# INLINE quotRemA #-}
 
 
@@ -1177,7 +1155,7 @@ quotRemA arr1 = A.unzip . liftArray2Matching (quotRem) arr1
 divModA
   :: (Source r1 ix e, Source r2 ix e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-divModA arr1 = A.unzip . liftArray2Matching (divMod) arr1
+divModA arr1 = A.unzip . liftArray2Matching divMod arr1
 {-# INLINE divModA #-}
 
 

@@ -3,13 +3,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Unboxed
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -33,6 +32,7 @@ import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as MVU
@@ -63,8 +63,11 @@ instance (VU.Unbox e, Index ix) => Construct U ix e where
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
 
 
 instance (VU.Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
@@ -210,6 +213,21 @@ instance ( VU.Unbox e
   {-# INLINE toList #-}
 
 
+instance (VU.Unbox e, Num e) => FoldNumeric U e where
+  unsafeDotProduct = defaultUnsafeDotProduct
+  {-# INLINE unsafeDotProduct #-}
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
+  {-# INLINE foldArray #-}
+
+instance (VU.Unbox e, Num e) => Numeric U e where
+  unsafeLiftArray = defaultUnsafeLiftArray
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 = defaultUnsafeLiftArray2
+  {-# INLINE unsafeLiftArray2 #-}
+
+
 -- | /O(1)/ - Unwrap unboxed array and pull out the underlying unboxed vector.
 --
 -- @since 0.2.1
@@ -229,9 +247,9 @@ toUnboxedMVector (MUArray _ mv) = mv
 
 -- | /O(1)/ - Wrap an unboxed vector and produce an unboxed flat array.
 --
--- @since 0.5.0
-fromUnboxedVector :: VU.Unbox e => VU.Vector e -> Array U Ix1 e
-fromUnboxedVector v = UArray Seq (SafeSz (VU.length v)) v
+-- @since 0.6.0
+fromUnboxedVector :: VU.Unbox e => Comp -> VU.Vector e -> Array U Ix1 e
+fromUnboxedVector comp v = UArray comp (SafeSz (VU.length v)) v
 {-# INLINE fromUnboxedVector #-}
 
 

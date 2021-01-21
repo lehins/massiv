@@ -1,3 +1,40 @@
+# 0.6.0
+
+* Fix semantics of `Applicative`, `Num` and `Fractional` instance for `D` arrays:
+  mismatched sizes will throw an error.
+* 20% speed improvement of matrix multiplication: `multiplyMatrices`, `.><.` and
+  `!><!`. Type signature has changed to `Mutable` for both arguments, thus it's a breaking
+  change.
+* Switch `><.` and `><!` from returning a delayed array to mutable, since that's what
+  `multiplyVectorByMatrix` returns.
+* Addition of synonym `HighIxN` and removing redundant `1 <= n` constraint.
+* Deprecating `makeStencilDef`, `unsafeMapStencil` and fix dangers of invalid stencils
+  reading out of bounds. Get rid of `Value`. Fix for
+  [#109](https://github.com/lehins/massiv/issues/109).
+* Addition of `appComp`
+* Addition of `mkSzM`
+* Addition of `SizeOverflowException` and `SizeNegativeException`
+* Fix setting computation for boxed vector when converted with `fromVectorM` and `fromVector'`
+* Add computation strategy argument to `fromUnboxedVector`, just so it matches other
+  vector conversion functions.
+* Removed `defaultElement`
+* Removed deprecated functions: `#>`, `|*|`, `multiplyTransposed`, `fromIntegerA`,
+  `fromRationalA`, `piA`
+* Addition of `BL` representation and related functionality, fix for [#111](https://github.com/lehins/massiv/issues/111).
+  * Addition of functions: `wrapLazyArray`, `unwrapLazyArray`, `toLazyArray`,
+    `evalLazyArray`, `forceLazyArray`, `unwrapMutableLazyArray`, `fromBoxedVector`,
+    `fromBoxedMVector`.
+  * Rename:
+    * `unsafeNormalBoxedArray` -> `coerceNormalBoxedArray`
+    * `unsafeBoxedArray` -> `coerceBoxedArray`
+  * Remove `unsafeFromBoxedVector`
+  * Conversion from vector with `castFromVector` will return `BL` representation for boxed vector
+  * Change type `B` -> `BL` for functions: `toBoxedVector` and `toBoxedMVector`
+* Rename `N` -> `BN` and add backwards compatibility shim.
+* Make `replicate` a function in `Construct` class
+* Add `newMArray`, `newMArray'` and deprecate `new`
+* Add custom implementation for `<$` in `Functor` instances for `BL` and `B`.
+
 # 0.5.9
 
 * Add `mallocCompute`, `mallocCopy` and `unsafeMallocMArray`
@@ -198,6 +235,8 @@
   * `generateArrayS`
 * Redefined most of the numeric operators with `Numeric` and `NumericFloat`. Will be
   required for SIMD operations.
+* `Num`, `Fractional` and `Applicative` for `D` changed behavior: instead of treating
+  singleton as a special array of any size it is treated as singleton.
 
 # 0.3.6
 

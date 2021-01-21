@@ -1,6 +1,6 @@
 -- |
 -- Module      : Data.Massiv.Core
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -14,7 +14,7 @@ module Data.Massiv.Core
   , MMatrix
   , Elt
   , Construct
-  , Load(R, loadArrayM, loadArrayWithSetM, defaultElement)
+  , Load(R, loadArrayM, loadArrayWithSetM)
   , Stream(..)
   , Source
   , Resize
@@ -34,6 +34,7 @@ module Data.Massiv.Core
   , Scheduler
   , SchedulerWS
   , Comp(Seq, Par, Par', ParOn, ParN)
+  , appComp
   , WorkerStates
   , initWorkerStates
   , module Data.Massiv.Core.Index
@@ -56,3 +57,10 @@ import Data.Massiv.Core.Index
 import Data.Massiv.Core.List
 import Data.Massiv.Core.Exception
 
+
+-- | Append computation strategy using `Comp`'s `Monoid` instance.
+--
+-- @since 0.6.0
+appComp :: (Construct r ix e, Load r ix e) => Comp -> Array r ix e -> Array r ix e
+appComp comp arr = setComp (comp <> getComp arr) arr
+{-# INLINEABLE appComp #-}

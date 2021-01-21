@@ -5,7 +5,7 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 -- |
 -- Module      : Data.Massiv.Core.Index
--- Copyright   : (c) Alexey Kuleshevich 2018-2020
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
@@ -41,6 +41,7 @@ module Data.Massiv.Core.Index
   , insertSzM
   , pullOutSzM
   , toLinearSz
+  , mkSzM
   -- ** Dimension
   , Dim(..)
   , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)

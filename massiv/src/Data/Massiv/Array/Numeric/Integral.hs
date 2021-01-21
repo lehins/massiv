@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric.Integral
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -32,14 +32,15 @@ module Data.Massiv.Array.Numeric.Integral
   , fromFunctionMidpoint
   ) where
 
-import           Data.Coerce
-import           Data.Massiv.Array.Delayed.Pull      (D)
-import           Data.Massiv.Array.Delayed.Windowed  (DW)
-import           Data.Massiv.Array.Manifest.Internal
-import           Data.Massiv.Array.Ops.Construct     (rangeInclusive)
-import           Data.Massiv.Array.Ops.Transform     (extract')
-import           Data.Massiv.Array.Stencil
-import           Data.Massiv.Core.Common
+import Data.Coerce
+import Data.Massiv.Array.Delayed.Pull (D)
+import Data.Massiv.Array.Delayed.Windowed (DW)
+import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Ops.Construct (rangeInclusive)
+import Data.Massiv.Array.Ops.Transform (extract')
+import Data.Massiv.Array.Stencil
+import Data.Massiv.Array.Unsafe
+import Data.Massiv.Core.Common
 
 
 -- |
@@ -56,8 +57,8 @@ midpointStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 midpointStencil dx dim k =
-  makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim k)) zeroIndex $ \g ->
-    pure dx * loop 0 (< k) (+ 1) 0 (\i -> (+ g (setDim' zeroIndex dim i)))
+  makeUnsafeStencil (Sz (setDim' (pureIndex 1) dim k)) zeroIndex $ \_ g ->
+    dx * loop 0 (< k) (+ 1) 0 (\i -> (+ g (setDim' zeroIndex dim i)))
 {-# INLINE midpointStencil #-}
 
 
@@ -75,8 +76,8 @@ trapezoidStencil ::
   -> Int -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 trapezoidStencil dx dim n =
-  makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \g ->
-    pure dx / 2 *
+  makeUnsafeStencil (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \_ g ->
+    dx / 2 *
     (loop 1 (< n) (+ 1) (g zeroIndex) (\i -> (+ 2 * g (setDim' zeroIndex dim i))) +
      g (setDim' zeroIndex dim n))
 {-# INLINE trapezoidStencil #-}
@@ -100,12 +101,12 @@ simpsonsStencil dx dim n
     error $
     "Number of sample points for Simpson's rule stencil should be even, but received: " ++ show n
   | otherwise =
-    makeStencilDef 0 (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \g ->
+    makeUnsafeStencil (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \_ g ->
       let simAcc i (prev, acc) =
             let !fx3 = g (setDim' zeroIndex dim (i + 2))
                 !newAcc = acc + prev + 4 * g (setDim' zeroIndex dim (i + 1)) + fx3
              in (fx3, newAcc)
-       in pure dx / 3 * snd (loop 2 (< n - 1) (+ 2) (simAcc 0 (g zeroIndex, 0)) simAcc)
+       in dx / 3 * snd (loop 2 (< n - 1) (+ 2) (simAcc 0 (g zeroIndex, 0)) simAcc)
 {-# INLINE simpsonsStencil #-}
 
 -- | Integrate with a stencil along a particular dimension.

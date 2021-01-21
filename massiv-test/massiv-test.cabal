@@ -1,5 +1,5 @@
 name:                massiv-test
-version:             0.1.6
+version:             0.1.6.1
 synopsis:            Library that contains generators, properties and tests for Massiv Array Library.
 description:         This library is designed for users of massiv library that need random generators for writing custom property tests and reusing some of the predefined ones.
 homepage:            https://github.com/lehins/massiv
@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018-2019 Alexey Kuleshevich
+copyright:           2018-2021 Alexey Kuleshevich
 category:            Data, Data Structures, Parallelism
 build-type:          Simple
 extra-source-files:  README.md
@@ -80,7 +80,7 @@ test-suite tests
                     , data-default
                     , deepseq
                     , genvalidity-hspec
-                    , massiv >= 0.5.2
+                    , massiv >= 0.6
                     , massiv-test
                     , mwc-random
                     , hspec
@@ -133,7 +133,7 @@ test-suite tests-O0
                     , data-default
                     , deepseq
                     , genvalidity-hspec
-                    , massiv >= 0.5.2
+                    , massiv >= 0.6
                     , massiv-test
                     , mwc-random
                     , hspec

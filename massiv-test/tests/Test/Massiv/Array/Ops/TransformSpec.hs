@@ -183,7 +183,7 @@ prop_ZoomWithGridStrideCompute ::
   -> Property
 prop_ZoomWithGridStrideCompute arr stride defVal =
   (computeWithStride @r stride' arr' ===
-   compute (A.replicate Seq (Sz (liftIndex (+ 1) $ unSz (size arr))) defVal)) .&&.
+   compute (A.replicate @DL Seq (Sz (liftIndex (+ 1) $ unSz (size arr))) defVal)) .&&.
   (computeWithStride @r stride' (extract' (pureIndex 1) sz' arr') === compute arr)
   where
     arr' = compute @r (zoomWithGrid defVal stride arr)

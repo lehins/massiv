@@ -5,7 +5,7 @@ homepage:       https://github.com/lehins/massiv
 bug-reports:    https://github.com/lehins/massiv/issues
 author:         Alexey Kuleshevich
 maintainer:     alexey@kuleshevi.ch
-copyright:      2018 Alexey Kuleshevich
+copyright:      2018-2021 Alexey Kuleshevich
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple

@@ -1,15 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Construct
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -113,14 +111,6 @@ makeArrayLinearR _ = makeArrayLinear
 makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix1 e
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
-
-
--- | Replicate the same element
---
--- @since 0.3.0
-replicate :: forall ix e . Index ix => Comp -> Sz ix -> e -> Array DL ix e
-replicate comp sz e = makeLoadArray comp sz e $ \_ _ -> pure ()
-{-# INLINE replicate #-}
 
 
 newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}

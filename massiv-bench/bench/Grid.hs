@@ -4,13 +4,11 @@
 {-# LANGUAGE TypeApplications #-}
 module Main where
 
-import Control.Monad.ST
 import Criterion.Main
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
 import Prelude as P
-import Control.Scheduler
 
 
 -- | Scale the array, negate values and create an array with a grid.
@@ -49,13 +47,12 @@ zoomWithGridL gridVal (Stride zoomFactor) arr =
 zoomWithGridL' :: Source r Ix2 e => e -> Int -> Array r Ix2 e -> Array DL Ix2 e
 zoomWithGridL' gridVal zoomFactor arr =
   makeLoadArrayS newSz gridVal $ \writeElement -> do
-    let writeGrid ix = writeElement ix gridVal
     A.iforM_ arr $ \ix e -> do
       let (i :. j) = ix * (k :. k)
       A.mapM_ (`writeElement` e) $ range Seq (i + 1 :. j + 1) (i + k :. j + k)
   where
     k = zoomFactor + 1
-    lastNewIx@(m' :. n') = unSz (size arr) * fromIntegral k
+    lastNewIx = unSz (size arr) * fromIntegral k
     newSz = 1 + Sz lastNewIx
 {-# INLINE zoomWithGridL' #-}
 

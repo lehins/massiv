@@ -3,36 +3,45 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest
--- Copyright   : (c) Alexey Kuleshevich 2018-2020
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest
-  (
-  -- * Manifest
+  ( -- * Manifest
     Manifest
   , toManifest
   , M
   -- * Boxed
   , B(..)
-  , N(..)
+  , BL(..)
+  , BN(..)
+  , N
+  , pattern N
   , Uninitialized(..)
   -- ** Access
   , findIndex
   -- ** Conversion
   -- $boxed_conversion_note
+  , toLazyArray
+  , evalLazyArray
+  , forceLazyArray
   , unwrapNormalForm
   , evalNormalForm
   -- *** Primitive Boxed Array
+  , unwrapLazyArray
+  , wrapLazyArray
   , unwrapArray
   , evalArray
   , unwrapMutableArray
+  , unwrapMutableLazyArray
   , evalMutableArray
   , unwrapNormalFormArray
   , evalNormalFormArray
@@ -41,6 +50,8 @@ module Data.Massiv.Array.Manifest
   -- *** Boxed Vector
   , toBoxedVector
   , toBoxedMVector
+  , fromBoxedVector
+  , fromBoxedMVector
   , evalBoxedVector
   , evalBoxedMVector
   -- * Primitive
@@ -72,7 +83,7 @@ module Data.Massiv.Array.Manifest
   , mallocCompute
   , mallocCopy
   -- ** Conversion
-  -- *** Primitive Vector
+  -- *** Storable Vector
   , toStorableVector
   , toStorableMVector
   , fromStorableVector
@@ -83,6 +94,7 @@ module Data.Massiv.Array.Manifest
   , U(..)
   , Unbox
   -- ** Conversion
+  -- *** Unboxed Vector
   , toUnboxedVector
   , toUnboxedMVector
   , fromUnboxedVector
@@ -97,7 +109,6 @@ module Data.Massiv.Array.Manifest
   ) where
 
 import Control.Monad
-import Data.Massiv.Array.Mutable
 import Data.ByteString as S hiding (findIndex)
 import Data.ByteString.Builder
 import Data.ByteString.Internal
@@ -107,6 +118,7 @@ import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
 import Data.Massiv.Array.Manifest.Unboxed
+import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Core.Common
 import Data.Word (Word8)

@@ -8,7 +8,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Pull
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -21,8 +21,10 @@ module Data.Massiv.Array.Delayed.Pull
   , eqArrays
   , compareArrays
   , imap
+  , liftArray2Matching
   ) where
 
+import Control.Applicative
 import qualified Data.Foldable as F
 import Data.Massiv.Array.Ops.Fold.Internal as A
 import Data.Massiv.Vector.Stream as S (steps)
@@ -116,10 +118,8 @@ instance Functor (Array D ix) where
 instance Index ix => Applicative (Array D ix) where
   pure = singleton
   {-# INLINE pure #-}
-  (<*>) (DArray c1 (SafeSz sz1) uIndex1) (DArray c2 (SafeSz sz2) uIndex2) =
-    DArray (c1 <> c2) (SafeSz (liftIndex2 min sz1 sz2)) $ \ !ix ->
-      uIndex1 ix (uIndex2 ix)
-  {-# INLINE (<*>) #-}
+  liftA2 = liftArray2Matching
+  {-# INLINE liftA2 #-}
 
 
 -- | Row-major sequential folding over a Delayed array.
@@ -168,11 +168,11 @@ imap f !arr = DArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix
 {-# INLINE imap #-}
 
 instance (Index ix, Num e) => Num (Array D ix e) where
-  (+)         = unsafeLiftArray2 (+)
+  (+)         = liftArray2Matching (+)
   {-# INLINE (+) #-}
-  (-)         = unsafeLiftArray2 (-)
+  (-)         = liftArray2Matching (-)
   {-# INLINE (-) #-}
-  (*)         = unsafeLiftArray2 (*)
+  (*)         = liftArray2Matching (*)
   {-# INLINE (*) #-}
   abs         = unsafeLiftArray abs
   {-# INLINE abs #-}
@@ -182,7 +182,7 @@ instance (Index ix, Num e) => Num (Array D ix e) where
   {-# INLINE fromInteger #-}
 
 instance (Index ix, Fractional e) => Fractional (Array D ix e) where
-  (/)          = unsafeLiftArray2 (/)
+  (/)          = liftArray2Matching (/)
   {-# INLINE (/) #-}
   fromRational = singleton . fromRational
   {-# INLINE fromRational #-}
@@ -217,24 +217,18 @@ instance (Index ix, Floating e) => Floating (Array D ix e) where
   {-# INLINE acosh #-}
 
 
-instance Num e => Numeric D e where
-  unsafeDotProduct a1 a2 = go 0 0
-    where
-      !len = totalElem (size a1)
-      go !acc i
-        | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
-        | otherwise = acc
+instance Num e => FoldNumeric D e where
+  unsafeDotProduct = defaultUnsafeDotProduct
   {-# INLINE unsafeDotProduct #-}
-  foldArray f !initAcc arr = go initAcc 0
-    where
-      !len = totalElem (dSize arr)
-      go !acc i
-        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
-        | otherwise = acc
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
   {-# INLINE foldArray #-}
+
+instance Num e => Numeric D e where
   unsafeLiftArray f arr = arr {dIndex = f . dIndex arr}
   {-# INLINE unsafeLiftArray #-}
-  unsafeLiftArray2 f a1 a2 =
+  unsafeLiftArray2 f a1 a2 = -- TODO: possibly use the first size, it is unsafe anyways.
     DArray (dComp a1 <> dComp a2) (SafeSz (liftIndex2 min (unSz (dSize a1)) (unSz (dSize a2)))) $ \i ->
       f (dIndex a1 i) (dIndex a2 i)
   {-# INLINE unsafeLiftArray2 #-}
@@ -278,6 +272,22 @@ compareArrays f arr1 arr2 =
     (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE compareArrays #-}
+
+
+liftArray2Matching
+  :: (Source r1 ix a, Source r2 ix b)
+  => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
+liftArray2Matching f !arr1 !arr2
+  | sz1 == sz2 =
+    DArray
+      (getComp arr1 <> getComp arr2)
+      sz1
+      (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
+  where
+    sz1 = size arr1
+    sz2 = size arr2
+{-# INLINE liftArray2Matching #-}
 
 
 -- -- | The usual map.

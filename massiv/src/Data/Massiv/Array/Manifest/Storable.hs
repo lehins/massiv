@@ -9,7 +9,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
--- Copyright   : (c) Alexey Kuleshevich 2018-2020
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -35,6 +35,7 @@ module Data.Massiv.Array.Manifest.Storable
   ) where
 
 import Control.DeepSeq (NFData(..), deepseq)
+import Control.Exception
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive (unsafePrimToPrim)
 import Data.Massiv.Array.Delayed.Pull (compareArrays, eqArrays)
@@ -50,16 +51,15 @@ import Data.Primitive.ByteArray (MutableByteArray(..))
 import qualified Data.Vector.Generic.Mutable as VGM
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Storable.Mutable as MVS
-import Foreign.ForeignPtr (withForeignPtr, newForeignPtr)
-import Foreign.Marshal.Array (advancePtr, copyArray)
+import Foreign.ForeignPtr (newForeignPtr, withForeignPtr)
 import Foreign.Marshal.Alloc
+import Foreign.Marshal.Array (advancePtr, copyArray)
 import Foreign.Ptr
 import Foreign.Storable
 import GHC.Exts as GHC (IsList(..))
 import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
-import Control.Exception
 
 #include "massiv.h"
 
@@ -91,8 +91,11 @@ instance (Storable e, Index ix) => Construct S ix e where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
-  makeArray !comp !sz f = unsafePerformIO $ generateArray comp sz (return . f)
-  {-# INLINE makeArray #-}
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
 
 
 instance (Storable e, Index ix) => Source S ix e where
@@ -226,37 +229,19 @@ instance (Index ix, Storable e) => Stream S ix e where
   {-# INLINE toStreamIx #-}
 
 
-instance (Storable e, Num e) => Numeric S e where
-  unsafeDotProduct a1 a2 = go 0 0
-    where
-      !len = totalElem (size a1)
-      go !acc i
-        | i < len = go (acc + unsafeLinearIndex a1 i * unsafeLinearIndex a2 i) (i + 1)
-        | otherwise = acc
+instance (Storable e, Num e) => FoldNumeric S e where
+  unsafeDotProduct = defaultUnsafeDotProduct
   {-# INLINE unsafeDotProduct #-}
-  powerSumArray arr p = go 0 0
-    where
-      !len = totalElem (size arr)
-      go !acc i
-        | i < len = go (acc + unsafeLinearIndex arr i ^ p) (i + 1)
-        | otherwise = acc
+  powerSumArray = defaultPowerSumArray
   {-# INLINE powerSumArray #-}
-  foldArray f !initAcc arr = go initAcc 0
-    where
-      !len = totalElem (size arr)
-      go !acc i
-        | i < len = go (f acc (unsafeLinearIndex arr i)) (i + 1)
-        | otherwise = acc
+  foldArray = defaultFoldArray
   {-# INLINE foldArray #-}
-  unsafeLiftArray f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
-  {-# INLINE unsafeLiftArray #-}
-  unsafeLiftArray2 f a1 a2 =
-    makeArrayLinear
-      (getComp a1 <> getComp a2)
-      (SafeSz (liftIndex2 min (unSz (size a1)) (unSz (size a2)))) $ \ !i ->
-      f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
-  {-# INLINE unsafeLiftArray2 #-}
 
+instance (Storable e, Num e) => Numeric S e where
+  unsafeLiftArray = defaultUnsafeLiftArray
+  {-# INLINE unsafeLiftArray #-}
+  unsafeLiftArray2 = defaultUnsafeLiftArray2
+  {-# INLINE unsafeLiftArray2 #-}
 
 instance (Storable e, Floating e) => NumericFloat S e
 
@@ -377,10 +362,10 @@ unsafeMArrayFromForeignPtr fp offset sz =
 --
 -- @since 0.5.9
 unsafeMallocMArray ::
-     forall ix e. (Index ix, Storable e)
+     forall ix e m. (Index ix, Storable e, MonadIO m)
   => Sz ix
-  -> IO (MArray RealWorld S ix e)
-unsafeMallocMArray sz = do
+  -> m (MArray RealWorld S ix e)
+unsafeMallocMArray sz = liftIO $ do
   let n = totalElem sz
   foreignPtr <- mask_ $ do
     ptr <- mallocBytes (sizeOf (undefined :: e) * n)

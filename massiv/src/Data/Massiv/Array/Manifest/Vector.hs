@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Vector
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -43,7 +43,7 @@ type family ARepr (v :: * -> *) :: * where
   ARepr VU.Vector = U
   ARepr VS.Vector = S
   ARepr VP.Vector = P
-  ARepr VB.Vector = B
+  ARepr VB.Vector = BL
 
 -- | Match array representation to a vector type
 type family VRepr r :: * -> * where
@@ -52,6 +52,7 @@ type family VRepr r :: * -> * where
   VRepr P = VP.Vector
   VRepr B = VB.Vector
   VRepr N = VB.Vector
+  VRepr BL = VB.Vector
 
 
 -- | /O(1)/ - conversion from vector to an array with a corresponding representation. Will
@@ -77,8 +78,7 @@ castFromVector comp sz vector = do
          return $ PArray {pComp = comp, pSize = sz, pOffset = o, pData = ba}
     , do Refl <- eqT :: Maybe (v :~: VB.Vector)
          bVector <- join $ gcast1 (Just vector)
-         let ba = unsafeFromBoxedVector bVector
-         ba `seqArray` pure (unsafeResize sz ba)
+         pure $ unsafeResize sz $ setComp comp $ fromBoxedVector bVector
     ]
 {-# NOINLINE castFromVector #-}
 
@@ -141,10 +141,13 @@ castToVector arr =
          return $ VP.Vector (pOffset pArr) (totalElem (size arr)) $ pData pArr
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
-         return $ toBoxedVector bArr
+         return $ toBoxedVector $ toLazyArray bArr
     , do Refl <- eqT :: Maybe (r :~: N)
          bArr <- gcastArr arr
-         return $ toBoxedVector $ bArray bArr
+         return $ toBoxedVector $ toLazyArray $ unwrapNormalForm bArr
+    , do Refl <- eqT :: Maybe (r :~: BL)
+         bArr <- gcastArr arr
+         return $ toBoxedVector bArr
     ]
 {-# NOINLINE castToVector #-}
 

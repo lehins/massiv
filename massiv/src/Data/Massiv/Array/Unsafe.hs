@@ -4,7 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2018-2020
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -80,9 +80,8 @@ module Data.Massiv.Array.Unsafe
   , unsafeAtomicXorIntArray
   , unsafeCasIntArray
     -- ** Other operations
-  , unsafeBoxedArray
-  , unsafeNormalBoxedArray
-  , unsafeFromBoxedVector
+  , coerceBoxedArray
+  , coerceNormalBoxedArray
   , unsafeUnstablePartitionRegionM
   , module Data.Massiv.Vector.Unsafe
   , module Data.Massiv.Array.Stencil.Unsafe

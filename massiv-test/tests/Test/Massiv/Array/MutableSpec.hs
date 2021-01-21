@@ -188,6 +188,7 @@ spec :: Spec
 spec = do
   specMutableR @B @Int
   specMutableR @N @Int
+  specMutableR @BL @Int
   specUnboxedMutableR @S @Int
   specUnboxedMutableR @P @Int
   specUnboxedMutableR @U @Int

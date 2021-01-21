@@ -8,7 +8,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Core.Common
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -83,6 +83,8 @@ module Data.Massiv.Core.Common
   , Proxy(..)
   , Id(..)
   -- * Stateful Monads
+  , runST
+  , ST
   , MonadUnliftIO
   , MonadIO(liftIO)
   , PrimMonad(PrimState)
@@ -95,6 +97,7 @@ import Control.Exception (throw)
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
+import Control.Monad.ST
 import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
                           scheduleWork, scheduleWork_, withScheduler_, trivialScheduler_)
 import Control.Scheduler.Global
@@ -223,7 +226,9 @@ class (Typeable r, Index ix) => Construct r ix e where
   makeArrayLinear comp sz f = makeArray comp sz (f . toLinearIndex sz)
   {-# INLINE makeArrayLinear #-}
 
-
+  replicate :: Comp -> Sz ix -> e -> Array r ix e
+  replicate comp sz !e = makeArray comp sz (const e)
+  {-# INLINE replicate #-}
 
 class Index ix => Resize r ix where
   -- | /O(1)/ - Change the size of an array. Total number of elements should be the same, but it is
@@ -313,10 +318,6 @@ class (Typeable r, Index ix) => Load r ix e where
   loadArrayWithSetM scheduler arr uWrite _ = loadArrayM scheduler arr uWrite
   {-# INLINE loadArrayWithSetM #-}
 
-  defaultElement :: Array r ix e -> Maybe e
-  defaultElement _ = Nothing
-  {-# INLINE defaultElement #-}
-
   -- | /O(1)/ - Get the possible maximum size of an immutabe array. If the lookup of size
   -- in constant time is not possible, `Nothing` will be returned. This value will be used
   -- as the initial size of the mutable array into which the loading will happen.
@@ -369,8 +370,6 @@ class (Typeable r, Index ix) => Load r ix e where
       loadArrayWithSetM scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
     pure marr
   {-# INLINE unsafeLoadIntoM #-}
-
-{-# DEPRECATED defaultElement "This is no longer used by any of the loading functions and will be removed in massiv-0.6" #-}
 
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
@@ -471,13 +470,18 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   --
   -- @since 0.3.0
   initializeNew :: PrimMonad m => Maybe e -> Sz ix -> m (MArray (PrimState m) r ix e)
-  initializeNew mdef sz = do
-    marr <- unsafeNew sz
-    case mdef of
-      Just val -> unsafeLinearSet marr 0 (SafeSz (totalElem sz)) val
-      Nothing  -> initialize marr
-    return marr
+  initializeNew Nothing sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
+  initializeNew (Just e) sz = newMArray sz e
   {-# INLINE initializeNew #-}
+
+  -- | Create new mutable array while initializing all elements to the specified value.
+  --
+  -- @since 0.6.0
+  newMArray :: PrimMonad m => Sz ix -> e -> m (MArray (PrimState m) r ix e)
+  newMArray sz e = do
+    marr <- unsafeNew sz
+    marr <$ unsafeLinearSet marr 0 (SafeSz (totalElem sz)) e
+  {-# INLINE newMArray #-}
 
   -- | Set all cells in the mutable array within the range to a specified value.
   --

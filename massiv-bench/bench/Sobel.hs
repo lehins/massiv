@@ -15,19 +15,19 @@ main = do
   defaultMain
     [ bgroup
         "Sobel"
-        [ env (return (arrRLightIx2 U Seq sz)) $ \arr ->
+        [ env (return (arrRLightIx2 S Seq sz)) $ \arr ->
             bgroup
               "Seq"
-              [ bench "Horizontal - Massiv" $ whnf (computeAs U . A.mapStencil Edge sobelX) arr
-              , bench "Vertical - Massiv" $ whnf (computeAs U . A.mapStencil Edge sobelY) arr
-              , bench "Operator - Massiv" $ whnf (computeAs U . A.mapStencil Edge sobelOperator) arr
+              [ bench "Horizontal - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelX) arr
+              , bench "Vertical - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelY) arr
+              , bench "Operator - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelOperator) arr
               ]
-        , env (return (arrRLightIx2 U Par sz)) $ \arr ->
+        , env (return (arrRLightIx2 S Par sz)) $ \arr ->
             bgroup
               "Par"
-              [ bench "Horizontal - Massiv" $ whnf (computeAs U . A.mapStencil Edge sobelX) arr
-              , bench "Vertical - Massiv" $ whnf (computeAs U . A.mapStencil Edge sobelY) arr
-              , bench "Operator - Massiv" $ whnf (computeAs U . A.mapStencil Edge sobelOperator) arr
+              [ bench "Horizontal - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelX) arr
+              , bench "Vertical - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelY) arr
+              , bench "Operator - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelOperator) arr
               ]
         ]
     ]

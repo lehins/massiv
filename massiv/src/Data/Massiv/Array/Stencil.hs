@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -14,7 +14,6 @@
 module Data.Massiv.Array.Stencil
   ( -- * Stencil
     Stencil
-  , Value
   , makeStencil
   , makeStencilDef
   , getStencilSize
@@ -42,12 +41,9 @@ module Data.Massiv.Array.Stencil
   , rmapStencil
   -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
-  -- * Re-export
-  , Default(def)
   ) where
 
 import Data.Coerce
-import Data.Default.Class (Default(def))
 import Data.Massiv.Array.Delayed.Windowed
 import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Stencil.Convolution
@@ -175,6 +171,7 @@ samePadding (Stencil (Sz sSz) sCenter _) border =
     , paddingWithElement = border
     }
 
+
 -- | Apply a constructed stencil over an array. Resulting array must be
 -- `Data.Massiv.Array.compute`d in order to be useful. Unlike `mapStencil`, the size of
 -- the resulting array will not necesserally be the same as the source array, which will
@@ -197,7 +194,7 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
       DArray
         (getComp arr)
         sz
-        (unValue . stencilF (Value . borderIndex border arr) . liftIndex2 (+) offset)
+        (stencilF (borderIndex border arr) (borderIndex border arr) . liftIndex2 (+) offset)
     -- Size by which the resulting array will shrink (not accounting for padding)
     !shrinkSz = Sz (liftIndex (subtract 1) (unSz sSz))
     !sz = liftSz2 (-) (SafeSz (liftIndex2 (+) po (liftIndex2 (+) pb (unSz (size arr))))) shrinkSz
@@ -206,7 +203,7 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
       Window
         { windowStart = po
         , windowSize = wsz
-        , windowIndex = unValue . stencilF (Value . unsafeIndex arr) . liftIndex2 (+) offset
+        , windowIndex = stencilF (unsafeIndex arr) (index' arr) . liftIndex2 (+) offset
         , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
         }
 {-# INLINE applyStencil #-}
@@ -218,6 +215,9 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
 -- outside the stencil box will result in a runtime error upon stencil
 -- creation.
 --
+-- /Note/ - Once correctness of stencil is verified then switching to `makeUnsafeStencil`
+-- is recommended in order to get the most performance out of the `Stencil`
+--
 -- ==== __Example__
 --
 -- Below is an example of creating a `Stencil`, which, when mapped over a
@@ -226,7 +226,7 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
 --
 -- /Note/ - Make sure to add an @INLINE@ pragma, otherwise performance will be terrible.
 --
--- > average3x3Stencil :: (Default a, Fractional a) => Stencil Ix2 a a
+-- > average3x3Stencil :: Fractional a => Stencil Ix2 a a
 -- > average3x3Stencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
 -- >   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
 -- >      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
@@ -235,10 +235,10 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
 --
 -- @since 0.1.0
 makeStencil
-  :: (Index ix, Default e)
+  :: Index ix
   => Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
-  -> ((ix -> Value e) -> Value a)
+  -> ((ix -> e) -> a)
   -- ^ Stencil function that receives a "get" function as it's argument that can
   -- retrieve values of cells in the source array with respect to the center of
   -- the stencil. Stencil function must return a value that will be assigned to
@@ -246,7 +246,11 @@ makeStencil
   -- cannot go outside the boundaries of the stencil, otherwise an error will be
   -- raised during stencil creation.
   -> Stencil ix e a
-makeStencil = makeStencilDef def
+makeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
+  where
+    stencil _ getVal !ix =
+      inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
+    {-# INLINE stencil #-}
 {-# INLINE makeStencil #-}
 
 -- | Same as `makeStencil`, but with ability to specify default value for stencil validation.
@@ -257,16 +261,17 @@ makeStencilDef
   => e -- ^ Default element that will be used for stencil validation only.
   -> Sz ix -- ^ Size of the stencil
   -> ix -- ^ Center of the stencil
-  -> ((ix -> Value e) -> Value a)
+  -> ((ix -> e) -> a)
   -- ^ Stencil function.
   -> Stencil ix e a
-makeStencilDef defVal !sSz !sCenter relStencil =
-  validateStencil defVal $ Stencil sSz sCenter stencil
+makeStencilDef _defVal !sSz !sCenter relStencil =
+  Stencil sSz sCenter stencil
   where
-    stencil getVal !ix =
+    stencil _ getVal !ix =
       inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
 {-# INLINE makeStencilDef #-}
+{-# DEPRECATED makeStencilDef "In favor of `makeStencil`. Validation is no longer possible" #-}
 
 -- | Identity stencil that does not change the elements of the source array.
 --

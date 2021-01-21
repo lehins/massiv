@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 -- |
 -- Module      : Data.Massiv.Array
--- Copyright   : (c) Alexey Kuleshevich 2018-2019
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -20,9 +20,11 @@
 --         element is a pointer to the actual value, therefore it is also the slowest
 --         representation. Elements are kept in a Weak Head Normal Form (WHNF).
 --
--- * `N` - Similar to `B`, is also a boxed type, except it's elements are always kept in a Normal
+-- * `BN` - Similar to `B`, is also a boxed type, except it's elements are always kept in a Normal
 --         Form (NF). This property is very useful for parallel processing, i.e. when calling
 --         `compute` you do want all of your elements to be fully evaluated.
+--
+-- * `BL` - Similar to `B`, is also a boxed type, but lazy. It's elements are not evaluated.
 --
 -- * `S` - Is a type of array that is backed by pinned memory, therefore pointers to those arrays
 --         can be passed to FFI calls, because Garbage Collector (GC) is guaranteed not to move

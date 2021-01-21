@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018-2020
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -55,6 +55,7 @@ import Data.Massiv.Array.Mutable.Internal (unsafeCreateArray_)
 import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
+import Data.Massiv.Core.Operations
 import Data.Maybe (fromMaybe)
 import Data.Typeable
 import GHC.Base hiding (ord)
@@ -206,6 +207,14 @@ instance Index ix => Stream M ix e where
   toStreamIx = S.isteps
   {-# INLINE toStreamIx #-}
 
+
+instance Num e => FoldNumeric M e where
+  unsafeDotProduct = defaultUnsafeDotProduct
+  {-# INLINE unsafeDotProduct #-}
+  powerSumArray = defaultPowerSumArray
+  {-# INLINE powerSumArray #-}
+  foldArray = defaultFoldArray
+  {-# INLINE foldArray #-}
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
@@ -417,7 +426,7 @@ computeWithStrideAs _ = computeWithStride
 -- ====__Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> a = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> w (0 :. 0) 1 >> pure ()
+-- >>> a = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> () <$ w (0 :. 0) 1
 -- >>> a
 -- Array P Seq (Sz (8 :. 8))
 --   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
@@ -430,7 +439,7 @@ computeWithStrideAs _ = computeWithStride
 --   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
 --   ]
 -- >>> nextPascalRow cur above = if cur == 0 then above else cur
--- >>> pascal = makeStencil (Sz2 2 2) 1 $ \ get -> nextPascalRow <$> get (0 :. 0) <*> get (-1 :. -1) + get (-1 :. 0)
+-- >>> pascal = makeStencil (Sz2 2 2) 1 $ \ get -> nextPascalRow (get (0 :. 0)) (get (-1 :. -1) + get (-1 :. 0))
 -- >>> iterateUntil (\_ _ a -> (a ! (7 :. 7)) /= 0) (\ _ -> mapStencil (Fill 0) pascal) a
 -- Array P Seq (Sz (8 :. 8))
 --   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
@@ -461,7 +470,7 @@ iterateUntil convergence iteration initArr0
       let loadArr = iteration 1 initArr1
       marr <- unsafeNew (size loadArr)
       iterateLoop
-        (\n a a' _ -> pure $ convergence n a a')
+        (\n a comp marr' -> convergence n a <$> unsafeFreeze comp marr')
         iteration
         1
         initArr1
@@ -505,7 +514,7 @@ iterateUntilM convergence iteration initArr0 = do
 
 iterateLoop ::
      (Load r' ix e, Mutable r ix e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
-  => (Int -> Array r ix e -> Array r ix e -> MArray (PrimState m) r ix e -> m Bool)
+  => (Int -> Array r ix e -> Comp -> MArray (PrimState m) r ix e -> m Bool)
   -> (Int -> Array r ix e -> Array r' ix e)
   -> Int
   -> Array r ix e
@@ -518,6 +527,7 @@ iterateLoop convergence iteration = go
       let !sz = size loadArr
           !k = totalElem sz
           !mk = totalElem (msize marr)
+          !comp = getComp loadArr
       marr' <-
         if k == mk
           then pure marr
@@ -525,8 +535,8 @@ iterateLoop convergence iteration = go
                  then unsafeLinearShrink marr sz
                  else unsafeLinearGrow marr sz
       computeInto marr' loadArr
-      arr' <- unsafeFreeze (getComp loadArr) marr'
-      shouldStop <- convergence n arr arr' marr'
+      shouldStop <- convergence n arr comp marr'
+      arr' <- unsafeFreeze comp marr'
       if shouldStop
         then pure arr'
         else do

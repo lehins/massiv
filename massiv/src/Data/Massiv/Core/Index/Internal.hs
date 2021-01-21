@@ -16,7 +16,7 @@
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018-2020
+-- Copyright   : (c) Alexey Kuleshevich 2018-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
@@ -39,6 +39,7 @@ module Data.Massiv.Core.Index.Internal
   , setSzM
   , insertSzM
   , pullOutSzM
+  , mkSzM
   , Dim(..)
   , Dimension(DimN)
   , pattern Dim1
@@ -62,6 +63,7 @@ module Data.Massiv.Core.Index.Internal
 
 import Control.DeepSeq
 import Control.Exception (Exception(..), throw)
+import Control.Monad (when)
 import Control.Monad.Catch (MonadThrow(..))
 import Data.Coerce
 import Data.Massiv.Core.Iterator
@@ -128,6 +130,20 @@ instance (Num ix, Index ix) => Num (Sz ix) where
   {-# INLINE signum #-}
   fromInteger = Sz . fromInteger
   {-# INLINE fromInteger #-}
+
+-- | Construct size from index while checking its correctness. Throws
+-- `SizeNegativeException` and `SizeOverflowException`.
+--
+-- @since 0.6.0
+mkSzM :: (Index ix, MonadThrow m) => ix -> m (Sz ix)
+mkSzM ix = do
+  let guardNegativeOverflow i !acc = do
+        when (i < 0) $ throwM $ SizeNegativeException (SafeSz ix)
+        let acc' = i * acc
+        when (acc' /= 0 && acc' < acc) $ throwM $ SizeOverflowException (SafeSz ix)
+        pure acc'
+  Sz ix <$ foldlIndex (\acc i -> acc >>= guardNegativeOverflow i) (pure 1) ix
+
 
 
 -- | Function for unwrapping `Sz`.
@@ -717,8 +733,8 @@ instance Eq IndexException where
 instance NFData IndexException where
   rnf =
     \case
-      IndexZeroException i -> rnf i
-      IndexDimensionException i d -> i `deepseq` rnf d
+      IndexZeroException i           -> rnf i
+      IndexDimensionException i d    -> i `deepseq` rnf d
       IndexOutOfBoundsException sz i -> sz `deepseq` rnf i
 
 instance Exception IndexException
@@ -735,6 +751,14 @@ data SizeException where
   SizeSubregionException :: Index ix => !(Sz ix) -> !ix -> !(Sz ix) -> SizeException
   -- | An array with the size cannot contain any elements.
   SizeEmptyException :: Index ix => !(Sz ix) -> SizeException
+  -- | Total number of elements is too large resulting in overflow.
+  --
+  -- @since 0.6.0
+  SizeOverflowException :: Index ix => !(Sz ix) -> SizeException
+  -- | At least one dimensions contain a negative value.
+  --
+  -- @since 0.6.0
+  SizeNegativeException :: Index ix => !(Sz ix) -> SizeException
 
 instance Eq SizeException where
   e1 == e2 =
@@ -746,15 +770,19 @@ instance Eq SizeException where
       (SizeSubregionException sz1 i1 sz1', SizeSubregionException sz2 i2 sz2') ->
         show sz1 == show sz2 && show i1 == show i2 && show sz1' == show sz2'
       (SizeEmptyException sz1, SizeEmptyException sz2) -> show sz1 == show sz2
+      (SizeOverflowException sz1, SizeOverflowException sz2) -> show sz1 == show sz2
+      (SizeNegativeException sz1, SizeNegativeException sz2) -> show sz1 == show sz2
       _ -> False
 
 instance NFData SizeException where
   rnf =
     \case
-      SizeMismatchException sz sz' -> sz `deepseq` rnf sz'
+      SizeMismatchException sz sz'         -> sz `deepseq` rnf sz'
       SizeElementsMismatchException sz sz' -> sz `deepseq` rnf sz'
-      SizeSubregionException sz i sz' -> sz `deepseq` i `deepseq` rnf sz'
-      SizeEmptyException sz -> rnf sz
+      SizeSubregionException sz i sz'      -> sz `deepseq` i `deepseq` rnf sz'
+      SizeEmptyException sz                -> rnf sz
+      SizeOverflowException sz             -> rnf sz
+      SizeNegativeException sz             -> rnf sz
 
 instance Exception SizeException
 
@@ -769,6 +797,10 @@ instance Show SizeException where
     show sz' ++ ") is to small for " ++ show ix ++ " (" ++ show sz ++ ")"
   show (SizeEmptyException sz) =
     "SizeEmptyException: (" ++ show sz ++ ") corresponds to an empty array"
+  show (SizeOverflowException sz) =
+    "SizeOverflowException: (" ++ show sz ++ ") is too big"
+  show (SizeNegativeException sz) =
+    "SizeNegativeException: (" ++ show sz ++ ") contains negative value"
   showsPrec n exc = showsPrecWrapped n (show exc ++)
 
 -- | Exception that can happen upon conversion of a ragged type array into the rectangular kind. Which

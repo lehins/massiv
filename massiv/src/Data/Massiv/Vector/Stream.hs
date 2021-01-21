@@ -4,12 +4,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK hide, not-home #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Massiv.Vector.Stream
--- Copyright   : (c) Alexey Kuleshevich 2019-2020
+-- Copyright   : (c) Alexey Kuleshevich 2019-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -132,7 +131,7 @@ module Data.Massiv.Vector.Stream
 import qualified Control.Monad as M
 import Control.Monad.ST
 import qualified Data.Foldable as F
-import Data.Massiv.Core.Common hiding (empty, singleton)
+import Data.Massiv.Core.Common hiding (empty, singleton, replicate)
 import Data.Maybe (catMaybes)
 import qualified Data.Traversable as Traversable (traverse)
 import qualified Data.Vector.Fusion.Bundle.Monadic as B

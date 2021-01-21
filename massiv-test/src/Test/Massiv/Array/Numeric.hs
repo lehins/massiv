@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE RankNTypes #-}
@@ -37,14 +38,15 @@ naiveMatrixMatrixMultiply arr1 arr2
 
 
 prop_MatrixMatrixMultiply ::
-     forall r e. (Numeric r e, Mutable r Ix2 e, Eq e, Show e)
+     forall r e. (Numeric r e, Mutable r Ix2 e, Eq (Matrix r e), Show (Matrix r e))
   => Fun e e
   -> Matrix r e
   -> Property
 prop_MatrixMatrixMultiply f arr = expectProp $ do
   let arr' = A.transpose (A.map (applyFun f) arr)
-  arr !><! arr' `shouldBe` naiveMatrixMatrixMultiply (delay arr) arr'
-  arr !><! transpose arr `shouldBe` naiveMatrixMatrixMultiply (delay arr) (transpose arr)
+  arr !><! compute arr' `shouldBe` compute (naiveMatrixMatrixMultiply (delay arr) arr')
+  arr !><! compute (transpose arr) `shouldBe`
+    compute (naiveMatrixMatrixMultiply (delay arr) (transpose arr))
   let Sz2 m n = size arr
   when (m /= n) $
     arr .><. arr `shouldThrow` (== SizeMismatchException (size arr) (Sz2 m n))
@@ -78,8 +80,6 @@ prop_VectorMatrixMultiply ::
      , Mutable r Ix2 e
      , Source (R r) Ix1 e
      , Mutable r Ix1 e
-     , Eq e
-     , Show e
      , Show (Vector r e)
      , Eq (Vector r e)
      )
@@ -90,7 +90,8 @@ prop_VectorMatrixMultiply f arr =
   expectProp $ do
     let Sz2 m _ = size arr
         v = makeArray Seq (Sz m) (applyFun f)
-    v ><! arr `shouldBe` flatten (naiveMatrixMatrixMultiply (resize' (Sz2 1 m) v) (delay arr))
+    v ><! arr `shouldBe`
+      compute (flatten (naiveMatrixMatrixMultiply (resize' (Sz2 1 m) v) (delay arr)))
     multiplyVectorByMatrix v arr `shouldReturn` compute (v ><! arr)
     makeArray Seq (Sz (m + 1)) (applyFun f) ><. arr `shouldThrow`
       (== SizeMismatchException (Sz2 1 (m + 1)) (size arr))

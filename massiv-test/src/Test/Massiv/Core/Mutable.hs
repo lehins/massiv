@@ -63,7 +63,7 @@ prop_UnsafeInitializeNew ::
   => Property
 prop_UnsafeInitializeNew =
   property $ \comp sz e ->
-    (compute (A.replicate comp sz e) :: Array r ix e) ===
+    (compute (A.replicate comp sz e :: Array DL ix e) :: Array r ix e) ===
     runST (unsafeFreeze comp =<< initializeNew (Just e) sz)
 
 prop_UnsafeInitialize ::
@@ -178,7 +178,7 @@ prop_UnsafeLinearSet ::
   -> e
   -> Property
 prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
-  compute (A.replicate Seq k e) ===
+  compute (A.replicate Seq k e :: Array DL Ix1 e) ===
   slice' i k (flatten (arrd :: Array r ix e))
   where
     i = toLinearIndex sz ix

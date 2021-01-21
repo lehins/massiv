@@ -11,7 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Push
--- Copyright   : (c) Alexey Kuleshevich 2019
+-- Copyright   : (c) Alexey Kuleshevich 2019-2021
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -64,6 +64,8 @@ instance Index ix => Construct DL ix e where
         splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
       {-# INLINE load #-}
   {-# INLINE makeArrayLinear #-}
+  replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
+  {-# INLINE replicate #-}
 
 instance Index ix => Resize DL ix where
   unsafeResize !sz arr = arr { dlSize = sz }
@@ -315,8 +317,6 @@ instance Index ix => Load DL ix e where
   {-# INLINE getComp #-}
   loadArrayWithSetM scheduler DLArray {dlLoad} = dlLoad scheduler 0
   {-# INLINE loadArrayWithSetM #-}
-  defaultElement _ = Nothing
-  {-# INLINE defaultElement #-}
 
 instance Index ix => Functor (Array DL ix) where
   fmap f arr = arr {dlLoad = loadFunctor arr f}
