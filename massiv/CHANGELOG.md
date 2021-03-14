@@ -1,3 +1,7 @@
+# 0.6.1
+
+* Addition of `replaceSlice` and `replaceOuterSlice`
+
 # 0.6.0
 
 * Fix semantics of `Applicative`, `Num` and `Fractional` instance for `D` arrays:

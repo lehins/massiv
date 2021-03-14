@@ -49,6 +49,8 @@ module Data.Massiv.Array.Ops.Transform
   , splitAtM
   , splitAt'
   , splitExtractM
+  , replaceSlice
+  , replaceOuterSlice
   -- ** Upsample/Downsample
   , upsample
   , downsample
@@ -748,6 +750,96 @@ splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
   rightArr <- extractFromToM rightArrStartIx szIx arr
   pure (leftArr, midArr, rightArr)
 {-# INLINE splitExtractM #-}
+
+
+
+-- | Replace a slice of an array with another one
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> arr = makeArrayR U Seq (Sz3 3 4 5) fromIx3
+-- >>> arr' = makeArrayR U Seq (Sz3 3 4 5) (fromIx3 . liftIndex (* 100))
+-- >>> replaceSlice 2 1 (arr' <!> (2, 3)) arr
+-- Array DL Seq (Sz (3 :> 4 :. 5))
+--   [ [ [ (0,0,0), (0,0,1), (0,0,2), (0,0,3), (0,0,4) ]
+--     , [ (0,300,0), (0,300,100), (0,300,200), (0,300,300), (0,300,400) ]
+--     , [ (0,2,0), (0,2,1), (0,2,2), (0,2,3), (0,2,4) ]
+--     , [ (0,3,0), (0,3,1), (0,3,2), (0,3,3), (0,3,4) ]
+--     ]
+--   , [ [ (1,0,0), (1,0,1), (1,0,2), (1,0,3), (1,0,4) ]
+--     , [ (100,300,0), (100,300,100), (100,300,200), (100,300,300), (100,300,400) ]
+--     , [ (1,2,0), (1,2,1), (1,2,2), (1,2,3), (1,2,4) ]
+--     , [ (1,3,0), (1,3,1), (1,3,2), (1,3,3), (1,3,4) ]
+--     ]
+--   , [ [ (2,0,0), (2,0,1), (2,0,2), (2,0,3), (2,0,4) ]
+--     , [ (200,300,0), (200,300,100), (200,300,200), (200,300,300), (200,300,400) ]
+--     , [ (2,2,0), (2,2,1), (2,2,2), (2,2,3), (2,2,4) ]
+--     , [ (2,3,0), (2,3,1), (2,3,2), (2,3,3), (2,3,4) ]
+--     ]
+--   ]
+--
+-- @since 0.6.1
+replaceSlice ::
+     ( MonadThrow m
+     , Extract r ix e
+     , Source (R r) ix e
+     , Load (R r) (Lower ix) e
+     , Resize (R r) (Lower ix)
+     )
+  => Dim
+  -> Ix1
+  -> Array (R r) (Lower ix) e
+  -> Array r ix e
+  -> m (Array DL ix e)
+replaceSlice dim i sl arr = do
+  (l, m, r) <- splitExtractM dim i (SafeSz 1) arr
+  m' <- resizeM (size m) sl
+  concatM dim [l, m', r]
+{-# INLINE replaceSlice #-}
+
+
+-- | Replace an outer slice of an array with another one
+--
+-- ==== __Example__
+--
+-- >>> import Data.Massiv.Array
+-- >>> arr = makeArrayR U Seq (Sz3 3 4 5) fromIx3
+-- >>> arr' = makeArrayR U Seq (Sz3 3 4 5) (fromIx3 . liftIndex (* 100))
+-- >>> replaceOuterSlice 1 (arr' !> 2) arr
+-- Array DL Seq (Sz (3 :> 4 :. 5))
+--   [ [ [ (0,0,0), (0,0,1), (0,0,2), (0,0,3), (0,0,4) ]
+--     , [ (0,1,0), (0,1,1), (0,1,2), (0,1,3), (0,1,4) ]
+--     , [ (0,2,0), (0,2,1), (0,2,2), (0,2,3), (0,2,4) ]
+--     , [ (0,3,0), (0,3,1), (0,3,2), (0,3,3), (0,3,4) ]
+--     ]
+--   , [ [ (200,0,0), (200,0,100), (200,0,200), (200,0,300), (200,0,400) ]
+--     , [ (200,100,0), (200,100,100), (200,100,200), (200,100,300), (200,100,400) ]
+--     , [ (200,200,0), (200,200,100), (200,200,200), (200,200,300), (200,200,400) ]
+--     , [ (200,300,0), (200,300,100), (200,300,200), (200,300,300), (200,300,400) ]
+--     ]
+--   , [ [ (2,0,0), (2,0,1), (2,0,2), (2,0,3), (2,0,4) ]
+--     , [ (2,1,0), (2,1,1), (2,1,2), (2,1,3), (2,1,4) ]
+--     , [ (2,2,0), (2,2,1), (2,2,2), (2,2,3), (2,2,4) ]
+--     , [ (2,3,0), (2,3,1), (2,3,2), (2,3,3), (2,3,4) ]
+--     ]
+--   ]
+--
+-- @since 0.6.1
+replaceOuterSlice ::
+     ( MonadThrow m
+     , Extract r ix e
+     , Source (R r) ix e
+     , Load (R r) (Lower ix) e
+     , Resize (R r) (Lower ix)
+     )
+  => Ix1
+  -> Array (R r) (Lower ix) e
+  -> Array r ix e
+  -> m (Array DL ix e)
+replaceOuterSlice i sl arr = replaceSlice (dimensions (size arr)) i sl arr
+{-# INLINE replaceOuterSlice #-}
+
 
 -- | Delete a region from an array along the specified dimension.
 --

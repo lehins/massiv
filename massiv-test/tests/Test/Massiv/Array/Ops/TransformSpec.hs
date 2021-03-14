@@ -93,6 +93,7 @@ prop_ConcatMConcatOuterM comp sz (NonEmpty fns) =
   where
     arrs = P.zipWith (\ f i -> makeArray @r comp sz ((+i) . apply f)) fns [0 .. ]
 
+
 prop_AppendMappend
   :: Array D Ix1 Int -> Array D Ix1 Int -> Property
 prop_AppendMappend arr1 arr2 =
