@@ -1410,7 +1410,7 @@ sfilter f = DSArray . S.filter f . S.toStream
 {-# INLINE sfilter #-}
 
 
--- | Similar to `sfilter`, but map with an index aware function.
+-- | Similar to `sfilter`, but filter with an index aware function.
 --
 -- ==== __Examples__
 --
@@ -1462,11 +1462,9 @@ sfilterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 {-# INLINE sfilterM #-}
 
 
--- | Similar to `filterM`, but map with an index aware function.
+-- | Similar to `filterM`, but filter with an index aware function.
 --
 -- Corresponds to: @`filterM` (uncurry f) . `simap` (,)@
---
--- ==== __Examples__
 --
 -- @since 0.5.0
 sifilterM ::
