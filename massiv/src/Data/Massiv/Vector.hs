@@ -429,7 +429,7 @@ head' = either throw id . headM
 --
 -- /Related/: `head'`, `shead'`, `sheadM`, `unconsM`.
 --
--- /__Throws Exceptions__/: `SizeEmptyException`
+-- /__Throws Exceptions__/: `SizeEmptyException` when array is empty
 --
 -- ==== __Examples__
 --
@@ -2456,18 +2456,30 @@ sall f = S.unId . S.and . S.map f . toStream
 
 
 
--- |
+-- | Add all elements of the array together
+--
+-- /Related/: `sum`.
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector as V
+-- >>> V.ssum $ V.sfromList [10, 3, 70, 5 :: Int]
+-- 88
 --
 -- @since 0.5.0
 ssum :: (Num e, Stream r ix e) => Array r ix e -> e
 ssum = sfoldl (+) 0
 {-# INLINE ssum #-}
 
--- |
+-- | Multiply all elements of the array together
+--
+-- /Related/: `product`.
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector as V
+-- >>> V.sproduct $ V.sfromList [10, 3, 70, 5 :: Int]
+-- 10500
 --
 -- @since 0.5.0
 sproduct :: (Num e, Stream r ix e) => Array r ix e -> e
@@ -2475,18 +2487,36 @@ sproduct = sfoldl (*) 1
 {-# INLINE sproduct #-}
 
 
--- |
+-- | /O(n)/ - Find the largest value in the array. Throws an error on empty.
+--
+-- /Related/: `smaximumM`, `maximum`, `maximumM`.
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector as V
+-- >>> V.smaximum' $ V.sfromList [10, 3, 70, 5 :: Int]
+-- 70
+-- >>> V.smaximum' (V.empty :: Vector D Int)
+-- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
 smaximum' :: (Ord e, Stream r ix e) => Array r ix e -> e
 smaximum' = sfoldl1' max
 {-# INLINE smaximum' #-}
 
--- |
+-- | /O(n)/ - Find the largest value in the array.
+--
+-- /Related/: `smaximum`, `maximum`, `maximumM`.
+--
+-- /__Throws Exceptions__/: `SizeEmptyException` when array is empty
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector as V
+-- >>> V.smaximumM $ V.sfromList [10, 3, 70, 5 :: Int]
+-- 70
+-- >>> V.smaximumM (V.empty :: Vector D Int) :: Maybe Int
+-- Nothing
 --
 -- @since 0.5.0
 smaximumM :: (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
@@ -2494,25 +2524,41 @@ smaximumM = sfoldl1M (\e acc -> pure (max e acc))
 {-# INLINE smaximumM #-}
 
 
-
--- |
+-- | /O(n)/ - Find the smallest value in the array. Throws an error on empty.
+--
+-- /Related/: `sminimumM`, `minimum`, `minimumM`.
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector as V
+-- >>> V.sminimum' $ V.sfromList [10, 3, 70, 5 :: Int]
+-- 3
+-- >>> V.sminimum' (V.empty :: Array D Ix2 Int)
+-- *** Exception: SizeEmptyException: (Sz (0 :. 0)) corresponds to an empty array
 --
 -- @since 0.5.0
 sminimum' :: (Ord e, Stream r ix e) => Array r ix e -> e
 sminimum' = sfoldl1' min
 {-# INLINE sminimum' #-}
 
--- |
+-- | /O(n)/ - Find the smallest value in the array.
+--
+-- /Related/: `sminimum'`, `minimum`, `minimumM`.
+--
+-- /__Throws Exceptions__/: `SizeEmptyException` when array is empty
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector as V
+-- >>> V.sminimumM $ V.sfromList [10, 3, 70, 5 :: Int]
+-- 3
+-- >>> V.sminimumM (V.empty :: Array D Ix2 Int) :: Maybe Int
+-- Nothing
 --
 -- @since 0.5.0
 sminimumM :: (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
 sminimumM = sfoldl1M (\e acc -> pure (min e acc))
 {-# INLINE sminimumM #-}
-
 
 
 -- | See `stake`.
