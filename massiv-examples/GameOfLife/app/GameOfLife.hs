@@ -19,7 +19,7 @@ lifeRules _ _ = 0
 
 lifeStencil :: Stencil Ix2 Word8 Word8
 lifeStencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ f ->
-  lifeRules <$> f (0 :. 0) <*>
+  lifeRules (f (0 :. 0))
   (f (-1 :. -1) + f (-1 :. 0) + f (-1 :. 1) +
    f ( 0 :. -1) +               f ( 0 :. 1) +
    f ( 1 :. -1) + f ( 1 :. 0) + f ( 1 :. 1))

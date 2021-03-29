@@ -6,7 +6,7 @@ import Examples.SortRows
 import Test.Hspec
 
 isGrowingStencil :: A.Stencil Ix1 Int Bool
-isGrowingStencil = A.makeStencil 2 1 $ \get -> (<=) <$> get (-1) <*> get 0
+isGrowingStencil = A.makeStencil 2 1 $ \get -> get (-1) <= get 0
 
 prop_Sorted :: Comp -> Positive Int -> Positive Int -> Property
 prop_Sorted comp (Positive m) (Positive n) =
