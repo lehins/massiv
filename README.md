@@ -7,9 +7,9 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 
 ## Status
 
-| Language | Travis | Azure | Coveralls |Gitter.im |
-|:--------:|:------:|:--------:|:---------:|:--------:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Travis](https://img.shields.io/travis/lehins/massiv/master.svg?label=Linux%20%26%20OS%20X)](https://travis-ci.org/lehins/massiv) | [![Build Status](https://dev.azure.com/kuleshevich/massiv/_apis/build/status/lehins.massiv?branchName=master)](https://dev.azure.com/kuleshevich/massiv/_build?branchName=master) | [![Coverage Status](https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master)](https://coveralls.io/github/lehins/massiv?branch=master) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+| Language | Github Actions | Azure | Coveralls |Gitter.im |
+|:--------:|:--------------:|:--------:|:---------:|:--------:|
+| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Build Status](https://github.com/lehins/massiv/workflows/massiv-CI/badge.svg)](https://github.com/lehins/massiv/actions) | [![Build Status](https://dev.azure.com/kuleshevich/massiv/_apis/build/status/lehins.massiv?branchName=master)](https://dev.azure.com/kuleshevich/massiv/_build?branchName=master) | [![Coverage Status](https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master)](https://coveralls.io/github/lehins/massiv?branch=master) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 |      Package       | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
