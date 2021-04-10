@@ -1,5 +1,7 @@
 # 0.6.1
 
+* Addition of `withLoadMArray_`, `withLoadMArrayS`, `withLoadMArrayS_`,
+  `withLoadMArrayST`, `withLoadMArrayST_`
 * Addition of `replaceSlice` and `replaceOuterSlice`
 
 # 0.6.0

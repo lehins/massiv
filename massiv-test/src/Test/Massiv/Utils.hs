@@ -13,6 +13,7 @@ module Test.Massiv.Utils
   , ExpectedException(..)
   , applyFun2Compat
   , expectProp
+  , propIO
   -- * Epsilon comparison
   , epsilonExpect
   , epsilonFoldableExpect
@@ -108,6 +109,12 @@ instance Function Word where
 -- @since 1.5.0
 expectProp :: Expectation -> Property
 expectProp = monadicIO . run
+
+-- | Convert a Testable to a quickcheck Property. Works well with hspec expectations as well
+--
+-- @since 1.7.0
+propIO :: Testable a => IO a -> Property
+propIO action = monadicIO $ run action
 
 
 epsilonExpect ::
