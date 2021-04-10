@@ -38,6 +38,10 @@ module Data.Massiv.Core
   , WorkerStates
   , initWorkerStates
   , module Data.Massiv.Core.Index
+  -- * Numeric
+  , FoldNumeric
+  , Numeric
+  , NumericFloat
   -- * Exceptions
   , MonadThrow(..)
   , throw
@@ -56,6 +60,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.List
 import Data.Massiv.Core.Exception
+import module Data.Massiv.Core.Operations (FoldNumeric, Numeric, NumericFloat)
 
 
 -- | Append computation strategy using `Comp`'s `Monoid` instance.

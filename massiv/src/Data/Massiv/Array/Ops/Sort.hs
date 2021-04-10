@@ -25,7 +25,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Vector (scatMaybes, sunfoldrN)
 import System.IO.Unsafe
 
--- | Count how many occurance of each element there is in the array. Results will be
+-- | Count number of occurrences of each element in the array. Results will be
 -- sorted in ascending order of the element.
 --
 -- ==== __Example__
