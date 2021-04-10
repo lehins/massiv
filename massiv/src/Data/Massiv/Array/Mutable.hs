@@ -81,10 +81,15 @@ module Data.Massiv.Array.Mutable
   -- *** Modify
   , withMArray
   , withMArray_
+  , withLoadMArray_
   , withMArrayS
+  , withLoadMArrayS
   , withMArrayS_
+  , withLoadMArrayS_
   , withMArrayST
+  , withLoadMArrayST
   , withMArrayST_
+  , withLoadMArrayST_
   -- *** Initialize
   , initialize
   , initializeNew
@@ -851,6 +856,28 @@ withMArray_ arr action = do
 {-# INLINE withMArray_ #-}
 
 
+-- | Same as `withMArray_`, but the array supplied to this function can be any loadable
+-- array. For that reason it will be faster if supplied array is delayed.
+--
+-- @since 0.6.1
+withLoadMArray_ ::
+     forall r ix e r' m b. (Load r' ix e, Mutable r ix e, MonadUnliftIO m)
+  => Array r' ix e
+  -> (Scheduler m () -> MArray RealWorld r ix e -> m b)
+  -> m (Array r ix e)
+withLoadMArray_ arr action = do
+  marr <- liftIO $ unsafeNew (size arr)
+  withScheduler_ (getComp arr) $ \scheduler -> do
+    runBatch_ scheduler $ \_ -> loadArrayM scheduler arr (\i -> liftIO . unsafeLinearWrite marr i)
+    action scheduler marr
+  liftIO $ unsafeFreeze (getComp arr) marr
+{-# INLINE[2] withLoadMArray_ #-}
+{-# RULES
+"withLoadMArray_/withMArray_" [~2] withLoadMArray_ = withMArray_
+"withLoadMArrayS/withMArrayS" [~2] withLoadMArrayS = withMArrayS
+"withLoadMArrayS_/withMArrayS_" [~2] withLoadMArrayS_ = withMArrayS_
+#-}
+
 -- | Create a copy of a pure array, mutate it in place and return its frozen version. The important
 -- benefit over doing a manual `thawS` followed by a `freezeS` is that an array will only be copied
 -- once.
@@ -868,7 +895,7 @@ withMArrayS arr action = do
 {-# INLINE withMArrayS #-}
 
 
--- | Same as `withMArrayS`, but discards rhe element produced by the supplied action
+-- | Same as `withMArrayS`, except it discards the value produced by the supplied action
 --
 -- @since 0.5.0
 withMArrayS_ ::
@@ -878,6 +905,33 @@ withMArrayS_ ::
   -> m (Array r ix e)
 withMArrayS_ arr action = snd <$> withMArrayS arr action
 {-# INLINE withMArrayS_ #-}
+
+
+-- | Same as `withMArrayS`, but will work with any loadable array.
+--
+-- @since 0.6.1
+withLoadMArrayS ::
+     forall r ix e r' m a. (Load r' ix e, Mutable r ix e, PrimMonad m)
+  => Array r' ix e
+  -> (MArray (PrimState m) r ix e -> m a)
+  -> m (a, Array r ix e)
+withLoadMArrayS arr action = do
+  marr <- unsafeNew (size arr)
+  loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
+  a <- action marr
+  (,) a <$> unsafeFreeze (getComp arr) marr
+{-# INLINE[2] withLoadMArrayS #-}
+
+-- | Same as `withMArrayS_`, but will work with any loadable array.
+--
+-- @since 0.6.1
+withLoadMArrayS_ ::
+     forall r ix e r' m a. (Load r' ix e, Mutable r ix e, PrimMonad m)
+  => Array r' ix e
+  -> (MArray (PrimState m) r ix e -> m a)
+  -> m (Array r ix e)
+withLoadMArrayS_ arr action = snd <$> withLoadMArrayS arr action
+{-# INLINE[2] withLoadMArrayS_ #-}
 
 
 -- | Same as `withMArrayS` but in `ST`. This is not only pure, but also the safest way to do
@@ -900,6 +954,29 @@ withMArrayST_ ::
      Mutable r ix e => Array r ix e -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
 withMArrayST_ arr f = runST $ withMArrayS_ arr f
 {-# INLINE withMArrayST_ #-}
+
+
+-- | Same as `withMArrayST`, but works with any loadable array.
+--
+-- @since 0.6.1
+withLoadMArrayST ::
+     forall r ix e r' a. (Load r' ix e, Mutable r ix e)
+  => Array r' ix e
+  -> (forall s. MArray s r ix e -> ST s a)
+  -> (a, Array r ix e)
+withLoadMArrayST arr f = runST $ withLoadMArrayS arr f
+{-# INLINE[2] withLoadMArrayST #-}
+
+-- | Same as `withMArrayST_`, but works with any loadable array.
+--
+-- @since 0.6.1
+withLoadMArrayST_ ::
+     forall r ix e r' a. (Load r' ix e, Mutable r ix e)
+  => Array r' ix e
+  -> (forall s. MArray s r ix e -> ST s a)
+  -> Array r ix e
+withLoadMArrayST_ arr f = runST $ withLoadMArrayS_ arr f
+{-# INLINE[2] withLoadMArrayST_ #-}
 
 
 -- | /O(1)/ - Lookup an element in the mutable array. Returns `Nothing` when index is out of bounds.

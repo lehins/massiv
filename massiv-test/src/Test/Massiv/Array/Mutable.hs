@@ -18,13 +18,14 @@ module Test.Massiv.Array.Mutable
   , atomicIntSpec
   ) where
 
+import Control.Scheduler
 import Data.Bits
 import Data.Functor.Identity
 import Data.List as L
 import Data.Massiv.Array as A
-import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Array.Mutable.Atomic
 import Data.Massiv.Array.Unsafe
+import qualified Data.Massiv.Vector.Stream as S
 import Test.Massiv.Core.Common
 import Test.Massiv.Utils as T
 import UnliftIO.Async
@@ -154,6 +155,32 @@ prop_toStreamArrayMutable ::
 prop_toStreamArrayMutable arr =
   arr === S.unstreamExact (size arr) (S.stepsStream (toSteps (toStreamArray arr)))
 
+prop_WithMArray ::
+     forall r ix e. (HasCallStack, Mutable r ix e, Eq (Array r ix e), Show (Array r ix e))
+  => Array r ix e
+  -> Fun e e
+  -> Fun e e
+  -> Property
+prop_WithMArray arr f g =
+  expectProp $ do
+    let g' :: Monad m => e -> m e
+        g' = pure . applyFun g
+    let arr' = compute $ A.map (applyFun g . applyFun f) arr
+    arr1 <-
+      withMArray_ arr $ \scheduler marr -> scheduleWork_ scheduler $ forPrimM marr (g' . applyFun f)
+    arr1 `shouldBe` arr'
+    arr2 <-
+      withLoadMArray_ (A.map (applyFun f) arr) $ \scheduler marr ->
+        scheduleWork_ scheduler $ forPrimM marr g'
+    arr2 `shouldBe` arr'
+    arr3 <- withMArrayS_ arr $ \marr -> forPrimM marr (g' . applyFun f)
+    arr3 `shouldBe` arr'
+    arr4 <- withLoadMArrayS_ (A.map (applyFun f) arr) $ \marr -> forPrimM marr g'
+    arr4 `shouldBe` arr'
+    let arr5 = withMArrayST_ arr $ \marr -> forPrimM marr (g' . applyFun f)
+    arr5 `shouldBe` arr'
+    let arr6 = withLoadMArrayST_ (A.map (applyFun f) arr) $ \marr -> forPrimM marr g'
+    arr6 `shouldBe` arr'
 
 mutableSpec ::
      forall r ix e.
@@ -180,15 +207,16 @@ mutableSpec ::
   => Spec
 mutableSpec = do
   describe ("Mutable (" ++ showsArrayType @r @ix @e ") (Safe)") $ do
-    it "GenerateArray" $ property $ prop_GenerateArray @r @ix @e
-    it "Shrink" $ property $ prop_Shrink @r @ix @e
-    it "GrowShrink" $ property $ prop_GrowShrink @r @ix @e
-    it "map == mapM" $ property $ prop_iMapiMapM @r @ix @e
+    prop "GenerateArray" $ prop_GenerateArray @r @ix @e
+    prop "Shrink" $ prop_Shrink @r @ix @e
+    prop "GrowShrink" $ prop_GrowShrink @r @ix @e
+    prop "map == mapM" $ prop_iMapiMapM @r @ix @e
+    prop "withMArray" $ prop_WithMArray @r @ix @e
   describe "Unfolding" $ do
     it "unfoldrList" $ prop_unfoldrList @r @ix @e
     it "unfoldrReverseUnfoldl" $ prop_unfoldrReverseUnfoldl @r @ix @e
   describe "Stream" $
-    it "toStreamArrayMutable" $ property (prop_toStreamArrayMutable @r @ix @e)
+    prop "toStreamArrayMutable" $ prop_toStreamArrayMutable @r @ix @e
 
 -- | Try to write many elements into the same array cell concurrently, while keeping the
 -- previous element for each write. With atomic writes, not a single element should be lost.
