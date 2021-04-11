@@ -79,6 +79,10 @@ instance NFData ix => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
+instance NFData ix => NFData (MArray s S ix e) where
+  rnf (MSArray sz mv) = sz `deepseq` mv `deepseq` ()
+  {-# INLINE rnf #-}
+
 instance (Storable e, Eq e, Index ix) => Eq (Array S ix e) where
   (==) = eqArrays (==)
   {-# INLINE (==) #-}

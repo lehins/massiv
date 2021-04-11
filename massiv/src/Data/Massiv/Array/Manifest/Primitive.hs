@@ -91,6 +91,10 @@ instance Index ix => NFData (Array P ix e) where
   rnf (PArray c sz o a) = c `deepseq` sz `deepseq` o `seq` a `seq` ()
   {-# INLINE rnf #-}
 
+instance NFData ix => NFData (MArray s P ix e) where
+  rnf (MPArray sz _o _mb) = sz `deepseq` ()
+  {-# INLINE rnf #-}
+
 instance (Prim e, Eq e, Index ix) => Eq (Array P ix e) where
   (==) = eqArrays (==)
   {-# INLINE (==) #-}
