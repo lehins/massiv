@@ -58,6 +58,9 @@ instance NFData ix => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
+instance NFData ix => NFData (MArray s U ix e) where
+  rnf (MUArray sz mv) = sz `deepseq` mv `deepseq` ()
+  {-# INLINE rnf #-}
 
 instance (VU.Unbox e, Index ix) => Construct U ix e where
   setComp c arr = arr { uComp = c }

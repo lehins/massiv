@@ -565,7 +565,7 @@ unsafeDefaultLinearShrink marr sz = do
 -- @since 0.1.0
 unsafeRead :: (Mutable r ix e, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> m e
-unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
+unsafeRead marr = unsafeLinearRead marr . toLinearIndex (msize marr)
 {-# INLINE unsafeRead #-}
 
 -- | Write an element into array
@@ -573,7 +573,7 @@ unsafeRead !marr !ix = unsafeLinearRead marr (toLinearIndex (msize marr) ix)
 -- @since 0.1.0
 unsafeWrite :: (Mutable r ix e, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> e -> m ()
-unsafeWrite !marr !ix = unsafeLinearWrite marr (toLinearIndex (msize marr) ix)
+unsafeWrite marr = unsafeLinearWrite marr . toLinearIndex (msize marr)
 {-# INLINE unsafeWrite #-}
 
 

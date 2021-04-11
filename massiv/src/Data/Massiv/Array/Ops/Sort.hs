@@ -12,7 +12,9 @@
 module Data.Massiv.Array.Ops.Sort
   ( tally
   , quicksort
+  , quicksortBy
   , quicksortM_
+  , quicksortByM_
   , unsafeUnstablePartitionRegionM
   ) where
 
@@ -40,7 +42,7 @@ import System.IO.Unsafe
 --   [ (1,1), (2,3), (3,1), (4,2), (5,1) ]
 --
 -- @since 0.4.4
-tally :: (Mutable r Ix1 e, Resize r ix, Load r ix e, Ord e) => Array r ix e -> Array DS Ix1 (e, Int)
+tally :: (Mutable r Ix1 e, Resize r ix, Load r ix e, Ord e) => Array r ix e -> Vector DS (e, Int)
 tally arr
   | isEmpty arr = setComp (getComp arr) empty
   | otherwise = scatMaybes $ sunfoldrN (sz + 1) count (0, 0, sorted ! 0)
@@ -58,36 +60,48 @@ tally arr
 {-# INLINE tally #-}
 
 
-
--- | Partition a segment of a vector. Starting and ending indices are unchecked.
---
--- @since 0.3.2
-unsafeUnstablePartitionRegionM ::
+unsafeUnstablePartitionRegionM' ::
      forall r e m. (Mutable r Ix1 e, PrimMonad m)
   => MArray (PrimState m) r Ix1 e
-  -> (e -> Bool)
+  -> (e -> m Bool)
   -> Ix1 -- ^ Start index of the region
   -> Ix1 -- ^ End index of the region
   -> m Ix1
-unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
+unsafeUnstablePartitionRegionM' marr f start end = fromLeft start (end + 1)
   where
     fromLeft i j
       | i == j = pure i
       | otherwise = do
-        x <- unsafeRead marr i
-        if f x
+        e <- f =<< unsafeLinearRead marr i
+        if e
           then fromLeft (i + 1) j
           else fromRight i (j - 1)
     fromRight i j
       | i == j = pure i
       | otherwise = do
-        x <- unsafeRead marr j
-        if f x
+        x <- unsafeLinearRead marr j
+        e <- f x
+        if e
           then do
-            unsafeWrite marr j =<< unsafeRead marr i
-            unsafeWrite marr i x
+            unsafeLinearWrite marr j =<< unsafeLinearRead marr i
+            unsafeLinearWrite marr i x
             fromLeft (i + 1) j
           else fromRight i (j - 1)
+{-# INLINE unsafeUnstablePartitionRegionM' #-}
+
+
+-- TODO: Replace `unsafeUnstablePartitionRegionM` with `unsafeUnstablePartitionRegionM'`
+-- | Partition a segment of a vector. Starting and ending indices are unchecked.
+--
+-- @since 0.3.2
+unsafeUnstablePartitionRegionM ::
+     forall r e m. (Mutable r Ix1 e, PrimMonad m)
+  => MVector (PrimState m) r e
+  -> (e -> Bool)
+  -> Ix1 -- ^ Start index of the region
+  -> Ix1 -- ^ End index of the region
+  -> m Ix1
+unsafeUnstablePartitionRegionM marr f = unsafeUnstablePartitionRegionM' marr (pure . f)
 {-# INLINE unsafeUnstablePartitionRegionM #-}
 
 
@@ -104,6 +118,14 @@ quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 {-# INLINE quicksort #-}
 
 
+-- | Same as `quicksortBy`, but instead of `Ord` constraint expects a custom `Ordering`.
+--
+-- @since 0.6.1
+quicksortBy ::
+     (Mutable r Ix1 e) => (e -> e -> Ordering) -> Vector r e -> Vector r e
+quicksortBy f arr =
+  unsafePerformIO $ withMArray_ arr (quicksortByM_ (\x y -> pure $ f x y))
+{-# INLINE quicksortBy #-}
 
 -- | Mutable version of `quicksort`
 --
@@ -111,32 +133,58 @@ quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 quicksortM_ ::
      (Ord e, Mutable r Ix1 e, PrimMonad m)
   => Scheduler m ()
-  -> MArray (PrimState m) r Ix1 e
+  -> MVector (PrimState m) r e
   -> m ()
-quicksortM_ scheduler marr =
+quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e1 == e2)
+{-# INLINE quicksortM_ #-}
+
+
+-- | Same as `quicksortM_`, but instead of `Ord` constraint expects a custom `Ordering`.
+--
+-- @since 0.6.1
+quicksortByM_ ::
+     (Mutable r Ix1 e, PrimMonad m)
+  => (e -> e -> m Ordering)
+  -> Scheduler m ()
+  -> MVector (PrimState m) r e
+  -> m ()
+quicksortByM_ compareM =
+  quicksortInternalM_ (\x y -> (LT ==) <$> compareM x y) (\x y -> (EQ ==) <$> compareM x y)
+{-# INLINE quicksortByM_ #-}
+
+
+quicksortInternalM_ ::
+     (Mutable r Ix1 e, PrimMonad m)
+  => (e -> e -> m Bool)
+  -> (e -> e -> m Bool)
+  -> Scheduler m ()
+  -> MVector (PrimState m) r e
+  -> m ()
+quicksortInternalM_ fLT fEQ scheduler marr =
   scheduleWork scheduler $ qsort (numWorkers scheduler) 0 (unSz (msize marr) - 1)
   where
-    leSwap i j = do
-      ei <- unsafeRead marr i
-      ej <- unsafeRead marr j
-      if ei < ej
+    ltSwap i j = do
+      ei <- unsafeLinearRead marr i
+      ej <- unsafeLinearRead marr j
+      lt <- fLT ei ej
+      if lt
         then do
-          unsafeWrite marr i ej
-          unsafeWrite marr j ei
+          unsafeLinearWrite marr i ej
+          unsafeLinearWrite marr j ei
           pure ei
         else pure ej
-    {-# INLINE leSwap #-}
+    {-# INLINE ltSwap #-}
     getPivot lo hi = do
       let !mid = (hi + lo) `div` 2
-      _ <- leSwap mid lo
-      _ <- leSwap hi lo
-      leSwap mid hi
+      _ <- ltSwap mid lo
+      _ <- ltSwap hi lo
+      ltSwap mid hi
     {-# INLINE getPivot #-}
     qsort !n !lo !hi =
       when (lo < hi) $ do
         p <- getPivot lo hi
-        l <- unsafeUnstablePartitionRegionM marr (< p) lo (hi - 1)
-        h <- unsafeUnstablePartitionRegionM marr (== p) l hi
+        l <- unsafeUnstablePartitionRegionM' marr (`fLT` p) lo (hi - 1)
+        h <- unsafeUnstablePartitionRegionM' marr (`fEQ` p) l hi
         if n > 0
           then do
             let !n' = n - 1
@@ -145,4 +193,4 @@ quicksortM_ scheduler marr =
           else do
             qsort n lo (l - 1)
             qsort n h hi
-{-# INLINE quicksortM_ #-}
+{-# INLINE quicksortInternalM_ #-}
