@@ -13,11 +13,13 @@ module Data.Massiv.Array.Ops.Sort
   ( tally
   , quicksort
   , quicksortBy
+  , quicksortByM
   , quicksortM_
   , quicksortByM_
   , unsafeUnstablePartitionRegionM
   ) where
 
+import Control.Monad.IO.Unlift
 import Control.Monad (when)
 import Control.Scheduler
 import Data.Massiv.Array.Delayed.Stream
@@ -117,6 +119,14 @@ quicksort ::
 quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 {-# INLINE quicksort #-}
 
+
+-- | Same as `quicksortBy`, but instead of `Ord` constraint expects a custom `Ordering`.
+--
+-- @since 0.6.1
+quicksortByM ::
+     (Mutable r Ix1 e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
+quicksortByM f arr = withRunInIO $ \run -> withMArray_ arr (quicksortByM_ (\x y -> run (f x y)))
+{-# INLINE quicksortByM #-}
 
 -- | Same as `quicksortBy`, but instead of `Ord` constraint expects a custom `Ordering`.
 --
