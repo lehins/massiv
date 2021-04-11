@@ -3,7 +3,7 @@
 * Addition of `withLoadMArray_`, `withLoadMArrayS`, `withLoadMArrayS_`,
   `withLoadMArrayST`, `withLoadMArrayST_`
 * Addition of `replaceSlice` and `replaceOuterSlice`
-* Addition of `quicksortBy` and `quicksortByM_`
+* Addition of `quicksortBy`, `quicksortByM` and `quicksortByM_`
 * Fix performance regression for `quicksort` and `quicksortM_` introduced in previous release.
 
 # 0.6.0

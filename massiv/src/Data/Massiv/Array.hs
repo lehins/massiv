@@ -133,6 +133,8 @@ module Data.Massiv.Array
   -- * Algorithms
   -- ** Sorting
   , quicksort
+  , quicksortBy
+  , quicksortByM
   , tally
   -- ** Iterations
   , iterateUntil
@@ -162,7 +164,7 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Array.Ops.Slice
-import Data.Massiv.Array.Ops.Sort (quicksort, tally)
+import Data.Massiv.Array.Ops.Sort
 import Data.Massiv.Array.Ops.Transform
 import Data.Massiv.Array.Stencil
 import Data.Massiv.Core
