@@ -5,6 +5,7 @@
 * Addition of `replaceSlice` and `replaceOuterSlice`
 * Addition of `quicksortBy`, `quicksortByM` and `quicksortByM_`
 * Fix performance regression for `quicksort` and `quicksortM_` introduced in previous release.
+* Export previously internal functionality `unsafeMultiplyMatricesM`
 
 # 0.6.0
 

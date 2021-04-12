@@ -100,6 +100,7 @@ import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
+import Data.Massiv.Array.Numeric.Internal
 import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Core
@@ -542,7 +543,6 @@ multiplyVectorByMatrix v mm
 (.><.) = multiplyMatrices
 {-# INLINE (.><.) #-}
 
-
 -- | Synonym for `.><.`
 --
 -- @since 0.5.6
@@ -555,136 +555,14 @@ multiplyMatrices arrA arrB
   | isEmpty arrA || isEmpty arrB = pure $ setComp comp empty
   | otherwise = pure $! unsafePerformIO $ do
     marrC <- newMArray (SafeSz (mA :. nB)) 0
-    withScheduler_ comp $ \scheduler -> do
-      let withC00 iA jB f = let !ixC00 = iA * nB + jB
-                            in f ixC00 =<< unsafeLinearRead marrC ixC00
-          withC01 ixC00 f = let !ixC01 = ixC00 + 1
-                            in f ixC01 =<< unsafeLinearRead marrC ixC01
-          withC10 ixC00 f = let !ixC10 = ixC00 + nB
-                            in f ixC10 =<< unsafeLinearRead marrC ixC10
-          withC11 ixC01 f = let !ixC11 = ixC01 + nB
-                            in f ixC11 =<< unsafeLinearRead marrC ixC11
-          withB00 iB jB f = let !ixB00 = iB * nB + jB
-                            in f ixB00 $! unsafeLinearIndex arrB ixB00
-          withB00B10 iB jB f =
-            withB00 iB jB $ \ixB00 b00 -> let !ixB10 = ixB00 + nB
-                                          in f ixB00 b00 ixB10 $! unsafeLinearIndex arrB ixB10
-          withA00 iA jA f = let !ixA00 = iA * nA + jA
-                            in f ixA00 $! unsafeLinearIndex arrA ixA00
-          withA00A10 iA jA f =
-            withA00 iA jA $ \ixA00 a00 -> let !ixA10 = ixA00 + nA
-                                          in f ixA00 a00 ixA10 $! unsafeLinearIndex arrA ixA10
-      let loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB jB
-            | jB < n2B = do
-              withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                    !b11 = unsafeLinearIndex arrB (ixB10 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-                  withC01 ixC00 $ \ixC01 c01 -> do
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
-                    withC10 ixC00 $ \ixC10 c10 ->
-                      unsafeLinearWrite marrC ixC10 (c10 + a10 * b00 + a11 * b10)
-                    withC11 ixC01 $ \ixC11 c11 ->
-                      unsafeLinearWrite marrC ixC11 (c11 + a10 * b01 + a11 * b11)
-              loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB (jB + 2)
-
-            | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
-                          withC00 iA jB $ \ixC00 c00 -> do
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-                            withC10 ixC00 $ \ixC10 c10 ->
-                              unsafeLinearWrite marrC ixC10 (c10 + a10 * b00 + a11 * b10)
-            | otherwise = pure ()
-
-          loopColsB_UnRowBColA_RowA a00 a01 iA iB jB
-            | jB < n2B = do
-              withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                    !b11 = unsafeLinearIndex arrB (ixB10 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-                  withC01 ixC00 $ \ixC01 c01 ->
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
-              loopColsB_UnRowBColA_RowA a00 a01 iA iB (jB + 2)
-
-            | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
-                          withC00 iA jB $ \ixC00 c00 ->
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-            | otherwise = pure ()
-
-          loopColsB_RowBColA_UnRowA a00 a10 iA iB jB
-            | jB < n2B = do
-              withB00 iB jB $ \ixB00 b00 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
-                  withC01 ixC00 $ \ixC01 c01 -> do
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
-                    withC10 ixC00 $ \ixC10 c10 ->
-                      unsafeLinearWrite marrC ixC10 (c10 + a10 * b00)
-                    withC11 ixC01 $ \ixC11 c11 ->
-                      unsafeLinearWrite marrC ixC11 (c11 + a10 * b01)
-              loopColsB_RowBColA_UnRowA a00 a10 iA iB (jB + 2)
-
-            | jB < nB = withB00 iB jB $ \_ b00 ->
-                          withC00 iA jB $ \ixC00 c00 -> do
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
-                            withC10 ixC00 $ \ixC10 c10 ->
-                              unsafeLinearWrite marrC ixC10 (c10 + a10 * b00)
-            | otherwise = pure ()
-
-          loopColsB_RowBColA_RowA a00 iA iB jB
-            | jB < n2B = do
-              withB00 iB jB $ \ixB00 b00 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
-                  withC01 ixC00 $ \ixC01 c01 -> do
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
-              loopColsB_RowBColA_RowA a00 iA iB (jB + 2)
-            | jB < nB = withB00 iB jB $ \_ b00 ->
-                          withC00 iA jB $ \ixC00 c00 ->
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
-
-            | otherwise = pure ()
-
-          loopRowsB_UnRowA iA iB
-            | iB < m2B = do
-              withA00A10 iA iB $ \ixA00 a00 ixA10 a10 -> do
-                let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
-                    !a11 = unsafeLinearIndex arrA (ixA10 + 1)
-                loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB 0
-              loopRowsB_UnRowA iA (iB + 2)
-            | iB < mB =
-              withA00A10 iA iB $ \_ a00 _ a10 -> loopColsB_RowBColA_UnRowA a00 a10 iA iB 0
-            | otherwise = pure ()
-
-          loopRowsB_RowA iA iB
-            | iB < m2B = do
-              withA00 iA iB $ \ixA00 a00 -> do
-                let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
-                loopColsB_UnRowBColA_RowA a00 a01 iA iB 0
-              loopRowsB_RowA iA (iB + 2)
-            | iB < mB = withA00 iA iB $ \_ a00 -> loopColsB_RowBColA_RowA a00 iA iB 0
-            | otherwise = pure ()
-
-          loopRowsA iA
-            | iA < m2A = do
-              scheduleWork_ scheduler $ loopRowsB_UnRowA iA 0
-              loopRowsA (iA + 2)
-            | iA < mA = scheduleWork_ scheduler $ loopRowsB_RowA iA 0
-            | otherwise = pure ()
-      loopRowsA 0
-
+    withMassivScheduler_ comp $ \scheduler ->
+      unsafeMultiplyMatricesM scheduler marrC arrA arrB
     unsafeFreeze comp marrC
   where
     comp = getComp arrA <> getComp arrB
-    m2A = mA - mA `rem` 2
-    m2B = mB - mB `rem` 2
-    n2B = nB - nB `rem` 2
     Sz (mA :. nA) = size arrA
     Sz (mB :. nB) = size arrB
-{-# INLINEABLE multiplyMatrices #-}
+{-# INLINE multiplyMatrices #-}
 
 -- | Computes the matrix-matrix multiplication where second matrix is transposed (i.e. M
 -- x N')

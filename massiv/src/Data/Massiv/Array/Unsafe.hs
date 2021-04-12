@@ -79,6 +79,8 @@ module Data.Massiv.Array.Unsafe
   , unsafeAtomicOrIntArray
   , unsafeAtomicXorIntArray
   , unsafeCasIntArray
+    -- ** Numeric
+  , unsafeMultiplyMatricesM
     -- ** Other operations
   , coerceBoxedArray
   , coerceNormalBoxedArray
@@ -89,6 +91,7 @@ module Data.Massiv.Array.Unsafe
 
 import Data.Massiv.Array.Delayed.Pull (D)
 import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray, unsafeMakeLoadArrayAdjusted)
+import Data.Massiv.Array.Numeric.Internal
 import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable

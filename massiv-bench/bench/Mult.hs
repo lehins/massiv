@@ -26,7 +26,7 @@ main :: IO ()
 main = do
   defaultMain
     [ let MxM {..} = randomMxM
-      in bench "multArrsAlt (baseline)" $ whnf (multArrsAlt aMxM) bMxM
+      in bench "multArrsAlt (baseline - Seq)" $ whnf (multArrsAlt aMxM) bMxM
     , benchMxM (randomMxM :: MxM S Double)
     , benchVxM (randomVxM :: VxM S Double)
     , benchMxV (randomMxV :: MxV S Double)

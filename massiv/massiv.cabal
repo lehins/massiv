@@ -59,6 +59,7 @@ library
                      , Data.Massiv.Array.Manifest.Storable
                      , Data.Massiv.Array.Manifest.Unboxed
                      , Data.Massiv.Array.Mutable.Internal
+                     , Data.Massiv.Array.Numeric.Internal
                      , Data.Massiv.Array.Ops.Construct
                      , Data.Massiv.Array.Ops.Fold
                      , Data.Massiv.Array.Ops.Fold.Internal

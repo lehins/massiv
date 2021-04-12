@@ -859,7 +859,7 @@ withMArray_ arr action = do
 -- | Same as `withMArray_`, but the array supplied to this function can be any loadable
 -- array. For that reason it will be faster if supplied array is delayed.
 --
--- @since 0.6.2
+-- @since 0.6.1
 withLoadMArray_ ::
      forall r ix e r' m b. (Load r' ix e, Mutable r ix e, MonadUnliftIO m)
   => Array r' ix e
@@ -909,7 +909,7 @@ withMArrayS_ arr action = snd <$> withMArrayS arr action
 
 -- | Same as `withMArrayS`, but will work with any loadable array.
 --
--- @since 0.6.2
+-- @since 0.6.1
 withLoadMArrayS ::
      forall r ix e r' m a. (Load r' ix e, Mutable r ix e, PrimMonad m)
   => Array r' ix e
@@ -924,7 +924,7 @@ withLoadMArrayS arr action = do
 
 -- | Same as `withMArrayS_`, but will work with any loadable array.
 --
--- @since 0.6.2
+-- @since 0.6.1
 withLoadMArrayS_ ::
      forall r ix e r' m a. (Load r' ix e, Mutable r ix e, PrimMonad m)
   => Array r' ix e
@@ -958,7 +958,7 @@ withMArrayST_ arr f = runST $ withMArrayS_ arr f
 
 -- | Same as `withMArrayST`, but works with any loadable array.
 --
--- @since 0.6.2
+-- @since 0.6.1
 withLoadMArrayST ::
      forall r ix e r' a. (Load r' ix e, Mutable r ix e)
   => Array r' ix e
@@ -969,7 +969,7 @@ withLoadMArrayST arr f = runST $ withLoadMArrayS arr f
 
 -- | Same as `withMArrayST_`, but works with any loadable array.
 --
--- @since 0.6.2
+-- @since 0.6.1
 withLoadMArrayST_ ::
      forall r ix e r' a. (Load r' ix e, Mutable r ix e)
   => Array r' ix e
