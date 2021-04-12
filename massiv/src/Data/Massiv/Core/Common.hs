@@ -373,12 +373,15 @@ class (Typeable r, Index ix) => Load r ix e where
 
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
-withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()
-withMassivScheduler_ comp f =
+--
+-- @since 0.6.1
+withMassivScheduler_ :: Comp -> ((Scheduler IO () -> IO ()) -> IO ())
+withMassivScheduler_ comp =
   case comp of
-    Par -> withGlobalScheduler_ globalScheduler f
-    Seq -> f trivialScheduler_
-    _ -> withScheduler_ comp f
+    Par -> withGlobalScheduler_ globalScheduler
+    Seq -> ($ trivialScheduler_)
+    _ -> withScheduler_ comp
+{-# INLINE withMassivScheduler_ #-}
 
 class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of

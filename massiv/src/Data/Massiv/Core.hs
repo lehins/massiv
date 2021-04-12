@@ -37,6 +37,7 @@ module Data.Massiv.Core
   , appComp
   , WorkerStates
   , initWorkerStates
+  , withMassivScheduler_
   , module Data.Massiv.Core.Index
   -- * Numeric
   , FoldNumeric

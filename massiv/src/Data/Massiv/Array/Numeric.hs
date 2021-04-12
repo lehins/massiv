@@ -113,6 +113,7 @@ import Control.Monad (when)
 import qualified Data.Foldable as F
 import Data.Function
 
+
 infixr 8  .^, .^^
 infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
 infixl 6  !+!, .+., .+, +., !-!, .-., .-, -.
@@ -555,14 +556,16 @@ multiplyMatrices arrA arrB
   | isEmpty arrA || isEmpty arrB = pure $ setComp comp empty
   | otherwise = pure $! unsafePerformIO $ do
     marrC <- newMArray (SafeSz (mA :. nB)) 0
-    withMassivScheduler_ comp $ \scheduler ->
-      unsafeMultiplyMatricesM scheduler marrC arrA arrB
+    let mult scheduler = unsafeMultiplyMatricesM scheduler marrC arrA arrB
+        {-# INLINE mult #-}
+    withMassivScheduler_ comp mult
     unsafeFreeze comp marrC
   where
     comp = getComp arrA <> getComp arrB
     Sz (mA :. nA) = size arrA
     Sz (mB :. nB) = size arrB
 {-# INLINE multiplyMatrices #-}
+
 
 -- | Computes the matrix-matrix multiplication where second matrix is transposed (i.e. M
 -- x N')
