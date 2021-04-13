@@ -387,7 +387,7 @@ class (Strategy r, Shape r ix) => Load r ix e where
     -> m ()
   loadArrayM scheduler arr uWrite =
     loadArrayWithSetM scheduler arr uWrite $ \offset sz e ->
-      loopM_ offset (< (offset + unSz sz)) (+1) (\i -> uWrite i e)
+      loopM_ offset (< (offset + unSz sz)) (+1) (`uWrite` e)
   {-# INLINE loadArrayM #-}
 
   -- | Load an array into memory, just like `loadArrayM`. Except it also accepts a
@@ -417,7 +417,8 @@ class (Strategy r, Shape r ix) => Load r ix e where
     -> Array r ix e
     -> m (MArray (PrimState m) r' ix e)
   unsafeLoadIntoS marr arr =
-    munsafeResize (outerSize arr) marr <$ loadArrayWithSetM trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
+    munsafeResize (outerSize arr) marr <$
+    loadArrayWithSetM trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
   {-# INLINE unsafeLoadIntoS #-}
 
   -- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
@@ -435,12 +436,15 @@ class (Strategy r, Shape r ix) => Load r ix e where
   {-# INLINE unsafeLoadIntoM #-}
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
+--
+-- @since 1.0.0
 withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()
 withMassivScheduler_ comp f =
   case comp of
     Par -> withGlobalScheduler_ globalScheduler f
     Seq -> f trivialScheduler_
     _   -> withScheduler_ comp f
+{-# INLINE withMassivScheduler_ #-}
 
 class (Size r, Load r ix e) => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
