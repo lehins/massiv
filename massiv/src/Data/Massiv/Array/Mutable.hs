@@ -858,16 +858,14 @@ withMArray_ arr action = do
 -- array. For that reason it will be faster if supplied array is delayed.
 --
 -- @since 0.6.1
-withLoadMArray_ :: --TODO: fix unsafeLoadIntoM to accept a scheduler
-     forall r ix e r' m b. (Size r', Load r' ix e, Mutable r e, MonadUnliftIO m)
+withLoadMArray_ ::
+     forall r ix e r' m b. (Load r' ix e, Mutable r e, MonadUnliftIO m)
   => Array r' ix e
   -> (Scheduler m () -> MArray RealWorld r ix e -> m b)
   -> m (Array r ix e)
 withLoadMArray_ arr action = do
-  marr <- liftIO $ unsafeNew (size arr)
-  withScheduler_ (getComp arr) $ \scheduler -> do
-    runBatch_ scheduler $ \_ -> loadArrayM scheduler arr (\i -> liftIO . unsafeLinearWrite marr i)
-    action scheduler marr
+  marr <- loadArray arr
+  withScheduler_ (getComp arr) (`action` marr)
   liftIO $ unsafeFreeze (getComp arr) marr
 {-# INLINE[2] withLoadMArray_ #-}
 {-# RULES
@@ -908,14 +906,13 @@ withMArrayS_ arr action = snd <$> withMArrayS arr action
 -- | Same as `withMArrayS`, but will work with any loadable array.
 --
 -- @since 0.6.1
-withLoadMArrayS :: --TODO: fix unsafeLoadIntoM to accept a scheduler
-     forall r ix e r' m a. (Size r', Load r' ix e, Mutable r e, PrimMonad m)
+withLoadMArrayS ::
+     forall r ix e r' m a. (Load r' ix e, Mutable r e, PrimMonad m)
   => Array r' ix e
   -> (MArray (PrimState m) r ix e -> m a)
   -> m (a, Array r ix e)
 withLoadMArrayS arr action = do
-  marr <- unsafeNew (size arr)
-  loadArrayM trivialScheduler_ arr (unsafeLinearWrite marr)
+  marr <- loadArrayS arr
   a <- action marr
   (,) a <$> unsafeFreeze (getComp arr) marr
 {-# INLINE[2] withLoadMArrayS #-}
@@ -923,8 +920,8 @@ withLoadMArrayS arr action = do
 -- | Same as `withMArrayS_`, but will work with any loadable array.
 --
 -- @since 0.6.1
-withLoadMArrayS_ :: --TODO: remove Size
-     forall r ix e r' m a. (Size r', Load r' ix e, Mutable r e, PrimMonad m)
+withLoadMArrayS_ ::
+     forall r ix e r' m a. (Load r' ix e, Mutable r e, PrimMonad m)
   => Array r' ix e
   -> (MArray (PrimState m) r ix e -> m a)
   -> m (Array r ix e)
@@ -957,8 +954,8 @@ withMArrayST_ arr f = runST $ withMArrayS_ arr f
 -- | Same as `withMArrayST`, but works with any loadable array.
 --
 -- @since 0.6.1
-withLoadMArrayST :: --TODO: remove Size
-     forall r ix e r' a. (Size r', Load r' ix e, Mutable r e)
+withLoadMArrayST ::
+     forall r ix e r' a. (Load r' ix e, Mutable r e)
   => Array r' ix e
   -> (forall s. MArray s r ix e -> ST s a)
   -> (a, Array r ix e)
@@ -968,8 +965,8 @@ withLoadMArrayST arr f = runST $ withLoadMArrayS arr f
 -- | Same as `withMArrayST_`, but works with any loadable array.
 --
 -- @since 0.6.1
-withLoadMArrayST_ :: --TODO: remove Size
-     forall r ix e r' a. (Size r', Load r' ix e, Mutable r e)
+withLoadMArrayST_ ::
+     forall r ix e r' a. (Load r' ix e, Mutable r e)
   => Array r' ix e
   -> (forall s. MArray s r ix e -> ST s a)
   -> Array r ix e
