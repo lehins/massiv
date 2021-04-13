@@ -240,6 +240,11 @@ instance (Index ix, Prim e) => Mutable P ix e where
     MPArray sz o <$> resizeMutableByteArrayCompat ma ((o + totalElem sz) * sizeOf (undefined :: e))
   {-# INLINE unsafeLinearGrow #-}
 
+  unsafeLinearSliceM i k (MPArray _ o a) = MPArray k (i + o) a
+  {-# INLINE unsafeLinearSliceM #-}
+
+  unsafeResizeM !sz (MPArray _ o mba) = MPArray sz o mba
+  {-# INLINE unsafeResizeM #-}
 
 instance (Prim e, Index ix) => Load P ix e where
   type R P = M

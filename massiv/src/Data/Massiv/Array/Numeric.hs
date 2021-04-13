@@ -45,6 +45,7 @@ module Data.Massiv.Array.Numeric
   , (!><!)
   , multiplyMatrices
   , multiplyMatricesTransposed
+  , multiplyMatrixBlocks
   -- * Norms
   , normL2
   -- * Simple matrices
@@ -565,6 +566,49 @@ multiplyMatrices arrA arrB
     Sz (mA :. nA) = size arrA
     Sz (mB :. nB) = size arrB
 {-# INLINE multiplyMatrices #-}
+
+
+multiplyMatrixBlocks ::
+     ( Numeric r e
+     , Index (Lower (Ix n))
+     , Index (Lower (Lower (Ix n)))
+     , Load r (Ix n) e
+     , Mutable r (Ix n) e
+     , Mutable r Ix2 e
+     , Mutable r Ix1 e
+     , MonadThrow m
+     )
+  => Array r (Ix n) e
+  -> Matrix r e
+  -> m (Array r (Ix n) e)
+multiplyMatrixBlocks arrA arrB
+  | isEmpty arrA || isEmpty arrB = pure $ setComp comp empty
+  | otherwise = do
+    let (sz', Sz nA) = unsnocSz (size arrA)
+        (sz'', Sz mA) = unsnocSz sz'
+    when (nA /= mB) $ throwM $ SizeMismatchException (Sz2 mA nA) (size arrB)
+    pure $! unsafePerformIO $ do
+      let k = totalElem sz'' -- total number of blocks
+          blockSzA = Sz2 mA nA
+          blockLenA@(Sz blockCountA) = Sz (totalElem blockSzA)
+          szC = snocSz sz' (Sz1 nB)
+          blockSzC = Sz2 mA nB
+          blockLenC@(Sz blockCountC) = Sz (totalElem blockSzC)
+      marrC <- newMArray szC 0
+      withMassivScheduler_ comp $ \scheduler ->
+        splitLinearlyM_ scheduler k $ \kStart kEnd ->
+          loopM_ kStart (< kEnd) (+ 1) $ \ik -> do
+            let blockFlat = unsafeLinearSlice (ik * blockCountA) blockLenA arrA
+                block = unsafeResize blockSzA blockFlat
+                targetBlockFlat = unsafeLinearSliceM (ik * blockCountC) blockLenC marrC
+                targetBlock = unsafeResizeM blockSzC targetBlockFlat
+            unsafeMultiplyMatricesM trivialScheduler_ targetBlock block arrB
+      unsafeFreeze comp marrC
+  where
+    comp = getComp arrA <> getComp arrB
+    SafeSz (mB :. nB) = size arrB
+{-# INLINE multiplyMatrixBlocks #-}
+
 
 
 -- | Computes the matrix-matrix multiplication where second matrix is transposed (i.e. M

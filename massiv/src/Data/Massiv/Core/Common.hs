@@ -551,6 +551,17 @@ class (Construct r ix e, Manifest r ix e) => Mutable r ix e where
   {-# INLINE unsafeLinearGrow #-}
 
 
+  -- | /O(1)/ - Linear slice of a mutable array
+  --
+  -- @since 0.6.1
+  unsafeLinearSliceM :: Ix1 -> Sz1 -> MArray s r ix e -> MArray s r Ix1 e
+
+
+  -- | /O(1)/ - Resize a mutable array. Number of elements should stay constant.
+  --
+  -- @since 0.6.1
+  unsafeResizeM :: Index ix' => Sz ix' -> MArray s r ix e -> MArray s r ix' e
+
 unsafeDefaultLinearShrink ::
      (Mutable r ix e, PrimMonad m)
   => MArray (PrimState m) r ix e
