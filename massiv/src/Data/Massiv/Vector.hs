@@ -17,7 +17,8 @@ module Data.Massiv.Vector
   , slength
   , maxLinearSize
   , size
-  , snull
+  , isNull
+  , isNotNull
   -- *** Indexing
   , (!?)
   , (!)
@@ -348,38 +349,6 @@ slength v =
     _              -> Nothing
 {-# INLINE slength #-}
 
--- | /O(1)/ - Check whether a `Stream` array is empty or not. It only looks at the exact size
--- (i.e. `slength`), if it is available, otherwise checks if there is at least one element
--- in a stream.
---
--- /Related/: `isEmpty`, `isNotEmpty`
---
--- ==== __Examples__
---
--- >>> snull sempty
--- True
--- >>> snull (empty :: Array D Ix5 Int)
--- True
--- >>> snull $ ssingleton "A Vector with a single String element"
--- False
--- >>> snull $ sfromList []
--- True
--- >>> snull $ sfromList [1 :: Int ..]
--- False
---
--- /__Similar__/:
---
--- [@Data.Foldable.`Data.Foldable.null`@] List fusion is also broken with a check for
--- emptiness, unless there are no other consumers of the list.
---
--- [@Data.Vector.Generic.`Data.Vector.Generic.null`@] Same as with
--- `Data.Vector.Generic.length`, unless it is the only operation applied to the vector it
--- will break fusion and will result in the vector being fully materialized in memory.
---
--- @since 0.5.0
-snull :: Load r ix e => Array r ix e -> Bool
-snull = isEmpty
-{-# INLINE snull #-}
 
 --------------
 -- Indexing --

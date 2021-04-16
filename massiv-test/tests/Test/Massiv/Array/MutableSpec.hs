@@ -2,7 +2,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -25,10 +24,9 @@ type MutableArraySpec r ix e
      , Function e
      , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
-     , Load (R r) ix e
-     , Extract r ix e
+     , Eq (Array r Ix1 e)
+     , Show (Array r Ix1 e)
+     , Load r ix e
      , Resize r
      , Arbitrary (Array r ix e)
      , Mutable r e

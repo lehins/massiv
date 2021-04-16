@@ -80,11 +80,12 @@ import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse, take, dro
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
 -- fully encapsulated in a source array, otherwise `SizeSubregionException` will be thrown.
-extractM :: (MonadThrow m, Extract r ix e)
-         => ix -- ^ Starting index
-         -> Sz ix -- ^ Size of the resulting array
-         -> Array r ix e -- ^ Source array
-         -> m (Array (R r) ix e)
+extractM ::
+     (MonadThrow m, Index ix, Source r e)
+  => ix -- ^ Starting index
+  -> Sz ix -- ^ Size of the resulting array
+  -> Array r ix e -- ^ Source array
+  -> m (Array D ix e)
 extractM !sIx !newSz !arr
   | isSafeIndex sz1 sIx && isSafeIndex eIx1 sIx && isSafeIndex sz1 eIx =
     pure $ unsafeExtract sIx newSz arr
@@ -99,11 +100,12 @@ extractM !sIx !newSz !arr
 -- are incorrect.
 --
 -- @since 0.1.0
-extract' :: Extract r ix e
-        => ix -- ^ Starting index
-        -> Sz ix -- ^ Size of the resulting array
-        -> Array r ix e -- ^ Source array
-        -> Array (R r) ix e
+extract' ::
+     (Index ix, Source r e)
+  => ix -- ^ Starting index
+  -> Sz ix -- ^ Size of the resulting array
+  -> Array r ix e -- ^ Source array
+  -> Array D ix e
 extract' sIx newSz = either throw id . extractM sIx newSz
 {-# INLINE extract' #-}
 
@@ -112,22 +114,24 @@ extract' sIx newSz = either throw id . extractM sIx newSz
 -- the ending index.
 --
 -- @since 0.3.0
-extractFromToM :: (MonadThrow m, Extract r ix e) =>
-                  ix -- ^ Starting index
-               -> ix -- ^ Index up to which elements should be extracted.
-               -> Array r ix e -- ^ Source array.
-               -> m (Array (R r) ix e)
+extractFromToM ::
+     (MonadThrow m, Index ix, Source r e)
+  => ix -- ^ Starting index
+  -> ix -- ^ Index up to which elements should be extracted.
+  -> Array r ix e -- ^ Source array.
+  -> m (Array D ix e)
 extractFromToM sIx eIx = extractM sIx (Sz (liftIndex2 (-) eIx sIx))
 {-# INLINE extractFromToM #-}
 
 -- | Same as `extractFromTo`, but throws an error on invalid indices.
 --
 -- @since 0.2.4
-extractFromTo' :: Extract r ix e =>
-                 ix -- ^ Starting index
-              -> ix -- ^ Index up to which elmenets should be extracted.
-              -> Array r ix e -- ^ Source array.
-              -> Array (R r) ix e
+extractFromTo' ::
+     (Index ix, Source r e)
+  => ix -- ^ Starting index
+  -> ix -- ^ Index up to which elmenets should be extracted.
+  -> Array r ix e -- ^ Source array.
+  -> Array D ix e
 extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 {-# INLINE extractFromTo' #-}
 
@@ -630,11 +634,11 @@ stackSlicesM dim !arrsF = do
 --   ]
 -- >>> rows = outerSlices x
 -- >>> A.mapM_ print rows
--- Array M Seq (Sz1 3)
+-- Array P Seq (Sz1 3)
 --   [ 1, 2, 3 ]
--- Array M Seq (Sz1 3)
+-- Array P Seq (Sz1 3)
 --   [ 4, 5, 6 ]
--- Array M Seq (Sz1 3)
+-- Array P Seq (Sz1 3)
 --   [ 7, 8, 9 ]
 -- >>> stackOuterSlicesM rows :: IO (Matrix DL Int)
 -- Array DL Seq (Sz (3 :. 3))
@@ -670,11 +674,11 @@ stackOuterSlicesM = stackSlicesM (dimensions (Proxy :: Proxy ix))
 --   ]
 -- >>> columns = innerSlices x
 -- >>> A.mapM_ print columns
--- Array M Seq (Sz1 3)
+-- Array D Seq (Sz1 3)
 --   [ 1, 4, 7 ]
--- Array M Seq (Sz1 3)
+-- Array D Seq (Sz1 3)
 --   [ 2, 5, 8 ]
--- Array M Seq (Sz1 3)
+-- Array D Seq (Sz1 3)
 --   [ 3, 6, 9 ]
 -- >>> stackInnerSlicesM columns :: IO (Matrix DL Int)
 -- Array DL Seq (Sz (3 :. 3))
@@ -700,11 +704,11 @@ stackInnerSlicesM = stackSlicesM 1
 --
 -- @since 0.3.0
 splitAtM ::
-     (MonadThrow m, Extract r ix e)
+     (MonadThrow m, Index ix, Source r e)
   => Dim -- ^ Dimension along which to split
   -> Int -- ^ Index along the dimension to split at
   -> Array r ix e -- ^ Source array
-  -> m (Array (R r) ix e, Array (R r) ix e)
+  -> m (Array D ix e, Array D ix e)
 splitAtM dim i arr = do
   let Sz sz = size arr
   eIx <- setDimM sz dim i
@@ -723,8 +727,8 @@ splitAtM dim i arr = do
 --
 --
 -- @since 0.1.0
-splitAt' :: Extract r ix e =>
-            Dim -> Int -> Array r ix e -> (Array (R r) ix e, Array (R r) ix e)
+splitAt' ::
+     (Index ix, Source r e) => Dim -> Int -> Array r ix e -> (Array D ix e, Array D ix e)
 splitAt' dim i arr = either throw id $ splitAtM dim i arr
 {-# INLINE splitAt' #-}
 
@@ -733,12 +737,12 @@ splitAt' dim i arr = either throw id $ splitAtM dim i arr
 --
 -- @since 0.3.5
 splitExtractM ::
-     (MonadThrow m, Extract r ix e, Source (R r) e)
+     (MonadThrow m, Index ix, Source r e)
   => Dim -- ^ Dimension along which to do the extraction
   -> Ix1 -- ^ Start index along the dimension that needs to be extracted
   -> Sz Ix1 -- ^ Size of the extracted array along the dimension that it will be extracted
   -> Array r ix e
-  -> m (Array (R r) ix e, Array (R r) ix e, Array (R r) ix e)
+  -> m (Array D ix e, Array D ix e, Array D ix e)
 splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
   let Sz szIx = size arr
   midStartIx <- setDimM zeroIndex dim startIx1
@@ -781,21 +785,16 @@ splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
 --
 -- @since 0.6.1
 replaceSlice ::
-     ( MonadThrow m
-     , Extract r ix e
-     , Source (R r) e
-     , Load (R r) (Lower ix) e
-     , Resize (R r)
-     )
+     (MonadThrow m, Source r e, Source r' e, Index ix, Index (Lower ix))
   => Dim
   -> Ix1
-  -> Array (R r) (Lower ix) e
+  -> Array r' (Lower ix) e
   -> Array r ix e
   -> m (Array DL ix e)
 replaceSlice dim i sl arr = do
   (l, m, r) <- splitExtractM dim i (SafeSz 1) arr
   m' <- resizeM (size m) sl
-  concatM dim [l, m', r]
+  concatM dim [l, delay m', r]
 {-# INLINE replaceSlice #-}
 
 
@@ -828,13 +827,12 @@ replaceSlice dim i sl arr = do
 -- @since 0.6.1
 replaceOuterSlice ::
      ( MonadThrow m
-     , Extract r ix e
-     , Source (R r) e
-     , Load (R r) (Lower ix) e
-     , Resize (R r)
+     , Index ix
+     , Source r e
+     , Load r (Lower ix) e
      )
   => Ix1
-  -> Array (R r) (Lower ix) e
+  -> Array r (Lower ix) e
   -> Array r ix e
   -> m (Array DL ix e)
 replaceOuterSlice i sl arr = replaceSlice (dimensions (size arr)) i sl arr
@@ -866,7 +864,7 @@ replaceOuterSlice i sl arr = replaceSlice (dimensions (size arr)) i sl arr
 --
 -- @since 0.3.5
 deleteRegionM ::
-     (MonadThrow m, Extract r ix e, Source (R r) e)
+     (MonadThrow m, Index ix, Source r e)
   => Dim -- ^ Along which axis should the removal happen
   -> Ix1 -- ^ At which index to start dropping slices
   -> Sz Ix1 -- ^ Number of slices to drop
@@ -898,7 +896,7 @@ deleteRegionM dim ix sz arr = do
 --
 -- @since 0.3.5
 deleteRowsM ::
-     (MonadThrow m, Extract r ix e, Source (R r) e, Index (Lower ix))
+     (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => Ix1
   -> Sz Ix1
   -> Array r ix e
@@ -927,7 +925,7 @@ deleteRowsM = deleteRegionM 2
 --
 -- @since 0.3.5
 deleteColumnsM ::
-     (MonadThrow m, Extract r ix e, Source (R r) e)
+     (MonadThrow m, Index ix, Source r e)
   => Ix1
   -> Sz Ix1
   -> Array r ix e

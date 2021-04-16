@@ -108,6 +108,8 @@ module Data.Massiv.Array
   , elemsCount
   , isEmpty
   , isNotEmpty
+  , isNull
+  , isNotNull
   -- * Indexing
   , (!?)
   , (!)

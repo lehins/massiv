@@ -342,7 +342,11 @@ foldWithin' dim = foldlWithin' dim mappend mempty
 -- 1620
 --
 -- @since 0.4.3
-foldOuterSlice :: (OuterSlice r ix e, Monoid m) => (Elt r ix e -> m) -> Array r ix e -> m
+foldOuterSlice ::
+     (Index ix, Index (Lower ix), Source r e, Monoid m)
+  => (Array r (Lower ix) e -> m)
+  -> Array r ix e
+  -> m
 foldOuterSlice f = ifoldOuterSlice (const f)
 {-# INLINE foldOuterSlice #-}
 
@@ -351,10 +355,15 @@ foldOuterSlice f = ifoldOuterSlice (const f)
 -- together
 --
 -- @since 0.4.3
-ifoldOuterSlice :: (OuterSlice r ix e, Monoid m) => (Ix1 -> Elt r ix e -> m) -> Array r ix e -> m
-ifoldOuterSlice f arr = foldMono g $ range (getComp arr) 0 (headDim (unSz (size arr)))
+ifoldOuterSlice ::
+     (Index ix, Index (Lower ix), Source r e, Monoid m)
+  => (Ix1 -> Array r (Lower ix) e -> m)
+  -> Array r ix e
+  -> m
+ifoldOuterSlice f arr = foldMono g $ range (getComp arr) 0 k
   where
-    g i = f i (unsafeOuterSlice arr i)
+    (Sz1 k, szL) = unconsSz $ size arr
+    g i = f i (unsafeOuterSlice arr szL i)
     {-# INLINE g #-}
 {-# INLINE ifoldOuterSlice #-}
 
@@ -377,7 +386,8 @@ ifoldOuterSlice f arr = foldMono g $ range (getComp arr) 0 (headDim (unSz (size 
 -- 19575
 --
 -- @since 0.4.3
-foldInnerSlice :: (InnerSlice r ix e, Monoid m) => (Elt r ix e -> m) -> Array r ix e -> m
+foldInnerSlice ::
+     (Source r e, Index ix, Monoid m) => (Array D (Lower ix) e -> m) -> Array r ix e -> m
 foldInnerSlice f = ifoldInnerSlice (const f)
 {-# INLINE foldInnerSlice #-}
 
@@ -386,11 +396,12 @@ foldInnerSlice f = ifoldInnerSlice (const f)
 -- results together
 --
 -- @since 0.4.3
-ifoldInnerSlice :: (InnerSlice r ix e, Monoid m) => (Ix1 -> Elt r ix e -> m) -> Array r ix e -> m
+ifoldInnerSlice ::
+     (Source r e, Index ix, Monoid m) => (Ix1 -> Array D (Lower ix) e -> m) -> Array r ix e -> m
 ifoldInnerSlice f arr = foldMono g $ range (getComp arr) 0 (unSz k)
   where
-    szs@(_, !k) = unsnocSz (size arr)
-    g i = f i (unsafeInnerSlice arr szs i)
+    (szL, !k) = unsnocSz (size arr)
+    g i = f i (unsafeInnerSlice arr szL i)
     {-# INLINE g #-}
 {-# INLINE ifoldInnerSlice #-}
 

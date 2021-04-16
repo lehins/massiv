@@ -53,10 +53,7 @@ specFold dimStr =
     prop "foldOps" $ foldOpsProp @ix
 
 
-prop_foldOuterSliceToList ::
-     (Elt P ix Int ~ Array M (Lower ix) Int, OuterSlice P ix Int, Index (Lower ix))
-  => ArrTiny P ix Int
-  -> Property
+prop_foldOuterSliceToList :: (Index ix, Index (Lower ix)) => ArrTiny P ix Int -> Property
 prop_foldOuterSliceToList (ArrTiny arr) =
   foldOuterSlice A.toList arr === A.fold (A.map pure arr)
 

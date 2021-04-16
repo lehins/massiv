@@ -22,6 +22,9 @@ module Data.Massiv.Array.Delayed.Pull
   , compareArrays
   , imap
   , liftArray2Matching
+  , unsafeExtract
+  , unsafeSlice
+  , unsafeInnerSlice
   ) where
 
 import Control.Applicative
@@ -36,8 +39,10 @@ import Prelude hiding (zipWith)
 
 #include "massiv.h"
 
+
 -- | Delayed representation.
 data D = D deriving Show
+
 
 data instance Array D ix e = DArray { dComp :: !Comp
                                     , dSize :: !(Sz ix)
@@ -61,12 +66,6 @@ instance Resize D where
       unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
   {-# INLINE unsafeResize #-}
 
-instance Index ix => Extract D ix e where
-  unsafeExtract !sIx !newSz !arr =
-    DArray (dComp arr) newSz $ \ !ix ->
-      unsafeIndex arr (liftIndex2 (+) ix sIx)
-  {-# INLINE unsafeExtract #-}
-
 instance Strategy D where
   setComp c arr = arr { dComp = c }
   {-# INLINE setComp #-}
@@ -81,33 +80,36 @@ instance Index ix => Construct D ix e where
 instance Source D e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
+
+  unsafeOuterSlice !arr !szL !i = DArray (dComp arr) szL (unsafeIndex arr . consDim i)
+  {-# INLINE unsafeOuterSlice #-}
+
   unsafeLinearSlice !o !sz arr =
     DArray (dComp arr) sz $ \ !i -> unsafeIndex arr (fromLinearIndex (size arr) (i + o))
   {-# INLINE unsafeLinearSlice #-}
 
 
-instance ( Index ix
-         , Index (Lower ix)
-         , Elt D ix e ~ Array D (Lower ix) e
-         ) =>
-         Slice D ix e where
-  unsafeSlice arr start cut@(SafeSz cutSz) dim = do
-    newSz <- dropDimM cutSz dim
-    return $ unsafeResize (SafeSz newSz) (unsafeExtract start cut arr)
-  {-# INLINE unsafeSlice #-}
+-- | /O(1)/ - Extract a portion of an array. Staring index and new size are
+-- not validated.
+unsafeExtract :: (Source r e, Index ix) => ix -> Sz ix -> Array r ix e -> Array D ix e
+unsafeExtract !sIx !newSz !arr =
+  DArray (getComp arr) newSz (unsafeIndex arr . liftIndex2 (+) sIx)
+{-# INLINE unsafeExtract #-}
 
+-- | /O(1)/ - Take a slice out of an array from within
+unsafeSlice :: (Source r e, Index ix, Index (Lower ix), MonadThrow m) =>
+  Array r ix e -> ix -> Sz ix -> Dim -> m (Array D (Lower ix) e)
+unsafeSlice arr start cut@(SafeSz cutSz) dim = do
+  newSz <- dropDimM cutSz dim
+  return $ unsafeResize (SafeSz newSz) (unsafeExtract start cut arr)
+{-# INLINE unsafeSlice #-}
 
-instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => OuterSlice D ix e where
+-- | /O(1)/ - Take a slice out of an array from the inside
+unsafeInnerSlice ::
+     (Source r e, Index ix) => Array r ix e -> Sz (Lower ix) -> Int -> Array D (Lower ix) e
+unsafeInnerSlice !arr szL !i = DArray (getComp arr) szL (unsafeIndex arr . (`snocDim` i))
+{-# INLINE unsafeInnerSlice #-}
 
-  unsafeOuterSlice !arr !i =
-    DArray (dComp arr) (snd (unconsSz (size arr))) (\ !ix -> unsafeIndex arr (consDim i ix))
-  {-# INLINE unsafeOuterSlice #-}
-
-instance (Elt D ix e ~ Array D (Lower ix) e, Index ix) => InnerSlice D ix e where
-
-  unsafeInnerSlice !arr (szL, _) !i =
-    DArray (dComp arr) szL (\ !ix -> unsafeIndex arr (snocDim ix i))
-  {-# INLINE unsafeInnerSlice #-}
 
 
 instance (Eq e, Index ix) => Eq (Array D ix e) where

@@ -48,9 +48,8 @@ prop_Extract ::
      forall r ix.
      ( Load D ix Int
      , Ragged L ix Int
-     , Load (R r) ix Int
      , Construct r ix Int
-     , Extract r ix Int
+     , Source r Int
      )
   => Comp
   -> Sz ix
@@ -113,7 +112,6 @@ specCommon =
     it "Functor DI" $ property $ prop_Functor @DI @ix
     it "Functor DL" $ property $ prop_Functor @DL @ix
     it "Functor DW" $ property $ prop_Functor @DW @ix
-    it "Extract DI" $ property $ prop_Extract @DI @ix
     it "Extract B" $ property $ prop_Extract @B @ix
     it "Extract N" $ property $ prop_Extract @N @ix
     it "Extract S" $ property $ prop_Extract @S @ix

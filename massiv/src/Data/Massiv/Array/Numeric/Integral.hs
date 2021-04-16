@@ -132,7 +132,7 @@ integralApprox ::
   -> Sz ix -- ^ @sz@ - Result size of the matrix
   -> Int -- ^ @n@ - Number of samples
   -> Array r ix e -- ^ Array with values of @f(x,y,..)@ that will be used as source for integration.
-  -> Array M ix e
+  -> Array D ix e
 integralApprox stencil d sz n arr =
   extract' zeroIndex sz $ toManifest $ loop 1 (<= coerce (dimensions sz)) (+ 1) arr integrateAlong
   where
@@ -152,7 +152,7 @@ midpointRule ::
   -> e -- ^ @d@ - Distance per matrix cell.
   -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction.
-  -> Array M ix e
+  -> Array D ix e
 midpointRule comp r f a d sz n =
   integralApprox midpointStencil d sz n $ computeAs r $ fromFunctionMidpoint comp f a d sz n
 {-# INLINE midpointRule #-}
@@ -168,7 +168,7 @@ trapezoidRule ::
   -> e -- ^ @d@ - Distance per matrix cell.
   -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction.
-  -> Array M ix e
+  -> Array D ix e
 trapezoidRule comp r f a d sz n =
   integralApprox trapezoidStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
 {-# INLINE trapezoidRule #-}
@@ -184,7 +184,7 @@ simpsonsRule ::
   -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction. This value must be even,
          -- otherwise error.
-  -> Array M ix e
+  -> Array D ix e
 simpsonsRule comp r f a d sz n =
   integralApprox simpsonsStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
 {-# INLINE simpsonsRule #-}
@@ -282,7 +282,7 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- stencils to compute an integral, but there are already functions that will do both steps for you:
 --
 -- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
--- Array M Seq (Sz1 1)
+-- Array D Seq (Sz1 1)
 --   [ 17.353626 ]
 --
 -- @scale@ is the function that will change an array index into equally spaced and
@@ -318,7 +318,7 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 --   [ -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0 ]
 -- >>> yArrX4 = computeAs U $ fmap f xArrX4
 -- >>> integralApprox trapezoidStencil distPerCell desiredSize numSamples yArrX4
--- Array M Seq (Sz1 4)
+-- Array D Seq (Sz1 4)
 --   [ 16.074406, 1.4906789, 1.4906789, 16.074408 ]
 --
 -- We can clearly see the difference is huge, but it doesn't mean it is much better than our
@@ -327,5 +327,5 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- and `yArr`, there are functions like `simpsonRule` that will take care it for you:
 --
 -- >>> simpsonsRule Seq U (\ scale i -> f (scale i)) startValue distPerCell desiredSize 128
--- Array M Seq (Sz1 4)
+-- Array D Seq (Sz1 4)
 --   [ 14.989977, 1.4626511, 1.4626517, 14.989977 ]

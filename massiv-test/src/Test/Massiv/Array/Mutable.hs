@@ -82,9 +82,8 @@ prop_GrowShrink ::
      forall r ix e.
      ( Eq (Array r ix e)
      , Show (Array r ix e)
-     , Load (R r) ix e
+     , Load r ix e
      , Mutable r e
-     , Extract r ix e
      , Construct r ix e
      , Arbitrary ix
      , Arbitrary e
@@ -185,13 +184,12 @@ mutableSpec ::
      , Show (Array r ix e)
      , Show (Array r Ix1 e)
      , Eq (Array r Ix1 e)
-     , Load (R r) ix e
+     , Load r ix e
      , Eq (Array r ix e)
      , Typeable e
      , Show e
      , Eq e
      , Mutable r e
-     , Extract r ix e
      , Construct r ix e
      , CoArbitrary ix
      , Arbitrary e

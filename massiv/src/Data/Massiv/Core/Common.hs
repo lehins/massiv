@@ -31,10 +31,6 @@ module Data.Massiv.Core.Common
   , Size(..)
   , Shape(..)
   , Resize(..)
-  , Extract(..)
-  , Slice(..)
-  , OuterSlice(..)
-  , InnerSlice(..)
   , Manifest(..)
   , Mutable(..)
   , Comp(..)
@@ -58,7 +54,8 @@ module Data.Massiv.Core.Common
   , singleton
   -- * Size
   , elemsCount
-  , isNull
+  , isNotNull
+  , isEmpty
   , isNotEmpty
   , Sz(SafeSz)
   , LengthHint(..)
@@ -151,7 +148,7 @@ type MMatrix s r e = MArray s r Ix2 e
 
 type family Elt r ix e :: * where
   Elt r Ix1 e = e
-  Elt r ix  e = Array (R r) (Lower ix) e
+  Elt r ix  e = Array r (Lower ix) e
 
 type family NestedStruct r ix e :: *
 
@@ -256,7 +253,8 @@ data LengthHint
   deriving (Eq, Show)
 
 
--- | A shape of an array.
+-- | The shape of an array. It is different from `Size` in that it can be applicable to
+-- non-square matrices and might not be available in constant time.
 --
 -- @since 1.0.0
 class Index ix => Shape r ix where
@@ -265,8 +263,7 @@ class Index ix => Shape r ix where
   --
   -- @since 1.0.0
   linearSizeHint :: Array r ix e -> LengthHint
-  default linearSizeHint :: Size r => Array r ix e -> LengthHint
-  linearSizeHint = LengthExact . SafeSz . elemsCount
+  linearSizeHint = LengthExact . linearSize
   {-# INLINE linearSizeHint #-}
 
   -- | /O(n)/ - possibly iterate over the whole array before producing the answer
@@ -296,20 +293,24 @@ class Index ix => Shape r ix where
   maxLinearSize = lengthHintUpperBound . linearSizeHint
   {-# INLINE maxLinearSize #-}
 
-  -- | /O(1)/ - Check if an array has no elements.
+  -- | /O(1)/ - Check whether an array is empty or not.
   --
   -- ==== __Examples__
   --
   -- >>> import Data.Massiv.Array
-  -- >>> isEmpty $ range Seq (Ix2 10 20) (11 :. 21)
+  -- >>> isNull $ range Seq (Ix2 10 20) (11 :. 21)
   -- False
-  -- >>> isEmpty $ range Seq (Ix2 10 20) (10 :. 21)
+  -- >>> isNull $ range Seq (Ix2 10 20) (10 :. 21)
+  -- True
+  -- >>> isNull (empty :: Array D Ix5 Int)
+  -- True
+  -- >>> isNull $ sfromList []
   -- True
   --
-  -- @since 0.1.0
-  isEmpty :: Array r ix e -> Bool
-  isEmpty = (0 ==) . linearSize
-  {-# INLINE isEmpty #-}
+  -- @since 1.0.0
+  isNull :: Array r ix e -> Bool
+  isNull = (0 ==) . linearSize
+  {-# INLINE isNull #-}
 
 
 lengthHintUpperBound :: LengthHint -> Maybe Sz1
@@ -336,14 +337,8 @@ class Size r => Resize r where
 
 
 
-class (Size r, Index ix) => Extract r ix e where
-  -- | /O(1)/ - Extract a portion of an array. Staring index and new size are
-  -- not validated.
-  unsafeExtract :: ix -> Sz ix -> Array r ix e -> Array (R r) ix e
-
-
 -- | Arrays that can be used as source to practically any manipulation function.
-class (Strategy r, Size r) => Source r e where
+class (Strategy r, Resize r) => Source r e where
   {-# MINIMAL (unsafeIndex|unsafeLinearIndex), unsafeLinearSlice #-}
 
   -- | Lookup element in the array. No bounds check is performed and access of
@@ -364,16 +359,22 @@ class (Strategy r, Size r) => Source r e where
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
+
+  -- | /O(1)/ - Take a slice out of an array from the outside
+  unsafeOuterSlice :: (Index ix, Index (Lower ix)) =>
+    Array r ix e -> Sz (Lower ix) -> Int -> Array r (Lower ix) e
+  unsafeOuterSlice arr sz i = unsafeResize sz $ unsafeLinearSlice i (toLinearSz sz) arr
+  {-# INLINE unsafeOuterSlice #-}
+
   -- | /O(1)/ - Source arrays also give us ability to look at their linear slices in
   -- constant time
   --
   -- @since 0.5.0
   unsafeLinearSlice :: Index ix => Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
 
+
 -- | Any array that can be computed and loaded into memory
 class (Strategy r, Shape r ix) => Load r ix e where
-  type family R r :: *
-  type instance R r = r
   {-# MINIMAL (loadArrayM | loadArrayWithSetM) #-}
 
   -- | Load an array into memory.
@@ -488,17 +489,6 @@ class (Size r, Load r ix e) => StrideLoad r ix e where
 --TODO: rethink Size here to support outer slicing (Something like OuterSize?) Affects
 --only ragged arrays (L, LN and DS don't count, since they don't have constant time
 --slicing anyways)
-
-class (Size r, Load r ix e) => OuterSlice r ix e where
-  -- | /O(1)/ - Take a slice out of an array from the outside
-  unsafeOuterSlice :: Array r ix e -> Int -> Elt r ix e
-
-class (Size r, Load r ix e) => InnerSlice r ix e where
-  unsafeInnerSlice :: Array r ix e -> (Sz (Lower ix), Sz Int) -> Int -> Elt r ix e
-
-class (Size r, Load r ix e) => Slice r ix e where
-  unsafeSlice :: MonadThrow m => Array r ix e -> ix -> Sz ix -> Dim -> m (Elt r ix e)
-
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
@@ -853,7 +843,7 @@ infixl 4 !, !?, ??
 --   ]
 -- )
 -- >>> ma ??> 1
--- Just (Array M Seq (Sz (1 :. 3))
+-- Just (Array U Seq (Sz (1 :. 3))
 --   [ [ 4, 5, 6 ]
 --   ]
 -- )
@@ -1008,16 +998,32 @@ imapM_ f !arr =
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> isNotEmpty (singleton 1 :: Array D Ix2 Int)
+-- >>> isNotNull (singleton 1 :: Array D Ix2 Int)
 -- True
--- >>> isNotEmpty (empty :: Array D Ix2 Int)
+-- >>> isNotNull (empty :: Array D Ix2 Int)
 -- False
 --
 -- @since 0.5.1
-isNotEmpty :: Shape r ix => Array r ix e -> Bool
-isNotEmpty = not . isEmpty
-{-# INLINE isNotEmpty #-}
+isNotNull :: Shape r ix => Array r ix e -> Bool
+isNotNull = not . isNull
+{-# INLINE isNotNull #-}
 
+
+
+-- | /O(1)/ - Check if array has elements.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> isEmpty (singleton 1 :: Array D Ix2 Int)
+-- False
+-- >>> isEmpty (empty :: Array D Ix2 Int)
+-- True
+--
+-- @since 1.0.0
+isEmpty :: (Index ix, Size r) => Array r ix e -> Bool
+isEmpty = (==0) . elemsCount
+{-# INLINE isEmpty #-}
 
 
 -- | /O(1)/ - Check if array has elements.
@@ -1030,10 +1036,10 @@ isNotEmpty = not . isEmpty
 -- >>> isNotEmpty (empty :: Array D Ix2 Int)
 -- False
 --
--- @since 0.5.1
-isNull :: (Index ix, Size r) => Array r ix e -> Bool
-isNull = (==0) . elemsCount
-{-# INLINE isNull #-}
+-- @since 1.0.0
+isNotEmpty :: (Index ix, Size r) => Array r ix e -> Bool
+isNotEmpty = not . isEmpty
+{-# INLINE isNotEmpty #-}
 
 
 -- | /O(1)/ - Get the number of elements in the array.
