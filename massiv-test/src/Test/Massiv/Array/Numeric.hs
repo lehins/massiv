@@ -18,7 +18,7 @@ import Test.Massiv.Core.Common ()
 
 
 naiveMatrixMatrixMultiply ::
-     (Num e, Source (R r1) e, Source (R r2) e, OuterSlice r1 Ix2 e, InnerSlice r2 Ix2 e)
+     (Num e, Source r1 e, Source r2 e)
   => Array r1 Ix2 e
   -> Array r2 Ix2 e
   -> Array D Ix2 e
@@ -54,9 +54,8 @@ prop_MatrixMatrixMultiply f arr = expectProp $ do
 prop_MatrixVectorMultiply ::
      forall r e.
      ( Numeric r e
-     , InnerSlice r Ix2 e
      , Mutable r e
-     , Source (R r) e
+     , Source r e
      , Construct r Ix1 e
      , Eq e
      , Show e
@@ -75,9 +74,8 @@ prop_MatrixVectorMultiply f arr =
 prop_VectorMatrixMultiply ::
      forall r e.
      ( Numeric r e
-     , OuterSlice r Ix2 e
      , Construct r Ix1 e
-     , Source (R r) e
+     , Source r e
      , Mutable r e
      , Show (Vector r e)
      , Eq (Vector r e)
@@ -233,9 +231,7 @@ mutableNumericSpec ::
      , Mutable r e
      , Construct r Ix1 e
      , Construct r Ix2 e
-     , InnerSlice r Ix2 e
-     , OuterSlice r Ix2 e
-     , Source (R r) e
+     , Source r e
      , Eq e
      , Show e
      , Function e

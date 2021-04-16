@@ -335,7 +335,7 @@ ifoldlIO f !initAcc g !tAcc !arr
       F.foldlM g tAcc results
 {-# INLINE ifoldlIO #-}
 
--- | Split an array into linear row-major vector chunks and apply an action to each of
+-- | Slice an array into linear row-major vector chunks and apply an action to each of
 -- them. Number of chunks will depend on the computation strategy. Results of each action
 -- will be combined with a folding function.
 --

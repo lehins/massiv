@@ -116,14 +116,6 @@ instance (Prim e, Index ix) => Construct P ix e where
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-instance Prim e => Source P e where
-  unsafeLinearIndex _arr@(PArray _ _ o a) i =
-    INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
-                SafeSz . elemsBA _arr, indexByteArray) a (i + o)
-  {-# INLINE unsafeLinearIndex #-}
-
-  unsafeLinearSlice i k (PArray c _ o a) = PArray c k (i + o) a
-  {-# INLINE unsafeLinearSlice #-}
 
 instance Index ix => Shape P ix where
   maxLinearSize = Just . SafeSz . elemsCount
@@ -137,21 +129,18 @@ instance Resize P where
   unsafeResize !sz !arr = arr { pSize = sz }
   {-# INLINE unsafeResize #-}
 
-instance (Prim e, Index ix) => Extract P ix e where
-  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
-  {-# INLINE unsafeExtract #-}
+instance Prim e => Source P e where
+  unsafeLinearIndex _arr@(PArray _ _ o a) i =
+    INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
+                SafeSz . elemsBA _arr, indexByteArray) a (i + o)
+  {-# INLINE unsafeLinearIndex #-}
 
-instance (Prim e, Elt P ix e ~ Elt M ix e, Slice M ix e) => Slice P ix e where
-  unsafeSlice = unsafeSlice . toManifest
-  {-# INLINE unsafeSlice #-}
-
-instance (Prim e, Elt P ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice P ix e where
-  unsafeOuterSlice = unsafeOuterSlice . toManifest
+  unsafeOuterSlice (PArray c _ o a) szL i =
+    PArray c szL (i * totalElem szL + o) a
   {-# INLINE unsafeOuterSlice #-}
 
-instance (Prim e, Elt P ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice P ix e where
-  unsafeInnerSlice = unsafeInnerSlice . toManifest
-  {-# INLINE unsafeInnerSlice #-}
+  unsafeLinearSlice i k (PArray c _ o a) = PArray c k (i + o) a
+  {-# INLINE unsafeLinearSlice #-}
 
 instance Prim e => Manifest P e where
 
@@ -222,7 +211,6 @@ instance Prim e => Mutable P e where
 
 
 instance (Prim e, Index ix) => Load P ix e where
-  type R P = M
   loadArrayM !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}

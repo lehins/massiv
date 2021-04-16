@@ -551,7 +551,7 @@ multiplyMatrices arrA arrB
    -- mA == 1 = -- TODO: call multiplyVectorByMatrix
    -- nA == 1 = -- TODO: call multiplyMatrixByVector
   | nA /= mB = throwM $ SizeMismatchException (size arrA) (size arrB)
-  | isNull arrA || isNull arrB = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
+  | isEmpty arrA || isEmpty arrB = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
   | otherwise = pure $! unsafePerformIO $ do
     marrC <- newMArray (SafeSz (mA :. nB)) 0
     withScheduler_ comp $ \scheduler -> do
@@ -698,7 +698,7 @@ multiplyMatricesTransposed ::
   -> m (Matrix D e)
 multiplyMatricesTransposed arr1 arr2
   | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (Sz2 m2 n2)
-  | isNull arr1 || isNull arr2 = pure $ setComp comp empty
+  | isEmpty arr1 || isEmpty arr2 = pure $ setComp comp empty
   | otherwise =
     pure $
     DArray comp (SafeSz (m1 :. n2)) $ \(i :. j) ->

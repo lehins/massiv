@@ -14,15 +14,11 @@ module Data.Massiv.Core
   , MMatrix
   , Elt
   , Construct
-  , Load(R, loadArrayM, loadArrayWithSetM)
+  , Load(loadArrayM, loadArrayWithSetM)
   , Stream(..)
   , Source
   , Resize
-  , Extract
   , StrideLoad(..)
-  , Slice
-  , OuterSlice
-  , InnerSlice
   , Manifest
   , Mutable
   , Ragged

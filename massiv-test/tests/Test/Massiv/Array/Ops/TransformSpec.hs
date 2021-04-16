@@ -2,7 +2,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -30,13 +29,7 @@ prop_UpsampleDownsample (ArrTiny arr) stride fill =
   arr === compute (downsample stride (compute @r (upsample fill stride arr)))
 
 prop_ExtractAppend ::
-     forall r ix e.
-     ( Eq (Array r ix e)
-     , Show (Array r ix e)
-     , Source (R r) e
-     , Extract r ix e
-     , Mutable r e
-     )
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Mutable r e, Index ix)
   => DimIx ix
   -> ArrIx r ix e
   -> Property
@@ -45,14 +38,14 @@ prop_ExtractAppend (DimIx dim) (ArrIx arr ix) =
 
 prop_SplitExtract ::
      forall r ix e.
-     ( Eq (Array r ix e)
-     , Eq (Array (R r) ix e)
+     ( Eq e
+     , Show e
+     , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Show (Array (R r) ix e)
-     , Source (R r) e
-     , Load (R r) ix e
+     , Source r e
+     , Load r ix e
      , Mutable r e
-     , Extract r ix e
+     , Ragged L ix e
      )
   => DimIx ix
   -> ArrIx r ix e
@@ -175,10 +168,8 @@ prop_ZoomWithGridStrideCompute ::
      forall r ix e.
      ( Eq (Array r ix e)
      , Show (Array r ix e)
-     , StrideLoad (R r) ix e
      , StrideLoad r ix e
      , Mutable r e
-     , Extract r ix e
      )
   => Array r ix e
   -> Stride ix
@@ -215,20 +206,17 @@ type Transform r ix e
      , Function e
      , Function ix
      , Eq (Array r ix e)
-     , Eq (Array (R r) ix e)
      , Eq (Array r ix Int)
      , Show (Array r ix e)
-     , Show (Array (R r) ix e)
      , Show (Array r ix Int)
      , NFData (Array r ix e)
      , NFData (Array r Int e)
      , Resize r
-     , Extract r ix e
      , Construct r ix e
      , Construct r ix Int
-     , Source (R r) e
+     , Ragged L ix e
+     , Source r e
      , StrideLoad r ix e
-     , StrideLoad (R r) ix e
      , Mutable r Int
      , Mutable r e)
 

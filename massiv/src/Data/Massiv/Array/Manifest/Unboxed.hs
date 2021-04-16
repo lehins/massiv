@@ -26,7 +26,6 @@ module Data.Massiv.Array.Manifest.Unboxed
 
 import Control.DeepSeq (NFData(..), deepseq)
 import Data.Massiv.Array.Delayed.Pull (eqArrays, compareArrays)
-import Data.Massiv.Array.Manifest.Internal (M, toManifest)
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
@@ -90,6 +89,12 @@ instance Unbox e => Source U e where
   unsafeLinearIndex (UArray _ _ v) =
     INDEX_CHECK("(Source U ix e).unsafeLinearIndex", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
+
+  unsafeOuterSlice (UArray c _ v) szL i =
+    let k = totalElem szL
+    in UArray c szL $ VU.unsafeSlice (i * k) k v
+  {-# INLINE unsafeOuterSlice #-}
+
   unsafeLinearSlice i k (UArray c _ v) = UArray c k $ VU.unsafeSlice i (unSz k) v
   {-# INLINE unsafeLinearSlice #-}
 
@@ -105,29 +110,11 @@ instance Resize U where
   unsafeResize !sz !arr = arr { uSize = sz }
   {-# INLINE unsafeResize #-}
 
-instance (Unbox e, Index ix) => Extract U ix e where
-  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
-  {-# INLINE unsafeExtract #-}
-
 instance (Unbox e, Index ix) => Load U ix e where
-  type R U = M
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
 instance (Unbox e, Index ix) => StrideLoad U ix e
-
-
-instance (Unbox e, Elt U ix e ~ Elt M ix e, Slice M ix e) => Slice U ix e where
-  unsafeSlice = unsafeSlice . toManifest
-  {-# INLINE unsafeSlice #-}
-
-instance (Unbox e, Elt U ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice U ix e where
-  unsafeOuterSlice = unsafeOuterSlice . toManifest
-  {-# INLINE unsafeOuterSlice #-}
-
-instance (Unbox e, Elt U ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice U ix e where
-  unsafeInnerSlice = unsafeInnerSlice . toManifest
-  {-# INLINE unsafeInnerSlice #-}
 
 
 instance Unbox e => Manifest U e where

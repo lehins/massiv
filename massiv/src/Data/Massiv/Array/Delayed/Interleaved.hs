@@ -60,10 +60,6 @@ instance Resize DI where
   unsafeResize sz = DIArray . unsafeResize sz . diArray
   {-# INLINE unsafeResize #-}
 
-instance Index ix => Extract DI ix e where
-  unsafeExtract sIx newSz = DIArray . unsafeExtract sIx newSz . diArray
-  {-# INLINE unsafeExtract #-}
-
 
 instance Index ix => Load DI ix e where
   loadArrayM scheduler (DIArray (DArray _ sz f)) uWrite =

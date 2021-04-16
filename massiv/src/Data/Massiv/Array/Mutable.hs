@@ -226,7 +226,7 @@ thawS arr = do
 -- ==== __Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> marr <- newMArray @P @_ @Int (Sz2 2 6) 0
+-- >>> marr <- newMArray @P (Sz2 2 6) (0 :: Int)
 -- >>> forM_ (range Seq 0 (Ix2 1 4)) $ \ix -> write marr ix 9
 -- >>> freeze Seq marr
 -- Array P Seq (Sz (2 :. 6))

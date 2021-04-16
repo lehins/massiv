@@ -73,8 +73,8 @@ instance Shape DS Ix1 where
   outerSize = linearSize
   {-# INLINE outerSize #-}
 
-  isEmpty = S.unId . S.null . coerce
-  {-# INLINE isEmpty #-}
+  isNull = S.unId . S.null . coerce
+  {-# INLINE isNull #-}
 
 
 --TODO remove

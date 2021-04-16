@@ -161,7 +161,7 @@ prop_MapWS arr =
   run $ do
     let comp = getComp arr
     count <- getCompWorkers comp
-    arrStates <- new @P (Sz count)
+    arrStates <- newMArray' @P (Sz count)
     states <- initWorkerStates comp (\(WorkerId i) -> pure $ \f -> modifyM_ arrStates f i)
     arr' <-
       forWS states arr $ \e smod -> do

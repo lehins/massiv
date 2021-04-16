@@ -35,7 +35,7 @@ sizeException :: SizeException -> Bool
 sizeException exc = exc `deepseq` True
 
 toUnboxV2 ::
-     (Unbox e, Unbox e1, Unbox e2, Index ix1, Index ix2)
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -44,7 +44,7 @@ toUnboxV2 f v1 v2 =
   fromUnboxedVector (getComp v1 <> getComp v2) (f (toUnboxedVector v1) (toUnboxedVector v2))
 
 toUnboxV3 ::
-     (Unbox e, Unbox e1, Unbox e2, Unbox e3, Index ix1, Index ix2, Index ix3)
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -53,7 +53,7 @@ toUnboxV3 ::
 toUnboxV3 f v1 v2 v3 = appComp (getComp v1) (toUnboxV2 (f (toUnboxedVector v1)) v2 v3)
 
 toUnboxV4 ::
-     (Unbox e, Unbox e1, Unbox e2, Unbox e3, Unbox e4, Index ix1, Index ix2, Index ix3, Index ix4)
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -63,18 +63,7 @@ toUnboxV4 ::
 toUnboxV4 f v1 v2 v3 v4 = appComp (getComp v1) (toUnboxV3 (f (toUnboxedVector v1)) v2 v3 v4)
 
 toUnboxV5 ::
-     ( Unbox e
-     , Unbox e1
-     , Unbox e2
-     , Unbox e3
-     , Unbox e4
-     , Unbox e5
-     , Index ix1
-     , Index ix2
-     , Index ix3
-     , Index ix4
-     , Index ix5
-     )
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -85,20 +74,7 @@ toUnboxV5 ::
 toUnboxV5 f v1 v2 v3 v4 v5 = appComp (getComp v1) (toUnboxV4 (f (toUnboxedVector v1)) v2 v3 v4 v5)
 
 toUnboxV6 ::
-     ( Unbox e
-     , Unbox e1
-     , Unbox e2
-     , Unbox e3
-     , Unbox e4
-     , Unbox e5
-     , Unbox e6
-     , Index ix1
-     , Index ix2
-     , Index ix3
-     , Index ix4
-     , Index ix5
-     , Index ix6
-     )
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -808,11 +784,11 @@ spec =
             slength (sfromList []) `shouldBe` Nothing
             slength (sfromListN 1 []) `shouldBe` Nothing
             slength (sgenerate 1 id) `shouldBe` Just 1
-          it "snull" $ do
-            snull sempty `shouldBe` True
-            snull (fromLists' Seq [[]] :: Array P Ix2 Int) `shouldBe` True
-            snull (siterateN 3 id ()) `shouldBe` False
-            snull (0 ..: 1 :> 2 :> 3 :. 0) `shouldBe` True
+          it "isNull" $ do
+            isNull sempty `shouldBe` True
+            isNull (fromLists' Seq [[]] :: Array P Ix2 Int) `shouldBe` True
+            isNull (siterateN 3 id ()) `shouldBe` False
+            isNull (0 ..: 1 :> 2 :> 3 :. 0) `shouldBe` True
         describe "Indexing" $ do
           prop "head' (non-empty)" $ \(ArrNE arr :: ArrNE D Ix1 Int) ->
             head' arr === evaluate' arr 0 .&&. head' arr === shead' arr

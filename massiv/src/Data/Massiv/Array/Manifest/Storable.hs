@@ -108,6 +108,12 @@ instance VS.Storable e => Source S e where
   unsafeLinearIndex (SArray _ _ v) =
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndex #-}
+
+  unsafeOuterSlice (SArray c _ v) szL i =
+    let k = totalElem szL
+    in SArray c szL $ VS.unsafeSlice (i * k) k v
+  {-# INLINE unsafeOuterSlice #-}
+
   unsafeLinearSlice i k (SArray c _ v) = SArray c k $ VS.unsafeSlice i (unSz k) v
   {-# INLINE unsafeLinearSlice #-}
 
@@ -122,25 +128,6 @@ instance Size S where
 instance Resize S where
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
-
-instance (Storable e, Index ix) => Extract S ix e where
-  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
-  {-# INLINE unsafeExtract #-}
-
-
-
-instance (Storable e, Elt S ix e ~ Elt M ix e, Slice M ix e) => Slice S ix e where
-  unsafeSlice = unsafeSlice . toManifest
-  {-# INLINE unsafeSlice #-}
-
-instance (Storable e, Elt S ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice S ix e where
-  unsafeOuterSlice = unsafeOuterSlice . toManifest
-  {-# INLINE unsafeOuterSlice #-}
-
-instance (Storable e, Elt S ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice S ix e where
-  unsafeInnerSlice = unsafeInnerSlice . toManifest
-  {-# INLINE unsafeInnerSlice #-}
-
 
 instance Storable e => Manifest S e where
 
@@ -217,7 +204,6 @@ instance Storable e => Mutable S e where
 
 
 instance (Index ix, Storable e) => Load S ix e where
-  type R S = M
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 

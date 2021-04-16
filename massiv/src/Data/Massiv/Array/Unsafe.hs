@@ -87,7 +87,7 @@ module Data.Massiv.Array.Unsafe
   , module Data.Massiv.Array.Stencil.Unsafe
   ) where
 
-import Data.Massiv.Array.Delayed.Pull (D)
+import Data.Massiv.Array.Delayed.Pull (D, unsafeExtract, unsafeSlice, unsafeInnerSlice)
 import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray, unsafeMakeLoadArrayAdjusted)
 import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Primitive

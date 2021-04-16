@@ -125,8 +125,8 @@ instance Shape LN Ix1 where
   {-# INLINE linearSize #-}
   linearSizeHint = lengthHintList . unList
   {-# INLINE linearSizeHint #-}
-  isEmpty = null . unList
-  {-# INLINE isEmpty #-}
+  isNull = null . unList
+  {-# INLINE isNull #-}
   outerSize = linearSize
   {-# INLINE outerSize #-}
 
@@ -135,8 +135,8 @@ instance Shape L Ix1 where
   {-# INLINE linearSize #-}
   linearSizeHint = linearSizeHint . lData
   {-# INLINE linearSizeHint #-}
-  isEmpty = isEmpty . lData
-  {-# INLINE isEmpty #-}
+  isNull = isNull . lData
+  {-# INLINE isNull #-}
   outerSize = linearSize
   {-# INLINE outerSize #-}
 
@@ -145,8 +145,8 @@ instance Shape LN Ix2 where
   {-# INLINE linearSize #-}
   linearSizeHint = lengthHintList . unList
   {-# INLINE linearSizeHint #-}
-  isEmpty = null . unList
-  {-# INLINE isEmpty #-}
+  isNull = null . unList
+  {-# INLINE isNull #-}
   outerSize arr =
     case unList arr of
       [] -> zeroSz
@@ -158,8 +158,8 @@ instance Shape L Ix2 where
   {-# INLINE linearSize #-}
   linearSizeHint = linearSizeHint . lData
   {-# INLINE linearSizeHint #-}
-  isEmpty = isEmpty . lData
-  {-# INLINE isEmpty #-}
+  isNull = isNull . lData
+  {-# INLINE isNull #-}
   outerSize = outerSize . lData
   {-# INLINE outerSize #-}
 
@@ -168,8 +168,8 @@ instance (Shape LN (Ix (n - 1)), Index (IxN n)) => Shape LN (IxN n) where
   {-# INLINE linearSize #-}
   linearSizeHint = lengthHintList . unList
   {-# INLINE linearSizeHint #-}
-  isEmpty = null . unList
-  {-# INLINE isEmpty #-}
+  isNull = null . unList
+  {-# INLINE isNull #-}
   outerSize arr =
     case unList arr of
       [] -> zeroSz
@@ -182,8 +182,8 @@ instance (Index (IxN n), Shape LN (IxN n)) => Shape L (IxN n) where
   {-# INLINE linearSize #-}
   linearSizeHint = linearSizeHint . lData
   {-# INLINE linearSizeHint #-}
-  isEmpty = isEmpty . lData
-  {-# INLINE isEmpty #-}
+  isNull = isNull . lData
+  {-# INLINE isNull #-}
   outerSize = outerSize . lData
   {-# INLINE outerSize #-}
 
@@ -217,7 +217,7 @@ instance Ragged L Ix1 e where
           case unconsR xs' of
             Nothing      -> return $! throw (DimTooShortException sz (outerLength xs))
             Just (y, ys) -> uWrite i y >> return ys
-      unless (isEmpty leftOver) (return $! throw DimTooLongException)
+      unless (isNull leftOver) (return $! throw DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f _ arr = L.concat $ "[ " : L.intersperse ", " (map f (coerce (lData arr))) ++ [" ]"]
 
@@ -263,7 +263,7 @@ instance Ragged L Ix2 e where
     let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
-    when (isZero && not (isEmpty (flattenRagged xs))) (return $! throw DimTooLongException)
+    when (isZero && isNotNull (flattenRagged xs)) (return $! throw DimTooLongException)
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
@@ -272,7 +272,7 @@ instance Ragged L Ix2 e where
             Just (y, ys) -> do
               _ <- loadRagged using uWrite i (i + step) szL y
               return ys
-      unless (isEmpty leftOver) (return $! throw DimTooLongException)
+      unless (isNull leftOver) (return $! throw DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L Ix1 e)) sep (coerce xs)
@@ -304,7 +304,7 @@ instance (Shape L (IxN n), Shape LN (Ix (n - 1)), Ragged L (Ix (n - 1)) e) =>
     let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
-    when (isZero && not (isEmpty (flattenRagged xs))) (return $! throw DimTooLongException)
+    when (isZero && isNotNull (flattenRagged xs)) (return $! throw DimTooLongException)
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
@@ -313,7 +313,7 @@ instance (Shape L (IxN n), Shape LN (Ix (n - 1)), Ragged L (Ix (n - 1)) e) =>
             Just (y, ys) -> do
               _ <- loadRagged using uWrite i (i + step) szL y
               return ys
-      unless (isEmpty leftOver) (return $! throw DimTooLongException)
+      unless (isNull leftOver) (return $! throw DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L (Ix (n - 1)) e)) sep (coerce xs)

@@ -61,7 +61,7 @@ import Control.Monad.Primitive
 import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
-import Data.Massiv.Array.Manifest.Internal (M, computeAs, toManifest)
+import Data.Massiv.Array.Manifest.Internal (computeAs)
 import Data.Massiv.Array.Manifest.List as L
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
@@ -150,6 +150,9 @@ instance Source BL e where
                 SafeSz . sizeofArray, A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
+  unsafeOuterSlice (BLArray c _ o a) szL i = BLArray c szL (i * totalElem szL + o) a
+  {-# INLINE unsafeOuterSlice #-}
+
   unsafeLinearSlice i k (BLArray c _ o a) = BLArray c k (o + i) a
   {-# INLINE unsafeLinearSlice #-}
 
@@ -157,22 +160,6 @@ instance Source BL e where
 instance Resize BL where
   unsafeResize !sz !arr = arr { blSize = sz }
   {-# INLINE unsafeResize #-}
-
-instance Index ix => Extract BL ix e where
-  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
-  {-# INLINE unsafeExtract #-}
-
-instance (Elt BL ix e ~ Elt M ix e, Slice M ix e) => Slice BL ix e where
-  unsafeSlice = unsafeSlice . toManifest
-  {-# INLINE unsafeSlice #-}
-
-instance (Elt BL ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice BL ix e where
-  unsafeOuterSlice = unsafeOuterSlice . toManifest
-  {-# INLINE unsafeOuterSlice #-}
-
-instance (Elt BL ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice BL ix e where
-  unsafeInnerSlice = unsafeInnerSlice . toManifest
-  {-# INLINE unsafeInnerSlice #-}
 
 
 instance Manifest BL e where
@@ -226,7 +213,6 @@ instance Index ix => Shape BL ix where
   {-# INLINE maxLinearSize #-}
 
 instance Index ix => Load BL ix e where
-  type R BL = M
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -340,6 +326,9 @@ instance Source B e where
   unsafeLinearSlice i k arr = coerce (unsafeLinearSlice i k (toLazyArray arr))
   {-# INLINE unsafeLinearSlice #-}
 
+  unsafeOuterSlice arr i = coerce (unsafeOuterSlice (toLazyArray arr) i)
+  {-# INLINE unsafeOuterSlice #-}
+
 instance Strategy B where
   getComp = blComp . coerce
   {-# INLINE getComp #-}
@@ -357,23 +346,6 @@ instance Index ix => Shape B ix where
 instance Size B where
   size = blSize . coerce
   {-# INLINE size #-}
-
-instance Index ix => Extract B ix e where
-  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
-  {-# INLINE unsafeExtract #-}
-
-
-instance (Elt B ix e ~ Elt M ix e, Slice M ix e) => Slice B ix e where
-  unsafeSlice = unsafeSlice . toManifest
-  {-# INLINE unsafeSlice #-}
-
-instance (Elt B ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice B ix e where
-  unsafeOuterSlice = unsafeOuterSlice . toManifest
-  {-# INLINE unsafeOuterSlice #-}
-
-instance (Elt B ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice B ix e where
-  unsafeInnerSlice = unsafeInnerSlice . toManifest
-  {-# INLINE unsafeInnerSlice #-}
 
 
 instance Manifest B e where
@@ -413,7 +385,6 @@ instance Mutable B e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where
-  type R B = M
   loadArrayM scheduler = coerce (loadArrayM scheduler)
   {-# INLINE loadArrayM #-}
 
@@ -534,8 +505,10 @@ instance (Index ix, NFData e) => Construct BN ix e where
 instance NFData e => Source BN e where
   unsafeLinearIndex (BNArray arr) = unsafeLinearIndex arr
   {-# INLINE unsafeLinearIndex #-}
-  unsafeLinearSlice i k (BNArray a) = BNArray $ unsafeLinearSlice i k a
+  unsafeLinearSlice i k (BNArray a) = coerce (unsafeLinearSlice i k a)
   {-# INLINE unsafeLinearSlice #-}
+  unsafeOuterSlice (BNArray a) i = coerce (unsafeOuterSlice a i)
+  {-# INLINE unsafeOuterSlice #-}
 
 
 instance Index ix => Shape BN ix where
@@ -549,23 +522,6 @@ instance Size BN where
 instance Resize BN where
   unsafeResize !sz = coerce . unsafeResize sz . coerce
   {-# INLINE unsafeResize #-}
-
-instance (Index ix, NFData e) => Extract BN ix e where
-  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
-  {-# INLINE unsafeExtract #-}
-
-
-instance (NFData e, Elt BN ix e ~ Elt M ix e, Slice M ix e) => Slice BN ix e where
-  unsafeSlice = unsafeSlice . toManifest
-  {-# INLINE unsafeSlice #-}
-
-instance (NFData e, Elt BN ix e ~ Elt M ix e, OuterSlice M ix e) => OuterSlice BN ix e where
-  unsafeOuterSlice = unsafeOuterSlice . toManifest
-  {-# INLINE unsafeOuterSlice #-}
-
-instance (NFData e, Elt BN ix e ~ Elt M ix e, InnerSlice M ix e) => InnerSlice BN ix e where
-  unsafeInnerSlice = unsafeInnerSlice . toManifest
-  {-# INLINE unsafeInnerSlice #-}
 
 instance NFData e => Manifest BN e where
   unsafeLinearIndexM arr = unsafeLinearIndexM (coerce arr)
@@ -603,7 +559,6 @@ instance NFData e => Mutable BN e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance (Index ix, NFData e) => Load BN ix e where
-  type R BN = M
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
