@@ -17,7 +17,9 @@ module Data.Massiv.Core
   , Load(loadArrayM, loadArrayWithSetM)
   , Stream(..)
   , Source
+  , Size
   , Resize
+  , Shape
   , StrideLoad(..)
   , Manifest
   , Mutable

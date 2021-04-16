@@ -12,7 +12,7 @@ import Prelude as P
 
 
 -- | Scale the array, negate values and create an array with a grid.
-zoomWithGridD :: Manifest r Ix2 e => e -> Int -> Array r Ix2 e -> Array D Ix2 e
+zoomWithGridD :: Manifest r e => e -> Int -> Matrix r e -> Matrix D e
 zoomWithGridD gridVal zoomFactor arr = A.makeArray (getComp arr) sz' getNewElt
   where
     k = zoomFactor + 1
@@ -25,7 +25,7 @@ zoomWithGridD gridVal zoomFactor arr = A.makeArray (getComp arr) sz' getNewElt
 {-# INLINE zoomWithGridD #-}
 
 zoomWithGridL ::
-     Source r ix e
+     (Index ix, Source r e)
   => e -- ^ Value to use for the grid
   -> Stride ix -- ^ Scaling factor
   -> Array r ix e -- ^ Source array
@@ -44,7 +44,7 @@ zoomWithGridL gridVal (Stride zoomFactor) arr =
 
 
 -- | Scale the array, negate values and create an array with a grid.
-zoomWithGridL' :: Source r Ix2 e => e -> Int -> Array r Ix2 e -> Array DL Ix2 e
+zoomWithGridL' :: Source r e => e -> Int -> Matrix r e -> Matrix DL e
 zoomWithGridL' gridVal zoomFactor arr =
   makeLoadArrayS newSz gridVal $ \writeElement -> do
     A.iforM_ arr $ \ix e -> do
