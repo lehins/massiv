@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -322,7 +321,7 @@ lengthHintUpperBound = \case
 {-# INLINE lengthHintUpperBound #-}
 
 
-class (forall ix. Index ix => Shape r ix) => Size r where
+class Size r where
 
   -- | Get the exact size of an immutabe array. Most of the time will produce the size in
   -- constant time, except for `DS` representation, which could result in evaluation of
@@ -499,7 +498,7 @@ class (Resize r, Source r e) => Manifest r e where
   unsafeLinearIndexM :: Index ix => Array r ix e -> Int -> e
 
 
-class (forall ix . Index ix => Construct r ix e, Manifest r e) => Mutable r e where
+class (Manifest r e) => Mutable r e where
   data MArray s r ix e :: *
 
   -- | Get the size of a mutable array.

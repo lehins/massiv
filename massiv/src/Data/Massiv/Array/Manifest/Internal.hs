@@ -290,9 +290,9 @@ computeProxy _ = compute
 -- resulting type is the same as the input.
 --
 -- @since 0.1.0
-computeSource :: forall r ix e r' . (Mutable r e, Load r' ix e, Source r' e)
+computeSource :: forall r ix e r' . (Mutable r e, Source r' e, Index ix)
               => Array r' ix e -> Array r ix e
-computeSource arr = maybe (compute arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
+computeSource arr = maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
 
 

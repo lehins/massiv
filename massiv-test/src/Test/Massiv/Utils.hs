@@ -107,13 +107,13 @@ instance Function Word where
 -- | Convert an hspec Expectation to a quickcheck Property.
 --
 -- @since 1.5.0
-expectProp :: HasCallStack => Expectation -> Property
+expectProp :: Expectation -> Property
 expectProp = monadicIO . run
 
 -- | Convert a Testable to a quickcheck Property. Works well with hspec expectations as well
 --
 -- @since 1.7.0
-propIO :: (HasCallStack, Testable a) => IO a -> Property
+propIO :: (Testable a) => IO a -> Property
 propIO action = monadicIO $ run action
 
 

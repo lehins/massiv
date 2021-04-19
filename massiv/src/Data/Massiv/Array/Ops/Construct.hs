@@ -74,6 +74,7 @@ import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Prelude hiding (enumFromTo, replicate)
+import System.Random.Stateful
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
@@ -294,7 +295,10 @@ iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
 --   , [ 9.308278528094238e-2, 0.7200934018606843, 0.23173694193083583 ]
 --   ]
 --
--- @since 0.3.3
+-- @since 1.0.0
+-- | Helper for generating random arrays
+--
+-- @since 1.0.0
 randomArray ::
      forall ix e g. Index ix
   => g -- ^ Initial random value generator
@@ -328,6 +332,31 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
           scheduleWork_ scheduler $
           void $ loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
 {-# INLINE randomArray #-}
+
+
+-- | Generate a random array where all elements are sampled from a uniform distribution.
+--
+-- @since 1.0.0
+uniformArray ::
+     forall ix e g. (Index ix, RandomGen g, Uniform e)
+  => g -- ^ Initial random value generator
+  -> Comp -- ^ Computation strategy.
+  -> Sz ix -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformArray gen = randomArray gen split uniform
+
+-- | Same as `uniformArray`, but will generate values in a supplied range.
+--
+-- @since 1.0.0
+uniformRangeArray ::
+     forall ix e g. (Index ix, RandomGen g, UniformRange e)
+  => g -- ^ Initial random value generator
+  -> (e, e)
+  -> Comp -- ^ Computation strategy.
+  -> Sz ix -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformRangeArray gen range = randomArray gen split (uniformR range)
+
 
 -- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
 -- require splitability property. Another consequence is that it returns the new generator
@@ -385,7 +414,7 @@ randomArrayS gen sz nextRandom =
 --
 -- ==== __Examples__
 --
--- In the example below we take a stateful random generator from
+-- In the example below we take a stateful random number generator from
 -- [wmc-random](https://www.stackage.org/package/mwc-random), which is not thread safe,
 -- and safely parallelize it by giving each thread it's own generator:
 --
