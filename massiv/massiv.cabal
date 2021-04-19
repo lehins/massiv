@@ -83,6 +83,7 @@ library
                      , exceptions
                      , scheduler >= 1.5.0
                      , primitive
+                     , random
                      , unliftio-core
                      , vector
 

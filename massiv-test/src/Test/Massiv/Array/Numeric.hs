@@ -55,7 +55,6 @@ prop_MatrixVectorMultiply ::
      forall r e.
      ( Numeric r e
      , Mutable r e
-     , Source r e
      , Construct r Ix1 e
      , Eq e
      , Show e
@@ -231,7 +230,6 @@ mutableNumericSpec ::
      , Mutable r e
      , Construct r Ix1 e
      , Construct r Ix2 e
-     , Source r e
      , Eq e
      , Show e
      , Function e
