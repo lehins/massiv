@@ -60,18 +60,6 @@ instance Strategy DL where
   {-# INLINE setComp #-}
 
 
-instance Index ix => Construct DL ix e where
-  makeArrayLinear comp sz f = DLArray comp sz load
-    where
-      load :: Monad m =>
-        Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
-      load scheduler startAt dlWrite _ =
-        splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
-      {-# INLINE load #-}
-  {-# INLINE makeArrayLinear #-}
-  replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
-  {-# INLINE replicate #-}
-
 instance Index ix => Shape DL ix where
   maxLinearSize = Just . SafeSz . elemsCount
   {-# INLINE maxLinearSize #-}
@@ -325,6 +313,16 @@ fromStrideLoad stride arr =
 {-# INLINE fromStrideLoad #-}
 
 instance Index ix => Load DL ix e where
+  makeArrayLinear comp sz f = DLArray comp sz load
+    where
+      load :: Monad m =>
+        Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+      load scheduler startAt dlWrite _ =
+        splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
+      {-# INLINE load #-}
+  {-# INLINE makeArrayLinear #-}
+  replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
+  {-# INLINE replicate #-}
   loadArrayWithSetM scheduler DLArray {dlLoad} = dlLoad scheduler 0
   {-# INLINE loadArrayWithSetM #-}
 

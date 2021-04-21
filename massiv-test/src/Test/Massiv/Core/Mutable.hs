@@ -247,7 +247,7 @@ unsafeMutableSpec ::
      , Mutable r e
      , Show e
      , Eq e
-     , Construct r ix e
+     , Load r ix e
      , Arbitrary e
      , Arbitrary ix
      , Typeable e

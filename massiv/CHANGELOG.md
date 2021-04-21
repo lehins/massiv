@@ -1,5 +1,7 @@
 # 1.0.0
 
+* Consolidate `Construct` class into `Load`
+* Get rid of `M` representation
 * Introduce `Shape`, the parent of `Size`
 * Move `size` from `Load` into new class `Size`
 * Removed `maxSize` and replaced it with `maxLinearSize`

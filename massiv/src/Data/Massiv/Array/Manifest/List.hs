@@ -170,7 +170,7 @@ toList !arr = build (\ c n -> foldrFB c n arr)
 -- [[[0 :> 0 :. 0,0 :> 0 :. 1,0 :> 0 :. 2]],[[1 :> 0 :. 0,1 :> 0 :. 1,1 :> 0 :. 2]]]
 --
 -- @since 0.1.0
-toLists :: (Nested LN ix e, Construct L ix e, Load r ix e, Source r e)
+toLists :: (Nested LN ix e, Ragged L ix e, Load r ix e, Source r e)
        => Array r ix e
        -> [ListItem ix e]
 toLists = toNested . toNested . toListArray

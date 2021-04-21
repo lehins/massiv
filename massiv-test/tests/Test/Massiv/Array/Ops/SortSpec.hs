@@ -14,7 +14,7 @@ prop_IsSorted sortWith from to xs =
   to (sortWith (from xs)) === sort xs
 
 tallyMap :: Array P Ix1 Word -> Map Word Int
-tallyMap arr = F.foldr' addCount M.empty $ toManifest arr
+tallyMap = foldrS addCount M.empty
   where
     addCount :: Word -> Map Word Int -> Map Word Int
     addCount !el !counter = M.insertWith (+) el 1 counter

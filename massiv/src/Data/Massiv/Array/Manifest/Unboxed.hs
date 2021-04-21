@@ -68,13 +68,6 @@ instance Strategy U where
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
 
-instance (VU.Unbox e, Index ix) => Construct U ix e where
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
-  {-# INLINE makeArrayLinear #-}
-
-  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
-  {-# INLINE replicate #-}
-
 
 instance (Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
   (==) = eqArrays (==)
@@ -111,6 +104,12 @@ instance Resize U where
   {-# INLINE unsafeResize #-}
 
 instance (Unbox e, Index ix) => Load U ix e where
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
+
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 

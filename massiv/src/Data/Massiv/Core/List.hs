@@ -34,7 +34,7 @@ import Control.Monad (unless, when)
 import Control.Scheduler
 import Data.Coerce
 import Data.Monoid
-import Data.Foldable (foldr')
+import Data.Functor.Identity
 import qualified Data.List as L
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Core.Common
@@ -58,11 +58,6 @@ instance Strategy LN where
   getComp _ = Seq
   setComp _ = id
 
-instance Construct LN Ix1 e where
-  makeArray _ (Sz n) f = coerce (L.map f [0 .. n - 1])
-  {-# INLINE makeArray #-}
-  makeArrayLinear _ (Sz n) f = coerce (L.map f [0 .. n - 1])
-  {-# INLINE makeArrayLinear #-}
 
 instance {-# OVERLAPPING #-} Nested LN Ix1 e where
   fromNested = coerce
@@ -223,20 +218,12 @@ instance Ragged L Ix1 e where
 
 
 instance (Shape L ix, Ragged L ix e) => Load L ix e where
+  makeArray comp sz f = runIdentity $ generateRaggedM comp sz (pure . f)
+  {-# INLINE makeArray #-}
   loadArrayM scheduler arr uWrite =
     loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arr
     where !sz = outerSize arr
   {-# INLINE loadArrayM #-}
-
-
-instance (Shape LN ix, Ragged L ix e) => Load LN ix e where
-  loadArrayM scheduler arr uWrite =
-    loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arrL
-    where
-      !arrL = LArray Seq arr
-      !sz = outerSize arrL
-  {-# INLINE loadArrayM #-}
-
 
 instance Ragged L Ix2 e where
   emptyR comp = LArray comp (List [])
@@ -349,43 +336,28 @@ instance Strategy L where
   getComp = lComp
   {-# INLINE getComp #-}
 
-instance Construct L Ix1 e where
-  makeArray comp sz f = LArray comp $ List $ unsafePerformIO $
-    withScheduler comp $ \scheduler ->
-      loopM_ 0 (< coerce sz) (+ 1) (scheduleWork scheduler . return . f)
-  {-# INLINE makeArray #-}
-
-instance Construct L Ix2 e where
-  makeArray = unsafeGenerateN
-  {-# INLINE makeArray #-}
-
-instance (Ragged L (Ix (n - 1)) e, Shape LN (Ix (n - 1)), Index (IxN n)) =>
-         Construct L (IxN n) e where
-  makeArray = unsafeGenerateN
-  {-# INLINE makeArray #-}
-
--- TODO: benchmark against using unsafeGenerateM directly
-unsafeGenerateN ::
-  ( Ragged r ix e
-  , Ragged r (Lower ix) e
-  , Elt r ix e ~ Array r (Lower ix) e )
-  => Comp
-  -> Sz ix
-  -> (ix -> e)
-  -> Array r ix e
-unsafeGenerateN comp sz f = unsafePerformIO $ do
-  let !(m, szL) = unconsSz sz
-  xs <- withScheduler comp $ \scheduler ->
-    loopM_ 0 (< coerce m) (+ 1) $ \i -> scheduleWork scheduler $
-      generateRaggedM comp szL $ \ix -> return $ f (consDim i ix)
-  return $! foldr' consR (emptyR comp) xs
-{-# INLINE unsafeGenerateN #-}
+-- -- TODO: benchmark against using unsafeGenerateM directly
+-- unsafeGenerateN ::
+--   ( Ragged r ix e
+--   , Ragged r (Lower ix) e
+--   , Elt r ix e ~ Array r (Lower ix) e )
+--   => Comp
+--   -> Sz ix
+--   -> (ix -> e)
+--   -> Array r ix e
+-- unsafeGenerateN comp sz f = unsafePerformIO $ do
+--   let !(m, szL) = unconsSz sz
+--   xs <- withScheduler comp $ \scheduler ->
+--     loopM_ 0 (< coerce m) (+ 1) $ \i -> scheduleWork scheduler $
+--       generateRaggedM comp szL $ \ix -> return $ f (consDim i ix)
+--   return $! foldr' consR (emptyR comp) xs
+-- {-# INLINE unsafeGenerateN #-}
 
 
 -- | Construct an array backed by linked lists from any source array
 --
 -- @since 0.4.0
-toListArray :: (Construct L ix e, Load r ix e, Source r e)
+toListArray :: (Ragged L ix e, Load r ix e, Source r e)
             => Array r ix e
             -> Array L ix e
 toListArray !arr = makeArray (getComp arr) (size arr) (unsafeIndex arr)
@@ -455,16 +427,8 @@ showArrayList arrs = ('[':) . go arrs . (']':)
     go (x:xs) = (' ':) . shows x . ("\n," ++) . go xs
 
 
-instance Stream LN Ix1 e where
-  toStream = S.fromList . coerce
-  {-# INLINE toStream #-}
-
-  toStreamIx = S.indexed . S.fromList . coerce
-  {-# INLINE toStreamIx #-}
-
 instance Stream L Ix1 e where
-  toStream = toStream . lData
+  toStream = S.fromList . unList . lData
   {-# INLINE toStream #-}
-
-  toStreamIx = toStreamIx . lData
+  toStreamIx = S.indexed . S.fromList . unList . lData
   {-# INLINE toStreamIx #-}

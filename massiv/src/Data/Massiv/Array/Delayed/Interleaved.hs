@@ -42,11 +42,6 @@ instance Strategy DI where
   getComp = dComp . diArray
   {-# INLINE getComp #-}
 
-
-instance Index ix => Construct DI ix e where
-  makeArray c sz = DIArray . makeArray c sz
-  {-# INLINE makeArray #-}
-
 instance Index ix => Shape DI ix where
   maxLinearSize = Just . SafeSz . elemsCount
   {-# INLINE maxLinearSize #-}
@@ -62,6 +57,8 @@ instance Resize DI where
 
 
 instance Index ix => Load DI ix e where
+  makeArray c sz = DIArray . makeArray c sz
+  {-# INLINE makeArray #-}
   loadArrayM scheduler (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       scheduleWork scheduler $

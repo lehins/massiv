@@ -95,21 +95,21 @@ import System.Random.Stateful
 --   ]
 --
 -- @since 0.1.0
-makeArrayR :: Construct r ix e => r -> Comp -> Sz ix -> (ix -> e) -> Array r ix e
+makeArrayR :: Load r ix e => r -> Comp -> Sz ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
 {-# INLINE makeArrayR #-}
 
 -- | Same as `makeArrayLinear`, but with ability to supply resulting representation
 --
 -- @since 0.3.0
-makeArrayLinearR :: Construct r ix e => r -> Comp -> Sz ix -> (Int -> e) -> Array r ix e
+makeArrayLinearR :: Load r ix e => r -> Comp -> Sz ix -> (Int -> e) -> Array r ix e
 makeArrayLinearR _ = makeArrayLinear
 {-# INLINE makeArrayLinearR #-}
 
 -- | Same as `makeArrayR`, but restricted to 1-dimensional arrays.
 --
 -- @since 0.1.0
-makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix1 e
+makeVectorR :: Load r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Vector r e
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
@@ -209,7 +209,12 @@ iiterateN sz f = iunfoldrS_ sz $ \a ix -> let !a' = f a ix in (a', a')
 --   [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ]
 --
 -- @since 0.3.0
-unfoldrS_ :: forall ix e a . Construct DL ix e => Sz ix -> (a -> (e, a)) -> a -> Array DL ix e
+unfoldrS_ ::
+     forall ix e a. Index ix
+  => Sz ix
+  -> (a -> (e, a))
+  -> a
+  -> Array DL ix e
 unfoldrS_ sz f = iunfoldrS_ sz (\a _ -> f a)
 {-# INLINE unfoldrS_ #-}
 
@@ -217,7 +222,7 @@ unfoldrS_ sz f = iunfoldrS_ sz (\a _ -> f a)
 --
 -- @since 0.3.0
 iunfoldrS_ ::
-     forall ix e a. Construct DL ix e
+     forall ix e a. Index ix
   => Sz ix
   -> (a -> ix -> (e, a))
   -> a
@@ -240,7 +245,7 @@ iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
 -- `Data.Massiv.Array.Mutable.unfoldlPrimM` to achive such effect.
 --
 -- @since 0.3.0
-unfoldlS_ :: Construct DL ix e => Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
+unfoldlS_ :: Index ix => Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
 unfoldlS_ sz f = iunfoldlS_ sz (const f)
 {-# INLINE unfoldlS_ #-}
 
@@ -248,7 +253,7 @@ unfoldlS_ sz f = iunfoldlS_ sz (const f)
 --
 -- @since 0.3.0
 iunfoldlS_ ::
-     forall ix e a. Construct DL ix e
+     forall ix e a. Index ix
   => Sz ix
   -> (ix -> a -> (a, e))
   -> a
@@ -291,12 +296,9 @@ iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
 -- >>> gen = System.mkStdGen 217
 -- >>> randomArray gen System.split System.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
 -- Array DL (ParN 2) (Sz (2 :. 3))
---   [ [ 0.15191527341922206, 0.2045537167404079, 0.9635356052820256 ]
---   , [ 9.308278528094238e-2, 0.7200934018606843, 0.23173694193083583 ]
+--   [ [ 0.2616843941380331, 0.600959468331641, 0.4382415961606372 ]
+--   , [ 0.27812817813217605, 0.2993277194932741, 0.2774105268603957 ]
 --   ]
---
--- @since 1.0.0
--- | Helper for generating random arrays
 --
 -- @since 1.0.0
 randomArray ::
@@ -355,7 +357,7 @@ uniformRangeArray ::
   -> Comp -- ^ Computation strategy.
   -> Sz ix -- ^ Resulting size of the array.
   -> Array DL ix e
-uniformRangeArray gen range = randomArray gen split (uniformR range)
+uniformRangeArray gen r = randomArray gen split (uniformR r)
 
 
 -- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
@@ -387,8 +389,8 @@ uniformRangeArray gen range = randomArray gen split (uniformR range)
 -- >>> gen = System.mkStdGen 217
 -- >>> snd $ randomArrayS gen (Sz2 2 3) System.random :: Array P Ix2 Double
 -- Array P Seq (Sz (2 :. 3))
---   [ [ 0.7972230393466304, 0.4485860543300083, 0.257773196880671 ]
---   , [ 0.19115043859955794, 0.33784788936970034, 3.479381605706322e-2 ]
+--   [ [ 0.11217260506402493, 0.8870919238985904, 0.2616843941380331 ]
+--   , [ 0.600959468331641, 0.4382415961606372, 0.8375162573397977 ]
 --   ]
 --
 -- @since 0.3.4

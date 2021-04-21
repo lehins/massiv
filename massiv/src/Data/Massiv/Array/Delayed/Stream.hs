@@ -184,18 +184,13 @@ toStreamIxM = S.transStepsId . toStreamIx
 {-# INLINE toStreamIxM #-}
 
 
-instance Construct DS Ix1 e where
+-- | /O(n)/ - `size` implementation.
+instance Load DS Ix1 e where
 
   makeArrayLinear _ k = fromSteps . S.generate k
   {-# INLINE makeArrayLinear #-}
-
-
--- instance Extract DS Ix1 e where
---   unsafeExtract sIx newSz = fromSteps . S.slice sIx (unSz newSz) . dsArray
---   {-# INLINE unsafeExtract #-}
-
--- | /O(n)/ - `size` implementation.
-instance Load DS Ix1 e where
+  replicate _ k = fromSteps . S.replicate k
+  {-# INLINE replicate #-}
 
   loadArrayM _scheduler arr uWrite =
     case stepsSize (dsArray arr) of

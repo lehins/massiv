@@ -50,7 +50,7 @@ prop_GenerateArray ::
      ( Show (Array r ix e)
      , Eq (Array r ix e)
      , Mutable r e
-     , Construct r ix e
+     , Load r ix e
      , Show e
      , Arbitrary e
      , Arbitrary ix
@@ -69,7 +69,7 @@ prop_GenerateArray =
 
 prop_Shrink ::
      forall r ix e.
-     (Show (Array r ix e), Mutable r e, Construct r ix e, Arbitrary ix, Arbitrary e, Eq e)
+     (Show (Array r ix e), Mutable r e, Load r ix e, Arbitrary ix, Arbitrary e, Eq e)
   => Property
 prop_Shrink  =
   property $ \ (ArrIx arr ix) -> runST $ do
@@ -84,7 +84,6 @@ prop_GrowShrink ::
      , Show (Array r ix e)
      , Load r ix e
      , Mutable r e
-     , Construct r ix e
      , Arbitrary ix
      , Arbitrary e
      , Show e
@@ -190,7 +189,6 @@ mutableSpec ::
      , Show e
      , Eq e
      , Mutable r e
-     , Construct r ix e
      , CoArbitrary ix
      , Arbitrary e
      , CoArbitrary e

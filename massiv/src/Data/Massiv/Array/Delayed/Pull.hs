@@ -72,11 +72,6 @@ instance Strategy D where
   getComp = dComp
   {-# INLINE getComp #-}
 
-instance Index ix => Construct D ix e where
-  makeArray = DArray
-  {-# INLINE makeArray #-}
-
-
 instance Source D e where
   unsafeIndex = INDEX_CHECK("(Source D ix e).unsafeIndex", size, dIndex)
   {-# INLINE unsafeIndex #-}
@@ -159,6 +154,8 @@ instance Index ix => Foldable (Array D ix) where
 
 
 instance Index ix => Load D ix e where
+  makeArray = DArray
+  {-# INLINE makeArray #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 

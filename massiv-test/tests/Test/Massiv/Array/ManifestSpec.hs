@@ -14,15 +14,16 @@ import Data.Word (Word8)
 
 
 -- ByteString
-prop_toFromByteString :: Load r Ix1 Word8 => Manifest r Word8 => Vector r Word8 -> Property
-prop_toFromByteString arr = toManifest arr === fromByteString (getComp arr) (toByteString arr)
+prop_toFromByteString ::
+     (Show (Vector r Word8), Eq (Vector r Word8), Load r Ix1 Word8) => Vector r Word8 -> Property
+prop_toFromByteString arr = arr === fromByteString (getComp arr) (toByteString arr)
 
 prop_castToFromByteString :: Vector S Word8 -> Property
 prop_castToFromByteString arr = arr === castFromByteString (getComp arr) (castToByteString arr)
 
 
 prop_fromToByteString :: Comp -> [Word8] -> Property
-prop_fromToByteString comp ls = bs === toByteString (fromByteString comp bs)
+prop_fromToByteString comp ls = bs === toByteString (fromByteString comp bs :: Vector P Word8)
   where bs = S.pack ls
 
 prop_toBuilder :: Array P Ix1 Word8 -> Property

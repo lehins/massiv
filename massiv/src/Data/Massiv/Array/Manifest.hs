@@ -17,8 +17,6 @@
 module Data.Massiv.Array.Manifest
   ( -- * Manifest
     Manifest
-  , toManifest
-  , M
   -- * Boxed
   , B(..)
   , BL(..)
@@ -123,15 +121,16 @@ import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Core.Common
 import Data.Word (Word8)
 
--- | /O(1)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
+-- | /O(n)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
 -- doesn't match the total number of elements of new array.
 --
 -- @since 0.2.1
 fromByteString ::
-     Comp -- ^ Computation strategy
+     Load r Ix1 Word8
+  => Comp -- ^ Computation strategy
   -> ByteString -- ^ Strict ByteString to use as a source.
-  -> Array M Ix1 Word8
-fromByteString comp bs = MArray comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
+  -> Vector r Word8
+fromByteString comp bs = makeArrayLinear comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
 {-# INLINE fromByteString #-}
 
 -- | /O(n)/ - Convert any source array into a strict `ByteString`. In case when the source array is

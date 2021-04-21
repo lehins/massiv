@@ -90,7 +90,7 @@ castFromVector comp sz vector = do
 --
 -- @since 0.3.0
 fromVectorM ::
-     (MonadThrow m, Typeable v, VG.Vector v a, Mutable r a, Load (ARepr v) ix a, Construct r ix a)
+     (MonadThrow m, Typeable v, VG.Vector v a, Mutable r a, Load (ARepr v) ix a, Load r ix a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
@@ -108,7 +108,7 @@ fromVectorM comp sz v =
 --
 -- @since 0.3.0
 fromVector' ::
-     (Typeable v, VG.Vector v a, Load (ARepr v) ix a, Construct r ix a, Mutable r a)
+     (Typeable v, VG.Vector v a, Load (ARepr v) ix a, Load r ix a, Mutable r a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector

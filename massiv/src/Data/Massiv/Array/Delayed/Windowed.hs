@@ -69,13 +69,6 @@ instance Strategy DW where
   {-# INLINE getComp #-}
 
 
-instance Load DW ix e => Construct DW ix e where
-
-  makeArray c sz f = DWArray (makeArray c sz f) Nothing
-  {-# INLINE makeArray #-}
-
-
-
 instance Functor (Array DW ix) where
   fmap f arr@DWArray{dwArray, dwWindow} =
     arr
@@ -222,6 +215,8 @@ instance Size DW where
   {-# INLINE size #-}
 
 instance Load DW Ix1 e where
+  makeArray c sz f = DWArray (makeArray c sz f) Nothing
+  {-# INLINE makeArray #-}
   loadArrayM scheduler arr uWrite = do
     (loadWindow, wStart, wEnd) <- loadWithIx1 (scheduleWork scheduler) arr uWrite
     let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
@@ -342,6 +337,8 @@ loadWindowIx2 nWorkers loadWindow (it :. ib) = do
 
 
 instance Load DW Ix2 e where
+  makeArray c sz f = DWArray (makeArray c sz f) Nothing
+  {-# INLINE makeArray #-}
   loadArrayM scheduler arr uWrite =
     loadWithIx2 (scheduleWork scheduler) arr uWrite >>=
     uncurry (loadWindowIx2 (numWorkers scheduler))
@@ -355,6 +352,8 @@ instance StrideLoad DW Ix2 e where
 
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
+  makeArray c sz f = DWArray (makeArray c sz f) Nothing
+  {-# INLINE makeArray #-}
   loadArrayM = loadWithIxN
   {-# INLINE loadArrayM #-}
 

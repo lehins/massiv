@@ -38,7 +38,7 @@ prop_toFromVector ::
      , Show (Array r ix Int)
      , Typeable v
      , Load (ARepr v) ix Int
-     , Construct r ix Int
+     , Load r ix Int
      )
   => Proxy v
   -> Proxy ix

@@ -137,13 +137,13 @@ class FoldNumeric r e => Numeric r e where
 
 
 defaultUnsafeLiftArray ::
-     (Construct r ix e, Source r e) => (e -> e) -> Array r ix e -> Array r ix e
+     (Load r ix e, Source r e) => (e -> e) -> Array r ix e -> Array r ix e
 defaultUnsafeLiftArray f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
 {-# INLINE defaultUnsafeLiftArray #-}
 
 
 defaultUnsafeLiftArray2 ::
-     (Construct r ix e, Source r e)
+     (Load r ix e, Source r e)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e

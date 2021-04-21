@@ -24,7 +24,6 @@ module Data.Massiv.Core.Common
   , Steps(..)
   , Stream(..)
   , Strategy(..)
-  , Construct(..)
   , Source(..)
   , Load(..)
   , StrideLoad(..)
@@ -186,62 +185,6 @@ class Typeable r => Strategy r where
   -- @since 0.1.0
   getComp :: Array r ix e -> Comp
 
--- TODO: rename to ConstructP
-
--- | Array types that can be constructed.
-class Load r ix e => Construct r ix e where
-  {-# MINIMAL (makeArray|makeArrayLinear) #-}
-
-  -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
-  -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
-  -- specify representation as an argument.
-  --
-  -- >>> import Data.Massiv.Array
-  -- >>> makeArray Seq (Sz (3 :. 4)) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
-  -- Array D Seq (Sz (3 :. 4))
-  --   [ [ 0, 0, 0, 0 ]
-  --   , [ 0, 1, 0, 0 ]
-  --   , [ 0, 0, 2, 0 ]
-  --   ]
-  --
-  -- Instead of restricting the full type manually we can use `TypeApplications` as convenience:
-  --
-  -- >>> :set -XTypeApplications
-  -- >>> makeArray @P @_ @Double Seq (Sz2 3 4) $ \(i :. j) -> logBase (fromIntegral i) (fromIntegral j)
-  -- Array P Seq (Sz (3 :. 4))
-  --   [ [ NaN, -0.0, -0.0, -0.0 ]
-  --   , [ -Infinity, NaN, Infinity, Infinity ]
-  --   , [ -Infinity, 0.0, 1.0, 1.5849625007211563 ]
-  --   ]
-  --
-  -- @since 0.1.0
-  makeArray ::
-       Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
-    -> Sz ix -- ^ Size of the result array.
-    -> (ix -> e) -- ^ Function to generate elements at a particular index
-    -> Array r ix e
-  makeArray comp sz f = makeArrayLinear comp sz (f . fromLinearIndex sz)
-  {-# INLINE makeArray #-}
-
-  -- | Same as `makeArray`, but produce elements using linear row-major index.
-  --
-  -- >>> import Data.Massiv.Array
-  -- >>> makeArrayLinear Seq (Sz (2 :. 4)) id :: Array D Ix2 Int
-  -- Array D Seq (Sz (2 :. 4))
-  --   [ [ 0, 1, 2, 3 ]
-  --   , [ 4, 5, 6, 7 ]
-  --   ]
-  --
-  -- @since 0.3.0
-  makeArrayLinear :: Comp -> Sz ix -> (Int -> e) -> Array r ix e
-  makeArrayLinear comp sz f = makeArray comp sz (f . toLinearIndex sz)
-  {-# INLINE makeArrayLinear #-}
-
-
-  replicate :: Comp -> Sz ix -> e -> Array r ix e
-  replicate comp sz !e = makeArray comp sz (const e)
-  {-# INLINE replicate #-}
-
 
 -- | Size hint
 --
@@ -375,7 +318,58 @@ class (Strategy r, Resize r) => Source r e where
 
 -- | Any array that can be computed and loaded into memory
 class (Strategy r, Shape r ix) => Load r ix e where
-  {-# MINIMAL (loadArrayM | loadArrayWithSetM) #-}
+  {-# MINIMAL (makeArray | makeArrayLinear), (loadArrayM | loadArrayWithSetM)#-}
+
+  -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
+  -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
+  -- specify representation as an argument.
+  --
+  -- >>> import Data.Massiv.Array
+  -- >>> makeArray Seq (Sz (3 :. 4)) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
+  -- Array D Seq (Sz (3 :. 4))
+  --   [ [ 0, 0, 0, 0 ]
+  --   , [ 0, 1, 0, 0 ]
+  --   , [ 0, 0, 2, 0 ]
+  --   ]
+  --
+  -- Instead of restricting the full type manually we can use `TypeApplications` as convenience:
+  --
+  -- >>> :set -XTypeApplications
+  -- >>> makeArray @P @_ @Double Seq (Sz2 3 4) $ \(i :. j) -> logBase (fromIntegral i) (fromIntegral j)
+  -- Array P Seq (Sz (3 :. 4))
+  --   [ [ NaN, -0.0, -0.0, -0.0 ]
+  --   , [ -Infinity, NaN, Infinity, Infinity ]
+  --   , [ -Infinity, 0.0, 1.0, 1.5849625007211563 ]
+  --   ]
+  --
+  -- @since 0.1.0
+  makeArray ::
+       Comp -- ^ Computation strategy. Useful constructors are `Seq` and `Par`
+    -> Sz ix -- ^ Size of the result array.
+    -> (ix -> e) -- ^ Function to generate elements at a particular index
+    -> Array r ix e
+  makeArray comp sz f = makeArrayLinear comp sz (f . fromLinearIndex sz)
+  {-# INLINE makeArray #-}
+
+  -- | Same as `makeArray`, but produce elements using linear row-major index.
+  --
+  -- >>> import Data.Massiv.Array
+  -- >>> makeArrayLinear Seq (Sz (2 :. 4)) id :: Array D Ix2 Int
+  -- Array D Seq (Sz (2 :. 4))
+  --   [ [ 0, 1, 2, 3 ]
+  --   , [ 4, 5, 6, 7 ]
+  --   ]
+  --
+  -- @since 0.3.0
+  makeArrayLinear :: Comp -> Sz ix -> (Int -> e) -> Array r ix e
+  makeArrayLinear comp sz f = makeArray comp sz (f . toLinearIndex sz)
+  {-# INLINE makeArrayLinear #-}
+
+
+  replicate :: Comp -> Sz ix -> e -> Array r ix e
+  replicate comp sz !e = makeArray comp sz (const e)
+  {-# INLINE replicate #-}
+
 
   -- | Load an array into memory.
   --
@@ -703,7 +697,7 @@ class Nested r ix e where
 
   toNested :: Array r ix e -> NestedStruct r ix e
 
-class Construct r ix e => Ragged r ix e where
+class Load r ix e => Ragged r ix e where
 
   emptyR :: Comp -> Array r ix e
 
@@ -736,7 +730,7 @@ class Construct r ix e => Ragged r ix e where
 --
 -- @since 0.3.0
 empty ::
-     forall r ix e. Construct r ix e
+     forall r ix e. Load r ix e
   => Array r ix e
 empty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
 {-# INLINE empty #-}
@@ -765,7 +759,7 @@ empty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
 --
 -- @since 0.1.0
 singleton ::
-     forall r ix e. Construct r ix e
+     forall r ix e. Load r ix e
   => e -- ^ The only element
   -> Array r ix e
 singleton = makeArray Seq oneSz . const
