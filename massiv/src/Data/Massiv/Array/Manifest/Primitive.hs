@@ -109,13 +109,6 @@ instance Strategy P where
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-instance (Prim e, Index ix) => Construct P ix e where
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
-  {-# INLINE makeArrayLinear #-}
-
-  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
-  {-# INLINE replicate #-}
-
 
 instance Index ix => Shape P ix where
   maxLinearSize = Just . SafeSz . elemsCount
@@ -211,6 +204,12 @@ instance Prim e => Mutable P e where
 
 
 instance (Prim e, Index ix) => Load P ix e where
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
+
   loadArrayM !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}

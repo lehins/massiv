@@ -31,7 +31,7 @@ type MutableArraySpec r ix e
      , Arbitrary (Array r ix e)
      , Mutable r e
      , Stream r ix e
-     , Construct r ix e)
+     )
 
 type MutableSpec r e
    = ( Typeable e

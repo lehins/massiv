@@ -136,14 +136,6 @@ instance Strategy BL where
   {-# INLINE getComp #-}
 
 
-instance Index ix => Construct BL ix e where
-
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
-  {-# INLINE makeArrayLinear #-}
-
-  replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
-  {-# INLINE replicate #-}
-
 instance Source BL e where
   unsafeLinearIndex (BLArray _ _sz o a) i =
     INDEX_CHECK("(Source BL ix e).unsafeLinearIndex",
@@ -213,6 +205,12 @@ instance Index ix => Shape BL ix where
   {-# INLINE maxLinearSize #-}
 
 instance Index ix => Load BL ix e where
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
+
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 
@@ -312,13 +310,6 @@ instance (Index ix, Ord e) => Ord (Array B ix e) where
   {-# INLINE compare #-}
 
 
-instance Index ix => Construct B ix e where
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
-  {-# INLINE makeArrayLinear #-}
-
-  replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
-  {-# INLINE replicate #-}
-
 instance Source B e where
   unsafeLinearIndex arr = unsafeLinearIndex (toLazyArray arr)
   {-# INLINE unsafeLinearIndex #-}
@@ -385,6 +376,12 @@ instance Mutable B e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
+
   loadArrayM scheduler = coerce (loadArrayM scheduler)
   {-# INLINE loadArrayM #-}
 
@@ -496,12 +493,6 @@ instance Strategy N where
   getComp = blComp . coerce
   {-# INLINE getComp #-}
 
-instance (Index ix, NFData e) => Construct BN ix e where
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
-  {-# INLINE makeArrayLinear #-}
-  replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
-  {-# INLINE replicate #-}
-
 instance NFData e => Source BN e where
   unsafeLinearIndex (BNArray arr) = unsafeLinearIndex arr
   {-# INLINE unsafeLinearIndex #-}
@@ -559,6 +550,10 @@ instance NFData e => Mutable BN e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance (Index ix, NFData e) => Load BN ix e where
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+  replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 

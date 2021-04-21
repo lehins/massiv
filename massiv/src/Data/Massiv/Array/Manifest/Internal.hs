@@ -17,10 +17,8 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest.Internal
-  ( M
-  , Manifest(..)
+  ( Manifest(..)
   , Array(..)
-  , toManifest
   , compute
   , computeS
   , computeP
@@ -47,18 +45,13 @@ module Data.Massiv.Array.Manifest.Internal
 import Control.Exception (try)
 import Control.Monad.ST
 import Control.Scheduler
-import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
-import Data.Massiv.Array.Ops.Fold.Internal as A
 import Data.Massiv.Array.Mutable.Internal (unsafeCreateArray_)
-import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
-import Data.Massiv.Core.Operations
 import Data.Maybe (fromMaybe)
 import Data.Typeable
-import GHC.Base hiding (ord)
 import System.IO.Unsafe (unsafePerformIO)
 
 #if MIN_VERSION_primitive(0,6,2)
@@ -76,126 +69,6 @@ sizeofMutableArray :: A.MutableArray s a -> Int
 sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
 {-# INLINE sizeofMutableArray #-}
 #endif
-
-
--- | General Manifest representation
-data M
-
-data instance Array M ix e = MArray { mComp :: !Comp
-                                    , mSize :: !(Sz ix)
-                                    , mLinearIndex :: Int -> e }
-
-instance (Ragged L ix e, Show e) => Show (Array M ix e) where
-  showsPrec = showsArrayPrec id
-  showList = showArrayList
-
-
-instance (Eq e, Index ix) => Eq (Array M ix e) where
-  (==) = eqArrays (==)
-  {-# INLINE (==) #-}
-
-instance (Ord e, Index ix) => Ord (Array M ix e) where
-  compare = compareArrays compare
-  {-# INLINE compare #-}
-
-
--- | /O(1)/ - Conversion of `Manifest` arrays to `M` representation.
-toManifest :: (Index ix, Manifest r e) => Array r ix e -> Array M ix e
-toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
-{-# INLINE toManifest #-}
-
-
--- | Row-major sequentia folding over a Manifest array.
-instance Index ix => Foldable (Array M ix) where
-  fold = fold
-  {-# INLINE fold #-}
-  foldMap = foldMono
-  {-# INLINE foldMap #-}
-  foldl = lazyFoldlS
-  {-# INLINE foldl #-}
-  foldl' = foldlS
-  {-# INLINE foldl' #-}
-  foldr = foldrFB
-  {-# INLINE foldr #-}
-  foldr' = foldrS
-  {-# INLINE foldr' #-}
-  null (MArray _ sz _) = totalElem sz == 0
-  {-# INLINE null #-}
-  length = totalElem . size
-  {-# INLINE length #-}
-  elem e = A.any (e ==)
-  {-# INLINE elem #-}
-  toList arr = build (\ c n -> foldrFB c n arr)
-  {-# INLINE toList #-}
-
-
-instance Strategy M where
-  getComp = mComp
-  {-# INLINE getComp #-}
-  setComp comp arr = arr {mComp = comp}
-  {-# INLINE setComp #-}
-
-
-instance Source M e where
-  unsafeLinearIndex = mLinearIndex
-  {-# INLINE unsafeLinearIndex #-}
-
-  unsafeOuterSlice = unsafeOuterSliceN
-  {-# INLINE unsafeOuterSlice #-}
-
-  unsafeLinearSlice off sz arr = MArray (getComp arr) sz (unsafeLinearIndex arr . (+ off))
-  {-# INLINE unsafeLinearSlice #-}
-
-
-instance Manifest M e where
-
-  unsafeLinearIndexM = mLinearIndex
-  {-# INLINE unsafeLinearIndexM #-}
-
-instance Index ix => Shape M ix
-
-instance Size M where
-  size = mSize
-  {-# INLINE size #-}
-
-instance Resize M where
-  unsafeResize !sz !arr = arr { mSize = sz }
-  {-# INLINE unsafeResize #-}
-
-
-
-
-unsafeOuterSliceN ::
-     forall r ix e. (Source r e, Index ix, Index (Lower ix))
-  => Array r ix e
-  -> Sz (Lower ix)
-  -> Int
-  -> Array M (Lower ix) e
-unsafeOuterSliceN !arr szL !i = MArray (getComp arr) szL (unsafeLinearIndex arr . (+ kStart))
-  where
-    !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
-{-# INLINE unsafeOuterSliceN #-}
-
-instance Index ix => Load M ix e where
-  loadArrayM scheduler (MArray _ sz f) = splitLinearlyWith_ scheduler (totalElem sz) f
-  {-# INLINE loadArrayM #-}
-
-instance Index ix => StrideLoad M ix e
-
-instance Index ix => Stream M ix e where
-  toStream = S.steps
-  {-# INLINE toStream #-}
-  toStreamIx = S.isteps
-  {-# INLINE toStreamIx #-}
-
-
-instance Num e => FoldNumeric M e where
-  unsafeDotProduct = defaultUnsafeDotProduct
-  {-# INLINE unsafeDotProduct #-}
-  powerSumArray = defaultPowerSumArray
-  {-# INLINE powerSumArray #-}
-  foldArray = defaultFoldArray
-  {-# INLINE foldArray #-}
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
@@ -221,7 +94,7 @@ computeS !arr = runST $ computePrimM arr
 --
 -- @since 0.5.4
 computeP ::
-     forall r ix e r'. (Mutable r e, Construct r' ix e)
+     forall r ix e r'. (Mutable r e, Load r' ix e)
   => Array r' ix e
   -> Array r ix e
 computeP arr = setComp (getComp arr) $ compute (setComp Par arr)

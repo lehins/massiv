@@ -55,7 +55,7 @@ prop_MatrixVectorMultiply ::
      forall r e.
      ( Numeric r e
      , Mutable r e
-     , Construct r Ix1 e
+     , Load r Ix1 e
      , Eq e
      , Show e
      )
@@ -73,7 +73,7 @@ prop_MatrixVectorMultiply f arr =
 prop_VectorMatrixMultiply ::
      forall r e.
      ( Numeric r e
-     , Construct r Ix1 e
+     , Load r Ix1 e
      , Source r e
      , Mutable r e
      , Show (Vector r e)
@@ -93,7 +93,7 @@ prop_VectorMatrixMultiply f arr =
       (== SizeMismatchException (Sz2 1 (m + 1)) (size arr))
 
 prop_DotProduct ::
-     forall r e. (Numeric r e, Mutable r e, Eq e, Show e, Construct r Ix1 e)
+     forall r e. (Numeric r e, Mutable r e, Eq e, Show e, Load r Ix1 e)
   => Fun e e
   -> Vector r e
   -> Property
@@ -228,8 +228,8 @@ mutableNumericSpec ::
      forall r e.
      ( Numeric r e
      , Mutable r e
-     , Construct r Ix1 e
-     , Construct r Ix2 e
+     , Load r Ix1 e
+     , Load r Ix2 e
      , Eq e
      , Show e
      , Function e

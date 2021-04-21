@@ -61,7 +61,7 @@ prop_SplitExtract (DimIx dim) (ArrIx arr ix) (Positive n) =
         (splitLeft, splitRight) = splitAt' dim (i + n') arr
 
 prop_ConcatAppend ::
-     forall r ix. (Eq (Array r ix Int), Show (Array r ix Int), Construct r ix Int, Mutable r Int)
+     forall r ix. (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Mutable r Int)
   => DimIx ix
   -> Comp
   -> Sz ix
@@ -75,7 +75,7 @@ prop_ConcatAppend (DimIx dim) comp sz (NonEmpty fns) =
 
 prop_ConcatMConcatOuterM ::
      forall r ix.
-     (Eq (Array r ix Int), Show (Array r ix Int), Construct r ix Int, Mutable r Int)
+     (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Mutable r Int)
   => Comp
   -> Sz ix
   -> NonEmptyList (Fun ix Int)
@@ -212,8 +212,8 @@ type Transform r ix e
      , NFData (Array r ix e)
      , NFData (Array r Int e)
      , Resize r
-     , Construct r ix e
-     , Construct r ix Int
+     , Load r ix e
+     , Load r ix Int
      , Ragged L ix e
      , Source r e
      , StrideLoad r ix e

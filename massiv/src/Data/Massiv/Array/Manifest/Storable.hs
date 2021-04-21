@@ -97,13 +97,6 @@ instance Strategy S where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
-instance (Storable e, Index ix) => Construct S ix e where
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
-  {-# INLINE makeArrayLinear #-}
-
-  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
-  {-# INLINE replicate #-}
-
 instance VS.Storable e => Source S e where
   unsafeLinearIndex (SArray _ _ v) =
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", Sz . VS.length, VS.unsafeIndex) v
@@ -204,6 +197,12 @@ instance Storable e => Mutable S e where
 
 
 instance (Index ix, Storable e) => Load S ix e where
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
+
   loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
   {-# INLINE loadArrayM #-}
 

@@ -13,7 +13,7 @@ import Test.Massiv.Core
 
 
 prop_Construct_makeArray_Manifest ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, Source r Int, Construct r ix Int)
+     forall r ix. (Ragged L ix Int, Source r Int, Load r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -23,7 +23,7 @@ prop_Construct_makeArray_Manifest comp sz f =
   delay (setComp Seq (makeArray comp sz (apply f . toLinearIndex sz) :: Array r ix Int))
 
 prop_Construct_makeArray_Delayed ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, Construct r ix Int)
+     forall r ix. (Ragged L ix Int, Load r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -34,7 +34,7 @@ prop_Construct_makeArray_Delayed comp sz f =
 
 prop_Functor ::
      forall r ix.
-     (Load D ix Int, Ragged L ix Int, Construct r ix Int, Functor (Array r ix))
+     (Ragged L ix Int, Load r ix Int, Functor (Array r ix))
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -46,9 +46,8 @@ prop_Functor comp sz f g =
 
 prop_Extract ::
      forall r ix.
-     ( Load D ix Int
-     , Ragged L ix Int
-     , Construct r ix Int
+     ( Ragged L ix Int
+     , Load r ix Int
      , Source r Int
      )
   => Comp
@@ -66,10 +65,9 @@ prop_Extract comp sz f start newSize =
 
 prop_IxUnbox ::
      forall ix.
-     ( Load D ix ix
-     , Ragged L ix ix
-     , Construct U ix ix
+     ( Ragged L ix ix
      , Source U ix
+     , Unbox ix
      )
   => Comp
   -> Sz ix
@@ -80,7 +78,7 @@ prop_IxUnbox comp sz f =
   delay (makeArrayLinear comp sz (apply f) :: Array U ix ix)
 
 prop_computeWithStride ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, StrideLoad r ix Int, Construct r ix Int)
+     forall r ix. (Ragged L ix Int, StrideLoad r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -96,7 +94,7 @@ prop_computeWithStride comp sz f stride =
 
 specCommon ::
      forall ix.
-     (Arbitrary ix, Load D ix Int, StrideLoad DW ix Int, Ragged L ix Int, Ragged L ix ix, Unbox ix)
+     (Arbitrary ix, StrideLoad DW ix Int, Ragged L ix Int, Ragged L ix ix, Unbox ix)
   => Spec
 specCommon =
   describe "Construct" $ do

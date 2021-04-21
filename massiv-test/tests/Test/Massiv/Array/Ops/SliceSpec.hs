@@ -140,7 +140,7 @@ prop_SliceIndexDim4 (ArrIx arr ix@(i1 :> i2 :> i3 :. i4)) =
 specSliceN ::
      ( HasCallStack
      , Source r e
-     , Construct r ix e
+     , Load r ix e
      , Arbitrary ix
      , Arbitrary e
      , Show (Array r ix e)
