@@ -707,10 +707,10 @@ class Load r ix e => Ragged r ix e where
 
   generateRaggedM :: Monad m => Comp -> Sz ix -> (ix -> m e) -> m (Array r ix e)
 
-  flattenRagged :: Array r ix e -> Array r Ix1 e
+  flattenRagged :: Array r ix e -> Vector r e
 
   loadRagged ::
-    Monad m => (m () -> m ()) -> (Int -> e -> m a) -> Int -> Int -> Sz ix -> Array r ix e -> m ()
+    Monad m => (m () -> m ()) -> (Ix1 -> e -> m a) -> Ix1 -> Ix1 -> Sz ix -> Array r ix e -> m ()
 
   raggedFormat :: (e -> String) -> String -> Array r ix e -> String
 
