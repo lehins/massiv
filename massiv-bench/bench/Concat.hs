@@ -39,7 +39,7 @@ main = do
     ]
 
 concatMutableM ::
-     forall r' r ix e . (Size r', Load r' ix e, Mutable r e)
+     forall r' r ix e . (Size r', Load r' ix e, Load r ix e, Mutable r e)
   => [Array r' ix e]
   -> IO (Array r ix e)
 concatMutableM arrsF =
@@ -68,7 +68,7 @@ concatMutableM arrsF =
 {-# INLINE concatMutableM #-}
 
 concatNewM ::
-     forall ix e r. (Index ix, Mutable r e)
+     forall ix e r. (Index ix, Mutable r e, Load r ix e)
   => [Array r ix e]
   -> IO (Array r ix e)
 concatNewM arrsF =

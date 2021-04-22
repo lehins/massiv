@@ -32,11 +32,11 @@ lightFuncIx1 :: Int -- ^ cols
 lightFuncIx1 k i = lightFuncIx2T (divMod i k)
 {-# INLINE lightFuncIx1 #-}
 
-arrRLightIx2 :: Construct r Ix2 Double => r -> Comp -> Sz2 -> Array r Ix2 Double
+arrRLightIx2 :: Load r Ix2 Double => r -> Comp -> Sz2 -> Matrix r Double
 arrRLightIx2 _ comp arrSz = makeArray comp arrSz (\ (i :. j) -> lightFunc i j)
 {-# INLINE arrRLightIx2 #-}
 
-arrRHeavyIx2 :: Construct r Ix2 Double => r -> Comp -> Sz2 -> Array r Ix2 Double
+arrRHeavyIx2 :: Load r Ix2 Double => r -> Comp -> Sz2 -> Matrix r Double
 arrRHeavyIx2 _ comp arrSz = makeArray comp arrSz (\ (i :. j) -> heavyFunc i j)
 {-# INLINE arrRHeavyIx2 #-}
 

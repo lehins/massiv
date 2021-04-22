@@ -16,7 +16,7 @@ gaussian1 stdDev x = exp (- (x ^ (2 :: Int)) / var2) / (sqrt (var2 * pi))
     var2 = 2 * stdDev ^ (2 :: Int)
 {-# INLINE gaussian1 #-}
 
-mkGaussian2 :: Int -> Int -> Array M Ix2 Double
+mkGaussian2 :: Int -> Int -> Array D Ix2 Double
 mkGaussian2 n side  =
   let f scale (i :. j) = gaussian2 (1 :: Double) (scale i) (scale j)
       {-# INLINE f #-}
@@ -27,7 +27,7 @@ mkGaussian2 n side  =
 {-# INLINE mkGaussian2 #-}
 
 
-mkGaussian1 :: Int -> Int -> Array M Ix2 Double
+mkGaussian1 :: Int -> Int -> Array D Ix2 Double
 mkGaussian1 n side  =
   let f scale i = gaussian1 (1 :: Double) (scale i)
       {-# INLINE f #-}

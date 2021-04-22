@@ -101,7 +101,7 @@ showSizeMxV MxV {..} = show m1 <> "x" <> show n1 <> " X " <> show n <> "x1"
 
 
 benchMxV ::
-     forall r e. (Typeable r, Typeable e, Numeric r e, Mutable r e)
+     forall r e. (Typeable r, Typeable e, Numeric r e, Mutable r e, Load r Ix2 e)
   => MxV r e
   -> Benchmark
 benchMxV mxv@MxV {..} =
