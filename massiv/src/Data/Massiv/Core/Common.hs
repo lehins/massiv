@@ -709,8 +709,8 @@ class Load r ix e => Ragged r ix e where
 
   flattenRagged :: Array r ix e -> Vector r e
 
-  loadRagged ::
-    Monad m => (m () -> m ()) -> (Ix1 -> e -> m a) -> Ix1 -> Ix1 -> Sz ix -> Array r ix e -> m ()
+  loadRagged :: Monad m =>
+    Scheduler m () -> (Ix1 -> e -> m a) -> Ix1 -> Ix1 -> Sz ix -> Array r ix e -> m ()
 
   raggedFormat :: (e -> String) -> String -> Array r ix e -> String
 
