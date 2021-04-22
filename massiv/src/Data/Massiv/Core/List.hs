@@ -205,8 +205,8 @@ instance Ragged L Ix1 e where
       return (e:acc)
     return $ LArray comp $ coerce xs
   {-# INLINE generateRaggedM #-}
-  loadRagged using uWrite start end sz xs =
-    using $ do
+  loadRagged scheduler uWrite start end sz xs =
+    scheduleWork scheduler $ do
       leftOver <-
         loopM start (< end) (+ 1) xs $ \i xs' ->
           case unconsR xs' of
@@ -221,7 +221,7 @@ instance (Shape L ix, Ragged L ix e) => Load L ix e where
   makeArray comp sz f = runIdentity $ generateRaggedM comp sz (pure . f)
   {-# INLINE makeArray #-}
   loadArrayM scheduler arr uWrite =
-    loadRagged (scheduleWork scheduler) uWrite 0 (totalElem sz) sz arr
+    loadRagged scheduler uWrite 0 (totalElem sz) sz arr
     where !sz = outerSize arr
   {-# INLINE loadArrayM #-}
 
@@ -246,7 +246,7 @@ instance Ragged L Ix2 e where
     where
       xs = concatMap (unList . lData . flattenRagged . LArray (lComp arr)) (unList (lData arr))
   {-# INLINE flattenRagged #-}
-  loadRagged using uWrite start end sz xs = do
+  loadRagged scheduler uWrite start end sz xs = do
     let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
@@ -257,7 +257,7 @@ instance Ragged L Ix2 e where
           case unconsR zs of
             Nothing -> return $! throw (DimTooShortException k (outerLength xs))
             Just (y, ys) -> do
-              _ <- loadRagged using uWrite i (i + step) szL y
+              _ <- loadRagged scheduler uWrite i (i + step) szL y
               return ys
       unless (isNull leftOver) (return $! throw DimTooLongException)
   {-# INLINE loadRagged #-}
@@ -287,7 +287,7 @@ instance (Shape L (IxN n), Shape LN (Ix (n - 1)), Ragged L (Ix (n - 1)) e) =>
     where
       xs = concatMap (unList . lData . flattenRagged . LArray (lComp arr)) (unList (lData arr))
   {-# INLINE flattenRagged #-}
-  loadRagged using uWrite start end sz xs = do
+  loadRagged scheduler uWrite start end sz xs = do
     let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
@@ -298,7 +298,7 @@ instance (Shape L (IxN n), Shape LN (Ix (n - 1)), Ragged L (Ix (n - 1)) e) =>
           case unconsR zs of
             Nothing -> return $! throw (DimTooShortException k (outerLength xs))
             Just (y, ys) -> do
-              _ <- loadRagged using uWrite i (i + step) szL y
+              _ <- loadRagged scheduler uWrite i (i + step) szL y
               return ys
       unless (isNull leftOver) (return $! throw DimTooLongException)
   {-# INLINE loadRagged #-}
