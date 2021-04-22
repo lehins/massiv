@@ -140,7 +140,7 @@ instance Shape LN Ix2 where
   {-# INLINE linearSize #-}
   linearSizeHint = lengthHintList . unList
   {-# INLINE linearSizeHint #-}
-  isNull = null . unList
+  isNull = getAll . foldMap (All . null . unList) . unList
   {-# INLINE isNull #-}
   outerSize arr =
     case unList arr of
@@ -163,7 +163,7 @@ instance (Shape LN (Ix (n - 1)), Index (IxN n)) => Shape LN (IxN n) where
   {-# INLINE linearSize #-}
   linearSizeHint = lengthHintList . unList
   {-# INLINE linearSizeHint #-}
-  isNull = null . unList
+  isNull = getAll . foldMap (All . isNull) . unList
   {-# INLINE isNull #-}
   outerSize arr =
     case unList arr of
