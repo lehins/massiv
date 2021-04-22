@@ -64,7 +64,8 @@ module Data.Massiv.Core.Index
   , Index(..)
   , zeroIndex
   , oneIndex
-  , isNonEmpty
+  , isZeroSz
+  , isNonZeroSz
   , headDim
   , tailDim
   , lastDim
@@ -213,21 +214,34 @@ oneIndex :: Index ix => ix
 oneIndex = pureIndex 1
 {-# INLINE [1] oneIndex #-}
 
--- | Checks whether array with this size can hold at least one element.
+-- | Checks whether size can hold at least one element.
 --
 -- ==== __Examples__
 --
--- >>> isNonEmpty (Sz3 1 0 2)
+-- >>> isNonZeroSz (Sz3 1 0 2)
 -- False
 --
--- @since 0.1.0
-isNonEmpty :: Index ix => Sz ix -> Bool
-isNonEmpty !sz = isSafeIndex sz zeroIndex
-{-# INLINE [1] isNonEmpty #-}
+-- @since 1.0.0
+isNonZeroSz :: Index ix => Sz ix -> Bool
+isNonZeroSz !sz = isSafeIndex sz zeroIndex
+{-# INLINE [1] isNonZeroSz #-}
 -- TODO: benchmark against (also adjust `isEmpty` with fastest):
 -- - foldlIndex (*) 1 (unSz sz) /= 0
 -- - foldlIndex (\a x -> a && x /= 0) True (unSz sz)
 -- - totalElem sz == 0
+
+-- | Checks whether size can hold at least one element.
+--
+-- ==== __Examples__
+--
+-- >>> isNonZeroSz (Sz3 1 0 2)
+-- False
+--
+-- @since 1.0.0
+isZeroSz :: Index ix => Sz ix -> Bool
+isZeroSz = not . isNonZeroSz
+{-# INLINE [1] isZeroSz #-}
+
 
 -- | Convert a size to a linear size.
 --
