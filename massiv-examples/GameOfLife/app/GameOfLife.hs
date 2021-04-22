@@ -101,7 +101,7 @@ startGameOfLife sz s = do
   let iLife = initLife sz inf2
       wSz = size (pixelGrid s iLife)
   G.windowSize $= sizeFromSz2 wSz
-  mArr <- new wSz
+  mArr <- newMArray' wSz
   displayCallback $= clear [ColorBuffer]
   drawLife s mArr iLife
   runGameOfLife s mArr iLife

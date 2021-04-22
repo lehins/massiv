@@ -16,14 +16,14 @@ sortRows ::
      forall r e v.
      ( Ord e
      , Typeable v
-     , A.Construct r Ix2 e
-     , A.Mutable r Ix2 e
+     , A.Load r Ix2 e
+     , A.Mutable r e
      , VG.Vector v e
      , ARepr v ~ r
      , VRepr r ~ v
      )
-  => Array r Ix2 e
-  -> Array r Ix2 e
+  => Matrix r e
+  -> Matrix r e
 sortRows arr = unsafePerformIO $ do
   mv :: VG.Mutable v RealWorld e <- VG.thaw (A.toVector arr :: v e)
   let comp = getComp arr
