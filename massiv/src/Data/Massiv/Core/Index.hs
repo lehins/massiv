@@ -234,8 +234,8 @@ isNonZeroSz !sz = isSafeIndex sz zeroIndex
 --
 -- ==== __Examples__
 --
--- >>> isNonZeroSz (Sz3 1 0 2)
--- False
+-- >>> isZeroSz (Sz3 1 0 2)
+-- True
 --
 -- @since 1.0.0
 isZeroSz :: Index ix => Sz ix -> Bool

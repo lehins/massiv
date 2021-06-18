@@ -13,6 +13,6 @@ let
     };
 in pkgs.mkShell
 {
-  buildInputs = [ stack pkgs.haskellPackages.ghcid pkgs.haskell.compiler.ghc822 pkgs.gmp ];
+  buildInputs = [ stack pkgs.haskellPackages.ghcid pkgs.haskell.compiler.ghc8104 pkgs.gmp ];
 
 }
