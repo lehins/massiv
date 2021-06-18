@@ -48,11 +48,6 @@ from the end, are:
     * `N` - Also boxed arrays, but unlike the other representation `B`, its elements are in Normal
       Form, i.e. in a fully evaluated state and no thunks or memory leaks are possible. It does
       require `NFData` instance for the elements though.
-    * `M` - Manifest arrays, which is a general type of array that is backed by some memory
-      representation, therefore any of the above `P`, `U`, `S`, `B` type of arrays can be converted
-      to `M` in constant time with `toManifest` function. It is mostly useful during constant time
-      slicing of manifest arrays, as this becomes the result representation. More on that in the
-      [slicing](#slicing) section.
 
 ## Construct
 

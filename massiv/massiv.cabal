@@ -83,7 +83,7 @@ library
                      , exceptions
                      , scheduler >= 1.5.0
                      , primitive
-                     , random
+                     , random >= 1.2.0
                      , unliftio-core
                      , vector
 
@@ -108,7 +108,8 @@ test-suite doctests
                , QuickCheck
                , massiv
                , mersenne-random-pure64
-               , random
+               , random >= 1.2.0
+               , mwc-random >= 0.15.0.1
                , splitmix >= 0.0.1
                , template-haskell
   default-language:    Haskell2010

@@ -24,7 +24,8 @@
 --         Form (NF). This property is very useful for parallel processing, i.e. when calling
 --         `compute` you do want all of your elements to be fully evaluated.
 --
--- * `BL` - Similar to `B`, is also a boxed type, but lazy. It's elements are not evaluated.
+-- * `BL` - Similar to `B`, is also a boxed type, but lazy. It's elements are not evaluated when
+--         array is computed.
 --
 -- * `S` - Is a type of array that is backed by pinned memory, therefore pointers to those arrays
 --         can be passed to FFI calls, because Garbage Collector (GC) is guaranteed not to move
@@ -35,9 +36,6 @@
 --
 -- * `P` - Array that can hold Haskell primitives, such as `Int`, `Word`, `Double`, etc. Any element
 --        must be an instance of `Prim` class.
---
--- * `M` - General manifest array type, that any of the above representations can be converted to in
---       constant time using `toManifest`.
 --
 -- There are also array representations that only describe how values for its elements can be
 -- computed or loaded into memory, as such, they are represented by functions and do not impose the
@@ -85,6 +83,7 @@ module Data.Massiv.Array
   -- * Compute
   , getComp
   , setComp
+  , appComp
   , compute
   , computeS
   , computeP
