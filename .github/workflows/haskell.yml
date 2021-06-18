@@ -27,15 +27,18 @@ jobs:
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-16
             ghc: 8.8.4
-          - resolver: lts-17
+            stack-yaml: stack-extra-deps.yaml
+          - resolver: lts-18
             ghc: 8.10.4
 
           # Latest stable for MacOS: ghc-8.8.4
           - resolver: lts-16
             os: macos-latest
+            stack-yaml: stack-extra-deps.yaml
           # Latest stable for Windows: ghc-8.6.4
           - resolver: lts-14
             os: windows-latest
+            stack-yaml: stack-extra-deps.yaml
 
     env:
       STACK_YAML: stack.yaml
