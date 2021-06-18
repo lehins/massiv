@@ -343,7 +343,7 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
 -- @since 1.0.0
 uniformArray ::
      forall ix e g. (Index ix, RandomGen g, Uniform e)
-  => g -- ^ Initial random value generator
+  => g -- ^ Initial random value generator.
   -> Comp -- ^ Computation strategy.
   -> Sz ix -- ^ Resulting size of the array.
   -> Array DL ix e
@@ -354,8 +354,8 @@ uniformArray gen = randomArray gen split uniform
 -- @since 1.0.0
 uniformRangeArray ::
      forall ix e g. (Index ix, RandomGen g, UniformRange e)
-  => g -- ^ Initial random value generator
-  -> (e, e)
+  => g -- ^ Initial random value generator.
+  -> (e, e) -- ^ Inclusive range in which values will be generated in.
   -> Comp -- ^ Computation strategy.
   -> Sz ix -- ^ Resulting size of the array.
   -> Array DL ix e
@@ -420,20 +420,24 @@ randomArrayS gen sz nextRandom =
 --
 -- In the example below we take a stateful random number generator from
 -- [wmc-random](https://www.stackage.org/package/mwc-random), which is not thread safe,
--- and safely parallelize it by giving each thread it's own generator:
+-- and safely parallelize it by giving each thread it's own generator. There is a caveat
+-- of course, statistical independence will depend on the entropy in your initial seeds,
+-- so do not use the example below verbatim, since intiial seeds are sequential numbers.
 --
--- > λ> import Data.Massiv.Array
--- > λ> import System.Random.MWC (createSystemRandom, uniformR)
--- > λ> import System.Random.MWC.Distributions (standard)
--- > λ> gens <- initWorkerStates Par (\_ -> createSystemRandom)
--- > λ> randomArrayWS gens (Sz2 2 3) standard :: IO (Array P Ix2 Double)
--- > Array P Par (Sz (2 :. 3))
--- >   [ [ -0.9066144845415213, 0.5264323240310042, -1.320943607597422 ]
--- >   , [ -0.6837929005619592, -0.3041255565826211, 6.53353089112833e-2 ]
--- >   ]
--- > λ> randomArrayWS gens (Sz1 10) (uniformR (0, 9)) :: IO (Array P Ix1 Int)
--- > Array P Par (Sz1 10)
--- >   [ 3, 6, 1, 2, 1, 7, 6, 0, 8, 8 ]
+-- >>> import Data.Massiv.Array as A
+-- >>> import System.Random.MWC as MWC (initialize)
+-- >>> import System.Random.Stateful (uniformRM)
+-- >>> import Control.Scheduler (initWorkerStates, getWorkerId)
+-- >>> :set -XTypeApplications
+-- >>> gens <- initWorkerStates (ParN 3) (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
+-- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Array P Ix2 Double)
+-- Array P Par (Sz (2 :. 3))
+-- [ [ 2.5438514691269685, 4.287612444807011, 5.610339021582389 ]
+-- , [ 4.697970155404468, 5.00119167394813, 2.996037154611197 ]
+-- ]
+-- >>> randomArrayWS gens (Sz1 10) (uniformRM (0, 9)) :: IO (Vector P Int)
+-- Array P Par (Sz1 10)
+--   [ 0, 9, 3, 2, 2, 7, 6, 7, 7, 5 ]
 --
 -- @since 0.3.4
 randomArrayWS ::

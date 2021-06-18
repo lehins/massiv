@@ -1,9 +1,6 @@
-resolver: lts-17.15
+resolver: lts-18.0
 packages:
 - 'massiv/'
 - 'massiv-test/'
 flags: {}
-extra-deps:
-- random-1.2.0@sha256:5ca8674e95c46c7eb90f520c26aea22d403625c97697275434afba66ebd32b05,5897
-- QuickCheck-2.14.1@sha256:01e46d7b0a8d3148288ec977625f62d5516ebb5031a50c63f0453863301b4a79,7736
-- scheduler-1.5.0@sha256:8b43f2991bf9a720b12192ba99525f705a44aeae9541a7bd73fbc7e7b56fd8f0,2437
+extra-deps: []

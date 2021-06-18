@@ -30,6 +30,7 @@ module Data.Massiv.Core
   , ListItem
   , Scheduler
   , SchedulerWS
+  , Strategy
   , Comp(Seq, Par, Par', ParOn, ParN)
   , appComp
   , WorkerStates

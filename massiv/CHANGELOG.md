@@ -1,7 +1,8 @@
 # 1.0.0
 
+* Add of `munsafeResize`
 * Add `uniformArray` and `uniformRangeArray`
-* Replace `isNonEmpty` with `isNonZeroSz` and added `isZeroSz`
+* Replace `isNonEmpty` with `isNotZeroSz` and added `isZeroSz`
 * Consolidate `Construct` class into `Load`
 * Get rid of `M` representation
 * Introduce `Shape`, the parent of `Size`

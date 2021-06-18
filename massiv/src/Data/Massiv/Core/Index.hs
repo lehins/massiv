@@ -65,7 +65,7 @@ module Data.Massiv.Core.Index
   , zeroIndex
   , oneIndex
   , isZeroSz
-  , isNonZeroSz
+  , isNotZeroSz
   , headDim
   , tailDim
   , lastDim
@@ -218,13 +218,13 @@ oneIndex = pureIndex 1
 --
 -- ==== __Examples__
 --
--- >>> isNonZeroSz (Sz3 1 0 2)
+-- >>> isNotZeroSz (Sz3 1 0 2)
 -- False
 --
 -- @since 1.0.0
-isNonZeroSz :: Index ix => Sz ix -> Bool
-isNonZeroSz !sz = isSafeIndex sz zeroIndex
-{-# INLINE [1] isNonZeroSz #-}
+isNotZeroSz :: Index ix => Sz ix -> Bool
+isNotZeroSz !sz = isSafeIndex sz zeroIndex
+{-# INLINE [1] isNotZeroSz #-}
 -- TODO: benchmark against (also adjust `isEmpty` with fastest):
 -- - foldlIndex (*) 1 (unSz sz) /= 0
 -- - foldlIndex (\a x -> a && x /= 0) True (unSz sz)
@@ -239,7 +239,7 @@ isNonZeroSz !sz = isSafeIndex sz zeroIndex
 --
 -- @since 1.0.0
 isZeroSz :: Index ix => Sz ix -> Bool
-isZeroSz = not . isNonZeroSz
+isZeroSz = not . isNotZeroSz
 {-# INLINE [1] isZeroSz #-}
 
 
