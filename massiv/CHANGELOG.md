@@ -1,5 +1,6 @@
 # 1.0.0
 
+* Add `uniformArray` and `uniformRangeArray`
 * Replace `isNonEmpty` with `isNonZeroSz` and added `isZeroSz`
 * Consolidate `Construct` class into `Load`
 * Get rid of `M` representation

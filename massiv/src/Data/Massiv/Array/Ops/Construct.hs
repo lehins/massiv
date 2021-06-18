@@ -37,6 +37,8 @@ module Data.Massiv.Array.Ops.Construct
   , iunfoldrS_
   --, iunfoldrS
     -- *** Random
+  , uniformArray
+  , uniformRangeArray
   , randomArray
   , randomArrayS
   , randomArrayWS
