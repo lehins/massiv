@@ -226,7 +226,7 @@ fromRaggedArrayM arr =
         marr <- unsafeNew sz
         traverse (\_ -> unsafeFreeze (getComp arr) marr) =<<
           try (withMassivScheduler_ (getComp arr) $ \scheduler ->
-                 loadRagged (scheduleWork scheduler) (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
+                 loadRagged scheduler (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
 {-# INLINE fromRaggedArrayM #-}
 
 

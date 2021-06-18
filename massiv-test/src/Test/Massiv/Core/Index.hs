@@ -538,8 +538,8 @@ szSpec = do
   describe "Number of Elements" $ do
     it "TotalElem" $ property $
       \(sz :: Sz ix) -> totalElem sz === foldlIndex (*) 1 (unSz sz)
-    it "IsNonEmpty" $ property $
-      \(sz :: Sz ix) -> isNonEmpty sz === foldlIndex (\a x -> a && x > 0) True (unSz sz)
+    it "IsNonZeroSz" $ property $
+      \(sz :: Sz ix) -> isNonZeroSz sz === foldlIndex (\a x -> a && x > 0) True (unSz sz)
   describe "Iterators" $ do
     it "IterLinearM" $ property $ prop_IterLinearM @ix
     it "IterLinearM_" $ property $ prop_IterLinearM_ @ix
