@@ -71,9 +71,33 @@ import Data.Massiv.Core.Iterator
 import Data.Typeable
 import GHC.TypeLits
 
--- | `Sz` provides type safety guarantees preventing mixup with index, which is used for looking into
--- array cells, from the size, that describes total number of elements along each dimension in the
--- array. Moreover the @Sz@ constructor will prevent creation of invalid sizes with negative numbers.
+-- | `Sz` is the size of the array. It describes total number of elements along each
+-- dimension in the array. It is a wrapper around an index of the same dimension, however
+-- it provides type safety preventing mixup with index. Moreover the @Sz@ constructor (and
+-- others `Sz1`, `Data.Massiv.Core.Index.Sz2`, ... that are specialized to specific
+-- dimensions prevent creation of invalid sizes with negative values.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> Sz (1 :> 2 :. 3)
+-- Sz (1 :> 2 :. 3)
+--
+-- `Sz` has a `Num` instance, which is very convenient:
+--
+-- >>> Sz (1 :> 2 :. 3) + 5
+-- Sz (6 :> 7 :. 8)
+--
+-- However subtraction can sometimes lead to surprising behavior, because size is not
+-- allowed to take negative values it will be clamped at 0.
+--
+-- >>> Sz (1 :> 2 :. 3) - 2
+-- Sz (0 :> 0 :. 1)
+--
+-- __Warning__: It is always wrong to `negate` a size, thus it will result in an
+-- error. For that reason also watch out for partially applied @(`-` sz)@, which is
+-- deugared into @`negate` sz@. See more info about it in
+-- [#114](https://github.com/lehins/massiv/issues/114).
 --
 -- @since 0.3.0
 newtype Sz ix =
@@ -116,16 +140,20 @@ instance Index ix => Show (Sz ix) where
           1 -> "1 " ++ show usz
           _ -> " (" ++ shows usz ")"
 
+-- | Calling `negate` is an error.
 instance (Num ix, Index ix) => Num (Sz ix) where
   (+) x y = Sz (coerce x + coerce y)
   {-# INLINE (+) #-}
   (-) x y = Sz (coerce x - coerce y)
   {-# INLINE (-) #-}
-  (*) x y = SafeSz (coerce x * coerce y)
+  (*) x y = Sz (coerce x * coerce y)
   {-# INLINE (*) #-}
   abs !x = x
   {-# INLINE abs #-}
-  negate !_x = 0
+  negate x
+    | x == zeroSz = x
+    | otherwise =
+      error $ "Attempted to negate: " ++ show x ++ ", this can lead to unexpected behavior. See #114"
   {-# INLINE negate #-}
   signum x = SafeSz (signum (coerce x))
   {-# INLINE signum #-}

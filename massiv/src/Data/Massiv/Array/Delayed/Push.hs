@@ -134,7 +134,7 @@ appendOuterM (DLArray c1 sz1 load1) (DLArray c2 sz2 load2) = do
       (!i2, !szl2) = unconsSz sz2
   unless (szl1 == szl2) $ throwM $ SizeMismatchException sz1 sz2
   pure $
-    DLArray {dlComp = c1 <> c2, dlSize = consSz (i1 + i2) szl1, dlLoad = load}
+    DLArray {dlComp = c1 <> c2, dlSize = consSz (liftSz2 (+) i1 i2) szl1, dlLoad = load}
   where
     load :: Monad n => Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
     load scheduler !startAt dlWrite dlSet = do

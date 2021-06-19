@@ -23,6 +23,7 @@ module Data.Massiv.Array.Manifest.Vector
   ) where
 
 import Control.Monad (guard, join, msum)
+import Data.Kind
 import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.Primitive
@@ -39,14 +40,14 @@ import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 
 -- | Match vector type to array representation
-type family ARepr (v :: * -> *) :: * where
+type family ARepr (v :: Type -> Type) :: Type where
   ARepr VU.Vector = U
   ARepr VS.Vector = S
   ARepr VP.Vector = P
   ARepr VB.Vector = BL
 
 -- | Match array representation to a vector type
-type family VRepr r :: * -> * where
+type family VRepr r :: Type -> Type where
   VRepr U = VU.Vector
   VRepr S = VS.Vector
   VRepr P = VP.Vector

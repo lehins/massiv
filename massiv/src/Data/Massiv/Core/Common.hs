@@ -251,7 +251,7 @@ class Index ix => Shape r ix where
   --
   -- @since 1.0.0
   isNull :: Array r ix e -> Bool
-  isNull = (0 ==) . linearSize
+  isNull = (zeroSz ==) . linearSize
   {-# INLINE isNull #-}
 
 
@@ -267,7 +267,7 @@ class Size r where
 
   -- | Get the exact size of an immutabe array. Most of the time will produce the size in
   -- constant time, except for `DS` representation, which could result in evaluation of
-  -- the whole stream. See `maxSize` and `Data.Massiv.Vector.slength` for more info.
+  -- the whole stream. See `maxLinearSize` and `Data.Massiv.Vector.slength` for more info.
   --
   -- @since 0.1.0
   size :: Array r ix e -> Sz ix
@@ -365,8 +365,12 @@ class (Strategy r, Shape r ix) => Load r ix e where
   {-# INLINE makeArrayLinear #-}
 
 
+  -- | Construct an array of the specified size that contains the same element in all of
+  -- the cells.
+  --
+  -- @since 0.3.0
   replicate :: Comp -> Sz ix -> e -> Array r ix e
-  replicate comp sz !e = makeArray comp sz (const e)
+  replicate comp sz !e = makeArrayLinear comp sz (const e)
   {-# INLINE replicate #-}
 
 

@@ -47,7 +47,7 @@ import System.IO.Unsafe
 tally :: (Mutable r e, Load r ix e, Ord e) => Array r ix e -> Vector DS (e, Int)
 tally arr
   | isEmpty arr = setComp (getComp arr) empty
-  | otherwise = scatMaybes $ sunfoldrN (sz + 1) count (0, 0, sorted ! 0)
+  | otherwise = scatMaybes $ sunfoldrN (liftSz2 (+) sz oneSz) count (0, 0, sorted ! 0)
   where
     sz@(Sz k) = size sorted
     count (!i, !n, !prev)

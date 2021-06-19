@@ -111,7 +111,7 @@ unsafeInit v = unsafeLinearSlice 0 (SafeSz (coerce (size v) - 1)) v
 --
 -- @since 0.5.0
 unsafeTail :: Source r e => Vector r e -> Vector r e
-unsafeTail = unsafeDrop 1
+unsafeTail = unsafeDrop oneSz
 {-# INLINE unsafeTail #-}
 
 
