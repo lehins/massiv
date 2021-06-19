@@ -24,9 +24,7 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
   assertException
-    (\case
-       IndexZeroException _ -> True
-       _ -> False)
+    selectErrorCall
     (computeAs U (rangeStep' Seq from 0 to))
 
 prop_toFromListIsList ::

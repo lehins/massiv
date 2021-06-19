@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [nightly, lts-17, lts-16, lts-14, lts-12]
+        resolver: [nightly, lts-18, lts-16, lts-14, lts-12]
         include:
           - resolver: lts-12
             ghc: 8.4.4

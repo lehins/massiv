@@ -511,12 +511,13 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 -- *** Exception: IndexZeroException: 0
 --
 -- @since 0.3.0
-rangeStepM :: (Index ix, MonadThrow m) =>
-              Comp -- ^ Computation strategy
-           -> ix -- ^ Start
-           -> ix -- ^ Step (Can't have zeros)
-           -> ix -- ^ End
-           -> m (Array D ix ix)
+rangeStepM ::
+     forall ix m. (Index ix, MonadThrow m)
+  => Comp -- ^ Computation strategy
+  -> ix -- ^ Start
+  -> ix -- ^ Step (Can't have zeros)
+  -> ix -- ^ End
+  -> m (Array D ix ix)
 rangeStepM comp !from !step !to
   | foldlIndex (\acc i -> acc || i == 0) False step = throwM $ IndexZeroException step
   | otherwise =
@@ -536,8 +537,8 @@ rangeStepM comp !from !step !to
 --   [ 1, 3, 5 ]
 --
 -- @since 0.3.0
-rangeStep' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
-rangeStep' comp from step = either throw id  . rangeStepM comp from step
+rangeStep' :: (HasCallStack, Index ix) => Comp -> ix -> ix -> ix -> Array D ix ix
+rangeStep' comp from step = throwEither . rangeStepM comp from step
 {-# INLINE rangeStep' #-}
 
 -- | Just like `range`, except the finish index is included.
@@ -559,8 +560,8 @@ rangeStepInclusiveM comp ixFrom step ixTo = rangeStepM comp ixFrom step (liftInd
 -- | Just like `range`, except the finish index is included.
 --
 -- @since 0.3.1
-rangeStepInclusive' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
-rangeStepInclusive' comp ixFrom step = either throw id  . rangeStepInclusiveM comp ixFrom step
+rangeStepInclusive' :: (HasCallStack, Index ix) => Comp -> ix -> ix -> ix -> Array D ix ix
+rangeStepInclusive' comp ixFrom step = throwEither . rangeStepInclusiveM comp ixFrom step
 {-# INLINE rangeStepInclusive' #-}
 
 
@@ -699,7 +700,7 @@ enumFromStepN comp !from !step !sz = makeArrayLinear comp sz $ \ i -> from + fro
 --
 -- @since 0.2.6
 expandWithin ::
-     forall ix e r n a. (IsIndexDimension ix n, Index (Lower ix), Manifest r a)
+     forall n ix e r a. (IsIndexDimension ix n, Index (Lower ix), Manifest r a)
   => Dimension n
   -> Sz1
   -> (a -> Ix1 -> e)
@@ -718,22 +719,22 @@ expandWithin dim (Sz k) f arr =
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.6
-expandWithin'
-  :: (Index ix, Index (Lower ix), Manifest r a)
+expandWithin' ::
+     forall r ix a b. (HasCallStack, Index ix, Index (Lower ix), Manifest r a)
   => Dim
   -> Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
   -> Array D ix b
-expandWithin' dim k f arr = either throw id $ expandWithinM dim k f arr
+expandWithin' dim k f = throwEither . expandWithinM dim k f
 {-# INLINE expandWithin' #-}
 
 -- | Similar to `expandWithin`, except that dimension is specified at a value level, which means it
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.4.0
-expandWithinM
-  :: (Index ix, Index (Lower ix), Manifest r a, MonadThrow m)
+expandWithinM ::
+     forall r ix a b m. (Index ix, Index (Lower ix), Manifest r a, MonadThrow m)
   => Dim
   -> Sz1
   -> (a -> Ix1 -> b)
@@ -750,8 +751,8 @@ expandWithinM dim k f arr = do
 -- | Similar to `expandWithin`, except it uses the outermost dimension.
 --
 -- @since 0.2.6
-expandOuter
-  :: (Index ix, Index (Lower ix), Manifest r a)
+expandOuter ::
+     forall r ix a b. (Index ix, Index (Lower ix), Manifest r a)
   => Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
@@ -768,8 +769,8 @@ expandOuter k f arr =
 -- | Similar to `expandWithin`, except it uses the innermost dimension.
 --
 -- @since 0.2.6
-expandInner
-  :: (Index ix, Index (Lower ix), Manifest r a)
+expandInner ::
+     forall r ix a b. (Index ix, Index (Lower ix), Manifest r a)
   => Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a

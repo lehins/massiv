@@ -203,7 +203,7 @@ foldrWithin dim f = ifoldrWithin dim (const f)
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-ifoldlWithin' :: (Index (Lower ix), Index ix, Source r e) =>
+ifoldlWithin' :: (HasCallStack, Index (Lower ix), Index ix, Source r e) =>
   Dim -> (ix -> a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldlWithin' dim f acc0 arr =
   makeArray (getComp arr) (SafeSz szl) $ \ixl ->
@@ -224,7 +224,7 @@ ifoldlWithin' dim f acc0 arr =
 -- throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-foldlWithin' :: (Index (Lower ix), Index ix, Source r e) =>
+foldlWithin' :: (HasCallStack, Index (Lower ix), Index ix, Source r e) =>
   Dim -> (a -> e -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldlWithin' dim f = ifoldlWithin' dim (const f)
 {-# INLINE foldlWithin' #-}
@@ -235,7 +235,7 @@ foldlWithin' dim f = ifoldlWithin' dim (const f)
 --
 --
 -- @since 0.2.4
-ifoldrWithin' :: (Index (Lower ix), Index ix, Source r e) =>
+ifoldrWithin' :: (HasCallStack, Index (Lower ix), Index ix, Source r e) =>
   Dim -> (ix -> e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 ifoldrWithin' dim f acc0 arr =
   makeArray (getComp arr) (SafeSz szl) $ \ixl ->
@@ -255,7 +255,7 @@ ifoldrWithin' dim f acc0 arr =
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.4
-foldrWithin' :: (Index (Lower ix), Index ix, Source r e) =>
+foldrWithin' :: (HasCallStack, Index (Lower ix), Index ix, Source r e) =>
   Dim -> (e -> a -> a) -> a -> Array r ix e -> Array D (Lower ix) a
 foldrWithin' dim f = ifoldrWithin' dim (const f)
 {-# INLINE foldrWithin' #-}
@@ -316,7 +316,7 @@ foldWithin dim = foldlWithin dim mappend mempty
 --
 -- @since 0.4.3
 foldWithin' ::
-     (Index ix, Source r a, Monoid a, Index (Lower ix))
+     (HasCallStack, Index ix, Source r a, Monoid a, Index (Lower ix))
   => Dim
   -> Array r ix a
   -> Array D (Lower ix) a
@@ -408,39 +408,42 @@ ifoldInnerSlice f arr = foldMono g $ range (getComp arr) 0 (unSz k)
 -- | /O(n)/ - Compute maximum of all elements.
 --
 -- @since 0.3.0
-maximumM :: (MonadThrow m, Load r ix e, Source r e, Ord e) => Array r ix e -> m e
+maximumM :: (MonadThrow m, Shape r ix, Source r e, Ord e) => Array r ix e -> m e
 maximumM arr =
-    if isEmpty arr
-      then throwM (SizeEmptyException (size arr))
-      else let !e0 = unsafeIndex arr zeroIndex
-            in pure $ foldlInternal max e0 max e0 arr
+  if isNull arr
+    then throwM (SizeEmptyException (size arr))
+    else let !e0 = unsafeIndex arr zeroIndex
+          in pure $ foldlInternal max e0 max e0 arr
 {-# INLINE maximumM #-}
 
 
 -- | /O(n)/ - Compute maximum of all elements.
 --
 -- @since 0.3.0
-maximum' :: (Load r ix e, Source r e, Ord e) => Array r ix e -> e
-maximum' = either throw id . maximumM
+maximum' ::
+     forall r ix e. (HasCallStack, Shape r ix, Source r e, Ord e)
+  => Array r ix e
+  -> e
+maximum' = throwEither . maximumM
 {-# INLINE maximum' #-}
 
 
 -- | /O(n)/ - Compute minimum of all elements.
 --
 -- @since 0.3.0
-minimumM :: (MonadThrow m, Load r ix e, Source r e, Ord e) => Array r ix e -> m e
+minimumM :: (MonadThrow m, Shape r ix, Source r e, Ord e) => Array r ix e -> m e
 minimumM arr =
-    if isEmpty arr
-      then throwM (SizeEmptyException (size arr))
-      else let !e0 = unsafeIndex arr zeroIndex
-            in pure $ foldlInternal min e0 min e0 arr
+  if isNull arr
+    then throwM (SizeEmptyException (size arr))
+    else let !e0 = unsafeIndex arr zeroIndex
+          in pure $ foldlInternal min e0 min e0 arr
 {-# INLINE minimumM #-}
 
 -- | /O(n)/ - Compute minimum of all elements.
 --
 -- @since 0.3.0
-minimum' :: (Load r ix e, Source r e, Ord e) => Array r ix e -> e
-minimum' = either throw id . minimumM
+minimum' :: forall r ix e. (HasCallStack, Shape r ix, Source r e, Ord e) => Array r ix e -> e
+minimum' = throwEither . minimumM
 {-# INLINE minimum' #-}
 
 

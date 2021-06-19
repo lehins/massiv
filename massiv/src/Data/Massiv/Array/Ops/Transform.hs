@@ -81,7 +81,7 @@ import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse, take, dro
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
 -- fully encapsulated in a source array, otherwise `SizeSubregionException` will be thrown.
 extractM ::
-     (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (MonadThrow m, Index ix, Source r e)
   => ix -- ^ Starting index
   -> Sz ix -- ^ Size of the resulting array
   -> Array r ix e -- ^ Source array
@@ -101,12 +101,12 @@ extractM !sIx !newSz !arr
 --
 -- @since 0.1.0
 extract' ::
-     (Index ix, Source r e)
+     forall r ix e. (HasCallStack, Index ix, Source r e)
   => ix -- ^ Starting index
   -> Sz ix -- ^ Size of the resulting array
   -> Array r ix e -- ^ Source array
   -> Array D ix e
-extract' sIx newSz = either throw id . extractM sIx newSz
+extract' sIx newSz = throwEither . extractM sIx newSz
 {-# INLINE extract' #-}
 
 
@@ -115,7 +115,7 @@ extract' sIx newSz = either throw id . extractM sIx newSz
 --
 -- @since 0.3.0
 extractFromToM ::
-     (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (MonadThrow m, Index ix, Source r e)
   => ix -- ^ Starting index
   -> ix -- ^ Index up to which elements should be extracted.
   -> Array r ix e -- ^ Source array.
@@ -127,7 +127,7 @@ extractFromToM sIx eIx = extractM sIx (Sz (liftIndex2 (-) eIx sIx))
 --
 -- @since 0.2.4
 extractFromTo' ::
-     (Index ix, Source r e)
+     forall r ix e. (HasCallStack, Index ix, Source r e)
   => ix -- ^ Starting index
   -> ix -- ^ Index up to which elmenets should be extracted.
   -> Array r ix e -- ^ Source array.
@@ -141,7 +141,7 @@ extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 --
 -- @since 0.3.0
 resizeM ::
-     (MonadThrow m, Index ix', Index ix, Resize r)
+     forall r ix ix' e m. (MonadThrow m, Index ix', Index ix, Resize r)
   => Sz ix'
   -> Array r ix e
   -> m (Array r ix' e)
@@ -151,14 +151,18 @@ resizeM sz arr = guardNumberOfElements (size arr) sz >> pure (unsafeResize sz ar
 -- | Same as `resizeM`, but will throw an error if supplied dimensions are incorrect.
 --
 -- @since 0.1.0
-resize' :: (Index ix', Index ix, Resize r) => Sz ix' -> Array r ix e -> Array r ix' e
-resize' sz = either throw id . resizeM sz
+resize' ::
+     forall r ix ix' e. (HasCallStack, Index ix', Index ix, Resize r)
+  => Sz ix'
+  -> Array r ix e
+  -> Array r ix' e
+resize' sz = throwEither . resizeM sz
 {-# INLINE resize' #-}
 
 -- | /O(1)/ - Reduce a multi-dimensional array into a flat vector
 --
 -- @since 0.3.1
-flatten :: (Index ix, Resize r) => Array r ix e -> Vector r e
+flatten :: forall r ix e. (Index ix, Resize r) => Array r ix e -> Vector r e
 flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
 {-# INLINE flatten #-}
 
@@ -182,7 +186,7 @@ flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
 --   ]
 --
 -- @since 0.1.0
-transpose :: Source r e => Matrix r e -> Matrix D e
+transpose :: forall r e. Source r e => Matrix r e -> Matrix D e
 transpose = transposeInner
 {-# INLINE [1] transpose #-}
 
@@ -224,8 +228,10 @@ transpose = transposeInner
 --   ]
 --
 -- @since 0.1.0
-transposeInner :: (Index (Lower ix), Index ix, Source r e)
-               => Array r ix e -> Array D ix e
+transposeInner ::
+     forall r ix e. (Index (Lower ix), Index ix, Source r e)
+  => Array r ix e
+  -> Array D ix e
 transposeInner !arr = makeArray (getComp arr) newsz newVal
   where
     transInner !ix =
@@ -275,8 +281,10 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 --
 --
 -- @since 0.1.0
-transposeOuter :: (Index (Lower ix), Index ix, Source r e)
-               => Array r ix e -> Array D ix e
+transposeOuter ::
+     forall r ix e. (Index (Lower ix), Index ix, Source r e)
+  => Array r ix e
+  -> Array D ix e
 transposeOuter !arr = makeArray (getComp arr) newsz newVal
   where
     transOuter !ix =
@@ -320,7 +328,11 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --   ]
 --
 -- @since 0.4.1
-reverse :: (IsIndexDimension ix n, Index ix, Source r e) => Dimension n -> Array r ix e -> Array D ix e
+reverse ::
+     forall n r ix e. (IsIndexDimension ix n, Index ix, Source r e)
+  => Dimension n
+  -> Array r ix e
+  -> Array D ix e
 reverse dim = reverse' (fromDimension dim)
 {-# INLINE reverse #-}
 
@@ -328,7 +340,11 @@ reverse dim = reverse' (fromDimension dim)
 -- `IndexDimensionException` for an incorrect dimension.
 --
 -- @since 0.4.1
-reverseM :: (MonadThrow m, Index ix, Source r e) => Dim -> Array r ix e -> m (Array D ix e)
+reverseM ::
+     forall r ix e m. (MonadThrow m, Index ix, Source r e)
+  => Dim
+  -> Array r ix e
+  -> m (Array D ix e)
 reverseM dim arr = do
   let sz = size arr
   k <- getDimM (unSz sz) dim
@@ -340,8 +356,12 @@ reverseM dim arr = do
 -- `IndexDimensionException` from pure code.
 --
 -- @since 0.4.1
-reverse' :: (Index ix, Source r e) => Dim -> Array r ix e -> Array D ix e
-reverse' dim = either throw id . reverseM dim
+reverse' ::
+     forall r ix e. (HasCallStack, Index ix, Source r e)
+  => Dim
+  -> Array r ix e
+  -> Array D ix e
+reverse' dim = throwEither . reverseM dim
 {-# INLINE reverse' #-}
 
 -- | Rearrange elements of an array into a new one by using a function that maps indices of the
@@ -389,11 +409,12 @@ backpermuteM sz ixF !arr = generateArray (getComp arr) sz (evaluateM arr . ixF)
 -- * Throws a runtime `IndexOutOfBoundsException` from pure code.
 --
 -- @since 0.3.0
-backpermute' :: (Source r e, Index ix, Index ix') =>
-                Sz ix' -- ^ Size of the result array
-             -> (ix' -> ix) -- ^ A function that maps indices of the new array into the source one.
-             -> Array r ix e -- ^ Source array.
-             -> Array D ix' e
+backpermute' ::
+     forall r ix ix' e. (HasCallStack, Source r e, Index ix, Index ix')
+  => Sz ix' -- ^ Size of the result array
+  -> (ix' -> ix) -- ^ A function that maps indices of the new array into the source one.
+  -> Array r ix e -- ^ Source array.
+  -> Array D ix' e
 backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 {-# INLINE backpermute' #-}
 
@@ -469,16 +490,24 @@ appendM n !arr1 !arr2 = do
 -- | Same as `appendM`, but will throw an exception in pure code on mismatched sizes.
 --
 -- @since 0.3.0
-append' :: (Index ix, Source r1 e, Source r2 e) =>
-           Dim -> Array r1 ix e -> Array r2 ix e -> Array DL ix e
-append' dim arr1 arr2 = either throw id $ appendM dim arr1 arr2
+append' ::
+     forall r1 r2 ix e. (HasCallStack, Index ix, Source r1 e, Source r2 e)
+  => Dim
+  -> Array r1 ix e
+  -> Array r2 ix e
+  -> Array DL ix e
+append' dim arr1 arr2 = throwEither $ appendM dim arr1 arr2
 {-# INLINE append' #-}
 
 -- | Concat many arrays together along some dimension.
 --
 -- @since 0.3.0
-concat' :: (Foldable f, Index ix, Source r e) => Dim -> f (Array r ix e) -> Array DL ix e
-concat' n arrs = either throw id $ concatM n arrs
+concat' ::
+     forall f r ix e. (HasCallStack, Foldable f, Index ix, Source r e)
+  => Dim
+  -> f (Array r ix e)
+  -> Array DL ix e
+concat' n = throwEither . concatM n
 {-# INLINE concat' #-}
 
 -- | Concatenate many arrays together along some dimension. It is important that all sizes are
@@ -704,7 +733,7 @@ stackInnerSlicesM = stackSlicesM 1
 --
 -- @since 0.3.0
 splitAtM ::
-     (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (MonadThrow m, Index ix, Source r e)
   => Dim -- ^ Dimension along which to split
   -> Int -- ^ Index along the dimension to split at
   -> Array r ix e -- ^ Source array
@@ -728,8 +757,12 @@ splitAtM dim i arr = do
 --
 -- @since 0.1.0
 splitAt' ::
-     (Index ix, Source r e) => Dim -> Int -> Array r ix e -> (Array D ix e, Array D ix e)
-splitAt' dim i arr = either throw id $ splitAtM dim i arr
+     forall r ix e. (HasCallStack, Index ix, Source r e)
+  => Dim
+  -> Int
+  -> Array r ix e
+  -> (Array D ix e, Array D ix e)
+splitAt' dim i = throwEither . splitAtM dim i
 {-# INLINE splitAt' #-}
 
 
@@ -737,7 +770,7 @@ splitAt' dim i arr = either throw id $ splitAtM dim i arr
 --
 -- @since 0.3.5
 splitExtractM ::
-     (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (MonadThrow m, Index ix, Source r e)
   => Dim -- ^ Dimension along which to do the extraction
   -> Ix1 -- ^ Start index along the dimension that needs to be extracted
   -> Sz Ix1 -- ^ Size of the extracted array along the dimension that it will be extracted
@@ -785,7 +818,7 @@ splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
 --
 -- @since 0.6.1
 replaceSlice ::
-     (MonadThrow m, Source r e, Source r' e, Index ix, Index (Lower ix))
+     forall r r' ix e m. (MonadThrow m, Source r e, Source r' e, Index ix, Index (Lower ix))
   => Dim
   -> Ix1
   -> Array r' (Lower ix) e
@@ -826,11 +859,7 @@ replaceSlice dim i sl arr = do
 --
 -- @since 0.6.1
 replaceOuterSlice ::
-     ( MonadThrow m
-     , Index ix
-     , Source r e
-     , Load r (Lower ix) e
-     )
+     forall r ix e m. (MonadThrow m, Index ix, Source r e, Load r (Lower ix) e)
   => Ix1
   -> Array r (Lower ix) e
   -> Array r ix e
@@ -864,7 +893,7 @@ replaceOuterSlice i sl arr = replaceSlice (dimensions (size arr)) i sl arr
 --
 -- @since 0.3.5
 deleteRegionM ::
-     (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (MonadThrow m, Index ix, Source r e)
   => Dim -- ^ Along which axis should the removal happen
   -> Ix1 -- ^ At which index to start dropping slices
   -> Sz Ix1 -- ^ Number of slices to drop
@@ -896,7 +925,7 @@ deleteRegionM dim ix sz arr = do
 --
 -- @since 0.3.5
 deleteRowsM ::
-     (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => Ix1
   -> Sz Ix1
   -> Array r ix e
@@ -925,7 +954,7 @@ deleteRowsM = deleteRegionM 2
 --
 -- @since 0.3.5
 deleteColumnsM ::
-     (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (MonadThrow m, Index ix, Source r e)
   => Ix1
   -> Sz Ix1
   -> Array r ix e
@@ -1041,7 +1070,8 @@ transformM getSzM getM arr = do
 --
 -- @since 0.3.0
 transform' ::
-     (Source r' e', Index ix', Index ix)
+     forall ix e r' ix' e' a.
+     (HasCallStack, Source r' e', Index ix', Index ix)
   => (Sz ix' -> (Sz ix, a))
   -> (a -> (ix' -> e') -> ix -> e)
   -> Array r' ix' e'
@@ -1080,7 +1110,7 @@ transform2M getSzM getM arr1 arr2 = do
 --
 -- @since 0.3.0
 transform2' ::
-     (Source r1 e1, Source r2 e2, Index ix, Index ix1, Index ix2)
+     (HasCallStack, Source r1 e1, Source r2 e2, Index ix, Index ix1, Index ix2)
   => (Sz ix1 -> Sz ix2 -> (Sz ix, a))
   -> (a -> (ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1

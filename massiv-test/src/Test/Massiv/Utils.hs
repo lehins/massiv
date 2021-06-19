@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeApplications #-}
 module Test.Massiv.Utils
   ( showsType
@@ -10,6 +11,7 @@ module Test.Massiv.Utils
   , assertSomeException
   , assertSomeExceptionIO
   , toStringException
+  , selectErrorCall
   , ExpectedException(..)
   , applyFun2Compat
   , expectProp
@@ -35,6 +37,7 @@ import Test.Hspec as X
 import Test.Hspec.QuickCheck as X
 import Test.QuickCheck.Function as X
 import Control.DeepSeq as X (NFData, deepseq)
+import Control.Exception (ErrorCall (..))
 import UnliftIO.Exception (Exception(..), SomeException, catch, catchAny)
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup as X ((<>))
@@ -89,6 +92,10 @@ assertSomeExceptionIO action =
 toStringException :: Either SomeException a -> Either String a
 toStringException = either (Left . displayException) Right
 
+
+selectErrorCall :: ErrorCall -> Bool
+selectErrorCall = \case
+  ErrorCallWithLocation err loc -> err `deepseq` loc `deepseq` True
 
 data ExpectedException = ExpectedException deriving (Show, Eq)
 

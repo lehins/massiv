@@ -78,7 +78,6 @@ module Data.Massiv.Core.Common
   , Semigroup((<>))
   -- * Exceptions
   , MonadThrow(..)
-  , throw
   , IndexException(..)
   , SizeException(..)
   , ShapeException(..)
@@ -96,7 +95,6 @@ module Data.Massiv.Core.Common
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
 #endif
-import Control.Exception (throw)
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
 import Control.Monad.Primitive
@@ -781,12 +779,14 @@ infixl 4 !, !?, ??
 --   ]
 -- >>> a ! 0 :. 2
 -- 3
--- >>> a ! 0 :. 3
--- *** Exception: IndexOutOfBoundsException: (0 :. 3) is not safe for (Sz (2 :. 3))
 --
 -- @since 0.1.0
-(!) :: (Index ix, Manifest r e) => Array r ix e -> ix -> e
-(!) = index'
+(!) ::
+     forall r ix e. (HasCallStack, Manifest r e, Index ix)
+  => Array r ix e
+  -> ix
+  -> e
+(!) arr = throwEither . evaluateM arr
 {-# INLINE (!) #-}
 
 
@@ -812,7 +812,11 @@ infixl 4 !, !?, ??
 -- Nothing
 --
 -- @since 0.1.0
-(!?) :: (Index ix, Manifest r e, MonadThrow m) => Array r ix e -> ix -> m e
+(!?) ::
+     forall r ix e m. (Index ix, Manifest r e, MonadThrow m)
+  => Array r ix e
+  -> ix
+  -> m e
 (!?) = indexM
 {-# INLINE (!?) #-}
 
@@ -918,8 +922,8 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 -- *** Exception: IndexOutOfBoundsException: 150 is not safe for (Sz1 101)
 --
 -- @since 0.1.0
-index' :: (Index ix, Manifest r e) => Array r ix e -> ix -> e
-index' = evaluate'
+index' :: (HasCallStack, Index ix, Manifest r e) => Array r ix e -> ix -> e
+index' arr = throwEither . evaluateM arr
 {-# INLINE index' #-}
 
 -- | This is just like `indexM` function, but it allows getting values from
@@ -957,13 +961,8 @@ evaluateM arr ix =
 -- *** Exception: IndexOutOfBoundsException: (150 :. 150) is not safe for (Sz (90 :. 190))
 --
 -- @since 0.3.0
-evaluate' :: (Index ix, Source r e) => Array r ix e -> ix -> e
-evaluate' arr ix =
-  handleBorderIndex
-    (Fill (throw (IndexOutOfBoundsException (size arr) ix)))
-    (size arr)
-    (unsafeIndex arr)
-    ix
+evaluate' :: (HasCallStack, Index ix, Source r e) => Array r ix e -> ix -> e
+evaluate' arr = throwEither . evaluateM arr
 {-# INLINE evaluate' #-}
 
 

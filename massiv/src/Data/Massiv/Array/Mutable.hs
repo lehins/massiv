@@ -18,21 +18,17 @@ module Data.Massiv.Array.Mutable
     -- ** Element-wise mutation
   , read
   , readM
-  , read'
   , write
   , write_
   , writeM
-  , write'
   , modify
   , modify_
   , modifyM
   , modifyM_
-  , modify'
   , swap
   , swap_
   , swapM
   , swapM_
-  , swap'
   -- ** Operations on @MArray@
   -- *** Immutable conversion
   , thaw
@@ -40,7 +36,6 @@ module Data.Massiv.Array.Mutable
   , freeze
   , freezeS
   -- *** Create mutable
-  , new
   , newMArray
   , newMArray'
   , makeMArray
@@ -113,20 +108,6 @@ import Data.Massiv.Array.Mutable.Internal
 import Prelude hiding (mapM, read)
 
 -- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
--- boxed arrays in will be a thunk with `Uninitialized` exception, while for others it will be
--- simply zeros.
---
--- @since 0.1.0
-new ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
-  => Sz ix
-  -> m (MArray (PrimState m) r ix e)
-new = initializeNew Nothing
-{-# INLINE new #-}
-{-# DEPRECATED new "In favor of a more robust and safer `newMArray` or a more consistently named `newMArray'`" #-}
-
-
--- | /O(n)/ - Initialize a new mutable array. All elements will be set to some default value. For
 -- boxed arrays it will be a thunk with `Uninitialized` exception, while for others it will be
 -- simply zeros.
 --
@@ -148,7 +129,7 @@ new = initializeNew Nothing
 --   [ [ 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0 ]
 --   ]
--- >>> newMArray' @B @_ @Int (Sz2 2 6) >>= (`readM` 1)
+-- >>> newMArray' @B @_ @Int (Sz2 2 6) >>= freezeS
 -- *** Exception: Uninitialized
 --
 -- @since 0.6.0
@@ -402,7 +383,7 @@ createArray_ ::
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
 createArray_ comp sz action = do
-  marr <- new sz
+  marr <- newMArray' sz
   withScheduler_ comp (`action` marr)
   unsafeFreeze comp marr
 {-# INLINE createArray_ #-}
@@ -420,7 +401,7 @@ createArray ::
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m ([a], Array r ix e)
 createArray comp sz action = do
-  marr <- new sz
+  marr <- newMArray' sz
   a <- withScheduler comp (`action` marr)
   arr <- unsafeFreeze comp marr
   return (a, arr)
@@ -458,7 +439,7 @@ createArrayS ::
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (a, Array r ix e)
 createArrayS sz action = do
-  marr <- new sz
+  marr <- newMArray' sz
   a <- action marr
   arr <- unsafeFreeze Seq marr
   return (a, arr)
@@ -998,18 +979,6 @@ readM marr ix =
 {-# INLINE readM #-}
 
 
--- | /O(1)/ - Same as `read`, but throws `IndexOutOfBoundsException` on an invalid index.
---
--- @since 0.1.0
-read' :: (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> m e
-read' marr ix =
-  read marr ix >>= \case
-    Just e -> pure e
-    Nothing -> throw $ IndexOutOfBoundsException (msize marr) ix
-{-# INLINE read' #-}
-{-# DEPRECATED read' "In favor of more general `readM`" #-}
-
-
 -- | /O(1)/ - Write an element into the cell of a mutable array. Returns `False` when index is out
 -- of bounds.
 --
@@ -1040,16 +1009,6 @@ writeM marr ix e =
   write marr ix e >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
 {-# INLINE writeM #-}
 
-
--- | /O(1)/ - Same as `write`, but lives in IO and throws `IndexOutOfBoundsException` on invalid
--- index.
---
--- @since 0.1.0
-write' ::
-     (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
-write' marr ix e = write marr ix e >>= (`unless` throw (IndexOutOfBoundsException (msize marr) ix))
-{-# INLINE write' #-}
-{-# DEPRECATED write' "In favor of more general `writeM`" #-}
 
 -- | /O(1)/ - Modify an element in the cell of a mutable array with a supplied
 -- action. Returns the previous value, if index was not out of bounds.
@@ -1119,19 +1078,6 @@ modifyM_ marr f ix = void $ modifyM marr f ix
 {-# INLINE modifyM_ #-}
 
 
--- | /O(1)/ - Same as `modify`, but throws an error if index is out of bounds.
---
--- @since 0.1.0
-modify' :: (Mutable r e, Index ix, PrimMonad m) =>
-        MArray (PrimState m) r ix e -> (e -> e) -> ix -> m ()
-modify' marr f ix =
-  modify marr (pure . f) ix >>= \case
-    Just _ -> pure ()
-    Nothing -> throw (IndexOutOfBoundsException (msize marr) ix)
-{-# INLINE modify' #-}
-{-# DEPRECATED modify' "In favor of more general `modifyM`" #-}
-
-
 -- | /O(1)/ - Same as `swapM`, but instead of throwing an exception returns `Nothing` when
 -- either one of the indices is out of bounds and `Just` elements under those indices
 -- otherwise.
@@ -1186,18 +1132,3 @@ swapM_ ::
 swapM_ marr ix1 ix2 = void $ swapM marr ix1 ix2
 {-# INLINE swapM_ #-}
 
-
--- | /O(1)/ - Same as `swap`, but throws an `IndexOutOfBoundsException` on invalid indices.
---
--- @since 0.1.0
-swap' ::
-     (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
-swap' marr ix1 ix2 =
-  swap marr ix1 ix2 >>= \case
-    Just _ -> pure ()
-    Nothing ->
-      if isSafeIndex (msize marr) ix1
-        then throw $ IndexOutOfBoundsException (msize marr) ix2
-        else throw $ IndexOutOfBoundsException (msize marr) ix1
-{-# INLINE swap' #-}
-{-# DEPRECATED swap' "In favor of more general `swapM`" #-}

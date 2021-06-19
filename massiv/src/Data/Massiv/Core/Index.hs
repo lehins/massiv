@@ -99,11 +99,10 @@ module Data.Massiv.Core.Index
   ) where
 
 import Control.DeepSeq
-import Control.Exception (throw)
 import Control.Monad.Catch (MonadThrow(..))
 import Data.Coerce
 import Data.Functor.Identity (runIdentity)
-import Data.Massiv.Core.Exception (guardNumberOfElements)
+import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index.Internal
 import Data.Massiv.Core.Index.Ix
 import Data.Massiv.Core.Index.Stride
@@ -298,8 +297,8 @@ initDim :: Index ix => ix -> Lower ix
 initDim = fst . unsnocDim
 {-# INLINE [1] initDim #-}
 
--- | Change the value of a specific dimension within the index. Throws `IndexException`. See
--- `setDimM` for a safer version and `setDimension` for a type safe version.
+-- | Change the value of a specific dimension within the index. See `setDimM` for a safer
+-- version and `setDimension` for a type safe version.
 --
 -- ==== __Examples__
 --
@@ -307,11 +306,11 @@ initDim = fst . unsnocDim
 -- 2 :> 10 :> 4 :. 5
 --
 -- @since 0.2.4
-setDim' :: Index ix => ix -> Dim -> Int -> ix
-setDim' ix dim = either throw id . setDimM ix dim
+setDim' :: (HasCallStack, Index ix) => ix -> Dim -> Int -> ix
+setDim' ix dim = throwEither . setDimM ix dim
 {-# INLINE [1] setDim' #-}
 
--- | Change the value from a specific dimension within the index. Throws `IndexException`. See
+-- | Change the value from a specific dimension within the index. See
 -- `getDimM` for a safer version and `getDimension` for a type safe version.
 --
 -- ==== __Examples__
@@ -322,11 +321,11 @@ setDim' ix dim = either throw id . setDimM ix dim
 -- *** Exception: IndexDimensionException: (Dim 0) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
-getDim' :: Index ix => ix -> Dim -> Int
-getDim' ix = either throw id . getDimM ix
+getDim' :: (HasCallStack, Index ix) => ix -> Dim -> Int
+getDim' ix = throwEither . getDimM ix
 {-# INLINE [1] getDim' #-}
 
--- | Update the value of a specific dimension within the index. Throws `IndexException`. See
+-- | Update the value of a specific dimension within the index. See
 -- `modifyDimM` for a safer version and `modifyDimension` for a type safe version.
 --
 -- ==== __Examples__
@@ -335,8 +334,8 @@ getDim' ix = either throw id . getDimM ix
 -- (4,2 :> 3 :> 14 :. 5)
 --
 -- @since 0.4.1
-modifyDim' :: Index ix => ix -> Dim -> (Int -> Int) -> (Int, ix)
-modifyDim' ix dim = either throw id . modifyDimM ix dim
+modifyDim' :: (HasCallStack, Index ix) => ix -> Dim -> (Int -> Int) -> (Int, ix)
+modifyDim' ix dim = throwEither . modifyDimM ix dim
 {-# INLINE [1] modifyDim' #-}
 
 -- | Remove a dimension from the index.
@@ -363,11 +362,11 @@ dropDimM ix = fmap snd . pullOutDimM ix
 -- *** Exception: IndexDimensionException: (Dim 6) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
-dropDim' :: Index ix => ix -> Dim -> Lower ix
-dropDim' ix = either throw id . dropDimM ix
+dropDim' :: (HasCallStack, Index ix) => ix -> Dim -> Lower ix
+dropDim' ix = throwEither . dropDimM ix
 {-# INLINE [1] dropDim' #-}
 
--- | Lower the dimension of the index by pulling the specified dimension. Throws `IndexException`. See
+-- | Lower the dimension of the index by pulling the specified dimension. See
 -- `pullOutDimM` for a safer version and `pullOutDimension` for a type safe version.
 --
 -- ==== __Examples__
@@ -376,13 +375,12 @@ dropDim' ix = either throw id . dropDimM ix
 -- (3,2 :> 4 :. 5)
 --
 -- @since 0.2.4
-pullOutDim' :: Index ix => ix -> Dim -> (Int, Lower ix)
-pullOutDim' ix = either throw id . pullOutDimM ix
+pullOutDim' :: (HasCallStack, Index ix) => ix -> Dim -> (Int, Lower ix)
+pullOutDim' ix = throwEither . pullOutDimM ix
 {-# INLINE [1] pullOutDim' #-}
 
--- | Raise the dimension of the index by inserting one in the specified dimension. Throws
--- `IndexException`. See `insertDimM` for a safer version and `insertDimension` for a type safe
--- version.
+-- | Raise the dimension of the index by inserting one in the specified dimension. See
+-- `insertDimM` for a safer version and `insertDimension` for a type safe version.
 --
 -- ==== __Examples__
 --
@@ -392,8 +390,8 @@ pullOutDim' ix = either throw id . pullOutDimM ix
 -- *** Exception: IndexDimensionException: (Dim 11) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
-insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
-insertDim' ix dim = either throw id . insertDimM ix dim
+insertDim' :: (HasCallStack, Index ix) => Lower ix -> Dim -> Int -> ix
+insertDim' ix dim = throwEither . insertDimM ix dim
 {-# INLINE [1] insertDim' #-}
 
 -- | Get the value level `Dim` from the type level equivalent.

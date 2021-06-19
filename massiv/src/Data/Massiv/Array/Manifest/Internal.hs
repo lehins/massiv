@@ -235,10 +235,10 @@ fromRaggedArrayM arr =
 --
 -- @since 0.1.1
 fromRaggedArray' ::
-     forall r ix e r'. (Mutable r e, Ragged r' ix e)
+     forall r ix e r'. (HasCallStack, Mutable r e, Ragged r' ix e)
   => Array r' ix e
   -> Array r ix e
-fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
+fromRaggedArray' = throwEither . fromRaggedArrayM
 {-# INLINE fromRaggedArray' #-}
 
 

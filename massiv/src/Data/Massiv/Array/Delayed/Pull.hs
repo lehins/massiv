@@ -288,7 +288,7 @@ liftArray2Matching f !arr1 !arr2
       (getComp arr1 <> getComp arr2)
       sz1
       (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
+  | otherwise = throwEither $ Left $ toException $ SizeMismatchException (size arr1) (size arr2)
   where
     sz1 = size arr1
     sz2 = size arr2

@@ -9,7 +9,6 @@ module Test.Massiv.VectorSpec (spec) where
 
 import Control.Arrow (first)
 import Control.Applicative
-import Control.DeepSeq
 import Control.Exception
 import Data.Bits
 import Data.Int
@@ -30,9 +29,6 @@ import Test.Massiv.Core
 import System.Random.MWC as MWC
 
 infix 4 !==!, !!==!!
-
-sizeException :: SizeException -> Bool
-sizeException exc = exc `deepseq` True
 
 toUnboxV2 ::
      Unbox e
@@ -142,7 +138,7 @@ toPrimV6 f v1 = toPrimV5 (f (toPrimitiveVector v1))
   case eRes of
     Right vec' -> toPrimitiveVector (compute arr) `shouldBe` vec'
     Left (_exc :: ErrorCall) ->
-      shouldThrow (pure $! computeAs P arr) sizeException
+      shouldThrow (pure $! computeAs P arr) selectErrorCall
 
 newtype SeedVector = SeedVector (VP.Vector Word32) deriving (Eq, Show)
 

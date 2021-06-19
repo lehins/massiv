@@ -375,8 +375,8 @@ slength v =
 -- cause materialization of the full vector if any other function is applied to the vector.
 --
 -- @since 0.5.0
-head' :: Source r e => Vector r e -> e
-head' = either throw id . headM
+head' :: (HasCallStack, Source r e) => Vector r e -> e
+head' = throwEither . headM
 {-# INLINE head' #-}
 
 
@@ -423,8 +423,8 @@ headM v
 -- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-shead' :: Stream r Ix1 e => Vector r e -> e
-shead' = either throw id . sheadM
+shead' :: (HasCallStack, Stream r Ix1 e) => Vector r e -> e
+shead' = throwEither . sheadM
 {-# INLINE shead' #-}
 
 -- | /O(1)/ - Get the first element of a `Stream` vector.
@@ -524,8 +524,8 @@ unsnocM arr
 -- cause materialization of the full vector if any other function is applied to the vector.
 --
 -- @since 0.5.0
-last' :: Source r e => Vector r e -> e
-last' = either throw id . lastM
+last' :: (HasCallStack, Source r e) => Vector r e -> e
+last' = throwEither . lastM
 {-# INLINE last' #-}
 
 
@@ -594,8 +594,8 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
 -- @since 0.5.0
-slice' :: Source r e => Ix1 -> Sz1 -> Vector r e -> Vector r e
-slice' i k = either throw id . sliceM i k
+slice' :: (HasCallStack, Source r e) => Ix1 -> Sz1 -> Vector r e -> Vector r e
+slice' i k = throwEither . sliceM i k
 {-# INLINE slice' #-}
 
 
@@ -672,8 +672,8 @@ init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 -- Array D *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-init' :: Source r e => Vector r e -> Vector r e
-init' = either throw id . initM
+init' :: (HasCallStack, Source r e) => Vector r e -> Vector r e
+init' = throwEither . initM
 {-# INLINE init' #-}
 
 -- | /O(1)/ - Get a vector without the last element. Throws an error on empty
@@ -725,8 +725,8 @@ tail = drop 1
 -- Array D *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-tail' :: Source r e => Vector r e -> Vector r e
-tail' = either throw id . tailM
+tail' :: (HasCallStack, Source r e) => Vector r e -> Vector r e
+tail' = throwEither . tailM
 {-# INLINE tail' #-}
 
 
@@ -803,8 +803,8 @@ takeWhile f v = take (go 0) v
 -- Array D *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
 --
 -- @since 0.5.0
-take' :: Source r e => Sz1 -> Vector r e -> Vector r e
-take' k = either throw id . takeM k
+take' :: (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
+take' k = throwEither . takeM k
 {-# INLINE take' #-}
 
 -- | /O(1)/ - Get the vector with the first @n@ elements. Throws an error size is less than @n@
@@ -874,8 +874,8 @@ sdrop n = fromSteps . S.drop n . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-drop' :: Source r e => Sz1 -> Vector r e -> Vector r e
-drop' k = either throw id . dropM k
+drop' :: (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
+drop' k = throwEither . dropM k
 {-# INLINE drop' #-}
 
 -- |
@@ -909,8 +909,8 @@ sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAt' :: Source r e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
-sliceAt' k = either throw id . sliceAtM k
+sliceAt' :: (HasCallStack, Source r e) => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+sliceAt' k = throwEither . sliceAtM k
 {-# INLINE sliceAt' #-}
 
 -- | Same as `Data.Massiv.Array.splitAtM`, except for a flat vector.
@@ -2281,7 +2281,7 @@ sizipWith6M_ f v1 v2 v3 v4 v5 v6 =
 
 
 
--- |
+-- | Strict left fold sequentially over a streamed array.
 --
 -- ==== __Examples__
 --
@@ -2314,8 +2314,8 @@ sfoldlM_ f acc = void . sfoldlM f acc
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfoldl1' :: Stream r ix e => (e -> e -> e) -> Array r ix e -> e
-sfoldl1' f = either throw id . sfoldl1M (\e -> pure . f e)
+sfoldl1' :: (HasCallStack, Stream r ix e) => (e -> e -> e) -> Array r ix e -> e
+sfoldl1' f = throwEither . sfoldl1M (\e -> pure . f e)
 {-# INLINE sfoldl1' #-}
 
 -- |
@@ -2455,7 +2455,7 @@ sproduct = sfoldl (*) 1
 -- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-smaximum' :: (Ord e, Stream r ix e) => Array r ix e -> e
+smaximum' :: (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e
 smaximum' = sfoldl1' max
 {-# INLINE smaximum' #-}
 
@@ -2492,7 +2492,7 @@ smaximumM = sfoldl1M (\e acc -> pure (max e acc))
 -- *** Exception: SizeEmptyException: (Sz (0 :. 0)) corresponds to an empty array
 --
 -- @since 0.5.0
-sminimum' :: (Ord e, Stream r ix e) => Array r ix e -> e
+sminimum' :: (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e
 sminimum' = sfoldl1' min
 {-# INLINE sminimum' #-}
 
