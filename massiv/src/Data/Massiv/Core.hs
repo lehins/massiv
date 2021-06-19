@@ -43,7 +43,6 @@ module Data.Massiv.Core
   , NumericFloat
   -- * Exceptions
   , MonadThrow(..)
-  , throw
   , IndexException(..)
   , SizeException(..)
   , ShapeException(..)

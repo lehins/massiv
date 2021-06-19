@@ -7,6 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.Core.IndexSpec (spec) where
 
+import Control.Exception
 import Control.DeepSeq
 import Data.Massiv.Array
 import Data.Massiv.Array.Unsafe (Sz(SafeSz))

@@ -108,12 +108,12 @@ fromVectorM comp sz v =
 --
 -- @since 0.3.0
 fromVector' ::
-     (Typeable v, VG.Vector v a, Load (ARepr v) ix a, Load r ix a, Mutable r a)
+     (HasCallStack, Typeable v, VG.Vector v a, Load (ARepr v) ix a, Load r ix a, Mutable r a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
   -> Array r ix a
-fromVector' comp sz = either throw id . fromVectorM comp sz
+fromVector' comp sz = throwEither . fromVectorM comp sz
 {-# INLINE fromVector' #-}
 
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will

@@ -121,7 +121,7 @@ fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 -- Array U *** Exception: DimTooLongException
 --
 -- @since 0.1.0
-fromLists' :: forall r ix e . (Nested LN ix e, Ragged L ix e, Mutable r e)
+fromLists' :: forall r ix e . (HasCallStack, Nested LN ix e, Ragged L ix e, Mutable r e)
          => Comp -- ^ Computation startegy to use
          -> [ListItem ix e] -- ^ Nested list
          -> Array r ix e

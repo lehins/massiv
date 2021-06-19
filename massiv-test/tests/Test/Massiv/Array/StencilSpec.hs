@@ -58,16 +58,13 @@ prop_DangerousStencil ::
   -> SzIx ix
   -> Property
 prop_DangerousStencil _ (DimIx r) (SzIx sz center) =
-  assertException validateException arr
+  assertException selectErrorCall arr
   where
     stencil = makeStencil sz center $ \get -> get ix' :: Int
     arr = computeAs P (mapStencil Edge stencil (makeArray Seq sz (const 0) :: Array P ix Int))
     ix' = liftIndex2 (-)
           (setDim' zeroIndex r (getDim' (unSz sz) r))
           (setDim' zeroIndex r (getDim' center r))
-    validateException = \case
-      IndexOutOfBoundsException _ _ -> pure ()
-      exc -> expectationFailure $ "Unexpected exception: " <> show exc
 
 
 instance Index ix => Show (Stencil ix a b) where

@@ -15,6 +15,7 @@
 * Remove `ix` from `Manifest`
 * Remove `ix` from `Source`
 * Remove `ix` from `Resize`
+* Remove `liftArray2`.
 * Prevent `showsArrayPrec` from changing index type
 * Change function argument to monadic action for `unstablePartitionM` and `unsafeUnstablePartitionM`
 * Replace `snull` with a more generic `isNull`
