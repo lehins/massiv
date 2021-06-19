@@ -107,6 +107,7 @@ import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
 import Data.Typeable
+import Data.Kind
 import qualified Data.Vector.Fusion.Stream.Monadic as S (Stream)
 import Data.Vector.Fusion.Util
 
@@ -117,7 +118,7 @@ import Data.Vector.Fusion.Util
 -- element, even if that element does not yet exist in memory and the arry has to be
 -- computed in order to get access to that element. Data is always arranged in a nested
 -- row-major fashion, depth of which is controlled by @`Rank` ix@.
-data family Array r ix e :: *
+data family Array r ix e :: Type
 
 -- | Type synonym for a single dimension array, or simply a flat vector.
 --
@@ -143,11 +144,11 @@ type MMatrix s r e = MArray s r Ix2 e
 
 
 
-type family Elt r ix e :: * where
+type family Elt r ix e :: Type where
   Elt r Ix1 e = e
   Elt r ix  e = Array r (Lower ix) e
 
-type family NestedStruct r ix e :: *
+type family NestedStruct r ix e :: Type
 
 
 
@@ -491,7 +492,7 @@ class (Resize r, Source r e) => Manifest r e where
 
 
 class (Manifest r e) => Mutable r e where
-  data MArray s r ix e :: *
+  data MArray s r ix e :: Type
 
   -- | Get the size of a mutable array.
   --
