@@ -363,8 +363,6 @@ slength v =
 --
 -- >>> head' (Ix1 10 ..: 10000000000000)
 -- 10
--- >>> head' (Ix1 10 ..: 10)
--- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- /__Similar__/:
 --
@@ -418,9 +416,8 @@ headM v
 --
 -- >>> shead' $ sunfoldr (\x -> Just (x, x)) (0 :: Int)
 -- 0
--- >>> x = shead' $ sunfoldr (\_ -> Nothing) (0 :: Int)
--- >>> print x
--- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
+-- >>> shead' (Ix1 3 ... 5)
+-- 3
 --
 -- @since 0.5.0
 shead' :: (HasCallStack, Stream r Ix1 e) => Vector r e -> e
@@ -512,12 +509,10 @@ unsnocM arr
 --
 -- >>> last' (Ix1 10 ... 10000000000000)
 -- 10000000000000
--- >>> last' (fromList Seq [] :: Array P Ix1 Int)
--- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- /__Similar__/:
 --
--- [@Data.List.`Data.List.last`@] Also partial, but it has /O(n)/ complixity. Fusion is
+-- [@Data.List.`Data.List.last`@] Also partial, but it has /O(n)/ complexity. Fusion is
 -- broken if there other consumers of the list.
 --
 -- [@Data.Vector.Generic.`Data.Vector.Generic.last`@] Also constant time and partial. Will
@@ -583,12 +578,6 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
 -- >>> slice' 10 5 (Ix1 0 ... 100)
 -- Array D Seq (Sz1 5)
 --   [ 10, 11, 12, 13, 14 ]
--- >>> slice' (-10) 5 (Ix1 0 ... 100)
--- Array D *** Exception: SizeSubregionException: (Sz1 101) is to small for -10 (Sz1 5)
--- >>> slice' 98 50 (Ix1 0 ... 100)
--- Array D *** Exception: SizeSubregionException: (Sz1 101) is to small for 98 (Sz1 50)
--- >>> slice' 9999999999998 50 (Ix1 0 ... 10000000000000)
--- Array D *** Exception: SizeSubregionException: (Sz1 10000000000001) is to small for 9999999999998 (Sz1 50)
 -- >>> slice' 9999999999998 3 (Ix1 0 ... 10000000000000)
 -- Array D Seq (Sz1 3)
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
@@ -605,6 +594,16 @@ slice' i k = throwEither . sliceM i k
 --
 -- ==== __Examples__
 --
+-- >>> sliceM 10 5 (Ix1 0 ... 100)
+-- Array D Seq (Sz1 5)
+--   [ 10, 11, 12, 13, 14 ]
+-- >>> sliceM (-10) 5 (Ix1 0 ... 100)
+-- *** Exception: SizeSubregionException: (Sz1 101) is to small for -10 (Sz1 5)
+-- >>> sliceM 98 50 (Ix1 0 ... 100)
+-- *** Exception: SizeSubregionException: (Sz1 101) is to small for 98 (Sz1 50)
+-- >>> sliceM 9999999999998 3 (Ix1 0 ... 10000000000000)
+-- Array D Seq (Sz1 3)
+--   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
 -- @since 0.5.0
 sliceM :: (Source r e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
@@ -668,8 +667,6 @@ init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 -- >>> init' (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
--- >>> init' (empty :: Array D Ix1 Int)
--- Array D *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
 init' :: (HasCallStack, Source r e) => Vector r e -> Vector r e
@@ -799,8 +796,6 @@ takeWhile f v = take (go 0) v
 -- >>> take' 5 (0 ..: 10)
 -- Array D Seq (Sz1 5)
 --   [ 0, 1, 2, 3, 4 ]
--- >>> take' 15 (0 ..: 10)
--- Array D *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
 --
 -- @since 0.5.0
 take' :: (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
@@ -818,6 +813,8 @@ take' k = throwEither . takeM k
 -- 10
 -- >>> maybe (-1) sum $ takeM 15 (0 ..: 10)
 -- -1
+-- >>> takeM 15 (0 ..: 10)
+-- *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
 --
 -- @since 0.5.0
 takeM :: (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
@@ -2451,8 +2448,6 @@ sproduct = sfoldl (*) 1
 -- >>> import Data.Massiv.Vector as V
 -- >>> V.smaximum' $ V.sfromList [10, 3, 70, 5 :: Int]
 -- 70
--- >>> V.smaximum' (V.empty :: Vector D Int)
--- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
 smaximum' :: (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e
@@ -2488,8 +2483,6 @@ smaximumM = sfoldl1M (\e acc -> pure (max e acc))
 -- >>> import Data.Massiv.Vector as V
 -- >>> V.sminimum' $ V.sfromList [10, 3, 70, 5 :: Int]
 -- 3
--- >>> V.sminimum' (V.empty :: Array D Ix2 Int)
--- *** Exception: SizeEmptyException: (Sz (0 :. 0)) corresponds to an empty array
 --
 -- @since 0.5.0
 sminimum' :: (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e

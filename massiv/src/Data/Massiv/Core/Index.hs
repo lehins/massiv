@@ -317,8 +317,6 @@ setDim' ix dim = throwEither . setDimM ix dim
 --
 -- >>> getDim' (2 :> 3 :> 4 :. 5) 3
 -- 3
--- >>> getDim' (2 :> 3 :> 4 :. 5) 0
--- *** Exception: IndexDimensionException: (Dim 0) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
 getDim' :: (HasCallStack, Index ix) => ix -> Dim -> Int
@@ -358,8 +356,6 @@ dropDimM ix = fmap snd . pullOutDimM ix
 --
 -- >>> dropDim' (2 :> 3 :> 4 :. 5) 3
 -- 2 :> 4 :. 5
--- >>> dropDim' (2 :> 3 :> 4 :. 5) 6
--- *** Exception: IndexDimensionException: (Dim 6) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
 dropDim' :: (HasCallStack, Index ix) => ix -> Dim -> Lower ix
@@ -386,8 +382,6 @@ pullOutDim' ix = throwEither . pullOutDimM ix
 --
 -- >>> insertDim' (2 :> 3 :> 4 :. 5) 3 10 :: Ix5
 -- 2 :> 3 :> 10 :> 4 :. 5
--- >>> insertDim' (2 :> 3 :> 4 :. 5) 11 10 :: Ix5
--- *** Exception: IndexDimensionException: (Dim 11) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
 insertDim' :: (HasCallStack, Index ix) => Lower ix -> Dim -> Int -> ix
