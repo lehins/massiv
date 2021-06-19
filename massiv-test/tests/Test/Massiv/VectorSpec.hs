@@ -857,6 +857,8 @@ spec =
           prop "ssingleton" $ \(e :: Word) -> V.ssingleton e !==! VP.singleton e
           prop "replicate" $ \comp k (e :: Word) ->
             V.replicate @DL comp (Sz k) e !==! VP.replicate k e
+          prop "replicate" $ \k (e :: Word) ->
+            V.replicate @DS Seq (Sz k) e !==! VP.replicate k e
           prop "sreplicate" $ \k (e :: Word) -> V.sreplicate (Sz k) e !==! VP.replicate k e
           prop "generate" $ \comp k (f :: Fun Int Word) ->
             V.generate comp (Sz k) (apply f) !==! VP.generate k (apply f)

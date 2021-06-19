@@ -358,16 +358,16 @@ length (Steps str sz) =
 null :: Monad m => Steps m a -> m Bool
 null (Steps str sz) =
   case sz of
-    LengthExact k -> pure (k == 0)
+    LengthExact k -> pure (k == zeroSz)
     _         -> S.null str
 {-# INLINE null #-}
 
 empty :: Monad m => Steps m e
-empty = Steps S.empty (LengthExact 0)
+empty = Steps S.empty (LengthExact zeroSz)
 {-# INLINE empty #-}
 
 singleton :: Monad m => e -> Steps m e
-singleton e = Steps (S.singleton e) (LengthExact 1)
+singleton e = Steps (S.singleton e) (LengthExact oneSz)
 {-# INLINE singleton #-}
 
 generate :: Monad m => Sz1 -> (Int -> e) -> Steps m e
@@ -394,7 +394,7 @@ cons e (Steps str k) = Steps (S.cons e str) (k `addInt` 1)
 
 -- | First element of the `Steps` or `Nothing` if empty
 uncons :: Monad m => Steps m e -> m (Maybe (e, Steps m e))
-uncons sts = (\mx -> (, drop 1 sts) <$> mx) <$> headMaybe sts
+uncons sts = (\mx -> (, drop oneSz sts) <$> mx) <$> headMaybe sts
 {-# INLINE uncons #-}
 
 snoc :: Monad m => Steps m e -> e -> Steps m e
@@ -775,7 +775,7 @@ unfoldrExactN n f = unfoldrExactNM n (pure . f)
 {-# INLINE unfoldrExactN #-}
 
 unfoldrExactNM :: Monad m => Sz1 -> (s -> m (a, s)) -> s -> Steps m a
-unfoldrExactNM n f t = Steps (S.Stream step (t, n)) (LengthExact n)
+unfoldrExactNM n f t = Steps (S.Stream step (t, unSz n)) (LengthExact n)
   where
     step (s, i)
       | i <= 0 = pure S.Done

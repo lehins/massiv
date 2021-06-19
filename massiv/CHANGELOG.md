@@ -1,5 +1,7 @@
 # 1.0.0
 
+* Make `negate` in `Num` instance throw error for `Sz` in order to avoid surprising
+  behavior reported in: [#114](https://github.com/lehins/massiv/issues/114)
 * Add of `munsafeResize`
 * Add `uniformArray` and `uniformRangeArray`
 * Replace `isNonEmpty` with `isNotZeroSz` and added `isZeroSz`

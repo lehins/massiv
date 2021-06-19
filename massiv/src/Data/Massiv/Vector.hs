@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 -- |
@@ -313,7 +314,7 @@ import Prelude hiding (drop, dropWhile, init, length, null, replicate, splitAt,
 -- | /O(1)/ - Get the length of a `Stream` array, but only if it is known exactly in
 -- constant time without looking at any of the elements in the array.
 --
--- /Related/: `maxSize`, `size`, `elemsCount` and `totalElem`
+-- /Related/: `maxLinearSize`, `size`, `elemsCount` and `totalElem`
 --
 -- ==== __Examples__
 --
@@ -342,7 +343,10 @@ import Prelude hiding (drop, dropWhile, init, length, null, replicate, splitAt,
 -- the vector.
 --
 -- @since 0.5.0
-slength :: Stream r ix e => Array r ix e -> Maybe Sz1
+slength ::
+     forall r ix e. Stream r ix e
+  => Array r ix e
+  -> Maybe Sz1
 slength v =
   case stepsSize (toStream v) of
     LengthExact sz -> Just sz
@@ -373,7 +377,10 @@ slength v =
 -- cause materialization of the full vector if any other function is applied to the vector.
 --
 -- @since 0.5.0
-head' :: (HasCallStack, Source r e) => Vector r e -> e
+head' ::
+     forall r e. (HasCallStack, Source r e)
+  => Vector r e
+  -> e
 head' = throwEither . headM
 {-# INLINE head' #-}
 
@@ -401,7 +408,10 @@ head' = throwEither . headM
 -- except it is restricted to `Maybe`
 --
 -- @since 0.5.0
-headM :: (Source r e, MonadThrow m) => Vector r e -> m e
+headM ::
+     forall r e m. (Source r e, MonadThrow m)
+  => Vector r e
+  -> m e
 headM v
   | elemsCount v == 0 = throwM $ SizeEmptyException (size v)
   | otherwise = pure $ unsafeLinearIndex v 0
@@ -420,7 +430,10 @@ headM v
 -- 3
 --
 -- @since 0.5.0
-shead' :: (HasCallStack, Stream r Ix1 e) => Vector r e -> e
+shead' ::
+     forall r e. (HasCallStack, Stream r Ix1 e)
+  => Vector r e
+  -> e
 shead' = throwEither . sheadM
 {-# INLINE shead' #-}
 
@@ -442,7 +455,10 @@ shead' = throwEither . sheadM
 -- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-sheadM :: (Stream r Ix1 e, MonadThrow m) => Vector r e -> m e
+sheadM ::
+     forall r e m. (Stream r Ix1 e, MonadThrow m)
+  => Vector r e
+  -> m e
 sheadM v =
   case S.unId (S.headMaybe (toStream v)) of
     Nothing -> throwM $ SizeEmptyException (zeroSz :: Sz1)
@@ -469,7 +485,10 @@ sheadM v =
 -- the more general `MonadThrow`
 --
 -- @since 0.3.0
-unconsM :: (MonadThrow m, Source r e) => Vector r e -> m (e, Vector r e)
+unconsM ::
+     forall r e m. (MonadThrow m, Source r e)
+  => Vector r e
+  -> m (e, Vector r e)
 unconsM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise = pure (unsafeLinearIndex arr 0, unsafeLinearSlice 1 (SafeSz (unSz sz - 1)) arr)
@@ -491,7 +510,10 @@ unconsM arr
 --   [ 1, 2 ],3)
 --
 -- @since 0.3.0
-unsnocM :: (MonadThrow m, Source r e) => Vector r e -> m (Vector r e, e)
+unsnocM ::
+     forall r e m. (MonadThrow m, Source r e)
+  => Vector r e
+  -> m (Vector r e, e)
 unsnocM arr
   | 0 == totalElem sz = throwM $ SizeEmptyException sz
   | otherwise = pure (unsafeLinearSlice 0 (SafeSz k) arr, unsafeLinearIndex arr k)
@@ -519,7 +541,7 @@ unsnocM arr
 -- cause materialization of the full vector if any other function is applied to the vector.
 --
 -- @since 0.5.0
-last' :: (HasCallStack, Source r e) => Vector r e -> e
+last' :: forall r e. (HasCallStack, Source r e) => Vector r e -> e
 last' = throwEither . lastM
 {-# INLINE last' #-}
 
@@ -540,7 +562,7 @@ last' = throwEither . lastM
 -- "SizeEmptyException: (Sz1 0) corresponds to an empty array"
 --
 -- @since 0.5.0
-lastM :: (Source r e, MonadThrow m) => Vector r e -> m e
+lastM :: forall r e m. (Source r e, MonadThrow m) => Vector r e -> m e
 lastM v
   | k == 0 = throwM $ SizeEmptyException (size v)
   | otherwise = pure $ unsafeLinearIndex v (k - 1)
@@ -563,7 +585,7 @@ lastM v
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
 -- @since 0.5.0
-slice :: Source r e => Ix1 -> Sz1 -> Vector r e -> Vector r e
+slice :: forall r e. Source r e => Ix1 -> Sz1 -> Vector r e -> Vector r e
 slice !i (Sz k) v = unsafeLinearSlice i' newSz v
   where
     !i' = min n (max 0 i)
@@ -583,7 +605,7 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
 -- @since 0.5.0
-slice' :: (HasCallStack, Source r e) => Ix1 -> Sz1 -> Vector r e -> Vector r e
+slice' :: forall r e. (HasCallStack, Source r e) => Ix1 -> Sz1 -> Vector r e -> Vector r e
 slice' i k = throwEither . sliceM i k
 {-# INLINE slice' #-}
 
@@ -606,7 +628,15 @@ slice' i k = throwEither . sliceM i k
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
 --
 -- @since 0.5.0
-sliceM :: (Source r e, MonadThrow m) => Ix1 -> Sz1 -> Vector r e -> m (Vector r e)
+sliceM ::
+     forall r e m. (Source r e, MonadThrow m)
+  => Ix1
+  -- ^ Starting index
+  -> Sz1
+  -- ^ Number of elements to take from the Source vector
+  -> Vector r e
+  -- ^ Source vector to take a slice from
+  -> m (Vector r e)
 sliceM i newSz@(Sz k) v
   | i >= 0 && k <= n - i = pure $ unsafeLinearSlice i newSz v
   | otherwise = throwM $ SizeSubregionException sz i newSz
@@ -639,7 +669,15 @@ sliceM i newSz@(Sz k) v
 -- Nothing
 --
 -- @since 0.5.0
-sslice :: Stream r Ix1 e => Ix1 -> Sz1 -> Vector r e -> Vector DS e
+sslice ::
+     forall r e. Stream r Ix1 e
+  => Ix1
+  -- ^ Starting index
+  -> Sz1
+  -- ^ Number of elements to take from the stream vector
+  -> Vector r e
+  -- ^ Stream vector to take a slice from
+  -> Vector DS e
 sslice !i !k = fromSteps . S.slice i k . S.toStream
 {-# INLINE sslice #-}
 
@@ -657,7 +695,7 @@ sslice !i !k = fromSteps . S.slice i k . S.toStream
 --   [  ]
 --
 -- @since 0.5.0
-init :: Source r e => Vector r e -> Vector r e
+init :: forall r e. Source r e => Vector r e -> Vector r e
 init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 {-# INLINE init #-}
 
@@ -670,7 +708,7 @@ init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
 --
 -- @since 0.5.0
-init' :: (HasCallStack, Source r e) => Vector r e -> Vector r e
+init' :: forall r e. (HasCallStack, Source r e) => Vector r e -> Vector r e
 init' = throwEither . initM
 {-# INLINE init' #-}
 
@@ -688,7 +726,7 @@ init' = throwEither . initM
 -- 0
 --
 -- @since 0.5.0
-initM :: (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
+initM :: forall r e m. (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
 initM v = do
   when (elemsCount v == 0) $ throwM $ SizeEmptyException $ size v
   pure $ unsafeInit v
@@ -709,8 +747,8 @@ initM v = do
 --   [  ]
 --
 -- @since 0.5.0
-tail :: Source r e => Vector r e -> Vector r e
-tail = drop 1
+tail :: forall r e. Source r e => Vector r e -> Vector r e
+tail = drop oneSz
 {-# INLINE tail #-}
 
 
@@ -725,7 +763,7 @@ tail = drop 1
 -- Array D *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
 --
 -- @since 0.5.0
-tail' :: (HasCallStack, Source r e) => Vector r e -> Vector r e
+tail' :: forall r e. (HasCallStack, Source r e) => Vector r e -> Vector r e
 tail' = throwEither . tailM
 {-# INLINE tail' #-}
 
@@ -744,7 +782,7 @@ tail' = throwEither . tailM
 -- 0
 --
 -- @since 0.5.0
-tailM :: (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
+tailM :: forall r e m. (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
 tailM v = do
   when (elemsCount v == 0) $ throwM $ SizeEmptyException $ size v
   pure $ unsafeTail v
@@ -787,8 +825,6 @@ takeWhile f v = take (go 0) v
 {-# INLINE takeWhile #-}
 
 
-
-
 -- | /O(1)/ - Get the vector with the first @n@ elements. Throws an error size is less
 -- than @n@.
 --
@@ -802,7 +838,7 @@ takeWhile f v = take (go 0) v
 --   [ 0, 1, 2, 3, 4 ]
 --
 -- @since 0.5.0
-take' :: (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
+take' :: forall r e. (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
 take' k = throwEither . takeM k
 {-# INLINE take' #-}
 
@@ -822,7 +858,7 @@ take' k = throwEither . takeM k
 -- *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
 --
 -- @since 0.5.0
-takeM :: (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
+takeM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
 takeM k v = do
   let sz = size v
   when (k > sz) $ throwM $ SizeSubregionException sz 0 k
@@ -834,7 +870,7 @@ takeM k v = do
 -- ==== __Examples__
 --
 -- @since 0.5.0
-stake :: Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
+stake :: forall r e. Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
 stake n = fromSteps . S.take n . S.toStream
 {-# INLINE stake #-}
 
@@ -843,7 +879,7 @@ stake n = fromSteps . S.take n . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-drop :: Source r e => Sz1 -> Vector r e -> Vector r e
+drop :: forall r e. Source r e => Sz1 -> Vector r e -> Vector r e
 drop k = snd . sliceAt k
 {-# INLINE drop #-}
 
@@ -852,7 +888,7 @@ drop k = snd . sliceAt k
 -- that satisfy the supplied predicate.
 --
 -- @since 0.5.5
-dropWhile :: Manifest r e => (e -> Bool) -> Vector r e -> Vector r e
+dropWhile :: forall r e. Manifest r e => (e -> Bool) -> Vector r e -> Vector r e
 dropWhile f v = drop (go 0) v
   where
     !k = elemsCount v
@@ -867,7 +903,7 @@ dropWhile f v = drop (go 0) v
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sdrop :: Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
+sdrop :: forall r e. Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
 sdrop n = fromSteps . S.drop n . S.toStream
 {-# INLINE sdrop #-}
 
@@ -876,7 +912,7 @@ sdrop n = fromSteps . S.drop n . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-drop' :: (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
+drop' :: forall r e. (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
 drop' k = throwEither . dropM k
 {-# INLINE drop' #-}
 
@@ -885,10 +921,10 @@ drop' k = throwEither . dropM k
 -- ==== __Examples__
 --
 -- @since 0.5.0
-dropM :: (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
+dropM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
 dropM k@(Sz d) v = do
   let sz@(Sz n) = size v
-  when (k > sz) $ throwM $ SizeSubregionException sz d (sz - k)
+  when (k > sz) $ throwM $ SizeSubregionException sz d (SafeSz (n - d))
   pure $ unsafeLinearSlice d (SafeSz (n - d)) v
 {-# INLINE dropM #-}
 
@@ -899,7 +935,7 @@ dropM k@(Sz d) v = do
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAt :: Source r e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
+sliceAt :: forall r e. Source r e => Sz1 -> Vector r e -> (Vector r e, Vector r e)
 sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
   where
     !n = coerce (size v)
@@ -920,7 +956,7 @@ sliceAt' k = throwEither . sliceAtM k
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAtM :: (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
+sliceAtM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
 sliceAtM k v = do
   l <- takeM k v
   pure (l, unsafeDrop k v)
@@ -948,7 +984,7 @@ ssingleton = DSArray . S.singleton
 -- | /O(1)/ - Add an element to the vector from the left side
 --
 -- @since 0.3.0
-cons :: (Size r, Load r Ix1 e) => e -> Vector r e -> Vector DL e
+cons :: forall r e. (Size r, Load r Ix1 e) => e -> Vector r e -> Vector DL e
 cons e v =
   let dv = toLoadArray v
       load scheduler startAt uWrite uSet =
@@ -960,7 +996,7 @@ cons e v =
 -- | /O(1)/ - Add an element to the vector from the right side
 --
 -- @since 0.3.0
-snoc :: (Size r, Load r Ix1 e) => Vector r e -> e -> Vector DL e
+snoc :: forall r e. (Size r, Load r Ix1 e) => Vector r e -> e -> Vector DL e
 snoc v e =
   let dv = toLoadArray v
       !k = unSz (size dv)
@@ -1036,7 +1072,7 @@ siterateN n f a = fromSteps $ S.iterateN n f a
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sreplicateM :: Monad m => Sz1 -> m e -> m (Vector DS e)
+sreplicateM :: forall e m. Monad m => Sz1 -> m e -> m (Vector DS e)
 sreplicateM n f = fromStepsM $ S.replicateM n f
 {-# INLINE sreplicateM #-}
 
@@ -1047,7 +1083,7 @@ sreplicateM n f = fromStepsM $ S.replicateM n f
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sgenerateM :: Monad m => Sz1 -> (Ix1 -> m e) -> m (Vector DS e)
+sgenerateM :: forall e m. Monad m => Sz1 -> (Ix1 -> m e) -> m (Vector DS e)
 sgenerateM n f = fromStepsM $ S.generateM n f
 {-# INLINE sgenerateM #-}
 
@@ -1058,7 +1094,7 @@ sgenerateM n f = fromStepsM $ S.generateM n f
 -- ==== __Examples__
 --
 -- @since 0.5.0
-siterateNM :: Monad m => Sz1 -> (e -> m e) -> e -> m (Vector DS e)
+siterateNM :: forall e m. Monad m => Sz1 -> (e -> m e) -> e -> m (Vector DS e)
 siterateNM n f a = fromStepsM $ S.iterateNM n f a
 {-# INLINE siterateNM #-}
 
@@ -1076,7 +1112,7 @@ siterateNM n f a = fromStepsM $ S.iterateNM n f a
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64 ]
 --
 -- @since 0.5.0
-sunfoldr :: (s -> Maybe (e, s)) -> s -> Vector DS e
+sunfoldr :: forall e s. (s -> Maybe (e, s)) -> s -> Vector DS e
 sunfoldr f = DSArray . S.unfoldr f
 {-# INLINE sunfoldr #-}
 
@@ -1093,6 +1129,7 @@ sunfoldr f = DSArray . S.unfoldr f
 --
 -- @since 0.5.0
 sunfoldrN ::
+     forall e s.
      Sz1
   -- ^ @n@ - maximum number of elements that the vector will have
   -> (s -> Maybe (e, s))
@@ -1116,7 +1153,7 @@ sunfoldrN n f = DSArray . S.unfoldrN n f
 -- )
 --
 -- @since 0.5.0
-sunfoldrM :: Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
+sunfoldrM :: forall e s m. Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
 sunfoldrM f = fromStepsM . S.unfoldrM f
 {-# INLINE sunfoldrM #-}
 
@@ -1141,7 +1178,7 @@ sunfoldrM f = fromStepsM . S.unfoldrM f
 --
 --
 -- @since 0.5.0
-sunfoldrNM :: Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
+sunfoldrNM :: forall e s m. Monad m => Sz1 -> (s -> m (Maybe (e, s))) -> s -> m (Vector DS e)
 sunfoldrNM (Sz n) f = fromStepsM . S.unfoldrNM n f
 {-# INLINE sunfoldrNM #-}
 
@@ -1155,7 +1192,7 @@ sunfoldrNM (Sz n) f = fromStepsM . S.unfoldrNM n f
 --   [ 100, 121, 144, 169, 196, 225, 256, 289, 324, 361 ]
 --
 -- @since 0.5.0
-sunfoldrExactN :: Sz1 -> (s -> (e, s)) -> s -> Vector DS e
+sunfoldrExactN :: forall e s. Sz1 -> (s -> (e, s)) -> s -> Vector DS e
 sunfoldrExactN n f = fromSteps . S.unfoldrExactN n f
 {-# INLINE sunfoldrExactN #-}
 
@@ -1173,7 +1210,7 @@ sunfoldrExactN n f = fromSteps . S.unfoldrExactN n f
 -- )
 --
 -- @since 0.5.0
-sunfoldrExactNM :: Monad m => Sz1 -> (s -> m (e, s)) -> s -> m (Vector DS e)
+sunfoldrExactNM :: forall e s m. Monad m => Sz1 -> (s -> m (e, s)) -> s -> m (Vector DS e)
 sunfoldrExactNM n f = fromStepsM . S.unfoldrExactNM n f
 {-# INLINE sunfoldrExactNM #-}
 
@@ -1257,7 +1294,11 @@ senumFromStepN x step n = DSArray $ S.enumFromStepN x step n
 -- memory representations.
 --
 -- @since 0.5.0
-sappend :: (Stream r1 Ix1 e, Stream r2 Ix1 e) => Vector r1 e -> Vector r2 e -> Vector DS e
+sappend ::
+     forall r1 r2 e. (Stream r1 Ix1 e, Stream r2 Ix1 e)
+  => Vector r1 e
+  -> Vector r2 e
+  -> Vector DS e
 sappend a1 a2 = fromSteps (toStream a1 `S.append` toStream a2)
 {-# INLINE sappend #-}
 
@@ -1287,7 +1328,7 @@ sappend a1 a2 = fromSteps (toStream a1 `S.append` toStream a2)
 -- implementation underneath as `sconcat`.
 --
 -- @since 0.5.0
-sconcat :: Stream r Ix1 e => [Vector r e] -> Vector DS e
+sconcat :: forall r e. Stream r Ix1 e => [Vector r e] -> Vector DS e
 sconcat = DSArray . foldMap toStream
 {-# INLINE sconcat #-}
 
@@ -1336,12 +1377,9 @@ sfromListN (Sz n) = fromSteps . S.fromListN n
 -- ==== __Examples__
 --
 -- @since 0.5.0
-stoList :: Stream r ix e => Array r ix e -> [e]
+stoList :: forall r ix e. Stream r ix e => Array r ix e -> [e]
 stoList = S.toList . toStream
 {-# INLINE stoList #-}
-
-
-
 
 
 
@@ -1362,7 +1400,7 @@ stoList = S.toList . toStream
 --   [ (0,0), (0,1), (0,2), (0,3), (2,0), (2,1), (2,2), (2,3) ]
 --
 -- @since 0.5.0
-sfilter :: S.Stream r ix e => (e -> Bool) -> Array r ix e -> Vector DS e
+sfilter :: forall r ix e. S.Stream r ix e => (e -> Bool) -> Array r ix e -> Vector DS e
 sfilter f = DSArray . S.filter f . S.toStream
 {-# INLINE sfilter #-}
 
@@ -1372,7 +1410,7 @@ sfilter f = DSArray . S.filter f . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sifilter :: Stream r ix a => (ix -> a -> Bool) -> Array r ix a -> Vector DS a
+sifilter :: forall r ix e. Stream r ix e => (ix -> e -> Bool) -> Array r ix e -> Vector DS e
 sifilter f =
   simapMaybe $ \ix e ->
     if f ix e
@@ -1414,7 +1452,11 @@ sifilter f =
 --   [ (0,0), (0,2), (1,0), (1,2), (2,0), (2,2) ]
 --
 -- @since 0.5.0
-sfilterM :: (S.Stream r ix e, Applicative f) => (e -> f Bool) -> Array r ix e -> f (Vector DS e)
+sfilterM ::
+     forall r ix e f. (S.Stream r ix e, Applicative f)
+  => (e -> f Bool)
+  -> Array r ix e
+  -> f (Vector DS e)
 sfilterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 {-# INLINE sfilterM #-}
 
@@ -1425,7 +1467,10 @@ sfilterM f arr = DSArray <$> S.filterA f (S.toStream arr)
 --
 -- @since 0.5.0
 sifilterM ::
-     (Stream r ix a, Applicative f) => (ix -> a -> f Bool) -> Array r ix a -> f (Vector DS a)
+     forall r ix e f. (Stream r ix e, Applicative f)
+  => (ix -> e -> f Bool)
+  -> Array r ix e
+  -> f (Vector DS e)
 sifilterM f =
   simapMaybeM $ \ix e ->
     (\p ->
@@ -1442,7 +1487,7 @@ sifilterM f =
 -- ==== __Examples__
 --
 -- @since 0.5.0
-smapMaybe :: S.Stream r ix a => (a -> Maybe b) -> Array r ix a -> Vector DS b
+smapMaybe :: forall r ix a b. S.Stream r ix a => (a -> Maybe b) -> Array r ix a -> Vector DS b
 smapMaybe f = DSArray . S.mapMaybe f . S.toStream
 {-# INLINE smapMaybe #-}
 
@@ -1452,7 +1497,11 @@ smapMaybe f = DSArray . S.mapMaybe f . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-simapMaybe :: Stream r ix a => (ix -> a -> Maybe b) -> Array r ix a -> Vector DS b
+simapMaybe ::
+     forall r ix a b. Stream r ix a
+  => (ix -> a -> Maybe b)
+  -> Array r ix a
+  -> Vector DS b
 simapMaybe f = DSArray . S.mapMaybe (uncurry f) . toStreamIx
 {-# INLINE simapMaybe #-}
 
@@ -1462,7 +1511,10 @@ simapMaybe f = DSArray . S.mapMaybe (uncurry f) . toStreamIx
 --
 -- @since 0.5.0
 simapMaybeM ::
-     (Stream r ix a, Applicative f) => (ix -> a -> f (Maybe b)) -> Array r ix a -> f (Vector DS b)
+     forall r ix a b f. (Stream r ix a, Applicative f)
+  => (ix -> a -> f (Maybe b))
+  -> Array r ix a
+  -> f (Vector DS b)
 simapMaybeM f = fmap DSArray . S.mapMaybeA (uncurry f) . toStreamIx
 {-# INLINE simapMaybeM #-}
 
@@ -1472,7 +1524,7 @@ simapMaybeM f = fmap DSArray . S.mapMaybeA (uncurry f) . toStreamIx
 -- ==== __Examples__
 --
 -- @since 0.5.0
-scatMaybes :: S.Stream r ix (Maybe a) => Array r ix (Maybe a) -> Vector DS a
+scatMaybes :: forall r ix a. S.Stream r ix (Maybe a) => Array r ix (Maybe a) -> Vector DS a
 scatMaybes = smapMaybe id
 {-# INLINE scatMaybes #-}
 
@@ -1485,7 +1537,10 @@ scatMaybes = smapMaybe id
 --
 -- @since 0.5.0
 smapMaybeM ::
-     (S.Stream r ix a, Applicative f) => (a -> f (Maybe b)) -> Array r ix a -> f (Vector DS b)
+     forall r ix a b f. (S.Stream r ix a, Applicative f)
+  => (a -> f (Maybe b))
+  -> Array r ix a
+  -> f (Vector DS b)
 smapMaybeM f = fmap DSArray . S.mapMaybeA f . S.toStream
 {-# INLINE smapMaybeM #-}
 
@@ -1496,7 +1551,11 @@ smapMaybeM f = fmap DSArray . S.mapMaybeA f . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-smap :: S.Stream r ix a => (a -> b) -> Array r ix a -> Vector DS b
+smap ::
+     forall r ix a b. S.Stream r ix a
+  => (a -> b)
+  -> Array r ix a
+  -> Vector DS b
 smap f = fromSteps . S.map f . S.toStream
 {-# INLINE smap #-}
 
@@ -1505,7 +1564,11 @@ smap f = fromSteps . S.map f . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-simap :: S.Stream r ix a => (ix -> a -> b) -> Array r ix a -> Vector DS b
+simap ::
+     forall r ix a b. S.Stream r ix a
+  => (ix -> a -> b)
+  -> Array r ix a
+  -> Vector DS b
 simap f = fromSteps . S.map (uncurry f) . S.toStreamIx
 {-# INLINE simap #-}
 
@@ -1515,7 +1578,11 @@ simap f = fromSteps . S.map (uncurry f) . S.toStreamIx
 -- ==== __Examples__
 --
 -- @since 0.5.0
-straverse :: (S.Stream r ix a, Applicative f) => (a -> f b) -> Array r ix a -> f (Vector DS b)
+straverse ::
+     forall r ix a b f. (S.Stream r ix a, Applicative f)
+  => (a -> f b)
+  -> Array r ix a
+  -> f (Vector DS b)
 straverse f = fmap fromSteps . S.traverse f . S.toStream
 {-# INLINE straverse #-}
 
@@ -1525,7 +1592,11 @@ straverse f = fmap fromSteps . S.traverse f . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sitraverse :: (S.Stream r ix a, Applicative f) => (ix -> a -> f b) -> Array r ix a -> f (Vector DS b)
+sitraverse ::
+     forall r ix a b f. (S.Stream r ix a, Applicative f)
+  => (ix -> a -> f b)
+  -> Array r ix a
+  -> f (Vector DS b)
 sitraverse f = fmap fromSteps . S.traverse (uncurry f) . S.toStreamIx
 {-# INLINE sitraverse #-}
 
@@ -1535,7 +1606,11 @@ sitraverse f = fmap fromSteps . S.traverse (uncurry f) . S.toStreamIx
 -- ==== __Examples__
 --
 -- @since 0.5.0
-smapM :: (S.Stream r ix a, Monad m) => (a -> m b) -> Array r ix a -> m (Vector DS b)
+smapM ::
+     forall r ix a b m. (S.Stream r ix a, Monad m)
+  => (a -> m b)
+  -> Array r ix a
+  -> m (Vector DS b)
 smapM f = fromStepsM . S.mapM f . S.transStepsId . S.toStream
 {-# INLINE smapM #-}
 
@@ -1546,7 +1621,11 @@ smapM f = fromStepsM . S.mapM f . S.transStepsId . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-simapM :: (S.Stream r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m (Vector DS b)
+simapM ::
+     forall r ix a b m. (S.Stream r ix a, Monad m)
+  => (ix -> a -> m b)
+  -> Array r ix a
+  -> m (Vector DS b)
 simapM f = fromStepsM . S.mapM (uncurry f) . S.transStepsId . S.toStreamIx
 {-# INLINE simapM #-}
 
@@ -1555,7 +1634,11 @@ simapM f = fromStepsM . S.mapM (uncurry f) . S.transStepsId . S.toStreamIx
 -- ==== __Examples__
 --
 -- @since 0.5.0
-smapM_ :: (S.Stream r ix a, Monad m) => (a -> m b) -> Array r ix a -> m ()
+smapM_ ::
+     forall r ix a b m. (S.Stream r ix a, Monad m)
+  => (a -> m b)
+  -> Array r ix a
+  -> m ()
 smapM_ f = S.mapM_ f . S.transStepsId . S.toStream
 {-# INLINE smapM_ #-}
 
@@ -1564,7 +1647,11 @@ smapM_ f = S.mapM_ f . S.transStepsId . S.toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-simapM_ :: (S.Stream r ix a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
+simapM_ ::
+     forall r ix a b m. (S.Stream r ix a, Monad m)
+  => (ix -> a -> m b)
+  -> Array r ix a
+  -> m ()
 simapM_ f = S.mapM_ (uncurry f) . S.transStepsId . S.toStreamIx
 {-# INLINE simapM_ #-}
 
@@ -1574,7 +1661,11 @@ simapM_ f = S.mapM_ (uncurry f) . S.transStepsId . S.toStreamIx
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sforM :: (S.Stream r ix a, Monad m) => Array r ix a -> (a -> m b) -> m (Vector DS b)
+sforM ::
+     forall r ix a b m. (S.Stream r ix a, Monad m)
+  => Array r ix a
+  -> (a -> m b)
+  -> m (Vector DS b)
 sforM = flip smapM
 {-# INLINE sforM #-}
 
@@ -1583,7 +1674,11 @@ sforM = flip smapM
 -- ==== __Examples__
 --
 -- @since 0.5.0
-siforM :: (S.Stream r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m (Vector DS b)
+siforM ::
+     forall r ix a b m. (S.Stream r ix a, Monad m)
+  => Array r ix a
+  -> (ix -> a -> m b)
+  -> m (Vector DS b)
 siforM = flip simapM
 {-# INLINE siforM #-}
 
@@ -1601,7 +1696,11 @@ sforM_ = flip smapM_
 -- ==== __Examples__
 --
 -- @since 0.5.0
-siforM_ :: (S.Stream r ix a, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
+siforM_ ::
+     forall r ix a b m. (S.Stream r ix a, Monad m)
+  => Array r ix a
+  -> (ix -> a -> m b)
+  -> m ()
 siforM_ = flip simapM_
 {-# INLINE siforM_ #-}
 
@@ -1614,7 +1713,10 @@ siforM_ = flip simapM_
 --
 -- @since 0.5.0
 szip ::
-     (S.Stream ra Ix1 a, S.Stream rb Ix1 b) => Vector ra a -> Vector rb b -> Vector DS (a, b)
+     forall ra rb a b. (S.Stream ra Ix1 a, S.Stream rb Ix1 b)
+  => Vector ra a
+  -> Vector rb b
+  -> Vector DS (a, b)
 szip = szipWith (,)
 {-# INLINE szip #-}
 
@@ -1622,7 +1724,7 @@ szip = szipWith (,)
 --
 -- @since 0.5.0
 szip3 ::
-     (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c)
+     forall ra rb rc a b c. (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c)
   => Vector ra a
   -> Vector rb b
   -> Vector rc c
@@ -1634,6 +1736,7 @@ szip3 = szipWith3 (,,)
 --
 -- @since 0.5.0
 szip4 ::
+     forall ra rb rc rd a b c d.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d)
   => Vector ra a
   -> Vector rb b
@@ -1647,6 +1750,7 @@ szip4 = szipWith4 (,,,)
 --
 -- @since 0.5.0
 szip5 ::
+     forall ra rb rc rd re a b c d e.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d, S.Stream re Ix1 e)
   => Vector ra a
   -> Vector rb b
@@ -1661,6 +1765,7 @@ szip5 = szipWith5 (,,,,)
 --
 -- @since 0.5.0
 szip6 ::
+     forall ra rb rc rd re rf a b c d e f.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -1689,6 +1794,7 @@ szip6 = szipWith6 (,,,,,)
 --
 -- @since 0.5.0
 szipWith ::
+     forall ra rb a b c.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b)
   => (a -> b -> c)
   -> Vector ra a
@@ -1701,6 +1807,7 @@ szipWith f v1 v2 = fromSteps $ S.zipWith f (S.toStream v1) (S.toStream v2)
 --
 -- @since 0.5.0
 szipWith3 ::
+     forall ra rb rc a b c d.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c)
   => (a -> b -> c -> d)
   -> Vector ra a
@@ -1714,6 +1821,7 @@ szipWith3 f v1 v2 v3 = fromSteps $ S.zipWith3 f (S.toStream v1) (S.toStream v2) 
 --
 -- @since 0.5.0
 szipWith4 ::
+     forall ra rb rc rd a b c d e.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d)
   => (a -> b -> c -> d -> e)
   -> Vector ra a
@@ -1729,6 +1837,7 @@ szipWith4 f v1 v2 v3 v4 =
 --
 -- @since 0.5.0
 szipWith5 ::
+     forall ra rb rc rd re a b c d e f.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d, S.Stream re Ix1 e)
   => (a -> b -> c -> d -> e -> f)
   -> Vector ra a
@@ -1746,6 +1855,7 @@ szipWith5 f v1 v2 v3 v4 v5 =
 --
 -- @since 0.5.0
 szipWith6 ::
+     forall ra rb rc rd re rf a b c d e f g.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -1779,6 +1889,7 @@ szipWith6 f v1 v2 v3 v4 v5 v6 =
 --
 -- @since 0.5.0
 sizipWith ::
+     forall ra rb a b c.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b)
   => (Ix1 -> a -> b -> c)
   -> Vector ra a
@@ -1791,6 +1902,7 @@ sizipWith f v1 v2 = fromSteps $ S.zipWith (uncurry f) (S.toStreamIx v1) (S.toStr
 --
 -- @since 0.5.0
 sizipWith3 ::
+     forall ra rb rc a b c d.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c)
   => (Ix1 -> a -> b -> c -> d)
   -> Vector ra a
@@ -1805,6 +1917,7 @@ sizipWith3 f v1 v2 v3 =
 --
 -- @since 0.5.0
 sizipWith4 ::
+     forall ra rb rc rd a b c d e.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d)
   => (Ix1 -> a -> b -> c -> d -> e)
   -> Vector ra a
@@ -1821,6 +1934,7 @@ sizipWith4 f v1 v2 v3 v4 =
 --
 -- @since 0.5.0
 sizipWith5 ::
+     forall ra rb rc rd re a b c d e f.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d, S.Stream re Ix1 e)
   => (Ix1 -> a -> b -> c -> d -> e -> f)
   -> Vector ra a
@@ -1844,6 +1958,7 @@ sizipWith5 f v1 v2 v3 v4 v5 =
 --
 -- @since 0.5.0
 sizipWith6 ::
+     forall ra rb rc rd re rf a b c d e f g.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -1878,6 +1993,7 @@ sizipWith6 f v1 v2 v3 v4 v5 v6 =
 --
 -- @since 0.5.0
 szipWithM ::
+     forall ra rb a b c m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, Monad m)
   => (a -> b -> m c)
   -> Vector ra a
@@ -1890,6 +2006,7 @@ szipWithM f v1 v2 = fromStepsM $ S.zipWithM f (toStreamM v1) (toStreamM v2)
 --
 -- @since 0.5.0
 szipWith3M ::
+     forall ra rb rc a b c d m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, Monad m)
   => (a -> b -> c -> m d)
   -> Vector ra a
@@ -1903,6 +2020,7 @@ szipWith3M f v1 v2 v3 = fromStepsM $ S.zipWith3M f (toStreamM v1) (toStreamM v2)
 --
 -- @since 0.5.0
 szipWith4M ::
+     forall ra rb rc rd a b c d e m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d, Monad m)
   => (a -> b -> c -> d -> m e)
   -> Vector ra a
@@ -1918,6 +2036,7 @@ szipWith4M f v1 v2 v3 v4 =
 --
 -- @since 0.5.0
 szipWith5M ::
+     forall ra rb rc rd re a b c d e f m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -1941,6 +2060,7 @@ szipWith5M f v1 v2 v3 v4 v5 =
 --
 -- @since 0.5.0
 szipWith6M ::
+     forall ra rb rc rd re rf a b c d e f g m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -1976,6 +2096,7 @@ szipWith6M f v1 v2 v3 v4 v5 v6 =
 --
 -- @since 0.5.0
 sizipWithM ::
+     forall ra rb a b c m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, Monad m)
   => (Ix1 -> a -> b -> m c)
   -> Vector ra a
@@ -1989,6 +2110,7 @@ sizipWithM f v1 v2 = fromStepsM $ S.zipWithM (uncurry f) (toStreamIxM v1) (toStr
 --
 -- @since 0.5.0
 sizipWith3M ::
+     forall ra rb rc a b c d m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, Monad m)
   => (Ix1 -> a -> b -> c -> m d)
   -> Vector ra a
@@ -2003,6 +2125,7 @@ sizipWith3M f v1 v2 v3 =
 --
 -- @since 0.5.0
 sizipWith4M ::
+     forall ra rb rc rd a b c d e m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d, Monad m)
   => (Ix1 -> a -> b -> c -> d -> m e)
   -> Vector ra a
@@ -2019,6 +2142,7 @@ sizipWith4M f v1 v2 v3 v4 =
 --
 -- @since 0.5.0
 sizipWith5M ::
+     forall ra rb rc rd re a b c d e f m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -2050,6 +2174,7 @@ sizipWith5M f v1 v2 v3 v4 v5 =
 --
 -- @since 0.5.0
 sizipWith6M ::
+     forall ra rb rc rd re rf a b c d e f g m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -2085,7 +2210,7 @@ sizipWith6M f v1 v2 v3 v4 v5 v6 =
 --
 -- @since 0.5.0
 szipWithM_ ::
-     (S.Stream ra Ix1 a, S.Stream rb Ix1 b, Monad m)
+     forall ra rb a b c m. (S.Stream ra Ix1 a, S.Stream rb Ix1 b, Monad m)
   => (a -> b -> m c)
   -> Vector ra a
   -> Vector rb b
@@ -2097,6 +2222,7 @@ szipWithM_ f v1 v2 = S.zipWithM_ f (toStreamM v1) (toStreamM v2)
 --
 -- @since 0.5.0
 szipWith3M_ ::
+     forall ra rb rc a b c d m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, Monad m)
   => (a -> b -> c -> m d)
   -> Vector ra a
@@ -2110,6 +2236,7 @@ szipWith3M_ f v1 v2 v3 = S.zipWith3M_ f (toStreamM v1) (toStreamM v2) (toStreamM
 --
 -- @since 0.5.0
 szipWith4M_ ::
+     forall ra rb rc rd a b c d e m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d, Monad m)
   => (a -> b -> c -> d -> m e)
   -> Vector ra a
@@ -2125,6 +2252,7 @@ szipWith4M_ f v1 v2 v3 v4 =
 --
 -- @since 0.5.0
 szipWith5M_ ::
+     forall ra rb rc rd re a b c d e f m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -2147,6 +2275,7 @@ szipWith5M_ f v1 v2 v3 v4 v5 =
 --
 -- @since 0.5.0
 szipWith6M_ ::
+     forall ra rb rc rd re rf a b c d e f g m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -2183,7 +2312,7 @@ szipWith6M_ f v1 v2 v3 v4 v5 v6 =
 --
 -- @since 0.5.0
 sizipWithM_ ::
-     (S.Stream ra Ix1 a, S.Stream rb Ix1 b, Monad m)
+     forall ra rb a b c m. (S.Stream ra Ix1 a, S.Stream rb Ix1 b, Monad m)
   => (Ix1 -> a -> b -> m c)
   -> Vector ra a
   -> Vector rb b
@@ -2196,6 +2325,7 @@ sizipWithM_ f v1 v2 = S.zipWithM_ (uncurry f) (toStreamIxM v1) (toStreamM v2)
 --
 -- @since 0.5.0
 sizipWith3M_ ::
+     forall ra rb rc a b c d m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, Monad m)
   => (Ix1 -> a -> b -> c -> m d)
   -> Vector ra a
@@ -2209,6 +2339,7 @@ sizipWith3M_ f v1 v2 v3 = S.zipWith3M_ (uncurry f) (toStreamIxM v1) (toStreamM v
 --
 -- @since 0.5.0
 sizipWith4M_ ::
+     forall ra rb rc rd a b c d e m.
      (S.Stream ra Ix1 a, S.Stream rb Ix1 b, S.Stream rc Ix1 c, S.Stream rd Ix1 d, Monad m)
   => (Ix1 -> a -> b -> c -> d -> m e)
   -> Vector ra a
@@ -2224,6 +2355,7 @@ sizipWith4M_ f v1 v2 v3 v4 =
 --
 -- @since 0.5.0
 sizipWith5M_ ::
+     forall ra rb rc rd re a b c d e f m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -2252,6 +2384,7 @@ sizipWith5M_ f v1 v2 v3 v4 v5 =
 --
 -- @since 0.5.0
 sizipWith6M_ ::
+     forall ra rb rc rd re rf a b c d e f g m.
      ( S.Stream ra Ix1 a
      , S.Stream rb Ix1 b
      , S.Stream rc Ix1 c
@@ -2288,7 +2421,12 @@ sizipWith6M_ f v1 v2 v3 v4 v5 v6 =
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfoldl :: Stream r ix e => (a -> e -> a) -> a -> Array r ix e -> a
+sfoldl ::
+     forall r ix e a. Stream r ix e
+  => (a -> e -> a)
+  -> a
+  -> Array r ix e
+  -> a
 sfoldl f acc = S.unId . S.foldl f acc . toStream
 {-# INLINE sfoldl #-}
 
@@ -2297,7 +2435,12 @@ sfoldl f acc = S.unId . S.foldl f acc . toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfoldlM :: (Stream r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m a
+sfoldlM ::
+     forall r ix e a m. (Stream r ix e, Monad m)
+  => (a -> e -> m a)
+  -> a
+  -> Array r ix e
+  -> m a
 sfoldlM f acc = S.foldlM f acc . S.transStepsId . toStream
 {-# INLINE sfoldlM #-}
 
@@ -2306,7 +2449,12 @@ sfoldlM f acc = S.foldlM f acc . S.transStepsId . toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfoldlM_ :: (Stream r ix e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m ()
+sfoldlM_ ::
+     forall r ix e a m. (Stream r ix e, Monad m)
+  => (a -> e -> m a)
+  -> a
+  -> Array r ix e
+  -> m ()
 sfoldlM_ f acc = void . sfoldlM f acc
 {-# INLINE sfoldlM_ #-}
 
@@ -2316,7 +2464,11 @@ sfoldlM_ f acc = void . sfoldlM f acc
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfoldl1' :: (HasCallStack, Stream r ix e) => (e -> e -> e) -> Array r ix e -> e
+sfoldl1' ::
+     forall r ix e. (HasCallStack, Stream r ix e)
+  => (e -> e -> e)
+  -> Array r ix e
+  -> e
 sfoldl1' f = throwEither . sfoldl1M (\e -> pure . f e)
 {-# INLINE sfoldl1' #-}
 
@@ -2325,7 +2477,11 @@ sfoldl1' f = throwEither . sfoldl1M (\e -> pure . f e)
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfoldl1M :: (Stream r ix e, MonadThrow m) => (e -> e -> m e) -> Array r ix e -> m e
+sfoldl1M ::
+     forall r ix e m. (Stream r ix e, MonadThrow m)
+  => (e -> e -> m e)
+  -> Array r ix e
+  -> m e
 sfoldl1M f arr = do
   let str = S.transStepsId $ toStream arr
   isNullStream <- S.null str
@@ -2338,7 +2494,11 @@ sfoldl1M f arr = do
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sfoldl1M_ :: (Stream r ix e, MonadThrow m) => (e -> e -> m e) -> Array r ix e -> m ()
+sfoldl1M_ ::
+     forall r ix e m. (Stream r ix e, MonadThrow m)
+  => (e -> e -> m e)
+  -> Array r ix e
+  -> m ()
 sfoldl1M_ f = void . sfoldl1M f
 {-# INLINE sfoldl1M_ #-}
 
@@ -2349,7 +2509,12 @@ sfoldl1M_ f = void . sfoldl1M f
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sifoldl :: Stream r ix e => (a -> ix -> e -> a) -> a -> Array r ix e -> a
+sifoldl ::
+     forall r ix e a. Stream r ix e
+  => (a -> ix -> e -> a)
+  -> a
+  -> Array r ix e
+  -> a
 sifoldl f acc = S.unId . S.foldl (\a (ix, e) -> f a ix e) acc . toStreamIx
 {-# INLINE sifoldl #-}
 
@@ -2358,7 +2523,12 @@ sifoldl f acc = S.unId . S.foldl (\a (ix, e) -> f a ix e) acc . toStreamIx
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sifoldlM :: (Stream r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m a
+sifoldlM ::
+     forall r ix e a m. (Stream r ix e, Monad m)
+  => (a -> ix -> e -> m a)
+  -> a
+  -> Array r ix e
+  -> m a
 sifoldlM f acc = S.foldlM (\a (ix, e) -> f a ix e) acc . S.transStepsId . toStreamIx
 {-# INLINE sifoldlM #-}
 
@@ -2367,7 +2537,12 @@ sifoldlM f acc = S.foldlM (\a (ix, e) -> f a ix e) acc . S.transStepsId . toStre
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sifoldlM_ :: (Stream r ix e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m ()
+sifoldlM_ ::
+     forall r ix e a m. (Stream r ix e, Monad m)
+  => (a -> ix -> e -> m a)
+  -> a
+  -> Array r ix e
+  -> m ()
 sifoldlM_ f acc = void . sifoldlM f acc
 {-# INLINE sifoldlM_ #-}
 
@@ -2377,7 +2552,10 @@ sifoldlM_ f acc = void . sifoldlM f acc
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sor :: Stream r ix Bool => Array r ix Bool -> Bool
+sor ::
+     forall r ix. Stream r ix Bool
+  => Array r ix Bool
+  -> Bool
 sor = S.unId . S.or . toStream
 {-# INLINE sor #-}
 
@@ -2387,7 +2565,7 @@ sor = S.unId . S.or . toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sand :: Stream r ix Bool => Array r ix Bool -> Bool
+sand :: forall r ix. Stream r ix Bool => Array r ix Bool -> Bool
 sand = S.unId . S.and . toStream
 {-# INLINE sand #-}
 
@@ -2397,7 +2575,7 @@ sand = S.unId . S.and . toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sany :: Stream r ix e => (e -> Bool) -> Array r ix e -> Bool
+sany :: forall r ix e. Stream r ix e => (e -> Bool) -> Array r ix e -> Bool
 sany f = S.unId . S.or . S.map f . toStream
 {-# INLINE sany #-}
 
@@ -2407,7 +2585,7 @@ sany f = S.unId . S.or . S.map f . toStream
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sall :: Stream r ix e => (e -> Bool) -> Array r ix e -> Bool
+sall :: forall r ix e. Stream r ix e => (e -> Bool) -> Array r ix e -> Bool
 sall f = S.unId . S.and . S.map f . toStream
 {-# INLINE sall #-}
 
@@ -2424,7 +2602,7 @@ sall f = S.unId . S.and . S.map f . toStream
 -- 88
 --
 -- @since 0.5.0
-ssum :: (Num e, Stream r ix e) => Array r ix e -> e
+ssum :: forall r ix e. (Num e, Stream r ix e) => Array r ix e -> e
 ssum = sfoldl (+) 0
 {-# INLINE ssum #-}
 
@@ -2439,7 +2617,7 @@ ssum = sfoldl (+) 0
 -- 10500
 --
 -- @since 0.5.0
-sproduct :: (Num e, Stream r ix e) => Array r ix e -> e
+sproduct :: forall r ix e. (Num e, Stream r ix e) => Array r ix e -> e
 sproduct = sfoldl (*) 1
 {-# INLINE sproduct #-}
 
@@ -2455,7 +2633,7 @@ sproduct = sfoldl (*) 1
 -- 70
 --
 -- @since 0.5.0
-smaximum' :: (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e
+smaximum' :: forall r ix e. (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e
 smaximum' = sfoldl1' max
 {-# INLINE smaximum' #-}
 
@@ -2474,7 +2652,7 @@ smaximum' = sfoldl1' max
 -- Nothing
 --
 -- @since 0.5.0
-smaximumM :: (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
+smaximumM :: forall r ix e m. (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
 smaximumM = sfoldl1M (\e acc -> pure (max e acc))
 {-# INLINE smaximumM #-}
 
@@ -2490,7 +2668,7 @@ smaximumM = sfoldl1M (\e acc -> pure (max e acc))
 -- 3
 --
 -- @since 0.5.0
-sminimum' :: (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e
+sminimum' :: forall r ix e. (HasCallStack, Ord e, Stream r ix e) => Array r ix e -> e
 sminimum' = sfoldl1' min
 {-# INLINE sminimum' #-}
 
@@ -2509,6 +2687,6 @@ sminimum' = sfoldl1' min
 -- Nothing
 --
 -- @since 0.5.0
-sminimumM :: (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
+sminimumM :: forall r ix e m. (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
 sminimumM = sfoldl1M (\e acc -> pure (min e acc))
 {-# INLINE sminimumM #-}
