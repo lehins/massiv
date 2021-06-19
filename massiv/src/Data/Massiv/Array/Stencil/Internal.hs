@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -102,6 +103,7 @@ instance Index ix => Applicative (Stencil ix e) where
       !maxCenter = unionStencilCenters s1 s2
   {-# INLINE (<*>) #-}
 
+#if MIN_VERSION_base(4,10,0)
   liftA2 f s1@(Stencil _ _ f1) s2@(Stencil _ _ f2) = Stencil newSz maxCenter stF
     where
       stF ug gV !ix = f (f1 ug gV ix) (f2 ug gV ix)
@@ -109,6 +111,7 @@ instance Index ix => Applicative (Stencil ix e) where
       !newSz = unionStencilSizes maxCenter s1 s2
       !maxCenter = unionStencilCenters s1 s2
   {-# INLINE liftA2 #-}
+#endif
 
 instance (Index ix, Num a) => Num (Stencil ix e a) where
   (+) = liftA2 (+)

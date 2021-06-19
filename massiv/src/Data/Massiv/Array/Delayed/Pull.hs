@@ -27,15 +27,15 @@ module Data.Massiv.Array.Delayed.Pull
   , unsafeInnerSlice
   ) where
 
-import Control.Applicative
+import           Control.Applicative
 import qualified Data.Foldable as F
-import Data.Massiv.Array.Ops.Fold.Internal as A
-import Data.Massiv.Vector.Stream as S (steps)
-import Data.Massiv.Core.Common
-import Data.Massiv.Core.Operations
-import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
-import GHC.Base (build)
-import Prelude hiding (zipWith)
+import           Data.Massiv.Array.Ops.Fold.Internal as A
+import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
+import           Data.Massiv.Core.Operations
+import           Data.Massiv.Vector.Stream as S (steps)
+import           GHC.Base (build)
+import           Prelude hiding (zipWith)
 
 #include "massiv.h"
 
@@ -125,9 +125,12 @@ instance Functor (Array D ix) where
 instance Index ix => Applicative (Array D ix) where
   pure = singleton
   {-# INLINE pure #-}
+  (<*>) = liftArray2Matching id
+  {-# INLINE (<*>) #-}
+#if MIN_VERSION_base(4,10,0)
   liftA2 = liftArray2Matching
   {-# INLINE liftA2 #-}
-
+#endif
 
 -- | Row-major sequential folding over a Delayed array.
 instance Index ix => Foldable (Array D ix) where
