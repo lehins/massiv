@@ -431,12 +431,12 @@ randomArrayS gen sz nextRandom =
 -- >>> :set -XTypeApplications
 -- >>> gens <- initWorkerStates (ParN 3) (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
 -- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Array P Ix2 Double)
--- Array P Par (Sz (2 :. 3))
--- [ [ 2.5438514691269685, 4.287612444807011, 5.610339021582389 ]
--- , [ 4.697970155404468, 5.00119167394813, 2.996037154611197 ]
--- ]
+-- Array P (ParN 3) (Sz (2 :. 3))
+--   [ [ 2.5438514691269685, 4.287612444807011, 5.610339021582389 ]
+--   , [ 4.697970155404468, 5.00119167394813, 2.996037154611197 ]
+--   ]
 -- >>> randomArrayWS gens (Sz1 10) (uniformRM (0, 9)) :: IO (Vector P Int)
--- Array P Par (Sz1 10)
+-- Array P (ParN 3) (Sz1 10)
 --   [ 0, 9, 3, 2, 2, 7, 6, 7, 7, 5 ]
 --
 -- @since 0.3.4

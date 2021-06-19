@@ -38,7 +38,7 @@ fromList ::
      forall r e. Mutable r e
   => Comp -- ^ Computation startegy to use
   -> [e] -- ^ Flat list
-  -> Array r Ix1 e
+  -> Vector r e
 fromList = fromLists'
 {-# INLINE fromList #-}
 
@@ -88,12 +88,12 @@ fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 -- TODO: Figure out QuickCheck properties. Best guess idea so far IMHO is to add it as dependency
 -- and move Arbitrary instances int the library
 --
--- prop> fromLists' Seq xs == fromList xs
---
--- | Same as `fromListsM`, but will throw a pure error on irregular shaped lists.
+-- | Same as `fromListsM`, but will throw an error on irregular shaped lists.
 --
 -- __Note__: This function is the same as if you would turn on @{-\# LANGUAGE OverloadedLists #-}@
 -- extension. For that reason you can also use `GHC.Exts.fromList`.
+--
+-- prop> \xs -> fromLists' Seq xs == (fromList Seq xs :: Vector P Int)
 --
 -- ====__Examples__
 --
@@ -114,11 +114,6 @@ fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 --   [ [ 1, 2, 3 ]
 --   , [ 4, 5, 6 ]
 --   ]
---
--- Example of failure on conversion of an irregular nested list.
---
--- >>> fromLists' Seq [[1],[3,4]] :: Array U Ix2 Int
--- Array U *** Exception: DimTooLongException
 --
 -- @since 0.1.0
 fromLists' :: forall r ix e . (HasCallStack, Nested LN ix e, Ragged L ix e, Mutable r e)
@@ -219,3 +214,7 @@ toLists4 ::
   -> [[[[e]]]]
 toLists4 = toList . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists4 #-}
+
+
+-- $setup
+-- >>> import Data.Massiv.Array as A

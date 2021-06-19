@@ -908,8 +908,8 @@ borderIndex :: (Index ix, Manifest r e) => Border e -> Array r ix e -> ix -> e
 borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 {-# INLINE borderIndex #-}
 
--- | /O(1)/ - Lookup an element in the array. This is a partial function and it can throw
--- `IndexOutOfBoundsException` inside pure code. It is safer to use `index` instead.
+-- | /O(1)/ - Lookup an element in the array. This is a partial function and it will throw
+-- an error when index is out of bounds. It is safer to use `indexM` instead.
 --
 -- ==== __Examples__
 --
@@ -918,8 +918,6 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 -- >>> xs = [0..100] :: Array U Ix1 Int
 -- >>> index' xs 50
 -- 50
--- >>> index' xs 150
--- *** Exception: IndexOutOfBoundsException: 150 is not safe for (Sz1 101)
 --
 -- @since 0.1.0
 index' :: (HasCallStack, Index ix, Manifest r e) => Array r ix e -> ix -> e
@@ -950,15 +948,13 @@ evaluateM arr ix =
     ix
 {-# INLINE evaluateM #-}
 
--- | Similar to `evaluateM`, but will throw an exception in pure code.
+-- | Similar to `evaluateM`, but will throw an error on out of bounds indices.
 --
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
 -- >>> evaluate' (range Seq (Ix2 10 20) (100 :. 210)) 50
 -- 60 :. 70
--- >>> evaluate' (range Seq (Ix2 10 20) (100 :. 210)) 150
--- *** Exception: IndexOutOfBoundsException: (150 :. 150) is not safe for (Sz (90 :. 190))
 --
 -- @since 0.3.0
 evaluate' :: (HasCallStack, Index ix, Source r e) => Array r ix e -> ix -> e
