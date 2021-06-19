@@ -156,6 +156,7 @@ castToVector arr =
 -- `VS.Vector` in costant time:
 --
 -- >>> import Data.Massiv.Array as A
+-- >>> import Data.Massiv.Array.Manifest.Vector (toVector)
 -- >>> import qualified Data.Vector.Storable as VS
 -- >>> toVector (makeArrayR S Par (Sz2 5 6) (\(i :. j) -> i + j)) :: VS.Vector Int
 -- [0,1,2,3,4,5,1,2,3,4,5,6,2,3,4,5,6,7,3,4,5,6,7,8,4,5,6,7,8,9]

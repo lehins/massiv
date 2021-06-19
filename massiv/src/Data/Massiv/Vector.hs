@@ -648,10 +648,11 @@ sslice !i !k = fromSteps . S.slice i k . S.toStream
 --
 -- ==== __Examples__
 --
--- >>> init (0 ..: 10)
+-- >>> import Data.Massiv.Array as A
+-- >>> A.init (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
--- >>> init (empty :: Array D Ix1 Int)
+-- >>> A.init (empty :: Array D Ix1 Int)
 -- Array D Seq (Sz1 0)
 --   [  ]
 --
@@ -677,12 +678,13 @@ init' = throwEither . initM
 --
 -- ==== __Examples__
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> initM (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
--- >>> maybe 0 sum $ initM (0 ..: 10)
+-- >>> maybe 0 A.sum $ initM (0 ..: 10)
 -- 36
--- >>> maybe 0 sum $ initM (empty :: Array D Ix1 Int)
+-- >>> maybe 0 A.sum $ initM (empty :: Array D Ix1 Int)
 -- 0
 --
 -- @since 0.5.0
@@ -698,10 +700,11 @@ initM v = do
 --
 -- ==== __Examples__
 --
--- >>> tail (0 ..: 10)
+-- >>> import Data.Massiv.Array as A
+-- >>> A.tail (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
--- >>> tail (empty :: Array D Ix1 Int)
+-- >>> A.tail (empty :: Array D Ix1 Int)
 -- Array D Seq (Sz1 0)
 --   [  ]
 --
@@ -731,12 +734,13 @@ tail' = throwEither . tailM
 --
 -- ==== __Examples__
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> tailM (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
--- >>> maybe 0 sum $ tailM (0 ..: 10)
+-- >>> maybe 0 A.sum $ tailM (0 ..: 10)
 -- 45
--- >>> maybe 0 sum $ tailM (empty :: Array D Ix1 Int)
+-- >>> maybe 0 A.sum $ tailM (empty :: Array D Ix1 Int)
 -- 0
 --
 -- @since 0.5.0
@@ -752,16 +756,16 @@ tailM v = do
 --
 -- ==== __Examples__
 --
--- >>> take 5 (0 ..: 10)
+-- >>> import Data.Massiv.Array as A
+-- >>> A.take 5 (0 ..: 10)
 -- Array D Seq (Sz1 5)
 --   [ 0, 1, 2, 3, 4 ]
--- >>> take (-5) (0 ..: 10)
+-- >>> A.take (-5) (0 ..: 10)
 -- Array D Seq (Sz1 0)
 --   [  ]
--- >>> take 100 (0 ..: 10)
+-- >>> A.take 100 (0 ..: 10)
 -- Array D Seq (Sz1 10)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
--- >>>
 --
 -- @since 0.5.0
 take :: Source r e => Sz1 -> Vector r e -> Vector r e
@@ -806,12 +810,13 @@ take' k = throwEither . takeM k
 --
 -- ==== __Examples__
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> takeM 5 (0 ..: 10)
 -- Array D Seq (Sz1 5)
 --   [ 0, 1, 2, 3, 4 ]
--- >>> maybe 0 sum $ takeM 5 (0 ..: 10)
+-- >>> maybe 0 A.sum $ takeM 5 (0 ..: 10)
 -- 10
--- >>> maybe (-1) sum $ takeM 15 (0 ..: 10)
+-- >>> maybe (-1) A.sum $ takeM 15 (0 ..: 10)
 -- -1
 -- >>> takeM 15 (0 ..: 10)
 -- *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
