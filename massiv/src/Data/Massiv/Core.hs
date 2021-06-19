@@ -35,6 +35,8 @@ module Data.Massiv.Core
   , appComp
   , WorkerStates
   , initWorkerStates
+  , scheduleWork
+  , scheduleWork_
   , withMassivScheduler_
   , module Data.Massiv.Core.Index
   -- * Numeric

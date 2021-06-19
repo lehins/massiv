@@ -415,7 +415,7 @@ anySliceSuM ::
   -> (e -> Bool)
   -> Array r ix e
   -> IO Bool
-anySliceSuM batch ix0 (Sz k) f arr = go ix0
+anySliceSuM batch ix0 (Sz1 k) f arr = go ix0
   where
     !k' = k - ix0
     !k4 = ix0 + (k' - (k' `rem` 4))
