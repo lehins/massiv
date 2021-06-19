@@ -74,6 +74,7 @@ test-suite tests
                     , Test.Massiv.Core.IndexSpec
                     , Test.Massiv.Core.ListSpec
                     , Test.Massiv.Core.SchedulerSpec
+  build-tool-depends: hspec-discover:hspec-discover
   build-depends:      base
                     , bytestring
                     , containers
@@ -127,6 +128,7 @@ test-suite tests-O0
                     , Test.Massiv.Core.IndexSpec
                     , Test.Massiv.Core.ListSpec
                     , Test.Massiv.Core.SchedulerSpec
+  build-tool-depends: hspec-discover:hspec-discover
   build-depends:      base
                     , bytestring
                     , containers
