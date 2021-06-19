@@ -33,11 +33,12 @@ import Control.Exception
 import Control.Monad (unless, when)
 import Control.Scheduler
 import Data.Coerce
-import Data.Monoid
 import Data.Functor.Identity
+import Data.Kind
 import qualified Data.List as L
-import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Core.Common
+import qualified Data.Massiv.Vector.Stream as S
+import Data.Monoid
 import Data.Typeable
 import GHC.Exts
 import GHC.TypeLits
@@ -45,7 +46,7 @@ import System.IO.Unsafe (unsafePerformIO)
 
 data LN
 
-type family ListItem ix e :: * where
+type family ListItem ix e :: Type where
   ListItem Ix1 e = e
   ListItem ix  e = [ListItem (Lower ix) e]
 
@@ -144,7 +145,7 @@ instance Shape LN Ix2 where
   {-# INLINE isNull #-}
   outerSize arr =
     case unList arr of
-      [] -> zeroSz
+      []     -> zeroSz
       (x:xs) -> SafeSz ((1 + length xs) :. length (unList x))
   {-# INLINE outerSize #-}
 
@@ -167,7 +168,7 @@ instance (Shape LN (Ix (n - 1)), Index (IxN n)) => Shape LN (IxN n) where
   {-# INLINE isNull #-}
   outerSize arr =
     case unList arr of
-      [] -> zeroSz
+      []     -> zeroSz
       (x:xs) -> SafeSz ((1 + length xs) :> unSz (outerSize x))
   {-# INLINE outerSize #-}
 

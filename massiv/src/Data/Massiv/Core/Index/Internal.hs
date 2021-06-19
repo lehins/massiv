@@ -66,6 +66,7 @@ import Control.Exception (Exception(..), throw)
 import Control.Monad (when)
 import Control.Monad.Catch (MonadThrow(..))
 import Data.Coerce
+import Data.Kind
 import Data.Massiv.Core.Iterator
 import Data.Typeable
 import GHC.TypeLits
@@ -366,7 +367,7 @@ type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
 -- argument.
 --
 -- @since 0.1.0
-type family Lower ix :: *
+type family Lower ix :: Type
 
 
 type family ReportInvalidDim (dims :: Nat) (n :: Nat) isNotZero isLess :: Bool where
