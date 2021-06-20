@@ -1,5 +1,8 @@
 # 1.0.0
 
+* Addition of `sumArrays'`, `sumArraysM` and `productArrays'`, `productArraysM`.
+* Remove `Num`/`Fractional`/`Floating` instances for `D` and `DI` arrays. This was done to
+  prevent surprises as in: [#97](https://github.com/lehins/massiv/issues/97)
 * Remove helper class `Nested` and type family `NestedStuct`
 * Make `negate` in `Num` instance throw error for `Sz` in order to avoid surprising
   behavior reported in: [#114](https://github.com/lehins/massiv/issues/114)
@@ -277,7 +280,7 @@
   * `generateArrayS`
 * Redefined most of the numeric operators with `Numeric` and `NumericFloat`. Will be
   required for SIMD operations.
-* `Num`, `Fractional` and `Applicative` for `D` changed behavior: instead of treating
+* `Num`, `Fractional` and `Applicative` for `D` and `DI` changed behavior: instead of treating
   singleton as a special array of any size it is treated as singleton.
 
 # 0.3.6

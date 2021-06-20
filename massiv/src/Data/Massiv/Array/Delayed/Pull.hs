@@ -171,58 +171,11 @@ instance Index ix => Stream D ix e where
   {-# INLINE toStreamIx #-}
 
 -- | Map an index aware function over an array
-imap :: (Index ix, Source r e') => (ix -> e' -> e) -> Array r ix e' -> Array D ix e
+--
+-- @since 0.1.0
+imap :: forall r ix e a. (Index ix, Source r e) => (ix -> e -> a) -> Array r ix e -> Array D ix a
 imap f !arr = DArray (getComp arr) (size arr) (\ !ix -> f ix (unsafeIndex arr ix))
 {-# INLINE imap #-}
-
-instance (Index ix, Num e) => Num (Array D ix e) where
-  (+)         = liftArray2Matching (+)
-  {-# INLINE (+) #-}
-  (-)         = liftArray2Matching (-)
-  {-# INLINE (-) #-}
-  (*)         = liftArray2Matching (*)
-  {-# INLINE (*) #-}
-  abs         = unsafeLiftArray abs
-  {-# INLINE abs #-}
-  signum      = unsafeLiftArray signum
-  {-# INLINE signum #-}
-  fromInteger = singleton . fromInteger
-  {-# INLINE fromInteger #-}
-
-instance (Index ix, Fractional e) => Fractional (Array D ix e) where
-  (/)          = liftArray2Matching (/)
-  {-# INLINE (/) #-}
-  fromRational = singleton . fromRational
-  {-# INLINE fromRational #-}
-
-
-instance (Index ix, Floating e) => Floating (Array D ix e) where
-  pi    = singleton pi
-  {-# INLINE pi #-}
-  exp   = unsafeLiftArray exp
-  {-# INLINE exp #-}
-  log   = unsafeLiftArray log
-  {-# INLINE log #-}
-  sin   = unsafeLiftArray sin
-  {-# INLINE sin #-}
-  cos   = unsafeLiftArray cos
-  {-# INLINE cos #-}
-  asin  = unsafeLiftArray asin
-  {-# INLINE asin #-}
-  atan  = unsafeLiftArray atan
-  {-# INLINE atan #-}
-  acos  = unsafeLiftArray acos
-  {-# INLINE acos #-}
-  sinh  = unsafeLiftArray sinh
-  {-# INLINE sinh #-}
-  cosh  = unsafeLiftArray cosh
-  {-# INLINE cosh #-}
-  asinh = unsafeLiftArray asinh
-  {-# INLINE asinh #-}
-  atanh = unsafeLiftArray atanh
-  {-# INLINE atanh #-}
-  acosh = unsafeLiftArray acosh
-  {-# INLINE acosh #-}
 
 
 instance Num e => FoldNumeric D e where
@@ -255,7 +208,7 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 "delay" [~1] forall (arr :: Array D ix e) . delay arr = arr
  #-}
 
--- | /O(min (n1, n2))/ - Compute array equality by applying a comparing function to each element.
+-- | Compute array equality by applying a comparing function to each element.
 --
 -- @since 0.5.7
 eqArrays :: (Index ix, Source r1 e1, Source r2 e2) =>
@@ -267,7 +220,7 @@ eqArrays f arr1 arr2 =
            f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)))
 {-# INLINE eqArrays #-}
 
--- | /O(min (n1, n2))/ - Compute array ordering by applying a comparing function to each element.
+-- | Compute array ordering by applying a comparing function to each element.
 -- The exact ordering is unspecified so this is only intended for use in maps and the like where
 -- you need an ordering but do not care about which one is used.
 --
@@ -283,7 +236,7 @@ compareArrays f arr1 arr2 =
 
 
 liftArray2Matching
-  :: (Index ix, Source r1 a, Source r2 b)
+  :: (HasCallStack, Index ix, Source r1 a, Source r2 b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
 liftArray2Matching f !arr1 !arr2
   | sz1 == sz2 =
@@ -296,30 +249,4 @@ liftArray2Matching f !arr1 !arr2
     sz1 = size arr1
     sz2 = size arr2
 {-# INLINE liftArray2Matching #-}
-
-
--- -- | The usual map.
--- liftArray :: Source r ix b => (b -> e) -> Array r ix b -> Array D ix e
--- liftArray f !arr = DArray (getComp arr) (size arr) (f . unsafeIndex arr)
--- {-# INLINE liftArray #-}
-
--- -- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays either have to be the
--- -- same, or at least one of the two array must be a singleton array, in which case it will behave as
--- -- a `Data.Massiv.Array.map`.
--- --
--- -- @since 0.1.4
--- liftArray2
---   :: (Source r1 ix a, Source r2 ix b)
---   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
--- liftArray2 f !arr1 !arr2
---   | sz1 == oneSz = liftArray (f (unsafeIndex arr1 zeroIndex)) arr2
---   | sz2 == oneSz = liftArray (`f` unsafeIndex arr2 zeroIndex) arr1
---   | sz1 == sz2 =
---     DArray (getComp arr1 <> getComp arr2) sz1 (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
---   | otherwise = throw $ SizeMismatchException (size arr1) (size arr2)
---   where
---     sz1 = size arr1
---     sz2 = size arr2
--- {-# INLINE liftArray2 #-}
-
 
