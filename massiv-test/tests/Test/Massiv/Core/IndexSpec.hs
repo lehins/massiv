@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -142,9 +141,6 @@ specSz = do
   describe ("Sz (" ++ showsTypeRep (typeRep (Proxy :: Proxy ix)) ")") $ do
     szSpec @ix
     szNumSpec @ix
-    prop "throws error on negate" $ \sz ->
-      sz /= zeroSz ==>
-      assertException (\(ErrorCallWithLocation err loc) -> err `deepseq` loc `deepseq` True)  (negate sz)
     prop "Show" $ \sz -> ("Just (" ++ show (sz :: Sz ix) ++ ")") === show (Just sz)
   eqSpecOnArbitrary @(Sz ix)
   ordSpecOnArbitrary @(Sz ix)
