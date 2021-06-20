@@ -798,7 +798,7 @@ tailM v = do
 -- >>> A.take 5 (0 ..: 10)
 -- Array D Seq (Sz1 5)
 --   [ 0, 1, 2, 3, 4 ]
--- >>> A.take (-5) (0 ..: 10)
+-- >>> A.take 0 (0 ..: 10)
 -- Array D Seq (Sz1 0)
 --   [  ]
 -- >>> A.take 100 (0 ..: 10)
