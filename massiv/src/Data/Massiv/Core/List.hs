@@ -50,8 +50,6 @@ type family ListItem ix e :: Type where
   ListItem Ix1 e = e
   ListItem ix  e = [ListItem (Lower ix) e]
 
-type instance NestedStruct LN ix e = [ListItem ix e]
-
 newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
 
 --TODO remove
@@ -60,52 +58,26 @@ instance Strategy LN where
   setComp _ = id
 
 
-instance {-# OVERLAPPING #-} Nested LN Ix1 e where
-  fromNested = coerce
-  {-# INLINE fromNested #-}
-  toNested = coerce
-  {-# INLINE toNested #-}
-
-instance ( Elt LN ix e ~ Array LN (Lower ix) e
-         , ListItem ix e ~ [ListItem (Lower ix) e]
-         , Coercible (Elt LN ix e) (ListItem ix e)
-         ) =>
-         Nested LN ix e where
-  fromNested = coerce
-  {-# INLINE fromNested #-}
-  toNested = coerce
-  {-# INLINE toNested #-}
-
-
-instance Nested LN ix e => IsList (Array LN ix e) where
+instance Coercible (Elt LN ix e) (ListItem ix e) => IsList (Array LN ix e) where
   type Item (Array LN ix e) = ListItem ix e
-  fromList = fromNested
+  fromList = coerce
   {-# INLINE fromList #-}
-  toList = toNested
+  toList = coerce
   {-# INLINE toList #-}
 
 
 data L = L
-
-type instance NestedStruct L ix e = Array LN ix e
 
 data instance Array L ix e = LArray { lComp :: Comp
                                     , lData :: !(Array LN ix e)
                                     }
 
 
-instance Nested L ix e where
-  fromNested = LArray Seq
-  {-# INLINE fromNested #-}
-  toNested = lData
-  {-# INLINE toNested #-}
-
-
-instance Nested LN ix e => IsList (Array L ix e) where
+instance Coercible (Elt LN ix e) (ListItem ix e) => IsList (Array L ix e) where
   type Item (Array L ix e) = ListItem ix e
-  fromList = LArray Seq . fromNested
+  fromList = LArray Seq . coerce
   {-# INLINE fromList #-}
-  toList = toNested . lData
+  toList = coerce . lData
   {-# INLINE toList #-}
 
 lengthHintList :: [a] -> LengthHint
@@ -114,7 +86,6 @@ lengthHintList =
     [] -> LengthExact zeroSz
     _  -> LengthUnknown
 {-# INLINE lengthHintList #-}
-
 
 instance Shape LN Ix1 where
   linearSize = SafeSz . length . unList
@@ -266,7 +237,11 @@ instance Ragged L Ix2 e where
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L Ix1 e)) sep (coerce xs)
 
 
-instance (Shape L (IxN n), Shape LN (Ix (n - 1)), Ragged L (Ix (n - 1)) e) =>
+instance ( Shape L (IxN n)
+         , Shape LN (Ix (n - 1))
+         , Ragged L (Ix (n - 1)) e
+         , Coercible (Elt LN (Ix (n - 1)) e) (ListItem (Ix (n - 1)) e)
+         ) =>
          Ragged L (IxN n) e where
   emptyR comp = LArray comp (List [])
   {-# INLINE emptyR #-}
@@ -358,10 +333,8 @@ instance Strategy L where
 -- | Construct an array backed by linked lists from any source array
 --
 -- @since 0.4.0
-toListArray :: (Ragged L ix e, Load r ix e, Source r e)
-            => Array r ix e
-            -> Array L ix e
-toListArray !arr = makeArray (getComp arr) (size arr) (unsafeIndex arr)
+toListArray :: (Ragged L ix e, Shape r ix, Source r e) => Array r ix e -> Array L ix e
+toListArray !arr = makeArray (getComp arr) (outerSize arr) (unsafeIndex arr)
 {-# INLINE toListArray #-}
 
 
@@ -371,7 +344,7 @@ instance (Ragged L ix e, Show e) => Show (Array L ix e) where
 
 instance (Ragged L ix e, Show e) => Show (Array LN ix e) where
   show arr = "  " ++ raggedFormat show "\n  " arrL
-    where arrL = fromNested arr :: Array L ix e
+    where arrL = LArray Seq arr :: Array L ix e
 
 
 showN :: (String -> a -> String) -> String -> [a] -> String
@@ -399,7 +372,7 @@ showsArrayLAsPrec pr n arr =
       if n == 0
         then (id, id)
         else (('(':), ("\n)" ++))
-    lnarr = toNested arr
+    lnarr = lData arr
 
 -- | Helper function for declaring `Show` instances for arrays
 --

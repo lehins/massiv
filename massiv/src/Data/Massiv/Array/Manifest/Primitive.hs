@@ -241,13 +241,7 @@ instance (Prim e, Num e) => Numeric P e where
 instance (Prim e, Floating e) => NumericFloat P e
 
 
-instance ( Prim e
-         , IsList (Array L ix e)
-         , Nested LN ix e
-         , Nested L ix e
-         , Ragged L ix e
-         ) =>
-         IsList (Array P ix e) where
+instance (Prim e, IsList (Array L ix e), Ragged L ix e) => IsList (Array P ix e) where
   type Item (Array P ix e) = Item (Array L ix e)
   fromList = A.fromLists' Seq
   {-# INLINE fromList #-}

@@ -1,5 +1,6 @@
 # 1.0.0
 
+* Remove helper class `Nested` and type family `NestedStuct`
 * Make `negate` in `Num` instance throw error for `Sz` in order to avoid surprising
   behavior reported in: [#114](https://github.com/lehins/massiv/issues/114)
 * Add of `munsafeResize`

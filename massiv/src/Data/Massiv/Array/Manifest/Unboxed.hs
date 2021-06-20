@@ -167,13 +167,7 @@ instance (Index ix, Unbox e) => Stream U ix e where
   {-# INLINE toStreamIx #-}
 
 
-instance ( Unbox e
-         , IsList (Array L ix e)
-         , Nested LN ix e
-         , Nested L ix e
-         , Ragged L ix e
-         ) =>
-         IsList (Array U ix e) where
+instance (Unbox e, IsList (Array L ix e), Ragged L ix e) => IsList (Array U ix e) where
   type Item (Array U ix e) = Item (Array L ix e)
   fromList = A.fromLists' Seq
   {-# INLINE fromList #-}
