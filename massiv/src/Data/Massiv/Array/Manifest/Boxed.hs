@@ -255,12 +255,7 @@ instance Index ix => Traversable (Array BL ix) where
   traverse = traverseA
   {-# INLINE traverse #-}
 
-instance ( IsList (Array L ix e)
-         , Nested LN ix e
-         , Nested L ix e
-         , Ragged L ix e
-         ) =>
-         IsList (Array BL ix e) where
+instance (IsList (Array L ix e), Ragged L ix e) => IsList (Array BL ix e) where
   type Item (Array BL ix e) = Item (Array L ix e)
   fromList = L.fromLists' Seq
   {-# INLINE fromList #-}
@@ -426,12 +421,7 @@ instance Index ix => Traversable (Array B ix) where
   traverse = traverseA
   {-# INLINE traverse #-}
 
-instance ( IsList (Array L ix e)
-         , Nested LN ix e
-         , Nested L ix e
-         , Ragged L ix e
-         ) =>
-         IsList (Array B ix e) where
+instance (IsList (Array L ix e), Ragged L ix e) => IsList (Array B ix e) where
   type Item (Array B ix e) = Item (Array L ix e)
   fromList = L.fromLists' Seq
   {-# INLINE fromList #-}
@@ -566,13 +556,7 @@ instance (Index ix, NFData e) => Stream BN ix e where
   {-# INLINE toStreamIx #-}
 
 
-instance ( NFData e
-         , IsList (Array L ix e)
-         , Nested LN ix e
-         , Nested L ix e
-         , Ragged L ix e
-         ) =>
-         IsList (Array BN ix e) where
+instance (NFData e, IsList (Array L ix e), Ragged L ix e) => IsList (Array BN ix e) where
   type Item (Array BN ix e) = Item (Array L ix e)
   fromList = L.fromLists' Seq
   {-# INLINE fromList #-}

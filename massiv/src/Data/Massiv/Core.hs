@@ -23,8 +23,6 @@ module Data.Massiv.Core
   , Manifest
   , Mutable
   , Ragged
-  , Nested(..)
-  , NestedStruct
   , L(..)
   , LN
   , ListItem

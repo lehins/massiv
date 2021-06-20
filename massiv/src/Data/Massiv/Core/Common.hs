@@ -47,8 +47,6 @@ module Data.Massiv.Core.Common
   , unsafeLinearSwap
   , unsafeDefaultLinearShrink
   , Ragged(..)
-  , Nested(..)
-  , NestedStruct
   , empty
   , singleton
   -- * Size
@@ -103,6 +101,7 @@ import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
                           scheduleWork, scheduleWork_, trivialScheduler_,
                           withScheduler_)
 import Control.Scheduler.Global
+import GHC.Exts (IsList)
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz(SafeSz))
@@ -147,9 +146,6 @@ type MMatrix s r e = MArray s r Ix2 e
 type family Elt r ix e :: Type where
   Elt r Ix1 e = e
   Elt r ix  e = Array r (Lower ix) e
-
-type family NestedStruct r ix e :: Type
-
 
 
 class Load r ix e => Stream r ix e where
@@ -495,7 +491,7 @@ class (Resize r, Source r e) => Manifest r e where
   unsafeLinearIndexM :: Index ix => Array r ix e -> Int -> e
 
 
-class (Manifest r e) => Mutable r e where
+class Manifest r e => Mutable r e where
   data MArray s r ix e :: Type
 
   -- | Get the size of a mutable array.
@@ -695,12 +691,7 @@ unsafeLinearSwap !marr !i1 !i2 = do
 {-# INLINE unsafeLinearSwap #-}
 
 
-class Nested r ix e where
-  fromNested :: NestedStruct r ix e -> Array r ix e
-
-  toNested :: Array r ix e -> NestedStruct r ix e
-
-class Load r ix e => Ragged r ix e where
+class (IsList (Array r ix e), Load r ix e) => Ragged r ix e where
 
   emptyR :: Comp -> Array r ix e
 

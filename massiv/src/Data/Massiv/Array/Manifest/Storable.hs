@@ -232,13 +232,7 @@ instance (Storable e, Num e) => Numeric S e where
 instance (Storable e, Floating e) => NumericFloat S e
 
 
-instance ( Storable e
-         , IsList (Array L ix e)
-         , Nested LN ix e
-         , Nested L ix e
-         , Ragged L ix e
-         ) =>
-         IsList (Array S ix e) where
+instance (Storable e, IsList (Array L ix e), Ragged L ix e) => IsList (Array S ix e) where
   type Item (Array S ix e) = Item (Array L ix e)
   fromList = A.fromLists' Seq
   {-# INLINE fromList #-}
