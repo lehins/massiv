@@ -30,7 +30,7 @@ data DI = DI
 
 newtype instance Array DI ix e = DIArray
   { diArray :: Array D ix e
-  } deriving (Eq, Ord, Functor, Applicative, Foldable, Num, Floating, Fractional)
+  } deriving (Eq, Ord, Functor, Applicative, Foldable)
 
 instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
   showsPrec = showsArrayPrec diArray

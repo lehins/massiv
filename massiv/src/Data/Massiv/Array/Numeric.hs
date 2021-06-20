@@ -20,6 +20,8 @@ module Data.Massiv.Array.Numeric
   , (+.)
   , (.+.)
   , (!+!)
+  , sumArraysM
+  , sumArrays'
   -- ** Pointwise subtraction
   , (.-)
   , (-.)
@@ -31,6 +33,8 @@ module Data.Massiv.Array.Numeric
   , (.*.)
   , (!*!)
   , (.^)
+  , productArraysM
+  , productArrays'
   -- ** Dot product
   , (!.!)
   , dotM
@@ -1210,3 +1214,145 @@ atan2A ::
   -> m (Array r ix e)
 atan2A = liftArray2M atan2
 {-# INLINE atan2A #-}
+
+-- | Same as `sumArraysM`, compute sum of arrays pointwise. All arrays must have the same
+-- size, otherwise it will result in an error.
+--
+-- @since 1.0.0
+sumArrays' :: (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
+sumArrays' = throwEither . sumArraysM
+{-# INLINE sumArrays' #-}
+
+-- | Compute sum of arrays pointwise. All arrays must have the same size.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> sumArraysM [] :: IO (Array P Ix3 Int)
+-- Array P Seq (Sz (0 :> 0 :. 0))
+--   [  ]
+-- >>> arr = A.makeArrayR P Seq (Sz3 4 5 6) $ \(i :> j :. k) -> i + j * k
+-- >>> arr
+-- Array P Seq (Sz (4 :> 5 :. 6))
+--   [ [ [ 0, 0, 0, 0, 0, 0 ]
+--     , [ 0, 1, 2, 3, 4, 5 ]
+--     , [ 0, 2, 4, 6, 8, 10 ]
+--     , [ 0, 3, 6, 9, 12, 15 ]
+--     , [ 0, 4, 8, 12, 16, 20 ]
+--     ]
+--   , [ [ 1, 1, 1, 1, 1, 1 ]
+--     , [ 1, 2, 3, 4, 5, 6 ]
+--     , [ 1, 3, 5, 7, 9, 11 ]
+--     , [ 1, 4, 7, 10, 13, 16 ]
+--     , [ 1, 5, 9, 13, 17, 21 ]
+--     ]
+--   , [ [ 2, 2, 2, 2, 2, 2 ]
+--     , [ 2, 3, 4, 5, 6, 7 ]
+--     , [ 2, 4, 6, 8, 10, 12 ]
+--     , [ 2, 5, 8, 11, 14, 17 ]
+--     , [ 2, 6, 10, 14, 18, 22 ]
+--     ]
+--   , [ [ 3, 3, 3, 3, 3, 3 ]
+--     , [ 3, 4, 5, 6, 7, 8 ]
+--     , [ 3, 5, 7, 9, 11, 13 ]
+--     , [ 3, 6, 9, 12, 15, 18 ]
+--     , [ 3, 7, 11, 15, 19, 23 ]
+--     ]
+--   ]
+-- >>> sumArraysM $ outerSlices arr
+-- Array P Seq (Sz (5 :. 6))
+--   [ [ 6, 6, 6, 6, 6, 6 ]
+--   , [ 6, 10, 14, 18, 22, 26 ]
+--   , [ 6, 14, 22, 30, 38, 46 ]
+--   , [ 6, 18, 30, 42, 54, 66 ]
+--   , [ 6, 22, 38, 54, 70, 86 ]
+--   ]
+-- >>> sumArraysM $ innerSlices arr
+-- Array D Seq (Sz (4 :. 5))
+--   [ [ 0, 15, 30, 45, 60 ]
+--   , [ 6, 21, 36, 51, 66 ]
+--   , [ 12, 27, 42, 57, 72 ]
+--   , [ 18, 33, 48, 63, 78 ]
+--   ]
+--
+-- @since 1.0.0
+sumArraysM ::
+     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+sumArraysM as =
+  case F.toList as of
+    [] -> pure empty
+    (x:xs) -> F.foldlM (.+.) x xs
+{-# INLINE sumArraysM #-}
+-- OPTIMIZE: Allocate a single result array and write sums into it incrementally.
+
+-- | Same as `productArraysM`. Compute product of arrays pointwise. All arrays must have
+-- the same size, otherwise it
+-- will result in an error.
+--
+-- @since 1.0.0
+productArrays' ::
+     (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
+productArrays' = throwEither . productArraysM
+{-# INLINE productArrays' #-}
+
+
+-- | Compute product of arrays pointwise. All arrays must have the same size.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> productArraysM [] :: IO (Array P Ix3 Int)
+-- Array P Seq (Sz (0 :> 0 :. 0))
+--   [  ]
+-- >>> arr = A.makeArrayR P Seq (Sz3 4 5 6) $ \(i :> j :. k) -> i + j * k
+-- >>> arr
+-- Array P Seq (Sz (4 :> 5 :. 6))
+--   [ [ [ 0, 0, 0, 0, 0, 0 ]
+--     , [ 0, 1, 2, 3, 4, 5 ]
+--     , [ 0, 2, 4, 6, 8, 10 ]
+--     , [ 0, 3, 6, 9, 12, 15 ]
+--     , [ 0, 4, 8, 12, 16, 20 ]
+--     ]
+--   , [ [ 1, 1, 1, 1, 1, 1 ]
+--     , [ 1, 2, 3, 4, 5, 6 ]
+--     , [ 1, 3, 5, 7, 9, 11 ]
+--     , [ 1, 4, 7, 10, 13, 16 ]
+--     , [ 1, 5, 9, 13, 17, 21 ]
+--     ]
+--   , [ [ 2, 2, 2, 2, 2, 2 ]
+--     , [ 2, 3, 4, 5, 6, 7 ]
+--     , [ 2, 4, 6, 8, 10, 12 ]
+--     , [ 2, 5, 8, 11, 14, 17 ]
+--     , [ 2, 6, 10, 14, 18, 22 ]
+--     ]
+--   , [ [ 3, 3, 3, 3, 3, 3 ]
+--     , [ 3, 4, 5, 6, 7, 8 ]
+--     , [ 3, 5, 7, 9, 11, 13 ]
+--     , [ 3, 6, 9, 12, 15, 18 ]
+--     , [ 3, 7, 11, 15, 19, 23 ]
+--     ]
+--   ]
+-- >>> productArraysM $ outerSlices arr
+-- Array P Seq (Sz (5 :. 6))
+--   [ [ 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 24, 120, 360, 840, 1680 ]
+--   , [ 0, 120, 840, 3024, 7920, 17160 ]
+--   , [ 0, 360, 3024, 11880, 32760, 73440 ]
+--   , [ 0, 840, 7920, 32760, 93024, 212520 ]
+--   ]
+-- >>> productArraysM $ innerSlices arr
+-- Array D Seq (Sz (4 :. 5))
+--   [ [ 0, 0, 0, 0, 0 ]
+--   , [ 1, 720, 10395, 58240, 208845 ]
+--   , [ 64, 5040, 46080, 209440, 665280 ]
+--   , [ 729, 20160, 135135, 524880, 1514205 ]
+--   ]
+--
+-- @since 1.0.0
+productArraysM ::
+     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+productArraysM as =
+  case F.toList as of
+    [] -> pure empty
+    (x:xs) -> F.foldlM (.*.) x xs
+{-# INLINE productArraysM #-}
