@@ -362,13 +362,13 @@ instance (Index (IxN n), StrideLoad DW (Ix (n - 1)) e) => StrideLoad DW (IxN n) 
   {-# INLINE loadArrayWithStrideM #-}
 
 loadArrayWithIxN ::
-     (Index ix, Monad m, StrideLoad DW (Lower ix) e)
-  => Scheduler m ()
+     (Index ix, StrideLoad DW (Lower ix) e)
+  => Scheduler s ()
   -> Stride ix
   -> Sz ix
   -> Array DW ix e
-  -> (Int -> e -> m ())
-  -> m ()
+  -> (Int -> e -> ST s ())
+  -> ST s ()
 loadArrayWithIxN scheduler stride szResult arr uWrite = do
   let DWArray darr window = arr
       DArray {dSize = szSource, dIndex = indexBorder} = darr
@@ -410,11 +410,11 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
 
 
 loadWithIxN ::
-     (Index ix, Monad m, Load DW (Lower ix) e)
-  => Scheduler m ()
+     (Index ix, Load DW (Lower ix) e)
+  => Scheduler s ()
   -> Array DW ix e
-  -> (Int -> e -> m ())
-  -> m ()
+  -> (Int -> e -> ST s ())
+  -> ST s ()
 loadWithIxN scheduler arr uWrite = do
   let DWArray darr window = arr
       DArray {dSize = sz, dIndex = indexBorder} = darr

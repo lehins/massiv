@@ -18,7 +18,7 @@ main = do
             let arrD = delay arr
              in bgroup
                   "Seq"
-                  [ bench "(+) D" $ whnf (A.computeAs U . (+) arrD) arrD
+                  [ bench "(+) D" $ whnf (A.computeAs U . (!+!) arrD) arrD
                   --, bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
                   , bench "zipWith (+)" $ whnf (A.computeAs U . A.zipWith (+) arr) arr
                   ]
@@ -26,7 +26,7 @@ main = do
             let arrD = delay arr
              in bgroup
                   "Par"
-                  [ bench "(+) D" $ whnf (A.computeAs U . (+) arrD) arrD
+                  [ bench "(+) D" $ whnf (A.computeAs U . (!+!) arrD) arrD
                   --, bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
                   , bench "zipWith (+)" $ whnf (A.computeAs U . A.zipWith (+) arr) arr
                   ]

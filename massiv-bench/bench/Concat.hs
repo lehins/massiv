@@ -4,6 +4,7 @@
 module Main where
 
 import Control.Scheduler
+import Control.Monad.ST
 import Criterion.Main
 import Data.Bifunctor
 import Data.Massiv.Array as A
@@ -22,19 +23,19 @@ main :: IO ()
 main = do
   let !sz = Sz (600 :. 1000)
   arrays :: [Matrix P Int] <- evaluate . force =<< M.replicateM 5 (makeRandomArray sz)
-  _vectors :: [Vector P Int] <- evaluate $ force $ P.map (resize' (Sz (totalElem sz))) arrays
+  vectors :: [Vector P Int] <- evaluate $ force $ P.map (resize' (Sz (totalElem sz))) arrays
   defaultMain
     [ bgroup
         "Concat"
-        [ bench "concatM" $ whnf (computeAs P . concat' 2) arrays
+        [ bench "concatM" $ whnfIO (computeAs P <$> concatM 2 arrays)
         , bench "concatMutableM" $
           whnfIO (concatMutableM arrays :: IO (Matrix P Int))
         , bench "concatMutableM DL" $
           whnfIO (concatMutableM (P.map toLoadArray arrays) :: IO (Matrix P Int))
         , bench "concatOuterM" $
-          whnf (computeAs P . throwEither . concatOuterM . P.map toLoadArray) arrays
+          whnfIO (computeAs P <$> concatOuterM (P.map toLoadArray arrays))
         , bench "concatNewM" $ whnfIO $ concatNewM arrays
-        --, bench "mconcat (DL)" $ whnf (A.computeAs P . mconcat . P.map toLoadArray) vectors
+        , bench "mconcat (DL)" $ whnf (A.computeAs P . mconcat . P.map toLoadArray) vectors
         ]
     ]
 
@@ -62,7 +63,7 @@ concatMutableM arrsF =
       unsafeCreateArray_ (foldMap getComp arrsF) newSz $ \scheduler marr -> do
         let arrayLoader !offset arr = do
               scheduleWork scheduler $ do
-                loadArrayM scheduler arr (\i -> unsafeLinearWrite marr (i + offset))
+                stToIO $ loadArrayM scheduler arr (\i -> unsafeLinearWrite marr (i + offset))
               pure (offset + totalElem (size arr))
         foldM_ arrayLoader 0 $ a : arrs
 {-# INLINE concatMutableM #-}
@@ -89,7 +90,7 @@ concatNewM arrsF =
       let kTotal = SafeSz $ F.foldl' (+) k ks
       newSz <- insertSzM (SafeSz szl) n kTotal
       unsafeCreateArray_ (foldMap getComp arrsF) newSz $ \scheduler marr -> do
-        let arrayLoader !kAcc (kCur, arr) = do
+        let arrayLoader !kAcc (kCur, arr) = stToIO $ do
               scheduleWork scheduler $
                 iforM_ arr $ \ix e ->
                   let i = getDim' ix n

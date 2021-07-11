@@ -3,4 +3,8 @@ packages:
 - 'massiv/'
 - 'massiv-test/'
 flags: {}
-extra-deps: []
+extra-deps:
+- github: lehins/haskell-scheduler
+  commit: ad2c5383cbf8c1a7b840c99c7695efdd225c48d5
+  subdirs:
+    - scheduler

@@ -70,6 +70,7 @@ module Data.Massiv.Array.Ops.Map
   ) where
 
 import Control.Monad (void)
+import Control.Monad.Primitive
 import Control.Scheduler
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
@@ -540,14 +541,19 @@ mapIO_ action = imapIO_ (const action)
 -- @since 0.2.6
 imapIO_ :: (Index ix, Source r e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
 imapIO_ action arr =
-  withScheduler_ (getComp arr) $ \scheduler -> imapSchedulerM_ scheduler action arr
+  withScheduler_ (getComp arr) $ \scheduler ->
+    withRunInIO $ \run -> imapSchedulerM_ scheduler (\ix -> run . action ix) arr
 {-# INLINE imapIO_ #-}
 
 -- | Same as `imapM_`, but will use the supplied scheduler.
 --
 -- @since 0.3.1
 imapSchedulerM_ ::
-     (Index ix, Source r e, Monad m) => Scheduler m () -> (ix -> e -> m a) -> Array r ix e -> m ()
+     (Index ix, Source r e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> (ix -> e -> m a)
+  -> Array r ix e
+  -> m ()
 imapSchedulerM_ scheduler action arr = do
   let sz = size arr
   splitLinearlyWith_
@@ -562,7 +568,11 @@ imapSchedulerM_ scheduler action arr = do
 --
 -- @since 0.3.1
 iforSchedulerM_ ::
-     (Index ix, Source r e, Monad m) => Scheduler m () -> Array r ix e -> (ix -> e -> m a) -> m ()
+     (Index ix, Source r e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> Array r ix e
+  -> (ix -> e -> m a)
+  -> m ()
 iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 {-# INLINE iforSchedulerM_ #-}
 
@@ -571,7 +581,7 @@ iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 --
 -- @since 0.2.6
 imapIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)

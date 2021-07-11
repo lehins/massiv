@@ -21,6 +21,7 @@ module Data.Massiv.Array.Ops.Sort
 
 import Control.Monad.IO.Unlift
 import Control.Monad (when)
+import Control.Monad.Primitive
 import Control.Scheduler
 import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
@@ -129,9 +130,9 @@ quicksortBy f arr =
 --
 -- @since 0.3.2
 quicksortM_ ::
-     (Ord e, Mutable r e, PrimMonad m)
-  => Scheduler m ()
-  -> MVector (PrimState m) r e
+     (Ord e, Mutable r e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> MVector s r e
   -> m ()
 quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e1 == e2)
 {-# INLINE quicksortM_ #-}
@@ -141,10 +142,10 @@ quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e
 --
 -- @since 0.6.1
 quicksortByM_ ::
-     (Mutable r e, PrimMonad m)
+     (Mutable r e, MonadPrimBase s m)
   => (e -> e -> m Ordering)
-  -> Scheduler m ()
-  -> MVector (PrimState m) r e
+  -> Scheduler s ()
+  -> MVector s r e
   -> m ()
 quicksortByM_ compareM =
   quicksortInternalM_ (\x y -> (LT ==) <$> compareM x y) (\x y -> (EQ ==) <$> compareM x y)
@@ -152,11 +153,11 @@ quicksortByM_ compareM =
 
 
 quicksortInternalM_ ::
-     (Mutable r e, PrimMonad m)
+     (Mutable r e, MonadPrimBase s m)
   => (e -> e -> m Bool)
   -> (e -> e -> m Bool)
-  -> Scheduler m ()
-  -> MVector (PrimState m) r e
+  -> Scheduler s ()
+  -> MVector s r e
   -> m ()
 quicksortInternalM_ fLT fEQ scheduler marr =
   scheduleWork scheduler $ qsort (numWorkers scheduler) 0 (unSz (msize marr) - 1)

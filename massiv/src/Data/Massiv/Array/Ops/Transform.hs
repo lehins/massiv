@@ -469,8 +469,7 @@ appendM n !arr1 !arr2 = do
   unless (szl1 == szl2) $ throwM $ SizeMismatchException sz1 sz2
   let !k1' = unSz k1
   newSz <- insertSzM szl1 n (SafeSz (k1' + unSz k2))
-  let load :: Monad n =>
-        Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+  let load :: Loader e
       load scheduler !startAt dlWrite _dlSet = do
         scheduleWork scheduler $
           iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
@@ -521,7 +520,7 @@ concatM ::
   => Dim
   -> f (Array r ix e)
   -> m (Array DL ix e)
-concatM n !arrsF =
+concatM n arrsF =
   case L.uncons (F.toList arrsF) of
     Nothing -> pure empty
     Just (a, arrs) -> do
@@ -537,20 +536,20 @@ concatM n !arrsF =
         (dropWhile ((== szl) . snd) $ P.zip szs szls)
       let kTotal = SafeSz $ F.foldl' (+) k ks
       newSz <- insertSzM (SafeSz szl) n kTotal
-      let load :: Monad n =>
-            Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+      let load :: Loader e
           load scheduler startAt dlWrite _dlSet =
-            let arrayLoader !kAcc (kCur, arr) = do
+            let arrayLoader !kAcc (!kCur, arr) = do
                   scheduleWork scheduler $
-                    iforM_ arr $ \ix e ->
-                      let i = getDim' ix n
-                          ix' = setDim' ix n (i + kAcc)
-                       in dlWrite (startAt + toLinearIndex newSz ix') e
-                  pure (kAcc + kCur)
+                    iforM_ arr $ \ix e -> do
+                      i <- getDimM ix n
+                      ix' <- setDimM ix n (i + kAcc)
+                      dlWrite (startAt + toLinearIndex newSz ix') e
+                  pure $! kAcc + kCur
+                {-# INLINE arrayLoader #-}
              in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
           {-# INLINE load #-}
       return $
-        DLArray {dlComp = foldMap getComp arrsF, dlSize = newSz, dlLoad = load}
+        DLArray {dlComp = getComp a <> foldMap getComp arrs, dlSize = newSz, dlLoad = load}
 {-# INLINE concatM #-}
 
 
@@ -632,8 +631,7 @@ stackSlicesM dim !arrsF = do
       M.forM_ arrsF $ \arr ->
          unless (sz == size arr) $ throwM (SizeMismatchException sz (size arr))
       newSz <- insertSzM sz dim len
-      let load :: Monad n =>
-            Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+      let load :: Loader e
           load scheduler startAt dlWrite _dlSet =
             let loadIndex k ix = dlWrite (toLinearIndex newSz (insertDim' ix dim k) + startAt)
                 arrayLoader !k arr = (k + 1) <$ scheduleWork scheduler (imapM_ (loadIndex k) arr)
@@ -979,8 +977,7 @@ downsample stride arr =
     unsafeLinearWriteWithStride =
       unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
     {-# INLINE unsafeLinearWriteWithStride #-}
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: Loader e
     load scheduler startAt dlWrite _ =
       splitLinearlyWithStartAtM_
         scheduler
@@ -1034,8 +1031,7 @@ upsample !fillWith safeStride arr =
     , dlLoad = load
     }
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: Loader e
     load scheduler startAt uWrite uSet = do
       uSet startAt (toLinearSz newsz) fillWith
       loadArrayM scheduler arr (\i -> uWrite (adjustLinearStride (i + startAt)))
@@ -1165,7 +1161,7 @@ zoomWithGrid gridVal (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz (Ju
     !kx = liftIndex (+ 1) zoomFactor
     !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
     !newSz = Sz (liftIndex (+ 1) lastNewIx)
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
     load scheduler _ writeElement =
       iforSchedulerM_ scheduler arr $ \ !ix !e ->
         let !kix = liftIndex2 (*) ix kx
@@ -1217,7 +1213,7 @@ zoom (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz Nothing load
   where
     !lastNewIx = liftIndex2 (*) zoomFactor $ unSz (size arr)
     !newSz = Sz lastNewIx
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
     load scheduler _ writeElement =
       iforSchedulerM_ scheduler arr $ \ !ix !e ->
         let !kix = liftIndex2 (*) ix zoomFactor
