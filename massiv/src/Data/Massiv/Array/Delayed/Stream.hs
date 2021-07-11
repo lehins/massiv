@@ -24,6 +24,7 @@ module Data.Massiv.Array.Delayed.Stream
 
 import Control.Applicative
 import Control.Monad (void)
+import Control.Monad.ST
 import Data.Coerce
 import Data.Foldable
 import Data.Massiv.Array.Delayed.Pull
@@ -203,7 +204,7 @@ instance Load DS Ix1 e where
     S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
   {-# INLINE unsafeLoadIntoS #-}
 
-  unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoS marr arr
+  unsafeLoadIntoM marr arr = stToIO $ unsafeLoadIntoS marr arr
   {-# INLINE unsafeLoadIntoM #-}
 
 

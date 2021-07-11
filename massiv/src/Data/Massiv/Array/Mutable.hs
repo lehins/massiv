@@ -102,6 +102,7 @@ module Data.Massiv.Array.Mutable
 import Data.Maybe (fromMaybe)
 import Control.Monad (void, when, unless, (>=>))
 import Control.Monad.ST
+import Control.Monad.Primitive
 import Control.Scheduler
 import Data.Massiv.Core.Common
 import Data.Massiv.Array.Mutable.Internal
@@ -267,7 +268,7 @@ loadArrayS ::
   -> m (MArray (PrimState m) r ix e)
 loadArrayS arr = do
   marr <- unsafeNewUpper arr
-  unsafeLoadIntoS marr arr
+  stToPrim $ unsafeLoadIntoS marr arr
 {-# INLINE loadArrayS #-}
 
 
@@ -300,7 +301,7 @@ computeInto !mArr !arr =
     unless (totalElem (msize mArr) == totalElem (size arr)) $
       throwM $ SizeElementsMismatchException (msize mArr) (size arr)
     withMassivScheduler_ (getComp arr) $ \scheduler ->
-      loadArrayM scheduler arr (unsafeLinearWrite mArr)
+      stToPrim $ loadArrayM scheduler arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
 
 
@@ -334,11 +335,11 @@ makeMArrayLinearS sz f = do
 --
 -- @since 0.3.0
 makeMArray ::
-     forall r ix e m. (PrimMonad m, MonadUnliftIO m, Mutable r e, Index ix)
+     forall r ix e m. (MonadUnliftIO m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (ix -> m e)
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray RealWorld r ix e)
 makeMArray comp sz f = makeMArrayLinear comp sz (f . fromLinearIndex sz)
 {-# INLINE makeMArray #-}
 
@@ -347,15 +348,16 @@ makeMArray comp sz f = makeMArrayLinear comp sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 makeMArrayLinear ::
-     forall r ix e m. (PrimMonad m, MonadUnliftIO m, Mutable r e, Index ix)
+     forall r ix e m. (MonadUnliftIO m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (Int -> m e)
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray RealWorld r ix e)
 makeMArrayLinear comp sz f = do
-  marr <- unsafeNew sz
+  marr <- liftIO $ unsafeNew sz
   withScheduler_ comp $ \scheduler ->
-    splitLinearlyWithM_ scheduler (totalElem sz) f (unsafeLinearWrite marr)
+    withRunInIO $ \run ->
+    splitLinearlyWithM_ scheduler (totalElem sz) (run . f) (unsafeLinearWrite marr)
   return marr
 {-# INLINE makeMArrayLinear #-}
 
@@ -376,16 +378,16 @@ makeMArrayLinear comp sz f = do
 -- @since 0.3.0
 --
 createArray_ ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m. (Mutable r e, Index ix, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Scheduler m () -> MArray (PrimState m) r ix e -> m a)
+  -> (Scheduler RealWorld () -> MArray RealWorld r ix e -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
 createArray_ comp sz action = do
-  marr <- newMArray' sz
+  marr <- liftIO $ newMArray' sz
   withScheduler_ comp (`action` marr)
-  unsafeFreeze comp marr
+  liftIO $ unsafeFreeze comp marr
 {-# INLINE createArray_ #-}
 
 -- | Just like `createArray_`, but together with `Array` it returns results of scheduled filling
@@ -394,16 +396,16 @@ createArray_ comp sz action = do
 -- @since 0.3.0
 --
 createArray ::
-     forall r ix e a m b. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m b. (Mutable r e, Index ix, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Scheduler m a -> MArray (PrimState m) r ix e -> m b)
+  -> (Scheduler RealWorld a -> MArray RealWorld r ix e -> m b)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m ([a], Array r ix e)
 createArray comp sz action = do
-  marr <- newMArray' sz
+  marr <- liftIO $ newMArray' sz
   a <- withScheduler comp (`action` marr)
-  arr <- unsafeFreeze comp marr
+  arr <- liftIO $ unsafeFreeze comp marr
   return (a, arr)
 {-# INLINE createArray #-}
 
@@ -521,7 +523,7 @@ generateArrayLinearS sz gen = do
 --
 -- @since 0.2.6
 generateArray ::
-     forall r ix e m. (MonadUnliftIO m, PrimMonad m, Mutable r e, Index ix)
+     forall r ix e m. (MonadUnliftIO m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (ix -> m e)
@@ -534,12 +536,12 @@ generateArray comp sz f = generateArrayLinear comp sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 generateArrayLinear ::
-     forall r ix e m. (MonadUnliftIO m, PrimMonad m, Mutable r e, Index ix)
+     forall r ix e m. (MonadUnliftIO m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (Int -> m e)
   -> m (Array r ix e)
-generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
+generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= liftIO . unsafeFreeze comp
 {-# INLINE generateArrayLinear #-}
 
 
@@ -802,7 +804,7 @@ iforLinearPrimM marr f =
 withMArray ::
      (Mutable r e, Index ix, MonadUnliftIO m)
   => Array r ix e
-  -> (Scheduler m a -> MArray RealWorld r ix e -> m b)
+  -> (Scheduler RealWorld a -> MArray RealWorld r ix e -> m b)
   -> m ([a], Array r ix e)
 withMArray arr action = do
   marr <- thaw arr
@@ -826,7 +828,7 @@ withMArray arr action = do
 withMArray_ ::
      (Mutable r e, Index ix, MonadUnliftIO m)
   => Array r ix e
-  -> (Scheduler m () -> MArray RealWorld r ix e -> m a)
+  -> (Scheduler RealWorld () -> MArray RealWorld r ix e -> m a)
   -> m (Array r ix e)
 withMArray_ arr action = do
   marr <- thaw arr
@@ -842,7 +844,7 @@ withMArray_ arr action = do
 withLoadMArray_ ::
      forall r ix e r' m b. (Load r' ix e, Mutable r e, MonadUnliftIO m)
   => Array r' ix e
-  -> (Scheduler m () -> MArray RealWorld r ix e -> m b)
+  -> (Scheduler RealWorld () -> MArray RealWorld r ix e -> m b)
   -> m (Array r ix e)
 withLoadMArray_ arr action = do
   marr <- loadArray arr

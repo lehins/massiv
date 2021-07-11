@@ -85,16 +85,17 @@ module Data.Massiv.Core.Common
   -- * Stateful Monads
   , runST
   , ST
-  , MonadUnliftIO
+  , MonadUnliftIO(..)
   , MonadIO(liftIO)
   , PrimMonad(PrimState)
+  , RealWorld
   ) where
 
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
 #endif
 import Control.Monad.Catch (MonadThrow(..))
-import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO)
+import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO(..))
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
@@ -374,11 +375,10 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --
   -- @since 0.3.0
   loadArrayM
-    :: Monad m =>
-       Scheduler m ()
+    :: Scheduler s ()
     -> Array r ix e -- ^ Array that is being loaded
-    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
-    -> m ()
+    -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
+    -> ST s ()
   loadArrayM scheduler arr uWrite =
     loadArrayWithSetM scheduler arr uWrite $ \offset sz e ->
       loopM_ offset (< (offset + unSz sz)) (+1) (`uWrite` e)
@@ -390,13 +390,12 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --
   -- @since 0.5.8
   loadArrayWithSetM
-    :: Monad m =>
-       Scheduler m ()
+    :: Scheduler s ()
     -> Array r ix e -- ^ Array that is being loaded
-    -> (Ix1 -> e -> m ()) -- ^ Function that writes an element into target array
-    -> (Ix1 -> Sz1 -> e -> m ()) -- ^ Function that efficiently sets a region of an array
-                                 -- to the supplied value target array
-    -> m ()
+    -> (Ix1 -> e -> ST s ()) -- ^ Function that writes an element into target array
+    -> (Ix1 -> Sz1 -> e -> ST s ()) -- ^ Function that efficiently sets a region of an array
+                                    -- to the supplied value target array
+    -> ST s ()
   loadArrayWithSetM scheduler arr uWrite _ = loadArrayM scheduler arr uWrite
   {-# INLINE loadArrayWithSetM #-}
 
@@ -406,10 +405,10 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --
   -- @since 0.5.7
   unsafeLoadIntoS ::
-       (Mutable r' e, PrimMonad m)
-    => MVector (PrimState m) r' e
+       Mutable r' e
+    => MVector s r' e
     -> Array r ix e
-    -> m (MArray (PrimState m) r' ix e)
+    -> ST s (MArray s r' ix e)
   unsafeLoadIntoS marr arr =
     munsafeResize (outerSize arr) marr <$
     loadArrayWithSetM trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
@@ -419,20 +418,20 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --
   -- @since 0.5.7
   unsafeLoadIntoM ::
-       (Mutable r' e, MonadIO m)
+       Mutable r' e
     => MVector RealWorld r' e
     -> Array r ix e
-    -> m (MArray RealWorld r' ix e)
+    -> IO (MArray RealWorld r' ix e)
   unsafeLoadIntoM marr arr = do
-    liftIO $ withMassivScheduler_ (getComp arr) $ \scheduler ->
-      loadArrayWithSetM scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
+    withMassivScheduler_ (getComp arr) $ \scheduler ->
+      stToIO $ loadArrayWithSetM scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
     pure $ munsafeResize (outerSize arr) marr
   {-# INLINE unsafeLoadIntoM #-}
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
 --
 -- @since 1.0.0
-withMassivScheduler_ :: Comp -> (Scheduler IO () -> IO ()) -> IO ()
+withMassivScheduler_ :: Comp -> (Scheduler RealWorld () -> IO ()) -> IO ()
 withMassivScheduler_ comp f =
   case comp of
     Par -> withGlobalScheduler_ globalScheduler f
@@ -444,21 +443,20 @@ class (Size r, Load r ix e) => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
   -- `Source`.
   loadArrayWithStrideM
-    :: Monad m =>
-       Scheduler m ()
+    :: Scheduler s ()
     -> Stride ix -- ^ Stride to use
     -> Sz ix -- ^ Size of the target array affected by the stride.
     -> Array r ix e -- ^ Array that is being loaded
-    -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
-    -> m ()
+    -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
+    -> ST s ()
   default loadArrayWithStrideM
-    :: (Source r e, Monad m) =>
-       Scheduler m ()
+    :: Source r e =>
+       Scheduler s ()
     -> Stride ix
     -> Sz ix
     -> Array r ix e
-    -> (Int -> e -> m ())
-    -> m ()
+    -> (Int -> e -> ST s ())
+    -> ST s ()
   loadArrayWithStrideM scheduler stride resultSize arr =
     splitLinearlyWith_ scheduler (totalElem resultSize) unsafeLinearWriteWithStride
     where
@@ -703,8 +701,8 @@ class (IsList (Array r ix e), Load r ix e) => Ragged r ix e where
 
   flattenRagged :: Array r ix e -> Vector r e
 
-  loadRagged :: Monad m =>
-    Scheduler m () -> (Ix1 -> e -> m a) -> Ix1 -> Ix1 -> Sz ix -> Array r ix e -> m ()
+  loadRagged ::
+    Scheduler s () -> (Ix1 -> e -> ST s a) -> Ix1 -> Ix1 -> Sz ix -> Array r ix e -> ST s ()
 
   raggedFormat :: (e -> String) -> String -> Array r ix e -> String
 

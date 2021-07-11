@@ -350,7 +350,7 @@ unsafeDotProductIO ::
 unsafeDotProductIO v1 v2 = do
   results <-
     withScheduler comp $ \scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> liftIO $ do
         let n = SafeSz chunkLength
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $
@@ -384,7 +384,7 @@ powerSumArrayIO ::
 powerSumArrayIO v p = do
   results <-
     withScheduler (getComp v) $ \scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> liftIO $ do
         let n = SafeSz chunkLength
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $ pure $! powerSumArray (unsafeLinearSlice start n v) p

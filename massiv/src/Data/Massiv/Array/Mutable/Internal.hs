@@ -38,16 +38,16 @@ unsafeCreateArrayS sz action = do
 --
 -- @since 0.5.0
 unsafeCreateArray ::
-     forall r ix e a m b. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m b. (Mutable r e, Index ix, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Scheduler m a -> MArray (PrimState m) r ix e -> m b)
+  -> (Scheduler RealWorld a -> MArray RealWorld r ix e -> m b)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m ([a], Array r ix e)
 unsafeCreateArray comp sz action = do
-  marr <- unsafeNew sz
+  marr <- liftIO $ unsafeNew sz
   a <- withScheduler comp (`action` marr)
-  arr <- unsafeFreeze comp marr
+  arr <- liftIO $ unsafeFreeze comp marr
   return (a, arr)
 {-# INLINE unsafeCreateArray #-}
 
@@ -56,15 +56,15 @@ unsafeCreateArray comp sz action = do
 --
 -- @since 0.5.0
 unsafeCreateArray_ ::
-     forall r ix e a m b. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m b. (Mutable r e, Index ix, MonadUnliftIO m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Scheduler m a -> MArray (PrimState m) r ix e -> m b)
+  -> (Scheduler RealWorld a -> MArray RealWorld r ix e -> m b)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
 unsafeCreateArray_ comp sz action = do
-  marr <- unsafeNew sz
+  marr <- liftIO $ unsafeNew sz
   withScheduler_ comp (`action` marr)
-  arr <- unsafeFreeze comp marr
+  arr <- liftIO $ unsafeFreeze comp marr
   return arr
 {-# INLINE unsafeCreateArray_ #-}
