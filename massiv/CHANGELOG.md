@@ -1,3 +1,14 @@
+# 2.0.0 ?
+
+* Switch to `primal` and away from `unliftio-core`, `primitive` and `vector`!
+* Move out `MArray` out of `Mutable` class and move th estate token pararmeter
+  towards the end. Needed for `primal`
+* Rename `loadArrayM` -> `loadArrayWithM` and deprecate the former
+* Move out `loadArrayM`, `loadArrayWithSetM`, `loadArrayWithStrideM` outside of
+  classes and replace them with same but monomorphic with `ST` monad and suffix:
+  `loadArrayWithST`, `loadArrayWithSetST`, `loadArrayWithStrideST`.
+
+
 # 1.0.0
 
 * Addition of `sumArrays'`, `sumArraysM` and `productArrays'`, `productArraysM`.

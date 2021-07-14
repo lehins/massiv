@@ -59,11 +59,11 @@ instance Resize DI where
 instance Index ix => Load DI ix e where
   makeArray c sz = DIArray . makeArray c sz
   {-# INLINE makeArray #-}
-  loadArrayST scheduler (DIArray (DArray _ sz f)) uWrite =
+  loadArrayWithST scheduler (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       scheduleWork scheduler $
       iterLinearM_ sz start (totalElem sz) (numWorkers scheduler) (<) $ \ !k -> uWrite k . f
-  {-# INLINE loadArrayST #-}
+  {-# INLINE loadArrayWithST #-}
 
 instance Index ix => StrideLoad DI ix e where
   loadArrayWithStrideST scheduler stride resultSize arr uWrite =

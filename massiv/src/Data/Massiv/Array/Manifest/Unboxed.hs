@@ -24,7 +24,7 @@ module Data.Massiv.Array.Manifest.Unboxed
   , fromUnboxedMVector
   ) where
 
-import Control.DeepSeq (NFData(..), deepseq)
+import Primal.Eval (NFData(..), deepseq)
 import Data.Massiv.Array.Delayed.Pull (eqArrays, compareArrays)
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Vector.Stream as S (steps, isteps)
@@ -58,7 +58,7 @@ instance NFData ix => NFData (Array U ix e) where
   rnf (UArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
-instance NFData ix => NFData (MArray s U ix e) where
+instance NFData ix => NFData (MArray U ix e s) where
   rnf (MUArray sz mv) = sz `deepseq` mv `deepseq` ()
   {-# INLINE rnf #-}
 
@@ -110,8 +110,8 @@ instance (Unbox e, Index ix) => Load U ix e where
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  loadArrayWithST !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayWithST #-}
 
 instance (Unbox e, Index ix) => StrideLoad U ix e
 
@@ -123,40 +123,41 @@ instance Unbox e => Manifest U e where
   {-# INLINE unsafeLinearIndexM #-}
 
 
-instance Unbox e => Mutable U e where
-  data MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
+data instance MArray U ix e s = MUArray !(Sz ix) !(VU.MVector s e)
 
+
+instance Unbox e => Mutable U e where
   msize (MUArray sz _) = sz
   {-# INLINE msize #-}
 
   munsafeResize sz (MUArray _ mvec) = MUArray sz mvec
   {-# INLINE munsafeResize #-}
 
-  unsafeThaw (UArray _ sz v) = MUArray sz <$> VU.unsafeThaw v
+  unsafeThaw (UArray _ sz v) = MUArray sz <$> liftST (VU.unsafeThaw v)
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze comp (MUArray sz v) = UArray comp sz <$> VU.unsafeFreeze v
+  unsafeFreeze comp (MUArray sz v) = UArray comp sz <$> liftST (VU.unsafeFreeze v)
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)
+  unsafeNew sz = MUArray sz <$> liftST (MVU.unsafeNew (totalElem sz))
   {-# INLINE unsafeNew #-}
 
-  initialize (MUArray _ marr) = VGM.basicInitialize marr
+  initialize (MUArray _ marr) = liftST $ VGM.basicInitialize marr
   {-# INLINE initialize #-}
 
   unsafeLinearCopy (MUArray _ mvFrom) iFrom (MUArray _ mvTo) iTo (Sz k) =
-    MVU.unsafeCopy (MVU.unsafeSlice iTo k mvTo) (MVU.unsafeSlice iFrom k mvFrom)
+    liftST $ MVU.unsafeCopy (MVU.unsafeSlice iTo k mvTo) (MVU.unsafeSlice iFrom k mvFrom)
   {-# INLINE unsafeLinearCopy #-}
 
-  unsafeLinearRead (MUArray _ mv) =
+  unsafeLinearRead (MUArray _ mv) = liftST .
     INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", Sz . MVU.length, MVU.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MUArray _ mv) =
-    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv
+  unsafeLinearWrite (MUArray _ mv) i = liftST .
+    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv i
   {-# INLINE unsafeLinearWrite #-}
 
-  unsafeLinearGrow (MUArray _ mv) sz = MUArray sz <$> MVU.unsafeGrow mv (totalElem sz)
+  unsafeLinearGrow (MUArray _ mv) sz = MUArray sz <$> liftST (MVU.unsafeGrow mv (totalElem sz))
   {-# INLINE unsafeLinearGrow #-}
 
 
@@ -201,7 +202,7 @@ toUnboxedVector = uData
 -- | /O(1)/ - Unwrap unboxed mutable array and pull out the underlying unboxed mutable vector.
 --
 -- @since 0.2.1
-toUnboxedMVector :: MArray s U ix e -> VU.MVector s e
+toUnboxedMVector :: MArray U ix e s -> VU.MVector s e
 toUnboxedMVector (MUArray _ mv) = mv
 {-# INLINE toUnboxedMVector #-}
 
@@ -218,6 +219,6 @@ fromUnboxedVector comp v = UArray comp (SafeSz (VU.length v)) v
 -- | /O(1)/ - Wrap an unboxed mutable vector and produce a mutable unboxed flat array.
 --
 -- @since 0.5.0
-fromUnboxedMVector :: Unbox e => VU.MVector s e -> MVector s U e
+fromUnboxedMVector :: Unbox e => VU.MVector s e -> MVector U e s
 fromUnboxedMVector mv = MUArray (SafeSz (MVU.length mv)) mv
 {-# INLINE fromUnboxedMVector #-}

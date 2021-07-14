@@ -191,12 +191,12 @@ instance Load DS Ix1 e where
   replicate _ k = fromSteps . S.replicate k
   {-# INLINE replicate #-}
 
-  loadArrayST _scheduler arr uWrite =
+  loadArrayWithST _scheduler arr uWrite =
     case stepsSize (dsArray arr) of
       LengthExact _ ->
         void $ S.foldlM (\i e -> uWrite i e >> pure (i + 1)) 0 (S.transStepsId (coerce arr))
-      _ -> error "Loading Stream array is not supported with loadArrayM"
-  {-# INLINE loadArrayST #-}
+      _ -> error "Loading Stream array is not supported with loadArrayWithM"
+  {-# INLINE loadArrayWithST #-}
 
   unsafeLoadIntoST marr (DSArray sts) =
     S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)

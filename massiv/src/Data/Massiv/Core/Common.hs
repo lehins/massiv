@@ -89,6 +89,7 @@ module Data.Massiv.Core.Common
   , RW
   , Primal
   , UnliftPrimal(withRunInST)
+  , withRunInIO
   , liftST
   , liftIO
   , when
@@ -320,7 +321,7 @@ class (Strategy r, Resize r) => Source r e where
 
 -- | Any array that can be computed and loaded into memory
 class (Strategy r, Shape r ix) => Load r ix e where
-  {-# MINIMAL (makeArray | makeArrayLinear), (loadArrayST | loadArrayWithSetST)#-}
+  {-# MINIMAL (makeArray | makeArrayLinear), (loadArrayWithST | loadArrayWithSetST)#-}
 
   -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
   -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
@@ -380,17 +381,17 @@ class (Strategy r, Shape r ix) => Load r ix e where
   -- | Load an array into memory.
   --
   -- @since 0.3.0
-  loadArrayST
+  loadArrayWithST
     :: Scheduler s ()
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
     -> ST s ()
-  loadArrayST scheduler arr uWrite =
+  loadArrayWithST scheduler arr uWrite =
     loadArrayWithSetST scheduler arr uWrite $ \offset sz e ->
       loopM_ offset (< (offset + unSz sz)) (+1) (`uWrite` e)
-  {-# INLINE loadArrayST #-}
+  {-# INLINE loadArrayWithST #-}
 
-  -- | Load an array into memory, just like `loadArrayM`. Except it also accepts a
+  -- | Load an array into memory, just like `loadArrayWithM`. Except it also accepts a
   -- function that is potentially optimized for setting many cells in a region to the same
   -- value
   --
@@ -402,7 +403,7 @@ class (Strategy r, Shape r ix) => Load r ix e where
     -> (Ix1 -> Sz1 -> e -> ST s ()) -- ^ Function that efficiently sets a region of an array
                                     -- to the supplied value target array
     -> ST s ()
-  loadArrayWithSetST scheduler arr uWrite _ = loadArrayST scheduler arr uWrite
+  loadArrayWithSetST scheduler arr uWrite _ = loadArrayWithST scheduler arr uWrite
   {-# INLINE loadArrayWithSetST #-}
 
 

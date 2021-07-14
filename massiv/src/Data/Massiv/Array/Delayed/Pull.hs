@@ -159,9 +159,9 @@ instance Index ix => Foldable (Array D ix) where
 instance Index ix => Load D ix e where
   makeArray = DArray
   {-# INLINE makeArray #-}
-  loadArrayST !scheduler !arr =
+  loadArrayWithST !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayST #-}
+  {-# INLINE loadArrayWithST #-}
 
 instance Index ix => StrideLoad D ix e
 

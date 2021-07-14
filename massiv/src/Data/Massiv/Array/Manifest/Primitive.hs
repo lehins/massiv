@@ -53,7 +53,7 @@ module Data.Massiv.Array.Manifest.Primitive
   ) where
 
 import Primal.Monad (Primal(..), primal_)
-import Control.DeepSeq (NFData(..), deepseq)
+import Primal.Eval (NFData(..), deepseq)
 import Data.Massiv.Array.Delayed.Pull (eqArrays, compareArrays)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
@@ -214,9 +214,9 @@ instance (Prim e, Index ix) => Load P ix e where
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayST !scheduler !arr =
+  loadArrayWithST !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayST #-}
+  {-# INLINE loadArrayWithST #-}
 
 instance (Prim e, Index ix) => StrideLoad P ix e
 

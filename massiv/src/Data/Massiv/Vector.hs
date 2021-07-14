@@ -381,7 +381,7 @@ head' ::
      forall r e. (HasCallStack, Source r e)
   => Vector r e
   -> e
-head' = throwEither . headM
+head' = raiseLeftImprecise . headM
 {-# INLINE head' #-}
 
 
@@ -409,11 +409,11 @@ head' = throwEither . headM
 --
 -- @since 0.5.0
 headM ::
-     forall r e m. (Source r e, MonadThrow m)
+     forall r e m. (Source r e, Raises m)
   => Vector r e
   -> m e
 headM v
-  | elemsCount v == 0 = throwM $ SizeEmptyException (size v)
+  | elemsCount v == 0 = raiseM $ SizeEmptyException (size v)
   | otherwise = pure $ unsafeLinearIndex v 0
 {-# INLINE headM #-}
 
@@ -434,7 +434,7 @@ shead' ::
      forall r e. (HasCallStack, Stream r Ix1 e)
   => Vector r e
   -> e
-shead' = throwEither . sheadM
+shead' = raiseLeftImprecise . sheadM
 {-# INLINE shead' #-}
 
 -- | /O(1)/ - Get the first element of a `Stream` vector.
@@ -456,12 +456,12 @@ shead' = throwEither . sheadM
 --
 -- @since 0.5.0
 sheadM ::
-     forall r e m. (Stream r Ix1 e, MonadThrow m)
+     forall r e m. (Stream r Ix1 e, Raises m)
   => Vector r e
   -> m e
 sheadM v =
   case S.unId (S.headMaybe (toStream v)) of
-    Nothing -> throwM $ SizeEmptyException (zeroSz :: Sz1)
+    Nothing -> raiseM $ SizeEmptyException (zeroSz :: Sz1)
     Just e  -> pure e
 {-# INLINE sheadM #-}
 
@@ -482,15 +482,15 @@ sheadM v =
 -- /__Similar__/:
 --
 -- [@Data.List.`Data.List.uncons`@] Same concept, except it is restricted to `Maybe` instead of
--- the more general `MonadThrow`
+-- the more general `Raises`
 --
 -- @since 0.3.0
 unconsM ::
-     forall r e m. (MonadThrow m, Source r e)
+     forall r e m. (Raises m, Source r e)
   => Vector r e
   -> m (e, Vector r e)
 unconsM arr
-  | 0 == totalElem sz = throwM $ SizeEmptyException sz
+  | 0 == totalElem sz = raiseM $ SizeEmptyException sz
   | otherwise = pure (unsafeLinearIndex arr 0, unsafeLinearSlice 1 (SafeSz (unSz sz - 1)) arr)
   where
     !sz = size arr
@@ -511,11 +511,11 @@ unconsM arr
 --
 -- @since 0.3.0
 unsnocM ::
-     forall r e m. (MonadThrow m, Source r e)
+     forall r e m. (Raises m, Source r e)
   => Vector r e
   -> m (Vector r e, e)
 unsnocM arr
-  | 0 == totalElem sz = throwM $ SizeEmptyException sz
+  | 0 == totalElem sz = raiseM $ SizeEmptyException sz
   | otherwise = pure (unsafeLinearSlice 0 (SafeSz k) arr, unsafeLinearIndex arr k)
   where
     !sz = size arr
@@ -542,7 +542,7 @@ unsnocM arr
 --
 -- @since 0.5.0
 last' :: forall r e. (HasCallStack, Source r e) => Vector r e -> e
-last' = throwEither . lastM
+last' = raiseLeftImprecise . lastM
 {-# INLINE last' #-}
 
 
@@ -562,9 +562,9 @@ last' = throwEither . lastM
 -- "SizeEmptyException: (Sz1 0) corresponds to an empty array"
 --
 -- @since 0.5.0
-lastM :: forall r e m. (Source r e, MonadThrow m) => Vector r e -> m e
+lastM :: forall r e m. (Source r e, Raises m) => Vector r e -> m e
 lastM v
-  | k == 0 = throwM $ SizeEmptyException (size v)
+  | k == 0 = raiseM $ SizeEmptyException (size v)
   | otherwise = pure $ unsafeLinearIndex v (k - 1)
   where k = unSz (size v)
 {-# INLINE lastM #-}
@@ -606,7 +606,7 @@ slice !i (Sz k) v = unsafeLinearSlice i' newSz v
 --
 -- @since 0.5.0
 slice' :: forall r e. (HasCallStack, Source r e) => Ix1 -> Sz1 -> Vector r e -> Vector r e
-slice' i k = throwEither . sliceM i k
+slice' i k = raiseLeftImprecise . sliceM i k
 {-# INLINE slice' #-}
 
 
@@ -629,7 +629,7 @@ slice' i k = throwEither . sliceM i k
 --
 -- @since 0.5.0
 sliceM ::
-     forall r e m. (Source r e, MonadThrow m)
+     forall r e m. (Source r e, Raises m)
   => Ix1
   -- ^ Starting index
   -> Sz1
@@ -639,7 +639,7 @@ sliceM ::
   -> m (Vector r e)
 sliceM i newSz@(Sz k) v
   | i >= 0 && k <= n - i = pure $ unsafeLinearSlice i newSz v
-  | otherwise = throwM $ SizeSubregionException sz i newSz
+  | otherwise = raiseM $ SizeSubregionException sz i newSz
   where
     sz@(Sz n) = size v
 {-# INLINE sliceM #-}
@@ -709,7 +709,7 @@ init v = unsafeLinearSlice 0 (Sz (coerce (size v) - 1)) v
 --
 -- @since 0.5.0
 init' :: forall r e. (HasCallStack, Source r e) => Vector r e -> Vector r e
-init' = throwEither . initM
+init' = raiseLeftImprecise . initM
 {-# INLINE init' #-}
 
 -- | /O(1)/ - Get a vector without the last element. Throws an error on empty
@@ -726,9 +726,9 @@ init' = throwEither . initM
 -- 0
 --
 -- @since 0.5.0
-initM :: forall r e m. (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
+initM :: forall r e m. (Source r e, Raises m) => Vector r e -> m (Vector r e)
 initM v = do
-  when (elemsCount v == 0) $ throwM $ SizeEmptyException $ size v
+  when (elemsCount v == 0) $ raiseM $ SizeEmptyException $ size v
   pure $ unsafeInit v
 {-# INLINE initM #-}
 
@@ -764,7 +764,7 @@ tail = drop oneSz
 --
 -- @since 0.5.0
 tail' :: forall r e. (HasCallStack, Source r e) => Vector r e -> Vector r e
-tail' = throwEither . tailM
+tail' = raiseLeftImprecise . tailM
 {-# INLINE tail' #-}
 
 
@@ -782,9 +782,9 @@ tail' = throwEither . tailM
 -- 0
 --
 -- @since 0.5.0
-tailM :: forall r e m. (Source r e, MonadThrow m) => Vector r e -> m (Vector r e)
+tailM :: forall r e m. (Source r e, Raises m) => Vector r e -> m (Vector r e)
 tailM v = do
-  when (elemsCount v == 0) $ throwM $ SizeEmptyException $ size v
+  when (elemsCount v == 0) $ raiseM $ SizeEmptyException $ size v
   pure $ unsafeTail v
 {-# INLINE tailM #-}
 
@@ -839,7 +839,7 @@ takeWhile f v = take (go 0) v
 --
 -- @since 0.5.0
 take' :: forall r e. (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
-take' k = throwEither . takeM k
+take' k = raiseLeftImprecise . takeM k
 {-# INLINE take' #-}
 
 -- | /O(1)/ - Get the vector with the first @n@ elements. Throws an error size is less than @n@
@@ -858,10 +858,10 @@ take' k = throwEither . takeM k
 -- *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
 --
 -- @since 0.5.0
-takeM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
+takeM :: forall r e m. (Source r e, Raises m) => Sz1 -> Vector r e -> m (Vector r e)
 takeM k v = do
   let sz = size v
-  when (k > sz) $ throwM $ SizeSubregionException sz 0 k
+  when (k > sz) $ raiseM $ SizeSubregionException sz 0 k
   pure $ unsafeTake k v
 {-# INLINE takeM #-}
 
@@ -913,7 +913,7 @@ sdrop n = fromSteps . S.drop n . S.toStream
 --
 -- @since 0.5.0
 drop' :: forall r e. (HasCallStack, Source r e) => Sz1 -> Vector r e -> Vector r e
-drop' k = throwEither . dropM k
+drop' k = raiseLeftImprecise . dropM k
 {-# INLINE drop' #-}
 
 -- |
@@ -921,10 +921,10 @@ drop' k = throwEither . dropM k
 -- ==== __Examples__
 --
 -- @since 0.5.0
-dropM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)
+dropM :: forall r e m. (Source r e, Raises m) => Sz1 -> Vector r e -> m (Vector r e)
 dropM k@(Sz d) v = do
   let sz@(Sz n) = size v
-  when (k > sz) $ throwM $ SizeSubregionException sz d (SafeSz (n - d))
+  when (k > sz) $ raiseM $ SizeSubregionException sz d (SafeSz (n - d))
   pure $ unsafeLinearSlice d (SafeSz (n - d)) v
 {-# INLINE dropM #-}
 
@@ -948,7 +948,7 @@ sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
 --
 -- @since 0.5.0
 sliceAt' :: (HasCallStack, Source r e) => Sz1 -> Vector r e -> (Vector r e, Vector r e)
-sliceAt' k = throwEither . sliceAtM k
+sliceAt' k = raiseLeftImprecise . sliceAtM k
 {-# INLINE sliceAt' #-}
 
 -- | Same as `Data.Massiv.Array.splitAtM`, except for a flat vector.
@@ -956,7 +956,7 @@ sliceAt' k = throwEither . sliceAtM k
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAtM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
+sliceAtM :: forall r e m. (Source r e, Raises m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
 sliceAtM k v = do
   l <- takeM k v
   pure (l, unsafeDrop k v)
@@ -2469,7 +2469,7 @@ sfoldl1' ::
   => (e -> e -> e)
   -> Array r ix e
   -> e
-sfoldl1' f = throwEither . sfoldl1M (\e -> pure . f e)
+sfoldl1' f = raiseLeftImprecise . sfoldl1M (\e -> pure . f e)
 {-# INLINE sfoldl1' #-}
 
 -- |
@@ -2478,14 +2478,14 @@ sfoldl1' f = throwEither . sfoldl1M (\e -> pure . f e)
 --
 -- @since 0.5.0
 sfoldl1M ::
-     forall r ix e m. (Stream r ix e, MonadThrow m)
+     forall r ix e m. (Stream r ix e, Raises m)
   => (e -> e -> m e)
   -> Array r ix e
   -> m e
 sfoldl1M f arr = do
   let str = S.transStepsId $ toStream arr
   isNullStream <- S.null str
-  when isNullStream $ throwM $ SizeEmptyException (outerSize arr)
+  when isNullStream $ raiseM $ SizeEmptyException (outerSize arr)
   S.foldl1M f str
 {-# INLINE sfoldl1M #-}
 
@@ -2495,7 +2495,7 @@ sfoldl1M f arr = do
 --
 -- @since 0.5.0
 sfoldl1M_ ::
-     forall r ix e m. (Stream r ix e, MonadThrow m)
+     forall r ix e m. (Stream r ix e, Raises m)
   => (e -> e -> m e)
   -> Array r ix e
   -> m ()
@@ -2652,7 +2652,7 @@ smaximum' = sfoldl1' max
 -- Nothing
 --
 -- @since 0.5.0
-smaximumM :: forall r ix e m. (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
+smaximumM :: forall r ix e m. (Ord e, Stream r ix e, Raises m) => Array r ix e -> m e
 smaximumM = sfoldl1M (\e acc -> pure (max e acc))
 {-# INLINE smaximumM #-}
 
@@ -2687,6 +2687,6 @@ sminimum' = sfoldl1' min
 -- Nothing
 --
 -- @since 0.5.0
-sminimumM :: forall r ix e m. (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
+sminimumM :: forall r ix e m. (Ord e, Stream r ix e, Raises m) => Array r ix e -> m e
 sminimumM = sfoldl1M (\e acc -> pure (min e acc))
 {-# INLINE sminimumM #-}

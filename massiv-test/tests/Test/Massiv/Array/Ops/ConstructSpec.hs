@@ -24,7 +24,7 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
   assertException
-    selectErrorCall
+    selectImpreciseException
     (computeAs U (rangeStep' Seq from 0 to))
 
 prop_toFromListIsList ::
@@ -62,7 +62,7 @@ prop_excFromToListIx3 comp ls3
     classify True "Expected Success" $ counterexample (show arr) $ totalElem (size arr) === 0
   | P.all (head lsL ==) lsL && P.all (P.all (head (head lsLL) ==)) lsLL =
     classify True "Expected Success" $ counterexample (show arr) $ resultLs === ls3
-  | otherwise = classify True "Expected Failure" $ assertSomeException resultLs
+  | otherwise = classify True "Expected Failure" $ assertSomeException arr
   where
     arr = fromLists' comp ls3 :: Array U Ix3 Int
     resultLs = toLists arr

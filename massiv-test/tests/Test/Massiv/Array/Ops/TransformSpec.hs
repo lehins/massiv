@@ -57,7 +57,7 @@ prop_SplitExtract (DimIx dim) (ArrIx arr ix) (Positive n) =
   where i = getDim' ix dim
         k = getDim' (unSz (size arr)) dim
         n' = n `mod` (k - i)
-        (left, center, right) = throwEither (splitExtractM dim i (Sz n') arr)
+        (left, center, right) = raiseLeftImprecise (splitExtractM dim i (Sz n') arr)
         (splitLeft, splitRight) = splitAt' dim (i + n') arr
 
 prop_ConcatAppend ::
@@ -119,19 +119,19 @@ prop_ExtractSizeMismatch (ArrTiny arr) (Positive n) =
 --   => ArrNE P ix Int
 --   -> Property
 -- prop_stackInnerSlices (ArrNE arr) =
---   arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
+--   arr === compute (raiseLeftImprecise (stackInnerSlicesM (innerSlices arr))) .&&.
 --   arr === compute (stackSlices' 1 (innerSlices arr))
 prop_stackInnerSlicesIx2 :: ArrNE P Ix2 Int -> Property
 prop_stackInnerSlicesIx2 (ArrNE arr) =
-  arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
+  arr === compute (raiseLeftImprecise (stackInnerSlicesM (innerSlices arr))) .&&.
   arr === compute (stackSlices' 1 (innerSlices arr))
 prop_stackInnerSlicesIx3 :: ArrNE P Ix3 Int -> Property
 prop_stackInnerSlicesIx3 (ArrNE arr) =
-  arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
+  arr === compute (raiseLeftImprecise (stackInnerSlicesM (innerSlices arr))) .&&.
   arr === compute (stackSlices' 1 (innerSlices arr))
 prop_stackInnerSlicesIx4 :: ArrNE P Ix4 Int -> Property
 prop_stackInnerSlicesIx4 (ArrNE arr) =
-  arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
+  arr === compute (raiseLeftImprecise (stackInnerSlicesM (innerSlices arr))) .&&.
   arr === compute (stackSlices' 1 (innerSlices arr))
 
 -- prop_stackOuterSlices ::
@@ -145,19 +145,19 @@ prop_stackInnerSlicesIx4 (ArrNE arr) =
 --   => ArrNE P ix Int
 --   -> Property
 -- prop_stackOuterSlices (ArrNE arr) =
---   arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
+--   arr === compute (raiseLeftImprecise (stackOuterSlicesM (outerSlices arr))) .&&.
 --   arr === compute (stackSlices' (dimensions (Proxy :: Proxy ix)) (outerSlices arr))
 prop_stackOuterSlicesIx2 :: ArrNE P Ix2 Int -> Property
 prop_stackOuterSlicesIx2 (ArrNE arr) =
-  arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
+  arr === compute (raiseLeftImprecise (stackOuterSlicesM (outerSlices arr))) .&&.
   arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix2)) (outerSlices arr))
 prop_stackOuterSlicesIx3 :: ArrNE P Ix3 Int -> Property
 prop_stackOuterSlicesIx3 (ArrNE arr) =
-  arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
+  arr === compute (raiseLeftImprecise (stackOuterSlicesM (outerSlices arr))) .&&.
   arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix3)) (outerSlices arr))
 prop_stackOuterSlicesIx4 :: ArrNE P Ix4 Int -> Property
 prop_stackOuterSlicesIx4 (ArrNE arr) =
-  arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
+  arr === compute (raiseLeftImprecise (stackOuterSlicesM (outerSlices arr))) .&&.
   arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix4)) (outerSlices arr))
 
 

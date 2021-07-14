@@ -112,7 +112,6 @@ import Data.Massiv.Core.Operations
 import Prelude as P
 import System.IO.Unsafe
 import Control.Scheduler
-import Control.Monad (when)
 import qualified Data.Foldable as F
 import Data.Function
 
@@ -121,26 +120,26 @@ infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
 infixl 6  !+!, .+., .+, +., !-!, .-., .-, -.
 
 liftArray2M ::
-     (Index ix, Numeric r e, MonadThrow m)
+     (Index ix, Numeric r e, Raises m)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
 liftArray2M f a1 a2
   | size a1 == size a2 = pure $ unsafeLiftArray2 f a1 a2
-  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
+  | otherwise = raiseM $ SizeMismatchException (size a1) (size a2)
 {-# INLINE liftArray2M #-}
 
 
 liftNumericArray2M ::
-     (Size r, Index ix, MonadThrow m)
+     (Size r, Index ix, Raises m)
   => (Array r ix e -> Array r ix e -> Array r ix e)
   -> Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
 liftNumericArray2M f a1 a2
   | size a1 == size a2 = pure $ f a1 a2
-  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
+  | otherwise = raiseM $ SizeMismatchException (size a1) (size a2)
 {-# INLINE liftNumericArray2M #-}
 
 
@@ -150,7 +149,7 @@ liftNumericArray2M f a1 a2
 -- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
-(.+.) :: (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.+.) :: (Index ix, Numeric r e, Raises m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.+.) = liftNumericArray2M additionPointwise
 {-# INLINE (.+.) #-}
 
@@ -168,8 +167,8 @@ liftNumericArray2M f a1 a2
 --   [ 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40 ]
 --
 -- @since 0.5.6
-(!+!) :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!+!) a1 a2 = throwEither (a1 .+. a2)
+(!+!) :: (HasCallStack, Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!+!) a1 a2 = raiseLeftImprecise (a1 .+. a2)
 {-# INLINE (!+!) #-}
 
 -- | Add a scalar to each element of the array. Array is on the left.
@@ -193,7 +192,7 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.-.) ::
-     (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+     (Index ix, Numeric r e, Raises m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.-.) = liftNumericArray2M subtractionPointwise
 {-# INLINE (.-.) #-}
 
@@ -212,8 +211,8 @@ liftNumericArray2M f a1 a2
 --   [ -20, -20, -20, -20, -20, -20, -20, -20, -20, -20, -20 ]
 --
 -- @since 0.5.6
-(!-!) :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!-!) a1 a2 = throwEither (a1 .-. a2)
+(!-!) :: (HasCallStack, Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!-!) a1 a2 = raiseLeftImprecise (a1 .-. a2)
 {-# INLINE (!-!) #-}
 
 -- | Subtract a scalar from each element of the array. Array is on the left.
@@ -238,7 +237,7 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.*.) ::
-     (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+     (Index ix, Numeric r e, Raises m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.*.) = liftNumericArray2M multiplicationPointwise
 {-# INLINE (.*.) #-}
 
@@ -259,8 +258,8 @@ liftNumericArray2M f a1 a2
 --   [ 0, 21, 44, 69, 96, 125, 156, 189, 224, 261, 300 ]
 --
 -- @since 0.5.6
-(!*!) :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!*!) a1 a2 = throwEither (a1 .*. a2)
+(!*!) :: (HasCallStack, Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!*!) a1 a2 = raiseLeftImprecise (a1 .*. a2)
 {-# INLINE (!*!) #-}
 
 
@@ -323,8 +322,8 @@ liftNumericArray2M f a1 a2
 -- [Partial] Throws an impure exception when lengths of vectors do not match
 --
 -- @since 0.5.6
-(!.!) :: (Numeric r e, Source r e) => Vector r e -> Vector r e -> e
-(!.!) v1 v2 = throwEither $ dotM v1 v2
+(!.!) :: (HasCallStack, Numeric r e, Source r e) => Vector r e -> Vector r e -> e
+(!.!) v1 v2 = raiseLeftImprecise $ dotM v1 v2
 {-# INLINE (!.!) #-}
 
 -- | Dot product of two vectors.
@@ -332,9 +331,9 @@ liftNumericArray2M f a1 a2
 -- /__Throws Exception__/: `SizeMismatchException` when lengths of vectors do not match
 --
 -- @since 0.5.6
-dotM :: (FoldNumeric r e, Source r e, MonadThrow m) => Vector r e -> Vector r e -> m e
+dotM :: (FoldNumeric r e, Source r e, Raises m) => Vector r e -> Vector r e -> m e
 dotM v1 v2
-  | size v1 /= size v2 = throwM $ SizeMismatchException (size v1) (size v2)
+  | size v1 /= size v2 = raiseM $ SizeMismatchException (size v1) (size v2)
   | comp == Seq = pure $! unsafeDotProduct v1 v2
   | otherwise = pure $! unsafePerformIO $ unsafeDotProductIO v1 v2
   where
@@ -343,11 +342,13 @@ dotM v1 v2
 
 
 unsafeDotProductIO ::
-     (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
+     (Index ix, FoldNumeric r b, Source r b)
   => Array r ix b
   -> Array r ix b
-  -> m b
+  -> IO b
 unsafeDotProductIO v1 v2 = do
+  let totalLength = totalElem (size v1)
+      comp = getComp v1 <> getComp v2
   results <-
     withScheduler comp $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
@@ -361,9 +362,6 @@ unsafeDotProductIO v1 v2 = do
             pure $!
             unsafeDotProduct (unsafeLinearSlice slackStart k v1) (unsafeLinearSlice slackStart k v2)
   pure $! F.foldl' (+) 0 results
-  where
-    totalLength = totalElem (size v1)
-    comp = getComp v1 <> getComp v2
 {-# INLINE unsafeDotProductIO #-}
 
 
@@ -377,11 +375,12 @@ normL2 v
 {-# INLINE normL2 #-}
 
 powerSumArrayIO ::
-     (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
+     (Index ix, FoldNumeric r b, Source r b)
   => Array r ix b
   -> Int
-  -> m b
+  -> IO b
 powerSumArrayIO v p = do
+  let totalLength = totalElem (size v)
   results <-
     withScheduler (getComp v) $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
@@ -392,8 +391,6 @@ powerSumArrayIO v p = do
           let k = SafeSz (totalLength - slackStart)
           scheduleWork scheduler $ pure $! powerSumArray (unsafeLinearSlice slackStart k v) p
   pure $! F.foldl' (+) 0 results
-  where
-    totalLength = totalElem (size v)
 {-# INLINE powerSumArrayIO #-}
 
 
@@ -404,12 +401,12 @@ powerSumArrayIO v p = do
 --
 -- @since 0.5.6
 (.><) ::
-     (MonadThrow m, FoldNumeric r e, Source r e)
+     (Raises m, FoldNumeric r e, Source r e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector D e)
 (.><) mm v
-  | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
+  | mCols /= n = raiseM $ SizeMismatchException (size mm) (Sz2 n 1)
   | mRows == 0 || mCols == 0 = pure $ setComp comp empty
   | otherwise = pure $ makeArray comp (Sz1 mRows) $ \i ->
       unsafeDotProduct (unsafeLinearSlice (i * n) sz mm) v
@@ -425,7 +422,7 @@ powerSumArrayIO v p = do
 --
 -- @since 0.5.7
 multiplyMatrixByVector ::
-     (MonadThrow m, Numeric r e, Mutable r e)
+     (Raises m, Numeric r e, Mutable r e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector r e)
@@ -439,11 +436,11 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 --
 -- @since 0.5.6
 (!><) ::
-     (Numeric r e, Source r e)
+     (HasCallStack, Numeric r e, Source r e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> Vector D e
-(!><) mm v = throwEither (mm .>< v)
+(!><) mm v = raiseLeftImprecise (mm .>< v)
 {-# INLINE (!><) #-}
 
 
@@ -453,7 +450,7 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(><.) :: (MonadThrow m, Numeric r e, Mutable r e) =>
+(><.) :: (Raises m, Numeric r e, Mutable r e) =>
          Vector r e -- ^ Row vector
       -> Matrix r e -- ^ Matrix
       -> m (Vector r e)
@@ -467,12 +464,12 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 --
 -- @since 0.5.7
 multiplyVectorByMatrix ::
-     (MonadThrow m, Numeric r e, Mutable r e)
+     (Raises m, Numeric r e, Mutable r e)
   => Vector r e -- ^ Row vector
   -> Matrix r e -- ^ Matrix
   -> m (Vector r e)
 multiplyVectorByMatrix v mm
-  | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
+  | mRows /= n = raiseM $ SizeMismatchException (Sz2 1 n) (size mm)
   | mRows == 0 || mCols == 0 = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
   | otherwise =
     pure $!
@@ -504,11 +501,11 @@ multiplyVectorByMatrix v mm
 --
 -- @since 0.5.6
 (><!) ::
-     (Numeric r e, Mutable r e)
+     (HasCallStack, Numeric r e, Mutable r e)
   => Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
   -> Matrix r e -- ^ Matrix
   -> Vector r e
-(><!) v mm = throwEither (v ><. mm)
+(><!) v mm = raiseLeftImprecise (v ><. mm)
 {-# INLINE (><!) #-}
 
 
@@ -531,8 +528,8 @@ multiplyVectorByMatrix v mm
 --   ]
 --
 -- @since 0.5.6
-(!><!) :: (Numeric r e, Mutable r e) => Matrix r e -> Matrix r e -> Matrix r e
-(!><!) a1 a2 = throwEither (a1 `multiplyMatrices` a2)
+(!><!) :: (HasCallStack, Numeric r e, Mutable r e) => Matrix r e -> Matrix r e -> Matrix r e
+(!><!) a1 a2 = raiseLeftImprecise (a1 `multiplyMatrices` a2)
 {-# INLINE (!><!) #-}
 
 -- | Matrix multiplication. Same as `!><!` but produces monadic computation that allows
@@ -541,7 +538,7 @@ multiplyVectorByMatrix v mm
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(.><.) :: (Numeric r e, Mutable r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+(.><.) :: (Numeric r e, Mutable r e, Raises m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 (.><.) = multiplyMatrices
 {-# INLINE (.><.) #-}
 
@@ -550,11 +547,11 @@ multiplyVectorByMatrix v mm
 --
 -- @since 0.5.6
 multiplyMatrices ::
-     (Numeric r e, Mutable r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+     (Numeric r e, Mutable r e, Raises m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 multiplyMatrices arrA arrB
    -- mA == 1 = -- TODO: call multiplyVectorByMatrix
    -- nA == 1 = -- TODO: call multiplyMatrixByVector
-  | nA /= mB = throwM $ SizeMismatchException (size arrA) (size arrB)
+  | nA /= mB = raiseM $ SizeMismatchException (size arrA) (size arrB)
   | isEmpty arrA || isEmpty arrB = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
   | otherwise = pure $! unsafePerformIO $ do
     marrC <- newMArray (SafeSz (mA :. nB)) 0
@@ -696,12 +693,12 @@ multiplyMatrices arrA arrB
 --
 -- @since 0.5.6
 multiplyMatricesTransposed ::
-     (Numeric r e, Manifest r e, MonadThrow m)
+     (Numeric r e, Manifest r e, Raises m)
   => Matrix r e
   -> Matrix r e
   -> m (Matrix D e)
 multiplyMatricesTransposed arr1 arr2
-  | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (Sz2 m2 n2)
+  | n1 /= m2 = raiseM $ SizeMismatchException (size arr1) (Sz2 m2 n2)
   | isEmpty arr1 || isEmpty arr2 = pure $ setComp comp empty
   | otherwise =
     pure $
@@ -814,7 +811,7 @@ signumA = unsafeLiftArray signum
 --
 -- @since 0.4.0
 (./.) ::
-     (Index ix, NumericFloat r e, MonadThrow m)
+     (Index ix, NumericFloat r e, Raises m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
@@ -836,8 +833,8 @@ signumA = unsafeLiftArray signum
 --   [ 0.2, 0.20792079, 0.21568628, 0.22330096, 0.23076923 ]
 --
 -- @since 0.5.6
-(!/!) :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e -> Array r ix e
-(!/!) a1 a2 = throwEither (a1 ./. a2)
+(!/!) :: (HasCallStack, Index ix, NumericFloat r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!/!) a1 a2 = raiseLeftImprecise (a1 ./. a2)
 {-# INLINE (!/!) #-}
 
 -- | Divide a scalar value by each element of the array.
@@ -1208,7 +1205,7 @@ floorA = A.map floor
 --
 -- @since 0.1.0
 atan2A ::
-     (Index ix, Numeric r e, RealFloat e, MonadThrow m)
+     (Index ix, Numeric r e, RealFloat e, Raises m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
@@ -1220,7 +1217,7 @@ atan2A = liftArray2M atan2
 --
 -- @since 1.0.0
 sumArrays' :: (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
-sumArrays' = throwEither . sumArraysM
+sumArrays' = raiseLeftImprecise . sumArraysM
 {-# INLINE sumArrays' #-}
 
 -- | Compute sum of arrays pointwise. All arrays must have the same size.
@@ -1277,7 +1274,7 @@ sumArrays' = throwEither . sumArraysM
 --
 -- @since 1.0.0
 sumArraysM ::
-     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+     (Foldable t, Load r ix e, Numeric r e, Raises m) => t (Array r ix e) -> m (Array r ix e)
 sumArraysM as =
   case F.toList as of
     [] -> pure empty
@@ -1292,7 +1289,7 @@ sumArraysM as =
 -- @since 1.0.0
 productArrays' ::
      (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
-productArrays' = throwEither . productArraysM
+productArrays' = raiseLeftImprecise . productArraysM
 {-# INLINE productArrays' #-}
 
 
@@ -1350,7 +1347,7 @@ productArrays' = throwEither . productArraysM
 --
 -- @since 1.0.0
 productArraysM ::
-     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+     (Foldable t, Load r ix e, Numeric r e, Raises m) => t (Array r ix e) -> m (Array r ix e)
 productArraysM as =
   case F.toList as of
     [] -> pure empty

@@ -34,10 +34,6 @@ module Data.Massiv.Array.Manifest.Storable
   , unsafeMArrayFromForeignPtr0
   ) where
 
-import Control.DeepSeq (NFData(..), deepseq)
-import Control.Exception
-import Control.Monad.IO.Unlift
-import Control.Monad.Primitive (unsafePrimToPrim)
 import Data.Massiv.Array.Delayed.Pull (compareArrays, eqArrays)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
@@ -59,7 +55,8 @@ import Foreign.Storable
 import GHC.Exts as GHC (IsList(..))
 import GHC.ForeignPtr (ForeignPtr(..), ForeignPtrContents(..))
 import Prelude hiding (mapM)
-import System.IO.Unsafe (unsafePerformIO)
+import Primal.Monad.Unsafe (unsafePerformIO, unsafeIOToPrimal)
+import Primal.Eval
 
 #include "massiv.h"
 
@@ -79,7 +76,7 @@ instance NFData ix => NFData (Array S ix e) where
   rnf (SArray c sz v) = c `deepseq` sz `deepseq` v `deepseq` ()
   {-# INLINE rnf #-}
 
-instance NFData ix => NFData (MArray s S ix e) where
+instance NFData ix => NFData (MArray S ix e s) where
   rnf (MSArray sz mv) = sz `deepseq` mv `deepseq` ()
   {-# INLINE rnf #-}
 
@@ -128,9 +125,9 @@ instance Storable e => Manifest S e where
     INDEX_CHECK("(Manifest S ix e).unsafeLinearIndexM", Sz . VS.length, VS.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
 
+data instance MArray S ix e s = MSArray !(Sz ix) !(VS.MVector s e)
 
 instance Storable e => Mutable S e where
-  data MArray s S ix e = MSArray !(Sz ix) !(VS.MVector s e)
 
   msize (MSArray sz _) = sz
   {-# INLINE msize #-}
@@ -138,33 +135,33 @@ instance Storable e => Mutable S e where
   munsafeResize sz (MSArray _ mvec) = MSArray sz mvec
   {-# INLINE munsafeResize #-}
 
-  unsafeThaw (SArray _ sz v) = MSArray sz <$> VS.unsafeThaw v
+  unsafeThaw (SArray _ sz v) = MSArray sz <$> liftST (VS.unsafeThaw v)
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze comp (MSArray sz v) = SArray comp sz <$> VS.unsafeFreeze v
+  unsafeFreeze comp (MSArray sz v) = SArray comp sz <$> liftST (VS.unsafeFreeze v)
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew sz = MSArray sz <$> MVS.unsafeNew (totalElem sz)
+  unsafeNew sz = MSArray sz <$> liftST (MVS.unsafeNew (totalElem sz))
   {-# INLINE unsafeNew #-}
 
-  initialize (MSArray _ marr) = VGM.basicInitialize marr
+  initialize (MSArray _ marr) = liftST $ VGM.basicInitialize marr
   {-# INLINE initialize #-}
 
-  unsafeLinearRead (MSArray _ mv) =
+  unsafeLinearRead (MSArray _ mv) = liftST .
     INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", Sz . MVS.length, MVS.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MSArray _ mv) =
-    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", Sz . MVS.length, MVS.unsafeWrite) mv
+  unsafeLinearWrite (MSArray _ mv) i = liftST .
+    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", Sz . MVS.length, MVS.unsafeWrite) mv i
   {-# INLINE unsafeLinearWrite #-}
 
-  unsafeLinearSet (MSArray _ mv) i k = VGM.basicSet (MVS.unsafeSlice i (unSz k) mv)
+  unsafeLinearSet (MSArray _ mv) i k = liftST . VGM.basicSet (MVS.unsafeSlice i (unSz k) mv)
   {-# INLINE unsafeLinearSet #-}
 
   unsafeLinearCopy marrFrom iFrom marrTo iTo (Sz k) = do
     let MSArray _ (MVS.MVector _ fpFrom) = marrFrom
         MSArray _ (MVS.MVector _ fpTo) = marrTo
-    unsafePrimToPrim $
+    unsafeIOToPrimal $
       withForeignPtr fpFrom $ \ ptrFrom ->
         withForeignPtr fpTo $ \ ptrTo -> do
           let ptrFrom' = advancePtr ptrFrom iFrom
@@ -172,27 +169,27 @@ instance Storable e => Mutable S e where
           copyArray ptrTo' ptrFrom' k
   {-# INLINE unsafeLinearCopy #-}
 
-  unsafeArrayLinearCopy arrFrom iFrom marrTo iTo sz = do
+  unsafeArrayLinearCopy arrFrom iFrom marrTo iTo sz = liftST $ do
     marrFrom <- unsafeThaw arrFrom
     unsafeLinearCopy marrFrom iFrom marrTo iTo sz
   {-# INLINE unsafeArrayLinearCopy #-}
 
   unsafeLinearShrink marr@(MSArray _ mv@(MVS.MVector _ (ForeignPtr _ fpc))) sz = do
-    let shrinkMBA :: MutableByteArray RealWorld -> IO ()
+    let shrinkMBA :: MutableByteArray RW -> IO ()
         shrinkMBA mba = shrinkMutableByteArray mba (totalElem sz * sizeOf (undefined :: e))
         {-# INLINE shrinkMBA #-}
     case fpc of
       MallocPtr mba# _ -> do
-        unsafePrimToPrim $ shrinkMBA (MutableByteArray mba#)
+        unsafeIOToPrimal $ shrinkMBA (MutableByteArray mba#)
         pure $ MSArray sz mv
       PlainPtr mba# -> do
-        unsafePrimToPrim $ shrinkMBA (MutableByteArray mba#)
+        unsafeIOToPrimal $ shrinkMBA (MutableByteArray mba#)
         pure $ MSArray sz mv
       _ -> unsafeDefaultLinearShrink marr sz
   {-# INLINE unsafeLinearShrink #-}
 
   unsafeLinearGrow (MSArray oldSz mv) sz =
-    MSArray sz <$> MVS.unsafeGrow mv (totalElem sz - totalElem oldSz)
+    MSArray sz <$> liftST (MVS.unsafeGrow mv (totalElem sz - totalElem oldSz))
   {-# INLINE unsafeLinearGrow #-}
 
 
@@ -203,8 +200,8 @@ instance (Index ix, Storable e) => Load S ix e where
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  loadArrayWithST !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayWithST #-}
 
 instance (Index ix, Storable e) => StrideLoad S ix e
 
@@ -243,7 +240,7 @@ instance (Storable e, IsList (Array L ix e), Ragged L ix e) => IsList (Array S i
 -- referential transparency.
 --
 -- @since 0.1.3
-unsafeWithPtr :: (MonadUnliftIO m, Storable a) => Array S ix a -> (Ptr a -> m b) -> m b
+unsafeWithPtr :: (UnliftPrimal RW m, Storable a) => Array S ix a -> (Ptr a -> m b) -> m b
 unsafeWithPtr arr f = withRunInIO $ \run -> VS.unsafeWith (sData arr) (run . f)
 {-# INLINE unsafeWithPtr #-}
 
@@ -251,7 +248,7 @@ unsafeWithPtr arr f = withRunInIO $ \run -> VS.unsafeWith (sData arr) (run . f)
 -- | A pointer to the beginning of the mutable array.
 --
 -- @since 0.1.3
-withPtr :: (MonadUnliftIO m, Storable a) => MArray RealWorld S ix a -> (Ptr a -> m b) -> m b
+withPtr :: (UnliftPrimal RW m, Storable a) => MArray S ix a RW -> (Ptr a -> m b) -> m b
 withPtr (MSArray _ mv) f = withRunInIO $ \run -> MVS.unsafeWith mv (run . f)
 {-# INLINE withPtr #-}
 
@@ -267,7 +264,7 @@ toStorableVector = sData
 -- | /O(1)/ - Unwrap storable mutable array and pull out the underlying storable mutable vector.
 --
 -- @since 0.2.1
-toStorableMVector :: MArray s S ix e -> VS.MVector s e
+toStorableMVector :: MArray S ix e s -> VS.MVector s e
 toStorableMVector (MSArray _ mv) = mv
 {-# INLINE toStorableMVector #-}
 
@@ -281,7 +278,7 @@ fromStorableVector comp v = SArray {sComp = comp, sSize = SafeSz (VS.length v), 
 -- | /O(1)/ - Cast a mutable storable vector to a mutable storable array.
 --
 -- @since 0.5.0
-fromStorableMVector :: MVS.MVector s e -> MArray s S Ix1 e
+fromStorableMVector :: MVS.MVector s e -> MArray S Ix1 e s
 fromStorableMVector mv@(MVS.MVector len _) = MSArray (SafeSz len) mv
 {-# INLINE fromStorableMVector #-}
 
@@ -296,7 +293,7 @@ unsafeArrayToForeignPtr = VS.unsafeToForeignPtr0 . toStorableVector
 -- | /O(1)/ - Yield the underlying `ForeignPtr` together with its length.
 --
 -- @since 0.3.0
-unsafeMArrayToForeignPtr :: Storable e => MArray s S ix e -> (ForeignPtr e, Int)
+unsafeMArrayToForeignPtr :: Storable e => MArray S ix e s -> (ForeignPtr e, Int)
 unsafeMArrayToForeignPtr = MVS.unsafeToForeignPtr0 . toStorableMVector
 {-# INLINE unsafeMArrayToForeignPtr #-}
 
@@ -321,7 +318,7 @@ unsafeArrayFromForeignPtr comp ptr offset sz =
 -- modify the pointer, unless the array gets frozen prior to modification.
 --
 -- @since 0.3.0
-unsafeMArrayFromForeignPtr0 :: Storable e => ForeignPtr e -> Sz1 -> MArray s S Ix1 e
+unsafeMArrayFromForeignPtr0 :: Storable e => ForeignPtr e -> Sz1 -> MArray S Ix1 e s
 unsafeMArrayFromForeignPtr0 fp sz =
   MSArray sz (MVS.unsafeFromForeignPtr0 fp (unSz sz))
 {-# INLINE unsafeMArrayFromForeignPtr0 #-}
@@ -331,7 +328,7 @@ unsafeMArrayFromForeignPtr0 fp sz =
 -- still safe to modify the pointer, unless the array gets frozen prior to modification.
 --
 -- @since 0.3.0
-unsafeMArrayFromForeignPtr :: Storable e => ForeignPtr e -> Int -> Sz1 -> MArray s S Ix1 e
+unsafeMArrayFromForeignPtr :: Storable e => ForeignPtr e -> Int -> Sz1 -> MArray S Ix1 e s
 unsafeMArrayFromForeignPtr fp offset sz =
   MSArray sz (MVS.unsafeFromForeignPtr fp offset (unSz sz))
 {-# INLINE unsafeMArrayFromForeignPtr #-}
@@ -342,9 +339,9 @@ unsafeMArrayFromForeignPtr fp offset sz =
 --
 -- @since 0.5.9
 unsafeMallocMArray ::
-     forall ix e m. (Index ix, Storable e, MonadIO m)
+     forall ix e m. (Index ix, Storable e, Primal RW m)
   => Sz ix
-  -> m (MArray RealWorld S ix e)
+  -> m (MArray S ix e RW)
 unsafeMallocMArray sz = liftIO $ do
   let n = totalElem sz
   foreignPtr <- mask_ $ do

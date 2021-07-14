@@ -73,5 +73,7 @@ spec = do
         emptySelector = (== SizeEmptyException (Sz (zeroIndex :: ix)))
     it "maximumM" $ maximumM (A.empty :: Array D Ix1 Int) `shouldThrow` emptySelector @Ix1
     it "minimumM" $ minimumM (A.empty :: Array D Ix2 Int) `shouldThrow` emptySelector @Ix2
-    it "maximum'" $ (pure $! maximum' (A.empty :: Array D Ix3 Int)) `shouldThrow` selectErrorCall
-    it "minimum'" $ (pure $! minimum' (A.empty :: Array D Ix4 Int)) `shouldThrow` selectErrorCall
+    it "maximum'" $ (pure $! maximum' (A.empty :: Array D Ix3 Int))
+      `shouldThrow` selectImpreciseException
+    it "minimum'" $ (pure $! minimum' (A.empty :: Array D Ix4 Int))
+      `shouldThrow` selectImpreciseException

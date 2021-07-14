@@ -160,7 +160,7 @@ prop_MapWS arr =
   monadicIO $
   run $ do
     let comp = getComp arr
-    count <- getCompWorkers comp
+        count = compNumWorkers comp
     arrStates <- newMArray' @P (Sz count)
     states <- initWorkerStates comp (\(WorkerId i) -> pure $ \f -> modifyM_ arrStates f i)
     arr' <-

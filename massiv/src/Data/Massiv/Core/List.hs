@@ -185,10 +185,10 @@ instance Ragged L Ix1 e where
 instance (Shape L ix, Ragged L ix e) => Load L ix e where
   makeArray comp sz f = runIdentity $ generateRaggedM comp sz (pure . f)
   {-# INLINE makeArray #-}
-  loadArrayST scheduler arr uWrite = loadRagged scheduler uWrite 0 (totalElem sz) sz arr
+  loadArrayWithST scheduler arr uWrite = loadRagged scheduler uWrite 0 (totalElem sz) sz arr
     where
       !sz = outerSize arr
-  {-# INLINE loadArrayST #-}
+  {-# INLINE loadArrayWithST #-}
 
 instance Ragged L Ix2 e where
   emptyR comp = LArray comp (List [])

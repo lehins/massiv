@@ -9,7 +9,7 @@ module Test.Massiv.VectorSpec (spec) where
 
 import Control.Arrow (first)
 import Control.Applicative
-import Control.Exception
+import Primal.Exception
 import Data.Bits
 import Data.Int
 import qualified Data.Tuple as Tuple
@@ -18,7 +18,7 @@ import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Vector as V
 import Data.Maybe
-import Data.Primitive.MutVar
+import Primal.Ref.Unboxed
 import qualified Data.Vector as VB
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
@@ -138,7 +138,7 @@ toPrimV6 f v1 = toPrimV5 (f (toPrimitiveVector v1))
   case eRes of
     Right vec' -> toPrimitiveVector (compute arr) `shouldBe` vec'
     Left (_exc :: ErrorCall) ->
-      shouldThrow (pure $! computeAs P arr) selectErrorCall
+      shouldThrow (pure $! computeAs P arr) selectImpreciseException
 
 newtype SeedVector = SeedVector (VP.Vector Word32) deriving (Eq, Show)
 
@@ -175,7 +175,7 @@ prop_sgenerateM seed k f = withSeedV2 @DS @Word seed
                            (genWith (V.sgenerateM (Sz k)))
                            (genWith (VP.generateM k))
   where
-    genWith :: PrimMonad f => ((Int -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
+    genWith :: ((Int -> ST s Word) -> t) -> MWC.Gen s -> t
     genWith genM gen = genM (\i -> xor (apply f i) <$> uniform gen)
 
 
@@ -184,12 +184,12 @@ prop_siterateNM seed k a =
   withSeed @(V.Vector DS Word) seed (genWith (\f -> V.siterateNM (Sz k) f a))
   !==! withSeed seed (genWith (\f -> VP.iterateNM k f a))
   where
-    genWith :: PrimMonad f => ((Word -> f Word) -> t) -> MWC.Gen (PrimState f) -> t
+    genWith :: ((Word -> ST s Word) -> t) -> MWC.Gen s -> t
     genWith genM gen = genM (\prev -> xor prev <$> uniform gen)
 
 
 genWithUnfoldrM ::
-     PrimMonad f => ((Word -> f (Maybe (Word, Word))) -> t) -> MWC.Gen (PrimState f) -> t
+     ((Word -> ST s (Maybe (Word, Word))) -> t) -> MWC.Gen s -> t
 genWithUnfoldrM genM gen = genM $ \prev -> do
   x <- uniform gen
   let cur = prev `xor` x
@@ -217,44 +217,45 @@ prop_sunfoldrExactNM seed k a =
   (genWith (\f -> V.sunfoldrExactNM (Sz k) f a))
   (genWith (\f -> VP.unfoldrNM k (fmap Just . f) a))
   where
-    genWith :: PrimMonad f => ((Word -> f (Word, Word)) -> t) -> MWC.Gen (PrimState f) -> t
+    genWith :: ((Word -> ST s (Word, Word)) -> t) -> MWC.Gen s -> t
     genWith genM gen = genM $ \prev -> do
       x <- uniform gen
       pure (x, prev `xor` x)
 
 
-genWithMapM :: PrimMonad m => ((Word -> m Word) -> m a) -> MWC.Gen (PrimState m) -> m a
+genWithMapM :: ((Word -> ST s Word) -> ST s a) -> MWC.Gen s -> ST s a
 genWithMapM genM gen = genM $ \e -> xor e <$> uniform gen
-genWithMapWS :: PrimMonad m => ((Word -> MWC.Gen (PrimState m) -> m Word) -> m a) -> m a
+
+genWithMapWS :: ((Word -> MWC.Gen s -> ST s Word) -> ST s a) -> ST s a
 genWithMapWS genM = genM $ \e gen -> xor e <$> uniform gen
 
-genWithIMapM :: PrimMonad m => ((Int -> Word -> m Word) -> m a) -> MWC.Gen (PrimState m) -> m a
-genWithIMapM genM gen = genM $ \i e -> do
+genWithIMapM :: ((Int -> Word -> ST s Word) -> ST s a) -> MWC.Gen s -> ST s a
+genWithIMapM genM gen = genM $ \i e -> liftST $ do
   ir <- uniformR (0, fromIntegral i) gen
   xor ir . xor e <$> uniform gen
-genWithIMapWS :: PrimMonad m => ((Int -> Word -> MWC.Gen (PrimState m) -> m Word) -> m a) -> m a
+genWithIMapWS :: ((Int -> Word -> MWC.Gen s -> ST s Word) -> ST s a) -> ST s a
 genWithIMapWS genM =
   genM $ \i e gen -> do
     ir <- uniformR (0, fromIntegral i) gen
     xor ir . xor e <$> uniform gen
 
 
-genWithMapM_ :: PrimMonad m => ((Word -> m ()) -> m ()) -> MWC.Gen (PrimState m) -> m Word
+genWithMapM_ :: ((Word -> ST s ()) -> ST s ()) -> MWC.Gen s -> ST s Word
 genWithMapM_ genM gen = do
-  ref <- newMutVar =<< uniform gen
+  ref <- newURef =<< uniform gen
   genM $ \e -> do
     e' <- xor e <$> uniform gen
-    modifyMutVar ref (xor e')
-  readMutVar ref
+    modifyURef_ ref (xor e')
+  readURef ref
 
-genWithIMapM_ :: PrimMonad m => ((Int -> Word -> m ()) -> m ()) -> MWC.Gen (PrimState m) -> m Word
+genWithIMapM_ :: ((Int -> Word -> ST s ()) -> ST s ()) -> MWC.Gen s -> ST s Word
 genWithIMapM_ genM gen = do
-  ref <- newMutVar =<< uniform gen
+  ref <- newURef =<< uniform gen
   genM $ \i e -> do
     ir <- uniformR (0, fromIntegral i) gen
     e' <- xor ir . xor e <$> uniform gen
-    modifyMutVar ref (xor e')
-  readMutVar ref
+    modifyURef_ ref (xor e')
+  readURef ref
 
 prop_straverse :: SeedVector -> Array P Ix2 Word -> Property
 prop_straverse seed a =
@@ -304,7 +305,7 @@ prop_sfilterM seed g a =
   withSeed @(V.Vector DS Word) seed (genWith (`V.sfilterM` a))
   !==! withSeed seed (genWith (`VP.filterM` toPrimitiveVector a))
   where
-    genWith :: PrimMonad f => ((Word -> f Bool) -> t) -> MWC.Gen (PrimState f) -> t
+    genWith :: ((Word -> ST s Bool) -> t) -> MWC.Gen s -> t
     genWith genM gen = genM $ \e -> do
       x <- xor e <$> uniform gen
       pure $ apply g x
@@ -315,7 +316,7 @@ prop_sifilterM seed g a =
   !==! withSeed seed (genWith (\f -> VP.convert . VU.map snd <$> VU.filterM (uncurry f) vp))
   where
     vp = VU.imap (,) $ toUnboxedVector a
-    genWith :: PrimMonad f => ((Int -> Word -> f Bool) -> t) -> MWC.Gen (PrimState f) -> t
+    genWith :: ((Int -> Word -> ST s Bool) -> t) -> MWC.Gen s -> t
     genWith genM gen = genM $ \i e -> do
       ir <- uniformR (0, fromIntegral i) gen
       x <- xor ir . xor e <$> uniform gen
@@ -1076,8 +1077,8 @@ prop_siforM_iforM seed a =
   withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))
   === withSeed seed (genWithIMapM (iforM a))
 
-withSeedIO :: forall a. SeedVector -> (MWC.Gen (PrimState IO) -> IO a) -> IO a
-withSeedIO (SeedVector seed) f = MWC.initialize seed >>= f
+withSeedIO :: forall a. SeedVector -> (MWC.Gen RW -> ST RW a) -> IO a
+withSeedIO (SeedVector seed) f = liftST . f =<< MWC.initialize seed
 
 prop_sforM_forIO :: SeedVector -> Vector S Word -> Property
 prop_sforM_forIO seed a = property $
@@ -1115,7 +1116,7 @@ prop_siforM_iforWS seed@(SeedVector sv) a =
   property $ do
     wsArray <-
       do ws <- initWorkerStates (ParN 1) (const (MWC.initialize sv))
-         genWithIMapWS (iforWS ws a)
+         liftST $ genWithIMapWS (iforWS ws a)
     wsArray `shouldBe` withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))
 
 prop_smapM_mapWS :: SeedVector -> Vector S Word -> Property
@@ -1123,5 +1124,7 @@ prop_smapM_mapWS seed@(SeedVector sv) a =
   property $ do
     wsArray <-
       do ws <- initWorkerStates Seq (const (MWC.initialize sv))
-         genWithMapWS (\f -> mapWS ws f a)
+         liftST $ genWithMapWS (\f -> mapWS ws f a)
     wsArray `shouldBe` withSeed @(V.Vector P Word) seed (fmap compute . genWithMapM (`V.smapM` a))
+
+

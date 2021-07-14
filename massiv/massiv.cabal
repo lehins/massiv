@@ -84,10 +84,7 @@ library
                      , random >= 1.2.0
                      , vector
 
-                     , exceptions
-                     , unliftio-core
                      , primitive
-                     , deepseq
 
   include-dirs: include
   install-includes: massiv.h

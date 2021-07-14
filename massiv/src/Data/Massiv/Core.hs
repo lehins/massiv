@@ -14,7 +14,7 @@ module Data.Massiv.Core
   , Matrix
   , MMatrix
   , Elt
-  , Load(loadArrayST, loadArrayWithSetST)
+  , Load(loadArrayWithST, loadArrayWithSetST)
   , Stream(..)
   , Source
   , Size

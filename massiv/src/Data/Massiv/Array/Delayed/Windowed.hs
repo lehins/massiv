@@ -26,12 +26,11 @@ module Data.Massiv.Array.Delayed.Windowed
   , makeWindowedArray
   ) where
 
-import Control.Monad (when)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Core.Common
-import Data.Massiv.Core.List (showArrayList, showsArrayPrec)
+import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 import Data.Maybe (fromMaybe)
 import GHC.TypeLits
 
@@ -216,7 +215,7 @@ instance Size DW where
 instance Load DW Ix1 e where
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
   {-# INLINE makeArray #-}
-  loadArrayM scheduler arr uWrite = do
+  loadArrayWithST scheduler arr uWrite = do
     (loadWindow, wStart, wEnd) <- loadWithIx1 (scheduleWork scheduler) arr uWrite
     let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
@@ -225,10 +224,10 @@ instance Load DW Ix1 e where
     when (slackWidth > 0) $
       let !itSlack = numWorkers scheduler * chunkWidth + wStart
        in loadWindow itSlack (itSlack + slackWidth)
-  {-# INLINE loadArrayM #-}
+  {-# INLINE loadArrayWithST #-}
 
 instance StrideLoad DW Ix1 e where
-  loadArrayWithStrideM scheduler stride sz arr uWrite = do
+  loadArrayWithStrideST scheduler stride sz arr uWrite = do
       (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 (scheduleWork scheduler) arr stride sz uWrite
       let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
       loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
@@ -237,16 +236,15 @@ instance StrideLoad DW Ix1 e where
       when (slackWidth > 0) $
         let !itSlack = numWorkers scheduler * chunkWidth + wStart
          in loadWindow (itSlack, itSlack + slackWidth)
-  {-# INLINE loadArrayWithStrideM #-}
+  {-# INLINE loadArrayWithStrideST #-}
 
 loadArrayWithIx1 ::
-     (Monad m)
-  => (m () -> m ())
+     (ST s () -> ST s ())
   -> Array DW Ix1 e
   -> Stride Ix1
   -> Sz1
-  -> (Ix1 -> e -> m a)
-  -> m ((Ix1, Ix1) -> m (), (Ix1, Ix1))
+  -> (Ix1 -> e -> ST s a)
+  -> ST s ((Ix1, Ix1) -> ST s (), (Ix1, Ix1))
 loadArrayWithIx1 with (DWArray (DArray _ arrSz indexB) mWindow) stride _ uWrite = do
   let Window it wk indexW _ = fromMaybe zeroWindow mWindow
       wEnd = it + unSz wk
@@ -266,11 +264,10 @@ loadArrayWithIx1 with (DWArray (DArray _ arrSz indexB) mWindow) stride _ uWrite 
 
 
 loadWithIx2 ::
-     Monad m
-  => (m () -> m ())
-  -> Array DW Ix2 t1
-  -> (Int -> t1 -> m ())
-  -> m (Ix2 -> m (), Ix2)
+     (ST s () -> ST s ())
+  -> Array DW Ix2 e
+  -> (Int -> e -> ST s ())
+  -> ST s (Ix2 -> ST s (), Ix2)
 loadWithIx2 with arr uWrite = do
   let DWArray (DArray _ (Sz (m :. n)) indexB) window = arr
   let Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
@@ -292,13 +289,12 @@ loadWithIx2 with arr uWrite = do
 {-# INLINE loadWithIx2 #-}
 
 loadArrayWithIx2 ::
-     Monad m
-  => (m () -> m ())
+     (ST s () -> ST s ())
   -> Array DW Ix2 e
   -> Stride Ix2
   -> Sz2
-  -> (Int -> e -> m ())
-  -> m (Ix2 -> m (), Ix2)
+  -> (Int -> e -> ST s ())
+  -> ST s (Ix2 -> ST s (), Ix2)
 loadArrayWithIx2 with arr stride sz uWrite = do
   let DWArray (DArray _ (Sz (m :. n)) indexB) window = arr
   let Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
@@ -338,36 +334,36 @@ loadWindowIx2 nWorkers loadWindow (it :. ib) = do
 instance Load DW Ix2 e where
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
   {-# INLINE makeArray #-}
-  loadArrayM scheduler arr uWrite =
+  loadArrayWithST scheduler arr uWrite =
     loadWithIx2 (scheduleWork scheduler) arr uWrite >>=
     uncurry (loadWindowIx2 (numWorkers scheduler))
-  {-# INLINE loadArrayM #-}
+  {-# INLINE loadArrayWithST #-}
 
 instance StrideLoad DW Ix2 e where
-  loadArrayWithStrideM scheduler stride sz arr uWrite =
+  loadArrayWithStrideST scheduler stride sz arr uWrite =
     loadArrayWithIx2 (scheduleWork scheduler) arr stride sz uWrite >>=
     uncurry (loadWindowIx2 (numWorkers scheduler))
-  {-# INLINE loadArrayWithStrideM #-}
+  {-# INLINE loadArrayWithStrideST #-}
 
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
   {-# INLINE makeArray #-}
-  loadArrayM = loadWithIxN
-  {-# INLINE loadArrayM #-}
+  loadArrayWithST = loadWithIxN
+  {-# INLINE loadArrayWithST #-}
 
 instance (Index (IxN n), StrideLoad DW (Ix (n - 1)) e) => StrideLoad DW (IxN n) e where
-  loadArrayWithStrideM = loadArrayWithIxN
-  {-# INLINE loadArrayWithStrideM #-}
+  loadArrayWithStrideST = loadArrayWithIxN
+  {-# INLINE loadArrayWithStrideST #-}
 
 loadArrayWithIxN ::
-     (Index ix, Monad m, StrideLoad DW (Lower ix) e)
-  => Scheduler m ()
+     (Index ix, StrideLoad DW (Lower ix) e)
+  => Scheduler s ()
   -> Stride ix
   -> Sz ix
   -> Array DW ix e
-  -> (Int -> e -> m ())
-  -> m ()
+  -> (Int -> e -> ST s ())
+  -> ST s ()
 loadArrayWithIxN scheduler stride szResult arr uWrite = do
   let DWArray darr window = arr
       DArray {dSize = szSource, dIndex = indexBorder} = darr
@@ -409,11 +405,11 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
 
 
 loadWithIxN ::
-     (Index ix, Monad m, Load DW (Lower ix) e)
-  => Scheduler m ()
+     (Index ix, Load DW (Lower ix) e)
+  => Scheduler s ()
   -> Array DW ix e
-  -> (Int -> e -> m ())
-  -> m ()
+  -> (Int -> e -> ST s ())
+  -> ST s ()
 loadWithIxN scheduler arr uWrite = do
   let DWArray darr window = arr
       DArray {dSize = sz, dIndex = indexBorder} = darr
@@ -433,7 +429,7 @@ loadWithIxN scheduler arr uWrite = do
         DWArray {dwArray = DArray Seq szL (indexBorder . consDim i), dwWindow = ($ i) <$> mw}
       loadLower mw !i =
         scheduleWork_ scheduler $
-        loadArrayM scheduler (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
+        loadArrayWithM scheduler (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
       {-# NOINLINE loadLower #-}
   loopM_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
   loopM_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))

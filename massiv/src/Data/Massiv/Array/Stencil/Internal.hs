@@ -20,8 +20,8 @@ module Data.Massiv.Array.Stencil.Internal
   ) where
 
 import Control.Applicative
-import Control.DeepSeq
 import Data.Massiv.Core.Common
+import Primal.Eval
 
 -- | Stencil is abstract description of how to handle elements in the neighborhood of
 -- every array cell in order to compute a value for the cells in the new array. Use

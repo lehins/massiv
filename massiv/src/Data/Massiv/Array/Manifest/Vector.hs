@@ -91,7 +91,7 @@ castFromVector comp sz vector = do
 --
 -- @since 0.3.0
 fromVectorM ::
-     (MonadThrow m, Typeable v, VG.Vector v a, Mutable r a, Load (ARepr v) ix a, Load r ix a)
+     (Raises m, Typeable v, VG.Vector v a, Mutable r a, Load (ARepr v) ix a, Load r ix a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
@@ -114,7 +114,7 @@ fromVector' ::
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
   -> Array r ix a
-fromVector' comp sz = throwEither . fromVectorM comp sz
+fromVector' comp sz = raiseLeftImprecise . fromVectorM comp sz
 {-# INLINE fromVector' #-}
 
 -- | /O(1)/ - conversion from `Mutable` array to a corresponding vector. Will

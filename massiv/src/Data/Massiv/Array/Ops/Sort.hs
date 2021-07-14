@@ -19,8 +19,6 @@ module Data.Massiv.Array.Ops.Sort
   , unsafeUnstablePartitionRegionM
   ) where
 
-import Control.Monad.IO.Unlift
-import Control.Monad (when)
 import Control.Scheduler
 import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
@@ -67,8 +65,8 @@ tally arr
 --
 -- @since 1.0.0
 unsafeUnstablePartitionRegionM ::
-     forall r e m. (Mutable r e, PrimMonad m)
-  => MVector (PrimState m) r e
+     forall r e m s. (Mutable r e, Primal s m)
+  => MVector r e s
   -> (e -> m Bool)
   -> Ix1 -- ^ Start index of the region
   -> Ix1 -- ^ End index of the region
@@ -113,7 +111,7 @@ quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 --
 -- @since 0.6.1
 quicksortByM ::
-     (Mutable r e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
+     (Mutable r e, UnliftPrimal RW m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
 quicksortByM f arr = withRunInIO $ \run -> withMArray_ arr (quicksortByM_ (\x y -> run (f x y)))
 {-# INLINE quicksortByM #-}
 
@@ -129,11 +127,11 @@ quicksortBy f arr =
 --
 -- @since 0.3.2
 quicksortM_ ::
-     (Ord e, Mutable r e, PrimMonad m)
-  => Scheduler m ()
-  -> MVector (PrimState m) r e
+     (Ord e, Mutable r e, Primal s m)
+  => Scheduler s ()
+  -> MVector r e s
   -> m ()
-quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e1 == e2)
+quicksortM_ s = liftST . quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e1 == e2) s
 {-# INLINE quicksortM_ #-}
 
 
@@ -141,10 +139,10 @@ quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e
 --
 -- @since 0.6.1
 quicksortByM_ ::
-     (Mutable r e, PrimMonad m)
+     (Mutable r e, UnliftPrimal s m)
   => (e -> e -> m Ordering)
-  -> Scheduler m ()
-  -> MVector (PrimState m) r e
+  -> Scheduler s ()
+  -> MVector r e s
   -> m ()
 quicksortByM_ compareM =
   quicksortInternalM_ (\x y -> (LT ==) <$> compareM x y) (\x y -> (EQ ==) <$> compareM x y)
@@ -152,11 +150,11 @@ quicksortByM_ compareM =
 
 
 quicksortInternalM_ ::
-     (Mutable r e, PrimMonad m)
+     (Mutable r e, UnliftPrimal s m)
   => (e -> e -> m Bool)
   -> (e -> e -> m Bool)
-  -> Scheduler m ()
-  -> MVector (PrimState m) r e
+  -> Scheduler s ()
+  -> MVector r e s
   -> m ()
 quicksortInternalM_ fLT fEQ scheduler marr =
   scheduleWork scheduler $ qsort (numWorkers scheduler) 0 (unSz (msize marr) - 1)

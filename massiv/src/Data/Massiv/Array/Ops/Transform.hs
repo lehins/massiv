@@ -1033,7 +1033,7 @@ upsample !fillWith safeStride arr =
     load :: Loader e
     load scheduler startAt uWrite uSet = do
       uSet startAt (toLinearSz newsz) fillWith
-      loadArrayST scheduler arr (\i -> uWrite (adjustLinearStride (i + startAt)))
+      loadArrayWithST scheduler arr (\i -> uWrite (adjustLinearStride (i + startAt)))
     {-# INLINE load #-}
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
     {-# INLINE adjustLinearStride #-}

@@ -11,7 +11,8 @@ module Test.Massiv.Utils
   , assertSomeException
   , assertSomeExceptionIO
   , toStringException
-  , selectErrorCall
+  , selectImpreciseException
+  --, selectErrorCall
   , ExpectedException(..)
   , applyFun2Compat
   , expectProp
@@ -37,8 +38,7 @@ import Test.Hspec as X
 import Test.Hspec.QuickCheck as X
 import Test.QuickCheck.Function as X
 import Control.DeepSeq as X (NFData, deepseq)
-import Control.Exception (ErrorCall (..))
-import UnliftIO.Exception (Exception(..), SomeException, catch, catchAny)
+import Primal.Exception
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup as X ((<>))
 #endif
@@ -74,7 +74,7 @@ assertExceptionIO ::
 assertExceptionIO isExc action =
   monadicIO $
   run $
-  catch
+  catchSync
     (do res <- action
         res `deepseq` return (counterexample "Did not receive an exception" False))
     (\exc -> displayException exc `deepseq` return (property (isExc exc)))
@@ -83,7 +83,7 @@ assertSomeExceptionIO :: NFData a => IO a -> Property
 assertSomeExceptionIO action =
   monadicIO $
   run $
-  catchAny
+  catchAllSync
     (do res <- action
         res `deepseq` return (counterexample "Did not receive an exception" False))
     (\exc -> displayException exc `deepseq` return (property True))
@@ -92,10 +92,13 @@ assertSomeExceptionIO action =
 toStringException :: Either SomeException a -> Either String a
 toStringException = either (Left . displayException) Right
 
+selectImpreciseException :: ImpreciseException -> Bool
+selectImpreciseException = \case
+  ImpreciseException exc loc -> displayException exc `deepseq` loc `deepseq` True
 
-selectErrorCall :: ErrorCall -> Bool
-selectErrorCall = \case
-  ErrorCallWithLocation err loc -> err `deepseq` loc `deepseq` True
+-- selectErrorCall :: ErrorCall -> Bool
+-- selectErrorCall = \case
+--   ErrorCallWithLocation err loc -> err `deepseq` loc `deepseq` True
 
 data ExpectedException = ExpectedException deriving (Show, Eq)
 

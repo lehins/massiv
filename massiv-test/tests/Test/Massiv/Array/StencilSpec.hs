@@ -58,7 +58,7 @@ prop_DangerousStencil ::
   -> SzIx ix
   -> Property
 prop_DangerousStencil _ (DimIx r) (SzIx sz center) =
-  assertException selectErrorCall arr
+  assertException selectImpreciseException arr
   where
     stencil = makeStencil sz center $ \get -> get ix' :: Int
     arr = computeAs P (mapStencil Edge stencil (makeArray Seq sz (const 0) :: Array P ix Int))

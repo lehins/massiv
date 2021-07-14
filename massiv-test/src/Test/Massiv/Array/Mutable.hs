@@ -73,7 +73,7 @@ prop_Shrink ::
   => Property
 prop_Shrink  =
   property $ \ (ArrIx arr ix) -> runST $ do
-    marr :: MArray s r ix e <- thawS arr
+    marr :: MArray r ix e s <- thawS arr
     sarr <- unsafeFreeze (getComp arr) =<< unsafeLinearShrink marr (Sz ix)
     pure (A.foldlS (.&&.) (property True) $ A.zipWith (==) (flatten arr) (flatten sarr))
 
@@ -249,8 +249,8 @@ prop_atomicWriteIntArray =
 prop_atomicOpIntArray ::
      forall ix. (Show (Array P ix Int), Arbitrary ix, Index ix)
   => (Int -> Int -> Int)
-  -> (forall m. PrimMonad m =>
-                  MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int))
+  -> (forall s m. Primal s m =>
+                    MArray P ix Int s -> ix -> Int -> m (Maybe Int))
   -> Property
 prop_atomicOpIntArray f atomicAction =
   property $ \arr (ix :: ix) (e :: Int) -> do

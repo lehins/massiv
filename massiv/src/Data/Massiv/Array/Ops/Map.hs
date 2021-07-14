@@ -49,6 +49,10 @@ module Data.Massiv.Array.Ops.Map
   , iforIO_
   , imapSchedulerM_
   , iforSchedulerM_
+  , loadArrayM
+  , loadArrayWithM
+  , loadArrayWithSetM
+  , loadArrayWithStrideM
   -- ** Zipping
   , zip
   , zip3
@@ -73,6 +77,7 @@ import Control.Scheduler
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
+import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Ops.Construct (makeArrayA, makeArrayLinearA)
 import Data.Massiv.Core.Common
 import Prelude hiding (map, mapM, mapM_, sequenceA, traverse, unzip, unzip3,

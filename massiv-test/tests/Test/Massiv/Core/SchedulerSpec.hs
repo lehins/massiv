@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Test.Massiv.Core.SchedulerSpec (spec) where
 
-import Control.Exception.Base (ArithException(DivideByZero))
 import Data.Massiv.Array as A
 import Test.Massiv.Core
 import Prelude as P

@@ -54,10 +54,6 @@ module Data.Massiv.Array.Manifest.Boxed
   , deepseqArray
   ) where
 
-import Control.DeepSeq (NFData(..), deepseq)
-import Control.Exception
-import Control.Monad ((>=>))
-import Control.Monad.Primitive
 import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
@@ -76,7 +72,8 @@ import qualified Data.Vector as VB
 import qualified Data.Vector.Mutable as MVB
 import GHC.Exts as GHC
 import Prelude hiding (mapM, replicate)
-import System.IO.Unsafe (unsafePerformIO)
+import Primal.Monad.Unsafe (unsafePerformIO)
+import Primal.Eval
 
 #include "massiv.h"
 
@@ -161,37 +158,38 @@ instance Manifest BL e where
                 SafeSz . sizeofArray, A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
+data instance MArray BL ix e s =
+  MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
+
 
 instance Mutable BL e where
-  data MArray s BL ix e = MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
-
   msize (MBLArray sz _ _) = sz
   {-# INLINE msize #-}
 
   munsafeResize sz (MBLArray _ off marr) = MBLArray sz off marr
   {-# INLINE munsafeResize #-}
 
-  unsafeThaw (BLArray _ sz o a) = MBLArray sz o <$> A.unsafeThawArray a
+  unsafeThaw (BLArray _ sz o a) = MBLArray sz o <$> liftST (A.unsafeThawArray a)
   {-# INLINE unsafeThaw #-}
 
-  unsafeFreeze comp (MBLArray sz o ma) = BLArray comp sz o <$> A.unsafeFreezeArray ma
+  unsafeFreeze comp (MBLArray sz o ma) = BLArray comp sz o <$> liftST (A.unsafeFreezeArray ma)
   {-# INLINE unsafeFreeze #-}
 
-  unsafeNew sz = MBLArray sz 0 <$> A.newArray (totalElem sz) uninitialized
+  unsafeNew sz = MBLArray sz 0 <$> liftST (A.newArray (totalElem sz) uninitialized)
   {-# INLINE unsafeNew #-}
 
   initialize _ = return ()
   {-# INLINE initialize #-}
 
-  newMArray sz e = MBLArray sz 0 <$> A.newArray (totalElem sz) e
+  newMArray sz e = MBLArray sz 0 <$> liftST (A.newArray (totalElem sz) e)
   {-# INLINE newMArray #-}
 
-  unsafeLinearRead (MBLArray _ o ma) i =
+  unsafeLinearRead (MBLArray _ o ma) i = liftST $
     INDEX_CHECK("(Mutable BL ix e).unsafeLinearRead",
                 SafeSz . sizeofMutableArray, A.readArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBLArray _sz o ma) i e = e `seq`
+  unsafeLinearWrite (MBLArray _sz o ma) i e = liftST $
     INDEX_CHECK("(Mutable BL ix e).unsafeLinearWrite",
                 SafeSz . sizeofMutableArray, A.writeArray) ma (i + o) e
   {-# INLINE unsafeLinearWrite #-}
@@ -211,8 +209,8 @@ instance Index ix => Load BL ix e where
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  loadArrayWithST !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayWithST #-}
 
 instance Index ix => StrideLoad BL ix e
 
@@ -339,9 +337,9 @@ instance Manifest B e where
   unsafeLinearIndexM = coerce unsafeLinearIndexM
   {-# INLINE unsafeLinearIndexM #-}
 
+newtype instance MArray B ix e s = MBArray (MArray BL ix e s)
 
 instance Mutable B e where
-  newtype MArray s B ix e = MBArray (MArray s BL ix e)
 
   msize = msize . coerce
   {-# INLINE msize #-}
@@ -377,8 +375,8 @@ instance Index ix => Load B ix e where
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM scheduler = coerce (loadArrayM scheduler)
-  {-# INLINE loadArrayM #-}
+  loadArrayWithST scheduler = coerce (loadArrayWithST scheduler)
+  {-# INLINE loadArrayWithST #-}
 
 instance Index ix => StrideLoad B ix e
 
@@ -508,9 +506,9 @@ instance NFData e => Manifest BN e where
   unsafeLinearIndexM arr = unsafeLinearIndexM (coerce arr)
   {-# INLINE unsafeLinearIndexM #-}
 
+newtype instance MArray BN ix e s = MBNArray (MArray BL ix e s)
 
 instance NFData e => Mutable BN e where
-  newtype MArray s BN ix e = MBNArray (MArray s BL ix e)
 
   msize = msize . coerce
   {-# INLINE msize #-}
@@ -544,8 +542,8 @@ instance (Index ix, NFData e) => Load BN ix e where
   {-# INLINE makeArrayLinear #-}
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  loadArrayWithST !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayWithST #-}
 
 instance (Index ix, NFData e) => StrideLoad BN ix e
 
@@ -581,8 +579,8 @@ instance (NFData e, Num e) => Numeric BN e where
 -- Helper functions --
 ----------------------
 
-uninitialized :: a
-uninitialized = throw Uninitialized
+uninitialized :: HasCallStack => a
+uninitialized = raiseImprecise Uninitialized
 
 ---------------------
 -- WHNF conversion --
@@ -648,7 +646,7 @@ forceLazyArray arr = arr `deepseqArray` BNArray arr
 -- applied to the array.
 --
 -- @since 0.2.1
-unwrapMutableArray :: MArray s B ix e -> A.MutableArray s e
+unwrapMutableArray :: MArray B ix e s -> A.MutableArray s e
 unwrapMutableArray (MBArray (MBLArray _ _ marr)) = marr
 {-# INLINE unwrapMutableArray #-}
 
@@ -657,7 +655,7 @@ unwrapMutableArray (MBArray (MBLArray _ _ marr)) = marr
 -- applied to the array.
 --
 -- @since 0.6.0
-unwrapMutableLazyArray :: MArray s BL ix e -> A.MutableArray s e
+unwrapMutableLazyArray :: MArray BL ix e s -> A.MutableArray s e
 unwrapMutableLazyArray (MBLArray _ _ marr) = marr
 {-# INLINE unwrapMutableLazyArray #-}
 
@@ -666,10 +664,10 @@ unwrapMutableLazyArray (MBLArray _ _ marr) = marr
 --
 -- @since 0.2.1
 evalMutableArray ::
-     PrimMonad m
-  => A.MutableArray (PrimState m) e -- ^ Mutable array that will get wrapped
-  -> m (MArray (PrimState m) B Ix1 e)
-evalMutableArray = fmap MBArray . fromMutableArraySeq seq
+     Primal s m
+  => A.MutableArray s e -- ^ Mutable array that will get wrapped
+  -> m (MVector B e s)
+evalMutableArray = fmap MBArray . liftST . fromMutableArraySeq seq
 {-# INLINE evalMutableArray #-}
 
 -------------------
@@ -691,7 +689,7 @@ evalNormalFormArray ::
      NFData e
   => Comp -- ^ Computation strategy
   -> A.Array e -- ^ Lazy boxed array
-  -> Array N Ix1 e
+  -> Vector N e
 evalNormalFormArray comp = forceLazyArray . setComp comp . wrapLazyArray
 {-# INLINE evalNormalFormArray #-}
 
@@ -700,7 +698,7 @@ evalNormalFormArray comp = forceLazyArray . setComp comp . wrapLazyArray
 -- slicing that has been applied to the array.
 --
 -- @since 0.2.1
-unwrapNormalFormMutableArray :: MArray s N ix e -> A.MutableArray s e
+unwrapNormalFormMutableArray :: MArray N ix e s -> A.MutableArray s e
 unwrapNormalFormMutableArray = unwrapMutableLazyArray . coerce
 {-# INLINE unwrapNormalFormMutableArray #-}
 
@@ -708,11 +706,8 @@ unwrapNormalFormMutableArray = unwrapMutableLazyArray . coerce
 -- | /O(n)/ - Wrap mutable boxed array and evaluate all elements to NF.
 --
 -- @since 0.2.1
-evalNormalFormMutableArray ::
-     (PrimMonad m, NFData e)
-  => A.MutableArray (PrimState m) e
-  -> m (MArray (PrimState m) N Ix1 e)
-evalNormalFormMutableArray marr = MBNArray <$> fromMutableArraySeq deepseq marr
+evalNormalFormMutableArray :: (Primal s m, NFData e) => A.MutableArray s e -> m (MVector N e s)
+evalNormalFormMutableArray marr = MBNArray <$> liftST (fromMutableArraySeq deepseq marr)
 {-# INLINE evalNormalFormMutableArray #-}
 
 
@@ -720,11 +715,7 @@ evalNormalFormMutableArray marr = MBNArray <$> fromMutableArraySeq deepseq marr
 -- Helper functions --
 ----------------------
 
-fromMutableArraySeq ::
-     PrimMonad m
-  => (e -> m () -> m a)
-  -> A.MutableArray (PrimState m) e
-  -> m (MArray (PrimState m) BL Ix1 e)
+fromMutableArraySeq :: (e -> ST s () -> ST s a) -> A.MutableArray s e -> ST s (MVector BL e s)
 fromMutableArraySeq with ma = do
   let !sz = sizeofMutableArray ma
   loopM_ 0 (< sz) (+ 1) (A.readArray ma >=> (`with` return ()))
@@ -766,7 +757,7 @@ toBoxedVector arr = runST $ VB.unsafeFreeze . toBoxedMVector =<< unsafeThaw arr
 -- | /O(1)/ - Converts a boxed `MArray` into a `VMB.MVector`.
 --
 -- @since 0.5.0
-toBoxedMVector :: Index ix => MArray s BL ix a -> MVB.MVector s a
+toBoxedMVector :: Index ix => MArray BL ix a s -> MVB.MVector s a
 toBoxedMVector (MBLArray sz o marr) = MVB.MVector o (totalElem sz) marr
 {-# INLINE toBoxedMVector #-}
 
@@ -783,10 +774,10 @@ evalBoxedVector comp = evalLazyArray . setComp comp . fromBoxedVector
 -- sequentially. Both keep pointing to the same memory
 --
 -- @since 0.5.0
-evalBoxedMVector :: PrimMonad m => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) B Ix1 a)
+evalBoxedMVector :: Primal s m => MVB.MVector s a -> m (MVector B a s)
 evalBoxedMVector (MVB.MVector o k ma) =
   let marr = MBArray (MBLArray (SafeSz k) o ma)
-   in marr <$ loopM_ o (< k) (+ 1) (A.readArray ma >=> (`seq` pure ()))
+   in marr <$ liftST (loopM_ o (< k) (+ 1) (A.readArray ma >=> (`seq` pure ())))
 {-# INLINE evalBoxedMVector #-}
 
 
@@ -805,7 +796,7 @@ fromBoxedVector v =
 -- pointing to the same memory
 --
 -- @since 0.6.0
-fromBoxedMVector :: MVB.MVector s a -> MArray s BL Ix1 a
+fromBoxedMVector :: MVB.MVector s a -> MArray BL Ix1 a s
 fromBoxedMVector (MVB.MVector o k ma) = MBLArray (SafeSz k) o ma
 {-# INLINE fromBoxedMVector #-}
 
@@ -832,10 +823,10 @@ coerceBoxedArray = coerce
 --
 -- @since 0.5.0
 evalNormalBoxedMVector ::
-     (NFData a, PrimMonad m) => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) N Ix1 a)
+     (NFData a, Primal s m) => MVB.MVector s a -> m (MVector N a s)
 evalNormalBoxedMVector (MVB.MVector o k ma) =
   let marr = MBNArray (MBLArray (SafeSz k) o ma)
-   in marr <$ loopM_ o (< k) (+ 1) (A.readArray ma >=> (`deepseq` pure ()))
+   in marr <$ liftST (loopM_ o (< k) (+ 1) (A.readArray ma >=> (`deepseq` pure ())))
 {-# INLINE evalNormalBoxedMVector #-}
 
 -- | /O(n)/ - Convert a boxed vector and evaluate all elements to WHNF. Computation

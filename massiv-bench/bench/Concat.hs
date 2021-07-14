@@ -32,7 +32,7 @@ main = do
         , bench "concatMutableM DL" $
           whnfIO (concatMutableM (P.map toLoadArray arrays) :: IO (Matrix P Int))
         , bench "concatOuterM" $
-          whnf (computeAs P . throwEither . concatOuterM . P.map toLoadArray) arrays
+          whnf (computeAs P . raiseLeftImprecise . concatOuterM . P.map toLoadArray) arrays
         , bench "concatNewM" $ whnfIO $ concatNewM arrays
         --, bench "mconcat (DL)" $ whnf (A.computeAs P . mconcat . P.map toLoadArray) vectors
         ]
@@ -55,14 +55,14 @@ concatMutableM arrsF =
         F.foldrM (\ !csz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM csz n) ([], []) szs
       -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
       F.traverse_
-        (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
+        (\(sz', _) -> raiseM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
         (P.dropWhile ((== szl) . snd) $ P.zip szs szls)
       let kTotal = SafeSz $ F.foldl' (+) k ks
       newSz <- insertSzM (SafeSz szl) n kTotal
       unsafeCreateArray_ (foldMap getComp arrsF) newSz $ \scheduler marr -> do
         let arrayLoader !offset arr = do
               scheduleWork scheduler $ do
-                loadArrayM scheduler arr (\i -> unsafeLinearWrite marr (i + offset))
+                liftST $ loadArrayWithST scheduler arr (\i -> unsafeLinearWrite marr (i + offset))
               pure (offset + totalElem (size arr))
         foldM_ arrayLoader 0 $ a : arrs
 {-# INLINE concatMutableM #-}
@@ -84,7 +84,7 @@ concatNewM arrsF =
         F.foldrM (\ !csz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM csz n) ([], []) szs
       -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
       F.traverse_
-        (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
+        (\(sz', _) -> raiseM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
         (P.dropWhile ((== szl) . snd) $ P.zip szs szls)
       let kTotal = SafeSz $ F.foldl' (+) k ks
       newSz <- insertSzM (SafeSz szl) n kTotal

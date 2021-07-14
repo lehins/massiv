@@ -25,7 +25,6 @@ module Data.Massiv.Array.Mutable.Atomic
   , casIntArray
   ) where
 
-import Control.Monad.Primitive
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Core.Common
 
@@ -35,7 +34,7 @@ import Data.Massiv.Core.Common
 --
 -- @since 0.3.0
 atomicReadIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> m (Maybe Int)
 atomicReadIntArray marr ix
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicReadIntArray marr ix
   | otherwise = pure Nothing
@@ -47,7 +46,7 @@ atomicReadIntArray marr ix
 --
 -- @since 0.3.0
 atomicWriteIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Bool
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> Int -> m Bool
 atomicWriteIntArray marr ix f
   | isSafeIndex (msize marr) ix = unsafeAtomicWriteIntArray marr ix f >> pure True
   | otherwise = pure False
@@ -58,8 +57,8 @@ atomicWriteIntArray marr ix f
 --
 -- @since 0.3.0
 casIntArray ::
-     (Index ix, PrimMonad m)
-  => MArray (PrimState m) P ix Int -- ^ Array to mutate
+     (Index ix, Primal s m)
+  => MArray P ix Int s -- ^ Array to mutate
   -> ix -- ^ Index at which to mutate
   -> Int -- ^ Expected value
   -> Int -- ^ New value
@@ -75,7 +74,7 @@ casIntArray marr ix e n
 --
 -- @since 0.3.0
 atomicModifyIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> (Int -> Int) -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> (Int -> Int) -> m (Maybe Int)
 atomicModifyIntArray marr ix f
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicModifyIntArray marr ix f
   | otherwise = pure Nothing
@@ -86,7 +85,7 @@ atomicModifyIntArray marr ix f
 --
 -- @since 0.3.0
 atomicAddIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> Int -> m (Maybe Int)
 atomicAddIntArray marr ix e
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicAddIntArray marr ix e
   | otherwise = pure Nothing
@@ -97,7 +96,7 @@ atomicAddIntArray marr ix e
 --
 -- @since 0.3.0
 atomicSubIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> Int -> m (Maybe Int)
 atomicSubIntArray marr ix e
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicSubIntArray marr ix e
   | otherwise = pure Nothing
@@ -108,7 +107,7 @@ atomicSubIntArray marr ix e
 --
 -- @since 0.3.0
 atomicAndIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> Int -> m (Maybe Int)
 atomicAndIntArray marr ix e
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicAndIntArray marr ix e
   | otherwise = pure Nothing
@@ -119,7 +118,7 @@ atomicAndIntArray marr ix e
 --
 -- @since 0.3.0
 atomicNandIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> Int -> m (Maybe Int)
 atomicNandIntArray marr ix e
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicNandIntArray marr ix e
   | otherwise = pure Nothing
@@ -130,7 +129,7 @@ atomicNandIntArray marr ix e
 --
 -- @since 0.3.0
 atomicOrIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> Int -> m (Maybe Int)
 atomicOrIntArray marr ix e
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicOrIntArray marr ix e
   | otherwise = pure Nothing
@@ -141,7 +140,7 @@ atomicOrIntArray marr ix e
 --
 -- @since 0.3.0
 atomicXorIntArray ::
-     (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
+     (Index ix, Primal s m) => MArray P ix Int s -> ix -> Int -> m (Maybe Int)
 atomicXorIntArray marr ix e
   | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicXorIntArray marr ix e
   | otherwise = pure Nothing

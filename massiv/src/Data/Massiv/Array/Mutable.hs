@@ -295,7 +295,7 @@ computeInto !mArr !arr =
     unless (totalElem (msize mArr) == totalElem (size arr)) $
       raiseM $ SizeElementsMismatchException (msize mArr) (size arr)
     withMassivScheduler_ (getComp arr) $ \scheduler ->
-      liftST $ loadArrayST scheduler arr (unsafeLinearWrite mArr)
+      liftST $ loadArrayWithST scheduler arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
 
 

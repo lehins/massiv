@@ -28,7 +28,7 @@ prop_UnsafeNewMsize ::
      (Arbitrary ix, Index ix, Mutable r e)
   => Property
 prop_UnsafeNewMsize = property $ \ sz -> do
-  marr :: MArray RealWorld r ix e <- unsafeNew sz
+  marr :: MArray r ix e RW <- unsafeNew sz
   sz `shouldBe` msize marr
 
 prop_UnsafeNewLinearWriteRead ::
@@ -36,7 +36,7 @@ prop_UnsafeNewLinearWriteRead ::
      (Eq e, Show e, Mutable r e, Index ix, Arbitrary ix, Arbitrary e)
   => Property
 prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
-  marr :: MArray RealWorld r ix e <- unsafeNew sz
+  marr :: MArray r ix e RW <- unsafeNew sz
   let i = toLinearIndex sz ix
   unsafeLinearWrite marr i e1
   unsafeLinearRead marr i `shouldReturn` e1
@@ -79,9 +79,9 @@ prop_UnsafeInitialize ::
 prop_UnsafeInitialize =
   property $ \comp sz ->
     runST $ do
-      marr1 :: MArray s r ix e <- unsafeNew sz
+      marr1 :: MArray r ix e s <- unsafeNew sz
       initialize marr1
-      marr2 :: MArray s r ix e <- initializeNew Nothing sz
+      marr2 :: MArray r ix e s <- initializeNew Nothing sz
       (===) <$> unsafeFreeze comp marr1 <*> unsafeFreeze comp marr2
 
 

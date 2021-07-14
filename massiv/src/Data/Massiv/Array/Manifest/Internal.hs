@@ -35,6 +35,7 @@ module Data.Massiv.Array.Manifest.Internal
   , convertProxy
   , gcastArr
   , loadArrayM
+  , loadArrayWithM
   , loadArrayWithSetM
   , loadArrayWithStrideM
   , fromRaggedArrayM
@@ -82,11 +83,21 @@ loadArrayM ::
   -> Array r ix e -- ^ Array that is being loaded
   -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
   -> m ()
-loadArrayM scheduler arr uWrite =
-  withRunInST $ \run -> loadArrayST scheduler arr (\i -> run . uWrite i)
+loadArrayM = loadArrayWithM
 {-# INLINE loadArrayM #-}
+{-# DEPRECATED loadArrayM "In favor of `loadArrayWithM`" #-}
 
--- | Load an array into memory, just like `loadArrayM`. Except it also accepts a
+loadArrayWithM ::
+     forall r ix e m s. (Load r ix e, UnliftPrimal s m)
+  => Scheduler s ()
+  -> Array r ix e -- ^ Array that is being loaded
+  -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+  -> m ()
+loadArrayWithM scheduler arr uWrite =
+  withRunInST $ \run -> loadArrayWithST scheduler arr (\i -> run . uWrite i)
+{-# INLINE loadArrayWithM #-}
+
+-- | Load an array into memory, just like `loadArrayWithM`. Except it also accepts a
 -- function that is potentially optimized for setting many cells in a region to the same
 -- value
 --
