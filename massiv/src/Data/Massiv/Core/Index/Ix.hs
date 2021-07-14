@@ -45,8 +45,8 @@ module Data.Massiv.Core.Index.Ix
   , HighIxN
   ) where
 
-import Control.Monad.Catch (MonadThrow(..))
-import Control.DeepSeq
+import Primal.Monad
+import Primal.Eval
 import Data.Massiv.Core.Index.Internal
 import Data.Proxy
 import qualified Data.Vector.Generic as V
@@ -296,19 +296,19 @@ instance Index Ix2 where
   {-# INLINE [1] unsnocDim #-}
   getDimM (i2 :.  _) 2 = pure i2
   getDimM ( _ :. i1) 1 = pure i1
-  getDimM ix         d = throwM $ IndexDimensionException ix d
+  getDimM ix         d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM ( _ :. i1) 2 i2 = pure (i2 :. i1)
   setDimM (i2 :.  _) 1 i1 = pure (i2 :. i1)
-  setDimM ix         d _  = throwM $ IndexDimensionException ix d
+  setDimM ix         d _  = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   pullOutDimM (i2 :. i1) 2 = pure (i2, i1)
   pullOutDimM (i2 :. i1) 1 = pure (i1, i2)
-  pullOutDimM ix         d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix         d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM i1 2 i2 = pure (i2 :. i1)
   insertDimM i2 1 i1 = pure (i2 :. i1)
-  insertDimM ix d  _ = throwM $ IndexDimensionException ix d
+  insertDimM ix d  _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :. i
   {-# INLINE [1] pureIndex #-}
@@ -345,22 +345,22 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   getDimM (i3 :>  _ :.  _) 3 = pure i3
   getDimM ( _ :> i2 :.  _) 2 = pure i2
   getDimM ( _ :>  _ :. i1) 1 = pure i1
-  getDimM ix               d = throwM $ IndexDimensionException ix d
+  getDimM ix               d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM ( _ :> i2 :. i1) 3 i3 = pure (i3 :> i2 :. i1)
   setDimM (i3 :>  _ :. i1) 2 i2 = pure (i3 :> i2 :. i1)
   setDimM (i3 :> i2 :.  _) 1 i1 = pure (i3 :> i2 :. i1)
-  setDimM ix               d _  = throwM $ IndexDimensionException ix d
+  setDimM ix               d _  = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   pullOutDimM (i3 :> i2 :. i1) 3 = pure (i3, i2 :. i1)
   pullOutDimM (i3 :> i2 :. i1) 2 = pure (i2, i3 :. i1)
   pullOutDimM (i3 :> i2 :. i1) 1 = pure (i1, i3 :. i2)
-  pullOutDimM ix               d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix               d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM (i2 :. i1) 3 i3 = pure (i3 :> i2 :. i1)
   insertDimM (i3 :. i1) 2 i2 = pure (i3 :> i2 :. i1)
   insertDimM (i3 :. i2) 1 i1 = pure (i3 :> i2 :. i1)
-  insertDimM ix         d  _ = throwM $ IndexDimensionException ix d
+  insertDimM ix         d  _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> i :. i
   {-# INLINE [1] pureIndex #-}
@@ -396,21 +396,21 @@ instance {-# OVERLAPPABLE #-} HighIxN n => Index (IxN n) where
   {-# INLINE [1] unsnocDim #-}
   getDimM ix@(i :> ixl) d
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure i
-    | otherwise = maybe (throwM $ IndexDimensionException ix d) pure (getDimM ixl d)
+    | otherwise = maybe (raiseM $ IndexDimensionException ix d) pure (getDimM ixl d)
   {-# INLINE [1] getDimM #-}
   setDimM ix@(i :> ixl) d di
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure (di :> ixl)
-    | otherwise = maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (setDimM ixl d di)
+    | otherwise = maybe (raiseM $ IndexDimensionException ix d) (pure . (i :>)) (setDimM ixl d di)
   {-# INLINE [1] setDimM #-}
   pullOutDimM ix@(i :> ixl) d
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure (i, ixl)
     | otherwise =
-      maybe (throwM $ IndexDimensionException ix d) (pure . fmap (i :>)) (pullOutDimM ixl d)
+      maybe (raiseM $ IndexDimensionException ix d) (pure . fmap (i :>)) (pullOutDimM ixl d)
   {-# INLINE [1] pullOutDimM #-}
   insertDimM ix@(i :> ixl) d di
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure (di :> ix)
     | otherwise =
-      maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (insertDimM ixl d di)
+      maybe (raiseM $ IndexDimensionException ix d) (pure . (i :>)) (insertDimM ixl d di)
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
   {-# INLINE [1] pureIndex #-}

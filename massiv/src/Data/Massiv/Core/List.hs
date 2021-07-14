@@ -29,8 +29,6 @@ module Data.Massiv.Core.List
   , ListItem
   ) where
 
-import Control.Exception
-import Control.Monad (unless, when)
 import Control.Scheduler
 import Data.Coerce
 import Data.Functor.Identity
@@ -51,11 +49,6 @@ type family ListItem ix e :: Type where
   ListItem ix  e = [ListItem (Lower ix) e]
 
 newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
-
---TODO remove
-instance Strategy LN where
-  getComp _ = Seq
-  setComp _ = id
 
 
 instance Coercible (Elt LN ix e) (ListItem ix e) => IsList (Array LN ix e) where
@@ -182,9 +175,9 @@ instance Ragged L Ix1 e where
       leftOver <-
         loopM start (< end) (+ 1) xs $ \i xs' ->
           case unconsR xs' of
-            Nothing      -> return $! throw (DimTooShortException sz (outerLength xs))
+            Nothing      -> raise (DimTooShortException sz (outerLength xs))
             Just (y, ys) -> uWrite i y >> return ys
-      unless (isNull leftOver) (return $! throw DimTooLongException)
+      unless (isNull leftOver) (raise DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f _ arr = L.concat $ "[ " : L.intersperse ", " (map f (coerce (lData arr))) ++ [" ]"]
 
@@ -192,10 +185,10 @@ instance Ragged L Ix1 e where
 instance (Shape L ix, Ragged L ix e) => Load L ix e where
   makeArray comp sz f = runIdentity $ generateRaggedM comp sz (pure . f)
   {-# INLINE makeArray #-}
-  loadArrayM scheduler arr uWrite =
-    loadRagged scheduler uWrite 0 (totalElem sz) sz arr
-    where !sz = outerSize arr
-  {-# INLINE loadArrayM #-}
+  loadArrayST scheduler arr uWrite = loadRagged scheduler uWrite 0 (totalElem sz) sz arr
+    where
+      !sz = outerSize arr
+  {-# INLINE loadArrayST #-}
 
 instance Ragged L Ix2 e where
   emptyR comp = LArray comp (List [])
@@ -222,16 +215,16 @@ instance Ragged L Ix2 e where
     let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
-    when (isZero && isNotNull (flattenRagged xs)) (return $! throw DimTooLongException)
+    when (isZero && isNotNull (flattenRagged xs)) (raise DimTooLongException)
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
           case unconsR zs of
-            Nothing -> return $! throw (DimTooShortException k (outerLength xs))
+            Nothing -> raise (DimTooShortException k (outerLength xs))
             Just (y, ys) -> do
               _ <- loadRagged scheduler uWrite i (i + step) szL y
               return ys
-      unless (isNull leftOver) (return $! throw DimTooLongException)
+      unless (isNull leftOver) (raise DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L Ix1 e)) sep (coerce xs)
@@ -267,16 +260,16 @@ instance ( Shape L (IxN n)
     let (k, szL) = unconsSz sz
         step = totalElem szL
         isZero = totalElem sz == 0
-    when (isZero && isNotNull (flattenRagged xs)) (return $! throw DimTooLongException)
+    when (isZero && isNotNull (flattenRagged xs)) (raise DimTooLongException)
     unless isZero $ do
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
           case unconsR zs of
-            Nothing -> return $! throw (DimTooShortException k (outerLength xs))
+            Nothing -> raise (DimTooShortException k (outerLength xs))
             Just (y, ys) -> do
               _ <- loadRagged scheduler uWrite i (i + step) szL y
               return ys
-      unless (isNull leftOver) (return $! throw DimTooLongException)
+      unless (isNull leftOver) (raise DimTooLongException)
   {-# INLINE loadRagged #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L (Ix (n - 1)) e)) sep (coerce xs)

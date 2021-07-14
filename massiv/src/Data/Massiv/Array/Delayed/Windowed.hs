@@ -30,7 +30,6 @@ import Control.Monad (when)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Manifest.Boxed
 import Data.Massiv.Array.Manifest.Internal
-import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List (showArrayList, showsArrayPrec)
 import Data.Maybe (fromMaybe)

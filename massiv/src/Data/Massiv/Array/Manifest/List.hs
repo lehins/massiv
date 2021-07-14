@@ -81,7 +81,7 @@ fromList = fromLists'
 --
 -- @since 0.3.0
 fromListsM ::
-     forall r ix e m. (Ragged L ix e, Mutable r e, MonadThrow m)
+     forall r ix e m. (Ragged L ix e, Mutable r e, Raises m)
   => Comp
   -> [ListItem ix e]
   -> m (Array r ix e)

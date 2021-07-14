@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 -- |
 -- Module      : Data.Massiv.Core.Iterator
 -- Copyright   : (c) Alexey Kuleshevich 2018-2021
@@ -21,8 +22,9 @@ module Data.Massiv.Core.Iterator
   , splitLinearlyWithStatefulM_
   ) where
 
+import Primal.Monad
 import Control.Scheduler
-import Control.Monad
+
 
 -- | Efficient loop with an accumulator
 --
@@ -126,7 +128,7 @@ splitLinearly numChunks totalLength action = action chunkLength slackStart
 --
 -- @since 0.5.7
 splitLinearlyM_ ::
-     Monad m => Scheduler m () -> Int -> (Int -> Int -> m ()) -> m ()
+     UnliftPrimal s m => Scheduler s () -> Int -> (Int -> Int -> m ()) -> m ()
 splitLinearlyM_ scheduler totalLength action =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopNextM_ 0 (< slackStart) (+ chunkLength) $ \ start next ->
@@ -135,22 +137,22 @@ splitLinearlyM_ scheduler totalLength action =
       scheduleWork_ scheduler $ action slackStart totalLength
 {-# INLINE splitLinearlyM_ #-}
 
--- | Interator that can be used to split computation amongst different workers. For monadic
+-- | Iterator that can be used to split computation amongst different workers. For monadic
 -- generator see `splitLinearlyWithM_`.
 --
 -- @since 0.2.1
 splitLinearlyWith_ ::
-     Monad m => Scheduler m () -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m ()
+     UnliftPrimal s m => Scheduler s () -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m ()
 splitLinearlyWith_ scheduler totalLength index =
   splitLinearlyWithM_ scheduler totalLength (pure . index)
 {-# INLINE splitLinearlyWith_ #-}
 
 
--- | Interator that can be used to split computation jobs
+-- | Iterator that can be used to split computation jobs
 --
 -- @since 0.2.6
 splitLinearlyWithM_ ::
-     Monad m => Scheduler m () -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
+     UnliftPrimal s m => Scheduler s () -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
 splitLinearlyWithM_ scheduler totalLength make write =
   splitLinearlyM_ scheduler totalLength go
   where
@@ -159,11 +161,11 @@ splitLinearlyWithM_ scheduler totalLength make write =
 {-# INLINE splitLinearlyWithM_ #-}
 
 
--- | Interator that can be used to split computation jobs
+-- | Iterator that can be used to split computation jobs
 --
 -- @since 0.3.0
 splitLinearlyWithStartAtM_ ::
-     Monad m => Scheduler m () -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
+     UnliftPrimal s m => Scheduler s () -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
 splitLinearlyWithStartAtM_ scheduler startAt totalLength make write =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopM_ startAt (< (slackStart + startAt)) (+ chunkLength) $ \ !start ->
@@ -176,14 +178,14 @@ splitLinearlyWithStartAtM_ scheduler startAt totalLength make write =
 
 
 
--- | Interator that can be used to split computation jobs, while using a stateful scheduler.
+-- | Iterator that can be used to split computation jobs, while using a stateful scheduler.
 --
 -- @since 0.3.4
 splitLinearlyWithStatefulM_ ::
-     Monad m
-  => SchedulerWS s m ()
+     UnliftPrimal RW m
+  => SchedulerWS ws ()
   -> Int -- ^ Total linear length
-  -> (Int -> s -> m b) -- ^ Element producing action
+  -> (Int -> ws -> m b) -- ^ Element producing action
   -> (Int -> b -> m c) -- ^ Element storing action
   -> m ()
 splitLinearlyWithStatefulM_ schedulerWS totalLength make store =

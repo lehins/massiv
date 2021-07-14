@@ -34,9 +34,8 @@ module Data.Massiv.Core.Index.Tuple
   , fromIx5
   ) where
 
-import Control.Monad.Catch (MonadThrow(..))
-import Data.Massiv.Core.Index.Internal (Index(..), IndexException(..), Lower,
-                                        Sz(..))
+import Primal.Exception
+import Data.Massiv.Core.Index.Internal (Index(..), IndexException(..), Lower, Sz(..))
 import Data.Massiv.Core.Index.Ix
 
 -- | Another 1-dimensional index type synonym for `Int`, same as `Ix1` and is here just for
@@ -180,23 +179,23 @@ instance Index Ix2T where
   {-# INLINE [1] unsnocDim #-}
   getDimM (i2,  _) 2 = pure i2
   getDimM ( _, i1) 1 = pure i1
-  getDimM ix       d = throwM $ IndexDimensionException ix d
+  getDimM ix       d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM (_, i1) 2 i2 = pure (i2, i1)
   setDimM (i2, _) 1 i1 = pure (i2, i1)
-  setDimM ix      d _  = throwM $ IndexDimensionException ix d
+  setDimM ix      d _  = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   modifyDimM (i2, i1) 2 f = pure (i2, (f i2,   i1))
   modifyDimM (i2, i1) 1 f = pure (i1, (  i2, f i1))
-  modifyDimM ix       d _  = throwM $ IndexDimensionException ix d
+  modifyDimM ix       d _  = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i2, i1) 2 = pure (i2, i1)
   pullOutDimM (i2, i1) 1 = pure (i1, i2)
-  pullOutDimM ix       d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix       d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM i1 2 i2 = pure (i2, i1)
   insertDimM i2 1 i1 = pure (i2, i1)
-  insertDimM ix d  _ = throwM $ IndexDimensionException ix d
+  insertDimM ix d  _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = (i, i)
   {-# INLINE [1] pureIndex #-}
@@ -223,27 +222,27 @@ instance Index Ix3T where
   getDimM (i3,  _,  _) 3 = pure i3
   getDimM ( _, i2,  _) 2 = pure i2
   getDimM ( _,  _, i1) 1 = pure i1
-  getDimM ix           d = throwM $ IndexDimensionException ix d
+  getDimM ix           d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM ( _, i2, i1) 3 i3 = pure (i3, i2, i1)
   setDimM (i3,  _, i1) 2 i2 = pure (i3, i2, i1)
   setDimM (i3, i2,  _) 1 i1 = pure (i3, i2, i1)
-  setDimM ix           d _  = throwM $ IndexDimensionException ix d
+  setDimM ix           d _  = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   modifyDimM (i3, i2, i1) 3 f = pure (i3, (f i3,   i2,   i1))
   modifyDimM (i3, i2, i1) 2 f = pure (i2, (  i3, f i2,   i1))
   modifyDimM (i3, i2, i1) 1 f = pure (i1, (  i3,   i2, f i1))
-  modifyDimM ix           d _  = throwM $ IndexDimensionException ix d
+  modifyDimM ix           d _  = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i3, i2, i1) 3 = pure (i3, (i2, i1))
   pullOutDimM (i3, i2, i1) 2 = pure (i2, (i3, i1))
   pullOutDimM (i3, i2, i1) 1 = pure (i1, (i3, i2))
-  pullOutDimM ix           d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix           d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM (i2, i1) 3 i3 = pure (i3, i2, i1)
   insertDimM (i3, i1) 2 i2 = pure (i3, i2, i1)
   insertDimM (i3, i2) 1 i1 = pure (i3, i2, i1)
-  insertDimM ix       d _  = throwM $ IndexDimensionException ix d
+  insertDimM ix       d _  = raiseM $ IndexDimensionException ix d
   pureIndex i = (i, i, i)
   {-# INLINE [1] pureIndex #-}
   liftIndex2 f (i3, i2, i1) (i3', i2', i1') = (f i3 i3', f i2 i2', f i1 i1')
@@ -268,31 +267,31 @@ instance Index Ix4T where
   getDimM ( _, i3,  _,  _) 3 = pure i3
   getDimM ( _,  _, i2,  _) 2 = pure i2
   getDimM ( _,  _,  _, i1) 1 = pure i1
-  getDimM ix               d = throwM $ IndexDimensionException ix d
+  getDimM ix               d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM ( _, i3, i2, i1) 4 i4 = pure (i4, i3, i2, i1)
   setDimM (i4,  _, i2, i1) 3 i3 = pure (i4, i3, i2, i1)
   setDimM (i4, i3,  _, i1) 2 i2 = pure (i4, i3, i2, i1)
   setDimM (i4, i3, i2,  _) 1 i1 = pure (i4, i3, i2, i1)
-  setDimM ix               d  _ = throwM $ IndexDimensionException ix d
+  setDimM ix               d  _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   modifyDimM (i4, i3, i2, i1) 4 f = pure (i4, (f i4,   i3,   i2,   i1))
   modifyDimM (i4, i3, i2, i1) 3 f = pure (i3, (  i4, f i3,   i2,   i1))
   modifyDimM (i4, i3, i2, i1) 2 f = pure (i2, (  i4,   i3, f i2,   i1))
   modifyDimM (i4, i3, i2, i1) 1 f = pure (i1, (  i4,   i3,   i2, f i1))
-  modifyDimM ix               d _ = throwM $ IndexDimensionException ix d
+  modifyDimM ix               d _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i4, i3, i2, i1) 4 = pure (i4, (i3, i2, i1))
   pullOutDimM (i4, i3, i2, i1) 3 = pure (i3, (i4, i2, i1))
   pullOutDimM (i4, i3, i2, i1) 2 = pure (i2, (i4, i3, i1))
   pullOutDimM (i4, i3, i2, i1) 1 = pure (i1, (i4, i3, i2))
-  pullOutDimM ix               d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix               d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM (i3, i2, i1) 4 i4 = pure (i4, i3, i2, i1)
   insertDimM (i4, i2, i1) 3 i3 = pure (i4, i3, i2, i1)
   insertDimM (i4, i3, i1) 2 i2 = pure (i4, i3, i2, i1)
   insertDimM (i4, i3, i2) 1 i1 = pure (i4, i3, i2, i1)
-  insertDimM ix           d  _ = throwM $ IndexDimensionException ix d
+  insertDimM ix           d  _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = (i, i, i, i)
   {-# INLINE [1] pureIndex #-}
@@ -319,35 +318,35 @@ instance Index Ix5T where
   getDimM ( _,  _, i3,  _,  _) 3 = pure i3
   getDimM ( _,  _,  _, i2,  _) 2 = pure i2
   getDimM ( _,  _,  _,  _, i1) 1 = pure i1
-  getDimM ix                   d = throwM $ IndexDimensionException ix d
+  getDimM ix                   d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM ( _, i4, i3, i2, i1) 5 i5 = pure (i5, i4, i3, i2, i1)
   setDimM (i5,  _, i3, i2, i1) 4 i4 = pure (i5, i4, i3, i2, i1)
   setDimM (i5, i4,  _, i2, i1) 3 i3 = pure (i5, i4, i3, i2, i1)
   setDimM (i5, i4, i3,  _, i1) 2 i2 = pure (i5, i4, i3, i2, i1)
   setDimM (i5, i4, i3, i2,  _) 1 i1 = pure (i5, i4, i3, i2, i1)
-  setDimM ix                   d  _ = throwM $ IndexDimensionException ix d
+  setDimM ix                   d  _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   modifyDimM (i5, i4, i3, i2, i1) 5 f = pure (i5, (f i5,   i4,   i3,   i2,   i1))
   modifyDimM (i5, i4, i3, i2, i1) 4 f = pure (i4, (  i5, f i4,   i3,   i2,   i1))
   modifyDimM (i5, i4, i3, i2, i1) 3 f = pure (i3, (  i5,   i4, f i3,   i2,   i1))
   modifyDimM (i5, i4, i3, i2, i1) 2 f = pure (i2, (  i5,   i4,   i3, f i2,   i1))
   modifyDimM (i5, i4, i3, i2, i1) 1 f = pure (i1, (  i5,   i4,   i3,   i2, f i1))
-  modifyDimM ix                   d _ = throwM $ IndexDimensionException ix d
+  modifyDimM ix                   d _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] modifyDimM #-}
   pullOutDimM (i5, i4, i3, i2, i1) 5 = pure (i5, (i4, i3, i2, i1))
   pullOutDimM (i5, i4, i3, i2, i1) 4 = pure (i4, (i5, i3, i2, i1))
   pullOutDimM (i5, i4, i3, i2, i1) 3 = pure (i3, (i5, i4, i2, i1))
   pullOutDimM (i5, i4, i3, i2, i1) 2 = pure (i2, (i5, i4, i3, i1))
   pullOutDimM (i5, i4, i3, i2, i1) 1 = pure (i1, (i5, i4, i3, i2))
-  pullOutDimM ix                   d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix                   d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM (i4, i3, i2, i1) 5 i5 = pure (i5, i4, i3, i2, i1)
   insertDimM (i5, i3, i2, i1) 4 i4 = pure (i5, i4, i3, i2, i1)
   insertDimM (i5, i4, i2, i1) 3 i3 = pure (i5, i4, i3, i2, i1)
   insertDimM (i5, i4, i3, i1) 2 i2 = pure (i5, i4, i3, i2, i1)
   insertDimM (i5, i4, i3, i2) 1 i1 = pure (i5, i4, i3, i2, i1)
-  insertDimM ix               d  _ = throwM $ IndexDimensionException ix d
+  insertDimM ix               d  _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = (i, i, i, i, i)
   {-# INLINE [1] pureIndex #-}

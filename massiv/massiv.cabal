@@ -79,13 +79,15 @@ library
                      , Data.Massiv.Vector.Unsafe
   build-depends:       base >= 4.9 && < 5
                      , bytestring
-                     , deepseq
-                     , exceptions
                      , scheduler >= 1.5.0
-                     , primitive
+                     , primal >= 1.0
                      , random >= 1.2.0
-                     , unliftio-core
                      , vector
+
+                     , exceptions
+                     , unliftio-core
+                     , primitive
+                     , deepseq
 
   include-dirs: include
   install-includes: massiv.h

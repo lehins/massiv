@@ -92,7 +92,7 @@ unsafeExtract !sIx !newSz !arr =
 {-# INLINE unsafeExtract #-}
 
 -- | /O(1)/ - Take a slice out of an array from within
-unsafeSlice :: (Source r e, Index ix, Index (Lower ix), MonadThrow m) =>
+unsafeSlice :: (Source r e, Index ix, Index (Lower ix), Raises m) =>
   Array r ix e -> ix -> Sz ix -> Dim -> m (Array D (Lower ix) e)
 unsafeSlice arr start cut@(SafeSz cutSz) dim = do
   newSz <- dropDimM cutSz dim
@@ -159,8 +159,9 @@ instance Index ix => Foldable (Array D ix) where
 instance Index ix => Load D ix e where
   makeArray = DArray
   {-# INLINE makeArray #-}
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  loadArrayST !scheduler !arr =
+    splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE loadArrayST #-}
 
 instance Index ix => StrideLoad D ix e
 
@@ -244,7 +245,7 @@ liftArray2Matching f !arr1 !arr2
       (getComp arr1 <> getComp arr2)
       sz1
       (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = throwEither $ Left $ toException $ SizeMismatchException (size arr1) (size arr2)
+  | otherwise = raiseImprecise $ SizeMismatchException (size arr1) (size arr2)
   where
     sz1 = size arr1
     sz2 = size arr2

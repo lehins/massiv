@@ -408,10 +408,10 @@ ifoldInnerSlice f arr = foldMono g $ range (getComp arr) 0 (unSz k)
 -- | /O(n)/ - Compute maximum of all elements.
 --
 -- @since 0.3.0
-maximumM :: (MonadThrow m, Shape r ix, Source r e, Ord e) => Array r ix e -> m e
+maximumM :: (Raises m, Shape r ix, Source r e, Ord e) => Array r ix e -> m e
 maximumM arr =
   if isNull arr
-    then throwM (SizeEmptyException (size arr))
+    then raiseM (SizeEmptyException (size arr))
     else let !e0 = unsafeIndex arr zeroIndex
           in pure $ foldlInternal max e0 max e0 arr
 {-# INLINE maximumM #-}
@@ -424,17 +424,17 @@ maximum' ::
      forall r ix e. (HasCallStack, Shape r ix, Source r e, Ord e)
   => Array r ix e
   -> e
-maximum' = throwEither . maximumM
+maximum' = raiseLeftImprecise . maximumM
 {-# INLINE maximum' #-}
 
 
 -- | /O(n)/ - Compute minimum of all elements.
 --
 -- @since 0.3.0
-minimumM :: (MonadThrow m, Shape r ix, Source r e, Ord e) => Array r ix e -> m e
+minimumM :: (Raises m, Shape r ix, Source r e, Ord e) => Array r ix e -> m e
 minimumM arr =
   if isNull arr
-    then throwM (SizeEmptyException (size arr))
+    then raiseM (SizeEmptyException (size arr))
     else let !e0 = unsafeIndex arr zeroIndex
           in pure $ foldlInternal min e0 min e0 arr
 {-# INLINE minimumM #-}
@@ -443,7 +443,7 @@ minimumM arr =
 --
 -- @since 0.3.0
 minimum' :: forall r ix e. (HasCallStack, Shape r ix, Source r e, Ord e) => Array r ix e -> e
-minimum' = throwEither . minimumM
+minimum' = raiseLeftImprecise . minimumM
 {-# INLINE minimum' #-}
 
 

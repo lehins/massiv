@@ -91,7 +91,6 @@ module Data.Massiv.Array.Mutable
   -- ** Computation
   , Mutable
   , MArray
-  , RealWorld
   , computeInto
   , loadArray
   , loadArrayS
@@ -100,8 +99,6 @@ module Data.Massiv.Array.Mutable
 -- TODO: add fromListM, et al.
 
 import Data.Maybe (fromMaybe)
-import Control.Monad (void, when, unless, (>=>))
-import Control.Monad.ST
 import Control.Scheduler
 import Data.Massiv.Core.Common
 import Data.Massiv.Array.Mutable.Internal
@@ -114,7 +111,7 @@ import Prelude hiding (mapM, read)
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> marr <- newMArray' (Sz2 2 6) :: IO (MArray RealWorld P Ix2 Int)
+-- >>> marr <- newMArray' (Sz2 2 6) :: IO (MArray P Ix2 Int RW)
 -- >>> freeze Seq marr
 -- Array P Seq (Sz (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
@@ -134,9 +131,9 @@ import Prelude hiding (mapM, read)
 --
 -- @since 0.6.0
 newMArray' ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray r ix e s)
 newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
 {-# INLINE newMArray' #-}
 
@@ -159,7 +156,7 @@ newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
 --   ]
 --
 -- @since 0.1.0
-thaw :: forall r ix e m. (Mutable r e, Index ix, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
+thaw :: forall r ix e m. (Mutable r e, Index ix, Primal RW m) => Array r ix e -> m (MArray r ix e RW)
 thaw arr =
   liftIO $ do
     let sz = size arr
@@ -191,9 +188,9 @@ thaw arr =
 --
 -- @since 0.3.0
 thawS ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e m s. (Mutable r e, Index ix, Primal s m)
   => Array r ix e
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray r ix e s)
 thawS arr = do
   tmarr <- unsafeNew (size arr)
   unsafeArrayLinearCopy arr 0 tmarr 0 (SafeSz (totalElem (size arr)))
@@ -217,9 +214,9 @@ thawS arr = do
 --
 -- @since 0.1.0
 freeze ::
-     forall r ix e m. (Mutable r e, Index ix, MonadIO m)
+     forall r ix e m. (Mutable r e, Index ix, Primal RW m)
   => Comp
-  -> MArray RealWorld r ix e
+  -> MArray r ix e RW
   -> m (Array r ix e)
 freeze comp smarr =
   liftIO $ do
@@ -243,8 +240,8 @@ freeze comp smarr =
 --
 -- @since 0.3.0
 freezeS ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
-  => MArray (PrimState m) r ix e
+     forall r ix e m s. (Mutable r e, Index ix, Primal s m)
+  => MArray r ix e s
   -> m (Array r ix e)
 freezeS smarr = do
   let sz = msize smarr
@@ -253,8 +250,7 @@ freezeS smarr = do
   unsafeFreeze Seq tmarr
 {-# INLINE freezeS #-}
 
-unsafeNewUpper ::
-     (Load r' ix e, Mutable r e, PrimMonad m) => Array r' ix e -> m (MArray (PrimState m) r Ix1 e)
+unsafeNewUpper :: (Load r' ix e, Mutable r e, Primal s m) => Array r' ix e -> m (MArray r Ix1 e s)
 unsafeNewUpper !arr = unsafeNew (fromMaybe zeroSz (maxLinearSize arr))
 {-# INLINE unsafeNewUpper #-}
 
@@ -262,9 +258,9 @@ unsafeNewUpper !arr = unsafeNew (fromMaybe zeroSz (maxLinearSize arr))
 --
 -- @since 0.3.0
 loadArrayS ::
-     forall r ix e r' m. (Load r' ix e, Mutable r e, PrimMonad m)
+     forall r ix e r' m s. (Load r' ix e, Mutable r e, Primal s m)
   => Array r' ix e
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray r ix e s)
 loadArrayS arr = do
   marr <- unsafeNewUpper arr
   unsafeLoadIntoS marr arr
@@ -275,13 +271,12 @@ loadArrayS arr = do
 --
 -- @since 0.3.0
 loadArray ::
-     forall r ix e r' m. (Load r' ix e, Mutable r e, MonadIO m)
+     forall r ix e r' m. (Load r' ix e, Mutable r e, Primal RW m)
   => Array r' ix e
-  -> m (MArray RealWorld r ix e)
-loadArray arr =
-  liftIO $ do
-    marr <- unsafeNewUpper arr
-    unsafeLoadIntoM marr arr
+  -> m (MArray r ix e RW)
+loadArray arr = do
+  marr <- unsafeNewUpper arr
+  unsafeLoadIntoM marr arr
 {-# INLINE loadArray #-}
 
 
@@ -291,16 +286,16 @@ loadArray arr =
 --
 -- @since 0.1.3
 computeInto ::
-     (Size r', Load r' ix' e, Mutable r e, Index ix, MonadIO m)
-  => MArray RealWorld r ix e -- ^ Target Array
+     (Size r', Load r' ix' e, Mutable r e, Index ix, Primal RW m)
+  => MArray r ix e RW -- ^ Target Array
   -> Array r' ix' e -- ^ Array to load
   -> m ()
 computeInto !mArr !arr =
   liftIO $ do
     unless (totalElem (msize mArr) == totalElem (size arr)) $
-      throwM $ SizeElementsMismatchException (msize mArr) (size arr)
+      raiseM $ SizeElementsMismatchException (msize mArr) (size arr)
     withMassivScheduler_ (getComp arr) $ \scheduler ->
-      loadArrayM scheduler arr (unsafeLinearWrite mArr)
+      liftST $ loadArrayST scheduler arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}
 
 
@@ -308,10 +303,10 @@ computeInto !mArr !arr =
 --
 -- @since 0.3.0
 makeMArrayS ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the create array
   -> (ix -> m e) -- ^ Element generating action
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray r ix e s)
 makeMArrayS sz f = makeMArrayLinearS sz (f . fromLinearIndex sz)
 {-# INLINE makeMArrayS #-}
 
@@ -320,10 +315,10 @@ makeMArrayS sz f = makeMArrayLinearS sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 makeMArrayLinearS ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix
   -> (Int -> m e)
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray r ix e s)
 makeMArrayLinearS sz f = do
   marr <- unsafeNew sz
   loopM_ 0 (< totalElem (msize marr)) (+ 1) (\ !i -> f i >>= unsafeLinearWrite marr i)
@@ -334,11 +329,11 @@ makeMArrayLinearS sz f = do
 --
 -- @since 0.3.0
 makeMArray ::
-     forall r ix e m. (PrimMonad m, MonadUnliftIO m, Mutable r e, Index ix)
+     forall r ix e m. (UnliftPrimal RW m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (ix -> m e)
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray r ix e RW)
 makeMArray comp sz f = makeMArrayLinear comp sz (f . fromLinearIndex sz)
 {-# INLINE makeMArray #-}
 
@@ -347,11 +342,11 @@ makeMArray comp sz f = makeMArrayLinear comp sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 makeMArrayLinear ::
-     forall r ix e m. (PrimMonad m, MonadUnliftIO m, Mutable r e, Index ix)
+     forall r ix e m. (UnliftPrimal RW m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (Int -> m e)
-  -> m (MArray (PrimState m) r ix e)
+  -> m (MArray r ix e RW)
 makeMArrayLinear comp sz f = do
   marr <- unsafeNew sz
   withScheduler_ comp $ \scheduler ->
@@ -376,10 +371,10 @@ makeMArrayLinear comp sz f = do
 -- @since 0.3.0
 --
 createArray_ ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m. (Mutable r e, Index ix, UnliftPrimal RW m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Scheduler m () -> MArray (PrimState m) r ix e -> m a)
+  -> (Scheduler RW () -> MArray r ix e RW -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
 createArray_ comp sz action = do
@@ -394,10 +389,10 @@ createArray_ comp sz action = do
 -- @since 0.3.0
 --
 createArray ::
-     forall r ix e a m b. (Mutable r e, Index ix, PrimMonad m, MonadUnliftIO m)
+     forall r ix e a m b. (Mutable r e, Index ix, UnliftPrimal RW m)
   => Comp -- ^ Computation strategy to use after `MArray` gets frozen and onward.
   -> Sz ix -- ^ Size of the newly created array
-  -> (Scheduler m a -> MArray (PrimState m) r ix e -> m b)
+  -> (Scheduler RW a -> MArray r ix e RW -> m b)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m ([a], Array r ix e)
 createArray comp sz action = do
@@ -421,9 +416,9 @@ createArray comp sz action = do
 --
 -- @since 0.3.0
 createArrayS_ ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the newly created array
-  -> (MArray (PrimState m) r ix e -> m a)
+  -> (MArray r ix e s -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (Array r ix e)
 createArrayS_ sz action = snd <$> createArrayS sz action
@@ -433,9 +428,9 @@ createArrayS_ sz action = snd <$> createArrayS sz action
 --
 -- @since 0.3.0
 createArrayS ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the newly created array
-  -> (MArray (PrimState m) r ix e -> m a)
+  -> (MArray r ix e s -> m a)
   -- ^ An action that should fill all elements of the brand new mutable array
   -> m (a, Array r ix e)
 createArrayS sz action = do
@@ -451,7 +446,7 @@ createArrayS sz action = do
 createArrayST_ ::
      forall r ix e a. (Mutable r e, Index ix)
   => Sz ix
-  -> (forall s. MArray s r ix e -> ST s a)
+  -> (forall s. MArray r ix e s -> ST s a)
   -> Array r ix e
 createArrayST_ sz action = runST $ createArrayS_ sz action
 {-# INLINE createArrayST_ #-}
@@ -463,7 +458,7 @@ createArrayST_ sz action = runST $ createArrayS_ sz action
 createArrayST ::
      forall r ix e a. (Mutable r e, Index ix)
   => Sz ix
-  -> (forall s. MArray s r ix e -> ST s a)
+  -> (forall s. MArray r ix e s -> ST s a)
   -> (a, Array r ix e)
 createArrayST sz action = runST $ createArrayS sz action
 {-# INLINE createArrayST #-}
@@ -472,7 +467,7 @@ createArrayST sz action = runST $ createArrayS sz action
 -- | Sequentially generate a pure array. Much like `makeArray` creates a pure array this
 -- function will use `Mutable` interface to generate a pure `Array` in the end, except that
 -- computation strategy is set to `Seq`. Element producing function no longer has to be pure
--- but is a stateful action, becuase it is restricted to `PrimMonad` thus allows for sharing
+-- but is a stateful action, becuase it is restricted to `Primal s` thus allows for sharing
 -- the state between computation of each element.
 --
 -- ====__Examples__
@@ -494,7 +489,7 @@ createArrayST sz action = runST $ createArrayS sz action
 --
 -- @since 0.2.6
 generateArrayS ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Resulting size of the array
   -> (ix -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
@@ -505,7 +500,7 @@ generateArrayS sz gen = generateArrayLinearS sz (gen . fromLinearIndex sz)
 --
 -- @since 0.3.0
 generateArrayLinearS ::
-     forall r ix e m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Resulting size of the array
   -> (Int -> m e) -- ^ Element producing generator
   -> m (Array r ix e)
@@ -521,7 +516,7 @@ generateArrayLinearS sz gen = do
 --
 -- @since 0.2.6
 generateArray ::
-     forall r ix e m. (MonadUnliftIO m, PrimMonad m, Mutable r e, Index ix)
+     forall r ix e m. (UnliftPrimal RW m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (ix -> m e)
@@ -534,7 +529,7 @@ generateArray comp sz f = generateArrayLinear comp sz (f . fromLinearIndex sz)
 --
 -- @since 0.3.0
 generateArrayLinear ::
-     forall r ix e m. (MonadUnliftIO m, PrimMonad m, Mutable r e, Index ix)
+     forall r ix e m. (UnliftPrimal RW m, Mutable r e, Index ix)
   => Comp
   -> Sz ix
   -> (Int -> m e)
@@ -547,10 +542,10 @@ generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= unsafeFreeze comp
 --
 -- @since 0.3.4
 generateArrayLinearWS ::
-     forall r ix e s m. (Mutable r e, Index ix, MonadUnliftIO m, PrimMonad m)
-  => WorkerStates s
+     forall r ix e ws m. (Mutable r e, Index ix, UnliftPrimal RW m)
+  => WorkerStates ws
   -> Sz ix
-  -> (Int -> s -> m e)
+  -> (Int -> ws -> m e)
   -> m (Array r ix e)
 generateArrayLinearWS states sz make = do
   marr <- unsafeNew sz
@@ -568,10 +563,10 @@ generateArrayLinearWS states sz make = do
 --
 -- @since 0.3.4
 generateArrayWS ::
-     forall r ix e s m. (Mutable r e, Index ix, MonadUnliftIO m, PrimMonad m)
-  => WorkerStates s
+     forall r ix e ws m. (Mutable r e, Index ix, UnliftPrimal RW m)
+  => WorkerStates ws
   -> Sz ix
-  -> (ix -> s -> m e)
+  -> (ix -> ws -> m e)
   -> m (Array r ix e)
 generateArrayWS states sz make = generateArrayLinearWS states sz (make . fromLinearIndex sz)
 {-# INLINE generateArrayWS #-}
@@ -601,7 +596,7 @@ generateArrayWS states sz make = generateArrayLinearWS states sz (make . fromLin
 --
 -- @since 0.3.0
 unfoldrPrimM_ ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -613,7 +608,7 @@ unfoldrPrimM_ sz gen acc0 = snd <$> unfoldrPrimM sz gen acc0
 --
 -- @since 0.3.0
 iunfoldrPrimM_ ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -626,7 +621,7 @@ iunfoldrPrimM_ sz gen acc0 = snd <$> iunfoldrPrimM sz gen acc0
 --
 -- @since 0.3.0
 iunfoldrPrimM ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -644,7 +639,7 @@ iunfoldrPrimM sz gen acc0 =
 --
 -- @since 0.3.0
 unfoldrPrimM ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> m (e, a)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -682,7 +677,7 @@ unfoldrPrimM sz gen acc0 =
 --
 -- @since 0.3.0
 unfoldlPrimM_ ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -694,7 +689,7 @@ unfoldlPrimM_ sz gen acc0 = snd <$> unfoldlPrimM sz gen acc0
 --
 -- @since 0.3.0
 iunfoldlPrimM_ ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -707,7 +702,7 @@ iunfoldlPrimM_ sz gen acc0 = snd <$> iunfoldlPrimM sz gen acc0
 --
 -- @since 0.3.0
 iunfoldlPrimM ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> ix -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -725,7 +720,7 @@ iunfoldlPrimM sz gen acc0 =
 --
 -- @since 0.3.0
 unfoldlPrimM ::
-     forall r ix e a m. (Mutable r e, Index ix, PrimMonad m)
+     forall r ix e a m s. (Mutable r e, Index ix, Primal s m)
   => Sz ix -- ^ Size of the desired array
   -> (a -> m (a, e)) -- ^ Unfolding action
   -> a -- ^ Initial accumulator
@@ -743,7 +738,7 @@ unfoldlPrimM sz gen acc0 =
 -- action to it. There is no mutation to the array, unless the action itself modifies it.
 --
 -- @since 0.4.0
-forPrimM_ :: (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m ()) -> m ()
+forPrimM_ :: (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> (e -> m ()) -> m ()
 forPrimM_ marr f =
   loopM_ 0 (< totalElem (msize marr)) (+1) (unsafeLinearRead marr >=> f)
 {-# INLINE forPrimM_ #-}
@@ -751,7 +746,7 @@ forPrimM_ marr f =
 -- | Sequentially loop over a mutable array while modifying each element with an action.
 --
 -- @since 0.4.0
-forPrimM :: (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
+forPrimM :: (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> (e -> m e) -> m ()
 forPrimM marr f =
   loopM_ 0 (< totalElem (msize marr)) (+1) (unsafeLinearModify marr f)
 {-# INLINE forPrimM #-}
@@ -763,7 +758,7 @@ forPrimM marr f =
 --
 -- @since 0.4.0
 iforPrimM_ ::
-     (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (ix -> e -> m ()) -> m ()
+     (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> (ix -> e -> m ()) -> m ()
 iforPrimM_ marr f = iforLinearPrimM_ marr (f . fromLinearIndex (msize marr))
 {-# INLINE iforPrimM_ #-}
 
@@ -771,7 +766,7 @@ iforPrimM_ marr f = iforLinearPrimM_ marr (f . fromLinearIndex (msize marr))
 --
 -- @since 0.4.0
 iforPrimM ::
-     (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (ix -> e -> m e) -> m ()
+     (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> (ix -> e -> m e) -> m ()
 iforPrimM marr f = iforLinearPrimM marr (f . fromLinearIndex (msize marr))
 {-# INLINE iforPrimM #-}
 
@@ -782,7 +777,7 @@ iforPrimM marr f = iforLinearPrimM marr (f . fromLinearIndex (msize marr))
 --
 -- @since 0.4.0
 iforLinearPrimM_ ::
-     (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (Int -> e -> m ()) -> m ()
+     (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> (Int -> e -> m ()) -> m ()
 iforLinearPrimM_ marr f =
   loopM_ 0 (< totalElem (msize marr)) (+ 1) (\i -> unsafeLinearRead marr i >>= f i)
 {-# INLINE iforLinearPrimM_ #-}
@@ -791,7 +786,7 @@ iforLinearPrimM_ marr f =
 --
 -- @since 0.4.0
 iforLinearPrimM ::
-     (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (Int -> e -> m e) -> m ()
+     (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> (Int -> e -> m e) -> m ()
 iforLinearPrimM marr f =
   loopM_ 0 (< totalElem (msize marr)) (+ 1) (\i -> unsafeLinearModify marr (f i) i)
 {-# INLINE iforLinearPrimM #-}
@@ -800,9 +795,9 @@ iforLinearPrimM marr f =
 --
 -- @since 0.5.0
 withMArray ::
-     (Mutable r e, Index ix, MonadUnliftIO m)
+     (Mutable r e, Index ix, UnliftPrimal RW m)
   => Array r ix e
-  -> (Scheduler m a -> MArray RealWorld r ix e -> m b)
+  -> (Scheduler RW a -> MArray r ix e RW -> m b)
   -> m ([a], Array r ix e)
 withMArray arr action = do
   marr <- thaw arr
@@ -824,9 +819,9 @@ withMArray arr action = do
 --
 -- @since 0.5.0
 withMArray_ ::
-     (Mutable r e, Index ix, MonadUnliftIO m)
+     (Mutable r e, Index ix, UnliftPrimal RW m)
   => Array r ix e
-  -> (Scheduler m () -> MArray RealWorld r ix e -> m a)
+  -> (Scheduler RW () -> MArray r ix e RW -> m a)
   -> m (Array r ix e)
 withMArray_ arr action = do
   marr <- thaw arr
@@ -840,9 +835,9 @@ withMArray_ arr action = do
 --
 -- @since 0.6.1
 withLoadMArray_ ::
-     forall r ix e r' m b. (Load r' ix e, Mutable r e, MonadUnliftIO m)
+     forall r ix e r' m b. (Load r' ix e, Mutable r e, UnliftPrimal RW m)
   => Array r' ix e
-  -> (Scheduler m () -> MArray RealWorld r ix e -> m b)
+  -> (Scheduler RW () -> MArray r ix e RW -> m b)
   -> m (Array r ix e)
 withLoadMArray_ arr action = do
   marr <- loadArray arr
@@ -861,9 +856,9 @@ withLoadMArray_ arr action = do
 --
 -- @since 0.5.0
 withMArrayS ::
-     (Mutable r e, Index ix, PrimMonad m)
+     (Mutable r e, Index ix, Primal s m)
   => Array r ix e
-  -> (MArray (PrimState m) r ix e -> m a)
+  -> (MArray r ix e s -> m a)
   -> m (a, Array r ix e)
 withMArrayS arr action = do
   marr <- thawS arr
@@ -876,9 +871,9 @@ withMArrayS arr action = do
 --
 -- @since 0.5.0
 withMArrayS_ ::
-     (Mutable r e, Index ix, PrimMonad m)
+     (Mutable r e, Index ix, Primal s m)
   => Array r ix e
-  -> (MArray (PrimState m) r ix e -> m a)
+  -> (MArray r ix e s -> m a)
   -> m (Array r ix e)
 withMArrayS_ arr action = snd <$> withMArrayS arr action
 {-# INLINE withMArrayS_ #-}
@@ -888,9 +883,9 @@ withMArrayS_ arr action = snd <$> withMArrayS arr action
 --
 -- @since 0.6.1
 withLoadMArrayS ::
-     forall r ix e r' m a. (Load r' ix e, Mutable r e, PrimMonad m)
+     forall r ix e r' a m s. (Load r' ix e, Mutable r e, Primal s m)
   => Array r' ix e
-  -> (MArray (PrimState m) r ix e -> m a)
+  -> (MArray r ix e s -> m a)
   -> m (a, Array r ix e)
 withLoadMArrayS arr action = do
   marr <- loadArrayS arr
@@ -902,9 +897,9 @@ withLoadMArrayS arr action = do
 --
 -- @since 0.6.1
 withLoadMArrayS_ ::
-     forall r ix e r' m a. (Load r' ix e, Mutable r e, PrimMonad m)
+     forall r ix e r' a m s. (Load r' ix e, Mutable r e, Primal s m)
   => Array r' ix e
-  -> (MArray (PrimState m) r ix e -> m a)
+  -> (MArray r ix e s -> m a)
   -> m (Array r ix e)
 withLoadMArrayS_ arr action = snd <$> withLoadMArrayS arr action
 {-# INLINE[2] withLoadMArrayS_ #-}
@@ -917,7 +912,7 @@ withLoadMArrayS_ arr action = snd <$> withLoadMArrayS arr action
 withMArrayST ::
      (Mutable r e, Index ix)
   => Array r ix e
-  -> (forall s . MArray s r ix e -> ST s a)
+  -> (forall s . MArray r ix e s -> ST s a)
   -> (a, Array r ix e)
 withMArrayST arr f = runST $ withMArrayS arr f
 {-# INLINE withMArrayST #-}
@@ -927,7 +922,7 @@ withMArrayST arr f = runST $ withMArrayS arr f
 --
 -- @since 0.5.0
 withMArrayST_ ::
-     (Mutable r e, Index ix) => Array r ix e -> (forall s. MArray s r ix e -> ST s a) -> Array r ix e
+     (Mutable r e, Index ix) => Array r ix e -> (forall s. MArray r ix e s -> ST s a) -> Array r ix e
 withMArrayST_ arr f = runST $ withMArrayS_ arr f
 {-# INLINE withMArrayST_ #-}
 
@@ -938,7 +933,7 @@ withMArrayST_ arr f = runST $ withMArrayS_ arr f
 withLoadMArrayST ::
      forall r ix e r' a. (Load r' ix e, Mutable r e)
   => Array r' ix e
-  -> (forall s. MArray s r ix e -> ST s a)
+  -> (forall s. MArray r ix e s -> ST s a)
   -> (a, Array r ix e)
 withLoadMArrayST arr f = runST $ withLoadMArrayS arr f
 {-# INLINE[2] withLoadMArrayST #-}
@@ -949,7 +944,7 @@ withLoadMArrayST arr f = runST $ withLoadMArrayS arr f
 withLoadMArrayST_ ::
      forall r ix e r' a. (Load r' ix e, Mutable r e)
   => Array r' ix e
-  -> (forall s. MArray s r ix e -> ST s a)
+  -> (forall s. MArray r ix e s -> ST s a)
   -> Array r ix e
 withLoadMArrayST_ arr f = runST $ withLoadMArrayS_ arr f
 {-# INLINE[2] withLoadMArrayST_ #-}
@@ -958,8 +953,8 @@ withLoadMArrayST_ arr f = runST $ withLoadMArrayS_ arr f
 -- | /O(1)/ - Lookup an element in the mutable array. Returns `Nothing` when index is out of bounds.
 --
 -- @since 0.1.0
-read :: (Mutable r e, Index ix, PrimMonad m) =>
-        MArray (PrimState m) r ix e -> ix -> m (Maybe e)
+read :: (Mutable r e, Index ix, Primal s m) =>
+        MArray r ix e s -> ix -> m (Maybe e)
 read marr ix =
   if isSafeIndex (msize marr) ix
     then Just <$> unsafeRead marr ix
@@ -970,12 +965,12 @@ read marr ix =
 -- | /O(1)/ - Same as `read`, but throws `IndexOutOfBoundsException` on an invalid index.
 --
 -- @since 0.4.0
-readM :: (Mutable r e, Index ix, PrimMonad m, MonadThrow m) =>
-        MArray (PrimState m) r ix e -> ix -> m e
+readM :: (Mutable r e, Index ix, Primal s m) =>
+        MArray r ix e s -> ix -> m e
 readM marr ix =
   read marr ix >>= \case
     Just e -> pure e
-    Nothing -> throwM $ IndexOutOfBoundsException (msize marr) ix
+    Nothing -> raiseM $ IndexOutOfBoundsException (msize marr) ix
 {-# INLINE readM #-}
 
 
@@ -983,7 +978,7 @@ readM marr ix =
 -- of bounds.
 --
 -- @since 0.1.0
-write :: (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m Bool
+write :: (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> ix -> e -> m Bool
 write marr ix e =
   if isSafeIndex (msize marr) ix
   then unsafeWrite marr ix e >> pure True
@@ -996,7 +991,7 @@ write marr ix e =
 -- words, just like `writeM`, but doesn't throw an exception.
 --
 -- @since 0.4.4
-write_ :: (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
+write_ :: (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> ix -> e -> m ()
 write_ marr ix = when (isSafeIndex (msize marr) ix) . unsafeWrite marr ix
 {-# INLINE write_ #-}
 
@@ -1004,9 +999,9 @@ write_ marr ix = when (isSafeIndex (msize marr) ix) . unsafeWrite marr ix
 --
 -- @since 0.4.0
 writeM ::
-     (Mutable r e, Index ix, PrimMonad m, MonadThrow m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
+     (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> ix -> e -> m ()
 writeM marr ix e =
-  write marr ix e >>= (`unless` throwM (IndexOutOfBoundsException (msize marr) ix))
+  write marr ix e >>= (`unless` raiseM (IndexOutOfBoundsException (msize marr) ix))
 {-# INLINE writeM #-}
 
 
@@ -1015,8 +1010,8 @@ writeM marr ix e =
 --
 -- @since 0.1.0
 modify ::
-     (Mutable r e, Index ix, PrimMonad m)
-  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+     (Mutable r e, Index ix, Primal s m)
+  => MArray r ix e s -- ^ Array to mutate.
   -> (e -> m e) -- ^ Monadic action that modifies the element
   -> ix -- ^ Index at which to perform modification.
   -> m (Maybe e)
@@ -1032,8 +1027,8 @@ modify marr f ix =
 --
 -- @since 0.4.4
 modify_ ::
-     (Mutable r e, Index ix, PrimMonad m)
-  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+     (Mutable r e, Index ix, Primal s m)
+  => MArray r ix e s -- ^ Array to mutate.
   -> (e -> m e) -- ^ Monadic action that modifies the element
   -> ix -- ^ Index at which to perform modification.
   -> m ()
@@ -1046,14 +1041,14 @@ modify_ marr f ix = when (isSafeIndex (msize marr) ix) $ void $ unsafeModify mar
 --
 -- @since 0.4.0
 modifyM ::
-     (Mutable r e, Index ix, PrimMonad m, MonadThrow m)
-  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+     (Mutable r e, Index ix, Primal s m)
+  => MArray r ix e s -- ^ Array to mutate.
   -> (e -> m e) -- ^ Monadic action that modifies the element
   -> ix -- ^ Index at which to perform modification.
   -> m e
 modifyM marr f ix
   | isSafeIndex (msize marr) ix = unsafeModify marr f ix
-  | otherwise = throwM (IndexOutOfBoundsException (msize marr) ix)
+  | otherwise = raiseM (IndexOutOfBoundsException (msize marr) ix)
 {-# INLINE modifyM #-}
 
 -- | /O(1)/ - Same as `modifyM`, but discard the returned element
@@ -1069,8 +1064,8 @@ modifyM marr f ix
 --
 -- @since 0.4.0
 modifyM_ ::
-     (Mutable r e, Index ix, PrimMonad m, MonadThrow m)
-  => MArray (PrimState m) r ix e -- ^ Array to mutate.
+     (Mutable r e, Index ix, Primal s m)
+  => MArray r ix e s -- ^ Array to mutate.
   -> (e -> m e) -- ^ Monadic action that modifies the element
   -> ix -- ^ Index at which to perform modification.
   -> m ()
@@ -1083,7 +1078,7 @@ modifyM_ marr f ix = void $ modifyM marr f ix
 -- otherwise.
 --
 -- @since 0.1.0
-swap :: (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m (Maybe (e, e))
+swap :: (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> ix -> ix -> m (Maybe (e, e))
 swap marr ix1 ix2 =
   let !sz = msize marr
    in if isSafeIndex sz ix1 && isSafeIndex sz ix2
@@ -1096,7 +1091,7 @@ swap marr ix1 ix2 =
 -- words, it is similar to `swapM_`, but does not throw any exceptions.
 --
 -- @since 0.4.4
-swap_ :: (Mutable r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
+swap_ :: (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> ix -> ix -> m ()
 swap_ marr ix1 ix2 =
   let !sz = msize marr
    in when (isSafeIndex sz ix1 && isSafeIndex sz ix2) $ void $ unsafeSwap marr ix1 ix2
@@ -1108,16 +1103,16 @@ swap_ marr ix1 ix2 =
 --
 -- @since 0.4.0
 swapM ::
-     (Mutable r e, Index ix, PrimMonad m, MonadThrow m)
-  => MArray (PrimState m) r ix e
+     (Mutable r e, Index ix, Primal s m)
+  => MArray r ix e s
   -> ix -- ^ Index for the first element, which will be returned as the first element in the
         -- tuple.
   -> ix -- ^ Index for the second element, which will be returned as the second element in
         -- the tuple.
   -> m (e, e)
 swapM marr ix1 ix2
-  | not (isSafeIndex sz ix1) = throwM $ IndexOutOfBoundsException (msize marr) ix1
-  | not (isSafeIndex sz ix2) = throwM $ IndexOutOfBoundsException (msize marr) ix2
+  | not (isSafeIndex sz ix1) = raiseM $ IndexOutOfBoundsException (msize marr) ix1
+  | not (isSafeIndex sz ix2) = raiseM $ IndexOutOfBoundsException (msize marr) ix2
   | otherwise = unsafeSwap marr ix1 ix2
   where
     !sz = msize marr
@@ -1128,7 +1123,7 @@ swapM marr ix1 ix2
 --
 -- @since 0.4.0
 swapM_ ::
-     (Mutable r e, Index ix, PrimMonad m, MonadThrow m) => MArray (PrimState m) r ix e -> ix -> ix -> m ()
+     (Mutable r e, Index ix, Primal s m) => MArray r ix e s -> ix -> ix -> m ()
 swapM_ marr ix1 ix2 = void $ swapM marr ix1 ix2
 {-# INLINE swapM_ #-}
 

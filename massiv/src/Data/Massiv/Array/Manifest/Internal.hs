@@ -34,6 +34,9 @@ module Data.Massiv.Array.Manifest.Internal
   , convertAs
   , convertProxy
   , gcastArr
+  , loadArrayM
+  , loadArrayWithSetM
+  , loadArrayWithStrideM
   , fromRaggedArrayM
   , fromRaggedArray'
   , sizeofArray
@@ -42,7 +45,6 @@ module Data.Massiv.Array.Manifest.Internal
   , iterateUntilM
   ) where
 
-import Control.Exception (try)
 import Control.Monad.ST
 import Control.Scheduler
 import Data.Massiv.Array.Delayed.Pull
@@ -69,6 +71,55 @@ sizeofMutableArray :: A.MutableArray s a -> Int
 sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
 {-# INLINE sizeofMutableArray #-}
 #endif
+
+
+-- | Load an array into memory.
+--
+-- @since 0.3.0
+loadArrayM ::
+     forall r ix e m s. (Load r ix e, UnliftPrimal s m)
+  => Scheduler s ()
+  -> Array r ix e -- ^ Array that is being loaded
+  -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+  -> m ()
+loadArrayM scheduler arr uWrite =
+  withRunInST $ \run -> loadArrayST scheduler arr (\i -> run . uWrite i)
+{-# INLINE loadArrayM #-}
+
+-- | Load an array into memory, just like `loadArrayM`. Except it also accepts a
+-- function that is potentially optimized for setting many cells in a region to the same
+-- value
+--
+-- @since 0.5.8
+loadArrayWithSetM ::
+     forall r ix e m s. (Load r ix e, UnliftPrimal s m)
+  => Scheduler s ()
+  -> Array r ix e -- ^ Array that is being loaded
+  -> (Ix1 -> e -> m ()) -- ^ Function that writes an element into target array
+  -> (Ix1 -> Sz1 -> e -> m ()) -- ^ Function that efficiently sets a region of an array
+                               -- to the supplied value target array
+  -> m ()
+loadArrayWithSetM scheduler arr uWrite uSet =
+  withRunInST $ \run ->
+    loadArrayWithSetST scheduler arr (\i -> run . uWrite i) (\i sz -> run . uSet i sz)
+{-# INLINE loadArrayWithSetM #-}
+
+
+-- | Load an array into memory with stride. Default implementation requires an instance of
+-- `Source`.
+loadArrayWithStrideM
+  :: (StrideLoad r ix e, UnliftPrimal s m) =>
+     Scheduler s ()
+  -> Stride ix -- ^ Stride to use
+  -> Sz ix -- ^ Size of the target array affected by the stride.
+  -> Array r ix e -- ^ Array that is being loaded
+  -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+  -> m ()
+loadArrayWithStrideM scheduler stride resultSize arr f =
+  withRunInST $ \run ->
+    loadArrayWithStrideST scheduler stride resultSize arr (\i -> run . f i)
+{-# INLINE loadArrayWithStrideM #-}
+
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
@@ -107,7 +158,7 @@ computeP arr = setComp (getComp arr) $ compute (setComp Par arr)
 --
 -- @since 0.4.5
 computeIO ::
-     forall r ix e r' m. (Mutable r e, Load r' ix e, MonadIO m)
+     forall r ix e r' m. (Mutable r e, Load r' ix e, Primal RW m)
   => Array r' ix e
   -> m (Array r ix e)
 computeIO arr = liftIO (loadArray arr >>= unsafeFreeze (getComp arr))
@@ -118,7 +169,7 @@ computeIO arr = liftIO (loadArray arr >>= unsafeFreeze (getComp arr))
 --
 -- @since 0.4.5
 computePrimM ::
-     forall r ix e r' m. (Mutable r e, Load r' ix e, PrimMonad m)
+     forall r ix e r' m s. (Mutable r e, Load r' ix e, Primal s m)
   => Array r' ix e
   -> m (Array r ix e)
 computePrimM arr = loadArrayS arr >>= unsafeFreeze (getComp arr)
@@ -216,17 +267,17 @@ convertProxy _ = convert
 --
 -- @since 0.4.0
 fromRaggedArrayM ::
-     forall r ix e r' m . (Mutable r e, Ragged r' ix e, MonadThrow m)
+     forall r ix e r' m . (Mutable r e, Ragged r' ix e, Raises m)
   => Array r' ix e
   -> m (Array r ix e)
 fromRaggedArrayM arr =
   let sz = outerSize arr
-   in either (\(e :: ShapeException) -> throwM e) pure $
+   in either (\(e :: ShapeException) -> raiseM e) pure $
       unsafePerformIO $ do
         marr <- unsafeNew sz
         traverse (\_ -> unsafeFreeze (getComp arr) marr) =<<
           try (withMassivScheduler_ (getComp arr) $ \scheduler ->
-                 loadRagged scheduler (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
+                 liftST $ loadRagged scheduler (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
 {-# INLINE fromRaggedArrayM #-}
 
 
@@ -238,7 +289,7 @@ fromRaggedArray' ::
      forall r ix e r'. (HasCallStack, Mutable r e, Ragged r' ix e)
   => Array r' ix e
   -> Array r ix e
-fromRaggedArray' = throwEither . fromRaggedArrayM
+fromRaggedArray' = raiseLeftImprecise . fromRaggedArrayM
 {-# INLINE fromRaggedArray' #-}
 
 
@@ -332,7 +383,7 @@ iterateUntil convergence iteration initArr0
         (asArr initArr0 marr)
   where
     !initArr1 = compute $ iteration 0 initArr0
-    asArr :: Array r ix e -> MArray s r ix e -> MArray s r ix e
+    asArr :: Array r ix e -> MArray r ix e s -> MArray r ix e s
     asArr _ = id
 {-# INLINE iterateUntil #-}
 
@@ -341,8 +392,8 @@ iterateUntil convergence iteration initArr0
 --
 -- @since 0.3.6
 iterateUntilM ::
-     (Size r', Load r' ix e, Mutable r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
-  => (Int -> Array r ix e -> MArray (PrimState m) r ix e -> m Bool)
+     (Size r', Load r' ix e, Mutable r e, Primal RW m)
+  => (Int -> Array r ix e -> MArray r ix e RW -> m Bool)
   -- ^ Convergence condition. Accepts current iteration counter, pure array at previous
   -- state and a mutable at the current state, therefore after each iteration its contents
   -- can be modifed if necessary.
@@ -367,13 +418,13 @@ iterateUntilM convergence iteration initArr0 = do
 
 
 iterateLoop ::
-     (Size r', Load r' ix e, Mutable r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
-  => (Int -> Array r ix e -> Comp -> MArray (PrimState m) r ix e -> m Bool)
+     (Size r', Load r' ix e, Mutable r e, Primal RW m)
+  => (Int -> Array r ix e -> Comp -> MArray r ix e RW -> m Bool)
   -> (Int -> Array r ix e -> Array r' ix e)
   -> Int
   -> Array r ix e
   -> Array r' ix e
-  -> MArray (PrimState m) r ix e
+  -> MArray r ix e RW
   -> m (Array r ix e)
 iterateLoop convergence iteration = go
   where

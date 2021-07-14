@@ -61,10 +61,9 @@ module Data.Massiv.Core.Index.Internal
   , showsPrecWrapped
   ) where
 
-import Control.DeepSeq
-import Control.Exception (Exception(..), throw)
-import Control.Monad (when)
-import Control.Monad.Catch (MonadThrow(..))
+import Primal.Eval
+import Primal.Monad
+import Primal.Exception
 import Data.Coerce
 import Data.Kind
 import Data.Massiv.Core.Iterator
@@ -164,12 +163,12 @@ instance (Num ix, Index ix) => Num (Sz ix) where
 -- `SizeNegativeException` and `SizeOverflowException`.
 --
 -- @since 0.6.0
-mkSzM :: (Index ix, MonadThrow m) => ix -> m (Sz ix)
+mkSzM :: (Index ix, Raises m) => ix -> m (Sz ix)
 mkSzM ix = do
   let guardNegativeOverflow i !acc = do
-        when (i < 0) $ throwM $ SizeNegativeException (SafeSz ix)
+        when (i < 0) $ raiseM $ SizeNegativeException (SafeSz ix)
         let acc' = i * acc
-        when (acc' /= 0 && acc' < acc) $ throwM $ SizeOverflowException (SafeSz ix)
+        when (acc' /= 0 && acc' < acc) $ raiseM $ SizeOverflowException (SafeSz ix)
         pure acc'
   Sz ix <$ foldlIndex (\acc i -> acc >>= guardNegativeOverflow i) (pure 1) ix
 
@@ -280,7 +279,7 @@ snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 -- *** Exception: IndexDimensionException: (Dim 3) for (2 :. 3)
 --
 -- @since 0.3.0
-setSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> Sz Int -> m (Sz ix)
+setSzM :: (Raises m, Index ix) => Sz ix -> Dim -> Sz Int -> m (Sz ix)
 setSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDimM sz dim sz1
 {-# INLINE setSzM #-}
 
@@ -295,7 +294,7 @@ setSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDimM sz dim sz1
 -- *** Exception: IndexDimensionException: (Dim 4) for (2 :. 3)
 --
 -- @since 0.3.0
-insertSzM :: (MonadThrow m, Index ix) => Sz (Lower ix) -> Dim -> Sz Int -> m (Sz ix)
+insertSzM :: (Raises m, Index ix) => Sz (Lower ix) -> Dim -> Sz Int -> m (Sz ix)
 insertSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDimM sz dim sz1
 {-# INLINE insertSzM #-}
 
@@ -334,7 +333,7 @@ unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
 -- *** Exception: IndexDimensionException: (Dim 0) for (1 :> 2 :. 3)
 --
 -- @since 0.3.0
-pullOutSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> m (Sz Ix1, Sz (Lower ix))
+pullOutSzM :: (Raises m, Index ix) => Sz ix -> Dim -> m (Sz Ix1, Sz (Lower ix))
 pullOutSzM (SafeSz sz) = fmap coerce . pullOutDimM sz
 {-# INLINE pullOutSzM #-}
 
@@ -462,22 +461,22 @@ class ( Eq ix
   -- | Pull out value at specified dimension from the index, thus also lowering it dimensionality.
   --
   -- @since 0.2.5
-  pullOutDimM :: MonadThrow m => ix -> Dim -> m (Int, Lower ix)
+  pullOutDimM :: Raises m => ix -> Dim -> m (Int, Lower ix)
 
   -- | Insert a dimension into the index
-  insertDimM :: MonadThrow m => Lower ix -> Dim -> Int -> m ix
+  insertDimM :: Raises m => Lower ix -> Dim -> Int -> m ix
 
   -- | Extract the value index has at specified dimension.
   --
   -- @since 0.3.0
-  getDimM :: MonadThrow m => ix -> Dim -> m Int
+  getDimM :: Raises m => ix -> Dim -> m Int
   getDimM ix dim = fst <$> modifyDimM ix dim id
   {-# INLINE [1] getDimM #-}
 
   -- | Set the value for an index at specified dimension.
   --
   -- @since 0.3.0
-  setDimM :: MonadThrow m => ix -> Dim -> Int -> m ix
+  setDimM :: Raises m => ix -> Dim -> Int -> m ix
   setDimM ix dim i = snd <$> modifyDimM ix dim (const i)
   {-# INLINE [1] setDimM #-}
 
@@ -485,7 +484,7 @@ class ( Eq ix
   -- well as the updated index.
   --
   -- @since 0.4.1
-  modifyDimM :: MonadThrow m => ix -> Dim -> (Int -> Int) -> m (Int, ix)
+  modifyDimM :: Raises m => ix -> Dim -> (Int -> Int) -> m (Int, ix)
   modifyDimM ix dim f = do
     i <- getDimM ix dim
     ix' <- setDimM ix dim (f i)
@@ -688,7 +687,7 @@ instance Index Ix1 where
   fromLinearIndexAcc n k = k `quotRem` n
   {-# INLINE [1] fromLinearIndexAcc #-}
   repairIndex k@(SafeSz ksz) !i rBelow rOver
-    | ksz <= 0 = throw $ IndexZeroException ksz
+    | ksz <= 0 = raiseImprecise $ IndexZeroException ksz
     | i < 0 = rBelow k i
     | i >= ksz = rOver k i
     | otherwise = i
@@ -702,19 +701,19 @@ instance Index Ix1 where
   unsnocDim i = (Ix0, i)
   {-# INLINE [1] unsnocDim #-}
   getDimM ix 1 = pure ix
-  getDimM ix d = throwM $ IndexDimensionException ix d
+  getDimM ix d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM _  1 ix = pure ix
-  setDimM ix d _  = throwM $ IndexDimensionException ix d
+  setDimM ix d _  = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   modifyDimM ix 1 f = pure (ix, f ix)
-  modifyDimM ix d _ = throwM $ IndexDimensionException ix d
+  modifyDimM ix d _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] modifyDimM #-}
   pullOutDimM ix 1 = pure (ix, Ix0)
-  pullOutDimM ix d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix d = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM Ix0 1 i = pure i
-  insertDimM ix  d _ = throwM $ IndexDimensionException ix d
+  insertDimM ix  d _ = raiseM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i
   {-# INLINE [1] pureIndex #-}

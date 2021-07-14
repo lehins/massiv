@@ -31,7 +31,6 @@ module Data.Massiv.Array.Ops.Slice
   , withinSlicesM
   ) where
 
-import Control.Monad (unless)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Core.Common
 
@@ -84,7 +83,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
   => Array r ix e
   -> Int
   -> Array r (Lower ix) e
-(!>) !arr !ix = throwEither (arr !?> ix)
+(!>) !arr !ix = raiseLeftImprecise (arr !?> ix)
 {-# INLINE (!>) #-}
 
 
@@ -93,13 +92,13 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 -- @since 0.1.0
 (!?>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+     forall r ix e m. (Raises m, Index ix, Index (Lower ix), Source r e)
   => Array r ix e
   -> Int
   -> m (Array r (Lower ix) e)
 (!?>) !arr !i = do
   let (k, szL) = unconsSz (size arr)
-  unless (isSafeIndex k i) $ throwM $ IndexOutOfBoundsException k i
+  unless (isSafeIndex k i) $ raiseM $ IndexOutOfBoundsException k i
   pure $ unsafeOuterSlice arr szL i
 {-# INLINE (!?>) #-}
 
@@ -120,7 +119,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 -- @since 0.1.0
 (??>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+     forall r ix e m. (Raises m, Index ix, Index (Lower ix), Source r e)
   => m (Array r ix e)
   -> Int
   -> m (Array r (Lower ix) e)
@@ -132,13 +131,13 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 -- @since 0.1.0
 (<!?) ::
-     forall r ix e m. (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (Raises m, Index ix, Source r e)
   => Array r ix e
   -> Int
   -> m (Array D (Lower ix) e)
 (<!?) !arr !i = do
   let (szL, m) = unsnocSz (size arr)
-  unless (isSafeIndex m i) $ throwM $ IndexOutOfBoundsException m i
+  unless (isSafeIndex m i) $ raiseM $ IndexOutOfBoundsException m i
   pure $ unsafeInnerSlice arr szL i
 {-# INLINE (<!?) #-}
 
@@ -151,7 +150,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
   => Array r ix e
   -> Int
   -> Array D (Lower ix) e
-(<!) !arr !ix = throwEither (arr <!? ix)
+(<!) !arr !ix = raiseLeftImprecise (arr <!? ix)
 {-# INLINE (<!) #-}
 
 
@@ -159,7 +158,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 -- @since 0.1.0
 (<??) ::
-     forall r ix e m. (MonadThrow m, Index ix, Source r e)
+     forall r ix e m. (Raises m, Index ix, Source r e)
   => m (Array r ix e)
   -> Int
   -> m (Array D (Lower ix) e)
@@ -171,20 +170,20 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 -- @since 0.1.0
 (<!?>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+     forall r ix e m. (Raises m, Index ix, Index (Lower ix), Source r e)
   => Array r ix e
   -> (Dim, Int)
   -> m (Array D (Lower ix) e)
 (<!?>) !arr (dim, i) = do
   (m, szl) <- pullOutSzM (size arr) dim
-  unless (isSafeIndex m i) $ throwM $ IndexOutOfBoundsException m i
+  unless (isSafeIndex m i) $ raiseM $ IndexOutOfBoundsException m i
   cutSz <- insertSzM szl dim oneSz
   internalInnerSlice dim cutSz arr i
 {-# INLINE (<!?>) #-}
 
 
 internalInnerSlice ::
-     (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+     (Raises m, Index ix, Index (Lower ix), Source r e)
   => Dim
   -> Sz ix
   -> Array r ix e
@@ -209,7 +208,7 @@ internalInnerSlice dim cutSz arr i = do
   => Array r ix e
   -> (Dim, Int)
   -> Array D (Lower ix) e
-(<!>) !arr !dix = throwEither (arr <!?> dix)
+(<!>) !arr !dix = raiseLeftImprecise (arr <!?> dix)
 {-# INLINE (<!>) #-}
 
 
@@ -217,7 +216,7 @@ internalInnerSlice dim cutSz arr i = do
 --
 -- @since 0.1.0
 (<??>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+     forall r ix e m. (Raises m, Index ix, Index (Lower ix), Source r e)
   => m (Array r ix e)
   -> (Dim, Int)
   -> m (Array D (Lower ix) e)
@@ -331,10 +330,10 @@ withinSlices dim = either throwImpossible id . withinSlicesM (fromDimension dim)
 --
 -- @since 0.5.4
 withinSlicesM ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+     forall r ix e m. (Raises m, Index ix, Index (Lower ix), Source r e)
   => Dim
   -> Array r ix e
-  -> m (Array D Ix1 (Array D (Lower ix) e))
+  -> m (Vector D (Array D (Lower ix) e))
 withinSlicesM dim arr = do
   (k, szl) <- pullOutSzM (size arr) dim
   cutSz <- insertSzM szl dim oneSz

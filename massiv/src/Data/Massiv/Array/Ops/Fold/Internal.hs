@@ -47,7 +47,6 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , anyPu
   ) where
 
-import Control.Monad (void, when)
 import Control.Scheduler
 import qualified Data.Foldable as F
 import Data.Functor.Identity (runIdentity)
@@ -220,7 +219,7 @@ foldrFB c n arr = go 0
 -- | /O(n)/ - Left fold, computed with respect of array's computation strategy. Because we do
 -- potentially split the folding among many threads, we also need a combining function and an
 -- accumulator for the results. Depending on the number of threads being used, results can be
--- different, hence is the `MonadIO` constraint.
+-- different, hence is the `RW` state token for the `Primal` monad.
 --
 -- ===__Examples__
 --
@@ -235,7 +234,7 @@ foldrFB c n arr = go 0
 -- [1,0,3,2,5,4]
 --
 -- @since 0.1.0
-foldlP :: (MonadIO m, Index ix, Source r e) =>
+foldlP :: (Primal RW m, Index ix, Source r e) =>
           (a -> e -> a) -- ^ Folding function @g@.
        -> a -- ^ Accumulator. Will be applied to @g@ multiple times, thus must be neutral.
        -> (b -> a -> b) -- ^ Chunk results folding function @f@.
@@ -249,7 +248,7 @@ foldlP f fAcc g gAcc = liftIO . ifoldlP (\ x _ -> f x) fAcc g gAcc
 -- element it is being applied to.
 --
 -- @since 0.1.0
-ifoldlP :: (MonadIO m, Index ix, Source r e) =>
+ifoldlP :: (Primal RW m, Index ix, Source r e) =>
            (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> m b
 ifoldlP f fAcc g gAcc =
   liftIO . ifoldlIO (\acc ix -> return . f acc ix) fAcc (\acc -> return . g acc) gAcc
@@ -270,7 +269,7 @@ ifoldlP f fAcc g gAcc =
 -- [[0,1],[2,3],[4,5]]
 --
 -- @since 0.1.0
-foldrP :: (MonadIO m, Index ix, Source r e) =>
+foldrP :: (Primal RW m, Index ix, Source r e) =>
           (e -> a -> a) -> a -> (a -> b -> b) -> b -> Array r ix e -> m b
 foldrP f fAcc g gAcc = liftIO . ifoldrP (const f) fAcc g gAcc
 {-# INLINE foldrP #-}
@@ -282,7 +281,7 @@ foldrP f fAcc g gAcc = liftIO . ifoldrP (const f) fAcc g gAcc
 --
 -- @since 0.1.0
 ifoldrP ::
-     (MonadIO m, Index ix, Source r e)
+     (Primal RW m, Index ix, Source r e)
   => (ix -> e -> a -> a)
   -> a
   -> (a -> b -> b)
@@ -309,7 +308,7 @@ ifoldlInternal g initAcc f resAcc = unsafePerformIO . ifoldlP g initAcc f resAcc
 --
 -- @since 0.1.0
 ifoldlIO ::
-     (MonadUnliftIO m, Index ix, Source r e)
+     (UnliftPrimal RW m, Index ix, Source r e)
   => (a -> ix -> e -> m a) -- ^ Index aware folding IO action
   -> a -- ^ Accumulator
   -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
@@ -341,8 +340,8 @@ ifoldlIO f !initAcc g !tAcc !arr
 --
 -- @since 1.0.0
 splitReduce ::
-     (MonadUnliftIO m, Index ix, Source r e)
-  => (Scheduler m a -> Vector r e -> m a)
+     (UnliftPrimal RW m, Index ix, Source r e)
+  => (Scheduler RW a -> Vector r e -> m a)
   -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
   -> b -- ^ Accumulator for chunks folding
   -> Array r ix e
@@ -367,7 +366,7 @@ splitReduce f g !tAcc !arr = do
 -- | Similar to `ifoldrP`, except that folding functions themselves do live in IO
 --
 -- @since 0.1.0
-ifoldrIO :: (MonadUnliftIO m, Index ix, Source r e) =>
+ifoldrIO :: (UnliftPrimal RW m, Index ix, Source r e) =>
            (ix -> e -> a -> m a) -> a -> (a -> b -> m b) -> b -> Array r ix e -> m b
 ifoldrIO f !initAcc g !tAcc !arr
   | getComp arr == Seq = ifoldrM f initAcc arr >>= (`g` tAcc)
@@ -409,7 +408,7 @@ anySu f arr = go 0
 -- | Implementaton of `any` on a slice of an array with short-circuiting using batch cancellation.
 anySliceSuM ::
      (Index ix, Source r e)
-  => Batch IO Bool
+  => Batch RW Bool
   -> Ix1
   -> Sz1
   -> (e -> Bool)

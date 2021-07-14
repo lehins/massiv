@@ -19,7 +19,7 @@ module Data.Massiv.Core.Index.Stride
   , strideSize
   ) where
 
-import Control.DeepSeq
+import Primal.Eval
 import Data.Massiv.Core.Index.Internal
 
 -- | Stride provides a way to ignore elements of an array if an index is divisible by a

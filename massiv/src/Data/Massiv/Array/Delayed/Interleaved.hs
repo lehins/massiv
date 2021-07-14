@@ -59,21 +59,21 @@ instance Resize DI where
 instance Index ix => Load DI ix e where
   makeArray c sz = DIArray . makeArray c sz
   {-# INLINE makeArray #-}
-  loadArrayM scheduler (DIArray (DArray _ sz f)) uWrite =
+  loadArrayST scheduler (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       scheduleWork scheduler $
       iterLinearM_ sz start (totalElem sz) (numWorkers scheduler) (<) $ \ !k -> uWrite k . f
-  {-# INLINE loadArrayM #-}
+  {-# INLINE loadArrayST #-}
 
 instance Index ix => StrideLoad DI ix e where
-  loadArrayWithStrideM scheduler stride resultSize arr uWrite =
+  loadArrayWithStrideST scheduler stride resultSize arr uWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
     in loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
           scheduleWork scheduler $
           iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
             \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
-  {-# INLINE loadArrayWithStrideM #-}
+  {-# INLINE loadArrayWithStrideST #-}
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out
 -- of order (interleaved amongst cores), hence making unbalanced computation better parallelizable.

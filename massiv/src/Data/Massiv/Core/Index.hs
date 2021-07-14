@@ -98,8 +98,8 @@ module Data.Massiv.Core.Index
   , indexWith
   ) where
 
-import Control.DeepSeq
-import Control.Monad.Catch (MonadThrow(..))
+import Primal.Monad.Raises
+import Primal.Eval
 import Data.Coerce
 import Data.Functor.Identity (runIdentity)
 import Data.Massiv.Core.Exception
@@ -307,7 +307,7 @@ initDim = fst . unsnocDim
 --
 -- @since 0.2.4
 setDim' :: (HasCallStack, Index ix) => ix -> Dim -> Int -> ix
-setDim' ix dim = throwEither . setDimM ix dim
+setDim' ix dim = raiseLeftImprecise . setDimM ix dim
 {-# INLINE [1] setDim' #-}
 
 -- | Change the value from a specific dimension within the index. See
@@ -320,7 +320,7 @@ setDim' ix dim = throwEither . setDimM ix dim
 --
 -- @since 0.2.4
 getDim' :: (HasCallStack, Index ix) => ix -> Dim -> Int
-getDim' ix = throwEither . getDimM ix
+getDim' ix = raiseLeftImprecise . getDimM ix
 {-# INLINE [1] getDim' #-}
 
 -- | Update the value of a specific dimension within the index. See
@@ -333,7 +333,7 @@ getDim' ix = throwEither . getDimM ix
 --
 -- @since 0.4.1
 modifyDim' :: (HasCallStack, Index ix) => ix -> Dim -> (Int -> Int) -> (Int, ix)
-modifyDim' ix dim = throwEither . modifyDimM ix dim
+modifyDim' ix dim = raiseLeftImprecise . modifyDimM ix dim
 {-# INLINE [1] modifyDim' #-}
 
 -- | Remove a dimension from the index.
@@ -346,7 +346,7 @@ modifyDim' ix dim = throwEither . modifyDimM ix dim
 -- Nothing
 --
 -- @since 0.3.0
-dropDimM :: (MonadThrow m, Index ix) => ix -> Dim -> m (Lower ix)
+dropDimM :: (Raises m, Index ix) => ix -> Dim -> m (Lower ix)
 dropDimM ix = fmap snd . pullOutDimM ix
 {-# INLINE [1] dropDimM #-}
 
@@ -359,7 +359,7 @@ dropDimM ix = fmap snd . pullOutDimM ix
 --
 -- @since 0.2.4
 dropDim' :: (HasCallStack, Index ix) => ix -> Dim -> Lower ix
-dropDim' ix = throwEither . dropDimM ix
+dropDim' ix = raiseLeftImprecise . dropDimM ix
 {-# INLINE [1] dropDim' #-}
 
 -- | Lower the dimension of the index by pulling the specified dimension. See
@@ -372,7 +372,7 @@ dropDim' ix = throwEither . dropDimM ix
 --
 -- @since 0.2.4
 pullOutDim' :: (HasCallStack, Index ix) => ix -> Dim -> (Int, Lower ix)
-pullOutDim' ix = throwEither . pullOutDimM ix
+pullOutDim' ix = raiseLeftImprecise . pullOutDimM ix
 {-# INLINE [1] pullOutDim' #-}
 
 -- | Raise the dimension of the index by inserting one in the specified dimension. See
@@ -385,7 +385,7 @@ pullOutDim' ix = throwEither . pullOutDimM ix
 --
 -- @since 0.2.4
 insertDim' :: (HasCallStack, Index ix) => Lower ix -> Dim -> Int -> ix
-insertDim' ix dim = throwEither . insertDimM ix dim
+insertDim' ix dim = raiseLeftImprecise . insertDimM ix dim
 {-# INLINE [1] insertDim' #-}
 
 -- | Get the value level `Dim` from the type level equivalent.

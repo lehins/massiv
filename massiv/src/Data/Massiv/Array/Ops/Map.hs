@@ -69,7 +69,6 @@ module Data.Massiv.Array.Ops.Map
   , izipWith3A
   ) where
 
-import Control.Monad (void)
 import Control.Scheduler
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull
@@ -394,7 +393,7 @@ itraverseA_ f arr =
 -- @since 0.3.0
 --
 traversePrim ::
-     forall r ix b r' a m . (Source r' a, Mutable r b, Index ix, PrimMonad m)
+     forall r ix b r' a m s. (Source r' a, Mutable r b, Index ix, Primal s m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -406,7 +405,7 @@ traversePrim f = itraversePrim (const f)
 -- @since 0.3.0
 --
 itraversePrim ::
-     forall r ix b r' a m . (Source r' a, Mutable r b, Index ix, PrimMonad m)
+     forall r ix b r' a m s. (Source r' a, Mutable r b, Index ix, Primal s m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -520,7 +519,7 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -531,14 +530,14 @@ mapIO action = imapIO (const action)
 -- array, therefore it is faster. Use this instead of `mapIO` when result is irrelevant.
 --
 -- @since 0.2.6
-mapIO_ :: (Index ix, Source r e, MonadUnliftIO m) => (e -> m a) -> Array r ix e -> m ()
+mapIO_ :: (Index ix, Source r e, UnliftPrimal RW m) => (e -> m a) -> Array r ix e -> m ()
 mapIO_ action = imapIO_ (const action)
 {-# INLINE mapIO_ #-}
 
 -- | Same as `mapIO_`, but map an index aware action instead.
 --
 -- @since 0.2.6
-imapIO_ :: (Index ix, Source r e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
+imapIO_ :: (Index ix, Source r e, UnliftPrimal RW m) => (ix -> e -> m a) -> Array r ix e -> m ()
 imapIO_ action arr =
   withScheduler_ (getComp arr) $ \scheduler -> imapSchedulerM_ scheduler action arr
 {-# INLINE imapIO_ #-}
@@ -547,7 +546,11 @@ imapIO_ action arr =
 --
 -- @since 0.3.1
 imapSchedulerM_ ::
-     (Index ix, Source r e, Monad m) => Scheduler m () -> (ix -> e -> m a) -> Array r ix e -> m ()
+     (Index ix, Source r e, UnliftPrimal s m)
+  => Scheduler s ()
+  -> (ix -> e -> m a)
+  -> Array r ix e
+  -> m ()
 imapSchedulerM_ scheduler action arr = do
   let sz = size arr
   splitLinearlyWith_
@@ -562,7 +565,11 @@ imapSchedulerM_ scheduler action arr = do
 --
 -- @since 0.3.1
 iforSchedulerM_ ::
-     (Index ix, Source r e, Monad m) => Scheduler m () -> Array r ix e -> (ix -> e -> m a) -> m ()
+     (Index ix, Source r e, UnliftPrimal s m)
+  => Scheduler s ()
+  -> Array r ix e
+  -> (ix -> e -> m a)
+  -> m ()
 iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 {-# INLINE iforSchedulerM_ #-}
 
@@ -571,7 +578,7 @@ iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 --
 -- @since 0.2.6
 imapIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -582,7 +589,7 @@ imapIO action arr = generateArray (getComp arr) (size arr) $ \ix -> action ix (u
 --
 -- @since 0.2.6
 forIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -597,7 +604,7 @@ forIO = flip mapIO
 --
 -- @since 0.3.4
 imapWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
   => WorkerStates s
   -> (ix -> a -> s -> m b)
   -> Array r' ix a
@@ -609,7 +616,7 @@ imapWS states f arr = generateArrayWS states (size arr) (\ix s -> f ix (unsafeIn
 --
 -- @since 0.3.4
 mapWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
   => WorkerStates s
   -> (a -> s -> m b)
   -> Array r' ix a
@@ -622,7 +629,7 @@ mapWS states f = imapWS states (\ _ -> f)
 --
 -- @since 0.3.4
 iforWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
   => WorkerStates s
   -> Array r' ix a
   -> (ix -> a -> s -> m b)
@@ -634,10 +641,10 @@ iforWS states f arr = imapWS states arr f
 --
 -- @since 0.3.4
 forWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
-  => WorkerStates s
+     forall r ix b r' a ws m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
+  => WorkerStates ws
   -> Array r' ix a
-  -> (a -> s -> m b)
+  -> (a -> ws -> m b)
   -> m (Array r ix b)
 forWS states arr f = imapWS states (\ _ -> f) arr
 {-# INLINE forWS #-}
@@ -659,7 +666,7 @@ forWS states arr f = imapWS states (\ _ -> f) arr
 -- 499500
 --
 -- @since 0.2.6
-forIO_ :: (Index ix, Source r e, MonadUnliftIO m) => Array r ix e -> (e -> m a) -> m ()
+forIO_ :: (Index ix, Source r e, UnliftPrimal RW m) => Array r ix e -> (e -> m a) -> m ()
 forIO_ = flip mapIO_
 {-# INLINE forIO_ #-}
 
@@ -667,7 +674,7 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, UnliftPrimal RW m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)
@@ -677,6 +684,6 @@ iforIO = flip imapIO
 -- | Same as `imapIO_` but with arguments flipped.
 --
 -- @since 0.2.6
-iforIO_ :: (Source r a, Index ix, MonadUnliftIO m) => Array r ix a -> (ix -> a -> m b) -> m ()
+iforIO_ :: (Source r a, Index ix, UnliftPrimal RW m) => Array r ix a -> (ix -> a -> m b) -> m ()
 iforIO_ = flip imapIO_
 {-# INLINE iforIO_ #-}

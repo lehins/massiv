@@ -262,11 +262,11 @@ fromStreamExactM sz str = do
 
 
 unstreamIntoM ::
-     (Mutable r a, PrimMonad m)
-  => MVector (PrimState m) r a
+     (Mutable r a, Primal s m)
+  => MVector r a s
   -> LengthHint
   -> S.Stream Id a
-  -> m (MVector (PrimState m) r a)
+  -> m (MVector r a s)
 unstreamIntoM marr sz str =
   case sz of
     LengthExact _ -> marr <$ unstreamMaxM marr str
@@ -277,7 +277,7 @@ unstreamIntoM marr sz str =
 
 
 unstreamMax ::
-     forall r e. (Mutable r e)
+     forall r e. Mutable r e
   => Int
   -> S.Stream Id e
   -> Vector r e
@@ -290,7 +290,7 @@ unstreamMax kMax str =
 
 
 unstreamMaxM ::
-     (Mutable r a, Index ix, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
+     (Mutable r a, Index ix, Primal s m) => MArray r ix a s -> S.Stream Id a -> m Int
 unstreamMaxM marr (S.Stream step s) = stepLoad s 0
   where
     stepLoad t i =
@@ -313,10 +313,10 @@ unstreamUnknown str =
 
 
 unstreamUnknownM ::
-     (Mutable r a, PrimMonad m)
-  => MVector (PrimState m) r a
+     (Mutable r a, Primal s m)
+  => MVector r a s
   -> S.Stream Id a
-  -> m (MVector (PrimState m) r a)
+  -> m (MVector r a s)
 unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (msize marrInit)) marrInit
   where
     stepLoad t i kMax marr

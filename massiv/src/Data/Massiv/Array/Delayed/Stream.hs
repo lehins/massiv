@@ -23,7 +23,6 @@ module Data.Massiv.Array.Delayed.Stream
   ) where
 
 import Control.Applicative
-import Control.Monad (void)
 import Data.Coerce
 import Data.Foldable
 import Data.Massiv.Array.Delayed.Pull
@@ -192,19 +191,19 @@ instance Load DS Ix1 e where
   replicate _ k = fromSteps . S.replicate k
   {-# INLINE replicate #-}
 
-  loadArrayM _scheduler arr uWrite =
+  loadArrayST _scheduler arr uWrite =
     case stepsSize (dsArray arr) of
       LengthExact _ ->
         void $ S.foldlM (\i e -> uWrite i e >> pure (i + 1)) 0 (S.transStepsId (coerce arr))
       _ -> error "Loading Stream array is not supported with loadArrayM"
-  {-# INLINE loadArrayM #-}
+  {-# INLINE loadArrayST #-}
 
-  unsafeLoadIntoS marr (DSArray sts) =
+  unsafeLoadIntoST marr (DSArray sts) =
     S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
-  {-# INLINE unsafeLoadIntoS #-}
+  {-# INLINE unsafeLoadIntoST #-}
 
-  unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoS marr arr
-  {-# INLINE unsafeLoadIntoM #-}
+  unsafeLoadIntoIO marr arr = liftST $ unsafeLoadIntoST marr arr
+  {-# INLINE unsafeLoadIntoIO #-}
 
 
 -- cons :: e -> Array DS Ix1 e -> Array DS Ix1 e

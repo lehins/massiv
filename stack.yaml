@@ -1,6 +1,14 @@
-resolver: nightly-2021-06-19
+resolver: lts-18.0
 packages:
 - 'massiv/'
 - 'massiv-test/'
 flags: {}
-extra-deps: []
+extra-deps:
+- github: lehins/primal
+  commit: 77f52a6603ad0b64141e57e5647d452dca9e25e4
+  subdirs:
+    - primal
+- github: lehins/haskell-scheduler
+  commit: 93fda1423d0a8224ba21575449810b39804b80a4
+  subdirs:
+    - scheduler

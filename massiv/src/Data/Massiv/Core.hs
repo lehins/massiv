@@ -8,12 +8,13 @@
 --
 module Data.Massiv.Core
   ( Array(List, unList)
+  , MArray
   , Vector
   , MVector
   , Matrix
   , MMatrix
   , Elt
-  , Load(loadArrayM, loadArrayWithSetM)
+  , Load(loadArrayST, loadArrayWithSetST)
   , Stream(..)
   , Source
   , Size
@@ -42,15 +43,19 @@ module Data.Massiv.Core
   , Numeric
   , NumericFloat
   -- * Exceptions
-  , MonadThrow(..)
+  , Raises(..)
   , IndexException(..)
   , SizeException(..)
   , ShapeException(..)
   , module Data.Massiv.Core.Exception
   -- * Stateful Monads
-  , MonadUnliftIO
-  , MonadIO(liftIO)
-  , PrimMonad(PrimState)
+  , ST
+  , runST
+  , RW
+  , Primal
+  , UnliftPrimal(withRunInST)
+  , liftST
+  , liftIO
   ) where
 
 import Control.Scheduler (SchedulerWS, initWorkerStates)

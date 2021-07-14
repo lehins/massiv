@@ -68,7 +68,6 @@ module Data.Massiv.Array.Ops.Construct
   ) where
 
 import Control.Applicative hiding (empty)
-import Control.Monad (when, void)
 import Control.Monad.ST
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
@@ -116,7 +115,7 @@ makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
 
-newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
+newtype STA r ix a = STA {_runSTA :: forall s. MArray r ix a s -> ST s (Array r ix a)}
 
 runSTA :: (Mutable r e, Index ix) => Sz ix -> STA r ix e -> Array r ix e
 runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
@@ -231,8 +230,7 @@ iunfoldrS_ ::
   -> Array DL ix e
 iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: Loader e
     load _ startAt dlWrite _ =
       void $
       loopM startAt (< totalElem sz + startAt) (+ 1) acc0 $ \ !i !acc ->
@@ -262,8 +260,7 @@ iunfoldlS_ ::
   -> Array DL ix e
 iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: Loader e
     load _ startAt dlWrite _ =
       void $
       loopDeepM startAt (< totalElem sz + startAt) (+ 1) acc0 $ \ !i !acc ->
@@ -313,11 +310,11 @@ randomArray ::
   -> Comp -- ^ Computation strategy.
   -> Sz ix -- ^ Resulting size of the array.
   -> Array DL ix e
-randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothing load
+randomArray gen splitGen nextRandom comp sz = DLArray comp sz load
   where
     !totalLength = totalElem sz
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
-    load scheduler startAt writeAt =
+    load :: Loader e
+    load scheduler startAt writeAt _ =
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
         let slackStartAt = slackStart + startAt
             writeRandom k genII =
@@ -441,7 +438,7 @@ randomArrayS gen sz nextRandom =
 --
 -- @since 0.3.4
 randomArrayWS ::
-     forall r ix e g m. (Mutable r e, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix e g m. (Mutable r e, Index ix, UnliftPrimal RW m)
   => WorkerStates g -- ^ Use `initWorkerStates` to initialize you per thread generators
   -> Sz ix -- ^ Resulting size of the array
   -> (g -> m e) -- ^ Generate the value using the per thread generator.
@@ -512,14 +509,14 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 --
 -- @since 0.3.0
 rangeStepM ::
-     forall ix m. (Index ix, MonadThrow m)
+     forall ix m. (Index ix, Raises m)
   => Comp -- ^ Computation strategy
   -> ix -- ^ Start
   -> ix -- ^ Step (Can't have zeros)
   -> ix -- ^ End
   -> m (Array D ix ix)
 rangeStepM comp !from !step !to
-  | foldlIndex (\acc i -> acc || i == 0) False step = throwM $ IndexZeroException step
+  | foldlIndex (\acc i -> acc || i == 0) False step = raiseM $ IndexZeroException step
   | otherwise =
     let dist = liftIndex2 (-) to from
         sz = liftIndex2 div dist step
@@ -538,7 +535,7 @@ rangeStepM comp !from !step !to
 --
 -- @since 0.3.0
 rangeStep' :: (HasCallStack, Index ix) => Comp -> ix -> ix -> ix -> Array D ix ix
-rangeStep' comp from step = throwEither . rangeStepM comp from step
+rangeStep' comp from step = raiseLeftImprecise . rangeStepM comp from step
 {-# INLINE rangeStep' #-}
 
 -- | Just like `range`, except the finish index is included.
@@ -553,7 +550,7 @@ rangeInclusive comp ixFrom ixTo =
 -- | Just like `rangeStep`, except the finish index is included.
 --
 -- @since 0.3.0
-rangeStepInclusiveM :: (MonadThrow m, Index ix) => Comp -> ix -> ix -> ix -> m (Array D ix ix)
+rangeStepInclusiveM :: (Raises m, Index ix) => Comp -> ix -> ix -> ix -> m (Array D ix ix)
 rangeStepInclusiveM comp ixFrom step ixTo = rangeStepM comp ixFrom step (liftIndex (1 +) ixTo)
 {-# INLINE rangeStepInclusiveM #-}
 
@@ -561,7 +558,7 @@ rangeStepInclusiveM comp ixFrom step ixTo = rangeStepM comp ixFrom step (liftInd
 --
 -- @since 0.3.1
 rangeStepInclusive' :: (HasCallStack, Index ix) => Comp -> ix -> ix -> ix -> Array D ix ix
-rangeStepInclusive' comp ixFrom step = throwEither . rangeStepInclusiveM comp ixFrom step
+rangeStepInclusive' comp ixFrom step = raiseLeftImprecise . rangeStepInclusiveM comp ixFrom step
 {-# INLINE rangeStepInclusive' #-}
 
 
@@ -726,7 +723,7 @@ expandWithin' ::
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
   -> Array D ix b
-expandWithin' dim k f = throwEither . expandWithinM dim k f
+expandWithin' dim k f = raiseLeftImprecise . expandWithinM dim k f
 {-# INLINE expandWithin' #-}
 
 -- | Similar to `expandWithin`, except that dimension is specified at a value level, which means it
@@ -734,7 +731,7 @@ expandWithin' dim k f = throwEither . expandWithinM dim k f
 --
 -- @since 0.4.0
 expandWithinM ::
-     forall r ix a b m. (Index ix, Index (Lower ix), Manifest r a, MonadThrow m)
+     forall r ix a b m. (Index ix, Index (Lower ix), Manifest r a, Raises m)
   => Dim
   -> Sz1
   -> (a -> Ix1 -> b)
