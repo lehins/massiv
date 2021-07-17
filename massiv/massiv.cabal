@@ -81,8 +81,8 @@ library
                      , bytestring
                      , deepseq
                      , exceptions
-                     , scheduler >= 1.5.0
-                     , primitive
+                     , scheduler >= 1.6.0 && < 2
+                     , primitive >= 0.7.1.0
                      , random >= 1.2.0
                      , unliftio-core
                      , vector

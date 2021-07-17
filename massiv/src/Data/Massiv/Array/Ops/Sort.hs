@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Sort
 -- Copyright   : (c) Alexey Kuleshevich 2018-2021

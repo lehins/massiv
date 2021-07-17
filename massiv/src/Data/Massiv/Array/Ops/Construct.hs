@@ -435,7 +435,7 @@ randomArrayS gen sz nextRandom =
 --   ]
 -- >>> randomArrayWS gens (Sz1 10) (uniformRM (0, 9)) :: IO (Vector P Int)
 -- Array P (ParN 3) (Sz1 10)
---   [ 0, 9, 3, 2, 2, 7, 6, 7, 7, 5 ]
+--   [ 0, 9, 3, 0, 8, 2, 8, 5, 0, 5 ]
 --
 -- @since 0.3.4
 randomArrayWS ::

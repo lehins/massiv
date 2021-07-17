@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MonoLocalBinds #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Map
 -- Copyright   : (c) Alexey Kuleshevich 2018-2021
@@ -521,7 +522,7 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -592,7 +593,7 @@ imapIO action arr = generateArray (getComp arr) (size arr) $ \ix -> action ix (u
 --
 -- @since 0.2.6
 forIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -677,7 +678,7 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)

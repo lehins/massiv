@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
 -- |
 -- Module      : Data.Massiv.Core.Iterator
 -- Copyright   : (c) Alexey Kuleshevich 2018-2021

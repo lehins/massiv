@@ -5,6 +5,6 @@ packages:
 flags: {}
 extra-deps:
 - github: lehins/haskell-scheduler
-  commit: ad2c5383cbf8c1a7b840c99c7695efdd225c48d5
+  commit: 46ac079867646452fd2bee98b7a70bbe69440f13
   subdirs:
     - scheduler
