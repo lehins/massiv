@@ -110,6 +110,33 @@ import Data.Massiv.Core.Index.Tuple
 import Data.Massiv.Core.Iterator
 import GHC.TypeLits
 
+
+-- | 1-dimensional type synonym for size.
+--
+-- @since 0.3.0
+type Sz1 = Sz Ix1
+
+-- | 2-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz2 = Sz Ix2
+
+-- | 3-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz3 = Sz Ix3
+
+-- | 4-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz4 = Sz Ix4
+
+-- | 5-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz5 = Sz Ix5
+
+
 -- | Approach to be used near the borders during various transformations.
 -- Whenever a function needs information not only about an element of interest, but
 -- also about it's neighbors, it will go out of bounds near the array edges,
@@ -340,9 +367,9 @@ modifyDim' ix dim = throwEither . modifyDimM ix dim
 --
 -- ==== __Examples__
 --
--- λ> dropDimM (2 :> 3 :> 4 :. 5) 3 :: Maybe Ix3
+-- >>> dropDimM (2 :> 3 :> 4 :. 5) 3 :: Maybe Ix3
 -- Just (2 :> 4 :. 5)
--- λ> dropDimM (2 :> 3 :> 4 :. 5) 6 :: Maybe Ix3
+-- >>> dropDimM (2 :> 3 :> 4 :. 5) 6 :: Maybe Ix3
 -- Nothing
 --
 -- @since 0.3.0
@@ -367,7 +394,7 @@ dropDim' ix = throwEither . dropDimM ix
 --
 -- ==== __Examples__
 --
--- λ> pullOutDim' (2 :> 3 :> 4 :. 5) 3
+-- >>> pullOutDim' (2 :> 3 :> 4 :. 5) 3
 -- (3,2 :> 4 :. 5)
 --
 -- @since 0.2.4

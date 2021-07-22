@@ -26,7 +26,6 @@ module Data.Massiv.Core.Index.Internal
   ( Sz(SafeSz)
   , pattern Sz
   , pattern Sz1
-  , type Sz1
   , unSz
   , zeroSz
   , oneSz
@@ -71,11 +70,13 @@ import Data.Massiv.Core.Iterator
 import Data.Typeable
 import GHC.TypeLits
 
--- | `Sz` is the size of the array. It describes total number of elements along each
--- dimension in the array. It is a wrapper around an index of the same dimension, however
--- it provides type safety preventing mixup with index. Moreover the @Sz@ constructor (and
--- others `Sz1`, `Data.Massiv.Core.Index.Sz2`, ... that are specialized to specific
--- dimensions prevent creation of invalid sizes with negative values.
+-- | `Sz` is the size of the array. It describes total number of elements along
+-- each dimension in the array. It is a wrapper around an index of the same
+-- dimension, however it provides type safety preventing mixup with
+-- index. Moreover the @Sz@ constructor and others such as
+-- `Data.Massiv.Core.Index.Sz1`, `Data.Massiv.Core.Index.Sz2`, ... that
+-- are specialized to specific dimensions, prevent creation of invalid sizes with
+-- negative values by clamping them to zero.
 --
 -- ====__Examples__
 --
@@ -95,7 +96,7 @@ import GHC.TypeLits
 -- Sz (0 :> 0 :. 1)
 --
 -- __Warning__: It is always wrong to `negate` a size, thus it will result in an
--- error. For that reason also watch out for partially applied @(`-` sz)@, which is
+-- error. For that reason also watch out for partially applied @(`Prelude.-` sz)@, which is
 -- deugared into @`negate` sz@. See more info about it in
 -- [#114](https://github.com/lehins/massiv/issues/114).
 --
@@ -117,15 +118,10 @@ pattern Sz ix <- SafeSz ix where
         Sz ix = SafeSz (liftIndex (max 0) ix)
 {-# COMPLETE Sz #-}
 
--- | 1-dimensional type synonym for size.
---
--- @since 0.3.0
-type Sz1 = Sz Ix1
-
 -- | 1-dimensional size constructor. Especially useful with literals: @(Sz1 5) == Sz (5 :: Int)@.
 --
 -- @since 0.3.0
-pattern Sz1 :: Ix1 -> Sz1
+pattern Sz1 :: Ix1 -> Sz Ix1
 pattern Sz1 ix  <- SafeSz ix where
         Sz1 ix = SafeSz (max 0 ix)
 {-# COMPLETE Sz1 #-}
@@ -251,7 +247,7 @@ liftSz2 f sz1 sz2 = Sz (liftIndex2 f (coerce sz1) (coerce sz2))
 -- Sz (1 :> 2 :. 3)
 --
 -- @since 0.3.0
-consSz :: Index ix => Sz1 -> Sz (Lower ix) -> Sz ix
+consSz :: Index ix => Sz Ix1 -> Sz (Lower ix) -> Sz ix
 consSz (SafeSz i) (SafeSz ix) = SafeSz (consDim i ix)
 {-# INLINE consSz #-}
 
@@ -265,7 +261,7 @@ consSz (SafeSz i) (SafeSz ix) = SafeSz (consDim i ix)
 -- Sz (2 :> 3 :. 1)
 --
 -- @since 0.3.0
-snocSz :: Index ix => Sz (Lower ix) -> Sz1 -> Sz ix
+snocSz :: Index ix => Sz (Lower ix) -> Sz Ix1 -> Sz ix
 snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 {-# INLINE snocSz #-}
 
@@ -308,7 +304,7 @@ insertSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDimM sz dim sz1
 -- (Sz1 1,Sz (2 :. 3))
 --
 -- @since 0.3.0
-unconsSz :: Index ix => Sz ix -> (Sz1, Sz (Lower ix))
+unconsSz :: Index ix => Sz ix -> (Sz Ix1, Sz (Lower ix))
 unconsSz (SafeSz sz) = coerce (unconsDim sz)
 {-# INLINE unconsSz #-}
 
@@ -321,7 +317,7 @@ unconsSz (SafeSz sz) = coerce (unconsDim sz)
 -- (Sz (1 :. 2),Sz1 3)
 --
 -- @since 0.3.0
-unsnocSz :: Index ix => Sz ix -> (Sz (Lower ix), Sz1)
+unsnocSz :: Index ix => Sz ix -> (Sz (Lower ix), Sz Ix1)
 unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
 {-# INLINE unsnocSz #-}
 
@@ -837,7 +833,7 @@ instance Show SizeException where
 --
 -- @since 0.3.0
 data ShapeException
-  = DimTooShortException !Sz1 !Sz1
+  = DimTooShortException !(Sz Ix1) !(Sz Ix1)
   | DimTooLongException
   deriving Eq
 

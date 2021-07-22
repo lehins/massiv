@@ -22,6 +22,7 @@
 * Prevent `showsArrayPrec` from changing index type
 * Change function argument to monadic action for `unstablePartitionM` and `unsafeUnstablePartitionM`
 * Replace `snull` with a more generic `isNull`
+* Switch `DL` loading function to run in `ST` monad, rather than in any `Monad m`.
 
 # 0.6.1
 

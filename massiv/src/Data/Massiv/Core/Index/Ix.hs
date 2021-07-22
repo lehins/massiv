@@ -25,22 +25,17 @@ module Data.Massiv.Core.Index.Ix
   , pattern Sz
   , type Ix1
   , pattern Ix1
-  , type Sz1
   , pattern Sz1
   , type Ix2(Ix2, (:.))
-  , type Sz2
   , pattern Sz2
   , type Ix3
   , pattern Ix3
-  , type Sz3
   , pattern Sz3
   , type Ix4
   , pattern Ix4
-  , type Sz4
   , pattern Sz4
   , type Ix5
   , pattern Ix5
-  , type Sz5
   , pattern Sz5
   , HighIxN
   ) where
@@ -73,15 +68,10 @@ pattern Ix2 :: Int -> Int -> Ix2
 pattern Ix2 i2 i1 = i2 :. i1
 {-# COMPLETE Ix2 #-}
 
--- | 2-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz2 = Sz Ix2
-
 -- | 2-dimensional size constructor. @(Sz2 i j) == Sz (i :. j)@
 --
 -- @since 0.3.0
-pattern Sz2 :: Int -> Int -> Sz2
+pattern Sz2 :: Int -> Int -> Sz Ix2
 pattern Sz2 i2 i1 = Sz (i2 :. i1)
 {-# COMPLETE Sz2 #-}
 
@@ -98,15 +88,10 @@ pattern Ix3 :: Int -> Int -> Int -> Ix3
 pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
 {-# COMPLETE Ix3 #-}
 
--- | 3-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz3 = Sz Ix3
-
 -- | 3-dimensional size constructor. @(Sz3 i j k) == Sz (i :> j :. k)@
 --
 -- @since 0.3.0
-pattern Sz3 :: Int -> Int -> Int -> Sz3
+pattern Sz3 :: Int -> Int -> Int -> Sz Ix3
 pattern Sz3 i3 i2 i1 = Sz (i3 :> i2 :. i1)
 {-# COMPLETE Sz3 #-}
 
@@ -122,15 +107,10 @@ pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
 pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
 {-# COMPLETE Ix4 #-}
 
--- | 4-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz4 = Sz Ix4
-
 -- | 4-dimensional size constructor. @(Sz4 i j k l) == Sz (i :> j :> k :. l)@
 --
 -- @since 0.3.0
-pattern Sz4 :: Int -> Int -> Int -> Int -> Sz4
+pattern Sz4 :: Int -> Int -> Int -> Int -> Sz Ix4
 pattern Sz4 i4 i3 i2 i1 = Sz (i4 :> i3 :> i2 :. i1)
 {-# COMPLETE Sz4 #-}
 
@@ -146,15 +126,10 @@ pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
 pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
 {-# COMPLETE Ix5 #-}
 
--- | 5-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz5 = Sz Ix5
-
 -- | 5-dimensional size constructor.  @(Sz5 i j k l m) == Sz (i :> j :> k :> l :. m)@
 --
 -- @since 0.3.0
-pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz5
+pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz Ix5
 pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 {-# COMPLETE Sz5 #-}
 

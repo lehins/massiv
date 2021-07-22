@@ -33,7 +33,7 @@ library
                      , exceptions
                      , QuickCheck
                      , hspec
-                     , massiv >= 0.6.1.0
+                     , massiv >= 1.0 && < 2
                      , scheduler
                      , primitive
                      , unliftio

@@ -292,9 +292,9 @@ iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
 --   ]
 --
 -- >>> import Data.Massiv.Array
--- >>> import System.Random as System
--- >>> gen = System.mkStdGen 217
--- >>> randomArray gen System.split System.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
+-- >>> import System.Random as Random
+-- >>> gen = Random.mkStdGen 217
+-- >>> randomArray gen Random.split Random.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
 -- Array DL (ParN 2) (Sz (2 :. 3))
 --   [ [ 0.2616843941380331, 0.600959468331641, 0.4382415961606372 ]
 --   , [ 0.27812817813217605, 0.2993277194932741, 0.2774105268603957 ]
@@ -420,22 +420,27 @@ randomArrayS gen sz nextRandom =
 -- [wmc-random](https://www.stackage.org/package/mwc-random), which is not thread safe,
 -- and safely parallelize it by giving each thread it's own generator. There is a caveat
 -- of course, statistical independence will depend on the entropy in your initial seeds,
--- so do not use the example below verbatim, since intiial seeds are sequential numbers.
+-- so do not use the example below verbatim, since initial seeds are sequential numbers.
 --
 -- >>> import Data.Massiv.Array as A
 -- >>> import System.Random.MWC as MWC (initialize)
 -- >>> import System.Random.Stateful (uniformRM)
 -- >>> import Control.Scheduler (initWorkerStates, getWorkerId)
 -- >>> :set -XTypeApplications
--- >>> gens <- initWorkerStates (ParN 3) (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
--- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Array P Ix2 Double)
--- Array P (ParN 3) (Sz (2 :. 3))
+-- >>> gens <- initWorkerStates Par (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
+-- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
+-- Array P Par (Sz (2 :. 3))
 --   [ [ 2.5438514691269685, 4.287612444807011, 5.610339021582389 ]
 --   , [ 4.697970155404468, 5.00119167394813, 2.996037154611197 ]
 --   ]
--- >>> randomArrayWS gens (Sz1 10) (uniformRM (0, 9)) :: IO (Vector P Int)
--- Array P (ParN 3) (Sz1 10)
---   [ 0, 9, 3, 0, 8, 2, 8, 5, 0, 5 ]
+-- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
+-- Array P Par (Sz (2 :. 3))
+--   [ [ 2.3381558618288985, 5.950737336743302, 2.30528055886831 ]
+--   , [ 6.537992271897603, 7.83182061304764, 4.17882094946732 ]
+--   ]
+-- >>> randomArrayWS gens (Sz1 6) (uniformRM (0, 9)) :: IO (Vector P Int)
+-- Array P Par (Sz1 6)
+--   [ 7, 6, 7, 7, 5, 3 ]
 --
 -- @since 0.3.4
 randomArrayWS ::
@@ -548,7 +553,7 @@ rangeInclusive comp ixFrom ixTo =
 {-# INLINE rangeInclusive #-}
 
 
--- | Just like `rangeStep`, except the finish index is included.
+-- | Just like `rangeStepM`, except the finish index is included.
 --
 -- @since 0.3.0
 rangeStepInclusiveM :: (MonadThrow m, Index ix) => Comp -> ix -> ix -> ix -> m (Array D ix ix)
@@ -604,7 +609,7 @@ rangeStepSize comp !from !step !sz =
 -- __/Similar/__:
 --
 -- [@Prelude.`Prelude.enumFromTo`@] Very similar to @[i .. i + n - 1]@, except that
--- `senumFromN` is faster, but it only works for `Num` and not for `Enum` elements
+-- `enumFromN` is faster, but it only works for `Num` and not for `Enum` elements
 --
 -- [@Data.Vector.Generic.`Data.Vector.Generic.enumFromN`@]
 --

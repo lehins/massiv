@@ -64,7 +64,7 @@ throwEither =
 {-# INLINE throwEither #-}
 
 -- | An error that gets thrown when an unitialized element of a boxed array gets accessed. Can only
--- happen when array was constructed with `unsafeNew`.
+-- happen when array was constructed with `Data.Massiv.Array.Unsafe.unsafeNew`.
 data Uninitialized = Uninitialized deriving Show
 
 instance Exception Uninitialized where

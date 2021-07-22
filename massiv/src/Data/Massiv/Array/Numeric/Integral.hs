@@ -260,8 +260,9 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- Approximation](http://tutorial.math.lamar.edu/Classes/CalcII/ApproximatingDefIntegrals.aspx),
 -- so if you need to brush up on some theory it is a great place to start.
 --
--- Implementation-wise, integral approximation here relies heavily on stencils with stride, as such
--- computation is fast and is automatically parallelizable.
+-- Implementation-wise, integral approximation here relies heavily on stencils
+-- with stride, because such computation is fast and is automatically
+-- parallelizable.
 --
 -- Here are some examples of where this can be useful:
 --
@@ -323,8 +324,8 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 --
 -- We can clearly see the difference is huge, but it doesn't mean it is much better than our
 -- previous estimate. In order to get more accurate results we can use a better Simpson's rule for
--- approximation and many more sample points. There is no need to create individual arrays `xArr`
--- and `yArr`, there are functions like `simpsonRule` that will take care it for you:
+-- approximation and many more sample points. There is no need to create individual arrays @xArrX4@
+-- and @yArrX4@, there are functions like `simpsonsRule` that will take care of it for us:
 --
 -- >>> simpsonsRule Seq U (\ scale i -> f (scale i)) startValue distPerCell desiredSize 128
 -- Array D Seq (Sz1 4)

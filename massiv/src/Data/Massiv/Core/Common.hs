@@ -115,9 +115,9 @@ import Data.Vector.Fusion.Util
 
 -- | The array family. Representations @r@ describe how data is arranged or computed. All
 -- arrays have a common property that each index @ix@ always maps to the same unique
--- element, even if that element does not yet exist in memory and the arry has to be
+-- element @e@, even if that element does not yet exist in memory and the array has to be
 -- computed in order to get access to that element. Data is always arranged in a nested
--- row-major fashion, depth of which is controlled by @`Rank` ix@.
+-- row-major fashion. Rank of an array is specified by @`Dimensions` ix@.
 data family Array r ix e :: Type
 
 -- | Type synonym for a single dimension array, or simply a flat vector.
@@ -262,9 +262,10 @@ lengthHintUpperBound = \case
 
 class Size r where
 
-  -- | Get the exact size of an immutabe array. Most of the time will produce the size in
-  -- constant time, except for `DS` representation, which could result in evaluation of
-  -- the whole stream. See `maxLinearSize` and `Data.Massiv.Vector.slength` for more info.
+  -- | Get the exact size of an immutabe array. Most of the time will produce
+  -- the size in constant time, except for `Data.Massiv.Array.DS`
+  -- representation, which could result in evaluation of the whole stream. See
+  -- `maxLinearSize` and `Data.Massiv.Vector.slength` for more info.
   --
   -- @since 0.1.0
   size :: Array r ix e -> Sz ix
@@ -328,7 +329,7 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --   , [ 0, 0, 2, 0 ]
   --   ]
   --
-  -- Instead of restricting the full type manually we can use `TypeApplications` as convenience:
+  -- Instead of restricting the full type manually we can use @TypeApplications@ as convenience:
   --
   -- >>> :set -XTypeApplications
   -- >>> makeArray @P @_ @Double Seq (Sz2 3 4) $ \(i :. j) -> logBase (fromIntegral i) (fromIntegral j)

@@ -1218,7 +1218,7 @@ sunfoldrExactNM n f = fromStepsM . S.unfoldrExactNM n f
 -- | /O(n)/ - Enumerate from a starting number @x@ exactly @n@ times with a step @1@.
 --
 -- /Related/: `senumFromStepN`, `enumFromN`, `enumFromStepN`, `rangeSize`,
--- `rangeStepSize`, `range`, `rangeStep`
+-- `rangeStepSize`, `range`, `rangeStep'`
 --
 -- ==== __Examples__
 --

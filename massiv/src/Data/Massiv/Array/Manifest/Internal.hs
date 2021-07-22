@@ -230,7 +230,7 @@ fromRaggedArrayM arr =
 {-# INLINE fromRaggedArrayM #-}
 
 
--- | Same as `fromRaggedArrayM`, but will throw a pure exception if its shape is not
+-- | Same as `fromRaggedArrayM`, but will throw an impure exception if its shape is not
 -- rectangular.
 --
 -- @since 0.1.1
