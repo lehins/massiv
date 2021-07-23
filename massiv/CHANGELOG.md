@@ -23,6 +23,25 @@
 * Change function argument to monadic action for `unstablePartitionM` and `unsafeUnstablePartitionM`
 * Replace `snull` with a more generic `isNull`
 * Switch `DL` loading function to run in `ST` monad, rather than in any `Monad m`.
+* Rename `msize` -> `sizeOfMArray`
+* Add `unsafeResizeMArray` and `unsafeLinearSliceMArray`
+* Rename:
+  * `loadArrayM` -> `iterArrayLinearM_`
+  * `loadArrayWithSetM` -> `iterArrayLinearWithSetM_`.
+  * `loadArrayWithStrideM` -> `iterArrayLinearWithStrideM_`.
+* Add `iterArrayLinearST_` and `iterArrayLinearWithSetST_` to `Load` class instead
+  of `loadArrayM` and `loadArrayWithSetM`.
+* Add `iterArrayLinearWithStrideST_` to `LoadStride` class instead of `loadArrayWithStrideM`.
+* Add new mutable functions:
+  * `resizeMArrayM`,
+  * `outerSliceMArrayM` and `outerSlicesMArray`,
+  * `for2PrimM_` and `ifor2PrimM_`,
+  * `zipSwapM_`
+* Switch effectful mapping functions to use the representation specific
+  iteration. Which means that they are now restricted to `Load` instead of
+  `Source`. Functions affected:
+  * `mapIO_`, `imapIO_`, `forIO_` and `iforIO_`
+  * `mapIO`, `imapIO`, `forIO` and `iforIO`
 
 # 0.6.1
 

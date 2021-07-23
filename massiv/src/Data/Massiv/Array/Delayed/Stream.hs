@@ -23,7 +23,6 @@ module Data.Massiv.Array.Delayed.Stream
   ) where
 
 import Control.Applicative
-import Control.Monad (void)
 import Control.Monad.ST
 import Data.Coerce
 import Data.Foldable
@@ -193,19 +192,19 @@ instance Load DS Ix1 e where
   replicate _ k = fromSteps . S.replicate k
   {-# INLINE replicate #-}
 
-  loadArrayM _scheduler arr uWrite =
-    case stepsSize (dsArray arr) of
-      LengthExact _ ->
-        void $ S.foldlM (\i e -> uWrite i e >> pure (i + 1)) 0 (S.transStepsId (coerce arr))
-      _ -> error "Loading Stream array is not supported with loadArrayM"
-  {-# INLINE loadArrayM #-}
+  iterArrayLinearST_ _scheduler arr uWrite =
+    -- case stepsSize (dsArray arr) of
+    --   LengthExact _ ->
+    --     void $ S.foldlM (\i e -> uWrite i e >> pure (i + 1)) 0 (S.transStepsId (coerce arr))
+    S.mapM_ (uncurry uWrite) $ S.indexed $ S.transStepsId (coerce arr)
+  {-# INLINE iterArrayLinearST_ #-}
 
-  unsafeLoadIntoS marr (DSArray sts) =
+  unsafeLoadIntoST marr (DSArray sts) =
     S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
-  {-# INLINE unsafeLoadIntoS #-}
+  {-# INLINE unsafeLoadIntoST #-}
 
-  unsafeLoadIntoM marr arr = stToIO $ unsafeLoadIntoS marr arr
-  {-# INLINE unsafeLoadIntoM #-}
+  unsafeLoadIntoIO marr arr = stToIO $ unsafeLoadIntoST marr arr
+  {-# INLINE unsafeLoadIntoIO #-}
 
 
 -- cons :: e -> Array DS Ix1 e -> Array DS Ix1 e
@@ -223,13 +222,13 @@ instance Load DS Ix1 e where
 
 -- TODO: skip the stride while loading
 -- instance StrideLoad DS Ix1 e where
---   loadArrayWithStrideM scheduler stride resultSize arr uWrite =
+--   iterArrayLinearWithStrideST_ scheduler stride resultSize arr uWrite =
 --     let strideIx = unStride stride
 --         DIArray (DArray _ _ f) = arr
 --     in loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
 --           scheduleWork scheduler $
 --           iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
 --             \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
---   {-# INLINE loadArrayWithStrideM #-}
+--   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 

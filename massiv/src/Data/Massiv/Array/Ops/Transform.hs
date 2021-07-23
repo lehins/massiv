@@ -136,8 +136,9 @@ extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 {-# INLINE extractFromTo' #-}
 
 
--- | /O(1)/ - Changes the shape of an array. Returns `Nothing` if total
--- number of elements does not match the source array.
+-- | /O(1)/ - Change the size of an array. Throws
+-- `SizeElementsMismatchException` if total number of elements does not match
+-- the supplied array.
 --
 -- @since 0.3.0
 resizeM ::
@@ -1034,7 +1035,7 @@ upsample !fillWith safeStride arr =
     load :: Loader e
     load scheduler startAt uWrite uSet = do
       uSet startAt (toLinearSz newsz) fillWith
-      loadArrayM scheduler arr (\i -> uWrite (adjustLinearStride (i + startAt)))
+      iterArrayLinearST_ scheduler arr (\i -> uWrite (adjustLinearStride (i + startAt)))
     {-# INLINE load #-}
     adjustLinearStride = toLinearIndex newsz . timesStride . fromLinearIndex sz
     {-# INLINE adjustLinearStride #-}

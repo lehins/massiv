@@ -161,7 +161,7 @@ quicksortInternalM_ ::
   -> MVector s r e
   -> m ()
 quicksortInternalM_ fLT fEQ scheduler marr =
-  scheduleWork scheduler $ qsort (numWorkers scheduler) 0 (unSz (msize marr) - 1)
+  scheduleWork scheduler $ qsort (numWorkers scheduler) 0 (unSz (sizeOfMArray marr) - 1)
   where
     ltSwap i j = do
       ei <- unsafeLinearRead marr i

@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MonoLocalBinds #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2018-2021
@@ -32,10 +34,13 @@ module Data.Massiv.Array.Unsafe
   , unsafeInnerSlice
   , unsafeLinearSlice
     -- * Mutable interface
-  , munsafeResize
+  , unsafeResizeMArray
+  , unsafeLinearSliceMArray
   , unsafeThaw
   , unsafeFreeze
   , unsafeNew
+  , unsafeLoadIntoST
+  , unsafeLoadIntoIO
   , unsafeLoadIntoS
   , unsafeLoadIntoM
   , unsafeCreateArray
@@ -88,6 +93,7 @@ module Data.Massiv.Array.Unsafe
   , module Data.Massiv.Array.Stencil.Unsafe
   ) where
 
+import Control.Monad.Primitive
 import Data.Massiv.Array.Delayed.Pull (D, unsafeExtract, unsafeSlice, unsafeInnerSlice)
 import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray, unsafeMakeLoadArrayAdjusted)
 import Data.Massiv.Array.Manifest.Boxed
@@ -138,3 +144,28 @@ unsafeTransform2 getSz get arr1 arr2 =
   where
     (sz, a) = getSz (size arr1) (size arr2)
 {-# INLINE unsafeTransform2 #-}
+
+
+
+-- | Load into a supplied mutable array sequentially. Returned array does not have to be
+-- the same
+--
+-- @since 0.5.7
+unsafeLoadIntoS ::
+     forall r r' ix e m s. (Load r ix e, Mutable r' e, MonadPrim s m)
+  => MVector s r' e
+  -> Array r ix e
+  -> m (MArray s r' ix e)
+unsafeLoadIntoS marr arr = stToPrim $ unsafeLoadIntoS marr arr
+{-# INLINE unsafeLoadIntoS #-}
+
+-- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
+--
+-- @since 0.5.7
+unsafeLoadIntoM ::
+     forall r r' ix e m. (Load r ix e, Mutable r' e, MonadIO m)
+  => MVector RealWorld r' e
+  -> Array r ix e
+  -> m (MArray RealWorld r' ix e)
+unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoIO marr arr
+{-# INLINE unsafeLoadIntoM #-}

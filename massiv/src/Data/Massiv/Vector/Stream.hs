@@ -317,7 +317,7 @@ unstreamUnknownM ::
   => MVector (PrimState m) r a
   -> S.Stream Id a
   -> m (MVector (PrimState m) r a)
-unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (msize marrInit)) marrInit
+unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (sizeOfMArray marrInit)) marrInit
   where
     stepLoad t i kMax marr
       | i < kMax =

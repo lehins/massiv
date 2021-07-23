@@ -226,7 +226,7 @@ fromRaggedArrayM arr =
         marr <- unsafeNew sz
         traverse (\_ -> unsafeFreeze (getComp arr) marr) =<<
           try (withMassivScheduler_ (getComp arr) $ \scheduler ->
-                 stToIO $ loadRagged scheduler (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
+                stToIO $ loadRaggedST scheduler arr (unsafeLinearWrite marr) 0 (totalElem sz) sz)
 {-# INLINE fromRaggedArrayM #-}
 
 
@@ -257,7 +257,7 @@ computeWithStride stride !arr =
   unsafePerformIO $ do
     let !sz = strideSize stride (size arr)
     unsafeCreateArray_ (getComp arr) sz $ \scheduler marr ->
-      stToIO $ loadArrayWithStrideM scheduler stride sz arr (unsafeLinearWrite marr)
+      stToIO $ iterArrayLinearWithStrideST_ scheduler stride sz arr (unsafeLinearWrite marr)
 {-# INLINE computeWithStride #-}
 
 
@@ -380,7 +380,7 @@ iterateLoop convergence iteration = go
     go !n !arr !loadArr !marr = do
       let !sz = size loadArr
           !k = totalElem sz
-          !mk = totalElem (msize marr)
+          !mk = totalElem (sizeOfMArray marr)
           !comp = getComp loadArr
       marr' <-
         if k == mk

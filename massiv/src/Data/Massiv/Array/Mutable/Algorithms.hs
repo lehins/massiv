@@ -40,4 +40,4 @@ unstablePartitionM ::
   => MVector (PrimState m) r e
   -> (e -> m Bool) -- ^ Predicate
   -> m Ix1
-unstablePartitionM marr f = unsafeUnstablePartitionRegionM marr f 0 (unSz (msize marr) - 1)
+unstablePartitionM marr f = unsafeUnstablePartitionRegionM marr f 0 (unSz (sizeOfMArray marr) - 1)

@@ -29,7 +29,7 @@ prop_UnsafeNewMsize ::
   => Property
 prop_UnsafeNewMsize = property $ \ sz -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
-  sz `shouldBe` msize marr
+  sz `shouldBe` sizeOfMArray marr
 
 prop_UnsafeNewLinearWriteRead ::
      forall r ix e.

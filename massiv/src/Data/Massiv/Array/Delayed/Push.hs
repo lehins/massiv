@@ -42,22 +42,18 @@ import Prelude hiding (map, zipWith)
 -- | Delayed load representation. Also known as Push array.
 data DL = DL deriving Show
 
-type Loader e
-   = forall s. Scheduler s ()
-            -> Ix1
-            -> (Ix1 -> e -> ST s ())
-            -> (Ix1 -> Sz1 -> e -> ST s ())
-            -> ST s ()
+type Loader e =
+  forall s. Scheduler s () -- ^ Scheduler that will be used for loading
+         -> Ix1 -- ^ Start loading at this linear index
+         -> (Ix1 -> e -> ST s ()) -- ^ Linear element writing action
+         -> (Ix1 -> Sz1 -> e -> ST s ()) -- ^ Linear region setting action
+         -> ST s ()
 
 
 data instance Array DL ix e = DLArray
   { dlComp    :: !Comp
   , dlSize    :: !(Sz ix)
-  , dlLoad    :: forall s. Scheduler s ()
-              -> Ix1 -- start loading at this linear index
-              -> (Ix1 -> e -> ST s ()) -- linear element writing action
-              -> (Ix1 -> Sz1 -> e -> ST s ()) -- linear region setting action
-              -> ST s ()
+  , dlLoad    :: Loader e
   }
 
 instance Strategy DL where
@@ -294,7 +290,7 @@ toLoadArray arr = DLArray (getComp arr) sz load
     load :: forall s.
       Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
     load scheduler !startAt dlWrite dlSet =
-      loadArrayWithSetM scheduler arr (dlWrite . (+ startAt)) (\offset -> dlSet (offset + startAt))
+      iterArrayLinearWithSetST_ scheduler arr (dlWrite . (+ startAt)) (\offset -> dlSet (offset + startAt))
     {-# INLINE load #-}
 {-# INLINE[1] toLoadArray #-}
 {-# RULES "toLoadArray/id" toLoadArray = id #-}
@@ -313,7 +309,7 @@ fromStrideLoad stride arr =
     !newsz = strideSize stride (size arr)
     load :: Loader e
     load scheduler !startAt dlWrite _ =
-      loadArrayWithStrideM scheduler stride newsz arr (\ !i -> dlWrite (i + startAt))
+      iterArrayLinearWithStrideST_ scheduler stride newsz arr (\ !i -> dlWrite (i + startAt))
     {-# INLINE load #-}
 {-# INLINE fromStrideLoad #-}
 
@@ -327,8 +323,8 @@ instance Index ix => Load DL ix e where
   {-# INLINE makeArrayLinear #-}
   replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
   {-# INLINE replicate #-}
-  loadArrayWithSetM scheduler DLArray {dlLoad} = dlLoad scheduler 0
-  {-# INLINE loadArrayWithSetM #-}
+  iterArrayLinearWithSetST_ scheduler DLArray {dlLoad} = dlLoad scheduler 0
+  {-# INLINE iterArrayLinearWithSetST_ #-}
 
 instance Index ix => Functor (Array DL ix) where
   fmap f arr = arr {dlLoad = loadFunctor arr f}

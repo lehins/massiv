@@ -50,6 +50,9 @@ module Data.Massiv.Array.Ops.Map
   , iforIO_
   , imapSchedulerM_
   , iforSchedulerM_
+  , iterArrayLinearM_
+  , iterArrayLinearWithSetM_
+  , iterArrayLinearWithStrideM_
   -- ** Zipping
   , zip
   , zip3
@@ -522,78 +525,70 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
 mapIO action = imapIO (const action)
 {-# INLINE mapIO #-}
 
--- | Similar to `mapIO`, but ignores the result of mapping action and does not create a resulting
--- array, therefore it is faster. Use this instead of `mapIO` when result is irrelevant.
+-- | Similar to `mapIO`, but ignores the result of mapping action and does not
+-- create a resulting array, therefore it is faster. Use this instead of `mapIO`
+-- when result is irrelevant. Most importantly it will follow the iteration
+-- logic outlined by the supplied array.
 --
 -- @since 0.2.6
-mapIO_ :: (Index ix, Source r e, MonadUnliftIO m) => (e -> m a) -> Array r ix e -> m ()
-mapIO_ action = imapIO_ (const action)
+mapIO_ ::
+     forall r ix e a m. (Load r ix e, MonadUnliftIO m)
+  => (e -> m a)
+  -> Array r ix e
+  -> m ()
+mapIO_ action arr =
+  withRunInIO $ \run ->
+    withMassivScheduler_ (getComp arr) $ \scheduler ->
+      iterArrayLinearM_ scheduler arr (\_ -> void . run . action)
 {-# INLINE mapIO_ #-}
 
 -- | Same as `mapIO_`, but map an index aware action instead.
 --
 -- @since 0.2.6
-imapIO_ :: (Index ix, Source r e, MonadUnliftIO m) => (ix -> e -> m a) -> Array r ix e -> m ()
+imapIO_ ::
+     forall r ix e a m. (Load r ix e, MonadUnliftIO m)
+  => (ix -> e -> m a)
+  -> Array r ix e
+  -> m ()
 imapIO_ action arr =
-  withScheduler_ (getComp arr) $ \scheduler ->
-    withRunInIO $ \run -> imapSchedulerM_ scheduler (\ix -> run . action ix) arr
+  withRunInIO $ \run ->
+    withMassivScheduler_ (getComp arr) $ \scheduler ->
+      let sz = outerSize arr
+          -- It is ok to user outerSize in context of DS (never evaluated) and L as well
+       in iterArrayLinearM_ scheduler arr (\i -> void . run . action (fromLinearIndex sz i))
 {-# INLINE imapIO_ #-}
-
--- | Same as `imapM_`, but will use the supplied scheduler.
---
--- @since 0.3.1
-imapSchedulerM_ ::
-     (Index ix, Source r e, MonadPrimBase s m)
-  => Scheduler s ()
-  -> (ix -> e -> m a)
-  -> Array r ix e
-  -> m ()
-imapSchedulerM_ scheduler action arr = do
-  let sz = size arr
-  splitLinearlyWith_
-    scheduler
-    (totalElem sz)
-    (unsafeLinearIndex arr)
-    (\i -> void . action (fromLinearIndex sz i))
-{-# INLINE imapSchedulerM_ #-}
-
-
--- | Same as `imapM_`, but will use the supplied scheduler.
---
--- @since 0.3.1
-iforSchedulerM_ ::
-     (Index ix, Source r e, MonadPrimBase s m)
-  => Scheduler s ()
-  -> Array r ix e
-  -> (ix -> e -> m a)
-  -> m ()
-iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
-{-# INLINE iforSchedulerM_ #-}
 
 
 -- | Same as `mapIO` but map an index aware action instead. Respects computation strategy.
 --
 -- @since 0.2.6
 imapIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-imapIO action arr = generateArray (getComp arr) (size arr) $ \ix -> action ix (unsafeIndex arr ix)
+imapIO action arr = do
+  withRunInIO $ \run -> do
+    marr <- unsafeNew $ size arr
+    withMassivScheduler_ (getComp arr) $ \scheduler ->
+      let sz = outerSize arr
+          -- It is ok to user outerSize in context of DS (never evaluated) and L as well
+       in iterArrayLinearM_ scheduler arr (\i -> void . run . action (fromLinearIndex sz i))
+    unsafeFreeze (getComp arr) marr
 {-# INLINE imapIO #-}
 
 -- | Same as `mapIO` but with arguments flipped.
 --
 -- @since 0.2.6
 forIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -670,7 +665,7 @@ forWS states arr f = imapWS states (\ _ -> f) arr
 -- 499500
 --
 -- @since 0.2.6
-forIO_ :: (Index ix, Source r e, MonadUnliftIO m) => Array r ix e -> (e -> m a) -> m ()
+forIO_ :: (Load r ix e, MonadUnliftIO m) => Array r ix e -> (e -> m a) -> m ()
 forIO_ = flip mapIO_
 {-# INLINE forIO_ #-}
 
@@ -678,7 +673,7 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)
@@ -688,6 +683,127 @@ iforIO = flip imapIO
 -- | Same as `imapIO_` but with arguments flipped.
 --
 -- @since 0.2.6
-iforIO_ :: (Source r a, Index ix, MonadUnliftIO m) => Array r ix a -> (ix -> a -> m b) -> m ()
+iforIO_ ::
+     forall r ix e a m. (Load r ix e, MonadUnliftIO m)
+  => Array r ix e
+  -> (ix -> e -> m a)
+  -> m ()
 iforIO_ = flip imapIO_
 {-# INLINE iforIO_ #-}
+
+
+
+
+iterArrayLinearM_ ::
+     forall r ix e m s. (Load r ix e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> Array r ix e -- ^ Array that is being loaded
+  -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+  -> m ()
+iterArrayLinearM_ scheduler arr f =
+  stToPrim $ iterArrayLinearST_ scheduler arr (\i -> primToPrim . f i)
+{-# INLINE iterArrayLinearM_ #-}
+
+iterArrayLinearWithSetM_ ::
+     forall r ix e m s. (Load r ix e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> Array r ix e -- ^ Array that is being loaded
+  -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+  -> (Ix1 -> Sz1 -> e -> m ()) -- ^ Function that efficiently sets a region of an array
+                               -- to the supplied value target array
+  -> m ()
+iterArrayLinearWithSetM_ scheduler arr f set =
+  stToPrim $
+  iterArrayLinearWithSetST_ scheduler arr (\i -> primToPrim . f i) (\i n -> primToPrim . set i n)
+{-# INLINE iterArrayLinearWithSetM_ #-}
+
+iterArrayLinearWithStrideM_ ::
+     forall r ix e m s. (StrideLoad r ix e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> Stride ix -- ^ Stride to use
+  -> Sz ix -- ^ Size of the target array affected by the stride.
+  -> Array r ix e -- ^ Array that is being loaded
+  -> (Int -> e -> m ()) -- ^ Function that writes an element into target array
+  -> m ()
+iterArrayLinearWithStrideM_ scheduler stride sz arr f =
+  stToPrim $ iterArrayLinearWithStrideST_ scheduler stride sz arr (\i -> primToPrim . f i)
+{-# INLINE iterArrayLinearWithStrideM_ #-}
+
+
+-- iterArrayM_ ::
+--      Scheduler s ()
+--   -> Array r ix e -- ^ Array that is being loaded
+--   -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
+--   -> ST s ()
+-- iterArrayM_ scheduler arr uWrite
+
+-- Deprecated
+
+
+-- | Same as `imapM_`, but will use the supplied scheduler.
+--
+-- @since 0.3.1
+imapSchedulerM_ ::
+     (Index ix, Source r e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> (ix -> e -> m a)
+  -> Array r ix e
+  -> m ()
+imapSchedulerM_ scheduler action arr = do
+  let sz = size arr
+  splitLinearlyWith_
+    scheduler
+    (totalElem sz)
+    (unsafeLinearIndex arr)
+    (\i -> void . action (fromLinearIndex sz i))
+{-# INLINE imapSchedulerM_ #-}
+
+
+-- | Same as `imapM_`, but will use the supplied scheduler.
+--
+-- @since 0.3.1
+iforSchedulerM_ ::
+     (Index ix, Source r e, MonadPrimBase s m)
+  => Scheduler s ()
+  -> Array r ix e
+  -> (ix -> e -> m a)
+  -> m ()
+iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
+{-# INLINE iforSchedulerM_ #-}
+
+
+-- -- | Load an array into memory.
+-- --
+-- -- @since 0.3.0
+-- loadArrayM
+--   :: Scheduler s ()
+--   -> Array r ix e -- ^ Array that is being loaded
+--   -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
+--   -> ST s ()
+-- loadArrayM scheduler arr uWrite =
+--   loadArrayWithSetM scheduler arr uWrite $ \offset sz e ->
+--     loopM_ offset (< (offset + unSz sz)) (+1) (`uWrite` e)
+-- {-# INLINE loadArrayM #-}
+
+-- -- | Load an array into memory, just like `loadArrayM`. Except it also accepts a
+-- -- function that is potentially optimized for setting many cells in a region to the same
+-- -- value
+-- --
+-- -- @since 0.5.8
+-- loadArrayWithSetM
+--   :: Scheduler s ()
+--   -> Array r ix e -- ^ Array that is being loaded
+--   -> (Ix1 -> e -> ST s ()) -- ^ Function that writes an element into target array
+--   -> (Ix1 -> Sz1 -> e -> ST s ()) -- ^ Function that efficiently sets a region of an array
+--                                   -- to the supplied value target array
+--   -> ST s ()
+-- loadArrayWithSetM scheduler arr uWrite _ = loadArrayM scheduler arr uWrite
+-- {-# INLINE loadArrayWithSetM #-}
+
+  -- iterArrayLinearWithStrideST
+  --   :: Scheduler s ()
+  --   -> Stride ix -- ^ Stride to use
+  --   -> Sz ix -- ^ Size of the target array affected by the stride.
+  --   -> Array r ix e -- ^ Array that is being loaded
+  --   -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
+  --   -> ST s ()

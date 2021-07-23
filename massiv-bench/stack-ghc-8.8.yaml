@@ -1,0 +1,13 @@
+resolver: lts-16.22
+packages:
+- '.'
+extra-deps:
+- '../massiv/'
+- primitive-0.7.1.0@sha256:29de6bfd0cf8ba023ceb806203dfbec0e51e3524e75ffe41056f70b4229c6f0f,2728
+- random-1.2.0@sha256:195506fedaa7c31c1fa2a747e9b49b4a5d1f0b09dd8f1291f23a771656faeec3,6097
+- splitmix-0.1.0.3@sha256:fc3aae74c467f4b608050bef53aec17904a618731df9407e655d8f3bf8c32d5c,6049
+#- scheduler-1.4.0@sha256:b182be9a7b84e1dba02dac761c3f4e204521d0f779d72d86040789d5aaadf92a,2833
+- github: lehins/haskell-scheduler
+  commit: c5506d20d96fc3fb00c213791243b7246d39e822
+  subdirs:
+    - scheduler

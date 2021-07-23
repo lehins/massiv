@@ -37,7 +37,7 @@ import Data.Massiv.Core.Common
 atomicReadIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> m (Maybe Int)
 atomicReadIntArray marr ix
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicReadIntArray marr ix
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicReadIntArray marr ix
   | otherwise = pure Nothing
 {-# INLINE atomicReadIntArray #-}
 
@@ -49,7 +49,7 @@ atomicReadIntArray marr ix
 atomicWriteIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Bool
 atomicWriteIntArray marr ix f
-  | isSafeIndex (msize marr) ix = unsafeAtomicWriteIntArray marr ix f >> pure True
+  | isSafeIndex (sizeOfMArray marr) ix = unsafeAtomicWriteIntArray marr ix f >> pure True
   | otherwise = pure False
 {-# INLINE atomicWriteIntArray #-}
 
@@ -65,7 +65,7 @@ casIntArray ::
   -> Int -- ^ New value
   -> m (Maybe Int)
 casIntArray marr ix e n
-  | isSafeIndex (msize marr) ix = Just <$> unsafeCasIntArray marr ix e n
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeCasIntArray marr ix e n
   | otherwise = pure Nothing
 {-# INLINE casIntArray #-}
 
@@ -77,7 +77,7 @@ casIntArray marr ix e n
 atomicModifyIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> (Int -> Int) -> m (Maybe Int)
 atomicModifyIntArray marr ix f
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicModifyIntArray marr ix f
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicModifyIntArray marr ix f
   | otherwise = pure Nothing
 {-# INLINE atomicModifyIntArray #-}
 
@@ -88,7 +88,7 @@ atomicModifyIntArray marr ix f
 atomicAddIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
 atomicAddIntArray marr ix e
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicAddIntArray marr ix e
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicAddIntArray marr ix e
   | otherwise = pure Nothing
 {-# INLINE atomicAddIntArray #-}
 
@@ -99,7 +99,7 @@ atomicAddIntArray marr ix e
 atomicSubIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
 atomicSubIntArray marr ix e
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicSubIntArray marr ix e
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicSubIntArray marr ix e
   | otherwise = pure Nothing
 {-# INLINE atomicSubIntArray #-}
 
@@ -110,7 +110,7 @@ atomicSubIntArray marr ix e
 atomicAndIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
 atomicAndIntArray marr ix e
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicAndIntArray marr ix e
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicAndIntArray marr ix e
   | otherwise = pure Nothing
 {-# INLINE atomicAndIntArray #-}
 
@@ -121,7 +121,7 @@ atomicAndIntArray marr ix e
 atomicNandIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
 atomicNandIntArray marr ix e
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicNandIntArray marr ix e
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicNandIntArray marr ix e
   | otherwise = pure Nothing
 {-# INLINE atomicNandIntArray #-}
 
@@ -132,7 +132,7 @@ atomicNandIntArray marr ix e
 atomicOrIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
 atomicOrIntArray marr ix e
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicOrIntArray marr ix e
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicOrIntArray marr ix e
   | otherwise = pure Nothing
 {-# INLINE atomicOrIntArray #-}
 
@@ -143,6 +143,6 @@ atomicOrIntArray marr ix e
 atomicXorIntArray ::
      (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m (Maybe Int)
 atomicXorIntArray marr ix e
-  | isSafeIndex (msize marr) ix = Just <$> unsafeAtomicXorIntArray marr ix e
+  | isSafeIndex (sizeOfMArray marr) ix = Just <$> unsafeAtomicXorIntArray marr ix e
   | otherwise = pure Nothing
 {-# INLINE atomicXorIntArray #-}

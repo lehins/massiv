@@ -165,11 +165,14 @@ instance Manifest BL e where
 instance Mutable BL e where
   data MArray s BL ix e = MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
 
-  msize (MBLArray sz _ _) = sz
-  {-# INLINE msize #-}
+  sizeOfMArray (MBLArray sz _ _) = sz
+  {-# INLINE sizeOfMArray #-}
 
-  munsafeResize sz (MBLArray _ off marr) = MBLArray sz off marr
-  {-# INLINE munsafeResize #-}
+  unsafeResizeMArray sz (MBLArray _ off marr) = MBLArray sz off marr
+  {-# INLINE unsafeResizeMArray #-}
+
+  unsafeLinearSliceMArray i k (MBLArray _ o a) = MBLArray k (i + o) a
+  {-# INLINE unsafeLinearSliceMArray #-}
 
   unsafeThaw (BLArray _ sz o a) = MBLArray sz o <$> A.unsafeThawArray a
   {-# INLINE unsafeThaw #-}
@@ -211,8 +214,9 @@ instance Index ix => Load BL ix e where
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  iterArrayLinearST_ !scheduler !arr =
+    splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance Index ix => StrideLoad BL ix e
 
@@ -343,11 +347,14 @@ instance Manifest B e where
 instance Mutable B e where
   newtype MArray s B ix e = MBArray (MArray s BL ix e)
 
-  msize = msize . coerce
-  {-# INLINE msize #-}
+  sizeOfMArray = sizeOfMArray . coerce
+  {-# INLINE sizeOfMArray #-}
 
-  munsafeResize sz = MBArray . munsafeResize sz . coerce
-  {-# INLINE munsafeResize #-}
+  unsafeResizeMArray sz = MBArray . unsafeResizeMArray sz . coerce
+  {-# INLINE unsafeResizeMArray #-}
+
+  unsafeLinearSliceMArray i k = MBArray . unsafeLinearSliceMArray i k . coerce
+  {-# INLINE unsafeLinearSliceMArray #-}
 
   unsafeThaw arr = MBArray <$> unsafeThaw (coerce arr)
   {-# INLINE unsafeThaw #-}
@@ -377,8 +384,8 @@ instance Index ix => Load B ix e where
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM scheduler = coerce (loadArrayM scheduler)
-  {-# INLINE loadArrayM #-}
+  iterArrayLinearST_ scheduler = coerce (iterArrayLinearST_ scheduler)
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance Index ix => StrideLoad B ix e
 
@@ -512,11 +519,14 @@ instance NFData e => Manifest BN e where
 instance NFData e => Mutable BN e where
   newtype MArray s BN ix e = MBNArray (MArray s BL ix e)
 
-  msize = msize . coerce
-  {-# INLINE msize #-}
+  sizeOfMArray = sizeOfMArray . coerce
+  {-# INLINE sizeOfMArray #-}
 
-  munsafeResize sz = coerce . munsafeResize sz . coerce
-  {-# INLINE munsafeResize #-}
+  unsafeResizeMArray sz = coerce . unsafeResizeMArray sz . coerce
+  {-# INLINE unsafeResizeMArray #-}
+
+  unsafeLinearSliceMArray i k = MBNArray . unsafeLinearSliceMArray i k . coerce
+  {-# INLINE unsafeLinearSliceMArray #-}
 
   unsafeThaw arr = MBNArray <$> unsafeThaw (coerce arr)
   {-# INLINE unsafeThaw #-}
@@ -544,8 +554,9 @@ instance (Index ix, NFData e) => Load BN ix e where
   {-# INLINE makeArrayLinear #-}
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  iterArrayLinearST_ !scheduler !arr =
+    splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance (Index ix, NFData e) => StrideLoad BN ix e
 

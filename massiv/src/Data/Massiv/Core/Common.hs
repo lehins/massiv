@@ -116,7 +116,7 @@ import Data.Vector.Fusion.Util
 -- | The array family. Representations @r@ describe how data is arranged or computed. All
 -- arrays have a common property that each index @ix@ always maps to the same unique
 -- element @e@, even if that element does not yet exist in memory and the array has to be
--- computed in order to get access to that element. Data is always arranged in a nested
+-- computed in order to get the value of that element. Data is always arranged in a nested
 -- row-major fashion. Rank of an array is specified by @`Dimensions` ix@.
 data family Array r ix e :: Type
 
@@ -315,7 +315,7 @@ class (Strategy r, Resize r) => Source r e where
 
 -- | Any array that can be computed and loaded into memory
 class (Strategy r, Shape r ix) => Load r ix e where
-  {-# MINIMAL (makeArray | makeArrayLinear), (loadArrayM | loadArrayWithSetM)#-}
+  {-# MINIMAL (makeArray | makeArrayLinear), (iterArrayLinearST_ | iterArrayLinearWithSetST_)#-}
 
   -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
   -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
@@ -372,85 +372,92 @@ class (Strategy r, Shape r ix) => Load r ix e where
   {-# INLINE replicate #-}
 
 
-  -- | Load an array into memory.
+  -- | Iterate over an array with a ST action that is applied to each element and its index.
   --
-  -- @since 0.3.0
-  loadArrayM
+  -- @since 1.0.0
+  iterArrayLinearST_
     :: Scheduler s ()
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
     -> ST s ()
-  loadArrayM scheduler arr uWrite =
-    loadArrayWithSetM scheduler arr uWrite $ \offset sz e ->
+  iterArrayLinearST_ scheduler arr uWrite =
+    iterArrayLinearWithSetST_ scheduler arr uWrite $ \offset sz e ->
       loopM_ offset (< (offset + unSz sz)) (+1) (`uWrite` e)
-  {-# INLINE loadArrayM #-}
+  {-# INLINE iterArrayLinearST_ #-}
 
-  -- | Load an array into memory, just like `loadArrayM`. Except it also accepts a
-  -- function that is potentially optimized for setting many cells in a region to the same
-  -- value
+  -- | Similar to `iterArrayLinearST_`. Except it also accepts a function that is
+  -- potentially optimized for setting many cells in a region to the same
+  -- value. There is no guarantees, but some array representations, might
+  -- utilize this region setting function, in which case for such regions index
+  -- aware action will not be called.
   --
-  -- @since 0.5.8
-  loadArrayWithSetM
+  -- @since 1.0.0
+  iterArrayLinearWithSetST_
     :: Scheduler s ()
     -> Array r ix e -- ^ Array that is being loaded
     -> (Ix1 -> e -> ST s ()) -- ^ Function that writes an element into target array
     -> (Ix1 -> Sz1 -> e -> ST s ()) -- ^ Function that efficiently sets a region of an array
                                     -- to the supplied value target array
     -> ST s ()
-  loadArrayWithSetM scheduler arr uWrite _ = loadArrayM scheduler arr uWrite
-  {-# INLINE loadArrayWithSetM #-}
-
+  iterArrayLinearWithSetST_ scheduler arr uWrite _ = iterArrayLinearST_ scheduler arr uWrite
+  {-# INLINE iterArrayLinearWithSetST_ #-}
 
   -- | Load into a supplied mutable array sequentially. Returned array does not have to be
-  -- the same
+  -- the same.
   --
-  -- @since 0.5.7
-  unsafeLoadIntoS ::
+  -- @since 1.0.0
+  unsafeLoadIntoST' ::
+       Mutable r' a
+    => MVector s r' a
+    -> Array r ix e
+    -> (e -> ST s a)
+    -> ST s (MArray s r' ix a)
+  unsafeLoadIntoST' marr arr f = do
+    iterArrayLinearWithSetST_ trivialScheduler_ arr (\ix e -> f e >>= unsafeLinearWrite marr ix)
+      $ \ix sz e -> f e >>= unsafeLinearSet marr ix sz
+    pure $ unsafeResizeMArray (outerSize arr) marr
+  {-# INLINE unsafeLoadIntoST' #-}
+
+  -- | Load into a supplied mutable array sequentially. Returned array does not have to be
+  -- the same.
+  --
+  -- @since 1.0.0
+  unsafeLoadIntoST ::
        Mutable r' e
     => MVector s r' e
     -> Array r ix e
     -> ST s (MArray s r' ix e)
-  unsafeLoadIntoS marr arr =
-    munsafeResize (outerSize arr) marr <$
-    loadArrayWithSetM trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
-  {-# INLINE unsafeLoadIntoS #-}
+  unsafeLoadIntoST marr arr =
+    unsafeResizeMArray (outerSize arr) marr <$
+    iterArrayLinearWithSetST_ trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
+  {-# INLINE unsafeLoadIntoST #-}
 
-  -- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
+  -- | Same as `unsafeLoadIntoST`, but respecting computation strategy.
   --
-  -- @since 0.5.7
-  unsafeLoadIntoM ::
+  -- @since 1.0.0
+  unsafeLoadIntoIO ::
        Mutable r' e
     => MVector RealWorld r' e
     -> Array r ix e
     -> IO (MArray RealWorld r' ix e)
-  unsafeLoadIntoM marr arr = do
+  unsafeLoadIntoIO marr arr = do
     withMassivScheduler_ (getComp arr) $ \scheduler ->
-      stToIO $ loadArrayWithSetM scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
-    pure $ munsafeResize (outerSize arr) marr
-  {-# INLINE unsafeLoadIntoM #-}
+      stToIO $ iterArrayLinearWithSetST_ scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
+    pure $ unsafeResizeMArray (outerSize arr) marr
+  {-# INLINE unsafeLoadIntoIO #-}
 
--- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
---
--- @since 1.0.0
-withMassivScheduler_ :: Comp -> (Scheduler RealWorld () -> IO ()) -> IO ()
-withMassivScheduler_ comp f =
-  case comp of
-    Par -> withGlobalScheduler_ globalScheduler f
-    Seq -> f trivialScheduler_
-    _   -> withScheduler_ comp f
-{-# INLINE withMassivScheduler_ #-}
 
 class (Size r, Load r ix e) => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
   -- `Source`.
-  loadArrayWithStrideM
+  iterArrayLinearWithStrideST_
     :: Scheduler s ()
     -> Stride ix -- ^ Stride to use
     -> Sz ix -- ^ Size of the target array affected by the stride.
     -> Array r ix e -- ^ Array that is being loaded
     -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
     -> ST s ()
-  default loadArrayWithStrideM
+  default iterArrayLinearWithStrideST_
     :: Source r e =>
        Scheduler s ()
     -> Stride ix
@@ -458,29 +465,25 @@ class (Size r, Load r ix e) => StrideLoad r ix e where
     -> Array r ix e
     -> (Int -> e -> ST s ())
     -> ST s ()
-  loadArrayWithStrideM scheduler stride resultSize arr =
+  iterArrayLinearWithStrideST_ scheduler stride resultSize arr =
     splitLinearlyWith_ scheduler (totalElem resultSize) unsafeLinearWriteWithStride
     where
       !strideIx = unStride stride
       unsafeLinearWriteWithStride =
         unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
       {-# INLINE unsafeLinearWriteWithStride #-}
-  {-# INLINE loadArrayWithStrideM #-}
+  {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 -- class (Load r ix e) => StrideLoad r ix e where
 -- class (Size r, StrideLoad r ix e) => StrideLoadP r ix e where
   --
-  -- unsafeLoadIntoWithStrideST ::
+  -- unsafeLoadIntoWithStrideST :: -- TODO: this would remove Size constraint and allow DS and LN instances for vectors.
   --      Mutable r' ix e
   --   => Array r ix e
   --   -> Stride ix -- ^ Stride to use
   --   -> MArray RealWorld r' ix e
   --   -> m (MArray RealWorld r' ix e)
 
-
---TODO: rethink Size here to support outer slicing (Something like OuterSize?) Affects
---only ragged arrays (L, LN and DS don't count, since they don't have constant time
---slicing anyways)
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because of this fact indexing functions
@@ -489,19 +492,25 @@ class (Resize r, Source r e) => Manifest r e where
 
   unsafeLinearIndexM :: Index ix => Array r ix e -> Int -> e
 
-
 class Manifest r e => Mutable r e where
   data MArray s r ix e :: Type
 
-  -- | Get the size of a mutable array.
+  -- | /O(1)/ - Get the size of a mutable array.
   --
-  -- @since 0.1.0
-  msize :: Index ix => MArray s r ix e -> Sz ix
+  -- @since 1.0.0
+  sizeOfMArray :: Index ix => MArray s r ix e -> Sz ix
 
-  -- | Get the size of a mutable array.
+  -- | /O(1)/ - Change the size of a mutable array. The actual number of
+  -- elements should stay the same.
   --
-  -- @since 0.1.0
-  munsafeResize :: (Index ix', Index ix) => Sz ix' -> MArray s r ix e -> MArray s r ix' e
+  -- @since 1.0.0
+  unsafeResizeMArray :: (Index ix', Index ix) => Sz ix' -> MArray s r ix e -> MArray s r ix' e
+
+  -- | /O(1)/ - Take a linear slice out of a mutable array.
+  --
+  -- @since 1.0.0
+  unsafeLinearSliceMArray :: Index ix => Ix1 -> Sz1 -> MArray s r ix e -> MVector s r e
+
 
   -- | Convert immutable array into a mutable array without copy.
   --
@@ -610,7 +619,7 @@ class Manifest r e => Mutable r e where
                       MArray (PrimState m) r ix e -> Sz ix -> m (MArray (PrimState m) r ix e)
   unsafeLinearGrow marr sz = do
     marr' <- unsafeNew sz
-    unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem (msize marr))
+    unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem (sizeOfMArray marr))
     pure marr'
   {-# INLINE unsafeLinearGrow #-}
 
@@ -627,12 +636,24 @@ unsafeDefaultLinearShrink marr sz = do
 {-# INLINE unsafeDefaultLinearShrink #-}
 
 
+-- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
+--
+-- @since 1.0.0
+withMassivScheduler_ :: Comp -> (Scheduler RealWorld () -> IO ()) -> IO ()
+withMassivScheduler_ comp f =
+  case comp of
+    Par -> withGlobalScheduler_ globalScheduler f
+    Seq -> f trivialScheduler_
+    _   -> withScheduler_ comp f
+{-# INLINE withMassivScheduler_ #-}
+
+
 -- | Read an array element
 --
 -- @since 0.1.0
 unsafeRead :: (Mutable r e, Index ix, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> m e
-unsafeRead marr = unsafeLinearRead marr . toLinearIndex (msize marr)
+unsafeRead marr = unsafeLinearRead marr . toLinearIndex (sizeOfMArray marr)
 {-# INLINE unsafeRead #-}
 
 -- | Write an element into array
@@ -640,7 +661,7 @@ unsafeRead marr = unsafeLinearRead marr . toLinearIndex (msize marr)
 -- @since 0.1.0
 unsafeWrite :: (Mutable r e, Index ix, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> e -> m ()
-unsafeWrite marr = unsafeLinearWrite marr . toLinearIndex (msize marr)
+unsafeWrite marr = unsafeLinearWrite marr . toLinearIndex (sizeOfMArray marr)
 {-# INLINE unsafeWrite #-}
 
 
@@ -661,7 +682,7 @@ unsafeLinearModify !marr f !i = do
 -- @since 0.4.0
 unsafeModify :: (Mutable r e, Index ix, PrimMonad m) =>
                 MArray (PrimState m) r ix e -> (e -> m e) -> ix -> m e
-unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (msize marr) ix)
+unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (sizeOfMArray marr) ix)
 {-# INLINE unsafeModify #-}
 
 -- | Swap two elements in a mutable array under the supplied indices. Returns the previous
@@ -671,7 +692,7 @@ unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (msize marr) i
 unsafeSwap :: (Mutable r e, Index ix, PrimMonad m) =>
               MArray (PrimState m) r ix e -> ix -> ix -> m (e, e)
 unsafeSwap !marr !ix1 !ix2 = unsafeLinearSwap marr (toLinearIndex sz ix1) (toLinearIndex sz ix2)
-  where sz = msize marr
+  where sz = sizeOfMArray marr
 {-# INLINE unsafeSwap #-}
 
 
@@ -702,8 +723,8 @@ class (IsList (Array r ix e), Load r ix e) => Ragged r ix e where
 
   flattenRagged :: Array r ix e -> Vector r e
 
-  loadRagged ::
-    Scheduler s () -> (Ix1 -> e -> ST s a) -> Ix1 -> Ix1 -> Sz ix -> Array r ix e -> ST s ()
+  loadRaggedST ::
+    Scheduler s () -> Array r ix e -> (Ix1 -> e -> ST s ()) -> Ix1 -> Ix1 -> Sz ix -> ST s ()
 
   raggedFormat :: (e -> String) -> String -> Array r ix e -> String
 

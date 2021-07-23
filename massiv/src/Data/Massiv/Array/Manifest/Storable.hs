@@ -132,11 +132,14 @@ instance Storable e => Manifest S e where
 instance Storable e => Mutable S e where
   data MArray s S ix e = MSArray !(Sz ix) !(VS.MVector s e)
 
-  msize (MSArray sz _) = sz
-  {-# INLINE msize #-}
+  sizeOfMArray (MSArray sz _) = sz
+  {-# INLINE sizeOfMArray #-}
 
-  munsafeResize sz (MSArray _ mvec) = MSArray sz mvec
-  {-# INLINE munsafeResize #-}
+  unsafeResizeMArray sz (MSArray _ mv) = MSArray sz mv
+  {-# INLINE unsafeResizeMArray #-}
+
+  unsafeLinearSliceMArray i k (MSArray _ mv) = MSArray k $ MVS.unsafeSlice i (unSz k) mv
+  {-# INLINE unsafeLinearSliceMArray #-}
 
   unsafeThaw (SArray _ sz v) = MSArray sz <$> VS.unsafeThaw v
   {-# INLINE unsafeThaw #-}
@@ -203,8 +206,9 @@ instance (Index ix, Storable e) => Load S ix e where
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  iterArrayLinearST_ !scheduler !arr =
+    splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance (Index ix, Storable e) => StrideLoad S ix e
 

@@ -146,11 +146,14 @@ instance Prim e => Manifest P e where
 instance Prim e => Mutable P e where
   data MArray s P ix e = MPArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(MutableByteArray s)
 
-  msize (MPArray sz _ _) = sz
-  {-# INLINE msize #-}
+  sizeOfMArray (MPArray sz _ _) = sz
+  {-# INLINE sizeOfMArray #-}
 
-  munsafeResize sz (MPArray _ off marr) = MPArray sz off marr
-  {-# INLINE munsafeResize #-}
+  unsafeResizeMArray sz (MPArray _ off marr) = MPArray sz off marr
+  {-# INLINE unsafeResizeMArray #-}
+
+  unsafeLinearSliceMArray i k (MPArray _ o a) = MPArray k (i + o) a
+  {-# INLINE unsafeLinearSliceMArray #-}
 
   unsafeThaw (PArray _ sz o a) = MPArray sz o <$> unsafeThawByteArray a
   {-# INLINE unsafeThaw #-}
@@ -210,9 +213,9 @@ instance (Prim e, Index ix) => Load P ix e where
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM !scheduler !arr =
+  iterArrayLinearST_ !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance (Prim e, Index ix) => StrideLoad P ix e
 

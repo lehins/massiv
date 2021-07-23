@@ -110,8 +110,9 @@ instance (Unbox e, Index ix) => Load U ix e where
   replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
   {-# INLINE replicate #-}
 
-  loadArrayM !scheduler !arr = splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  iterArrayLinearST_ !scheduler !arr =
+    splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance (Unbox e, Index ix) => StrideLoad U ix e
 
@@ -126,11 +127,14 @@ instance Unbox e => Manifest U e where
 instance Unbox e => Mutable U e where
   data MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
-  msize (MUArray sz _) = sz
-  {-# INLINE msize #-}
+  sizeOfMArray (MUArray sz _) = sz
+  {-# INLINE sizeOfMArray #-}
 
-  munsafeResize sz (MUArray _ mvec) = MUArray sz mvec
-  {-# INLINE munsafeResize #-}
+  unsafeResizeMArray sz (MUArray _ mv) = MUArray sz mv
+  {-# INLINE unsafeResizeMArray #-}
+
+  unsafeLinearSliceMArray i k (MUArray _ mv) = MUArray k $ MVU.unsafeSlice i (unSz k) mv
+  {-# INLINE unsafeLinearSliceMArray #-}
 
   unsafeThaw (UArray _ sz v) = MUArray sz <$> VU.unsafeThaw v
   {-# INLINE unsafeThaw #-}

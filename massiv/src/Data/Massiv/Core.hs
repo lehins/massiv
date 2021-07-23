@@ -13,7 +13,7 @@ module Data.Massiv.Core
   , Matrix
   , MMatrix
   , Elt
-  , Load(loadArrayM, loadArrayWithSetM)
+  , Load(iterArrayLinearST_, iterArrayLinearWithSetST_)
   , Stream(..)
   , Source
   , Size
