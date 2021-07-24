@@ -561,7 +561,9 @@ imapIO_ action arr =
   withRunInIO $ \run ->
     withMassivScheduler_ (getComp arr) $ \scheduler ->
       let sz = outerSize arr
-          -- It is ok to user outerSize in context of DS (never evaluated) and L as well
+          -- It is ok to use outerSize in context of DS and L. Former is 1-dim,
+          -- so sz is never evaluated and for the latter outerSize has to be
+          -- called regardless how this function is implemented.
        in iterArrayLinearM_ scheduler arr (\i -> void . run . action (fromLinearIndex sz i))
 {-# INLINE imapIO_ #-}
 
@@ -575,12 +577,12 @@ imapIO ::
   -> Array r' ix a
   -> m (Array r ix b)
 imapIO action arr = do
+  let sz = size arr
   withRunInIO $ \run -> do
-    marr <- unsafeNew $ size arr
+    marr <- unsafeNew sz
     withMassivScheduler_ (getComp arr) $ \scheduler ->
-      let sz = outerSize arr
-          -- It is ok to user outerSize in context of DS (never evaluated) and L as well
-       in iterArrayLinearM_ scheduler arr (\i -> void . run . action (fromLinearIndex sz i))
+      iterArrayLinearM_ scheduler arr $ \ !i e ->
+        run (action (fromLinearIndex sz i) e) >>= unsafeLinearWrite marr i
     unsafeFreeze (getComp arr) marr
 {-# INLINE imapIO #-}
 

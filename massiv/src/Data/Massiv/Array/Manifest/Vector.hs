@@ -73,7 +73,7 @@ castFromVector comp sz vector = do
          return $ UArray {uComp = comp, uSize = sz, uData = uVector}
     , do Refl <- eqT :: Maybe (v :~: VS.Vector)
          sVector <- join $ gcast1 (Just vector)
-         return $ SArray {sComp = comp, sSize = sz, sData = sVector}
+         return $ unsafeResize sz $ fromStorableVector comp sVector
     , do Refl <- eqT :: Maybe (v :~: VP.Vector)
          VP.Vector o _ ba <- join $ gcast1 (Just vector)
          return $ PArray {pComp = comp, pSize = sz, pOffset = o, pData = ba}

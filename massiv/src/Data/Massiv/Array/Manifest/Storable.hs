@@ -120,7 +120,7 @@ instance Storable e => Source S e where
   {-# INLINE unsafeOuterSlice #-}
 
   unsafeLinearSlice i k (SArray c _ fp) =
-    SArray c k $ advanceForeignPtr fp (i * unSz k)
+    SArray c k $ advanceForeignPtr fp i
   {-# INLINE unsafeLinearSlice #-}
 
 instance Index ix => Shape S ix where
@@ -176,12 +176,12 @@ instance Storable e => Mutable S e where
         setPtr (castPtr p) (totalElem sz * sizeOf (undefined :: e)) (0 :: Word8)
   {-# INLINE initialize #-}
 
-  unsafeLinearRead (MSArray _sz fp) o =
-    INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", const (toLinearSz _sz), (unsafeIOToPrim . (`unsafeWithForeignPtr` (`peekElemOff` o)))) fp
+  unsafeLinearRead (MSArray _sz fp) o = unsafeIOToPrim $
+    INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (`peekElemOff` o))) fp o
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MSArray _sz fp) o e =
-    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", const (toLinearSz _sz), (unsafeIOToPrim . (`unsafeWithForeignPtr` (\p -> pokeElemOff p o e)))) fp
+  unsafeLinearWrite (MSArray _sz fp) o e = unsafeIOToPrim $
+    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (\p -> pokeElemOff p o e))) fp o
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearSet (MSArray _ fp) i k =
@@ -282,7 +282,7 @@ withPtr (MSArray _ fp) f = withRunInIO $ \run -> unsafeWithForeignPtr fp (run . 
 -- @since 0.2.1
 toStorableVector :: Index ix => Array S ix e -> VS.Vector e
 toStorableVector arr =
-  unsafeCoerce $ -- this hack is needed to workaround redundant Storable constraint
+  unsafeCoerce $ -- this hack is needed to workaround the redundant Storable constraint
                  -- see haskell/vector#394
   VS.unsafeFromForeignPtr0 (castForeignPtr (sData arr) :: ForeignPtr Word) (totalElem (sSize arr))
 {-# INLINE toStorableVector #-}
@@ -298,19 +298,19 @@ toStorableMVector (MSArray sz fp) = MVS.MVector (totalElem sz) fp
 -- | /O(1)/ - Cast a storable vector to a storable array.
 --
 -- @since 0.5.0
-fromStorableVector :: Storable e => Comp -> VS.Vector e -> Vector S e
+fromStorableVector :: Comp -> VS.Vector e -> Vector S e
 fromStorableVector comp v =
-  case VS.unsafeToForeignPtr0 v of
-    (fp, k) -> SArray {sComp = comp, sSize = SafeSz k, sData = fp}
+  -- unasfeCoerce hack below is needed to workaround the redundant Storable
+  -- constraint see haskell/vector#394
+  case VS.unsafeToForeignPtr0 (unsafeCoerce v :: VS.Vector Word) of
+    (fp, k) -> SArray {sComp = comp, sSize = SafeSz k, sData = castForeignPtr fp}
 {-# INLINE fromStorableVector #-}
 
 -- | /O(1)/ - Cast a mutable storable vector to a mutable storable array.
 --
 -- @since 0.5.0
-fromStorableMVector :: Storable e => MVS.MVector s e -> MVector s S e
-fromStorableMVector mv =
-  case MVS.unsafeToForeignPtr0 mv of
-    (fp, k) -> MSArray (SafeSz k) fp
+fromStorableMVector :: MVS.MVector s e -> MVector s S e
+fromStorableMVector (MVS.MVector n fp) = MSArray (SafeSz n) fp
 {-# INLINE fromStorableMVector #-}
 
 
