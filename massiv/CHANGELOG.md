@@ -38,7 +38,7 @@
   * `for2PrimM_` and `ifor2PrimM_`,
   * `zipSwapM_`
 * Switch effectful mapping functions to use the representation specific
-  iteration. Which means that they are now restricted to `Load` instead of
+  iteration. This means that they are now restricted to `Load` instead of
   `Source`. Functions affected:
   * `mapIO_`, `imapIO_`, `forIO_` and `iforIO_`
   * `mapIO`, `imapIO`, `forIO` and `iforIO`

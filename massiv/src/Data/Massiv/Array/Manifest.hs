@@ -160,21 +160,21 @@ toBuilder = foldMono
 -- | /O(1)/ - Cast a storable array of `Word8` to ByteString `Builder`.
 --
 -- @since 0.5.0
-castToBuilder :: Array S ix Word8 -> Builder
+castToBuilder :: Index ix => Array S ix Word8 -> Builder
 castToBuilder = byteString . castToByteString
 {-# INLINE castToBuilder #-}
 
 -- | /O(1)/ - Cast a `S`torable array into a strict `ByteString`
 --
 -- @since 0.3.0
-castToByteString :: Array S ix Word8 -> ByteString
+castToByteString :: Index ix => Array S ix Word8 -> ByteString
 castToByteString = (\(fp, len) -> PS fp 0 len) . unsafeArrayToForeignPtr
 {-# INLINE castToByteString #-}
 
 -- | /O(1)/ - Cast a strict `ByteString` into a `S`torable array
 --
 -- @since 0.3.0
-castFromByteString :: Comp -> ByteString -> Array S Ix1 Word8
+castFromByteString :: Comp -> ByteString -> Vector S Word8
 castFromByteString comp (PS fp offset len) = unsafeArrayFromForeignPtr comp fp offset (Sz len)
 {-# INLINE castFromByteString #-}
 

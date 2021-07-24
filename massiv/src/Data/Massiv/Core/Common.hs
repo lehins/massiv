@@ -301,6 +301,8 @@ class (Strategy r, Resize r) => Source r e where
 
 
   -- | /O(1)/ - Take a slice out of an array from the outside
+  --
+  -- @since 0.1.0
   unsafeOuterSlice :: (Index ix, Index (Lower ix)) =>
     Array r ix e -> Sz (Lower ix) -> Int -> Array r (Lower ix) e
   unsafeOuterSlice arr sz i = unsafeResize sz $ unsafeLinearSlice i (toLinearSz sz) arr
@@ -401,22 +403,6 @@ class (Strategy r, Shape r ix) => Load r ix e where
     -> ST s ()
   iterArrayLinearWithSetST_ scheduler arr uWrite _ = iterArrayLinearST_ scheduler arr uWrite
   {-# INLINE iterArrayLinearWithSetST_ #-}
-
-  -- | Load into a supplied mutable array sequentially. Returned array does not have to be
-  -- the same.
-  --
-  -- @since 1.0.0
-  unsafeLoadIntoST' ::
-       Mutable r' a
-    => MVector s r' a
-    -> Array r ix e
-    -> (e -> ST s a)
-    -> ST s (MArray s r' ix a)
-  unsafeLoadIntoST' marr arr f = do
-    iterArrayLinearWithSetST_ trivialScheduler_ arr (\ix e -> f e >>= unsafeLinearWrite marr ix)
-      $ \ix sz e -> f e >>= unsafeLinearSet marr ix sz
-    pure $ unsafeResizeMArray (outerSize arr) marr
-  {-# INLINE unsafeLoadIntoST' #-}
 
   -- | Load into a supplied mutable array sequentially. Returned array does not have to be
   -- the same.

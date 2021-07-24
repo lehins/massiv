@@ -131,7 +131,7 @@ castToVector arr =
          return $ uData uArr
     , do Refl <- eqT :: Maybe (r :~: S)
          sArr <- gcastArr arr
-         return $ sData sArr
+         return $ toStorableVector sArr
     , do Refl <- eqT :: Maybe (r :~: P)
          pArr <- gcastArr arr
          return $ VP.Vector (pOffset pArr) (totalElem (size arr)) $ pData pArr
