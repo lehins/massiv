@@ -154,6 +154,7 @@ outerSliceMArrayM !marr !i = do
 --
 -- ====__Examples__
 --
+-- >>> import Data.Massiv.Array as A
 -- >>> arr <- resizeM (Sz2 4 7) $ makeArrayR P Seq (Sz1 28) (+10)
 -- >>> arr
 -- Array P Seq (Sz (4 :. 7))

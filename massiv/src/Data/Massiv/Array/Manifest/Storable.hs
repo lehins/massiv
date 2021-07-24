@@ -367,10 +367,10 @@ unsafeMArrayFromForeignPtr fp offset sz = MSArray sz (advanceForeignPtr fp offse
 --
 -- @since 0.5.9
 unsafeMallocMArray ::
-     forall ix e m. (Index ix, Storable e, MonadIO m)
+     forall ix e m. (Index ix, Storable e, PrimMonad m)
   => Sz ix
-  -> m (MArray RealWorld S ix e)
-unsafeMallocMArray sz = liftIO $ do
+  -> m (MArray (PrimState m) S ix e)
+unsafeMallocMArray sz = unsafePrimToPrim $ do
   let n = totalElem sz
   foreignPtr <- mask_ $ do
     ptr <- mallocBytes (sizeOf (undefined :: e) * n)
