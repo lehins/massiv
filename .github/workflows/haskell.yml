@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      STACK_ARGS: '--resolver lts-16.31'
+      STACK_ARGS: '--resolver lts-18.3'
     steps:
     - uses: actions/checkout@v2
 

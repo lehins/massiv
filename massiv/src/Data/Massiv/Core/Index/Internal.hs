@@ -69,6 +69,7 @@ import Data.Kind
 import Data.Massiv.Core.Iterator
 import Data.Typeable
 import GHC.TypeLits
+import System.Random.Stateful
 
 -- | `Sz` is the size of the array. It describes total number of elements along
 -- each dimension in the array. It is a wrapper around an index of the same
@@ -126,6 +127,16 @@ pattern Sz1 ix  <- SafeSz ix where
         Sz1 ix = SafeSz (max 0 ix)
 {-# COMPLETE Sz1 #-}
 
+
+instance (UniformRange ix, Index ix) => Uniform (Sz ix) where
+  uniformM g = SafeSz <$> uniformRM (pureIndex 0, pureIndex maxBound) g
+  {-# INLINE uniformM #-}
+
+instance UniformRange ix => UniformRange (Sz ix) where
+  uniformRM (SafeSz l, SafeSz u) g = SafeSz <$> uniformRM (l, u) g
+  {-# INLINE uniformRM #-}
+
+instance (UniformRange ix, Index ix) => Random (Sz ix)
 
 instance Index ix => Show (Sz ix) where
   showsPrec n sz@(SafeSz usz) = showsPrecWrapped n (str ++)
@@ -342,6 +353,14 @@ newtype Dim = Dim { unDim :: Int } deriving (Eq, Ord, Num, Real, Integral, Enum,
 
 instance Show Dim where
   show (Dim d) = "(Dim " ++ show d ++ ")"
+
+instance Uniform Dim where
+  uniformM g = Dim <$> uniformRM (1, maxBound) g
+
+instance UniformRange Dim where
+  uniformRM r g = Dim <$> uniformRM (coerce r) g
+
+instance Random Dim
 
 -- | A way to select Array dimension at a type level.
 --

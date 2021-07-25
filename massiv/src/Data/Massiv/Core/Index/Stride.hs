@@ -21,6 +21,7 @@ module Data.Massiv.Core.Index.Stride
 
 import Control.DeepSeq
 import Data.Massiv.Core.Index.Internal
+import System.Random.Stateful
 
 -- | Stride provides a way to ignore elements of an array if an index is divisible by a
 -- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be
@@ -63,6 +64,17 @@ pattern Stride ix <- SafeStride ix where
 
 instance Index ix => Show (Stride ix) where
   showsPrec n (SafeStride ix) = showsPrecWrapped n (("Stride " ++) . showsPrec 1 ix)
+
+
+instance (UniformRange ix, Index ix) => Uniform (Stride ix) where
+  uniformM g = SafeStride <$> uniformRM (pureIndex 1, pureIndex maxBound) g
+  {-# INLINE uniformM #-}
+
+instance UniformRange ix => UniformRange (Stride ix) where
+  uniformRM (SafeStride l, SafeStride u) g = SafeStride <$> uniformRM (l, u) g
+  {-# INLINE uniformRM #-}
+
+instance (UniformRange ix, Index ix) => Random (Stride ix)
 
 
 -- | Just a helper function for unwrapping `Stride`.

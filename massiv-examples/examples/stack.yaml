@@ -1,5 +1,13 @@
-resolver: lts-17.8
+resolver: lts-18.3
 packages:
 - '.'
 extra-deps:
 - '../../massiv/'
+- github: lehins/massiv-io
+  commit: 45ab3265b50f792daafefa8d9b686483fb058538
+  subdirs:
+    - massiv-io
+- github: lehins/haskell-scheduler
+  commit: c5506d20d96fc3fb00c213791243b7246d39e822
+  subdirs:
+    - scheduler

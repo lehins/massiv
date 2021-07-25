@@ -48,6 +48,7 @@ import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Generic.Mutable as VM
 import qualified Data.Vector.Unboxed as VU
 import GHC.TypeLits
+import System.Random.Stateful
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
 #endif
@@ -157,6 +158,38 @@ instance Show Ix2 where
 
 instance Show (Ix (n - 1)) => Show (IxN n) where
   showsPrec n (i :> ix) = showsPrecWrapped n (shows i . (" :> " ++) . shows ix)
+
+instance Uniform Ix2 where
+  uniformM g = (:.) <$> uniformM g <*> uniformM g
+  {-# INLINE uniformM #-}
+
+instance UniformRange Ix2 where
+  uniformRM (l1 :. l2, u1 :. u2) g = (:.) <$> uniformRM (l1, u1) g <*> uniformRM (l2, u2) g
+  {-# INLINE uniformRM #-}
+
+instance Random Ix2
+
+instance Uniform (Ix (n - 1)) => Uniform (IxN n) where
+  uniformM g = (:>) <$> uniformM g <*> uniformM g
+  {-# INLINE uniformM #-}
+
+instance UniformRange (Ix (n - 1)) => UniformRange (IxN n) where
+  uniformRM (l1 :> l2, u1 :> u2) g = (:>) <$> uniformRM (l1, u1) g <*> uniformRM (l2, u2) g
+  {-# INLINE uniformRM #-}
+
+instance Random (Ix (n - 1)) => Random (IxN n) where
+  random g =
+    case random g of
+      (i, g') ->
+        case random g' of
+          (n, g'') -> (i :> n, g'')
+  {-# INLINE random #-}
+  randomR (l1 :> l2, u1 :> u2) g =
+    case randomR (l1, u1) g of
+      (i, g') ->
+        case randomR (l2, u2) g' of
+          (n, g'') -> (i :> n, g'')
+  {-# INLINE randomR #-}
 
 
 instance Num Ix2 where

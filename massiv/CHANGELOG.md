@@ -42,6 +42,7 @@
   `Source`. Functions affected:
   * `mapIO_`, `imapIO_`, `forIO_` and `iforIO_`
   * `mapIO`, `imapIO`, `forIO` and `iforIO`
+* Add `Uniform`, `UniformRange` and `Random` instances for `Ix2`, `IxN`, `Dim`, `Sz` and `Stride`
 
 # 0.6.1
 
