@@ -1084,7 +1084,7 @@ prop_sforM_forIO seed a = property $
   withSeedIO seed (genWithMapM (forIO (setComp Seq a))) `shouldReturn`
     withSeed @(V.Vector P Word) seed (fmap compute . genWithMapM (V.sforM a))
 
-prop_siforM_iforIO :: SeedVector -> Vector P Word -> Property
+prop_siforM_iforIO :: SeedVector -> Vector S Word -> Property
 prop_siforM_iforIO seed a = property $
   withSeedIO seed (genWithIMapM (iforIO (setComp (ParN 1) a))) `shouldReturn`
     withSeed @(V.Vector P Word) seed (fmap compute . genWithIMapM (V.siforM a))

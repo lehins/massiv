@@ -427,20 +427,15 @@ randomArrayS gen sz nextRandom =
 -- >>> import System.Random.Stateful (uniformRM)
 -- >>> import Control.Scheduler (initWorkerStates, getWorkerId)
 -- >>> :set -XTypeApplications
--- >>> gens <- initWorkerStates Seq (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
+-- >>> gens <- initWorkerStates Par (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
 -- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
--- Array P Seq (Sz (2 :. 3))
---   [ [ 2.5438514691269685, 4.287612444807011, 5.610339021582389 ]
---   , [ 4.697970155404468, 5.00119167394813, 2.996037154611197 ]
---   ]
--- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
--- Array P Seq (Sz (2 :. 3))
---   [ [ 2.3381558618288985, 5.950737336743302, 2.30528055886831 ]
---   , [ 6.537992271897603, 7.83182061304764, 4.17882094946732 ]
+-- Array P Par (Sz (2 :. 3))
+--   [ [ 8.999240522095299, 6.832223390653755, 3.065728078741671 ]
+--   , [ 7.242581103346686, 2.4565807301968623, 0.4514262066689775 ]
 --   ]
 -- >>> randomArrayWS gens (Sz1 6) (uniformRM (0, 9)) :: IO (Vector P Int)
--- Array P Seq (Sz1 6)
---   [ 7, 6, 7, 7, 5, 3 ]
+-- Array P Par (Sz1 6)
+--   [ 8, 8, 7, 1, 1, 2 ]
 --
 -- @since 0.3.4
 randomArrayWS ::
