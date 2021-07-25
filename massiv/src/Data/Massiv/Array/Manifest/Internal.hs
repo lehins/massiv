@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
@@ -36,8 +35,6 @@ module Data.Massiv.Array.Manifest.Internal
   , gcastArr
   , fromRaggedArrayM
   , fromRaggedArray'
-  , sizeofArray
-  , sizeofMutableArray
   , iterateUntil
   , iterateUntilM
   ) where
@@ -54,21 +51,6 @@ import Data.Maybe (fromMaybe)
 import Data.Typeable
 import System.IO.Unsafe (unsafePerformIO)
 
-#if MIN_VERSION_primitive(0,6,2)
-import Data.Primitive.Array (sizeofArray, sizeofMutableArray)
-
-#else
-import qualified Data.Primitive.Array as A (Array(..), MutableArray(..))
-import GHC.Exts (sizeofArray#, sizeofMutableArray#)
-
-sizeofArray :: A.Array a -> Int
-sizeofArray (A.Array a) = I# (sizeofArray# a)
-{-# INLINE sizeofArray #-}
-
-sizeofMutableArray :: A.MutableArray s a -> Int
-sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
-{-# INLINE sizeofMutableArray #-}
-#endif
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy

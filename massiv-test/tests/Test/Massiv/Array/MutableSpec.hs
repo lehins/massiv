@@ -13,7 +13,9 @@ import Test.Massiv.Core
 import Test.Massiv.Core.Mutable
 import Test.Massiv.Array.Delayed
 import Test.Massiv.Array.Mutable
+import Test.Massiv.Array.Load
 import GHC.Exts
+import Data.Int
 
 type MutableArraySpec r ix e
    = ( Show e
@@ -63,6 +65,11 @@ specMutableR = do
   mutableSpec @r @Ix2 @e
   mutableSpec @r @Ix3 @e
   mutableSpec @r @Ix4 @e
+  loadSpec @r @Ix1 @e
+  loadSpec @r @Ix2 @e
+  loadSpec @r @Ix3 @e
+  loadSpec @r @Ix4 @e
+  --mutableSpec @r @Ix5 @e -- slows down the test suite
   localMutableSpec @r @Ix1 @e
   localMutableSpec @r @Ix2 @e
   localMutableSpec @r @Ix3 @e
@@ -75,7 +82,6 @@ specMutableR = do
     specMutableNonFlatR @r @Ix5 @e
   describe "toStream/toList" $
     it "toStreamIsList" $ property (prop_toStreamIsList @r @e)
-  --mutableSpec @r @Ix5 @e -- slows down the test suite
 
 specMutableNonFlatR ::
      forall r ix e.
@@ -92,7 +98,7 @@ specMutableNonFlatR ::
   => Spec
 specMutableNonFlatR = do
   describe (showsArrayType @r @ix @e "") $
-    prop "outerSliceMArrayM" $ prop_outerSliceMArrayM @r @ix @ e
+    prop "outerSliceMArrayM" $ prop_outerSliceMArrayM @r @ix @e
 
 
 specUnboxedMutableR :: forall r e. MutableSpec r e => Spec
@@ -245,12 +251,12 @@ prop_outerSliceMArrayM (ArrNE arr) =
 
 spec :: Spec
 spec = do
-  specMutableR @B @Int
-  specMutableR @N @Int
-  specMutableR @BL @Int
-  specUnboxedMutableR @S @Int
-  specUnboxedMutableR @P @Int
-  specUnboxedMutableR @U @Int
+  specMutableR @B @Int16
+  specMutableR @N @Int16
+  specMutableR @BL @Int16
+  specUnboxedMutableR @S @Int16
+  specUnboxedMutableR @P @Int16
+  specUnboxedMutableR @U @Int16
   atomicIntSpec @Ix1
   atomicIntSpec @Ix2
   atomicIntSpec @Ix3

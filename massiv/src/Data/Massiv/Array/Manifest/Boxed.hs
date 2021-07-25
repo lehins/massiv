@@ -80,16 +80,6 @@ import System.IO.Unsafe (unsafePerformIO)
 
 #include "massiv.h"
 
-sizeofArray :: A.Array e -> Int
-sizeofMutableArray :: A.MutableArray s e -> Int
-#if MIN_VERSION_primitive(0,6,2)
-sizeofArray = A.sizeofArray
-sizeofMutableArray = A.sizeofMutableArray
-#else
-sizeofArray (A.Array a#) = I# (sizeofArray# a#)
-sizeofMutableArray (A.MutableArray ma#) = I# (sizeofMutableArray# ma#)
-#endif
-
 ----------------
 -- Boxed Lazy --
 ----------------
@@ -139,7 +129,7 @@ instance Strategy BL where
 instance Source BL e where
   unsafeLinearIndex (BLArray _ _sz o a) i =
     INDEX_CHECK("(Source BL ix e).unsafeLinearIndex",
-                SafeSz . sizeofArray, A.indexArray) a (i + o)
+                SafeSz . A.sizeofArray, A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeOuterSlice (BLArray c _ o a) szL i = BLArray c szL (i * totalElem szL + o) a
@@ -158,7 +148,7 @@ instance Manifest BL e where
 
   unsafeLinearIndexM (BLArray _ _sz o a) i =
     INDEX_CHECK("(Manifest BL ix e).unsafeLinearIndexM",
-                SafeSz . sizeofArray, A.indexArray) a (i + o)
+                SafeSz . A.sizeofArray, A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
 
@@ -191,12 +181,12 @@ instance Mutable BL e where
 
   unsafeLinearRead (MBLArray _ o ma) i =
     INDEX_CHECK("(Mutable BL ix e).unsafeLinearRead",
-                SafeSz . sizeofMutableArray, A.readArray) ma (i + o)
+                SafeSz . A.sizeofMutableArray, A.readArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MBLArray _sz o ma) i e = e `seq`
     INDEX_CHECK("(Mutable BL ix e).unsafeLinearWrite",
-                SafeSz . sizeofMutableArray, A.writeArray) ma (i + o) e
+                SafeSz . A.sizeofMutableArray, A.writeArray) ma (i + o) e
   {-# INLINE unsafeLinearWrite #-}
 
 instance Size BL where
@@ -630,7 +620,7 @@ unwrapLazyArray = blData
 --
 -- @since 0.6.0
 wrapLazyArray :: A.Array e -> Vector BL e
-wrapLazyArray a = BLArray Seq (SafeSz (sizeofArray a)) 0 a
+wrapLazyArray a = BLArray Seq (SafeSz (A.sizeofArray a)) 0 a
 {-# INLINE wrapLazyArray #-}
 
 
@@ -737,7 +727,7 @@ fromMutableArraySeq ::
   -> A.MutableArray (PrimState m) e
   -> m (MArray (PrimState m) BL Ix1 e)
 fromMutableArraySeq with ma = do
-  let !sz = sizeofMutableArray ma
+  let !sz = A.sizeofMutableArray ma
   loopM_ 0 (< sz) (+ 1) (A.readArray ma >=> (`with` return ()))
   return $! MBLArray (SafeSz sz) 0 ma
 {-# INLINE fromMutableArraySeq #-}

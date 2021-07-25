@@ -238,6 +238,23 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
         (,) <$> unsafeFreeze (getComp arr) marrCopied <*> unsafeFreeze (getComp arr) marrGrown
 
 
+prop_UnsafeLinearSliceMArray ::
+     forall r ix e. (HasCallStack, Index ix, Mutable r e, Eq (Vector r e), Show (Vector r e))
+  => Array r ix e
+  -> Property
+prop_UnsafeLinearSliceMArray arr =
+  forAll genLinearRegion $ \(i, k) ->
+    propIO $ do
+      marr <- thawS arr
+      unsafeFreeze Seq (unsafeLinearSliceMArray i k marr) `shouldReturn` unsafeLinearSlice i k arr
+  where
+    n = totalElem (size arr)
+    genLinearRegion = do
+      k <- chooseInt (0, n)
+      i <- chooseInt (0, n - k)
+      pure (i, Sz k)
+
+
 unsafeMutableSpec ::
      forall r ix e.
      ( Eq (Vector r e)
@@ -255,17 +272,18 @@ unsafeMutableSpec ::
   => Spec
 unsafeMutableSpec =
   describe ("Mutable (" ++ showsArrayType @r @ix @e ") (Unsafe)") $ do
-    it "UnsafeNewMsize" $ prop_UnsafeNewMsize @r @ix @e
-    it "UnsafeNewLinearWriteRead" $ prop_UnsafeNewLinearWriteRead @r @ix @e
-    it "UnsafeThawFreeze" $ property $ prop_UnsafeThawFreeze @r @ix @e
-    it "UnsafeInitializeNew" $ prop_UnsafeInitializeNew @r @ix @e
-    it "UnsafeLinearSet" $ property $ prop_UnsafeLinearSet @r @ix @e
-    it "UnsafeLinearCopy" $ property $ prop_UnsafeLinearCopy @r @ix @e
-    it "UnsafeLinearCopyPart" $ property $ prop_UnsafeLinearCopyPart @r @ix @e
-    it "UnsafeArrayLinearCopy" $ property $ prop_UnsafeArrayLinearCopy @r @ix @e
-    it "UnsafeArrayLinearCopyPart" $ property $ prop_UnsafeArrayLinearCopyPart @r @ix @e
-    it "UnsafeLinearShrink" $ property $ prop_UnsafeLinearShrink @r @ix @e
-    it "UnsafeLinearGrow" $ property $ prop_UnsafeLinearGrow @r @ix @e
+    prop "UnsafeNewMsize" $ prop_UnsafeNewMsize @r @ix @e
+    prop "UnsafeNewLinearWriteRead" $ prop_UnsafeNewLinearWriteRead @r @ix @e
+    prop "UnsafeThawFreeze" $ prop_UnsafeThawFreeze @r @ix @e
+    prop "UnsafeInitializeNew" $ prop_UnsafeInitializeNew @r @ix @e
+    prop "UnsafeLinearSet" $ prop_UnsafeLinearSet @r @ix @e
+    prop "UnsafeLinearCopy" $ prop_UnsafeLinearCopy @r @ix @e
+    prop "UnsafeLinearCopyPart" $ prop_UnsafeLinearCopyPart @r @ix @e
+    prop "UnsafeArrayLinearCopy" $ prop_UnsafeArrayLinearCopy @r @ix @e
+    prop "UnsafeArrayLinearCopyPart" $ prop_UnsafeArrayLinearCopyPart @r @ix @e
+    prop "UnsafeLinearShrink" $ prop_UnsafeLinearShrink @r @ix @e
+    prop "UnsafeLinearGrow" $ prop_UnsafeLinearGrow @r @ix @e
+    prop "UnsafeLinearSliceMArray" $ prop_UnsafeLinearSliceMArray @r @ix @e
 
 unsafeMutableUnboxedSpec ::
      forall r ix e.

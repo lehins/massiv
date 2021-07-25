@@ -21,6 +21,7 @@ library
                     , Test.Massiv.Core.Index
                     , Test.Massiv.Core.Mutable
                     , Test.Massiv.Array.Delayed
+                    , Test.Massiv.Array.Load
                     , Test.Massiv.Array.Mutable
                     , Test.Massiv.Array.Numeric
                     , Test.Massiv.Utils

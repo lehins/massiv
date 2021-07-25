@@ -202,7 +202,7 @@ instance Prim e => Mutable P e where
   {-# INLINE unsafeLinearShrink #-}
 
   unsafeLinearGrow (MPArray _ o ma) sz =
-    MPArray sz o <$> resizeMutableByteArrayCompat ma ((o + totalElem sz) * sizeOf (undefined :: e))
+    MPArray sz o <$> resizeMutableByteArray ma ((o + totalElem sz) * sizeOf (undefined :: e))
   {-# INLINE unsafeLinearGrow #-}
 
 
@@ -607,27 +607,3 @@ unsafeAtomicXorIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   mba
   (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicXorIntArray #-}
-
-
-#if !MIN_VERSION_primitive(0,7,1)
-shrinkMutableByteArray :: forall m. (PrimMonad m)
-  => MutableByteArray (PrimState m)
-  -> Int -- ^ new size
-  -> m ()
-shrinkMutableByteArray (MutableByteArray arr#) (I# n#)
-  = primitive_ (shrinkMutableByteArray# arr# n#)
-{-# INLINE shrinkMutableByteArray #-}
-#endif
-
-resizeMutableByteArrayCompat ::
-  PrimMonad m => MutableByteArray (PrimState m) -> Int -> m (MutableByteArray (PrimState m))
-#if MIN_VERSION_primitive(0,6,4)
-resizeMutableByteArrayCompat = resizeMutableByteArray
-#else
-resizeMutableByteArrayCompat (MutableByteArray arr#) (I# n#) =
-  primitive
-    (\s# ->
-       case resizeMutableByteArray# arr# n# s# of
-         (# s'#, arr'# #) -> (# s'#, MutableByteArray arr'# #))
-#endif
-{-# INLINE resizeMutableByteArrayCompat #-}

@@ -177,28 +177,12 @@ prop_WithMArray arr f g =
     let arr6 = withLoadMArrayST_ (A.map (applyFun f) arr) $ \marr -> forPrimM marr g'
     arr6 `shouldBe` arr'
 
-prop_unsafeLinearSliceMArray ::
-     forall r ix e. (HasCallStack, Index ix, Mutable r e, Eq (Vector r e), Show (Vector r e))
-  => Array r ix e
-  -> Property
-prop_unsafeLinearSliceMArray arr =
-  forAll genLinearRegion $ \(i, k) ->
-    propIO $ do
-      marr <- thawS arr
-      unsafeFreeze Seq (unsafeLinearSliceMArray i k marr) `shouldReturn` unsafeLinearSlice i k arr
-  where
-    n = totalElem (size arr)
-    genLinearRegion = do
-      k <- chooseInt (0, n)
-      i <- chooseInt (0, n - k)
-      pure (i, Sz k)
-
 mutableSpec ::
      forall r ix e.
      ( Show (Array D ix e)
      , Show (Array r ix e)
-     , Show (Array r Ix1 e)
-     , Eq (Array r Ix1 e)
+     , Show (Vector r e)
+     , Eq (Vector r e)
      , Load r ix e
      , Eq (Array r ix e)
      , Typeable e
@@ -220,7 +204,6 @@ mutableSpec = do
     prop "GrowShrink" $ prop_GrowShrink @r @ix @e
     prop "map == mapM" $ prop_iMapiMapM @r @ix @e
     prop "withMArray" $ prop_WithMArray @r @ix @e
-    prop "unsafeLinearSliceMArray == unsafeLinearSlice" $ prop_unsafeLinearSliceMArray @r @ix @e
   describe "Unfolding" $ do
     it "unfoldrList" $ prop_unfoldrList @r @ix @e
     it "unfoldrReverseUnfoldl" $ prop_unfoldrReverseUnfoldl @r @ix @e
