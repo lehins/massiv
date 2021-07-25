@@ -34,9 +34,7 @@ get mapped into an element in memory at some point.
 ### Class dependency
 
 ```
-                                       Construct (D, DL, DS, DI, DW, B, N, P, U, S, LN) -> Ragged (L)
-                                                           \
-Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Manifest (M) -`-> Mutable (B, N, P, U, S)
+Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Manifest (M) -> Mutable (B, N, P, U, S)
    |\
    | `> StrideLoad (D, DI, DW, M, B, N, P, U, S)
    |\

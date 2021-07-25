@@ -44,6 +44,7 @@ import Control.Monad.Catch (MonadThrow(..))
 import Control.DeepSeq
 import Data.Massiv.Core.Index.Internal
 import Data.Proxy
+import qualified GHC.Arr as I
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Generic.Mutable as VM
 import qualified Data.Vector.Unboxed as VU
@@ -190,6 +191,24 @@ instance Random (Ix (n - 1)) => Random (IxN n) where
         case randomR (l2, u2) g' of
           (n, g'') -> (i :> n, g'')
   {-# INLINE randomR #-}
+
+instance I.Ix Ix2 where
+  range (i1 :. j1, i2 :. j2) = [i :. j | i <- [i1 .. i2], j <- [j1 .. j2]]
+  {-# INLINE range #-}
+  unsafeIndex (l1 :. l2, u1 :. u2) (i1 :. i2) =
+    I.unsafeIndex (l1, u1) i1 * I.unsafeRangeSize (l2, u2) + I.unsafeIndex (l2, u2) i2
+  {-# INLINE unsafeIndex #-}
+  inRange (l1 :. l2, u1 :. u2) (i1 :. i2) = I.inRange (l1, u1) i1 && I.inRange (l2, u2) i2
+  {-# INLINE inRange #-}
+
+instance I.Ix (Ix (n - 1)) => I.Ix (IxN n) where
+  range (i1 :> j1, i2 :> j2) = [i :> j | i <- [i1 .. i2], j <- I.range (j1, j2)]
+  {-# INLINE range #-}
+  unsafeIndex (l1 :> l2, u1 :> u2) (i1 :> i2) =
+    I.unsafeIndex (l1, u1) i1 * I.unsafeRangeSize (l2, u2) + I.unsafeIndex (l2, u2) i2
+  {-# INLINE unsafeIndex #-}
+  inRange (l1 :> l2, u1 :> u2) (i1 :> i2) = I.inRange (l1, u1) i1 && I.inRange (l2, u2) i2
+  {-# INLINE inRange #-}
 
 
 instance Num Ix2 where
