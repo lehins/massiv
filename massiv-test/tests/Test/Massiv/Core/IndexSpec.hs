@@ -24,8 +24,6 @@ specIxN ::
      , Index ix
      , Bounded ix
      , Index (Lower ix)
-     , Typeable ix
-     , Typeable (Lower ix)
      , Arbitrary ix
      , Arbitrary (Lower ix)
      , IsIndexDimension ix (Dimensions ix)
@@ -67,9 +65,7 @@ specIxN = do
 
 specIxT ::
      forall ix ix'.
-     ( Typeable ix
-     , Typeable (Lower ix)
-     , Index ix
+     ( Index ix
      , Index (Lower ix)
      , Arbitrary ix
      , Arbitrary (Lower ix)
@@ -133,7 +129,6 @@ specSz ::
      ( Num ix
      -- , Unbox ix -- TODO: add Unbox instance and a spec for unboxed vectors
      , Index ix
-     , Typeable ix
      , Arbitrary ix
      )
   => Spec

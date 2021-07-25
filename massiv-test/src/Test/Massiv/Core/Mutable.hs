@@ -251,7 +251,6 @@ unsafeMutableSpec ::
      , Arbitrary e
      , Arbitrary ix
      , Typeable e
-     , Typeable ix
      )
   => Spec
 unsafeMutableSpec =
@@ -271,7 +270,6 @@ unsafeMutableSpec =
 unsafeMutableUnboxedSpec ::
      forall r ix e.
      ( Typeable e
-     , Typeable ix
      , Eq (Array r ix e)
      , Show (Array r ix e)
      , Index ix

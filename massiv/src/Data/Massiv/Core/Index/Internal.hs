@@ -412,6 +412,7 @@ class ( Eq ix
       , Ord ix
       , Show ix
       , NFData ix
+      , Typeable ix
       , Eq (Lower ix)
       , Ord (Lower ix)
       , Show (Lower ix)
@@ -733,7 +734,7 @@ data IndexException where
   -- | Index contains a zero value along one of the dimensions.
   IndexZeroException :: Index ix => !ix -> IndexException
   -- | Dimension is out of reach.
-  IndexDimensionException :: (NFData ix, Show ix, Typeable ix) => !ix -> !Dim -> IndexException
+  IndexDimensionException :: (NFData ix, Eq ix, Show ix, Typeable ix) => !ix -> !Dim -> IndexException
   -- | Index is out of bounds.
   IndexOutOfBoundsException :: Index ix => !(Sz ix) -> !ix -> IndexException
 
@@ -748,11 +749,13 @@ instance Show IndexException where
 instance Eq IndexException where
   e1 == e2 =
     case (e1, e2) of
-      (IndexZeroException i1, IndexZeroException i2) -> show i1 == show i2
-      (IndexDimensionException i1 d1, IndexDimensionException i2 d2) ->
-        show i1 == show i2 && d1 == d2
-      (IndexOutOfBoundsException sz1 i1, IndexOutOfBoundsException sz2 i2) ->
-        show sz1 == show sz2 && show i1 == show i2
+      (IndexZeroException i1, IndexZeroException i2t)
+        | Just i2 <- cast i2t -> i1 == i2
+      (IndexDimensionException i1 d1, IndexDimensionException i2t d2)
+        | Just i2 <- cast i2t -> i1 == i2 && d1 == d2
+      (IndexOutOfBoundsException sz1 i1, IndexOutOfBoundsException sz2t i2t)
+        | Just i2 <- cast i2t
+        , Just sz2 <- cast sz2t -> sz1 == sz2 && i1 == i2
       _ -> False
 
 instance NFData IndexException where
@@ -788,15 +791,22 @@ data SizeException where
 instance Eq SizeException where
   e1 == e2 =
     case (e1, e2) of
-      (SizeMismatchException sz1 sz1', SizeMismatchException sz2 sz2') ->
-        show sz1 == show sz2 && show sz1' == show sz2'
-      (SizeElementsMismatchException sz1 sz1', SizeElementsMismatchException sz2 sz2') ->
-        show sz1 == show sz2 && show sz1' == show sz2'
-      (SizeSubregionException sz1 i1 sz1', SizeSubregionException sz2 i2 sz2') ->
-        show sz1 == show sz2 && show i1 == show i2 && show sz1' == show sz2'
-      (SizeEmptyException sz1, SizeEmptyException sz2) -> show sz1 == show sz2
-      (SizeOverflowException sz1, SizeOverflowException sz2) -> show sz1 == show sz2
-      (SizeNegativeException sz1, SizeNegativeException sz2) -> show sz1 == show sz2
+      (SizeMismatchException sz1 sz1', SizeMismatchException sz2t sz2t')
+        | Just sz2 <- cast sz2t
+        , Just sz2' <- cast sz2t' -> sz1 == sz2 && sz1' == sz2'
+      (SizeElementsMismatchException sz1 sz1', SizeElementsMismatchException sz2t sz2t')
+        | Just sz2 <- cast sz2t
+        , Just sz2' <- cast sz2t' -> sz1 == sz2 && sz1' == sz2'
+      (SizeSubregionException sz1 i1 sz1', SizeSubregionException sz2t i2t sz2t')
+        | Just sz2 <- cast sz2t
+        , Just i2 <- cast i2t
+        , Just sz2' <- cast sz2t' -> sz1 == sz2 && i1 == i2 && sz1' == sz2'
+      (SizeEmptyException sz1, SizeEmptyException sz2t)
+        | Just sz2 <- cast sz2t -> sz1 == sz2
+      (SizeOverflowException sz1, SizeOverflowException sz2t)
+        | Just sz2 <- cast sz2t -> sz1 == sz2
+      (SizeNegativeException sz1, SizeNegativeException sz2t)
+        | Just sz2 <- cast sz2t -> sz1 == sz2
       _ -> False
 
 instance NFData SizeException where

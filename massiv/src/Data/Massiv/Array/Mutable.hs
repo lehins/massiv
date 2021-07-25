@@ -144,7 +144,7 @@ outerSliceMArrayM ::
 outerSliceMArrayM !marr !i = do
   let (k, szL) = unconsSz (sizeOfMArray marr)
   unless (isSafeIndex k i) $ throwM $ IndexOutOfBoundsException k i
-  pure $ unsafeResizeMArray szL $ unsafeLinearSliceMArray i (toLinearSz szL) marr
+  pure $ unsafeResizeMArray szL $ unsafeLinearSliceMArray (i * totalElem szL) (toLinearSz szL) marr
 {-# INLINE outerSliceMArrayM #-}
 
 -- | /O(1)/ - Take all outer slices of a mutable array and construct a delayed

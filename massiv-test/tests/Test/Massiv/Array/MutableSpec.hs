@@ -24,8 +24,8 @@ type MutableArraySpec r ix e
      , Function e
      , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array r Ix1 e)
-     , Show (Array r Ix1 e)
+     , Eq (Vector r e)
+     , Show (Vector r e)
      , Load r ix e
      , Resize r
      , Arbitrary (Array r ix e)
@@ -68,9 +68,31 @@ specMutableR = do
   localMutableSpec @r @Ix3 @e
   localMutableSpec @r @Ix4 @e
   localMutableSpec @r @Ix5 @e
+  describe "NonFlat" $ do
+    specMutableNonFlatR @r @Ix2 @e
+    specMutableNonFlatR @r @Ix3 @e
+    specMutableNonFlatR @r @Ix4 @e
+    specMutableNonFlatR @r @Ix5 @e
   describe "toStream/toList" $
     it "toStreamIsList" $ property (prop_toStreamIsList @r @e)
   --mutableSpec @r @Ix5 @e -- slows down the test suite
+
+specMutableNonFlatR ::
+     forall r ix e.
+     ( Arbitrary ix
+     , Typeable e
+     , Arbitrary e
+     , Index (Lower ix)
+     , Load r ix e
+     , Mutable r e
+     , Eq (Array r (Lower ix) e)
+     , Show (Array r (Lower ix) e)
+     , Show (Array r ix e)
+     )
+  => Spec
+specMutableNonFlatR = do
+  describe (showsArrayType @r @ix @e "") $
+    prop "outerSliceMArrayM" $ prop_outerSliceMArrayM @r @ix @ e
 
 
 specUnboxedMutableR :: forall r e. MutableSpec r e => Spec
@@ -195,6 +217,30 @@ prop_Swap arr ix1 ix2 =
           index' arr'' ix1 `shouldBe` e2
           index' arr'' ix2 `shouldBe` e1
 
+
+prop_outerSliceMArrayM ::
+     forall r ix e.
+     ( Index ix
+     , Index (Lower ix)
+     , Mutable r e
+     , Eq (Array r (Lower ix) e)
+     , Show (Array r (Lower ix) e)
+     )
+  => ArrNE r ix e
+  -> Property
+prop_outerSliceMArrayM (ArrNE arr) =
+  forAll genIxInAndOut $ \(iIn, iOut) ->
+    propIO $ do
+      marr <- thawS arr
+      (outerSliceMArrayM marr iIn >>= freezeS) `shouldReturn` arr !> iIn
+      outerSliceMArrayM marr iOut `shouldThrow` (== IndexOutOfBoundsException (Sz nOuter) iOut)
+  where
+    (Sz nOuter, _) = unconsSz $ size arr
+    genIxInAndOut = do
+      let n = max 0 (nOuter - 1)
+      iIn <- chooseInt (0, n)
+      iOut <- oneof [chooseInt (minBound, -1), chooseInt (n, maxBound)]
+      pure (iIn, iOut)
 
 
 spec :: Spec
