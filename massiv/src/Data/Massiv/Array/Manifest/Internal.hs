@@ -57,7 +57,7 @@ import System.IO.Unsafe (unsafePerformIO)
 -- before calling @compute@
 --
 -- @since 0.1.0
-compute :: forall r ix e r' . (Mutable r e, Load r' ix e) => Array r' ix e -> Array r ix e
+compute :: forall r ix e r' . (Manifest r e, Load r' ix e) => Array r' ix e -> Array r ix e
 compute !arr = unsafePerformIO $ computeIO arr
 {-# INLINE compute #-}
 
@@ -65,7 +65,7 @@ compute !arr = unsafePerformIO $ computeIO arr
 -- the same as `computePrimM`, but executed in `ST`, thus pure.
 --
 -- @since 0.1.0
-computeS :: forall r ix e r' . (Mutable r e, Load r' ix e) => Array r' ix e -> Array r ix e
+computeS :: forall r ix e r' . (Manifest r e, Load r' ix e) => Array r' ix e -> Array r ix e
 computeS !arr = runST $ computePrimM arr
 {-# INLINE computeS #-}
 
@@ -76,7 +76,7 @@ computeS !arr = runST $ computePrimM arr
 --
 -- @since 0.5.4
 computeP ::
-     forall r ix e r'. (Mutable r e, Load r' ix e)
+     forall r ix e r'. (Manifest r e, Load r' ix e)
   => Array r' ix e
   -> Array r ix e
 computeP arr = setComp (getComp arr) $ compute (setComp Par arr)
@@ -89,7 +89,7 @@ computeP arr = setComp (getComp arr) $ compute (setComp Par arr)
 --
 -- @since 0.4.5
 computeIO ::
-     forall r ix e r' m. (Mutable r e, Load r' ix e, MonadIO m)
+     forall r ix e r' m. (Manifest r e, Load r' ix e, MonadIO m)
   => Array r' ix e
   -> m (Array r ix e)
 computeIO arr = liftIO (loadArray arr >>= unsafeFreeze (getComp arr))
@@ -100,7 +100,7 @@ computeIO arr = liftIO (loadArray arr >>= unsafeFreeze (getComp arr))
 --
 -- @since 0.4.5
 computePrimM ::
-     forall r ix e r' m. (Mutable r e, Load r' ix e, PrimMonad m)
+     forall r ix e r' m. (Manifest r e, Load r' ix e, PrimMonad m)
   => Array r' ix e
   -> m (Array r ix e)
 computePrimM arr = loadArrayS arr >>= unsafeFreeze (getComp arr)
@@ -116,7 +116,7 @@ computePrimM arr = loadArrayS arr >>= unsafeFreeze (getComp arr)
 -- Array P Seq (Sz1 10)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 --
-computeAs :: (Mutable r e, Load r' ix e) => r -> Array r' ix e -> Array r ix e
+computeAs :: (Manifest r e, Load r' ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
 {-# INLINE computeAs #-}
 
@@ -136,7 +136,7 @@ computeAs _ = compute
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
 --
 -- @since 0.1.1
-computeProxy :: (Mutable r e, Load r' ix e) => proxy r -> Array r' ix e -> Array r ix e
+computeProxy :: (Manifest r e, Load r' ix e) => proxy r -> Array r' ix e -> Array r ix e
 computeProxy _ = compute
 {-# INLINE computeProxy #-}
 
@@ -145,7 +145,7 @@ computeProxy _ = compute
 -- resulting type is the same as the input.
 --
 -- @since 0.1.0
-computeSource :: forall r ix e r' . (Mutable r e, Source r' e, Index ix)
+computeSource :: forall r ix e r' . (Manifest r e, Source r' e, Index ix)
               => Array r' ix e -> Array r ix e
 computeSource arr = maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
@@ -154,7 +154,7 @@ computeSource arr = maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r'
 -- | /O(n)/ - Make an exact immutable copy of an Array.
 --
 -- @since 0.1.0
-clone :: (Mutable r e, Index ix) => Array r ix e -> Array r ix e
+clone :: (Manifest r e, Index ix) => Array r ix e -> Array r ix e
 clone arr = unsafePerformIO $ thaw arr >>= unsafeFreeze (getComp arr)
 {-# INLINE clone #-}
 
@@ -169,7 +169,7 @@ gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 -- result arrays are of the same representation, in which case it is an /O(1)/ operation.
 --
 -- @since 0.1.0
-convert :: forall r ix e r' . (Mutable r e, Load r' ix e)
+convert :: forall r ix e r' . (Manifest r e, Load r' ix e)
         => Array r' ix e -> Array r ix e
 convert arr = fromMaybe (compute arr) (gcastArr arr)
 {-# INLINE convert #-}
@@ -177,7 +177,7 @@ convert arr = fromMaybe (compute arr) (gcastArr arr)
 -- | Same as `convert`, but let's you supply resulting representation type as an argument.
 --
 -- @since 0.1.0
-convertAs :: (Mutable r e, Load r' ix e)
+convertAs :: (Manifest r e, Load r' ix e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
 {-# INLINE convertAs #-}
@@ -187,7 +187,7 @@ convertAs _ = convert
 -- proxy argument.
 --
 -- @since 0.1.1
-convertProxy :: (Mutable r e, Load r' ix e)
+convertProxy :: (Manifest r e, Load r' ix e)
              => proxy r -> Array r' ix e -> Array r ix e
 convertProxy _ = convert
 {-# INLINE convertProxy #-}
@@ -198,7 +198,7 @@ convertProxy _ = convert
 --
 -- @since 0.4.0
 fromRaggedArrayM ::
-     forall r ix e r' m . (Mutable r e, Ragged r' ix e, MonadThrow m)
+     forall r ix e r' m . (Manifest r e, Ragged r' ix e, MonadThrow m)
   => Array r' ix e
   -> m (Array r ix e)
 fromRaggedArrayM arr =
@@ -217,7 +217,7 @@ fromRaggedArrayM arr =
 --
 -- @since 0.1.1
 fromRaggedArray' ::
-     forall r ix e r'. (HasCallStack, Mutable r e, Ragged r' ix e)
+     forall r ix e r'. (HasCallStack, Manifest r e, Ragged r' ix e)
   => Array r' ix e
   -> Array r ix e
 fromRaggedArray' = throwEither . fromRaggedArrayM
@@ -231,7 +231,7 @@ fromRaggedArray' = throwEither . fromRaggedArrayM
 --
 -- @since 0.3.0
 computeWithStride ::
-     forall r ix e r'. (Mutable r e, StrideLoad r' ix e)
+     forall r ix e r'. (Manifest r e, StrideLoad r' ix e)
   => Stride ix
   -> Array r' ix e
   -> Array r ix e
@@ -247,7 +247,7 @@ computeWithStride stride !arr =
 --
 -- @since 0.3.0
 computeWithStrideAs ::
-     (Mutable r e, StrideLoad r' ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
+     (Manifest r e, StrideLoad r' ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
 computeWithStrideAs _ = computeWithStride
 {-# INLINE computeWithStrideAs #-}
 
@@ -290,7 +290,7 @@ computeWithStrideAs _ = computeWithStride
 --
 -- @since 0.3.6
 iterateUntil ::
-     (Size r', Load r' ix e, Mutable r e)
+     (Size r', Load r' ix e, Manifest r e)
   => (Int -> Array r ix e -> Array r ix e -> Bool)
   -- ^ Convergence condition. Accepts current iteration counter, array at the previous
   -- state and at the current state.
@@ -323,7 +323,7 @@ iterateUntil convergence iteration initArr0
 --
 -- @since 0.3.6
 iterateUntilM ::
-     (Size r', Load r' ix e, Mutable r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
+     (Size r', Load r' ix e, Manifest r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
   => (Int -> Array r ix e -> MArray (PrimState m) r ix e -> m Bool)
   -- ^ Convergence condition. Accepts current iteration counter, pure array at previous
   -- state and a mutable at the current state, therefore after each iteration its contents
@@ -349,7 +349,7 @@ iterateUntilM convergence iteration initArr0 = do
 
 
 iterateLoop ::
-     (Size r', Load r' ix e, Mutable r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
+     (Size r', Load r' ix e, Manifest r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
   => (Int -> Array r ix e -> Comp -> MArray (PrimState m) r ix e -> m Bool)
   -> (Int -> Array r ix e -> Array r' ix e)
   -> Int

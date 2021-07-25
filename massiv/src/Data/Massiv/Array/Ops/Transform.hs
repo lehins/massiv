@@ -395,7 +395,7 @@ reverse' dim = throwEither . reverseM dim
 -- @since 0.3.0
 backpermuteM ::
      forall r ix e r' ix' m.
-     (Mutable r e, Index ix, Source r' e, Index ix', MonadUnliftIO m, PrimMonad m, MonadThrow m)
+     (Manifest r e, Index ix, Source r' e, Index ix', MonadUnliftIO m, PrimMonad m, MonadThrow m)
   => Sz ix -- ^ Size of the result array
   -> (ix -> ix') -- ^ A function that maps indices of the new array into the source one.
   -> Array r' ix' e -- ^ Source array.
@@ -1052,7 +1052,7 @@ upsample !fillWith safeStride arr =
 -- @since 0.3.0
 transformM ::
      forall r ix e r' ix' e' a m.
-     (Mutable r e, Index ix, Source r' e', Index ix', MonadUnliftIO m, PrimMonad m, MonadThrow m)
+     (Manifest r e, Index ix, Source r' e', Index ix', MonadUnliftIO m, PrimMonad m, MonadThrow m)
   => (Sz ix' -> m (Sz ix, a))
   -> (a -> (ix' -> m e') -> ix -> m e)
   -> Array r' ix' e'
@@ -1082,7 +1082,7 @@ transform' getSz get arr = makeArray (getComp arr) sz (get a (evaluate' arr))
 --
 -- @since 0.3.0
 transform2M ::
-     ( Mutable r e
+     ( Manifest r e
      , Index ix
      , Source r1 e1
      , Source r2 e2

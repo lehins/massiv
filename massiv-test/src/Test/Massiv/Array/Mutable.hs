@@ -13,7 +13,7 @@ module Test.Massiv.Array.Mutable
   , prop_GrowShrink
   , prop_unfoldrList
   , prop_unfoldrReverseUnfoldl
-  , prop_toStreamArrayMutable
+  , prop_toStreamArrayManifest
   -- * Atomic ops spec
   , atomicIntSpec
   ) where
@@ -31,13 +31,13 @@ import Test.Massiv.Utils as T
 import UnliftIO.Async
 
 
--- prop_MapMapM :: forall r ix(Show (Array r ix Word), Eq (Array r ix Word), Mutable r ix) =>
+-- prop_MapMapM :: forall r ix(Show (Array r ix Word), Eq (Array r ix Word), Manifest r ix) =>
 --                 Fun Word Word -> ArrTiny D ix Word -> Property
 -- prop_MapMapM r _ f (ArrTiny arr) =
 --   computeAs r (A.map (apply f) arr) === runIdentity (A.mapMR r (return . apply f) arr)
 
 prop_iMapiMapM ::
-     forall r ix e. (Show (Array r ix e), Eq (Array r ix e), Mutable r e, Index ix)
+     forall r ix e. (Show (Array r ix e), Eq (Array r ix e), Manifest r e, Index ix)
   => Fun (ix, e) e
   -> Array D ix e
   -> Property
@@ -49,7 +49,7 @@ prop_GenerateArray ::
      forall r ix e.
      ( Show (Array r ix e)
      , Eq (Array r ix e)
-     , Mutable r e
+     , Manifest r e
      , Load r ix e
      , Show e
      , Arbitrary e
@@ -69,7 +69,7 @@ prop_GenerateArray =
 
 prop_Shrink ::
      forall r ix e.
-     (Show (Array r ix e), Mutable r e, Load r ix e, Arbitrary ix, Arbitrary e, Eq e)
+     (Show (Array r ix e), Manifest r e, Load r ix e, Arbitrary ix, Arbitrary e, Eq e)
   => Property
 prop_Shrink  =
   property $ \ (ArrIx arr ix) -> runST $ do
@@ -83,7 +83,7 @@ prop_GrowShrink ::
      ( Eq (Array r ix e)
      , Show (Array r ix e)
      , Load r ix e
-     , Mutable r e
+     , Manifest r e
      , Arbitrary ix
      , Arbitrary e
      , Show e
@@ -113,7 +113,7 @@ prop_unfoldrList ::
      , Arbitrary ix
      , Arbitrary e
      , Show e
-     , Mutable r e
+     , Manifest r e
      )
   => Property
 prop_unfoldrList =
@@ -131,7 +131,7 @@ prop_unfoldrReverseUnfoldl ::
      , Arbitrary ix
      , Arbitrary e
      , Show e
-     , Mutable r e
+     , Manifest r e
      )
   => Property
 prop_unfoldrReverseUnfoldl =
@@ -143,15 +143,15 @@ prop_unfoldrReverseUnfoldl =
            a2 <- unfoldlPrimM_ @r sz (pure . swapTuple . apply f) i
            rev a1 `shouldBe` a2
 
-prop_toStreamArrayMutable ::
-     forall r ix e. (Mutable r e, Index ix, Show (Array r ix e), Eq (Array r ix e))
+prop_toStreamArrayManifest ::
+     forall r ix e. (Manifest r e, Index ix, Show (Array r ix e), Eq (Array r ix e))
   => Array r ix e
   -> Property
-prop_toStreamArrayMutable arr =
+prop_toStreamArrayManifest arr =
   arr === S.unstreamExact (size arr) (S.stepsStream (toSteps (toStreamArray arr)))
 
 prop_WithMArray ::
-     forall r ix e. (HasCallStack, Index ix, Mutable r e, Eq (Array r ix e), Show (Array r ix e))
+     forall r ix e. (HasCallStack, Index ix, Manifest r e, Eq (Array r ix e), Show (Array r ix e))
   => Array r ix e
   -> Fun e e
   -> Fun e e
@@ -188,7 +188,7 @@ mutableSpec ::
      , Typeable e
      , Show e
      , Eq e
-     , Mutable r e
+     , Manifest r e
      , CoArbitrary ix
      , Arbitrary e
      , CoArbitrary e
@@ -208,7 +208,7 @@ mutableSpec = do
     it "unfoldrList" $ prop_unfoldrList @r @ix @e
     it "unfoldrReverseUnfoldl" $ prop_unfoldrReverseUnfoldl @r @ix @e
   describe "Stream" $
-    prop "toStreamArrayMutable" $ prop_toStreamArrayMutable @r @ix @e
+    prop "toStreamArrayMutable" $ prop_toStreamArrayManifest @r @ix @e
 
 -- | Try to write many elements into the same array cell concurrently, while keeping the
 -- previous element for each write. With atomic writes, not a single element should be lost.

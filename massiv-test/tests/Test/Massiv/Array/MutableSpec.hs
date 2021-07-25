@@ -31,7 +31,7 @@ type MutableArraySpec r ix e
      , Load r ix e
      , Resize r
      , Arbitrary (Array r ix e)
-     , Mutable r e
+     , Manifest r e
      , Stream r ix e
      )
 
@@ -49,7 +49,7 @@ localMutableSpec :: forall r ix e. (MutableArraySpec r ix e) => Spec
 localMutableSpec = do
   describe "toStream/toList" $
     it "toStream" $ property (prop_toStream @r @ix @e)
-  describe "Mutable operations" $ do
+  describe "Manifest operations" $ do
     it "write" $ property (prop_Write @r @ix @e)
     it "modify" $ property (prop_Modify @r @ix @e)
     it "swap" $ property (prop_Swap @r @ix @e)
@@ -90,7 +90,7 @@ specMutableNonFlatR ::
      , Arbitrary e
      , Index (Lower ix)
      , Load r ix e
-     , Mutable r e
+     , Manifest r e
      , Eq (Array r (Lower ix) e)
      , Show (Array r (Lower ix) e)
      , Show (Array r ix e)
@@ -111,7 +111,7 @@ specUnboxedMutableR = do
   unsafeMutableUnboxedSpec @r @Ix5 @e
 
 prop_Write ::
-     forall r ix e. (Index ix, Mutable r e, Eq e, Show e)
+     forall r ix e. (Index ix, Manifest r e, Eq e, Show e)
   => Array r ix e
   -> ix
   -> e
@@ -144,7 +144,7 @@ prop_Write arr ix e =
 
 
 prop_Modify ::
-     forall r ix e. (Index ix, Mutable r e, Eq e, Show e)
+     forall r ix e. (Index ix, Manifest r e, Eq e, Show e)
   => Array r ix e
   -> Fun e e
   -> ix
@@ -180,7 +180,7 @@ prop_Modify arr f ix =
           index' arr'' ix `shouldBe` fe
 
 prop_Swap ::
-     forall r ix e. (Index ix, Mutable r e, Eq e, Show e)
+     forall r ix e. (Index ix, Manifest r e, Eq e, Show e)
   => Array r ix e
   -> ix
   -> ix
@@ -228,7 +228,7 @@ prop_outerSliceMArrayM ::
      forall r ix e.
      ( Index ix
      , Index (Lower ix)
-     , Mutable r e
+     , Manifest r e
      , Eq (Array r (Lower ix) e)
      , Show (Array r (Lower ix) e)
      )
@@ -252,7 +252,7 @@ prop_outerSliceMArrayM (ArrNE arr) =
 spec :: Spec
 spec = do
   specMutableR @B @Int16
-  specMutableR @N @Int16
+  specMutableR @BN @Int16
   specMutableR @BL @Int16
   specUnboxedMutableR @S @Int16
   specUnboxedMutableR @P @Int16

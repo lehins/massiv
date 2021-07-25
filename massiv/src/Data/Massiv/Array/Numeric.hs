@@ -100,7 +100,6 @@ module Data.Massiv.Array.Numeric
   ) where
 
 import Data.Massiv.Array.Mutable
-import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
@@ -425,7 +424,7 @@ powerSumArrayIO v p = do
 --
 -- @since 0.5.7
 multiplyMatrixByVector ::
-     (MonadThrow m, Numeric r e, Mutable r e)
+     (MonadThrow m, Numeric r e, Manifest r e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector r e)
@@ -453,7 +452,7 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(><.) :: (MonadThrow m, Numeric r e, Mutable r e) =>
+(><.) :: (MonadThrow m, Numeric r e, Manifest r e) =>
          Vector r e -- ^ Row vector
       -> Matrix r e -- ^ Matrix
       -> m (Vector r e)
@@ -467,7 +466,7 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 --
 -- @since 0.5.7
 multiplyVectorByMatrix ::
-     (MonadThrow m, Numeric r e, Mutable r e)
+     (MonadThrow m, Numeric r e, Manifest r e)
   => Vector r e -- ^ Row vector
   -> Matrix r e -- ^ Matrix
   -> m (Vector r e)
@@ -504,7 +503,7 @@ multiplyVectorByMatrix v mm
 --
 -- @since 0.5.6
 (><!) ::
-     (Numeric r e, Mutable r e)
+     (Numeric r e, Manifest r e)
   => Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
   -> Matrix r e -- ^ Matrix
   -> Vector r e
@@ -531,7 +530,7 @@ multiplyVectorByMatrix v mm
 --   ]
 --
 -- @since 0.5.6
-(!><!) :: (Numeric r e, Mutable r e) => Matrix r e -> Matrix r e -> Matrix r e
+(!><!) :: (Numeric r e, Manifest r e) => Matrix r e -> Matrix r e -> Matrix r e
 (!><!) a1 a2 = throwEither (a1 `multiplyMatrices` a2)
 {-# INLINE (!><!) #-}
 
@@ -541,7 +540,7 @@ multiplyVectorByMatrix v mm
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(.><.) :: (Numeric r e, Mutable r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+(.><.) :: (Numeric r e, Manifest r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 (.><.) = multiplyMatrices
 {-# INLINE (.><.) #-}
 
@@ -550,7 +549,7 @@ multiplyVectorByMatrix v mm
 --
 -- @since 0.5.6
 multiplyMatrices ::
-     (Numeric r e, Mutable r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+     (Numeric r e, Manifest r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 multiplyMatrices arrA arrB
    -- mA == 1 = -- TODO: call multiplyVectorByMatrix
    -- nA == 1 = -- TODO: call multiplyMatrixByVector

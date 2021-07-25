@@ -138,39 +138,39 @@ prop_FoldrStencil (ArrNE arr) =
 stencilSpec :: Spec
 stencilSpec = do
   describe "MapSingletonStencil" $ do
-    it "Ix1" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix1)
-    it "Ix2" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix2)
-    it "Ix3" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
-    it "Ix4" $ property $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
+    prop "Ix1" $ prop_MapSingletonStencil (Proxy :: Proxy Ix1)
+    prop "Ix2" $ prop_MapSingletonStencil (Proxy :: Proxy Ix2)
+    prop "Ix3" $ prop_MapSingletonStencil (Proxy :: Proxy Ix3)
+    prop "Ix4" $ prop_MapSingletonStencil (Proxy :: Proxy Ix4)
   describe "MapSingletonStencilWithStride" $ do
-    it "Ix1" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix1)
-    it "Ix2" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix2)
-    it "Ix3" $ property $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix3)
+    prop "Ix1" $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix1)
+    prop "Ix2" $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix2)
+    prop "Ix3" $ prop_MapSingletonStencilWithStride (Proxy :: Proxy Ix3)
   describe "ApplyZeroStencil" $ do
-    it "Ix1" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix1)
-    it "Ix2" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix2)
-    it "Ix3" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix3)
-    it "Ix4" $ property $ prop_ApplyZeroStencil (Proxy :: Proxy Ix4)
+    prop "Ix1" $ prop_ApplyZeroStencil (Proxy :: Proxy Ix1)
+    prop "Ix2" $ prop_ApplyZeroStencil (Proxy :: Proxy Ix2)
+    prop "Ix3" $ prop_ApplyZeroStencil (Proxy :: Proxy Ix3)
+    prop "Ix4" $ prop_ApplyZeroStencil (Proxy :: Proxy Ix4)
   describe "DangerousStencil" $ do
-    it "Ix1" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix1)
-    it "Ix2" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix2)
-    it "Ix3" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix3)
-    it "Ix4" $ property $ prop_DangerousStencil (Proxy :: Proxy Ix4)
+    prop "Ix1" $ prop_DangerousStencil (Proxy :: Proxy Ix1)
+    prop "Ix2" $ prop_DangerousStencil (Proxy :: Proxy Ix2)
+    prop "Ix3" $ prop_DangerousStencil (Proxy :: Proxy Ix3)
+    prop "Ix4" $ prop_DangerousStencil (Proxy :: Proxy Ix4)
   describe "MapEqApplyStencil" $ do
-    it "Ix1" $ property $ prop_MapEqApplyStencil @Ix1
-    it "Ix2" $ property $ prop_MapEqApplyStencil @Ix2
-    it "Ix3" $ property $ prop_MapEqApplyStencil @Ix3
-    it "Ix4" $ property $ prop_MapEqApplyStencil @Ix4
+    prop "Ix1" $ prop_MapEqApplyStencil @Ix1
+    prop "Ix2" $ prop_MapEqApplyStencil @Ix2
+    prop "Ix3" $ prop_MapEqApplyStencil @Ix3
+    prop "Ix4" $ prop_MapEqApplyStencil @Ix4
   describe "FoldrStencil" $ do
-    it "Ix1" $ property $ prop_FoldrStencil @Ix1
-    it "Ix2" $ property $ prop_FoldrStencil @Ix2
-    it "Ix3" $ property $ prop_FoldrStencil @Ix3
-    it "Ix4" $ property $ prop_FoldrStencil @Ix4
+    prop "Ix1" $ prop_FoldrStencil @Ix1
+    prop "Ix2" $ prop_FoldrStencil @Ix2
+    prop "Ix3" $ prop_FoldrStencil @Ix3
+    prop "Ix4" $ prop_FoldrStencil @Ix4
   describe "Simple" $ do
-    it "sumStencil" $ property $ \ (arr :: Array B Ix2 Rational) border ->
-      computeAs N (mapStencil border avg3x3Stencil arr) ===
-      computeAs N (applyStencil (Padding 1 1 border) (avgStencil (Sz 3)) arr)
-    it "sameSizeAndCenter" $ property $ \ (SzIx sz ix) ->
+    prop "sumStencil" $ \ (arr :: Array B Ix2 Rational) border ->
+      computeAs BN (mapStencil border avg3x3Stencil arr) ===
+      computeAs BN (applyStencil (Padding 1 1 border) (avgStencil (Sz 3)) arr)
+    prop "sameSizeAndCenter" $ \ (SzIx sz ix) ->
       let stencil = makeStencil sz ix ($ Ix1 0) :: Stencil Ix1 Int Int
       in getStencilSize stencil === sz .&&. getStencilCenter stencil === ix
 

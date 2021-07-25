@@ -17,7 +17,7 @@ sortRows ::
      ( Ord e
      , Typeable v
      , A.Load r Ix2 e
-     , A.Mutable r e
+     , A.Manifest r e
      , VG.Vector v e
      , ARepr v ~ r
      , VRepr r ~ v

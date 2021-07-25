@@ -16,17 +16,16 @@ order of things. Below are two ways to index an array in massiv:
 λ> arr !> 1 !> 2
 (Array M Seq (Sz1 (4))
   [ 2,3,5,9 ])
-λ> arr !> 1 !> 2 !> 3
+λ> arr !> 1 !> 2 ! 3
 9
 ```
 
 Former does the lookup of an element in the array, while the latter slices the array until it gets to
-the actual element. Normally they are equivalent, but since implemnetation i svastly different,
-difference in performance could be expected.
+the actual element.
 
-Most important thing to agree upon is the fact that at the end of the day we do represent data in a
-linear row-major fashion, so the above indexing technique translates into a linear index that will
-get mapped into an element in memory at some point.
+Data is represented in a linear row-major fashion, so the above indexing
+technique translates into a linear index that will get mapped into an element in
+memory at some point.
 
 
 ## Hierarchy
@@ -34,21 +33,22 @@ get mapped into an element in memory at some point.
 ### Class dependency
 
 ```
-Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Manifest (M) -> Mutable (B, N, P, U, S)
+Size (DL, D, DI, DW, B, BN, BL, P, U, S) -> Resize ->
+Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Mutable (B, BN, BL, P, U, S)
    |\
-   | `> StrideLoad (D, DI, DW, M, B, N, P, U, S)
+   | `> StrideLoad (D, DI, DW, B, BN, BL, P, U, S)
    |\
-   | `> Extract (D, DS, DI, M, B, N, P, U, S)
+   | `> Extract (D, DS, DI, B, BN, BL, P, U, S)
    |\
-   | `> Slice (D, M, B, N, P, U, S)
+   | `> Slice (D, B, BN, BL, P, U, S)
    |\
-   | `> OuterSlice (D, M, B, N, P, U, S, L)
+   | `> OuterSlice (D, B, BN, BL, P, U, S, L)
     \
-     `> InnerSlice (D, M, B, N, P, U, S)
+     `> InnerSlice (D, B, BN, BL, P, U, S)
 
-Stream (D, DS, B, N, P, U, S, L, LN)
+Stream (D, DS, B, BN, BL, P, U, S, L, LN)
 
-Resize (D, DL, DI, B, N, P, U, S)
+Resize (D, DL, DI, B, BN, BL, P, U, S)
 ```
 
 ## Computation
@@ -60,7 +60,7 @@ to that:
   construction or conversion, eg. from a list or vector
 * array computation strategy will be combined according to its `Monoid` instance when two or more
   arrays are being joined together by some operation into another one.
-* Most of functions will respect the inner computation strategy, while other will ignore it due to
+* Most of functions will respect the inner computation strategy, while others will ignore it due to
   their specific nature.
 
 ## Naming Conventions

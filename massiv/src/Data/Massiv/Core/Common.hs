@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -17,8 +18,9 @@
 module Data.Massiv.Core.Common
   ( Array
   , Vector
-  , MVector
   , Matrix
+  , MArray
+  , MVector
   , MMatrix
   , Elt
   , Steps(..)
@@ -31,7 +33,7 @@ module Data.Massiv.Core.Common
   , Shape(..)
   , Resize(..)
   , Manifest(..)
-  , Mutable(..)
+  , Mutable
   , Comp(..)
   , Scheduler
   , numWorkers
@@ -118,6 +120,8 @@ import Data.Vector.Fusion.Util
 -- element @e@, even if that element does not yet exist in memory and the array has to be
 -- computed in order to get the value of that element. Data is always arranged in a nested
 -- row-major fashion. Rank of an array is specified by @`Dimensions` ix@.
+--
+-- @since 0.1.0
 data family Array r ix e :: Type
 
 -- | Type synonym for a single dimension array, or simply a flat vector.
@@ -125,17 +129,22 @@ data family Array r ix e :: Type
 -- @since 0.5.0
 type Vector r e = Array r Ix1 e
 
-
--- | Type synonym for a single dimension mutable array, or simply a flat mutable vector.
---
--- @since 0.5.0
-type MVector s r e = MArray s r Ix1 e
-
 -- | Type synonym for a two-dimentsional array, or simply a matrix.
 --
 -- @since 0.5.0
 type Matrix r e = Array r Ix2 e
 
+
+-- | Mutable version of a `Manifest` `Array`. The extra type argument @s@ is for
+-- the state token used by `IO` and `ST`.
+--
+-- @since 0.1.0
+data family MArray s r ix e :: Type
+
+-- | Type synonym for a single dimension mutable array, or simply a flat mutable vector.
+--
+-- @since 0.5.0
+type MVector s r e = MArray s r Ix1 e
 
 -- | Type synonym for a two-dimentsional mutable array, or simply a mutable matrix.
 --
@@ -409,7 +418,7 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --
   -- @since 1.0.0
   unsafeLoadIntoST ::
-       Mutable r' e
+       Manifest r' e
     => MVector s r' e
     -> Array r ix e
     -> ST s (MArray s r' ix e)
@@ -422,7 +431,7 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --
   -- @since 1.0.0
   unsafeLoadIntoIO ::
-       Mutable r' e
+       Manifest r' e
     => MVector RealWorld r' e
     -> Array r ix e
     -> IO (MArray RealWorld r' ix e)
@@ -464,22 +473,24 @@ class (Size r, Load r ix e) => StrideLoad r ix e where
 -- class (Size r, StrideLoad r ix e) => StrideLoadP r ix e where
   --
   -- unsafeLoadIntoWithStrideST :: -- TODO: this would remove Size constraint and allow DS and LN instances for vectors.
-  --      Mutable r' ix e
+  --      Manifest r' ix e
   --   => Array r ix e
   --   -> Stride ix -- ^ Stride to use
   --   -> MArray RealWorld r' ix e
   --   -> m (MArray RealWorld r' ix e)
 
+-- | Starting with massiv-1.0 `Mutable` and `Manifest` are synonymous. However,
+-- this type class synonym will be deprecated in the next major version.
+type Mutable r e = Manifest r e
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
--- computed as it is with delayed arrays. Because of this fact indexing functions
--- @(`!`)@, @(`!?`)@, etc. are constrained to manifest arrays only.
+-- computed as it is with delayed arrays. Because manifest arrays are located in
+-- memory their contents can be mutated once thawed into `MArray`. The process
+-- of changed a mutable `MArray` back into an immutable `Array` is called
+-- freezing.
 class (Resize r, Source r e) => Manifest r e where
 
   unsafeLinearIndexM :: Index ix => Array r ix e -> Int -> e
-
-class Manifest r e => Mutable r e where
-  data MArray s r ix e :: Type
 
   -- | /O(1)/ - Get the size of a mutable array.
   --
@@ -611,7 +622,7 @@ class Manifest r e => Mutable r e where
 
 
 unsafeDefaultLinearShrink ::
-     (Mutable r e, Index ix, PrimMonad m)
+     (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> Sz ix
   -> m (MArray (PrimState m) r ix e)
@@ -637,7 +648,7 @@ withMassivScheduler_ comp f =
 -- | Read an array element
 --
 -- @since 0.1.0
-unsafeRead :: (Mutable r e, Index ix, PrimMonad m) =>
+unsafeRead :: (Manifest r e, Index ix, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> m e
 unsafeRead marr = unsafeLinearRead marr . toLinearIndex (sizeOfMArray marr)
 {-# INLINE unsafeRead #-}
@@ -645,7 +656,7 @@ unsafeRead marr = unsafeLinearRead marr . toLinearIndex (sizeOfMArray marr)
 -- | Write an element into array
 --
 -- @since 0.1.0
-unsafeWrite :: (Mutable r e, Index ix, PrimMonad m) =>
+unsafeWrite :: (Manifest r e, Index ix, PrimMonad m) =>
                MArray (PrimState m) r ix e -> ix -> e -> m ()
 unsafeWrite marr = unsafeLinearWrite marr . toLinearIndex (sizeOfMArray marr)
 {-# INLINE unsafeWrite #-}
@@ -654,7 +665,7 @@ unsafeWrite marr = unsafeLinearWrite marr . toLinearIndex (sizeOfMArray marr)
 -- | Modify an element in the array with a monadic action. Returns the previous value.
 --
 -- @since 0.4.0
-unsafeLinearModify :: (Mutable r e, Index ix, PrimMonad m) =>
+unsafeLinearModify :: (Manifest r e, Index ix, PrimMonad m) =>
                       MArray (PrimState m) r ix e -> (e -> m e) -> Int -> m e
 unsafeLinearModify !marr f !i = do
   v <- unsafeLinearRead marr i
@@ -666,7 +677,7 @@ unsafeLinearModify !marr f !i = do
 -- | Modify an element in the array with a monadic action. Returns the previous value.
 --
 -- @since 0.4.0
-unsafeModify :: (Mutable r e, Index ix, PrimMonad m) =>
+unsafeModify :: (Manifest r e, Index ix, PrimMonad m) =>
                 MArray (PrimState m) r ix e -> (e -> m e) -> ix -> m e
 unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (sizeOfMArray marr) ix)
 {-# INLINE unsafeModify #-}
@@ -675,7 +686,7 @@ unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (sizeOfMArray 
 -- values.
 --
 -- @since 0.4.0
-unsafeSwap :: (Mutable r e, Index ix, PrimMonad m) =>
+unsafeSwap :: (Manifest r e, Index ix, PrimMonad m) =>
               MArray (PrimState m) r ix e -> ix -> ix -> m (e, e)
 unsafeSwap !marr !ix1 !ix2 = unsafeLinearSwap marr (toLinearIndex sz ix1) (toLinearIndex sz ix2)
   where sz = sizeOfMArray marr
@@ -686,7 +697,7 @@ unsafeSwap !marr !ix1 !ix2 = unsafeLinearSwap marr (toLinearIndex sz ix1) (toLin
 -- previous values.
 --
 -- @since 0.4.0
-unsafeLinearSwap :: (Mutable r e, Index ix, PrimMonad m) =>
+unsafeLinearSwap :: (Manifest r e, Index ix, PrimMonad m) =>
                     MArray (PrimState m) r ix e -> Int -> Int -> m (e, e)
 unsafeLinearSwap !marr !i1 !i2 = do
   val1 <- unsafeLinearRead marr i1

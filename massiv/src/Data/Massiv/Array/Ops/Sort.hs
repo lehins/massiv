@@ -46,7 +46,7 @@ import System.IO.Unsafe
 --   [ (1,1), (2,3), (3,1), (4,2), (5,1) ]
 --
 -- @since 0.4.4
-tally :: (Mutable r e, Load r ix e, Ord e) => Array r ix e -> Vector DS (e, Int)
+tally :: (Manifest r e, Load r ix e, Ord e) => Array r ix e -> Vector DS (e, Int)
 tally arr
   | isEmpty arr = setComp (getComp arr) empty
   | otherwise = scatMaybes $ sunfoldrN (liftSz2 (+) sz oneSz) count (0, 0, sorted ! 0)
@@ -69,7 +69,7 @@ tally arr
 --
 -- @since 1.0.0
 unsafeUnstablePartitionRegionM ::
-     forall r e m. (Mutable r e, PrimMonad m)
+     forall r e m. (Manifest r e, PrimMonad m)
   => MVector (PrimState m) r e
   -> (e -> m Bool)
   -> Ix1 -- ^ Start index of the region
@@ -106,7 +106,7 @@ unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
 --
 -- @since 0.3.2
 quicksort ::
-     (Mutable r e, Ord e) => Vector r e -> Vector r e
+     (Manifest r e, Ord e) => Vector r e -> Vector r e
 quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 {-# INLINE quicksort #-}
 
@@ -115,23 +115,23 @@ quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 --
 -- @since 0.6.1
 quicksortByM ::
-     (Mutable r e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
+     (Manifest r e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
 quicksortByM f arr = withRunInIO $ \run -> withMArray_ arr (quicksortByM_ (\x y -> run (f x y)))
 {-# INLINE quicksortByM #-}
 
 -- | Same as `quicksortBy`, but instead of `Ord` constraint expects a custom `Ordering`.
 --
 -- @since 0.6.1
-quicksortBy :: Mutable r e => (e -> e -> Ordering) -> Vector r e -> Vector r e
+quicksortBy :: Manifest r e => (e -> e -> Ordering) -> Vector r e -> Vector r e
 quicksortBy f arr =
   unsafePerformIO $ withMArray_ arr (quicksortByM_ (\x y -> pure $ f x y))
 {-# INLINE quicksortBy #-}
 
--- | Mutable version of `quicksort`
+-- | Manifest version of `quicksort`
 --
 -- @since 0.3.2
 quicksortM_ ::
-     (Ord e, Mutable r e, MonadPrimBase s m)
+     (Ord e, Manifest r e, MonadPrimBase s m)
   => Scheduler s ()
   -> MVector s r e
   -> m ()
@@ -143,7 +143,7 @@ quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e
 --
 -- @since 0.6.1
 quicksortByM_ ::
-     (Mutable r e, MonadPrimBase s m)
+     (Manifest r e, MonadPrimBase s m)
   => (e -> e -> m Ordering)
   -> Scheduler s ()
   -> MVector s r e
@@ -154,7 +154,7 @@ quicksortByM_ compareM =
 
 
 quicksortInternalM_ ::
-     (Mutable r e, MonadPrimBase s m)
+     (Manifest r e, MonadPrimBase s m)
   => (e -> e -> m Bool)
   -> (e -> e -> m Bool)
   -> Scheduler s ()

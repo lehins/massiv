@@ -36,7 +36,7 @@ import Data.Massiv.Core.Common
 --
 -- @since 1.0.0
 unstablePartitionM ::
-     forall r e m. (Mutable r e, PrimMonad m)
+     forall r e m. (Manifest r e, PrimMonad m)
   => MVector (PrimState m) r e
   -> (e -> m Bool) -- ^ Predicate
   -> m Ix1

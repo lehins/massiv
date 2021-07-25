@@ -249,11 +249,11 @@ izipWith4 f arr1 arr2 arr3 arr4 =
 
 
 -- | Similar to `zipWith`, except does it sequentially and using the `Applicative`. Note that
--- resulting array has Mutable representation.
+-- resulting array has Manifest representation.
 --
 -- @since 0.3.0
 zipWithA ::
-     (Source r1 e1, Source r2 e2, Applicative f, Mutable r e, Index ix)
+     (Source r1 e1, Source r2 e2, Applicative f, Manifest r e, Index ix)
   => (e1 -> e2 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -262,11 +262,11 @@ zipWithA f = izipWithA (const f)
 {-# INLINE zipWithA #-}
 
 -- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
--- resulting array has Mutable representation.
+-- resulting array has Manifest representation.
 --
 -- @since 0.3.0
 izipWithA ::
-     (Source r1 e1, Source r2 e2, Applicative f, Mutable r e, Index ix)
+     (Source r1 e1, Source r2 e2, Applicative f, Manifest r e, Index ix)
   => (ix -> e1 -> e2 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -282,7 +282,7 @@ izipWithA f arr1 arr2 =
 --
 -- @since 0.3.0
 zipWith3A ::
-     (Source r1 e1, Source r2 e2, Source r3 e3, Applicative f, Mutable r e, Index ix)
+     (Source r1 e1, Source r2 e2, Source r3 e3, Applicative f, Manifest r e, Index ix)
   => (e1 -> e2 -> e3 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -295,7 +295,7 @@ zipWith3A f = izipWith3A (const f)
 --
 -- @since 0.3.0
 izipWith3A ::
-     (Source r1 e1, Source r2 e2, Source r3 e3, Applicative f, Mutable r e, Index ix)
+     (Source r1 e1, Source r2 e2, Source r3 e3, Applicative f, Manifest r e, Index ix)
   => (ix -> e1 -> e2 -> e3 -> f e)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -322,7 +322,7 @@ izipWith3A f arr1 arr2 arr3 =
 -- @since 0.2.6
 --
 traverseA ::
-     forall r ix e r' a f . (Source r' a, Mutable r e, Index ix, Applicative f)
+     forall r ix e r' a f . (Source r' a, Manifest r e, Index ix, Applicative f)
   => (a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
@@ -346,7 +346,7 @@ traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearInde
 -- @since 0.3.0
 --
 sequenceA ::
-     forall r ix e r' f. (Source r' (f e), Mutable r e, Index ix, Applicative f)
+     forall r ix e r' f. (Source r' (f e), Manifest r e, Index ix, Applicative f)
   => Array r' ix (f e)
   -> f (Array r ix e)
 sequenceA = traverseA id
@@ -369,7 +369,7 @@ sequenceA_ = traverseA_ id
 -- @since 0.2.6
 --
 itraverseA ::
-     forall r ix e r' a f . (Source r' a, Mutable r e, Index ix, Applicative f)
+     forall r ix e r' a f . (Source r' a, Manifest r e, Index ix, Applicative f)
   => (ix -> a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
@@ -399,7 +399,7 @@ itraverseA_ f arr =
 -- @since 0.3.0
 --
 traversePrim ::
-     forall r ix b r' a m . (Source r' a, Mutable r b, Index ix, PrimMonad m)
+     forall r ix b r' a m . (Source r' a, Manifest r b, Index ix, PrimMonad m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -411,7 +411,7 @@ traversePrim f = itraversePrim (const f)
 -- @since 0.3.0
 --
 itraversePrim ::
-     forall r ix b r' a m . (Source r' a, Mutable r b, Index ix, PrimMonad m)
+     forall r ix b r' a m . (Source r' a, Manifest r b, Index ix, PrimMonad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -432,7 +432,7 @@ itraversePrim f arr =
 --
 -- @since 0.2.6
 mapM ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
+     forall r ix b r' a m. (Source r' a, Manifest r b, Index ix, Monad m)
   => (a -> m b) -- ^ Mapping action
   -> Array r' ix a -- ^ Source array
   -> m (Array r ix b)
@@ -444,7 +444,7 @@ mapM = traverseA
 --
 -- @since 0.2.6
 forM ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
+     forall r ix b r' a m. (Source r' a, Manifest r b, Index ix, Monad m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -456,7 +456,7 @@ forM = flip traverseA
 --
 -- @since 0.2.6
 imapM ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
+     forall r ix b r' a m. (Source r' a, Manifest r b, Index ix, Monad m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -468,7 +468,7 @@ imapM = itraverseA
 --
 -- @since 0.5.1
 iforM ::
-     forall r ix b r' a m. (Source r' a, Mutable r b, Index ix, Monad m)
+     forall r ix b r' a m. (Source r' a, Manifest r b, Index ix, Monad m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)
@@ -525,7 +525,7 @@ iforM_ = flip imapM_
 --
 -- @since 0.2.6
 mapIO ::
-     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Manifest r b, MonadUnliftIO m)
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -572,7 +572,7 @@ imapIO_ action arr =
 --
 -- @since 0.2.6
 imapIO ::
-     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Manifest r b, MonadUnliftIO m)
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
@@ -590,7 +590,7 @@ imapIO action arr = do
 --
 -- @since 0.2.6
 forIO ::
-     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Manifest r b, MonadUnliftIO m)
   => Array r' ix a
   -> (a -> m b)
   -> m (Array r ix b)
@@ -605,7 +605,7 @@ forIO = flip mapIO
 --
 -- @since 0.3.4
 imapWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Manifest r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> (ix -> a -> s -> m b)
   -> Array r' ix a
@@ -617,7 +617,7 @@ imapWS states f arr = generateArrayWS states (size arr) (\ix s -> f ix (unsafeIn
 --
 -- @since 0.3.4
 mapWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Manifest r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> (a -> s -> m b)
   -> Array r' ix a
@@ -630,7 +630,7 @@ mapWS states f = imapWS states (\ _ -> f)
 --
 -- @since 0.3.4
 iforWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Manifest r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> Array r' ix a
   -> (ix -> a -> s -> m b)
@@ -642,7 +642,7 @@ iforWS states f arr = imapWS states arr f
 --
 -- @since 0.3.4
 forWS ::
-     forall r ix b r' a s m. (Source r' a, Mutable r b, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix b r' a s m. (Source r' a, Manifest r b, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates s
   -> Array r' ix a
   -> (a -> s -> m b)
@@ -675,7 +675,7 @@ forIO_ = flip mapIO_
 --
 -- @since 0.2.6
 iforIO ::
-     forall r ix b r' a m. (Size r', Load r' ix a, Mutable r b, MonadUnliftIO m)
+     forall r ix b r' a m. (Size r', Load r' ix a, Manifest r b, MonadUnliftIO m)
   => Array r' ix a
   -> (ix -> a -> m b)
   -> m (Array r ix b)

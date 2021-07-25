@@ -49,6 +49,7 @@ data instance Array U ix e = UArray { uComp :: !Comp
                                     , uSize :: !(Sz ix)
                                     , uData :: !(VU.Vector e)
                                     }
+data instance MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
 instance (Ragged L ix e, Show e, Unbox e) => Show (Array U ix e) where
   showsPrec = showsArrayPrec id
@@ -117,15 +118,14 @@ instance (Unbox e, Index ix) => Load U ix e where
 instance (Unbox e, Index ix) => StrideLoad U ix e
 
 
+
+
+
 instance Unbox e => Manifest U e where
 
   unsafeLinearIndexM (UArray _ _ v) =
     INDEX_CHECK("(Manifest U ix e).unsafeLinearIndexM", Sz . VU.length, VU.unsafeIndex) v
   {-# INLINE unsafeLinearIndexM #-}
-
-
-instance Unbox e => Mutable U e where
-  data MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
   sizeOfMArray (MUArray sz _) = sz
   {-# INLINE sizeOfMArray #-}
@@ -153,11 +153,11 @@ instance Unbox e => Mutable U e where
   {-# INLINE unsafeLinearCopy #-}
 
   unsafeLinearRead (MUArray _ mv) =
-    INDEX_CHECK("(Mutable U ix e).unsafeLinearRead", Sz . MVU.length, MVU.unsafeRead) mv
+    INDEX_CHECK("(Manifest U ix e).unsafeLinearRead", Sz . MVU.length, MVU.unsafeRead) mv
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MUArray _ mv) =
-    INDEX_CHECK("(Mutable U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv
+    INDEX_CHECK("(Manifest U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearGrow (MUArray _ mv) sz = MUArray sz <$> MVU.unsafeGrow mv (totalElem sz)

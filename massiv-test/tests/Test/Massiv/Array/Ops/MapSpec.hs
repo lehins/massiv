@@ -139,7 +139,7 @@ spec = do
 
 
 alt_imapM
-  :: (Applicative f, Index ix, Mutable r2 b, Source r1 a) =>
+  :: (Applicative f, Index ix, Manifest r2 b, Source r1 a) =>
      (ix -> a -> f b) -> Array r1 ix a -> f (Array r2 ix b)
 alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWithIndex arr)
   where

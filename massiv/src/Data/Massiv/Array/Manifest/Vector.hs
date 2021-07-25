@@ -29,7 +29,6 @@ import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
 import Data.Massiv.Array.Manifest.Unboxed
-import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Maybe (fromMaybe)
 import Data.Typeable
@@ -52,7 +51,7 @@ type family VRepr r :: Type -> Type where
   VRepr S = VS.Vector
   VRepr P = VP.Vector
   VRepr B = VB.Vector
-  VRepr N = VB.Vector
+  VRepr BN = VB.Vector
   VRepr BL = VB.Vector
 
 
@@ -91,7 +90,7 @@ castFromVector comp sz vector = do
 --
 -- @since 0.3.0
 fromVectorM ::
-     (MonadThrow m, Typeable v, VG.Vector v a, Mutable r a, Load (ARepr v) ix a, Load r ix a)
+     (MonadThrow m, Typeable v, VG.Vector v a, Manifest r a, Load (ARepr v) ix a, Load r ix a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
@@ -109,7 +108,7 @@ fromVectorM comp sz v =
 --
 -- @since 0.3.0
 fromVector' ::
-     (HasCallStack, Typeable v, VG.Vector v a, Load (ARepr v) ix a, Load r ix a, Mutable r a)
+     (HasCallStack, Typeable v, VG.Vector v a, Load (ARepr v) ix a, Load r ix a, Manifest r a)
   => Comp
   -> Sz ix -- ^ Resulting size of the array
   -> v a -- ^ Source Vector
@@ -121,7 +120,7 @@ fromVector' comp sz = throwEither . fromVectorM comp sz
 -- return `Nothing` only if source array representation was not one of `B`, `N`,
 -- `P`, `S` or `U`.
 castToVector ::
-     forall v r ix e. (Mutable r e, Index ix, VRepr r ~ v)
+     forall v r ix e. (Manifest r e, Index ix, VRepr r ~ v)
   => Array r ix e
   -> Maybe (v e)
 castToVector arr =
@@ -138,7 +137,7 @@ castToVector arr =
     , do Refl <- eqT :: Maybe (r :~: B)
          bArr <- gcastArr arr
          return $ toBoxedVector $ toLazyArray bArr
-    , do Refl <- eqT :: Maybe (r :~: N)
+    , do Refl <- eqT :: Maybe (r :~: BN)
          bArr <- gcastArr arr
          return $ toBoxedVector $ toLazyArray $ unwrapNormalForm bArr
     , do Refl <- eqT :: Maybe (r :~: BL)
@@ -174,7 +173,7 @@ toVector ::
      forall r ix e v.
      ( Manifest r e
      , Load r ix e
-     , Mutable (ARepr v) e
+     , Manifest (ARepr v) e
      , VG.Vector v e
      , VRepr (ARepr v) ~ v
      )

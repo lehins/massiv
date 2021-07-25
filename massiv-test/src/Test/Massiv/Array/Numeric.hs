@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 module Test.Massiv.Array.Numeric
-  ( -- * Spec for safe Mutable instance
+  ( -- * Spec for safe Manifest instance
     prop_MatrixMatrixMultiply
   , mutableNumericSpec
   , mutableNumericFloatSpec
@@ -38,7 +38,7 @@ naiveMatrixMatrixMultiply arr1 arr2
 
 
 prop_MatrixMatrixMultiply ::
-     forall r e. (Numeric r e, Mutable r e, Eq (Matrix r e), Show (Matrix r e))
+     forall r e. (Numeric r e, Manifest r e, Eq (Matrix r e), Show (Matrix r e))
   => Fun e e
   -> Matrix r e
   -> Property
@@ -54,7 +54,7 @@ prop_MatrixMatrixMultiply f arr = expectProp $ do
 prop_MatrixVectorMultiply ::
      forall r e.
      ( Numeric r e
-     , Mutable r e
+     , Manifest r e
      , Load r Ix1 e
      , Eq e
      , Show e
@@ -75,7 +75,7 @@ prop_VectorMatrixMultiply ::
      ( Numeric r e
      , Load r Ix1 e
      , Source r e
-     , Mutable r e
+     , Manifest r e
      , Show (Vector r e)
      , Eq (Vector r e)
      )
@@ -93,7 +93,7 @@ prop_VectorMatrixMultiply f arr =
       (== SizeMismatchException (Sz2 1 (m + 1)) (size arr))
 
 prop_DotProduct ::
-     forall r e. (Numeric r e, Mutable r e, Eq e, Show e, Load r Ix1 e)
+     forall r e. (Numeric r e, Manifest r e, Eq e, Show e, Load r Ix1 e)
   => Fun e e
   -> Vector r e
   -> Property
@@ -105,7 +105,7 @@ prop_DotProduct f v =
       (== SizeMismatchException (size v) (size v + 1))
 
 prop_Norm ::
-     forall r e. (NumericFloat r e, Mutable r e, RealFloat e, Show e)
+     forall r e. (NumericFloat r e, Manifest r e, RealFloat e, Show e)
   => e
   -> Vector r e
   -> Property
@@ -115,7 +115,7 @@ prop_Norm eps v = epsilonEq eps (sqrt (v !.! v)) (normL2 v)
 
 prop_Plus ::
      forall r e.
-     (Numeric r e, Mutable r e, Show (Matrix r e), Eq (Matrix r e))
+     (Numeric r e, Manifest r e, Show (Matrix r e), Eq (Matrix r e))
   => Fun e e
   -> Matrix r e
   -> e
@@ -131,7 +131,7 @@ prop_Plus f arr e = expectProp $ do
 
 prop_Minus ::
      forall r e.
-     (Numeric r e, Mutable r e, Show (Array r Ix2 e), Eq (Array r Ix2 e))
+     (Numeric r e, Manifest r e, Show (Array r Ix2 e), Eq (Array r Ix2 e))
   => Fun e e
   -> Matrix r e
   -> e
@@ -147,7 +147,7 @@ prop_Minus f arr e = expectProp $ do
 
 prop_Times ::
      forall r e.
-     (Numeric r e, Mutable r e, Show (Matrix r e), Eq (Matrix r e))
+     (Numeric r e, Manifest r e, Show (Matrix r e), Eq (Matrix r e))
   => Fun e e
   -> Matrix r e
   -> e
@@ -164,7 +164,7 @@ prop_Times f arr e = expectProp $ do
 prop_Divide ::
      forall r e.
      ( NumericFloat r e
-     , Mutable r e
+     , Manifest r e
      , Show e
      , RealFloat e
      , Show (Matrix r e)
@@ -211,7 +211,7 @@ prop_Floating eps arr = expectProp $ do
   epsilonFoldableExpect eps (delay (atanhA arr)) (A.map atanh arr)
 
 prop_Floating2 ::
-     forall r e. (RealFloat e, Mutable r e, NumericFloat r e, Show e)
+     forall r e. (RealFloat e, Manifest r e, NumericFloat r e, Show e)
   => e
   -> Matrix r e
   -> Fun e e
@@ -227,7 +227,7 @@ prop_Floating2 eps arr1 f = expectProp $ do
 mutableNumericSpec ::
      forall r e.
      ( Numeric r e
-     , Mutable r e
+     , Manifest r e
      , Load r Ix1 e
      , Load r Ix2 e
      , Eq e
@@ -267,14 +267,14 @@ mutableNumericSpec =
 mutableNumericFloatSpec ::
      forall r.
      ( NumericFloat r Float
-     , Mutable r Float
+     , Manifest r Float
      , Arbitrary (Vector r Float)
      , Arbitrary (Matrix r Float)
      , Show (Vector r Float)
      , Show (Matrix r Float)
      , Eq (Matrix r Float)
      , NumericFloat r Double
-     , Mutable r Double
+     , Manifest r Double
      , Arbitrary (Vector r Double)
      , Arbitrary (Matrix r Double)
      , Show (Vector r Double)

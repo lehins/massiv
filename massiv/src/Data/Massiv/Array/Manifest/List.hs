@@ -35,7 +35,7 @@ import qualified GHC.Exts as GHC (build, IsList(..))
 --
 -- @since 0.1.0
 fromList ::
-     forall r e. Mutable r e
+     forall r e. Manifest r e
   => Comp -- ^ Computation startegy to use
   -> [e] -- ^ Flat list
   -> Vector r e
@@ -81,7 +81,7 @@ fromList = fromLists'
 --
 -- @since 0.3.0
 fromListsM ::
-     forall r ix e m. (Ragged L ix e, Mutable r e, MonadThrow m)
+     forall r ix e m. (Ragged L ix e, Manifest r e, MonadThrow m)
   => Comp
   -> [ListItem ix e]
   -> m (Array r ix e)
@@ -126,7 +126,7 @@ fromListToListArray = GHC.fromList
 --
 -- @since 0.1.0
 fromLists' ::
-     forall r ix e. (HasCallStack, Ragged L ix e, Mutable r e)
+     forall r ix e. (HasCallStack, Ragged L ix e, Manifest r e)
   => Comp -- ^ Computation startegy to use
   -> [ListItem ix e] -- ^ Nested list
   -> Array r ix e

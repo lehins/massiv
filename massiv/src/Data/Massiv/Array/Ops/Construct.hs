@@ -118,7 +118,7 @@ makeVectorR _ = makeArray
 
 newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
 
-runSTA :: (Mutable r e, Index ix) => Sz ix -> STA r ix e -> Array r ix e
+runSTA :: (Manifest r e, Index ix) => Sz ix -> STA r ix e -> Array r ix e
 runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 {-# INLINE runSTA  #-}
 
@@ -130,7 +130,7 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 --
 -- @since 0.2.6
 makeArrayA ::
-     forall r ix e f. (Mutable r e, Index ix, Applicative f)
+     forall r ix e f. (Manifest r e, Index ix, Applicative f)
   => Sz ix
   -> (ix -> f e)
   -> f (Array r ix e)
@@ -150,7 +150,7 @@ makeArrayA !sz f =
 --
 -- @since 0.4.5
 makeArrayLinearA ::
-     forall r ix e f. (Mutable r e, Index ix, Applicative f)
+     forall r ix e f. (Manifest r e, Index ix, Applicative f)
   => Sz ix
   -> (Int -> f e)
   -> f (Array r ix e)
@@ -168,7 +168,7 @@ makeArrayLinearA !sz f =
 --
 -- @since 0.2.6
 makeArrayAR ::
-     forall r ix e f. (Mutable r e, Index ix, Applicative f)
+     forall r ix e f. (Manifest r e, Index ix, Applicative f)
   => r
   -> Sz ix
   -> (ix -> f e)
@@ -395,7 +395,7 @@ uniformRangeArray gen r = randomArray gen split (uniformR r)
 --
 -- @since 0.3.4
 randomArrayS ::
-     forall r ix e g. (Mutable r e, Index ix)
+     forall r ix e g. (Manifest r e, Index ix)
   => g -- ^ Initial random value generator
   -> Sz ix -- ^ Resulting size of the array.
   -> (g -> (e, g))
@@ -439,7 +439,7 @@ randomArrayS gen sz nextRandom =
 --
 -- @since 0.3.4
 randomArrayWS ::
-     forall r ix e g m. (Mutable r e, Index ix, MonadUnliftIO m, PrimMonad m)
+     forall r ix e g m. (Manifest r e, Index ix, MonadUnliftIO m, PrimMonad m)
   => WorkerStates g -- ^ Use `initWorkerStates` to initialize you per thread generators
   -> Sz ix -- ^ Resulting size of the array
   -> (g -> m e) -- ^ Generate the value using the per thread generator.

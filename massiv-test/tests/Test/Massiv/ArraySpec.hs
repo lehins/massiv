@@ -98,29 +98,32 @@ specCommon ::
   => Spec
 specCommon =
   describe "Construct" $ do
-    it "Construct_makeArray B" $ property $ prop_Construct_makeArray_Manifest @B @ix
-    it "Construct_makeArray N" $ property $ prop_Construct_makeArray_Manifest @N @ix
-    it "Construct_makeArray S" $ property $ prop_Construct_makeArray_Manifest @S @ix
-    it "Construct_makeArray P" $ property $ prop_Construct_makeArray_Manifest @P @ix
-    it "Construct_makeArray U" $ property $ prop_Construct_makeArray_Manifest @U @ix
-    it "Construct_makeArray_Delayed DI" $ property $ prop_Construct_makeArray_Delayed @DI @ix
-    it "Construct_makeArray_Delayed DL" $ property $ prop_Construct_makeArray_Delayed @DL @ix
-    it "Construct_makeArray_Delayed DW" $ property $ prop_Construct_makeArray_Delayed @DW @ix
-    it "Functor D" $ property $ prop_Functor @D @ix
-    it "Functor DI" $ property $ prop_Functor @DI @ix
-    it "Functor DL" $ property $ prop_Functor @DL @ix
-    it "Functor DW" $ property $ prop_Functor @DW @ix
-    it "Extract B" $ property $ prop_Extract @B @ix
-    it "Extract N" $ property $ prop_Extract @N @ix
-    it "Extract S" $ property $ prop_Extract @S @ix
-    it "Extract U" $ property $ prop_Extract @U @ix
-    it "computeWithStride DI" $ property $ prop_computeWithStride @DI @ix
-    it "computeWithStride DW" $ property $ prop_computeWithStride @DW @ix
-    it "computeWithStride B" $ property $ prop_computeWithStride @B @ix
-    it "computeWithStride N" $ property $ prop_computeWithStride @N @ix
-    it "computeWithStride S" $ property $ prop_computeWithStride @S @ix
-    it "computeWithStride U" $ property $ prop_computeWithStride @U @ix
-    it "IxUnbox" $ property $ prop_IxUnbox @ix
+    prop "Construct_makeArray B" $ prop_Construct_makeArray_Manifest @B @ix
+    prop "Construct_makeArray BN" $ prop_Construct_makeArray_Manifest @BN @ix
+    prop "Construct_makeArray BL" $ prop_Construct_makeArray_Manifest @BL @ix
+    prop "Construct_makeArray S" $ prop_Construct_makeArray_Manifest @S @ix
+    prop "Construct_makeArray P" $ prop_Construct_makeArray_Manifest @P @ix
+    prop "Construct_makeArray U" $ prop_Construct_makeArray_Manifest @U @ix
+    prop "Construct_makeArray_Delayed DI" $ prop_Construct_makeArray_Delayed @DI @ix
+    prop "Construct_makeArray_Delayed DL" $ prop_Construct_makeArray_Delayed @DL @ix
+    prop "Construct_makeArray_Delayed DW" $ prop_Construct_makeArray_Delayed @DW @ix
+    prop "Functor D" $ prop_Functor @D @ix
+    prop "Functor DI" $ prop_Functor @DI @ix
+    prop "Functor DL" $ prop_Functor @DL @ix
+    prop "Functor DW" $ prop_Functor @DW @ix
+    prop "Extract B" $ prop_Extract @B @ix
+    prop "Extract BN" $ prop_Extract @BN @ix
+    prop "Extract BL" $ prop_Extract @BL @ix
+    prop "Extract S" $ prop_Extract @S @ix
+    prop "Extract U" $ prop_Extract @U @ix
+    prop "computeWithStride DI" $ prop_computeWithStride @DI @ix
+    prop "computeWithStride DW" $ prop_computeWithStride @DW @ix
+    prop "computeWithStride B" $ prop_computeWithStride @B @ix
+    prop "computeWithStride BN" $ prop_computeWithStride @BN @ix
+    prop "computeWithStride BL" $ prop_computeWithStride @BL @ix
+    prop "computeWithStride S" $ prop_computeWithStride @S @ix
+    prop "computeWithStride U" $ prop_computeWithStride @U @ix
+    prop "IxUnbox" $ prop_IxUnbox @ix
 
 
 spec :: Spec

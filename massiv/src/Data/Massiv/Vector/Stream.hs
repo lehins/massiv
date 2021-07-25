@@ -225,24 +225,24 @@ toBundle arr =
    in B.fromStream str (sizeHintToBundleSize k)
 {-# INLINE toBundle #-}
 
-fromBundle :: Mutable r e => B.Bundle Id v e -> Vector r e
+fromBundle :: Manifest r e => B.Bundle Id v e -> Vector r e
 fromBundle bundle = fromStream (B.sSize bundle) (B.sElems bundle)
 {-# INLINE fromBundle #-}
 
 
-fromBundleM :: (Monad m, Mutable r e) => B.Bundle m v e -> m (Vector r e)
+fromBundleM :: (Monad m, Manifest r e) => B.Bundle m v e -> m (Vector r e)
 fromBundleM bundle = fromStreamM (B.sSize bundle) (B.sElems bundle)
 {-# INLINE fromBundleM #-}
 
 
-fromStream :: forall r e . Mutable r e => B.Size -> S.Stream Id e -> Vector r e
+fromStream :: forall r e . Manifest r e => B.Size -> S.Stream Id e -> Vector r e
 fromStream sz str =
   case B.upperBound sz of
     Nothing -> unstreamUnknown str
     Just k  -> unstreamMax k str
 {-# INLINE fromStream #-}
 
-fromStreamM :: forall r e m. (Monad m, Mutable r e) => B.Size -> S.Stream m e -> m (Vector r e)
+fromStreamM :: forall r e m. (Monad m, Manifest r e) => B.Size -> S.Stream m e -> m (Vector r e)
 fromStreamM sz str = do
   xs <- S.toList str
   case B.upperBound sz of
@@ -251,7 +251,7 @@ fromStreamM sz str = do
 {-# INLINE fromStreamM #-}
 
 fromStreamExactM ::
-     forall r ix e m. (Monad m, Mutable r e, Index ix)
+     forall r ix e m. (Monad m, Manifest r e, Index ix)
   => Sz ix
   -> S.Stream m e
   -> m (Array r ix e)
@@ -262,7 +262,7 @@ fromStreamExactM sz str = do
 
 
 unstreamIntoM ::
-     (Mutable r a, PrimMonad m)
+     (Manifest r a, PrimMonad m)
   => MVector (PrimState m) r a
   -> LengthHint
   -> S.Stream Id a
@@ -277,7 +277,7 @@ unstreamIntoM marr sz str =
 
 
 unstreamMax ::
-     forall r e. (Mutable r e)
+     forall r e. (Manifest r e)
   => Int
   -> S.Stream Id e
   -> Vector r e
@@ -290,7 +290,7 @@ unstreamMax kMax str =
 
 
 unstreamMaxM ::
-     (Mutable r a, Index ix, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
+     (Manifest r a, Index ix, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
 unstreamMaxM marr (S.Stream step s) = stepLoad s 0
   where
     stepLoad t i =
@@ -304,7 +304,7 @@ unstreamMaxM marr (S.Stream step s) = stepLoad s 0
 {-# INLINE unstreamMaxM #-}
 
 
-unstreamUnknown :: Mutable r a => S.Stream Id a -> Vector r a
+unstreamUnknown :: Manifest r a => S.Stream Id a -> Vector r a
 unstreamUnknown str =
   runST $ do
     marr <- unsafeNew zeroSz
@@ -313,7 +313,7 @@ unstreamUnknown str =
 
 
 unstreamUnknownM ::
-     (Mutable r a, PrimMonad m)
+     (Manifest r a, PrimMonad m)
   => MVector (PrimState m) r a
   -> S.Stream Id a
   -> m (MVector (PrimState m) r a)
@@ -336,7 +336,7 @@ unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (sizeOfMArray m
 
 
 unstreamExact ::
-     forall r ix e. (Mutable r e, Index ix)
+     forall r ix e. (Manifest r e, Index ix)
   => Sz ix
   -> S.Stream Id e
   -> Array r ix e

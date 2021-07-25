@@ -418,7 +418,7 @@ prop_szipWith5 v1 v2 v3 v4 v5 f =
 prop_szipWith6 ::
      Vector DS Word64
   -> Vector B Word32
-  -> Vector N Word16
+  -> Vector BN Word16
   -> Vector S Word8
   -> Vector U Int8
   -> Vector P Int16
@@ -466,7 +466,7 @@ prop_sizipWith5 ::
   -> Vector S Word32
   -> Vector P Word16
   -> Vector U Word8
-  -> Vector N Int8
+  -> Vector BN Int8
   -> Fun (Ix1, (Word64, Word32, Word16, Word8, Int8)) Int
   -> Property
 prop_sizipWith5 v1 v2 v3 v4 v5 f =
@@ -476,8 +476,8 @@ prop_sizipWith5 v1 v2 v3 v4 v5 f =
 prop_sizipWith6 ::
      Vector DS Word64
   -> Vector D Word32
-  -> Vector B Word16
-  -> Vector N Word8
+  -> Vector BL Word16
+  -> Vector BN Word8
   -> Vector P Int8
   -> Vector P Int16
   -> Fun (Ix1, Word64, (Word32, Word16, Word8, Int8, Int16)) Int

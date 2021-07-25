@@ -20,7 +20,7 @@ prop_TransposeOuterInner :: Matrix D Int -> Property
 prop_TransposeOuterInner arr = transposeOuter arr === transpose arr
 
 prop_UpsampleDownsample ::
-     forall r ix e . (Eq (Array r ix e), Show (Array r ix e), Load r ix e, Mutable r e)
+     forall r ix e . (Eq (Array r ix e), Show (Array r ix e), Load r ix e, Manifest r e)
   => ArrTiny r ix e
   -> Stride ix
   -> e
@@ -29,7 +29,7 @@ prop_UpsampleDownsample (ArrTiny arr) stride fill =
   arr === compute (downsample stride (compute @r (upsample fill stride arr)))
 
 prop_ExtractAppend ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Mutable r e, Index ix)
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Manifest r e, Index ix)
   => DimIx ix
   -> ArrIx r ix e
   -> Property
@@ -44,7 +44,7 @@ prop_SplitExtract ::
      , Show (Array r ix e)
      , Source r e
      , Load r ix e
-     , Mutable r e
+     , Manifest r e
      , Ragged L ix e
      )
   => DimIx ix
@@ -61,7 +61,7 @@ prop_SplitExtract (DimIx dim) (ArrIx arr ix) (Positive n) =
         (splitLeft, splitRight) = splitAt' dim (i + n') arr
 
 prop_ConcatAppend ::
-     forall r ix. (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Mutable r Int)
+     forall r ix. (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Manifest r Int)
   => DimIx ix
   -> Comp
   -> Sz ix
@@ -75,7 +75,7 @@ prop_ConcatAppend (DimIx dim) comp sz (NonEmpty fns) =
 
 prop_ConcatMConcatOuterM ::
      forall r ix.
-     (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Mutable r Int)
+     (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Manifest r Int)
   => Comp
   -> Sz ix
   -> NonEmptyList (Fun ix Int)
@@ -169,7 +169,7 @@ prop_ZoomWithGridStrideCompute ::
      ( Eq (Array r ix e)
      , Show (Array r ix e)
      , StrideLoad r ix e
-     , Mutable r e
+     , Manifest r e
      )
   => Array r ix e
   -> Stride ix
@@ -185,7 +185,7 @@ prop_ZoomWithGridStrideCompute arr stride defVal =
     stride' = Stride (liftIndex (+ 1) $ unStride stride)
 
 prop_ZoomStrideCompute ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), StrideLoad r ix e, Mutable r e)
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), StrideLoad r ix e, Manifest r e)
   => Array r ix e
   -> Stride ix
   -> Property
@@ -217,8 +217,8 @@ type Transform r ix e
      , Ragged L ix e
      , Source r e
      , StrideLoad r ix e
-     , Mutable r Int
-     , Mutable r e)
+     , Manifest r Int
+     , Manifest r e)
 
 specTransformR ::
      forall r ix e. Transform r ix e

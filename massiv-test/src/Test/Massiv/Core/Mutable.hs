@@ -25,7 +25,7 @@ import Test.Massiv.Utils
 
 prop_UnsafeNewMsize ::
      forall r ix e.
-     (Arbitrary ix, Index ix, Mutable r e)
+     (Arbitrary ix, Index ix, Manifest r e)
   => Property
 prop_UnsafeNewMsize = property $ \ sz -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
@@ -33,7 +33,7 @@ prop_UnsafeNewMsize = property $ \ sz -> do
 
 prop_UnsafeNewLinearWriteRead ::
      forall r ix e.
-     (Eq e, Show e, Mutable r e, Index ix, Arbitrary ix, Arbitrary e)
+     (Eq e, Show e, Manifest r e, Index ix, Arbitrary ix, Arbitrary e)
   => Property
 prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
@@ -46,7 +46,7 @@ prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
 
 prop_UnsafeThawFreeze ::
      forall r ix e.
-     (Eq (Array r ix e), Show (Array r ix e), Index ix, Mutable r e)
+     (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
   => Array r ix e -> Property
 prop_UnsafeThawFreeze arr = arr === runST (unsafeFreeze (getComp arr) =<< unsafeThaw arr)
 
@@ -59,7 +59,7 @@ prop_UnsafeInitializeNew ::
      , Arbitrary e
      , Arbitrary ix
      , Index ix
-     , Mutable r e
+     , Manifest r e
      )
   => Property
 prop_UnsafeInitializeNew =
@@ -73,7 +73,7 @@ prop_UnsafeInitialize ::
      , Show (Array r ix e)
      , Arbitrary ix
      , Index ix
-     , Mutable r e
+     , Manifest r e
      )
   => Property
 prop_UnsafeInitialize =
@@ -86,7 +86,7 @@ prop_UnsafeInitialize =
 
 
 prop_UnsafeLinearCopy ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Mutable r e)
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
   => Array r ix e
   -> Property
 prop_UnsafeLinearCopy arr =
@@ -106,7 +106,7 @@ prop_UnsafeLinearCopyPart ::
      , Show (Vector r e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Mutable r e
+     , Manifest r e
      , Index ix
      )
   => ArrIx r ix e
@@ -130,7 +130,7 @@ prop_UnsafeLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
 
 
 prop_UnsafeArrayLinearCopy ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Mutable r e)
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
   => Array r ix e
   -> Property
 prop_UnsafeArrayLinearCopy arr =
@@ -143,7 +143,7 @@ prop_UnsafeArrayLinearCopy arr =
 
 
 prop_UnsafeArrayLinearCopyPart ::
-     forall r ix e. (Eq (Vector r e), Show (Vector r e), Index ix, Mutable r e)
+     forall r ix e. (Eq (Vector r e), Show (Vector r e), Index ix, Manifest r e)
   => ArrIx r ix e
   -> NonNegative Ix1
   -> Ix1
@@ -167,7 +167,7 @@ prop_UnsafeLinearSet ::
      ( Eq (Vector r e)
      , Show (Vector r e)
      , Index ix
-     , Mutable r e
+     , Manifest r e
      )
   => Comp
   -> SzIx ix
@@ -190,7 +190,7 @@ prop_UnsafeLinearShrink ::
      forall r ix e.
      ( Eq (Vector r e)
      , Show (Vector r e)
-     , Mutable r e
+     , Manifest r e
      , Index ix
      )
   => ArrIx r ix e
@@ -213,7 +213,7 @@ prop_UnsafeLinearGrow ::
      , Show (Array r ix e)
      , Eq (Vector r e)
      , Show (Vector r e)
-     , Mutable r e
+     , Manifest r e
      , Index ix
      )
   => ArrIx r ix e
@@ -239,7 +239,7 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
 
 
 prop_UnsafeLinearSliceMArray ::
-     forall r ix e. (HasCallStack, Index ix, Mutable r e, Eq (Vector r e), Show (Vector r e))
+     forall r ix e. (HasCallStack, Index ix, Manifest r e, Eq (Vector r e), Show (Vector r e))
   => Array r ix e
   -> Property
 prop_UnsafeLinearSliceMArray arr =
@@ -261,7 +261,7 @@ unsafeMutableSpec ::
      , Show (Vector r e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Mutable r e
+     , Manifest r e
      , Show e
      , Eq e
      , Load r ix e
@@ -271,7 +271,7 @@ unsafeMutableSpec ::
      )
   => Spec
 unsafeMutableSpec =
-  describe ("Mutable (" ++ showsArrayType @r @ix @e ") (Unsafe)") $ do
+  describe ("Manifest (" ++ showsArrayType @r @ix @e ") (Unsafe)") $ do
     prop "UnsafeNewMsize" $ prop_UnsafeNewMsize @r @ix @e
     prop "UnsafeNewLinearWriteRead" $ prop_UnsafeNewLinearWriteRead @r @ix @e
     prop "UnsafeThawFreeze" $ prop_UnsafeThawFreeze @r @ix @e
@@ -292,9 +292,9 @@ unsafeMutableUnboxedSpec ::
      , Show (Array r ix e)
      , Index ix
      , Arbitrary ix
-     , Mutable r e
+     , Manifest r e
      )
   => Spec
 unsafeMutableUnboxedSpec =
-  describe ("Mutable Unboxed (" ++ showsArrayType @r @ix @e ") (Unsafe)") $
+  describe ("Manifest Unboxed (" ++ showsArrayType @r @ix @e ") (Unsafe)") $
     it "UnsafeInitialize" $ prop_UnsafeInitialize @r @ix @e

@@ -111,7 +111,7 @@ simpsonsStencil dx dim n
 
 -- | Integrate with a stencil along a particular dimension.
 integrateWith ::
-     (Fractional e, StrideLoad DW ix e, Mutable r e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => (Dim -> Int -> Stencil ix e e)
   -> Dim -- ^ Dimension along which integration should be estimated.
   -> Int -- ^ @n@ - Number of samples
@@ -126,7 +126,7 @@ integrateWith stencil dim n arr =
 
 -- | Compute an approximation of integral using a supplied rule in a form of `Stencil`.
 integralApprox ::
-     (Fractional e, StrideLoad DW ix e, Mutable r e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => (e -> Dim -> Int -> Stencil ix e e) -- ^ Integration Stencil
   -> e -- ^ @d@ - Length of interval per cell
   -> Sz ix -- ^ @sz@ - Result size of the matrix
@@ -144,7 +144,7 @@ integralApprox stencil d sz n arr =
 
 -- | Use midpoint rule to approximate an integral.
 midpointRule ::
-     (Fractional e, StrideLoad DW ix e, Mutable r e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => Comp -- ^ Computation strategy.
   -> r -- ^ Intermediate array representation.
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
@@ -160,7 +160,7 @@ midpointRule comp r f a d sz n =
 
 -- | Use trapezoid rule to approximate an integral.
 trapezoidRule ::
-     (Fractional e, StrideLoad DW ix e, Mutable r e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
@@ -175,7 +175,7 @@ trapezoidRule comp r f a d sz n =
 
 -- | Use Simpson's rule to approximate an integral.
 simpsonsRule ::
-     (Fractional e, StrideLoad DW ix e, Mutable r e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate

@@ -93,6 +93,8 @@ data instance Array BL ix e = BLArray { blComp   :: !Comp
                                       , blOffset :: {-# UNPACK #-} !Int
                                       , blData   :: {-# UNPACK #-} !(A.Array e)
                                       }
+data instance MArray s BL ix e =
+  MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
 
 instance (Ragged L ix e, Show e) => Show (Array BL ix e) where
   showsPrec = showsArrayPrec id
@@ -151,10 +153,6 @@ instance Manifest BL e where
                 SafeSz . A.sizeofArray, A.indexArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
-
-instance Mutable BL e where
-  data MArray s BL ix e = MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
-
   sizeOfMArray (MBLArray sz _ _) = sz
   {-# INLINE sizeOfMArray #-}
 
@@ -180,12 +178,12 @@ instance Mutable BL e where
   {-# INLINE newMArray #-}
 
   unsafeLinearRead (MBLArray _ o ma) i =
-    INDEX_CHECK("(Mutable BL ix e).unsafeLinearRead",
+    INDEX_CHECK("(Manifest BL ix e).unsafeLinearRead",
                 SafeSz . A.sizeofMutableArray, A.readArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MBLArray _sz o ma) i e = e `seq`
-    INDEX_CHECK("(Mutable BL ix e).unsafeLinearWrite",
+    INDEX_CHECK("(Manifest BL ix e).unsafeLinearWrite",
                 SafeSz . A.sizeofMutableArray, A.writeArray) ma (i + o) e
   {-# INLINE unsafeLinearWrite #-}
 
@@ -282,6 +280,8 @@ data B = B deriving Show
 
 newtype instance Array B ix e = BArray (Array BL ix e)
 
+newtype instance MArray s B ix e = MBArray (MArray s BL ix e)
+
 instance (Ragged L ix e, Show e) => Show (Array B ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
@@ -332,10 +332,6 @@ instance Manifest B e where
 
   unsafeLinearIndexM = coerce unsafeLinearIndexM
   {-# INLINE unsafeLinearIndexM #-}
-
-
-instance Mutable B e where
-  newtype MArray s B ix e = MBArray (MArray s BL ix e)
 
   sizeOfMArray = sizeOfMArray . coerce
   {-# INLINE sizeOfMArray #-}
@@ -449,13 +445,17 @@ instance Num e => Numeric B e where
 data BN = BN deriving Show
 
 -- | Type and pattern `N` have been added for backwards compatibility and will be replaced
--- in the future in favor of `BN`
+-- in the future in favor of `BN`.
+--
+-- /Deprecated/ - since 1.0.0
 type N = BN
 pattern N :: N
 pattern N = BN
 {-# COMPLETE N #-}
+{-# DEPRECATED N "In favor of more consistently named `BN`" #-}
 
 newtype instance Array BN ix e = BNArray (Array BL ix e)
+newtype instance MArray s BN ix e = MBNArray (MArray s BL ix e)
 
 instance (Ragged L ix e, Show e, NFData e) => Show (Array BN ix e) where
   showsPrec = showsArrayPrec coerce
@@ -504,10 +504,6 @@ instance Resize BN where
 instance NFData e => Manifest BN e where
   unsafeLinearIndexM arr = unsafeLinearIndexM (coerce arr)
   {-# INLINE unsafeLinearIndexM #-}
-
-
-instance NFData e => Mutable BN e where
-  newtype MArray s BN ix e = MBNArray (MArray s BL ix e)
 
   sizeOfMArray = sizeOfMArray . coerce
   {-# INLINE sizeOfMArray #-}

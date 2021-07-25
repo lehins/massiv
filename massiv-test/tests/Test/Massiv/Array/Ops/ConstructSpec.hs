@@ -94,10 +94,10 @@ specConstructIx3 = do
 mkIntermediate :: Int -> Array U Ix1 Int
 mkIntermediate t = A.fromList Seq [t + 50, t + 75]
 
-initArr :: Array N Ix1 (Array U Ix1 Int)
+initArr :: Array BN Ix1 (Array U Ix1 Int)
 initArr = makeArray Seq (Sz1 3) mkIntermediate
 
-initArr2 :: Array N Ix2 (Array U Ix1 Int)
+initArr2 :: Array BN Ix2 (Array U Ix1 Int)
 initArr2 = makeArray Seq (Sz 2) (\ (x :. y) -> mkIntermediate (x+y))
 
 prop_unfoldrList :: Sz1 -> Fun Word (Int, Word) -> Word -> Property

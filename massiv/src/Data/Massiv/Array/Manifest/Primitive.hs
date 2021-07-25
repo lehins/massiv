@@ -83,6 +83,9 @@ data instance Array P ix e = PArray { pComp   :: !Comp
                                     , pData   :: {-# UNPACK #-} !ByteArray
                                     }
 
+data instance MArray s P ix e =
+  MPArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(MutableByteArray s)
+
 instance (Ragged L ix e, Show e, Prim e) => Show (Array P ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
@@ -135,16 +138,13 @@ instance Prim e => Source P e where
   unsafeLinearSlice i k (PArray c _ o a) = PArray c k (i + o) a
   {-# INLINE unsafeLinearSlice #-}
 
+
 instance Prim e => Manifest P e where
 
   unsafeLinearIndexM _pa@(PArray _ _sz o a) i =
     INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
                 const (Sz (totalElem _sz)), indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
-
-
-instance Prim e => Mutable P e where
-  data MArray s P ix e = MPArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(MutableByteArray s)
 
   sizeOfMArray (MPArray sz _ _) = sz
   {-# INLINE sizeOfMArray #-}
@@ -174,12 +174,12 @@ instance Prim e => Mutable P e where
   {-# INLINE initialize #-}
 
   unsafeLinearRead _mpa@(MPArray _sz o ma) i =
-    INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
+    INDEX_CHECK("(Manifest P ix e).unsafeLinearRead",
                 const (Sz (totalElem _sz)), readByteArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite _mpa@(MPArray _sz o ma) i =
-    INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
+    INDEX_CHECK("(Manifest P ix e).unsafeLinearWrite",
                 const (Sz (totalElem _sz)), writeByteArray) ma (i + o)
   {-# INLINE unsafeLinearWrite #-}
 

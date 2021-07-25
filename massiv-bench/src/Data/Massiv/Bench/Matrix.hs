@@ -35,7 +35,7 @@ bMxMsize =
     Sz2 m n -> Sz2 n m
 
 
-randomMxM :: (Mutable r e, Random e) => MxM r e
+randomMxM :: (Manifest r e, Random e) => MxM r e
 randomMxM =
   case randomArrayS stdGen aMxMsize random of
     (g, a) -> MxM {aMxM = a, bMxM = snd $ randomArrayS g bMxMsize random}
@@ -58,7 +58,7 @@ showSizeMxM MxM {..} = show m1 <> "x" <> show n1 <> " X " <> show m2 <> "x" <> s
 
 
 benchMxM ::
-     forall r e. (Typeable r, Typeable e, Load r Ix1 e, Load r Ix2 e, Numeric r e, Mutable r e)
+     forall r e. (Typeable r, Typeable e, Load r Ix1 e, Load r Ix2 e, Numeric r e, Manifest r e)
   => MxM r e
   -> Benchmark
 benchMxM mxm@MxM {..} =
@@ -88,7 +88,7 @@ bMxVsize =
   case aMxVsize of
     Sz2 _ n -> Sz1 n
 
-randomMxV :: (Mutable r e, Random e) => MxV r e
+randomMxV :: (Manifest r e, Random e) => MxV r e
 randomMxV =
   case randomArrayS stdGen aMxVsize random of
     (g, a) -> MxV {aMxV = a, bMxV = snd $ randomArrayS g bMxVsize random}
@@ -101,7 +101,7 @@ showSizeMxV MxV {..} = show m1 <> "x" <> show n1 <> " X " <> show n <> "x1"
 
 
 benchMxV ::
-     forall r e. (Typeable r, Typeable e, Numeric r e, Mutable r e, Load r Ix2 e)
+     forall r e. (Typeable r, Typeable e, Numeric r e, Manifest r e, Load r Ix2 e)
   => MxV r e
   -> Benchmark
 benchMxV mxv@MxV {..} =
@@ -146,13 +146,13 @@ showSizeVxM VxM {..} = "1x" <> show n <> " X " <> show m2 <> "x" <> show n2
     Sz2 m2 n2 = size bVxM
 
 
-randomVxM :: (Mutable r e, Random e) => VxM r e
+randomVxM :: (Manifest r e, Random e) => VxM r e
 randomVxM =
   case randomArrayS stdGen aVxMsize random of
     (g, a) -> VxM {aVxM = a, bVxM = snd $ randomArrayS g bVxMsize random}
 
 benchVxM ::
-     forall r e. (Typeable r, Typeable e, Load r Ix1 e, Load r Ix2 e, Numeric r e, Mutable r e)
+     forall r e. (Typeable r, Typeable e, Load r Ix1 e, Load r Ix2 e, Numeric r e, Manifest r e)
   => VxM r e
   -> Benchmark
 benchVxM mxv@VxM {..} =

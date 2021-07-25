@@ -16,7 +16,7 @@ import qualified Data.Vector.Unboxed as VU
 
 prop_castToFromVector
   :: ( VG.Vector (VRepr r) Int
-     , Mutable r Int
+     , Manifest r Int
      , Typeable (VRepr r)
      , ARepr (VRepr r) ~ r
      , Eq (Array r ix Int)
@@ -30,8 +30,8 @@ prop_castToFromVector _ _ (ArrNE arr) =
 
 prop_toFromVector ::
      forall r ix v.
-     ( Mutable r Int
-     , Mutable (ARepr v) Int
+     ( Manifest r Int
+     , Manifest (ARepr v) Int
      , VRepr (ARepr v) ~ v
      , Eq (Array r ix Int)
      , VG.Vector v Int

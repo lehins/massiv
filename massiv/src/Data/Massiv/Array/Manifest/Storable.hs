@@ -75,6 +75,8 @@ data instance Array S ix e = SArray { sComp   :: !Comp
                                     , sData   :: {-# UNPACK #-} !(ForeignPtr e)
                                     }
 
+data instance MArray s S ix e = MSArray !(Sz ix) {-# UNPACK #-} !(ForeignPtr e)
+
 instance (Ragged L ix e, Show e, Storable e) => Show (Array S ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
@@ -135,15 +137,12 @@ instance Resize S where
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
 
+
 instance Storable e => Manifest S e where
 
   unsafeLinearIndexM (SArray _ _sz fp) =
     INDEX_CHECK("(Source S ix e).unsafeLinearIndex", const (toLinearSz _sz), indexForeignPtr) fp
   {-# INLINE unsafeLinearIndexM #-}
-
-
-instance Storable e => Mutable S e where
-  data MArray s S ix e = MSArray !(Sz ix) {-# UNPACK #-} !(ForeignPtr e)
 
   sizeOfMArray (MSArray sz _) = sz
   {-# INLINE sizeOfMArray #-}
@@ -177,11 +176,11 @@ instance Storable e => Mutable S e where
   {-# INLINE initialize #-}
 
   unsafeLinearRead (MSArray _sz fp) o = unsafeIOToPrim $
-    INDEX_CHECK("(Mutable S ix e).unsafeLinearRead", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (`peekElemOff` o))) fp o
+    INDEX_CHECK("(Manifest S ix e).unsafeLinearRead", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (`peekElemOff` o))) fp o
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MSArray _sz fp) o e = unsafeIOToPrim $
-    INDEX_CHECK("(Mutable S ix e).unsafeLinearWrite", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (\p -> pokeElemOff p o e))) fp o
+    INDEX_CHECK("(Manifest S ix e).unsafeLinearWrite", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (\p -> pokeElemOff p o e))) fp o
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearSet (MSArray _ fp) i k =

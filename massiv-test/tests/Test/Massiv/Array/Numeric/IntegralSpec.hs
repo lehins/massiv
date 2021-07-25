@@ -12,7 +12,7 @@ gaussian x = exp (x ^ (2 :: Int))
 spec :: Spec
 spec = do
   let (a, b) = (0, 2)
-      integrator rule = rule Seq N (gaussian .) a b (Sz1 1)
+      integrator rule = rule Seq BN (gaussian .) a b (Sz1 1)
   describe "Integral Approximation" $ do
     it "Midpoint Rule" $ do
       integrator midpointRule 4 `evaluate'` 0 `shouldBe` 14.485613

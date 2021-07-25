@@ -152,7 +152,7 @@ unsafeTransform2 getSz get arr1 arr2 =
 --
 -- @since 0.5.7
 unsafeLoadIntoS ::
-     forall r r' ix e m s. (Load r ix e, Mutable r' e, MonadPrim s m)
+     forall r r' ix e m s. (Load r ix e, Manifest r' e, MonadPrim s m)
   => MVector s r' e
   -> Array r ix e
   -> m (MArray s r' ix e)
@@ -163,7 +163,7 @@ unsafeLoadIntoS marr arr = stToPrim $ unsafeLoadIntoS marr arr
 --
 -- @since 0.5.7
 unsafeLoadIntoM ::
-     forall r r' ix e m. (Load r ix e, Mutable r' e, MonadIO m)
+     forall r r' ix e m. (Load r ix e, Manifest r' e, MonadIO m)
   => MVector RealWorld r' e
   -> Array r ix e
   -> m (MArray RealWorld r' ix e)

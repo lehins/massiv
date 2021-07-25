@@ -118,7 +118,7 @@ module Data.Massiv.Vector
   -- -- ** Permutations
   -- , reverse
   -- , backpermute
-  -- -- ** Mutable updates
+  -- -- ** Manifest updates
   -- , modify
   -- -- * Elementwise
   -- -- ** Mapping
@@ -266,15 +266,6 @@ module Data.Massiv.Vector
   , convert
   , convertAs
   , convertProxy
-  -- -- ** Other vector types
-  -- , convert
-  -- -- ** Mutable vectors
-  -- , freeze
-  -- , thaw
-  -- , copy
-  -- , unsafeFreeze
-  -- , unsafeThaw
-  -- , unsafeCopy
   -- ** Re-exports
   , module Data.Massiv.Core
   , module Data.Massiv.Array.Delayed

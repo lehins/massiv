@@ -18,7 +18,7 @@ stdGen = mkStdGen 2020
 showsType :: forall t . Typeable t => ShowS
 showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
 
-makeRandomArray :: (Index ix, Mutable r e, Random e) => Sz ix -> IO (Array r ix e)
+makeRandomArray :: (Index ix, Manifest r e, Random e) => Sz ix -> IO (Array r ix e)
 makeRandomArray sz = do
   gen <- newStdGen
   pure $! snd $ randomArrayS gen sz random

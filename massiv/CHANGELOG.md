@@ -43,6 +43,8 @@
   * `mapIO_`, `imapIO_`, `forIO_` and `iforIO_`
   * `mapIO`, `imapIO`, `forIO` and `iforIO`
 * Add `Uniform`, `UniformRange` and `Random` instances for `Ix2`, `IxN`, `Dim`, `Sz` and `Stride`
+* Consolidate `Mutable` into `Manifest` type class and move the `MArray` data
+  family outside of the class.
 
 # 0.6.1
 
