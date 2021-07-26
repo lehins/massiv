@@ -420,9 +420,11 @@ class (Strategy r, Shape r ix) => Load r ix e where
     => MVector s r' e
     -> Array r ix e
     -> ST s (MArray s r' ix e)
-  unsafeLoadIntoST marr arr =
-    unsafeResizeMArray (outerSize arr) marr <$
-    iterArrayLinearWithSetST_ trivialScheduler_ arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
+  unsafeLoadIntoST mvec arr = do
+    let sz = outerSize arr
+    mvec' <- resizeMVector mvec $ toLinearSz sz
+    iterArrayLinearWithSetST_ trivialScheduler_ arr (unsafeLinearWrite mvec') (unsafeLinearSet mvec')
+    pure $ unsafeResizeMArray sz mvec'
   {-# INLINE unsafeLoadIntoST #-}
 
   -- | Same as `unsafeLoadIntoST`, but respecting computation strategy.
@@ -433,12 +435,27 @@ class (Strategy r, Shape r ix) => Load r ix e where
     => MVector RealWorld r' e
     -> Array r ix e
     -> IO (MArray RealWorld r' ix e)
-  unsafeLoadIntoIO marr arr = do
-    withMassivScheduler_ (getComp arr) $ \scheduler ->
-      stToIO $ iterArrayLinearWithSetST_ scheduler arr (unsafeLinearWrite marr) (unsafeLinearSet marr)
-    pure $ unsafeResizeMArray (outerSize arr) marr
+  unsafeLoadIntoIO mvec arr = do
+    let sz = outerSize arr
+    mvec' <- resizeMVector mvec $ toLinearSz sz
+    withMassivScheduler_ (getComp arr) $ \scheduler -> stToIO $
+      iterArrayLinearWithSetST_ scheduler arr (unsafeLinearWrite mvec') (unsafeLinearSet mvec')
+    pure $ unsafeResizeMArray sz mvec'
   {-# INLINE unsafeLoadIntoIO #-}
 
+resizeMVector ::
+     (Manifest r e, PrimMonad f)
+  => MVector (PrimState f) r e
+  -> Sz1
+  -> f (MVector (PrimState f) r e)
+resizeMVector mvec k =
+  let mk = sizeOfMArray mvec
+   in if k == mk
+        then pure mvec
+        else if k < mk
+               then unsafeLinearShrink mvec k
+               else unsafeLinearGrow mvec k
+{-# INLINE resizeMVector #-}
 
 class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of

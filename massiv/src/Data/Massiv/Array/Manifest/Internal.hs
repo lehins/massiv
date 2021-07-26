@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -18,6 +19,7 @@
 module Data.Massiv.Array.Manifest.Internal
   ( Manifest(..)
   , Array(..)
+  , flattenMArray
   , compute
   , computeS
   , computeP
@@ -35,12 +37,16 @@ module Data.Massiv.Array.Manifest.Internal
   , gcastArr
   , fromRaggedArrayM
   , fromRaggedArray'
+  , unsafeLoadIntoS
+  , unsafeLoadIntoM
   , iterateUntil
   , iterateUntilM
   ) where
 
 import Control.Exception (try)
+import Control.DeepSeq
 import Control.Monad.ST
+import Control.Monad.Primitive
 import Control.Scheduler
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
@@ -252,6 +258,30 @@ computeWithStrideAs _ = computeWithStride
 {-# INLINE computeWithStrideAs #-}
 
 
+-- | Load into a supplied mutable vector sequentially. Returned array is not
+-- necesserally the same vector as the one that was supplied. It will be the
+-- same only if it had enough space to load all the elements in.
+--
+-- @since 0.5.7
+unsafeLoadIntoS ::
+     forall r r' ix e m s. (Load r ix e, Manifest r' e, MonadPrim s m)
+  => MVector s r' e
+  -> Array r ix e
+  -> m (MArray s r' ix e)
+unsafeLoadIntoS marr arr = stToPrim $ unsafeLoadIntoS marr arr
+{-# INLINE unsafeLoadIntoS #-}
+
+-- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
+--
+-- @since 0.5.7
+unsafeLoadIntoM ::
+     forall r r' ix e m. (Load r ix e, Manifest r' e, MonadIO m)
+  => MVector RealWorld r' e
+  -> Array r ix e
+  -> m (MArray RealWorld r' ix e)
+unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoIO marr arr
+{-# INLINE unsafeLoadIntoM #-}
+
 
 -- | Efficiently iterate a function until a convergence condition is satisfied. If the
 -- size of array doesn't change between iterations then no more than two new arrays will be
@@ -262,8 +292,8 @@ computeWithStrideAs _ = computeWithStride
 -- ====__Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> a = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> () <$ w (0 :. 0) 1
--- >>> a
+-- >>> let arr = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> () <$ w (0 :. 0) 1
+-- >>> arr
 -- Array P Seq (Sz (8 :. 8))
 --   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
@@ -274,9 +304,9 @@ computeWithStrideAs _ = computeWithStride
 --   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
 --   ]
--- >>> nextPascalRow cur above = if cur == 0 then above else cur
--- >>> pascal = makeStencil (Sz2 2 2) 1 $ \ get -> nextPascalRow (get (0 :. 0)) (get (-1 :. -1) + get (-1 :. 0))
--- >>> iterateUntil (\_ _ a -> (a ! (7 :. 7)) /= 0) (\ _ -> mapStencil (Fill 0) pascal) a
+-- >>> let nextPascalRow cur above = if cur == 0 then above else cur
+-- >>> let pascal = makeStencil (Sz2 2 2) 1 $ \ get -> nextPascalRow (get (0 :. 0)) (get (-1 :. -1) + get (-1 :. 0))
+-- >>> iterateUntil (\_ _ a -> (a ! (7 :. 7)) /= 0) (\ _ -> mapStencil (Fill 0) pascal) arr
 -- Array P Seq (Sz (8 :. 8))
 --   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 1, 1, 0, 0, 0, 0, 0, 0 ]
@@ -290,7 +320,7 @@ computeWithStrideAs _ = computeWithStride
 --
 -- @since 0.3.6
 iterateUntil ::
-     (Size r', Load r' ix e, Manifest r e)
+     (Load r' ix e, Manifest r e, NFData (Array r ix e))
   => (Int -> Array r ix e -> Array r ix e -> Bool)
   -- ^ Convergence condition. Accepts current iteration counter, array at the previous
   -- state and at the current state.
@@ -299,85 +329,59 @@ iterateUntil ::
   -- differ if necessary
   -> Array r ix e -- ^ Initial source array
   -> Array r ix e
-iterateUntil convergence iteration initArr0
-  | convergence 0 initArr0 initArr1 = initArr1
-  | otherwise =
-    unsafePerformIO $ do
-      let loadArr = iteration 1 initArr1
-      marr <- unsafeNew (size loadArr)
-      iterateLoop
-        (\n a comp marr' -> convergence n a <$> unsafeFreeze comp marr')
-        iteration
-        1
-        initArr1
-        loadArr
-        (asArr initArr0 marr)
-  where
-    !initArr1 = compute $ iteration 0 initArr0
-    asArr :: Array r ix e -> MArray s r ix e -> MArray s r ix e
-    asArr _ = id
+iterateUntil convergence iteration initArr0 = unsafePerformIO $ do
+  let loadArr0 = iteration 0 initArr0
+  initMVec1 <- unsafeNew (fromMaybe zeroSz (maxLinearSize loadArr0))
+  let conv n arr comp marr' = do
+        arr' <- unsafeFreeze comp marr'
+        arr' `deepseq` pure (convergence n arr arr', arr')
+  iterateLoop conv (\n -> pure . iteration n) 0 initArr0 loadArr0 initMVec1
 {-# INLINE iterateUntil #-}
 
--- | Monadic version of `iterateUntil` where at each iteration mutable version of an array
--- is available.
+-- | Monadic version of `iterateUntil` where at each iteration mutable version
+-- of an array is available. However it is less efficient then the pure
+-- alternative, because an intermediate array must be copied at each
+-- iteration.
 --
 -- @since 0.3.6
 iterateUntilM ::
-     (Size r', Load r' ix e, Manifest r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
-  => (Int -> Array r ix e -> MArray (PrimState m) r ix e -> m Bool)
+     (Load r' ix e, Manifest r e, MonadIO m)
+  => (Int -> Array r ix e -> MArray RealWorld r ix e -> m Bool)
   -- ^ Convergence condition. Accepts current iteration counter, pure array at previous
   -- state and a mutable at the current state, therefore after each iteration its contents
   -- can be modifed if necessary.
-  -> (Int -> Array r ix e -> Array r' ix e)
+  -> (Int -> Array r ix e -> m (Array r' ix e))
   -- ^ A modifying function to apply at each iteration.  The size of resulting array may
   -- differ if necessary.
   -> Array r ix e -- ^ Initial source array
   -> m (Array r ix e)
 iterateUntilM convergence iteration initArr0 = do
-  let loadArr0 = iteration 0 initArr0
-  initMArr1 <- unsafeNew (size loadArr0)
-  computeInto initMArr1 loadArr0
-  shouldStop <- convergence 0 initArr0 initMArr1
-  initArr1 <- unsafeFreeze (getComp loadArr0) initMArr1
-  if shouldStop
-    then pure initArr1
-    else do
-      let loadArr1 = iteration 1 initArr1
-      marr <- unsafeNew (size loadArr1)
-      iterateLoop (\n a _ -> convergence n a) iteration 1 initArr1 loadArr1 marr
+  loadArr0 <- iteration 0 initArr0
+  initMVec1 <- liftIO $ unsafeNew (fromMaybe zeroSz (maxLinearSize loadArr0))
+  let conv n arr comp marr = (,) <$> convergence n arr marr <*> freeze comp marr
+  iterateLoop conv iteration 0 initArr0 loadArr0 initMVec1
 {-# INLINE iterateUntilM #-}
 
 
 iterateLoop ::
-     (Size r', Load r' ix e, Manifest r e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
-  => (Int -> Array r ix e -> Comp -> MArray (PrimState m) r ix e -> m Bool)
-  -> (Int -> Array r ix e -> Array r' ix e)
+     (Load r' ix e, Manifest r e, MonadIO m)
+  => (Int -> Array r ix e -> Comp -> MArray RealWorld r ix e -> m (Bool, Array r ix e))
+  -> (Int -> Array r ix e -> m (Array r' ix e))
   -> Int
   -> Array r ix e
   -> Array r' ix e
-  -> MArray (PrimState m) r ix e
+  -> MVector RealWorld r e
   -> m (Array r ix e)
 iterateLoop convergence iteration = go
   where
-    go !n !arr !loadArr !marr = do
-      let !sz = size loadArr
-          !k = totalElem sz
-          !mk = totalElem (sizeOfMArray marr)
-          !comp = getComp loadArr
-      marr' <-
-        if k == mk
-          then pure marr
-          else if k < mk
-                 then unsafeLinearShrink marr sz
-                 else unsafeLinearGrow marr sz
-      computeInto marr' loadArr
-      shouldStop <- convergence n arr comp marr'
-      arr' <- unsafeFreeze comp marr'
+    go n !arr !loadArr !mvec = do
+      let !comp = getComp loadArr
+      marr' <- unsafeLoadIntoM mvec loadArr
+      (shouldStop, arr') <- convergence n arr comp marr'
       if shouldStop
         then pure arr'
         else do
-          nextMArr <- unsafeThaw arr
-          go (n + 1) arr' (iteration (n + 1) arr') nextMArr
+          nextMArr <- liftIO $ unsafeThaw arr
+          arr'' <- iteration (n + 1) arr'
+          go (n + 1) arr' arr'' $ flattenMArray nextMArr
 {-# INLINE iterateLoop #-}
-
-

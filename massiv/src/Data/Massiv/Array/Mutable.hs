@@ -18,6 +18,7 @@ module Data.Massiv.Array.Mutable
     sizeOfMArray
   , msize
   , resizeMArrayM
+  , flattenMArray
   , outerSliceMArrayM
   , outerSlicesMArray
     -- ** Element-wise mutation
@@ -129,6 +130,15 @@ resizeMArrayM ::
   -> m (MArray s r ix' e)
 resizeMArrayM sz marr =
   unsafeResizeMArray sz marr <$ guardNumberOfElements (sizeOfMArray marr) sz
+{-# INLINE resizeMArrayM #-}
+
+
+-- | /O(1)/ - Change a mutable array to a mutable vector.
+--
+-- @since 1.0.0
+flattenMArray :: (Manifest r e, Index ix) => MArray s r ix e -> MVector s r e
+flattenMArray marr = unsafeResizeMArray (toLinearSz (sizeOfMArray marr)) marr
+{-# INLINE flattenMArray #-}
 
 
 -- | /O(1)/ - Slice a mutable array from the outside, while reducing its

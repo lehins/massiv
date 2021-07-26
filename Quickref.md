@@ -33,10 +33,9 @@ memory at some point.
 ### Class dependency
 
 ```
-Resize (DL, D, DI, B, BN, BL, P, U, S) -> Size (DW)
-Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Mutable (B, BN, BL, P, U, S)
-   |\
-   | `> StrideLoad (D, DI, DW, B, BN, BL, P, U, S)
+Size (D, DL, DI, B, BN, BL, P, U, S)
+Shape (D, DL, DS, DI, DW, B, BN, BL, P, U, S, L, LN)
+StrideLoad (DI, DW) -> Load (DL, DS, L) -> Source (D) -> Manifest (B, BN, BL, P, U, S)
    |\
    | `> Extract (D, DS, DI, B, BN, BL, P, U, S)
    |\

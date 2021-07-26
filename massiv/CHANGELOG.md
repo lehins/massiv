@@ -10,13 +10,14 @@
 * Add `uniformArray` and `uniformRangeArray`
 * Replace `isNonEmpty` with `isNotZeroSz` and added `isZeroSz`
 * Consolidate `Construct` class into `Load`
-* Get rid of `M` representation
 * Introduce `Shape`, the parent of `Size`
 * Move `size` from `Load` into new class `Size`
 * Consolidate `Resize` into `Size`
 * Removed `maxSize` and replaced it with `maxLinearSize`
 * Remove specialized `DW` instances that used tuples as indices.
-* Remove `OuterSlice L` instance
+* Get rid of `M` representation
+* Remove `R` type family and `Slice`, `InnerSlice` and `Extract` classes in favor of `D`.
+* Consolidate `OuterSlice` into `Source`
 * Add `Strategy` and move `setComp` (from `Construct`) and `getComp` (from `Load`) in there.
 * Remove `ix` from `Mutable`, `Manifest`, `Source`
 * Remove `liftArray2`.
@@ -34,7 +35,7 @@
   of `loadArrayM` and `loadArrayWithSetM`.
 * Add `iterArrayLinearWithStrideST_` to `LoadStride` class instead of `loadArrayWithStrideM`.
 * Add new mutable functions:
-  * `resizeMArrayM`,
+  * `resizeMArrayM` and `flattenMArray`,
   * `outerSliceMArrayM` and `outerSlicesMArray`,
   * `for2PrimM_` and `ifor2PrimM_`,
   * `zipSwapM_`
