@@ -112,7 +112,9 @@ jobs:
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-8.8.4.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
-          stack $STACK_ARGS test massiv-test:tests massiv:doctests --bench --no-run-benchmarks --haddock --no-haddock-deps
+          stack $STACK_ARGS test --no-run-tests --bench --no-run-benchmarks --haddock --no-haddock-deps
+          stack $STACK_ARGS test massiv-test:tests
+          stack $STACK_ARGS test massiv:doctests
         fi
 
   massiv-examples:

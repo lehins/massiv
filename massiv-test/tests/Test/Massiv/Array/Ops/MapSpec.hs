@@ -141,7 +141,7 @@ spec = do
 alt_imapM
   :: (Applicative f, Index ix, Manifest r2 b, Source r1 a) =>
      (ix -> a -> f b) -> Array r1 ix a -> f (Array r2 ix b)
-alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWithIndex arr)
+alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (imap (,) arr)
   where
     loadList xs =
       runST $ do
@@ -149,10 +149,6 @@ alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWit
         _ <- F.foldlM (\i e -> unsafeLinearWrite marr i e >> return (i + 1)) 0 xs
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
-
-zipWithIndex :: forall r ix e . (Index ix, Source r e) => Array r ix e -> Array D ix (ix, e)
-zipWithIndex arr = A.zip (range Seq zeroIndex (unSz (size arr))) arr
-{-# INLINE zipWithIndex #-}
 
 
 prop_MapWS :: (Show (Array U ix Int), Index ix) => Array U ix Int -> Property

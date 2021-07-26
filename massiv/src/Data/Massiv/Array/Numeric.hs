@@ -518,6 +518,7 @@ multiplyVectorByMatrix v mm
 --
 -- ====__Examples__
 --
+-- >>> import Data.Massiv.Array
 -- >>> a1 = makeArrayR P Seq (Sz2 5 6) $ \(i :. j) -> i + j
 -- >>> a2 = makeArrayR P Seq (Sz2 6 5) $ \(i :. j) -> i - j
 -- >>> a1 !><! a2
