@@ -31,7 +31,6 @@ module Data.Massiv.Core.Common
   , StrideLoad(..)
   , Size(..)
   , Shape(..)
-  , Resize(..)
   , Manifest(..)
   , Mutable
   , Comp(..)
@@ -279,7 +278,6 @@ class Size r where
   -- @since 0.1.0
   size :: Array r ix e -> Sz ix
 
-class Size r => Resize r where
   -- | /O(1)/ - Change the size of an array. Total number of elements should be the same, but it is
   -- not validated.
   unsafeResize :: (Index ix, Index ix') => Sz ix' -> Array r ix e -> Array r ix' e
@@ -287,7 +285,7 @@ class Size r => Resize r where
 
 
 -- | Arrays that can be used as source to practically any manipulation function.
-class (Strategy r, Resize r) => Source r e where
+class (Strategy r, Size r) => Source r e where
   {-# MINIMAL (unsafeIndex|unsafeLinearIndex), unsafeLinearSlice #-}
 
   -- | Lookup element in the array. No bounds check is performed and access of
@@ -442,7 +440,7 @@ class (Strategy r, Shape r ix) => Load r ix e where
   {-# INLINE unsafeLoadIntoIO #-}
 
 
-class (Size r, Load r ix e) => StrideLoad r ix e where
+class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
   -- `Source`.
   iterArrayLinearWithStrideST_
@@ -488,7 +486,7 @@ type Mutable r e = Manifest r e
 -- memory their contents can be mutated once thawed into `MArray`. The process
 -- of changed a mutable `MArray` back into an immutable `Array` is called
 -- freezing.
-class (Resize r, Source r e) => Manifest r e where
+class Source r e => Manifest r e where
 
   unsafeLinearIndexM :: Index ix => Array r ix e -> Int -> e
 

@@ -142,7 +142,7 @@ extractFromTo' sIx eIx = extract' sIx $ Sz (liftIndex2 (-) eIx sIx)
 --
 -- @since 0.3.0
 resizeM ::
-     forall r ix ix' e m. (MonadThrow m, Index ix', Index ix, Resize r)
+     forall r ix ix' e m. (MonadThrow m, Index ix', Index ix, Size r)
   => Sz ix'
   -> Array r ix e
   -> m (Array r ix' e)
@@ -153,7 +153,7 @@ resizeM sz arr = guardNumberOfElements (size arr) sz >> pure (unsafeResize sz ar
 --
 -- @since 0.1.0
 resize' ::
-     forall r ix ix' e. (HasCallStack, Index ix', Index ix, Resize r)
+     forall r ix ix' e. (HasCallStack, Index ix', Index ix, Size r)
   => Sz ix'
   -> Array r ix e
   -> Array r ix' e
@@ -163,7 +163,7 @@ resize' sz = throwEither . resizeM sz
 -- | /O(1)/ - Reduce a multi-dimensional array into a flat vector
 --
 -- @since 0.3.1
-flatten :: forall r ix e. (Index ix, Resize r) => Array r ix e -> Vector r e
+flatten :: forall r ix e. (Index ix, Size r) => Array r ix e -> Vector r e
 flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
 {-# INLINE flatten #-}
 
@@ -1020,7 +1020,7 @@ downsample stride arr =
 --
 -- @since 0.3.0
 upsample ::
-     forall r ix e. (Resize r, Load r ix e)
+     forall r ix e. Load r ix e
   => e -- ^ Element to use for filling the newly added cells
   -> Stride ix -- ^ Fill cells according to this stride
   -> Array r ix e -- ^ Array that will have cells added to
@@ -1042,7 +1042,7 @@ upsample !fillWith safeStride arr =
     timesStride !ix = liftIndex2 (*) stride ix
     {-# INLINE timesStride #-}
     !stride = unStride safeStride
-    !sz = size arr
+    ~sz = outerSize arr -- intentionally lazy in case it is used with DS
     !newsz = SafeSz (timesStride $ unSz sz)
 {-# INLINE upsample #-}
 

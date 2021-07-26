@@ -13,11 +13,12 @@
 * Get rid of `M` representation
 * Introduce `Shape`, the parent of `Size`
 * Move `size` from `Load` into new class `Size`
+* Consolidate `Resize` into `Size`
 * Removed `maxSize` and replaced it with `maxLinearSize`
 * Remove specialized `DW` instances that used tuples as indices.
 * Remove `OuterSlice L` instance
 * Add `Strategy` and move `setComp` (from `Construct`) and `getComp` (from `Load`) in there.
-* Remove `ix` from `Mutable`, `Manifest`, `Source` and `Resize`
+* Remove `ix` from `Mutable`, `Manifest`, `Source`
 * Remove `liftArray2`.
 * Prevent `showsArrayPrec` from changing index type
 * Change function argument to monadic action for `unstablePartitionM` and `unsafeUnstablePartitionM`

@@ -206,13 +206,12 @@ loadWithIx1 with (DWArray (DArray _ sz indexB) mWindow) uWrite = do
 {-# INLINE loadWithIx1 #-}
 
 instance Index ix => Shape DW ix where
-  maxLinearSize = Just . SafeSz . elemsCount
+  maxLinearSize = Just . linearSize
   {-# INLINE maxLinearSize #-}
-
-
-instance Size DW where
-  size = dSize . dwArray
-  {-# INLINE size #-}
+  linearSize = SafeSz . totalElem . dSize . dwArray
+  {-# INLINE linearSize #-}
+  outerSize = dSize . dwArray
+  {-# INLINE outerSize #-}
 
 instance Load DW Ix1 e where
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
@@ -278,7 +277,7 @@ loadWithIx2 with arr uWrite = do
   let ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       stride = oneStride
-      !sz = strideSize stride $ size arr
+      !sz = strideSize stride $ outerSize arr
       writeB !ix = uWrite (toLinearIndex sz ix) (indexB ix)
       {-# INLINE writeB #-}
       writeW !ix = uWrite (toLinearIndex sz ix) (indexW ix)

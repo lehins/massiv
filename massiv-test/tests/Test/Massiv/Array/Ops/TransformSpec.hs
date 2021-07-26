@@ -100,7 +100,7 @@ prop_ConcatMconcat arrs =
   computeAs P (concat' 1 (A.empty : arrs)) === computeAs P (mconcat (fmap toLoadArray arrs))
 
 prop_ExtractSizeMismatch ::
-     (Resize r, Load r ix e, NFData (Array r Int e)) => ArrTiny r ix e -> Positive Int -> Property
+     (Size r, Load r ix e, NFData (Array r Int e)) => ArrTiny r ix e -> Positive Int -> Property
 prop_ExtractSizeMismatch (ArrTiny arr) (Positive n) =
   assertExceptionIO (SizeElementsMismatchException sz sz' ==) $ resizeM sz' arr
   where
@@ -211,7 +211,6 @@ type Transform r ix e
      , Show (Array r ix Int)
      , NFData (Array r ix e)
      , NFData (Array r Int e)
-     , Resize r
      , Load r ix e
      , Load r ix Int
      , Ragged L ix e

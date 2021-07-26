@@ -29,7 +29,6 @@ type MutableArraySpec r ix e
      , Eq (Vector r e)
      , Show (Vector r e)
      , Load r ix e
-     , Resize r
      , Arbitrary (Array r ix e)
      , Manifest r e
      , Stream r ix e

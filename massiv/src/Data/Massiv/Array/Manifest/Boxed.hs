@@ -140,12 +140,6 @@ instance Source BL e where
   unsafeLinearSlice i k (BLArray c _ o a) = BLArray c k (o + i) a
   {-# INLINE unsafeLinearSlice #-}
 
-
-instance Resize BL where
-  unsafeResize !sz !arr = arr { blSize = sz }
-  {-# INLINE unsafeResize #-}
-
-
 instance Manifest BL e where
 
   unsafeLinearIndexM (BLArray _ _sz o a) i =
@@ -190,6 +184,9 @@ instance Manifest BL e where
 instance Size BL where
   size = blSize
   {-# INLINE size #-}
+  unsafeResize !sz !arr = arr { blSize = sz }
+  {-# INLINE unsafeResize #-}
+
 
 instance Index ix => Shape BL ix where
   maxLinearSize = Just . SafeSz . elemsCount
@@ -316,9 +313,6 @@ instance Strategy B where
   {-# INLINE setComp #-}
 
 
-instance Resize B where
-  unsafeResize sz = coerce (\arr -> arr { blSize = sz })
-
 instance Index ix => Shape B ix where
   maxLinearSize = Just . SafeSz . elemsCount
   {-# INLINE maxLinearSize #-}
@@ -326,6 +320,8 @@ instance Index ix => Shape B ix where
 instance Size B where
   size = blSize . coerce
   {-# INLINE size #-}
+  unsafeResize sz = coerce (\arr -> arr { blSize = sz })
+  {-# INLINE unsafeResize #-}
 
 
 instance Manifest B e where
@@ -497,7 +493,6 @@ instance Size BN where
   size = blSize . coerce
   {-# INLINE size #-}
 
-instance Resize BN where
   unsafeResize !sz = coerce . unsafeResize sz . coerce
   {-# INLINE unsafeResize #-}
 

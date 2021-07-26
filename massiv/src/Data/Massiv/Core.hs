@@ -17,7 +17,6 @@ module Data.Massiv.Core
   , Stream(..)
   , Source
   , Size
-  , Resize
   , Shape(..)
   , LengthHint(..)
   , StrideLoad(..)

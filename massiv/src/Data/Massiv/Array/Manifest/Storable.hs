@@ -132,8 +132,6 @@ instance Index ix => Shape S ix where
 instance Size S where
   size = sSize
   {-# INLINE size #-}
-
-instance Resize S where
   unsafeResize !sz !arr = arr { sSize = sz }
   {-# INLINE unsafeResize #-}
 

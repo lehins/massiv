@@ -71,9 +71,7 @@ instance Index ix => Shape DL ix where
 instance Size DL where
   size = dlSize
   {-# INLINE size #-}
-
-instance Resize DL where
-  unsafeResize !sz arr = arr { dlSize = sz }
+  unsafeResize !sz !arr = arr { dlSize = sz }
   {-# INLINE unsafeResize #-}
 
 instance Semigroup (Array DL Ix1 e) where
@@ -306,7 +304,7 @@ fromStrideLoad ::
 fromStrideLoad stride arr =
   DLArray (getComp arr) newsz load
   where
-    !newsz = strideSize stride (size arr)
+    !newsz = strideSize stride (outerSize arr)
     load :: Loader e
     load scheduler !startAt dlWrite _ =
       iterArrayLinearWithStrideST_ scheduler stride newsz arr (\ !i -> dlWrite (i + startAt))

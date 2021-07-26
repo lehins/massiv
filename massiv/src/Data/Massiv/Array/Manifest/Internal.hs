@@ -237,7 +237,7 @@ computeWithStride ::
   -> Array r ix e
 computeWithStride stride !arr =
   unsafePerformIO $ do
-    let !sz = strideSize stride (size arr)
+    let !sz = strideSize stride (outerSize arr)
     unsafeCreateArray_ (getComp arr) sz $ \scheduler marr ->
       stToIO $ iterArrayLinearWithStrideST_ scheduler stride sz arr (unsafeLinearWrite marr)
 {-# INLINE computeWithStride #-}

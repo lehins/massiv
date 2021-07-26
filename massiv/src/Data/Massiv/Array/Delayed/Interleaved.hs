@@ -50,8 +50,6 @@ instance Index ix => Shape DI ix where
 instance Size DI where
   size (DIArray arr) = size arr
   {-# INLINE size #-}
-
-instance Resize DI where
   unsafeResize sz = DIArray . unsafeResize sz . diArray
   {-# INLINE unsafeResize #-}
 

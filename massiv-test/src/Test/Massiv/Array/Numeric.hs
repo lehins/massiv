@@ -74,7 +74,6 @@ prop_VectorMatrixMultiply ::
      forall r e.
      ( Numeric r e
      , Load r Ix1 e
-     , Source r e
      , Manifest r e
      , Show (Vector r e)
      , Eq (Vector r e)

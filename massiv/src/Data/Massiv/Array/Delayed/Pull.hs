@@ -59,8 +59,6 @@ instance Index ix => Shape D ix where
 instance Size D where
   size = dSize
   {-# INLINE size #-}
-
-instance Resize D where
   unsafeResize !sz !arr =
     DArray (dComp arr) sz $ \ !ix ->
       unsafeIndex arr (fromLinearIndex (size arr) (toLinearIndex sz ix))
