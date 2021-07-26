@@ -18,7 +18,8 @@ module Data.Massiv.Core
   , Source
   , Size
   , Resize
-  , Shape
+  , Shape(..)
+  , LengthHint(..)
   , StrideLoad(..)
   , Manifest
   , Mutable

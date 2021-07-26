@@ -1046,9 +1046,6 @@ isNotEmpty = not . isEmpty
 
 -- | /O(1)/ - Get the number of elements in the array.
 --
--- /Note/ - It is always a constant time operation except for some arrays with
--- `Data.Massiv.Array.DS` representation. See `Data.Massiv.Vector.slength` for more info.
---
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array

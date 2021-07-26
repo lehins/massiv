@@ -33,7 +33,7 @@ memory at some point.
 ### Class dependency
 
 ```
-Size (DL, D, DI, DW, B, BN, BL, P, U, S) -> Resize ->
+Resize (DL, D, DI, B, BN, BL, P, U, S) -> Size (DW)
 Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Mutable (B, BN, BL, P, U, S)
    |\
    | `> StrideLoad (D, DI, DW, B, BN, BL, P, U, S)

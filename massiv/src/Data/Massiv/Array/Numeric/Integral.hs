@@ -306,7 +306,7 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- The problem with above example is that computed values do not accurately represent the total
 -- value contained within each vector cell. For that reason if your were to later use it for example
 -- as convolution stencil, approximation would be very poor. The way to solve it is to approximate
--- an integral across each cell of vector by drastically blowing up the `xArr` and then reducing it
+-- an integral across each cell of vector by drastically blowing up the @xArr@ and then reducing it
 -- to a smaller array by using one of the approximation rules:
 --
 -- >>> startValue = -2 :: Float
