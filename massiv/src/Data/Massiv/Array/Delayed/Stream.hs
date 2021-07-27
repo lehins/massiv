@@ -193,9 +193,6 @@ instance Load DS Ix1 e where
   {-# INLINE replicate #-}
 
   iterArrayLinearST_ _scheduler arr uWrite =
-    -- case stepsSize (dsArray arr) of
-    --   LengthExact _ ->
-    --     void $ S.foldlM (\i e -> uWrite i e >> pure (i + 1)) 0 (S.transStepsId (coerce arr))
     S.mapM_ (uncurry uWrite) $ S.indexed $ S.transStepsId (coerce arr)
   {-# INLINE iterArrayLinearST_ #-}
 
