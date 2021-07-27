@@ -63,7 +63,7 @@ concatMutableM arrsF =
       unsafeCreateArray_ (foldMap getComp arrsF) newSz $ \scheduler marr -> do
         let arrayLoader !offset arr = do
               scheduleWork scheduler $ do
-                stToIO $ iterArrayLinearST scheduler arr (\i -> unsafeLinearWrite marr (i + offset))
+                stToIO $ iterArrayLinearST_ scheduler arr (\i -> unsafeLinearWrite marr (i + offset))
               pure (offset + totalElem (size arr))
         foldM_ arrayLoader 0 $ a : arrs
 {-# INLINE concatMutableM #-}
