@@ -44,8 +44,8 @@ main = do
               "Average Seq"
               [ bench "Stencil" $
                 whnf (computeAs P . A.mapStencil (Fill 0) avg3x3StencilUnsafe) arr
-              , bench "* Stencil (safe)" $ whnf (computeAs P . A.mapStencil (Fill 0) avg3x3Stencil) arr
-              , bench "* Convolve Array Ix2" $
+              , bench "Stencil (safe)" $ whnf (computeAs P . A.mapStencil (Fill 0) avg3x3Stencil) arr
+              , bench "Convolve Array Ix2" $
                 whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConv / 9)) arr
               , bench "Convolve Kernel Array Ix2" $
                 whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConvKern / 9)) arr
@@ -59,9 +59,9 @@ main = do
               "Average Par"
               [ bench "Stencil" $
                 whnf (computeAs P . A.mapStencil (Fill 0) avg3x3StencilUnsafe) arr
-              , bench "* Stencil (safe)" $
+              , bench "Stencil (safe)" $
                 whnf (computeAs P . A.mapStencil (Fill 0) avg3x3Stencil) arr
-              , bench "* Convolve Array Ix2" $
+              , bench "Convolve Array Ix2" $
                 whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConv / 9)) arr
               , bench "Monoid Array Ix2" $
                 whnf (computeAs P . A.mapStencil (Fill 0) (avgStencil (Sz 3))) arr

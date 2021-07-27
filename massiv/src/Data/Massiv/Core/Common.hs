@@ -949,7 +949,7 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 --
 -- @since 0.1.0
 index' :: (HasCallStack, Index ix, Manifest r e) => Array r ix e -> ix -> e
-index' arr = throwEither . evaluateM arr
+index' arr ix = throwEither (evaluateM arr ix)
 {-# INLINE index' #-}
 
 -- | This is just like `indexM` function, but it allows getting values from
@@ -968,12 +968,9 @@ index' arr = throwEither . evaluateM arr
 --
 -- @since 0.3.0
 evaluateM :: (Index ix, Source r e, MonadThrow m) => Array r ix e -> ix -> m e
-evaluateM arr ix =
-  handleBorderIndex
-    (Fill (throwM (IndexOutOfBoundsException (size arr) ix)))
-    (size arr)
-    (pure . unsafeIndex arr)
-    ix
+evaluateM arr ix
+  | isSafeIndex (size arr) ix = pure (unsafeIndex arr ix)
+  | otherwise = throwM (IndexOutOfBoundsException (size arr) ix)
 {-# INLINE evaluateM #-}
 
 -- | Similar to `evaluateM`, but will throw an error on out of bounds indices.
@@ -986,7 +983,7 @@ evaluateM arr ix =
 --
 -- @since 0.3.0
 evaluate' :: (HasCallStack, Index ix, Source r e) => Array r ix e -> ix -> e
-evaluate' arr = throwEither . evaluateM arr
+evaluate' arr ix = throwEither (evaluateM arr ix)
 {-# INLINE evaluate' #-}
 
 
