@@ -305,7 +305,9 @@ randomArray ::
      forall ix e g. Index ix
   => g -- ^ Initial random value generator
   -> (g -> (g, g))
-     -- ^ A function that can split a generator in two independent generators
+     -- ^ A function that can split a generator into two independent
+     -- generators. It will only be called if supplied computation strategy
+     -- needs more than one worker threads.
   -> (g -> (e, g))
      -- ^ A function that produces a random value and the next generator
   -> Comp -- ^ Computation strategy.

@@ -123,7 +123,7 @@ extractFromToM ::
 extractFromToM sIx eIx = extractM sIx (Sz (liftIndex2 (-) eIx sIx))
 {-# INLINE extractFromToM #-}
 
--- | Same as `extractFromTo`, but throws an error on invalid indices.
+-- | Same as `extractFromToM`, but throws an error on invalid indices.
 --
 -- @since 0.2.4
 extractFromTo' ::

@@ -1,4 +1,4 @@
-Please include this checklist whenever changes are introduced to either `massiv` or `massiv-io` packages:
+Please include this checklist whenever changes are introduced to either `massiv` or `massiv-test` packages:
 
 * [ ] Bump up the version in cabal file
 * [ ] Any changes that could be relevant to users have been recorded in the `CHANGELOG.md`
