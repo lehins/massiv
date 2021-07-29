@@ -21,7 +21,8 @@ module Data.Massiv.Array.Delayed.Pull
   , eqArrays
   , compareArrays
   , imap
-  , liftArray2Matching
+  , liftArray2'
+  , liftArray2M
   , unsafeExtract
   , unsafeSlice
   , unsafeInnerSlice
@@ -30,7 +31,7 @@ module Data.Massiv.Array.Delayed.Pull
 import           Control.Applicative
 import qualified Data.Foldable as F
 import           Data.Massiv.Array.Ops.Fold.Internal as A
-import           Data.Massiv.Core.Common
+import           Data.Massiv.Core.Common as A
 import           Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 import           Data.Massiv.Core.Operations
 import           Data.Massiv.Vector.Stream as S (steps)
@@ -123,10 +124,10 @@ instance Functor (Array D ix) where
 instance Index ix => Applicative (Array D ix) where
   pure = singleton
   {-# INLINE pure #-}
-  (<*>) = liftArray2Matching id
+  (<*>) = liftArray2' id
   {-# INLINE (<*>) #-}
 #if MIN_VERSION_base(4,10,0)
-  liftA2 = liftArray2Matching
+  liftA2 = liftArray2'
   {-# INLINE liftA2 #-}
 #endif
 
@@ -239,19 +240,35 @@ compareArrays f arr1 arr2 =
        f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE compareArrays #-}
 
-
-liftArray2Matching
+-- | Same as `liftArray2M`, but throws an imprecise exception on mismatched
+-- sizes.
+--
+-- @since 1.0.0
+liftArray2'
   :: (HasCallStack, Index ix, Source r1 a, Source r2 b)
   => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> Array D ix e
-liftArray2Matching f !arr1 !arr2
+liftArray2' f arr1 arr2 = throwEither $ liftArray2M f arr1 arr2
+{-# INLINE liftArray2' #-}
+
+
+-- | Similar to `Data.Massiv.Array.zipWith`, except dimensions of both arrays
+-- have to be the same, otherwise it throws `SizeMismatchException`.
+--
+-- @since 1.0.0
+liftArray2M
+  :: (Index ix, Source r1 a, Source r2 b, MonadThrow m)
+  => (a -> b -> e) -> Array r1 ix a -> Array r2 ix b -> m (Array D ix e)
+liftArray2M f !arr1 !arr2
   | sz1 == sz2 =
+    pure $
     DArray
       (getComp arr1 <> getComp arr2)
       sz1
       (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
-  | otherwise = throwEither $ Left $ toException $ SizeMismatchException (size arr1) (size arr2)
+  | isZeroSz sz1 && isZeroSz sz2 = pure A.empty
+  | otherwise = throwM $ SizeMismatchException (size arr1) (size arr2)
   where
     sz1 = size arr1
     sz2 = size arr2
-{-# INLINE liftArray2Matching #-}
+{-# INLINE liftArray2M #-}
 

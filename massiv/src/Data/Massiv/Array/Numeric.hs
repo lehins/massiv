@@ -15,6 +15,7 @@ module Data.Massiv.Array.Numeric
   ( -- * Numeric
     Numeric
   , NumericFloat
+  , liftNumArray2M
     -- ** Pointwise addition
   , (.+)
   , (+.)
@@ -106,7 +107,7 @@ import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Core
-import Data.Massiv.Core.Common
+import Data.Massiv.Core.Common as A
 import Data.Massiv.Core.Operations
 import Prelude as P
 import System.IO.Unsafe
@@ -119,28 +120,40 @@ infixr 8  .^, .^^
 infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
 infixl 6  !+!, .+., .+, +., !-!, .-., .-, -.
 
-liftArray2M ::
+-- | Similar to `liftArray2M`, except it can be applied only to representations
+-- with `Numeric` instance and result representation stays the same.
+--
+-- @since 1.0.0
+liftNumArray2M ::
      (Index ix, Numeric r e, MonadThrow m)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-liftArray2M f a1 a2
+liftNumArray2M f a1 a2
   | size a1 == size a2 = pure $ unsafeLiftArray2 f a1 a2
-  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
-{-# INLINE liftArray2M #-}
+  | isZeroSz sz1 && isZeroSz sz2 = pure $ unsafeResize zeroSz a1
+  | otherwise = throwM $ SizeMismatchException sz1 sz2
+  where
+    !sz1 = size a1
+    !sz2 = size a2
+{-# INLINE liftNumArray2M #-}
 
 
-liftNumericArray2M ::
-     (Size r, Index ix, MonadThrow m)
+applyExactSize2M ::
+     (Index ix, Size r, MonadThrow m)
   => (Array r ix e -> Array r ix e -> Array r ix e)
   -> Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-liftNumericArray2M f a1 a2
+applyExactSize2M f a1 a2
   | size a1 == size a2 = pure $ f a1 a2
-  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
-{-# INLINE liftNumericArray2M #-}
+  | isZeroSz sz1 && isZeroSz sz2 = pure $ unsafeResize zeroSz a1
+  | otherwise = throwM $ SizeMismatchException sz1 sz2
+  where
+    !sz1 = size a1
+    !sz2 = size a2
+{-# INLINE applyExactSize2M #-}
 
 
 -- | Add two arrays together pointwise. Same as `!+!` but produces monadic computation
@@ -150,7 +163,7 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.+.) :: (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.+.) = liftNumericArray2M additionPointwise
+(.+.) = applyExactSize2M additionPointwise
 {-# INLINE (.+.) #-}
 
 -- | Add two arrays together pointwise. Prefer to use monadic version of this function
@@ -193,7 +206,7 @@ liftNumericArray2M f a1 a2
 -- @since 0.4.0
 (.-.) ::
      (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.-.) = liftNumericArray2M subtractionPointwise
+(.-.) = applyExactSize2M subtractionPointwise
 {-# INLINE (.-.) #-}
 
 
@@ -238,7 +251,7 @@ liftNumericArray2M f a1 a2
 -- @since 0.4.0
 (.*.) ::
      (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.*.) = liftNumericArray2M multiplicationPointwise
+(.*.) = applyExactSize2M multiplicationPointwise
 {-# INLINE (.*.) #-}
 
 
@@ -818,7 +831,7 @@ signumA = unsafeLiftArray signum
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-(./.) = liftNumericArray2M divisionPointwise
+(./.) = applyExactSize2M divisionPointwise
 {-# INLINE (./.) #-}
 
 
@@ -931,7 +944,7 @@ logA = unsafeLiftArray log
 logBaseA
   :: (Index ix, Source r1 e, Source r2 e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-logBaseA = liftArray2Matching logBase
+logBaseA = liftArray2' logBase
 {-# INLINE logBaseA #-}
 -- TODO: siwtch to
 -- (breaking) logBaseA :: Array r ix e -> e -> Array D ix e
@@ -951,7 +964,7 @@ logBaseA = liftArray2Matching logBase
 (.**)
   :: (Index ix, Source r1 e, Source r2 e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.**) = liftArray2Matching (**)
+(.**) = liftArray2' (**)
 {-# INLINE (.**) #-}
 -- TODO:
 -- !**! :: Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -1078,9 +1091,9 @@ atanhA = unsafeLiftArray atanh
 --
 -- @since 0.1.0
 quotA
-  :: (Index ix, Source r1 e, Source r2 e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-quotA = liftArray2Matching quot
+quotA = liftArray2' quot
 {-# INLINE quotA #-}
 
 
@@ -1092,9 +1105,9 @@ quotA = liftArray2Matching quot
 --
 -- @since 0.1.0
 remA
-  :: (Index ix, Source r1 e, Source r2 e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-remA = liftArray2Matching rem
+remA = liftArray2' rem
 {-# INLINE remA #-}
 
 -- | Perform a pointwise integer division where first array contains numerators and the
@@ -1106,9 +1119,9 @@ remA = liftArray2Matching rem
 --
 -- @since 0.1.0
 divA
-  :: (Index ix, Source r1 e, Source r2 e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-divA = liftArray2Matching div
+divA = liftArray2' div
 {-# INLINE divA #-}
 -- TODO:
 --  * Array r ix e -> Array r ix e -> m (Array r ix e)
@@ -1123,9 +1136,9 @@ divA = liftArray2Matching div
 --
 -- @since 0.1.0
 modA
-  :: (Index ix, Source r1 e, Source r2 e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-modA = liftArray2Matching mod
+modA = liftArray2' mod
 {-# INLINE modA #-}
 
 
@@ -1139,9 +1152,9 @@ modA = liftArray2Matching mod
 --
 -- @since 0.1.0
 quotRemA
-  :: (Index ix, Source r1 e, Source r2 e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-quotRemA arr1 = A.unzip . liftArray2Matching quotRem arr1
+quotRemA arr1 = A.unzip . liftArray2' quotRem arr1
 {-# INLINE quotRemA #-}
 
 
@@ -1154,9 +1167,9 @@ quotRemA arr1 = A.unzip . liftArray2Matching quotRem arr1
 --
 -- @since 0.1.0
 divModA
-  :: (Index ix, Source r1 e, Source r2 e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-divModA arr1 = A.unzip . liftArray2Matching divMod arr1
+divModA arr1 = A.unzip . liftArray2' divMod arr1
 {-# INLINE divModA #-}
 
 
@@ -1212,7 +1225,7 @@ atan2A ::
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-atan2A = liftArray2M atan2
+atan2A = liftNumArray2M atan2
 {-# INLINE atan2A #-}
 
 -- | Same as `sumArraysM`, compute sum of arrays pointwise. All arrays must have the same

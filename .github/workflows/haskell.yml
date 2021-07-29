@@ -100,12 +100,14 @@ jobs:
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         stack $STACK_ARGS runghc git-modtime.hs
     - name: Build
+      env:
+        COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
         [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
-          stack $STACK_ARGS build --coverage --test --no-run-tests --haddock --no-haddock-deps
+          stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
         else
           stack $STACK_ARGS build --test --no-run-tests --bench --no-run-benchmarks --haddock --no-haddock-deps
         fi
@@ -118,7 +120,7 @@ jobs:
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         echo "${STACK_ARGS}"
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
-          stack $STACK_ARGS test massiv-test:tests --coverage
+          stack $STACK_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps
           stack $STACK_ARGS hpc report --all
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-8.8.4.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom

@@ -20,7 +20,9 @@
 * Consolidate `OuterSlice` into `Source`
 * Add `Strategy` and move `setComp` (from `Construct`) and `getComp` (from `Load`) in there.
 * Remove `ix` from `Mutable`, `Manifest`, `Source`
-* Remove `liftArray2`.
+* Remove `liftArray2`. Instead add `liftArray2'` and `liftArray2M` that don't behave
+  like a `map` for singleton argument.
+* Expose `liftNumArray2M`
 * Prevent `showsArrayPrec` from changing index type
 * Change function argument to monadic action for `unstablePartitionM` and `unsafeUnstablePartitionM`
 * Replace `snull` with a more generic `isNull`
