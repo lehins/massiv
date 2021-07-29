@@ -72,24 +72,24 @@ prop_excFromToListIx3 comp ls3
 
 specConstructIx1 :: Spec
 specConstructIx1 = do
-  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix1))
-  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix1))
-  it "rangeEqRangeStep1" $ property prop_rangeEqRangeStep1
-  it "rangeEqEnumFromN" $ property prop_rangeEqEnumFromN
-  it "rangeStepEqEnumFromStepN" $ property prop_rangeStepEqEnumFromStepN
-  it "rangeStepExc" $ property prop_rangeStepExc
+  prop "toFromList" $ prop_toFromList (Proxy :: Proxy Ix1)
+  prop "toFromListIsList" $ prop_toFromListIsList (Proxy :: Proxy Ix1)
+  prop "rangeEqRangeStep1" prop_rangeEqRangeStep1
+  prop "rangeEqEnumFromN" prop_rangeEqEnumFromN
+  prop "rangeStepEqEnumFromStepN" prop_rangeStepEqEnumFromStepN
+  prop "rangeStepExc" prop_rangeStepExc
 
 specConstructIx2 :: Spec
 specConstructIx2 = do
-  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix2))
-  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix2))
-  it "excFromToListIx2" $ property prop_excFromToListIx2
+  prop "toFromList" $ (prop_toFromList (Proxy :: Proxy Ix2))
+  prop "toFromListIsList" $ (prop_toFromListIsList (Proxy :: Proxy Ix2))
+  prop "excFromToListIx2" $ prop_excFromToListIx2
 
 specConstructIx3 :: Spec
 specConstructIx3 = do
-  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix3))
-  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
-  it "excFromToListIx3" $ property prop_excFromToListIx3
+  prop "toFromList" $ (prop_toFromList (Proxy :: Proxy Ix3))
+  prop "toFromListIsList" $ (prop_toFromListIsList (Proxy :: Proxy Ix3))
+  prop "excFromToListIx3" $ prop_excFromToListIx3
 
 mkIntermediate :: Int -> Array U Ix1 Int
 mkIntermediate t = A.fromList Seq [t + 50, t + 75]
@@ -125,4 +125,4 @@ spec = do
   describe "Ix2" specConstructIx2
   describe "Ix3" specConstructIx3
   describe "Expand" specExpand
-  describe "Unfolding" $ it "unfoldrS_" $ property prop_unfoldrList
+  describe "Unfolding" $ prop "unfoldrS_" prop_unfoldrList
