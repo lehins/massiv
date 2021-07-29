@@ -50,6 +50,8 @@
 * Consolidate `Mutable` into `Manifest` type class and move the `MArray` data
   family outside of the class.
 * Make sure empty arrays are always equal, regardless of their size.
+* Remove `LN` representation in favor of a standalone `List` newtype wrapper
+  around lists.
 
 # 0.6.1
 

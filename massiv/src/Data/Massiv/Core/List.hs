@@ -20,9 +20,9 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core.List
-  ( LN
-  , L(..)
+  ( L(..)
   , Array(..)
+  , List(..)
   , toListArray
   , showsArrayPrec
   , showArrayList
@@ -43,18 +43,20 @@ import GHC.Exts
 import GHC.TypeLits
 import System.IO.Unsafe (unsafePerformIO)
 
-data LN
 
 type family ListItem ix e :: Type where
   ListItem Ix1 e = e
   ListItem ix  e = [ListItem (Lower ix) e]
 
-newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
+type family Elt ix e :: Type where
+  Elt Ix1 e = e
+  Elt ix  e = List (Lower ix) e
+
+newtype List ix e = List { unList :: [Elt ix e] }
 
 
-
-instance Coercible (Elt LN ix e) (ListItem ix e) => IsList (Array LN ix e) where
-  type Item (Array LN ix e) = ListItem ix e
+instance Coercible (Elt ix e) (ListItem ix e) => IsList (List ix e) where
+  type Item (List ix e) = ListItem ix e
   fromList = coerce
   {-# INLINE fromList #-}
   toList = coerce
@@ -64,11 +66,11 @@ instance Coercible (Elt LN ix e) (ListItem ix e) => IsList (Array LN ix e) where
 data L = L
 
 data instance Array L ix e = LArray { lComp :: Comp
-                                    , lData :: !(Array LN ix e)
+                                    , lData :: !(List ix e)
                                     }
 
 
-instance Coercible (Elt LN ix e) (ListItem ix e) => IsList (Array L ix e) where
+instance Coercible (Elt ix e) (ListItem ix e) => IsList (Array L ix e) where
   type Item (Array L ix e) = ListItem ix e
   fromList = LArray Seq . coerce
   {-# INLINE fromList #-}
@@ -82,71 +84,40 @@ lengthHintList =
     _  -> LengthUnknown
 {-# INLINE lengthHintList #-}
 
-instance Shape LN Ix1 where
-  linearSize = SafeSz . length . unList
-  {-# INLINE linearSize #-}
-  linearSizeHint = lengthHintList . unList
-  {-# INLINE linearSizeHint #-}
-  isNull = null . unList
-  {-# INLINE isNull #-}
-  outerSize = linearSize
-  {-# INLINE outerSize #-}
-
 instance Shape L Ix1 where
-  linearSize = linearSize . lData
+  linearSize = outerLength
   {-# INLINE linearSize #-}
-  linearSizeHint = linearSizeHint . lData
+  linearSizeHint = lengthHintList . unList . lData
   {-# INLINE linearSizeHint #-}
-  isNull = isNull . lData
+  isNull = null . unList . lData
   {-# INLINE isNull #-}
   outerSize = linearSize
   {-# INLINE outerSize #-}
 
-instance Shape LN Ix2 where
-  linearSize = SafeSz . getSum . foldMap (Sum . length . unList) . unList
+instance Shape L Ix2 where
+  linearSize = SafeSz . getSum . foldMap (Sum . length . unList) . unList . lData
   {-# INLINE linearSize #-}
-  linearSizeHint = lengthHintList . unList
+  linearSizeHint = lengthHintList . unList . lData
   {-# INLINE linearSizeHint #-}
-  isNull = getAll . foldMap (All . null . unList) . unList
+  isNull = getAll . foldMap (All . null . unList) . unList . lData
   {-# INLINE isNull #-}
   outerSize arr =
-    case unList arr of
+    case unList (lData arr) of
       []     -> zeroSz
       (x:xs) -> SafeSz ((1 + length xs) :. length (unList x))
   {-# INLINE outerSize #-}
 
-instance Shape L Ix2 where
-  linearSize = linearSize . lData
+instance (Shape L (Ix (n - 1)), Index (IxN n)) => Shape L (IxN n) where
+  linearSize = SafeSz . getSum . foldMap (Sum . unSz . linearSize . LArray Seq) . unList . lData
   {-# INLINE linearSize #-}
-  linearSizeHint = linearSizeHint . lData
+  linearSizeHint = lengthHintList . unList . lData
   {-# INLINE linearSizeHint #-}
-  isNull = isNull . lData
-  {-# INLINE isNull #-}
-  outerSize = outerSize . lData
-  {-# INLINE outerSize #-}
-
-instance (Shape LN (Ix (n - 1)), Index (IxN n)) => Shape LN (IxN n) where
-  linearSize = SafeSz . getSum . foldMap (Sum . unSz . linearSize) . unList
-  {-# INLINE linearSize #-}
-  linearSizeHint = lengthHintList . unList
-  {-# INLINE linearSizeHint #-}
-  isNull = getAll . foldMap (All . isNull) . unList
+  isNull = getAll . foldMap (All . isNull . LArray Seq) . unList . lData
   {-# INLINE isNull #-}
   outerSize arr =
-    case unList arr of
+    case unList (lData arr) of
       []     -> zeroSz
-      (x:xs) -> SafeSz ((1 + length xs) :> unSz (outerSize x))
-  {-# INLINE outerSize #-}
-
-
-instance (Index (IxN n), Shape LN (IxN n)) => Shape L (IxN n) where
-  linearSize = linearSize . lData
-  {-# INLINE linearSize #-}
-  linearSizeHint = linearSizeHint . lData
-  {-# INLINE linearSizeHint #-}
-  isNull = isNull . lData
-  {-# INLINE isNull #-}
-  outerSize = outerSize . lData
+      (x:xs) -> SafeSz ((1 + length xs) :> unSz (outerSize (LArray Seq x)))
   {-# INLINE outerSize #-}
 
 
@@ -155,15 +126,6 @@ outerLength = SafeSz . length . unList . lData
 
 
 instance Ragged L Ix1 e where
-  emptyR comp = LArray comp (List [])
-  {-# INLINE emptyR #-}
-  consR x arr = arr {lData = coerce (x : coerce (lData arr))}
-  {-# INLINE consR #-}
-  unconsR LArray {..} =
-    case L.uncons $ coerce lData of
-      Nothing -> Nothing
-      Just (x, xs) -> Just (x, LArray lComp (coerce xs))
-  {-# INLINE unconsR #-}
   flattenRagged = id
   {-# INLINE flattenRagged #-}
   generateRaggedM !comp !k f = do
@@ -192,20 +154,6 @@ instance (Shape L ix, Ragged L ix e) => Load L ix e where
   {-# INLINE iterArrayLinearST_ #-}
 
 instance Ragged L Ix2 e where
-  emptyR comp = LArray comp (List [])
-  {-# INLINE emptyR #-}
-  consR (LArray _ x) arr = newArr
-    where
-      newArr = arr {lData = coerce (x : coerce (lData arr))}
-  {-# INLINE consR #-}
-  unconsR LArray {..} =
-    case L.uncons (coerce lData) of
-      Nothing -> Nothing
-      Just (x, xs) ->
-        let newArr = LArray lComp (coerce xs)
-            newX = LArray lComp x
-         in Just (newX, newArr)
-  {-# INLINE unconsR #-}
   generateRaggedM = unsafeGenerateParM
   {-# INLINE generateRaggedM #-}
   flattenRagged arr = LArray {lComp = lComp arr, lData = coerce xs}
@@ -236,25 +184,10 @@ instance Ragged L Ix2 e where
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L Ix1 e)) sep (coerce xs)
 
 instance ( Shape L (IxN n)
-         , Shape LN (Ix (n - 1))
          , Ragged L (Ix (n - 1)) e
-         , Coercible (Elt LN (Ix (n - 1)) e) (ListItem (Ix (n - 1)) e)
+         , Coercible (Elt (Ix (n - 1)) e) (ListItem (Ix (n - 1)) e)
          ) =>
          Ragged L (IxN n) e where
-  emptyR comp = LArray comp (List [])
-  {-# INLINE emptyR #-}
-  consR (LArray _ x) arr = newArr
-    where
-      newArr = arr {lData = coerce (x : coerce (lData arr))}
-  {-# INLINE consR #-}
-  unconsR LArray {..} =
-    case L.uncons (coerce lData) of
-      Nothing -> Nothing
-      Just (x, xs) ->
-        let newArr = LArray lComp (coerce xs)
-            newX = LArray lComp x
-         in Just (newX, newArr)
-  {-# INLINE unconsR #-}
   generateRaggedM = unsafeGenerateParM
   {-# INLINE generateRaggedM #-}
   flattenRagged arr = LArray {lComp = lComp arr, lData = coerce xs}
@@ -270,18 +203,20 @@ instance ( Shape L (IxN n)
             | end - start < numWorkers scheduler * step = scheduler
             | otherwise = trivialScheduler_
       leftOver <-
-        loopM start (< end) (+ step) xs $ \i zs ->
-          case unconsR zs of
-            Nothing -> throwM (DimTooShortException (dimensions sz) k (outerLength xs))
-            Just (y, ys) ->
-              ys <$ scheduleWork_ scheduler (loadRaggedST subScheduler y uWrite i (i + step) szL)
-      unless (isNull leftOver) $ throwM $ DimTooLongException (dimensions sz) k (outerLength xs)
+        loopM start (< end) (+ step) (unList (lData xs)) $ \i zs ->
+          case zs of
+            [] -> throwM (DimTooShortException (dimensions sz) k (outerLength xs))
+            (y:ys) -> do
+              scheduleWork_ scheduler $
+                loadRaggedST subScheduler (LArray Seq y) uWrite i (i + step) szL
+              pure ys
+      unless (null leftOver) $ throwM $ DimTooLongException (dimensions sz) k (outerLength xs)
   {-# INLINE loadRaggedST #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L (Ix (n - 1)) e)) sep (coerce xs)
 
 unsafeGenerateParM ::
-     (Elt LN ix e ~ Array LN (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
+     (Elt ix e ~ List (Lower ix) e, Index ix, Monad m, Ragged L (Lower ix) e)
   => Comp
   -> Sz ix
   -> (ix -> m e)
@@ -341,9 +276,9 @@ toListArray !arr = makeArray (getComp arr) (outerSize arr) (unsafeIndex arr)
 instance (Ragged L ix e, Show e) => Show (Array L ix e) where
   showsPrec n arr  = showsArrayLAsPrec (Proxy :: Proxy L) (outerSize arr) n arr
 
-instance (Ragged L ix e, Show e) => Show (Array LN ix e) where
-  show arr = "  " ++ raggedFormat show "\n  " arrL
-    where arrL = LArray Seq arr :: Array L ix e
+instance (Ragged L ix e, Show e) => Show (List ix e) where
+  show xs = "  " ++ raggedFormat show "\n  " arrL
+    where arrL = LArray Seq xs :: Array L ix e
 
 
 showN :: (String -> a -> String) -> String -> [a] -> String

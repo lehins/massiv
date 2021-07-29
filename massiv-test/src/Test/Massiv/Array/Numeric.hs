@@ -125,7 +125,7 @@ prop_Plus f arr e = expectProp $ do
   let arr' = compute (A.map (applyFun f) arr)
   arr !+! arr' `shouldBe` compute (A.zipWith (+) arr arr')
   let Sz2 m n = size arr
-  when (m /= n) $
+  when (m /= n && m * n /= 0) $
     arr .+. compute (transpose arr) `shouldThrow` (== SizeMismatchException (size arr) (Sz2 n m))
 
 prop_Minus ::
@@ -141,7 +141,7 @@ prop_Minus f arr e = expectProp $ do
   let arr' = compute (A.map (applyFun f) arr)
   arr !-! arr' `shouldBe` compute (A.zipWith (-) arr arr')
   let Sz2 m n = size arr
-  when (m /= n) $
+  when (m /= n && m * n /= 0) $
     arr .-. compute (transpose arr) `shouldThrow` (== SizeMismatchException (size arr) (Sz2 n m))
 
 prop_Times ::
@@ -157,7 +157,7 @@ prop_Times f arr e = expectProp $ do
   let arr' = compute (A.map (applyFun f) arr)
   arr !*! arr' `shouldBe` compute (A.zipWith (*) arr arr')
   let Sz2 m n = size arr
-  when (m /= n) $
+  when (m /= n && m * n /= 0) $
     arr .*. compute (transpose arr) `shouldThrow` (== SizeMismatchException (size arr) (Sz2 n m))
 
 prop_Divide ::
@@ -181,7 +181,7 @@ prop_Divide eps f arr e = e /= 0 ==> expectProp $ do
   unless (A.or (A.zipWith (\x y -> x == 0 && y == 0) arr arr')) $
     arr !/! arr' `shouldBe` compute (A.zipWith (/) arr arr')
   let Sz2 m n = size arr
-  when (m /= n) $
+  when (m /= n && m * n /= 0) $
     arr ./. compute (transpose arr) `shouldThrow` (== SizeMismatchException (size arr) (Sz2 n m))
 
 prop_Floating ::

@@ -7,12 +7,12 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core
-  ( Array(List, unList)
+  ( Array(LArray)
+  , List(..)
   , Vector
   , MVector
   , Matrix
   , MMatrix
-  , Elt
   , Load(iterArrayLinearST_, iterArrayLinearWithSetST_)
   , Stream(..)
   , Source
@@ -24,7 +24,6 @@ module Data.Massiv.Core
   , Mutable
   , Ragged
   , L(..)
-  , LN
   , ListItem
   , Scheduler
   , SchedulerWS

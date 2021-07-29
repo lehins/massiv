@@ -62,15 +62,15 @@
 --
 -- Other Array types:
 --
--- * `L` and `LN` - those types aren't particularly useful on their own, but because of their unique
---       ability to be converted to and from nested lists in constant time, provide a perfect
---       intermediary for lists \<-> array conversion.
+-- * `L` - this type isn't particularly useful on its own, but because it has unique ability to be
+--       converted to and from nested lists in constant time, it provides a perfect intermediary for
+--       conversion of nested lists into manifest arrays.
 --
 -- Most of the `Manifest` arrays are capable of in-place mutation. Check out
 -- "Data.Massiv.Array.Mutable" module for available functionality.
 --
--- Many of the function names exported by this package will clash with the ones
--- from "Prelude", hence it can be more convenient to import like this:
+-- Many of the function names exported by this package will clash with the ones from "Prelude",
+-- hence it can be more convenient to import like this:
 --
 -- @
 -- import Prelude as P

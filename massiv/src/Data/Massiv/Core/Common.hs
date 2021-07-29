@@ -22,7 +22,6 @@ module Data.Massiv.Core.Common
   , MArray
   , MVector
   , MMatrix
-  , Elt
   , Steps(..)
   , Stream(..)
   , Strategy(..)
@@ -149,12 +148,6 @@ type MVector s r e = MArray s r Ix1 e
 --
 -- @since 0.5.0
 type MMatrix s r e = MArray s r Ix2 e
-
-
-
-type family Elt r ix e :: Type where
-  Elt r Ix1 e = e
-  Elt r ix  e = Array r (Lower ix) e
 
 
 class Load r ix e => Stream r ix e where
@@ -724,12 +717,6 @@ unsafeLinearSwap !marr !i1 !i2 = do
 
 
 class (IsList (Array r ix e), Load r ix e) => Ragged r ix e where
-
-  emptyR :: Comp -> Array r ix e
-
-  consR :: Elt r ix e -> Array r ix e -> Array r ix e
-
-  unconsR :: Array r ix e -> Maybe (Elt r ix e, Array r ix e)
 
   generateRaggedM :: Monad m => Comp -> Sz ix -> (ix -> m e) -> m (Array r ix e)
 
