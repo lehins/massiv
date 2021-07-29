@@ -47,6 +47,7 @@
 * Add `Uniform`, `UniformRange` and `Random` instances for `Ix2`, `IxN`, `Dim`, `Sz` and `Stride`
 * Consolidate `Mutable` into `Manifest` type class and move the `MArray` data
   family outside of the class.
+* Make sure empty arrays are always equal, regardless of their size.
 
 # 0.6.1
 

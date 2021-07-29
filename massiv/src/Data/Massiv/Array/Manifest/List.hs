@@ -74,10 +74,12 @@ fromList = fromLists'
 --   , [ [4,5] ]
 --   ]
 -- )
--- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix3 Int)
+-- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix3 Integer)
 -- Nothing
--- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: IO (Array B Ix3 Int)
--- *** Exception: DimTooShortException: expected (Sz1 3), got (Sz1 2)
+-- >>> fromListsM Seq [[[1,2,3]],[[4,5,6],[7,8,9]]] :: IO (Array B Ix3 Integer)
+-- *** Exception: DimTooLongException for (Dim 2): expected (Sz1 1), got (Sz1 2)
+-- >>> fromListsM Seq [[1,2,3,4],[5,6,7]] :: IO (Matrix B Integer)
+-- *** Exception: DimTooShortException for (Dim 1): expected (Sz1 4), got (Sz1 3)
 --
 -- @since 0.3.0
 fromListsM ::

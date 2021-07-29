@@ -862,16 +862,27 @@ instance Show SizeException where
 --
 -- @since 0.3.0
 data ShapeException
-  = DimTooShortException !(Sz Ix1) !(Sz Ix1)
-  | DimTooLongException
+  = DimTooShortException !Dim !(Sz Ix1) !(Sz Ix1)
+  -- ^ Across a specific dimension there was not enough elements for the supplied size
+  | DimTooLongException !Dim !(Sz Ix1) !(Sz Ix1)
+  -- ^ Across a specific dimension there was too many elements for the supplied size
+  | ShapeNonEmpty
+  -- ^ Expected an empty size, but the shape was not empty.
   deriving Eq
 
 instance Show ShapeException where
-  showsPrec _ DimTooLongException = ("DimTooLongException" ++)
-  showsPrec n (DimTooShortException sz sz') =
-    showsPrecWrapped
-      n
-      (("DimTooShortException: expected (" ++) . shows sz . ("), got (" ++) . shows sz' . (")" ++))
+  showsPrec n =
+    \case
+      DimTooShortException d sz sz' -> showsShapeExc "DimTooShortException" d sz sz'
+      DimTooLongException d sz sz' -> showsShapeExc "DimTooLongException" d sz sz'
+      ShapeNonEmpty -> ("ShapeNonEmpty" ++)
+    where
+      showsShapeExc tyName d sz sz' =
+        showsPrecWrapped
+          n
+          ((tyName ++) .
+           (" for " ++) .
+           shows d . (": expected (" ++) . shows sz . ("), got (" ++) . shows sz' . (")" ++))
 
 instance Exception ShapeException
 

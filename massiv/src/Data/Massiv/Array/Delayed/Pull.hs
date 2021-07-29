@@ -207,16 +207,22 @@ delay arr = DArray (getComp arr) (size arr) (unsafeIndex arr)
 "delay" [~1] forall (arr :: Array D ix e) . delay arr = arr
  #-}
 
--- | Compute array equality by applying a comparing function to each element.
+-- | Compute array equality by applying a comparing function to each
+-- element. Empty arrays are always equal, regardless of their size.
 --
 -- @since 0.5.7
 eqArrays :: (Index ix, Source r1 e1, Source r2 e2) =>
             (e1 -> e2 -> Bool) -> Array r1 ix e1 -> Array r2 ix e2 -> Bool
 eqArrays f arr1 arr2 =
-  (size arr1 == size arr2) &&
-  not (A.any not
-       (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
-           f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)))
+  let sz1 = size arr1
+      sz2 = size arr2
+   in (sz1 == sz2 &&
+       not
+         (A.any
+            not
+            (DArray (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
+               f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)))) ||
+      (isZeroSz sz1 && isZeroSz sz2)
 {-# INLINE eqArrays #-}
 
 -- | Compute array ordering by applying a comparing function to each element.

@@ -51,10 +51,6 @@ type family ListItem ix e :: Type where
 
 newtype instance Array LN ix e = List { unList :: [Elt LN ix e] }
 
---TODO remove
-instance Strategy LN where
-  getComp _ = Seq
-  setComp _ = id
 
 
 instance Coercible (Elt LN ix e) (ListItem ix e) => IsList (Array LN ix e) where
@@ -181,8 +177,8 @@ instance Ragged L Ix1 e where
     where
       go (y:ys) i
         | i < end = uWrite i y >> go ys (i + 1)
-        | otherwise = throwM (DimTooShortException sz (outerLength xs))
-      go [] i = when (i /= end) $ throwM DimTooLongException
+        | otherwise = throwM $ DimTooLongException 1 sz (outerLength xs)
+      go [] i = when (i /= end) $ throwM $ DimTooShortException 1 sz (outerLength xs)
   {-# INLINE loadRaggedST #-}
   raggedFormat f _ arr = L.concat $ "[ " : L.intersperse ", " (map f (coerce (lData arr))) ++ [" ]"]
 
@@ -217,24 +213,24 @@ instance Ragged L Ix2 e where
       xs = concatMap (unList . lData . flattenRagged . LArray (lComp arr)) (unList (lData arr))
   {-# INLINE flattenRagged #-}
   loadRaggedST scheduler xs uWrite start end sz
-    | isZeroSz sz = when (isNotNull (flattenRagged xs)) (throwM DimTooLongException)
+    | isZeroSz sz = when (isNotNull (flattenRagged xs)) (throwM ShapeNonEmpty)
     | otherwise = do
       let (k, szL) = unconsSz sz
           step = totalElem szL
       leftOver <-
         loopM start (< end) (+ step) (coerce (lData xs)) $ \i zs ->
           case zs of
-            [] -> throwM (DimTooShortException k (outerLength xs))
+            [] -> throwM (DimTooShortException 2 k (outerLength xs))
             (y:ys) -> do
               scheduleWork_ scheduler $
                 let end' = i + step
                     go (a:as) j
                       | j < end' = uWrite j a >> go as (j + 1)
-                      | otherwise = throwM (DimTooShortException szL (Sz (length y)))
-                    go [] j = when (j /= end') $ throwM DimTooLongException
+                      | otherwise = throwM $ DimTooLongException 1 szL (Sz (length y))
+                    go [] j = when (j /= end') $ throwM (DimTooShortException 1 szL (Sz (length y)))
                  in go y i
               pure ys
-      unless (null leftOver) (throwM DimTooLongException)
+      unless (null leftOver) $ throwM $ DimTooLongException 2 k (outerLength xs)
   {-# INLINE loadRaggedST #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L Ix1 e)) sep (coerce xs)
@@ -266,7 +262,7 @@ instance ( Shape L (IxN n)
       xs = concatMap (unList . lData . flattenRagged . LArray (lComp arr)) (unList (lData arr))
   {-# INLINE flattenRagged #-}
   loadRaggedST scheduler xs uWrite start end sz
-    | isZeroSz sz = when (isNotNull (flattenRagged xs)) (throwM DimTooLongException)
+    | isZeroSz sz = when (isNotNull (flattenRagged xs)) (throwM ShapeNonEmpty)
     | otherwise = do
       let (k, szL) = unconsSz sz
           step = totalElem szL
@@ -276,10 +272,10 @@ instance ( Shape L (IxN n)
       leftOver <-
         loopM start (< end) (+ step) xs $ \i zs ->
           case unconsR zs of
-            Nothing -> throwM (DimTooShortException k (outerLength xs))
+            Nothing -> throwM (DimTooShortException (dimensions sz) k (outerLength xs))
             Just (y, ys) ->
               ys <$ scheduleWork_ scheduler (loadRaggedST subScheduler y uWrite i (i + step) szL)
-      unless (isNull leftOver) (throwM DimTooLongException)
+      unless (isNull leftOver) $ throwM $ DimTooLongException (dimensions sz) k (outerLength xs)
   {-# INLINE loadRaggedST #-}
   raggedFormat f sep (LArray comp xs) =
     showN (\s y -> raggedFormat f s (LArray comp y :: Array L (Ix (n - 1)) e)) sep (coerce xs)
@@ -343,7 +339,7 @@ toListArray !arr = makeArray (getComp arr) (outerSize arr) (unsafeIndex arr)
 
 
 instance (Ragged L ix e, Show e) => Show (Array L ix e) where
-  showsPrec = showsArrayLAsPrec (Proxy :: Proxy L)
+  showsPrec n arr  = showsArrayLAsPrec (Proxy :: Proxy L) (outerSize arr) n arr
 
 instance (Ragged L ix e, Show e) => Show (Array LN ix e) where
   show arr = "  " ++ raggedFormat show "\n  " arrL
@@ -361,15 +357,16 @@ showN fShow lnPrefix ls =
 showsArrayLAsPrec ::
      forall r ix e. (Ragged L ix e, Typeable r, Show e)
   => Proxy r
+  -> Sz ix
   -> Int
   -> Array L ix e -- Array to show
   -> ShowS
-showsArrayLAsPrec pr n arr =
+showsArrayLAsPrec pr sz n arr =
   opp .
   ("Array " ++) .
   showsTypeRep (typeRep pr) .
   (' ':) .
-  showsPrec 1 (getComp arr) . (" (" ++) . shows (outerSize arr) . (")\n" ++) . shows lnarr . clp
+  showsPrec 1 (getComp arr) . (" (" ++) . shows sz . (")\n" ++) . shows lnarr . clp
   where
     (opp, clp) =
       if n == 0
@@ -386,10 +383,11 @@ showsArrayPrec ::
   -> Int
   -> Array r ix e -- Array to show
   -> ShowS
-showsArrayPrec f n arr = showsArrayLAsPrec (Proxy :: Proxy r) n larr
+showsArrayPrec f n arr = showsArrayLAsPrec (Proxy :: Proxy r) sz n larr
   where
+    sz = size arr'
     arr' = f arr
-    larr = makeArray (getComp arr') (size arr') (evaluate' arr') :: Array L ix e
+    larr = makeArray (getComp arr') sz (evaluate' arr') :: Array L ix e
 
 
 -- | Helper function for declaring `Show` instances for arrays

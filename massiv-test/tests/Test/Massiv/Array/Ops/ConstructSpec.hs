@@ -30,20 +30,21 @@ prop_rangeStepExc from to =
 prop_toFromListIsList ::
      (Show (Array U ix Int), GHC.IsList (Array U ix Int), Index ix)
   => Proxy ix
-  -> ArrNE U ix Int
+  -> Array U ix Int
   -> Property
-prop_toFromListIsList _ (ArrNE arr) = arr === GHC.fromList (GHC.toList arr)
+prop_toFromListIsList _ arr = arr === GHC.fromList (GHC.toList arr)
 
 
 prop_toFromList ::
-  forall ix . (Show (Array U ix Int), Ragged L ix Int)
+  forall ix . (Show (Array B ix Int), Ragged L ix Int)
   => Proxy ix
-  -> ArrNE U ix Int
+  -> Array B ix Int
   -> Property
-prop_toFromList _ (ArrNE arr) = comp === comp' .&&. arr === arr'
-  where comp = getComp arr
-        arr' = fromLists' comp (toLists arr)
-        comp' = getComp arr'
+prop_toFromList _ arr = comp === comp' .&&. arr === arr'
+  where
+    comp = getComp arr
+    arr' = fromLists' comp $ toLists arr
+    comp' = getComp arr'
 
 
 prop_excFromToListIx2 :: Comp -> [[Int]] -> Property
