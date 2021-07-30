@@ -44,21 +44,21 @@ newtype instance Array DS Ix1 e = DSArray
 -- | /O(1)/ - Convert delayed stream array into `Steps`.
 --
 -- @since 0.4.1
-toSteps :: Array DS Ix1 e -> Steps Id e
+toSteps :: Vector DS e -> Steps Id e
 toSteps = coerce
 {-# INLINE toSteps #-}
 
 -- | /O(1)/ - Convert `Steps` into delayed stream array
 --
 -- @since 0.4.1
-fromSteps :: Steps Id e -> Array DS Ix1 e
+fromSteps :: Steps Id e -> Vector DS e
 fromSteps = coerce
 {-# INLINE fromSteps #-}
 
 -- | /O(1)/ - Convert monadic `Steps` into delayed stream array
 --
 -- @since 0.5.0
-fromStepsM :: Monad m => Steps m e -> m (Array DS Ix1 e)
+fromStepsM :: Monad m => Steps m e -> m (Vector DS e)
 fromStepsM = fmap DSArray . S.transSteps
 {-# INLINE fromStepsM #-}
 
@@ -146,9 +146,9 @@ instance Monoid (Array DS Ix1 e) where
 
 instance IsList (Array DS Ix1 e) where
   type Item (Array DS Ix1 e) = e
-  fromList = fromSteps . S.fromList
+  fromList = fromSteps . fromList
   {-# INLINE fromList #-}
-  fromListN n = fromSteps . S.fromListN n
+  fromListN n = fromSteps . fromListN n
   {-# INLINE fromListN #-}
   toList = S.toList . coerce
   {-# INLINE toList #-}
@@ -164,7 +164,7 @@ instance S.Stream DS Ix1 e where
 -- | Flatten an array into a stream of values.
 --
 -- @since 0.4.1
-toStreamArray :: (Index ix, Source r e) => Array r ix e -> Array DS Ix1 e
+toStreamArray :: (Index ix, Source r e) => Array r ix e -> Vector DS e
 toStreamArray = DSArray . S.steps
 {-# INLINE[1] toStreamArray #-}
 {-# RULES "toStreamArray/id" toStreamArray = id #-}

@@ -5,9 +5,9 @@
 Everyone is well accustomed to the fact that the order of indices corresponds to the number of
 dimensions an array can have in the reverse order, eg in `C`: `arr[i][j][k]` will mean that a
 3-dimensional array is indexed at an outer most 3rd dimension with index `i`, 2nd dimension `j` and
-the inner most 1st dimension `k`. In case of a 3d world `i` points to a page, `j` to a column and
-`k` to the row, but the astraction scales pretty well to any dimension as long as we agree on the
-order of things. Below are two ways to index an array in massiv:
+the inner most 1st dimension `k`. In case of a 3d world `i` points to a page, `j` to a row and
+`k` to a column, but the astraction scales pretty well to any dimension as long as we agree on the
+order of things. Below are various ways to index an array in massiv:
 
 ```haskell
 λ> arr = makeArrayR U Seq (Sz (2 :> 3 :. 4)) $ \ (i :> j :. k) -> i + j ^ k
@@ -20,8 +20,8 @@ order of things. Below are two ways to index an array in massiv:
 9
 ```
 
-Former does the lookup of an element in the array, while the latter slices the array until it gets to
-the actual element.
+Former does the lookup of an element in the array, while the latter slices the
+array until it gets to a a row and only then looks up the actual element.
 
 Data is represented in a linear row-major fashion, so the above indexing
 technique translates into a linear index that will get mapped into an element in
@@ -36,18 +36,8 @@ memory at some point.
 Size (D, DL, DI, B, BN, BL, P, U, S)
 Shape (D, DL, DS, DI, DW, B, BN, BL, P, U, S, L, LN)
 StrideLoad (DI, DW) -> Load (DL, DS, L) -> Source (D) -> Manifest (B, BN, BL, P, U, S)
-   |\
-   | `> Extract (D, DS, DI, B, BN, BL, P, U, S)
-   |\
-   | `> Slice (D, B, BN, BL, P, U, S)
-   |\
-   | `> OuterSlice (D, B, BN, BL, P, U, S, L)
-    \
-     `> InnerSlice (D, B, BN, BL, P, U, S)
-
-Stream (D, DS, B, BN, BL, P, U, S, L, LN)
-
-Resize (D, DL, DI, B, BN, BL, P, U, S)
+                                       \
+                                        `-> Stream (D, B, BN, BL, P, U, S, L)
 ```
 
 ## Computation

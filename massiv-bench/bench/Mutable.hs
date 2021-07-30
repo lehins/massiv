@@ -20,7 +20,7 @@ main = do
 
 
 mkBench ::
-     forall r. (Load r Ix2 Double, Mutable r Double)
+     forall r. (Load r Ix2 Double, Manifest r Double)
   => Sz2
   -> r
   -> IO [Benchmark]

@@ -4,10 +4,11 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_HADDOCK hide, not-home #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_HADDOCK hide, not-home #-}
 -- |
 -- Module      : Data.Massiv.Vector.Stream
 -- Copyright   : (c) Alexey Kuleshevich 2019-2021
@@ -143,7 +144,7 @@ import Data.Vector.Fusion.Util
 import Prelude hiding (and, concatMap, drop, filter, foldl, foldl1, foldr,
                 foldr1, length, map, mapM, mapM_, null, or, replicate, take,
                 traverse, zipWith, zipWith3)
-
+import qualified GHC.Exts (IsList(..))
 
 instance Monad m => Functor (Steps m) where
   fmap f str = str {stepsStream = S.map f (stepsStream str)}
@@ -164,6 +165,15 @@ instance Monad m => Monoid (Steps m e) where
   mappend = append
   {-# INLINE mappend #-}
 
+
+instance GHC.Exts.IsList (Steps Id e) where
+  type Item (Steps Id e) = e
+  toList = toList
+  {-# INLINE toList #-}
+  fromList = fromList
+  {-# INLINE fromList #-}
+  fromListN n = (`Steps` LengthMax (Sz n)) . S.fromListN n
+  {-# INLINE fromListN #-}
 
 instance Foldable (Steps Id) where
   foldr f acc = unId . foldrLazy f acc
