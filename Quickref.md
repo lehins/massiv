@@ -4,9 +4,9 @@
 
 Everyone is well accustomed to the fact that the order of indices corresponds to the number of
 dimensions an array can have in the reverse order, eg in `C`: `arr[i][j][k]` will mean that a
-3-dimensional array is indexed at an outer most 3rd dimension with index `i`, 2nd dimension `j` and
-the inner most 1st dimension `k`. In case of a 3d world `i` points to a page, `j` to a row and
-`k` to a column, but the astraction scales pretty well to any dimension as long as we agree on the
+3-dimensional array is indexed at an outermost 3rd dimension with index `i`, 2nd dimension `j` and
+the innermost 1st dimension `k`. In the case of a 3D world `i` points to a page, `j` to a row and
+`k` to a column, but the astraction scales naturally to any dimension as long as we agree on the
 order of things. Below are various ways to index an array in massiv:
 
 ```haskell
@@ -20,12 +20,11 @@ order of things. Below are various ways to index an array in massiv:
 9
 ```
 
-Former does the lookup of an element in the array, while the latter slices the
-array until it gets to a a row and only then looks up the actual element.
+Former does the lookup of an element in the array, while the latter slices the array until it gets
+to a row and only then looks up the actual element.
 
-Data is represented in a linear row-major fashion, so the above indexing
-technique translates into a linear index that will get mapped into an element in
-memory at some point.
+Data is represented in a linear row-major fashion, so the above indexing technique translates into a
+linear index that will get mapped into an element in memory at some point.
 
 
 ## Hierarchy
@@ -49,7 +48,7 @@ to that:
   construction or conversion, eg. from a list or vector
 * array computation strategy will be combined according to its `Monoid` instance when two or more
   arrays are being joined together by some operation into another one.
-* Most of functions will respect the inner computation strategy, while others will ignore it due to
+* Most functions will respect the inner computation strategy, while others will ignore it due to
   their specific nature.
 
 ## Naming Conventions
@@ -93,7 +92,7 @@ argument. Functions with the `Inner` suffix use dimension `1`.
 ### Conversion from `array`
 
 Here is an example of how to convert a nested boxed array from `array` package to a
-rectangular `Matrix` with parallellization:
+rectangular `Matrix` with parallelization:
 
 
 ```haskell

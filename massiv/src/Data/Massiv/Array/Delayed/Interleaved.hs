@@ -15,6 +15,7 @@
 --
 module Data.Massiv.Array.Delayed.Interleaved
   ( DI(..)
+  , Array(..)
   , toInterleaved
   , fromInterleaved
   ) where

@@ -14,23 +14,6 @@ arrLightIx2 comp arrSz = makeArray comp (Sz arrSz) lightFunc
 {-# INLINE arrLightIx2 #-}
 
 
-average3x3Filter :: (Default a, Fractional a) => Stencil Ix2 a a
-average3x3Filter = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
-  (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
-     get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
-     get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
-{-# INLINE average3x3Filter #-}
-
-
-sum3x3Filter :: Fractional a => Stencil Ix2 a a
-sum3x3Filter = makeConvolutionStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
-  get (-1 :. -1) 1 . get (-1 :. 0) 1 . get (-1 :. 1) 1 .
-  get ( 0 :. -1) 1 . get ( 0 :. 0) 1 . get ( 0 :. 1) 1 .
-  get ( 1 :. -1) 1 . get ( 1 :. 0) 1 . get ( 1 :. 1) 1
-{-# INLINE sum3x3Filter #-}
-
-
-
 main :: IO ()
 main = do
   let arr = computeAs S $ arrLightIx2 Par (600 :. 800)
@@ -40,11 +23,16 @@ main = do
         -> Image S (Y' SRGB) Word8
       toImage = computeAs S . fmap (PixelY' . toWord8)
       lightPath = "files/light.png"
+      lightImage = toImage $ delay arr
       lightAvgPath = "files/light_avg.png"
+      lightAvgImage = toImage $ mapStencil Edge (avgStencil 3) arr
       lightSumPath = "files/light_sum.png"
-  writeImage lightPath $ toImage $ delay arr
+      lightSumImage = toImage $ mapStencil Edge (sumStencil 3) arr
+  writeImage lightPath lightImage
   putStrLn $ "written: " ++ lightPath
-  writeImage lightAvgPath $ toImage $ mapStencil Edge average3x3Filter arr
+  writeImage lightAvgPath lightAvgImage
   putStrLn $ "written: " ++ lightAvgPath
-  writeImage lightSumPath $ toImage $ mapStencil Edge sum3x3Filter arr
+  writeImage lightSumPath lightSumImage
   putStrLn $ "written: " ++ lightSumPath
+  displayImageUsing defaultViewer True . computeAs S
+    =<< concatM 1 [lightAvgImage, lightImage, lightSumImage]

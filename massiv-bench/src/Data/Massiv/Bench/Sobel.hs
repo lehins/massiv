@@ -3,10 +3,13 @@ module Data.Massiv.Bench.Sobel
   ( sobelX
   , sobelY
   , sobelOperator
+  , sobelBenchGroup
   ) where
 
-import Data.Massiv.Array
+import Criterion.Main
+import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe
+import Data.Massiv.Bench.Common
 
 sobelX :: Num e => Stencil Ix2 e e
 sobelX =
@@ -38,3 +41,24 @@ sobelOperator = sqrt (sX + sY)
     !sX = fmap (^ (2 :: Int)) sobelX
     !sY = fmap (^ (2 :: Int)) sobelY
 {-# INLINE sobelOperator #-}
+
+sobelBenchGroup :: Sz2 -> Benchmark
+sobelBenchGroup sz =
+  bgroup
+    "Sobel"
+    [ env (return (arrRLightIx2 S Seq sz)) $ \arr ->
+        bgroup
+          "Seq"
+          [ bench "Horizontal - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelX) arr
+          , bench "Vertical - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelY) arr
+          , bench "Operator - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelOperator) arr
+          ]
+    , env (return (arrRLightIx2 S Par sz)) $ \arr ->
+        bgroup
+          "Par"
+          [ bench "Horizontal - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelX) arr
+          , bench "Vertical - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelY) arr
+          , bench "Operator - Massiv" $ whnf (computeAs S . A.mapStencil Edge sobelOperator) arr
+          ]
+    ]
+{-# INLINEABLE sobelBenchGroup #-}

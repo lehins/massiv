@@ -20,6 +20,7 @@
 module Data.Massiv.Array.Manifest.Primitive
   ( P(..)
   , Array(..)
+  , MArray(..)
   , Prim
   , toPrimitiveVector
   , toPrimitiveMVector

@@ -11,7 +11,7 @@ import Prelude as P
 
 main :: IO ()
 main = do
-  let !sz = Sz2 1600 12000
+  let !sz = Sz2 1600 1200
       !arrSeq = arrRLightIx2 P Seq sz
       !arrPar = arrRLightIx2 P Par sz
   defaultMain

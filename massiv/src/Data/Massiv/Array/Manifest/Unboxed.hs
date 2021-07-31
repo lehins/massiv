@@ -18,6 +18,7 @@ module Data.Massiv.Array.Manifest.Unboxed
   ( U (..)
   , Unbox
   , Array(..)
+  , MArray(..)
   , toUnboxedVector
   , toUnboxedMVector
   , fromUnboxedVector

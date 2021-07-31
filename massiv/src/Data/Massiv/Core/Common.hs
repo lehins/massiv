@@ -260,11 +260,12 @@ lengthHintUpperBound = \case
     LengthUnknown  -> Nothing
 {-# INLINE lengthHintUpperBound #-}
 
-
+-- | Arrays that have information about their size availible in constant
+-- time.
 class Size r where
 
-  -- | Get the exact size of an immutabe array. Most of the time will produce
-  -- the size in constant time, except for `Data.Massiv.Array.DS`
+  -- | /O(1)/ - Get the exact size of an immutabe array. Most of the time will
+  -- produce the size in constant time, except for `Data.Massiv.Array.DS`
   -- representation, which could result in evaluation of the whole stream. See
   -- `maxLinearSize` and `Data.Massiv.Vector.slength` for more info.
   --
@@ -273,6 +274,8 @@ class Size r where
 
   -- | /O(1)/ - Change the size of an array. Total number of elements should be the same, but it is
   -- not validated.
+  --
+  -- @since 0.1.0
   unsafeResize :: (Index ix, Index ix') => Sz ix' -> Array r ix e -> Array r ix' e
 
 

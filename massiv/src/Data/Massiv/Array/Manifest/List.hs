@@ -173,7 +173,7 @@ toList !arr = GHC.build (\ c n -> foldrFB c n arr)
 --
 -- @since 0.1.0
 toLists ::
-     (Ragged L ix e, Load r ix e, Source r e)
+     (Ragged L ix e, Shape r ix, Source r e)
   => Array r ix e -- ^ Array to be converted to nested lists
   -> [ListItem ix e]
 toLists = GHC.toList . toListArray
@@ -193,7 +193,7 @@ toLists = GHC.toList . toListArray
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
 -- @since 0.1.0
-toLists2 :: (Index ix, Source r e, Index (Lower ix)) => Array r ix e -> [[e]]
+toLists2 :: (Source r e, Index ix, Index (Lower ix)) => Array r ix e -> [[e]]
 toLists2 = toList . foldrInner (:) []
 {-# INLINE toLists2 #-}
 
@@ -203,7 +203,7 @@ toLists2 = toList . foldrInner (:) []
 --
 -- @since 0.1.0
 toLists3 ::
-     (Index (Lower (Lower ix)), Index (Lower ix), Index ix, Source r e) => Array r ix e -> [[[e]]]
+     (Source r e, Index ix, Index (Lower ix), Index (Lower (Lower ix))) => Array r ix e -> [[[e]]]
 toLists3 = toList . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists3 #-}
 
@@ -212,11 +212,11 @@ toLists3 = toList . foldrInner (:) [] . foldrInner (:) []
 --
 -- @since 0.1.0
 toLists4 ::
-     ( Index (Lower (Lower (Lower ix)))
-     , Index (Lower (Lower ix))
-     , Index (Lower ix)
+     ( Source r e
      , Index ix
-     , Source r e
+     , Index (Lower ix)
+     , Index (Lower (Lower ix))
+     , Index (Lower (Lower (Lower ix)))
      )
   => Array r ix e
   -> [[[[e]]]]

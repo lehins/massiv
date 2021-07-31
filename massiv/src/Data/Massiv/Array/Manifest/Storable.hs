@@ -18,6 +18,7 @@
 module Data.Massiv.Array.Manifest.Storable
   ( S (..)
   , Array(..)
+  , MArray(..)
   , Storable
   , toStorableVector
   , toStorableMVector

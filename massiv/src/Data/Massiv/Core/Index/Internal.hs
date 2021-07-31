@@ -160,7 +160,7 @@ instance (Num ix, Index ix) => Num (Sz ix) where
   negate x
     | x == zeroSz = x
     | otherwise =
-      error $ "Attempted to negate: " ++ show x ++ ", this can lead to unexpected behavior. See #114"
+      error $ "Attempted to negate: " ++ show x ++ ", this can lead to unexpected behavior. See https://github.com/lehins/massiv/issues/114"
   {-# INLINE negate #-}
   signum x = SafeSz (signum (coerce x))
   {-# INLINE signum #-}

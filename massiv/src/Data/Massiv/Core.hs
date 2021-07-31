@@ -29,6 +29,8 @@ module Data.Massiv.Core
   , SchedulerWS
   , Strategy
   , Comp(Seq, Par, Par', ParOn, ParN)
+  , getComp
+  , setComp
   , appComp
   , WorkerStates
   , initWorkerStates

@@ -64,22 +64,67 @@ module Data.Massiv.Array.Ops.Transform
   , transform2'
   ) where
 
+import Control.Monad as M (foldM_, forM_, unless)
+import Control.Monad.ST
 import Control.Scheduler (traverse_)
-import Control.Monad as M (foldM_, unless, forM_)
 import Data.Bifunctor (bimap)
-import Data.Foldable as F (foldl', foldrM, toList, length)
+import Data.Foldable as F (foldl', foldrM, length, toList)
 import qualified Data.List as L (uncons)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map
-import Data.Massiv.Core.Common
-import Prelude as P hiding (concat, splitAt, traverse, mapM_, reverse, take, drop)
+import Data.Massiv.Core
+import Data.Massiv.Core.Index.Internal
+import Data.Massiv.Core.Common (size, unsafeIndex, unsafeResize, evaluate', evaluateM)
+import Data.Proxy
+import Prelude as P hiding (concat, drop, mapM_, reverse, splitAt, take,
+                     traverse)
 
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
 -- fully encapsulated in a source array, otherwise `SizeSubregionException` will be thrown.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> m <- resizeM (Sz (3 :. 3)) $ Ix1 1 ... 9
+-- >>> m
+-- Array D Seq (Sz (3 :. 3))
+--   [ [ 1, 2, 3 ]
+--   , [ 4, 5, 6 ]
+--   , [ 7, 8, 9 ]
+--   ]
+-- >>> extractM (0 :. 1) (Sz (2 :. 2)) m
+-- Array D Seq (Sz (2 :. 2))
+--   [ [ 2, 3 ]
+--   , [ 5, 6 ]
+--   ]
+-- >>> a <- resizeM (Sz (3 :> 2 :. 4)) $ Ix1 11 ... 34
+-- >>> a
+-- Array D Seq (Sz (3 :> 2 :. 4))
+--   [ [ [ 11, 12, 13, 14 ]
+--     , [ 15, 16, 17, 18 ]
+--     ]
+--   , [ [ 19, 20, 21, 22 ]
+--     , [ 23, 24, 25, 26 ]
+--     ]
+--   , [ [ 27, 28, 29, 30 ]
+--     , [ 31, 32, 33, 34 ]
+--     ]
+--   ]
+-- >>> extractM (0 :> 1 :. 1) (Sz (3 :> 1 :. 2)) a
+-- Array D Seq (Sz (3 :> 1 :. 2))
+--   [ [ [ 16, 17 ]
+--     ]
+--   , [ [ 24, 25 ]
+--     ]
+--   , [ [ 32, 33 ]
+--     ]
+--   ]
+--
+-- @since 0.3.0
 extractM ::
      forall r ix e m. (MonadThrow m, Index ix, Source r e)
   => ix -- ^ Starting index
@@ -112,6 +157,31 @@ extract' sIx newSz = throwEither . extractM sIx newSz
 
 -- | Similar to `extractM`, except it takes starting and ending index. Result array will not include
 -- the ending index.
+--
+-- ====__Examples__
+--
+-- >>> a <- resizeM (Sz (3 :> 2 :. 4)) $ Ix1 11 ... 34
+-- >>> a
+-- Array D Seq (Sz (3 :> 2 :. 4))
+--   [ [ [ 11, 12, 13, 14 ]
+--     , [ 15, 16, 17, 18 ]
+--     ]
+--   , [ [ 19, 20, 21, 22 ]
+--     , [ 23, 24, 25, 26 ]
+--     ]
+--   , [ [ 27, 28, 29, 30 ]
+--     , [ 31, 32, 33, 34 ]
+--     ]
+--   ]
+-- >>> extractFromToM (1 :> 0 :. 1) (3 :> 2 :. 4) a
+-- Array D Seq (Sz (2 :> 2 :. 3))
+--   [ [ [ 20, 21, 22 ]
+--     , [ 24, 25, 26 ]
+--     ]
+--   , [ [ 28, 29, 30 ]
+--     , [ 32, 33, 34 ]
+--     ]
+--   ]
 --
 -- @since 0.3.0
 extractFromToM ::

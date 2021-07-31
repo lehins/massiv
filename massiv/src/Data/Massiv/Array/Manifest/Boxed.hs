@@ -24,6 +24,7 @@ module Data.Massiv.Array.Manifest.Boxed
   , N
   , pattern N
   , Array(..)
+  , MArray(..)
   , wrapLazyArray
   , unwrapLazyArray
   , unwrapNormalForm
