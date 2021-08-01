@@ -42,18 +42,6 @@ benchmark any-all
                      , vector
   default-language:    Haskell2010
 
-benchmark sum
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      bench
-  main-is:             Sum.hs
-  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N6
-  build-depends:       base
-                     , criterion
-                     , massiv
-                     -- , massiv-simd
-                     , massiv-bench
-  default-language:    Haskell2010
-
 benchmark plus
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
@@ -169,6 +157,17 @@ benchmark concat
                      , vector
   default-language:    Haskell2010
 
+benchmark fold
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Fold.hs
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , massiv-bench
+  default-language:    Haskell2010
+
 benchmark filter
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
@@ -218,6 +217,21 @@ benchmark traverse
                      , vector
                      , primitive
                      , transformers
+  default-language:    Haskell2010
+
+benchmark list
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             List.hs
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , deepseq
+                     , massiv
+                     , massiv-bench
+                     , vector
+                     , primitive
+                     , random
   default-language:    Haskell2010
 
 -- benchmark fuse-seq

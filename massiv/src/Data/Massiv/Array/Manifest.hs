@@ -17,8 +17,6 @@
 module Data.Massiv.Array.Manifest
   ( -- * Manifest
     Manifest
-  , toManifest
-  , M
   -- * Boxed
   , B(..)
   , BL(..)
@@ -123,15 +121,16 @@ import Data.Massiv.Array.Ops.Fold
 import Data.Massiv.Core.Common
 import Data.Word (Word8)
 
--- | /O(1)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
+-- | /O(n)/ - Convert a strict ByteString into a manifest array. Will return `Nothing` if length
 -- doesn't match the total number of elements of new array.
 --
 -- @since 0.2.1
 fromByteString ::
-     Comp -- ^ Computation strategy
+     Load r Ix1 Word8
+  => Comp -- ^ Computation strategy
   -> ByteString -- ^ Strict ByteString to use as a source.
-  -> Array M Ix1 Word8
-fromByteString comp bs = MArray comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
+  -> Vector r Word8
+fromByteString comp bs = makeArrayLinear comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
 {-# INLINE fromByteString #-}
 
 -- | /O(n)/ - Convert any source array into a strict `ByteString`. In case when the source array is
@@ -154,28 +153,28 @@ toByteString = castToByteString .
 -- | /O(n)/ - Conversion of array monoidally into a ByteString `Builder`.
 --
 -- @since 0.2.1
-toBuilder :: Source r ix e => (e -> Builder) -> Array r ix e -> Builder
+toBuilder :: (Index ix, Source r e) => (e -> Builder) -> Array r ix e -> Builder
 toBuilder = foldMono
 {-# INLINE toBuilder #-}
 
 -- | /O(1)/ - Cast a storable array of `Word8` to ByteString `Builder`.
 --
 -- @since 0.5.0
-castToBuilder :: Array S ix Word8 -> Builder
+castToBuilder :: Index ix => Array S ix Word8 -> Builder
 castToBuilder = byteString . castToByteString
 {-# INLINE castToBuilder #-}
 
 -- | /O(1)/ - Cast a `S`torable array into a strict `ByteString`
 --
 -- @since 0.3.0
-castToByteString :: Array S ix Word8 -> ByteString
+castToByteString :: Index ix => Array S ix Word8 -> ByteString
 castToByteString = (\(fp, len) -> PS fp 0 len) . unsafeArrayToForeignPtr
 {-# INLINE castToByteString #-}
 
 -- | /O(1)/ - Cast a strict `ByteString` into a `S`torable array
 --
 -- @since 0.3.0
-castFromByteString :: Comp -> ByteString -> Array S Ix1 Word8
+castFromByteString :: Comp -> ByteString -> Vector S Word8
 castFromByteString comp (PS fp offset len) = unsafeArrayFromForeignPtr comp fp offset (Sz len)
 {-# INLINE castFromByteString #-}
 
@@ -193,7 +192,7 @@ castFromByteString comp (PS fp offset len) = unsafeArrayFromForeignPtr comp fp o
 -- after it was applyied to all elements of the array.
 --
 -- @since 0.5.5
-findIndex :: Manifest r ix e => (e -> Bool) -> Array r ix e -> Maybe ix
+findIndex :: (Index ix, Manifest r e) => (e -> Bool) -> Array r ix e -> Maybe ix
 findIndex f arr = go 0
   where
     !sz = size arr
@@ -211,7 +210,7 @@ findIndex f arr = go 0
 -- programs.
 --
 -- @since 0.5.9
-mallocCompute :: forall r ix e. (Source r ix e, Storable e) => Array r ix e -> IO (Array S ix e)
+mallocCompute :: forall r ix e. (Size r, Load r ix e, Storable e) => Array r ix e -> IO (Array S ix e)
 mallocCompute arr = do
   let sz = size arr
   marr <- unsafeMallocMArray sz

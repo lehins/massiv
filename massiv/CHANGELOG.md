@@ -1,3 +1,58 @@
+# 1.0.0
+
+* Addition of `sumArrays'`, `sumArraysM` and `productArrays'`, `productArraysM`.
+* Remove `Num`/`Fractional`/`Floating` instances for `D` and `DI` arrays. This was done to
+  prevent surprises as in: [#97](https://github.com/lehins/massiv/issues/97)
+* Remove helper class `Nested` and type family `NestedStuct`
+* Make `negate` in `Num` instance throw error for `Sz` in order to avoid surprising
+  behavior reported in: [#114](https://github.com/lehins/massiv/issues/114)
+* Add of `munsafeResize`
+* Add `uniformArray` and `uniformRangeArray`
+* Replace `isNonEmpty` with `isNotZeroSz` and added `isZeroSz`
+* Consolidate `Construct` class into `Load`
+* Introduce `Shape`, the parent of `Size`
+* Move `size` from `Load` into new class `Size`
+* Consolidate `Resize` into `Size`
+* Removed `maxSize` and replaced it with `maxLinearSize`
+* Remove specialized `DW` instances that used tuples as indices.
+* Get rid of `M` representation
+* Remove `R` type family and `Slice`, `InnerSlice` and `Extract` classes in favor of `D`.
+* Consolidate `OuterSlice` into `Source`
+* Add `Strategy` and move `setComp` (from `Construct`) and `getComp` (from `Load`) in there.
+* Remove `ix` from `Mutable`, `Manifest`, `Source`
+* Remove `liftArray2`. Instead add `liftArray2'` and `liftArray2M` that don't behave
+  like a `map` for singleton argument.
+* Expose `liftNumArray2M`
+* Prevent `showsArrayPrec` from changing index type
+* Change function argument to monadic action for `unstablePartitionM` and `unsafeUnstablePartitionM`
+* Replace `snull` with a more generic `isNull`
+* Switch `DL` loading function to run in `ST` monad, rather than in any `Monad m`.
+* Rename `msize` -> `sizeOfMArray`
+* Add `unsafeResizeMArray` and `unsafeLinearSliceMArray`
+* Rename:
+  * `loadArrayM` -> `iterArrayLinearM_`
+  * `loadArrayWithSetM` -> `iterArrayLinearWithSetM_`.
+  * `loadArrayWithStrideM` -> `iterArrayLinearWithStrideM_`.
+* Add `iterArrayLinearST_` and `iterArrayLinearWithSetST_` to `Load` class instead
+  of `loadArrayM` and `loadArrayWithSetM`.
+* Add `iterArrayLinearWithStrideST_` to `LoadStride` class instead of `loadArrayWithStrideM`.
+* Add new mutable functions:
+  * `resizeMArrayM` and `flattenMArray`,
+  * `outerSliceMArrayM` and `outerSlicesMArray`,
+  * `for2PrimM_` and `ifor2PrimM_`,
+  * `zipSwapM_`
+* Switch effectful mapping functions to use the representation specific
+  iteration. This means that they are now restricted to `Load` instead of
+  `Source`. Functions affected:
+  * `mapIO_`, `imapIO_`, `forIO_` and `iforIO_`
+  * `mapIO`, `imapIO`, `forIO` and `iforIO`
+* Add `Uniform`, `UniformRange` and `Random` instances for `Ix2`, `IxN`, `Dim`, `Sz` and `Stride`
+* Consolidate `Mutable` into `Manifest` type class and move the `MArray` data
+  family outside of the class.
+* Make sure empty arrays are always equal, regardless of their size.
+* Remove `LN` representation in favor of a standalone `List` newtype wrapper
+  around lists.
+
 # 0.6.1
 
 * Addition of `withLoadMArray_`, `withLoadMArrayS`, `withLoadMArrayS_`,
@@ -5,6 +60,7 @@
 * Addition of `replaceSlice` and `replaceOuterSlice`
 * Addition of `quicksortBy`, `quicksortByM` and `quicksortByM_`
 * Fix performance regression for `quicksort` and `quicksortM_` introduced in previous release.
+
 
 # 0.6.0
 
@@ -49,6 +105,14 @@
 * Fix `.><.`, `><.` and `.><` on empty matrices. Result is now guaranteed to be empty too.
 * Add `unwrapByteArrayOffset` and `unwrapMutableByteArrayOffset`
 * Add `fromByteArrayOffsetM` and `fromMutableByteArrayOffsetM`
+
+# 0.5.8
+
+* Improve loading of push arrays by adding `loadArrayWithSetM` and deprecating `defaultElement`.
+
+# 0.5.9
+
+* Add `mallocCompute`, `mallocCopy` and `unsafeMallocMArray`
 
 # 0.5.8
 
@@ -243,7 +307,7 @@
   * `generateArrayS`
 * Redefined most of the numeric operators with `Numeric` and `NumericFloat`. Will be
   required for SIMD operations.
-* `Num`, `Fractional` and `Applicative` for `D` changed behavior: instead of treating
+* `Num`, `Fractional` and `Applicative` for `D` and `DI` changed behavior: instead of treating
   singleton as a special array of any size it is treated as singleton.
 
 # 0.3.6

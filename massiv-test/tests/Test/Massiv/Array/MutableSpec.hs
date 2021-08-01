@@ -2,7 +2,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -14,7 +13,9 @@ import Test.Massiv.Core
 import Test.Massiv.Core.Mutable
 import Test.Massiv.Array.Delayed
 import Test.Massiv.Array.Mutable
+import Test.Massiv.Array.Load
 import GHC.Exts
+import Data.Int
 
 type MutableArraySpec r ix e
    = ( Show e
@@ -25,15 +26,13 @@ type MutableArraySpec r ix e
      , Function e
      , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Eq (Array (R r) Ix1 e)
-     , Show (Array (R r) Ix1 e)
-     , Load (R r) ix e
-     , Extract r ix e
-     , Resize r ix
+     , Eq (Vector r e)
+     , Show (Vector r e)
+     , Load r ix e
      , Arbitrary (Array r ix e)
-     , Mutable r ix e
+     , Manifest r e
      , Stream r ix e
-     , Construct r ix e)
+     )
 
 type MutableSpec r e
    = ( Typeable e
@@ -49,7 +48,7 @@ localMutableSpec :: forall r ix e. (MutableArraySpec r ix e) => Spec
 localMutableSpec = do
   describe "toStream/toList" $
     it "toStream" $ property (prop_toStream @r @ix @e)
-  describe "Mutable operations" $ do
+  describe "Manifest operations" $ do
     it "write" $ property (prop_Write @r @ix @e)
     it "modify" $ property (prop_Modify @r @ix @e)
     it "swap" $ property (prop_Swap @r @ix @e)
@@ -65,14 +64,40 @@ specMutableR = do
   mutableSpec @r @Ix2 @e
   mutableSpec @r @Ix3 @e
   mutableSpec @r @Ix4 @e
+  loadSpec @r @Ix1 @e
+  loadSpec @r @Ix2 @e
+  loadSpec @r @Ix3 @e
+  loadSpec @r @Ix4 @e
+  --mutableSpec @r @Ix5 @e -- slows down the test suite
   localMutableSpec @r @Ix1 @e
   localMutableSpec @r @Ix2 @e
   localMutableSpec @r @Ix3 @e
   localMutableSpec @r @Ix4 @e
   localMutableSpec @r @Ix5 @e
+  describe "NonFlat" $ do
+    specMutableNonFlatR @r @Ix2 @e
+    specMutableNonFlatR @r @Ix3 @e
+    specMutableNonFlatR @r @Ix4 @e
+    specMutableNonFlatR @r @Ix5 @e
   describe "toStream/toList" $
     it "toStreamIsList" $ property (prop_toStreamIsList @r @e)
-  --mutableSpec @r @Ix5 @e -- slows down the test suite
+
+specMutableNonFlatR ::
+     forall r ix e.
+     ( Arbitrary ix
+     , Typeable e
+     , Arbitrary e
+     , Index (Lower ix)
+     , Load r ix e
+     , Manifest r e
+     , Eq (Array r (Lower ix) e)
+     , Show (Array r (Lower ix) e)
+     , Show (Array r ix e)
+     )
+  => Spec
+specMutableNonFlatR = do
+  describe (showsArrayType @r @ix @e "") $
+    prop "outerSliceMArrayM" $ prop_outerSliceMArrayM @r @ix @e
 
 
 specUnboxedMutableR :: forall r e. MutableSpec r e => Spec
@@ -84,7 +109,12 @@ specUnboxedMutableR = do
   unsafeMutableUnboxedSpec @r @Ix4 @e
   unsafeMutableUnboxedSpec @r @Ix5 @e
 
-prop_Write :: (Mutable r ix e, Eq e, Show e) => Array r ix e -> ix -> e -> Property
+prop_Write ::
+     forall r ix e. (Index ix, Manifest r e, Eq e, Show e)
+  => Array r ix e
+  -> ix
+  -> e
+  -> Property
 prop_Write arr ix e =
   monadicIO $
   run $ do
@@ -112,7 +142,12 @@ prop_Write arr ix e =
           index' arr'' ix `shouldBe` e
 
 
-prop_Modify :: (Mutable r ix e, Eq e, Show e) => Array r ix e -> Fun e e -> ix -> Property
+prop_Modify ::
+     forall r ix e. (Index ix, Manifest r e, Eq e, Show e)
+  => Array r ix e
+  -> Fun e e
+  -> ix
+  -> Property
 prop_Modify arr f ix =
   monadicIO $
   run $ do
@@ -143,7 +178,12 @@ prop_Modify arr f ix =
           arr'' <- withMArrayS_ arr (\ma -> modify_ ma fM ix)
           index' arr'' ix `shouldBe` fe
 
-prop_Swap :: (Mutable r ix e, Eq e, Show e) => Array r ix e -> ix -> ix -> Property
+prop_Swap ::
+     forall r ix e. (Index ix, Manifest r e, Eq e, Show e)
+  => Array r ix e
+  -> ix
+  -> ix
+  -> Property
 prop_Swap arr ix1 ix2 =
   monadicIO $
   run $ do
@@ -183,15 +223,39 @@ prop_Swap arr ix1 ix2 =
           index' arr'' ix2 `shouldBe` e1
 
 
+prop_outerSliceMArrayM ::
+     forall r ix e.
+     ( Index ix
+     , Index (Lower ix)
+     , Manifest r e
+     , Eq (Array r (Lower ix) e)
+     , Show (Array r (Lower ix) e)
+     )
+  => ArrNE r ix e
+  -> Property
+prop_outerSliceMArrayM (ArrNE arr) =
+  forAll genIxInAndOut $ \(iIn, iOut) ->
+    propIO $ do
+      marr <- thawS arr
+      (outerSliceMArrayM marr iIn >>= freezeS) `shouldReturn` arr !> iIn
+      outerSliceMArrayM marr iOut `shouldThrow` (== IndexOutOfBoundsException (Sz nOuter) iOut)
+  where
+    (Sz nOuter, _) = unconsSz $ size arr
+    genIxInAndOut = do
+      let n = max 0 (nOuter - 1)
+      iIn <- chooseInt (0, n)
+      iOut <- oneof [chooseInt (minBound, -1), chooseInt (n, maxBound)]
+      pure (iIn, iOut)
+
 
 spec :: Spec
 spec = do
-  specMutableR @B @Int
-  specMutableR @N @Int
-  specMutableR @BL @Int
-  specUnboxedMutableR @S @Int
-  specUnboxedMutableR @P @Int
-  specUnboxedMutableR @U @Int
+  specMutableR @B @Int16
+  specMutableR @BN @Int16
+  specMutableR @BL @Int16
+  specUnboxedMutableR @S @Int16
+  specUnboxedMutableR @P @Int16
+  specUnboxedMutableR @U @Int16
   atomicIntSpec @Ix1
   atomicIntSpec @Ix2
   atomicIntSpec @Ix3

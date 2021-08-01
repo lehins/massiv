@@ -24,28 +24,27 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
   assertException
-    (\case
-       IndexZeroException _ -> True
-       _ -> False)
+    selectErrorCall
     (computeAs U (rangeStep' Seq from 0 to))
 
 prop_toFromListIsList ::
      (Show (Array U ix Int), GHC.IsList (Array U ix Int), Index ix)
   => Proxy ix
-  -> ArrNE U ix Int
+  -> Array U ix Int
   -> Property
-prop_toFromListIsList _ (ArrNE arr) = arr === GHC.fromList (GHC.toList arr)
+prop_toFromListIsList _ arr = arr === GHC.fromList (GHC.toList arr)
 
 
 prop_toFromList ::
-  forall ix . (Show (Array U ix Int), Nested LN ix Int, Ragged L ix Int)
+  forall ix . (Show (Array B ix Int), Ragged L ix Int)
   => Proxy ix
-  -> ArrNE U ix Int
+  -> Array B ix Int
   -> Property
-prop_toFromList _ (ArrNE arr) = comp === comp' .&&. arr === arr'
-  where comp = getComp arr
-        arr' = fromLists' comp (toLists arr)
-        comp' = getComp arr'
+prop_toFromList _ arr = comp === comp' .&&. arr === arr'
+  where
+    comp = getComp arr
+    arr' = fromLists' comp $ toLists arr
+    comp' = getComp arr'
 
 
 prop_excFromToListIx2 :: Comp -> [[Int]] -> Property
@@ -74,32 +73,32 @@ prop_excFromToListIx3 comp ls3
 
 specConstructIx1 :: Spec
 specConstructIx1 = do
-  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix1))
-  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix1))
-  it "rangeEqRangeStep1" $ property prop_rangeEqRangeStep1
-  it "rangeEqEnumFromN" $ property prop_rangeEqEnumFromN
-  it "rangeStepEqEnumFromStepN" $ property prop_rangeStepEqEnumFromStepN
-  it "rangeStepExc" $ property prop_rangeStepExc
+  prop "toFromList" $ prop_toFromList (Proxy :: Proxy Ix1)
+  prop "toFromListIsList" $ prop_toFromListIsList (Proxy :: Proxy Ix1)
+  prop "rangeEqRangeStep1" prop_rangeEqRangeStep1
+  prop "rangeEqEnumFromN" prop_rangeEqEnumFromN
+  prop "rangeStepEqEnumFromStepN" prop_rangeStepEqEnumFromStepN
+  prop "rangeStepExc" prop_rangeStepExc
 
 specConstructIx2 :: Spec
 specConstructIx2 = do
-  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix2))
-  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix2))
-  it "excFromToListIx2" $ property prop_excFromToListIx2
+  prop "toFromList" $ (prop_toFromList (Proxy :: Proxy Ix2))
+  prop "toFromListIsList" $ (prop_toFromListIsList (Proxy :: Proxy Ix2))
+  prop "excFromToListIx2" $ prop_excFromToListIx2
 
 specConstructIx3 :: Spec
 specConstructIx3 = do
-  it "toFromList" $ property (prop_toFromList (Proxy :: Proxy Ix3))
-  it "toFromListIsList" $ property (prop_toFromListIsList (Proxy :: Proxy Ix3))
-  it "excFromToListIx3" $ property prop_excFromToListIx3
+  prop "toFromList" $ (prop_toFromList (Proxy :: Proxy Ix3))
+  prop "toFromListIsList" $ (prop_toFromListIsList (Proxy :: Proxy Ix3))
+  prop "excFromToListIx3" $ prop_excFromToListIx3
 
 mkIntermediate :: Int -> Array U Ix1 Int
 mkIntermediate t = A.fromList Seq [t + 50, t + 75]
 
-initArr :: Array N Ix1 (Array U Ix1 Int)
+initArr :: Array BN Ix1 (Array U Ix1 Int)
 initArr = makeArray Seq (Sz1 3) mkIntermediate
 
-initArr2 :: Array N Ix2 (Array U Ix1 Int)
+initArr2 :: Array BN Ix2 (Array U Ix1 Int)
 initArr2 = makeArray Seq (Sz 2) (\ (x :. y) -> mkIntermediate (x+y))
 
 prop_unfoldrList :: Sz1 -> Fun Word (Int, Word) -> Word -> Property
@@ -127,4 +126,4 @@ spec = do
   describe "Ix2" specConstructIx2
   describe "Ix3" specConstructIx3
   describe "Expand" specExpand
-  describe "Unfolding" $ it "unfoldrS_" $ property prop_unfoldrList
+  describe "Unfolding" $ prop "unfoldrS_" prop_unfoldrList

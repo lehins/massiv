@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Request a feature be added to massiv or massiv-io
+about: Request a feature be added to massiv
 ---
 
 Make sure that you are using the latest release: https://hackage.haskell.org/package/massiv

@@ -15,11 +15,14 @@ module Data.Massiv.Array.Numeric
   ( -- * Numeric
     Numeric
   , NumericFloat
+  , liftNumArray2M
     -- ** Pointwise addition
   , (.+)
   , (+.)
   , (.+.)
   , (!+!)
+  , sumArraysM
+  , sumArrays'
   -- ** Pointwise subtraction
   , (.-)
   , (-.)
@@ -31,6 +34,8 @@ module Data.Massiv.Array.Numeric
   , (.*.)
   , (!*!)
   , (.^)
+  , productArraysM
+  , productArrays'
   -- ** Dot product
   , (!.!)
   , dotM
@@ -96,14 +101,13 @@ module Data.Massiv.Array.Numeric
   ) where
 
 import Data.Massiv.Array.Mutable
-import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Core
-import Data.Massiv.Core.Common
+import Data.Massiv.Core.Common as A
 import Data.Massiv.Core.Operations
 import Prelude as P
 import System.IO.Unsafe
@@ -116,28 +120,40 @@ infixr 8  .^, .^^
 infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
 infixl 6  !+!, .+., .+, +., !-!, .-., .-, -.
 
-liftArray2M ::
-     (Load r ix e, Numeric r e, MonadThrow m)
+-- | Similar to `liftArray2M`, except it can be applied only to representations
+-- with `Numeric` instance and result representation stays the same.
+--
+-- @since 1.0.0
+liftNumArray2M ::
+     (Index ix, Numeric r e, MonadThrow m)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-liftArray2M f a1 a2
+liftNumArray2M f a1 a2
   | size a1 == size a2 = pure $ unsafeLiftArray2 f a1 a2
-  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
-{-# INLINE liftArray2M #-}
+  | isZeroSz sz1 && isZeroSz sz2 = pure $ unsafeResize zeroSz a1
+  | otherwise = throwM $ SizeMismatchException sz1 sz2
+  where
+    !sz1 = size a1
+    !sz2 = size a2
+{-# INLINE liftNumArray2M #-}
 
 
-liftNumericArray2M ::
-     (Load r ix e, MonadThrow m)
+applyExactSize2M ::
+     (Index ix, Size r, MonadThrow m)
   => (Array r ix e -> Array r ix e -> Array r ix e)
   -> Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-liftNumericArray2M f a1 a2
+applyExactSize2M f a1 a2
   | size a1 == size a2 = pure $ f a1 a2
-  | otherwise = throwM $ SizeMismatchException (size a1) (size a2)
-{-# INLINE liftNumericArray2M #-}
+  | isZeroSz sz1 && isZeroSz sz2 = pure $ unsafeResize zeroSz a1
+  | otherwise = throwM $ SizeMismatchException sz1 sz2
+  where
+    !sz1 = size a1
+    !sz2 = size a2
+{-# INLINE applyExactSize2M #-}
 
 
 -- | Add two arrays together pointwise. Same as `!+!` but produces monadic computation
@@ -146,9 +162,8 @@ liftNumericArray2M f a1 a2
 -- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
-(.+.) ::
-     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.+.) = liftNumericArray2M additionPointwise
+(.+.) :: (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.+.) = applyExactSize2M additionPointwise
 {-# INLINE (.+.) #-}
 
 -- | Add two arrays together pointwise. Prefer to use monadic version of this function
@@ -165,7 +180,7 @@ liftNumericArray2M f a1 a2
 --   [ 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40 ]
 --
 -- @since 0.5.6
-(!+!) :: (Load r ix e, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!+!) :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
 (!+!) a1 a2 = throwEither (a1 .+. a2)
 {-# INLINE (!+!) #-}
 
@@ -190,8 +205,8 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.-.) ::
-     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.-.) = liftNumericArray2M subtractionPointwise
+     (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.-.) = applyExactSize2M subtractionPointwise
 {-# INLINE (.-.) #-}
 
 
@@ -209,7 +224,7 @@ liftNumericArray2M f a1 a2
 --   [ -20, -20, -20, -20, -20, -20, -20, -20, -20, -20, -20 ]
 --
 -- @since 0.5.6
-(!-!) :: (Load r ix e, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!-!) :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
 (!-!) a1 a2 = throwEither (a1 .-. a2)
 {-# INLINE (!-!) #-}
 
@@ -235,8 +250,8 @@ liftNumericArray2M f a1 a2
 --
 -- @since 0.4.0
 (.*.) ::
-     (Load r ix e, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
-(.*.) = liftNumericArray2M multiplicationPointwise
+     (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.*.) = applyExactSize2M multiplicationPointwise
 {-# INLINE (.*.) #-}
 
 
@@ -256,7 +271,7 @@ liftNumericArray2M f a1 a2
 --   [ 0, 21, 44, 69, 96, 125, 156, 189, 224, 261, 300 ]
 --
 -- @since 0.5.6
-(!*!) :: (Load r ix e, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!*!) :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
 (!*!) a1 a2 = throwEither (a1 .*. a2)
 {-# INLINE (!*!) #-}
 
@@ -320,7 +335,7 @@ liftNumericArray2M f a1 a2
 -- [Partial] Throws an impure exception when lengths of vectors do not match
 --
 -- @since 0.5.6
-(!.!) :: (Numeric r e, Source r Ix1 e) => Vector r e -> Vector r e -> e
+(!.!) :: (Numeric r e, Source r e) => Vector r e -> Vector r e -> e
 (!.!) v1 v2 = throwEither $ dotM v1 v2
 {-# INLINE (!.!) #-}
 
@@ -329,7 +344,7 @@ liftNumericArray2M f a1 a2
 -- /__Throws Exception__/: `SizeMismatchException` when lengths of vectors do not match
 --
 -- @since 0.5.6
-dotM :: (FoldNumeric r e, Source r Ix1 e, MonadThrow m) => Vector r e -> Vector r e -> m e
+dotM :: (FoldNumeric r e, Source r e, MonadThrow m) => Vector r e -> Vector r e -> m e
 dotM v1 v2
   | size v1 /= size v2 = throwM $ SizeMismatchException (size v1) (size v2)
   | comp == Seq = pure $! unsafeDotProduct v1 v2
@@ -340,14 +355,14 @@ dotM v1 v2
 
 
 unsafeDotProductIO ::
-     (MonadUnliftIO m, FoldNumeric r b, Source r ix b)
+     (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
   => Array r ix b
   -> Array r ix b
   -> m b
 unsafeDotProductIO v1 v2 = do
   results <-
     withScheduler comp $ \scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> liftIO $ do
         let n = SafeSz chunkLength
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $
@@ -367,21 +382,21 @@ unsafeDotProductIO v1 v2 = do
 -- | Compute L2 norm of an array.
 --
 -- @since 0.5.6
-normL2 :: (Floating e, FoldNumeric r e, Source r ix e) => Array r ix e -> e
+normL2 :: (FoldNumeric r e, Source r e, Index ix, Floating e) => Array r ix e -> e
 normL2 v
   | getComp v == Seq = sqrt $! powerSumArray v 2
   | otherwise = sqrt $! unsafePerformIO $ powerSumArrayIO v 2
 {-# INLINE normL2 #-}
 
 powerSumArrayIO ::
-     (MonadUnliftIO m, FoldNumeric r b, Source r ix b)
+     (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
   => Array r ix b
   -> Int
   -> m b
 powerSumArrayIO v p = do
   results <-
     withScheduler (getComp v) $ \scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> liftIO $ do
         let n = SafeSz chunkLength
         loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $ pure $! powerSumArray (unsafeLinearSlice start n v) p
@@ -401,7 +416,7 @@ powerSumArrayIO v p = do
 --
 -- @since 0.5.6
 (.><) ::
-     (MonadThrow m, FoldNumeric r e, Source r Ix1 e, Source r Ix2 e)
+     (MonadThrow m, FoldNumeric r e, Source r e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector D e)
@@ -422,7 +437,7 @@ powerSumArrayIO v p = do
 --
 -- @since 0.5.7
 multiplyMatrixByVector ::
-     (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
+     (MonadThrow m, Numeric r e, Manifest r e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector r e)
@@ -436,7 +451,7 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 --
 -- @since 0.5.6
 (!><) ::
-     (Numeric r e, Source r Ix1 e, Source r Ix2 e)
+     (Numeric r e, Source r e)
   => Matrix r e -- ^ Matrix
   -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
   -> Vector D e
@@ -450,7 +465,7 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(><.) :: (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e) =>
+(><.) :: (MonadThrow m, Numeric r e, Manifest r e) =>
          Vector r e -- ^ Row vector
       -> Matrix r e -- ^ Matrix
       -> m (Vector r e)
@@ -464,13 +479,13 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 --
 -- @since 0.5.7
 multiplyVectorByMatrix ::
-     (MonadThrow m, Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
+     (MonadThrow m, Numeric r e, Manifest r e)
   => Vector r e -- ^ Row vector
   -> Matrix r e -- ^ Matrix
   -> m (Vector r e)
 multiplyVectorByMatrix v mm
   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
-  | mRows == 0 || mCols == 0 = pure $ setComp comp empty
+  | mRows == 0 || mCols == 0 = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
   | otherwise =
     pure $!
     unsafePerformIO $ do
@@ -501,7 +516,7 @@ multiplyVectorByMatrix v mm
 --
 -- @since 0.5.6
 (><!) ::
-     (Numeric r e, Mutable r Ix1 e, Mutable r Ix2 e)
+     (Numeric r e, Manifest r e)
   => Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
   -> Matrix r e -- ^ Matrix
   -> Vector r e
@@ -516,6 +531,7 @@ multiplyVectorByMatrix v mm
 --
 -- ====__Examples__
 --
+-- >>> import Data.Massiv.Array
 -- >>> a1 = makeArrayR P Seq (Sz2 5 6) $ \(i :. j) -> i + j
 -- >>> a2 = makeArrayR P Seq (Sz2 6 5) $ \(i :. j) -> i - j
 -- >>> a1 !><! a2
@@ -528,7 +544,7 @@ multiplyVectorByMatrix v mm
 --   ]
 --
 -- @since 0.5.6
-(!><!) :: (Numeric r e, Mutable r Ix2 e) => Matrix r e -> Matrix r e -> Matrix r e
+(!><!) :: (Numeric r e, Manifest r e) => Matrix r e -> Matrix r e -> Matrix r e
 (!><!) a1 a2 = throwEither (a1 `multiplyMatrices` a2)
 {-# INLINE (!><!) #-}
 
@@ -538,7 +554,7 @@ multiplyVectorByMatrix v mm
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(.><.) :: (Numeric r e, Mutable r Ix2 e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+(.><.) :: (Numeric r e, Manifest r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 (.><.) = multiplyMatrices
 {-# INLINE (.><.) #-}
 
@@ -547,12 +563,12 @@ multiplyVectorByMatrix v mm
 --
 -- @since 0.5.6
 multiplyMatrices ::
-     (Numeric r e, Mutable r Ix2 e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+     (Numeric r e, Manifest r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 multiplyMatrices arrA arrB
    -- mA == 1 = -- TODO: call multiplyVectorByMatrix
    -- nA == 1 = -- TODO: call multiplyMatrixByVector
   | nA /= mB = throwM $ SizeMismatchException (size arrA) (size arrB)
-  | isEmpty arrA || isEmpty arrB = pure $ setComp comp empty
+  | isEmpty arrA || isEmpty arrB = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
   | otherwise = pure $! unsafePerformIO $ do
     marrC <- newMArray (SafeSz (mA :. nB)) 0
     withScheduler_ comp $ \scheduler -> do
@@ -693,7 +709,7 @@ multiplyMatrices arrA arrB
 --
 -- @since 0.5.6
 multiplyMatricesTransposed ::
-     (Numeric r e, Manifest r Ix2 e, MonadThrow m)
+     (Numeric r e, Manifest r e, MonadThrow m)
   => Matrix r e
   -> Matrix r e
   -> m (Matrix D e)
@@ -710,8 +726,6 @@ multiplyMatricesTransposed arr1 arr2
     SafeSz (m1 :. n1) = size arr1
     SafeSz (n2 :. m2) = size arr2
 {-# INLINE multiplyMatricesTransposed #-}
-
-
 
 -- | Create an indentity matrix.
 --
@@ -813,11 +827,11 @@ signumA = unsafeLiftArray signum
 --
 -- @since 0.4.0
 (./.) ::
-     (Load r ix e, NumericFloat r e, MonadThrow m)
+     (Index ix, NumericFloat r e, MonadThrow m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-(./.) = liftNumericArray2M divisionPointwise
+(./.) = applyExactSize2M divisionPointwise
 {-# INLINE (./.) #-}
 
 
@@ -835,7 +849,7 @@ signumA = unsafeLiftArray signum
 --   [ 0.2, 0.20792079, 0.21568628, 0.22330096, 0.23076923 ]
 --
 -- @since 0.5.6
-(!/!) :: (Load r ix e, NumericFloat r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!/!) :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e -> Array r ix e
 (!/!) a1 a2 = throwEither (a1 ./. a2)
 {-# INLINE (!/!) #-}
 
@@ -928,9 +942,9 @@ logA = unsafeLiftArray log
 --
 -- @since 0.4.0
 logBaseA
-  :: (Source r1 ix e, Source r2 ix e, Floating e)
+  :: (Index ix, Source r1 e, Source r2 e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-logBaseA = liftArray2Matching logBase
+logBaseA = liftArray2' logBase
 {-# INLINE logBaseA #-}
 -- TODO: siwtch to
 -- (breaking) logBaseA :: Array r ix e -> e -> Array D ix e
@@ -948,9 +962,9 @@ logBaseA = liftArray2Matching logBase
 --
 -- @since 0.4.0
 (.**)
-  :: (Source r1 ix e, Source r2 ix e, Floating e)
+  :: (Index ix, Source r1 e, Source r2 e, Floating e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-(.**) = liftArray2Matching (**)
+(.**) = liftArray2' (**)
 {-# INLINE (.**) #-}
 -- TODO:
 -- !**! :: Array r1 ix e -> Array r2 ix e -> Array D ix e
@@ -1077,9 +1091,9 @@ atanhA = unsafeLiftArray atanh
 --
 -- @since 0.1.0
 quotA
-  :: (Source r1 ix e, Source r2 ix e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-quotA = liftArray2Matching quot
+quotA = liftArray2' quot
 {-# INLINE quotA #-}
 
 
@@ -1091,9 +1105,9 @@ quotA = liftArray2Matching quot
 --
 -- @since 0.1.0
 remA
-  :: (Source r1 ix e, Source r2 ix e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-remA = liftArray2Matching rem
+remA = liftArray2' rem
 {-# INLINE remA #-}
 
 -- | Perform a pointwise integer division where first array contains numerators and the
@@ -1105,9 +1119,9 @@ remA = liftArray2Matching rem
 --
 -- @since 0.1.0
 divA
-  :: (Source r1 ix e, Source r2 ix e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-divA = liftArray2Matching div
+divA = liftArray2' div
 {-# INLINE divA #-}
 -- TODO:
 --  * Array r ix e -> Array r ix e -> m (Array r ix e)
@@ -1122,9 +1136,9 @@ divA = liftArray2Matching div
 --
 -- @since 0.1.0
 modA
-  :: (Source r1 ix e, Source r2 ix e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> Array D ix e
-modA = liftArray2Matching mod
+modA = liftArray2' mod
 {-# INLINE modA #-}
 
 
@@ -1138,9 +1152,9 @@ modA = liftArray2Matching mod
 --
 -- @since 0.1.0
 quotRemA
-  :: (Source r1 ix e, Source r2 ix e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-quotRemA arr1 = A.unzip . liftArray2Matching quotRem arr1
+quotRemA arr1 = A.unzip . liftArray2' quotRem arr1
 {-# INLINE quotRemA #-}
 
 
@@ -1153,9 +1167,9 @@ quotRemA arr1 = A.unzip . liftArray2Matching quotRem arr1
 --
 -- @since 0.1.0
 divModA
-  :: (Source r1 ix e, Source r2 ix e, Integral e)
+  :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
   => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
-divModA arr1 = A.unzip . liftArray2Matching divMod arr1
+divModA arr1 = A.unzip . liftArray2' divMod arr1
 {-# INLINE divModA #-}
 
 
@@ -1165,9 +1179,7 @@ divModA arr1 = A.unzip . liftArray2Matching divMod arr1
 -- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
-truncateA
-  :: (Source r ix a, RealFrac a, Integral e)
-  => Array r ix a -> Array D ix e
+truncateA :: (Index ix, Source r a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 truncateA = A.map truncate
 {-# INLINE truncateA #-}
 
@@ -1177,7 +1189,7 @@ truncateA = A.map truncate
 -- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
-roundA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
+roundA :: (Index ix, Source r a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 roundA = A.map round
 {-# INLINE roundA #-}
 
@@ -1187,7 +1199,7 @@ roundA = A.map round
 -- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
-ceilingA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
+ceilingA :: (Index ix, Source r a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 ceilingA = A.map ceiling
 {-# INLINE ceilingA #-}
 
@@ -1197,7 +1209,7 @@ ceilingA = A.map ceiling
 -- > truncateA arr == map truncate arr
 --
 -- @since 0.1.0
-floorA :: (Source r ix a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
+floorA :: (Index ix, Source r a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 floorA = A.map floor
 {-# INLINE floorA #-}
 
@@ -1209,9 +1221,151 @@ floorA = A.map floor
 --
 -- @since 0.1.0
 atan2A ::
-     (Load r ix e, Numeric r e, RealFloat e, MonadThrow m)
+     (Index ix, Numeric r e, RealFloat e, MonadThrow m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
-atan2A = liftArray2M atan2
+atan2A = liftNumArray2M atan2
 {-# INLINE atan2A #-}
+
+-- | Same as `sumArraysM`, compute sum of arrays pointwise. All arrays must have the same
+-- size, otherwise it will result in an error.
+--
+-- @since 1.0.0
+sumArrays' :: (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
+sumArrays' = throwEither . sumArraysM
+{-# INLINE sumArrays' #-}
+
+-- | Compute sum of arrays pointwise. All arrays must have the same size.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> sumArraysM [] :: IO (Array P Ix3 Int)
+-- Array P Seq (Sz (0 :> 0 :. 0))
+--   [  ]
+-- >>> arr = A.makeArrayR P Seq (Sz3 4 5 6) $ \(i :> j :. k) -> i + j * k
+-- >>> arr
+-- Array P Seq (Sz (4 :> 5 :. 6))
+--   [ [ [ 0, 0, 0, 0, 0, 0 ]
+--     , [ 0, 1, 2, 3, 4, 5 ]
+--     , [ 0, 2, 4, 6, 8, 10 ]
+--     , [ 0, 3, 6, 9, 12, 15 ]
+--     , [ 0, 4, 8, 12, 16, 20 ]
+--     ]
+--   , [ [ 1, 1, 1, 1, 1, 1 ]
+--     , [ 1, 2, 3, 4, 5, 6 ]
+--     , [ 1, 3, 5, 7, 9, 11 ]
+--     , [ 1, 4, 7, 10, 13, 16 ]
+--     , [ 1, 5, 9, 13, 17, 21 ]
+--     ]
+--   , [ [ 2, 2, 2, 2, 2, 2 ]
+--     , [ 2, 3, 4, 5, 6, 7 ]
+--     , [ 2, 4, 6, 8, 10, 12 ]
+--     , [ 2, 5, 8, 11, 14, 17 ]
+--     , [ 2, 6, 10, 14, 18, 22 ]
+--     ]
+--   , [ [ 3, 3, 3, 3, 3, 3 ]
+--     , [ 3, 4, 5, 6, 7, 8 ]
+--     , [ 3, 5, 7, 9, 11, 13 ]
+--     , [ 3, 6, 9, 12, 15, 18 ]
+--     , [ 3, 7, 11, 15, 19, 23 ]
+--     ]
+--   ]
+-- >>> sumArraysM $ outerSlices arr
+-- Array P Seq (Sz (5 :. 6))
+--   [ [ 6, 6, 6, 6, 6, 6 ]
+--   , [ 6, 10, 14, 18, 22, 26 ]
+--   , [ 6, 14, 22, 30, 38, 46 ]
+--   , [ 6, 18, 30, 42, 54, 66 ]
+--   , [ 6, 22, 38, 54, 70, 86 ]
+--   ]
+-- >>> sumArraysM $ innerSlices arr
+-- Array D Seq (Sz (4 :. 5))
+--   [ [ 0, 15, 30, 45, 60 ]
+--   , [ 6, 21, 36, 51, 66 ]
+--   , [ 12, 27, 42, 57, 72 ]
+--   , [ 18, 33, 48, 63, 78 ]
+--   ]
+--
+-- @since 1.0.0
+sumArraysM ::
+     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+sumArraysM as =
+  case F.toList as of
+    [] -> pure empty
+    (x:xs) -> F.foldlM (.+.) x xs
+{-# INLINE sumArraysM #-}
+-- OPTIMIZE: Allocate a single result array and write sums into it incrementally.
+
+-- | Same as `productArraysM`. Compute product of arrays pointwise. All arrays must have
+-- the same size, otherwise it
+-- will result in an error.
+--
+-- @since 1.0.0
+productArrays' ::
+     (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
+productArrays' = throwEither . productArraysM
+{-# INLINE productArrays' #-}
+
+
+-- | Compute product of arrays pointwise. All arrays must have the same size.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> productArraysM [] :: IO (Array P Ix3 Int)
+-- Array P Seq (Sz (0 :> 0 :. 0))
+--   [  ]
+-- >>> arr = A.makeArrayR P Seq (Sz3 4 5 6) $ \(i :> j :. k) -> i + j * k
+-- >>> arr
+-- Array P Seq (Sz (4 :> 5 :. 6))
+--   [ [ [ 0, 0, 0, 0, 0, 0 ]
+--     , [ 0, 1, 2, 3, 4, 5 ]
+--     , [ 0, 2, 4, 6, 8, 10 ]
+--     , [ 0, 3, 6, 9, 12, 15 ]
+--     , [ 0, 4, 8, 12, 16, 20 ]
+--     ]
+--   , [ [ 1, 1, 1, 1, 1, 1 ]
+--     , [ 1, 2, 3, 4, 5, 6 ]
+--     , [ 1, 3, 5, 7, 9, 11 ]
+--     , [ 1, 4, 7, 10, 13, 16 ]
+--     , [ 1, 5, 9, 13, 17, 21 ]
+--     ]
+--   , [ [ 2, 2, 2, 2, 2, 2 ]
+--     , [ 2, 3, 4, 5, 6, 7 ]
+--     , [ 2, 4, 6, 8, 10, 12 ]
+--     , [ 2, 5, 8, 11, 14, 17 ]
+--     , [ 2, 6, 10, 14, 18, 22 ]
+--     ]
+--   , [ [ 3, 3, 3, 3, 3, 3 ]
+--     , [ 3, 4, 5, 6, 7, 8 ]
+--     , [ 3, 5, 7, 9, 11, 13 ]
+--     , [ 3, 6, 9, 12, 15, 18 ]
+--     , [ 3, 7, 11, 15, 19, 23 ]
+--     ]
+--   ]
+-- >>> productArraysM $ outerSlices arr
+-- Array P Seq (Sz (5 :. 6))
+--   [ [ 0, 0, 0, 0, 0, 0 ]
+--   , [ 0, 24, 120, 360, 840, 1680 ]
+--   , [ 0, 120, 840, 3024, 7920, 17160 ]
+--   , [ 0, 360, 3024, 11880, 32760, 73440 ]
+--   , [ 0, 840, 7920, 32760, 93024, 212520 ]
+--   ]
+-- >>> productArraysM $ innerSlices arr
+-- Array D Seq (Sz (4 :. 5))
+--   [ [ 0, 0, 0, 0, 0 ]
+--   , [ 1, 720, 10395, 58240, 208845 ]
+--   , [ 64, 5040, 46080, 209440, 665280 ]
+--   , [ 729, 20160, 135135, 524880, 1514205 ]
+--   ]
+--
+-- @since 1.0.0
+productArraysM ::
+     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+productArraysM as =
+  case F.toList as of
+    [] -> pure empty
+    (x:xs) -> F.foldlM (.*.) x xs
+{-# INLINE productArraysM #-}

@@ -1,3 +1,7 @@
+# 1.0.0
+
+* Support for massiv-1.0.0.0
+
 # 0.1.7
 
 * Add `propIO`

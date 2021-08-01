@@ -41,6 +41,7 @@ import Data.Massiv.Array.Unsafe (Sz(SafeSz))
 import Data.Massiv.Core.Index
 import Data.Proxy
 import Data.Typeable
+import GHC.Exception (ErrorCall(ErrorCallWithLocation))
 import Test.Massiv.Utils
 
 
@@ -419,52 +420,53 @@ ixSpec ::
 ixSpec = do
   let threshold = 50000
   describe "Safety" $ do
-    it "IsSafeIndex" $ property $ prop_IsSafeIndex @ix
-    it "RepairSafeIx" $ property $ prop_RepairSafeIx @ix
+    prop "IsSafeIndex" $ prop_IsSafeIndex @ix
+    prop "RepairSafeIx" $ prop_RepairSafeIx @ix
   describe "Lifting" $
-    it "Lift/Lift2" $ property $ prop_LiftLift2 @ix
+    prop "Lift/Lift2" $ prop_LiftLift2 @ix
   describe "Linear" $ do
-    it "ToFromLinearIndex" $ property $ prop_ToFromLinearIndex @ix
-    it "FromToLinearIndex" $ property $ prop_FromToLinearIndex @ix
+    prop "ToFromLinearIndex" $ prop_ToFromLinearIndex @ix
+    prop "FromToLinearIndex" $ prop_FromToLinearIndex @ix
   describe "Iterator" $ do
-    it "CountElements" $ property $ prop_CountElements @ix threshold
-    it "Monotonic" $ property $ prop_IterMonotonic @ix threshold
-    it "MonotonicBackwards" $ property $ prop_IterMonotonicBackwards @ix threshold
-    it "MonotonicM" $ property $ prop_IterMonotonicM @ix threshold
-    it "MonotonicBackwardsM" $ property $ prop_IterMonotonicBackwardsM @ix threshold
+    prop "CountElements" $ prop_CountElements @ix threshold
+    prop "Monotonic" $ prop_IterMonotonic @ix threshold
+    prop "MonotonicBackwards" $ prop_IterMonotonicBackwards @ix threshold
+    prop "MonotonicM" $ prop_IterMonotonicM @ix threshold
+    prop "MonotonicBackwardsM" $ prop_IterMonotonicBackwardsM @ix threshold
   describe "Border" $
-    it "BorderRepairSafe" $ property $ prop_BorderRepairSafe @ix
+    prop "BorderRepairSafe" $ prop_BorderRepairSafe @ix
   describe "SetGetDrop" $ do
-    it "SetAll" $ property $ prop_SetAll @ix
-    it "SetGet" $ property $ prop_SetGet @ix
-    it "GetDropInsert" $ property $ prop_GetDropInsert @ix
-    it "PullOutInsert" $ property $ prop_PullOutInsert @ix
-    it "UnconsCons" $ property $ prop_UnconsCons @ix
-    it "UnsnocSnoc" $ property $ prop_UnsnocSnoc @ix
+    prop "SetAll" $ prop_SetAll @ix
+    prop "SetGet" $ prop_SetGet @ix
+    prop "GetDropInsert" $ prop_GetDropInsert @ix
+    prop "PullOutInsert" $ prop_PullOutInsert @ix
+    prop "UnconsCons" $ prop_UnconsCons @ix
+    prop "UnsnocSnoc" $ prop_UnsnocSnoc @ix
   describe "IndexDimensionException" $ do
-    it "getDimException" $ property $ prop_getDimException @ix
-    it "setDimException" $ property $ prop_setDimException @ix
-    it "PullOutDimException" $ property $ prop_PullOutDimException @ix
-    it "InsertDimException" $ property $ prop_InsertDimException @ix
+    prop "getDimException" $ prop_getDimException @ix
+    prop "setDimException" $ prop_setDimException @ix
+    prop "PullOutDimException" $ prop_PullOutDimException @ix
+    prop "InsertDimException" $ prop_InsertDimException @ix
   describe "Dimension" $ do
-    it "GetInnerDimension" $ property $ \(ix :: ix) -> lastDim ix === getDimension ix Dim1
-    it "GetOuterDimension" $ property $
+    prop "GetInnerDimension" $ \(ix :: ix) -> lastDim ix === getDimension ix Dim1
+    prop "GetOuterDimension" $
       \(ix :: ix) -> headDim ix === getDimension ix (DimN :: Dimension (Dimensions ix))
-    it "SetInnerDimension" $ property $
+    prop "SetInnerDimension" $
       \(ix :: ix) i -> snocDim (initDim ix) i === setDimension ix Dim1 i
-    it "SetOuterDimension" $ property $
-      \(ix :: ix) i -> consDim i (tailDim ix) === setDimension ix (DimN :: Dimension (Dimensions ix)) i
-    it "DropInnerDimension" $ property $ \(ix :: ix) -> initDim ix === dropDimension ix Dim1
-    it "DropOuterDimension" $ property $
+    prop "SetOuterDimension" $
+      \(ix :: ix) i -> consDim i (tailDim ix) ===
+                       setDimension ix (DimN :: Dimension (Dimensions ix)) i
+    prop "DropInnerDimension" $ \(ix :: ix) -> initDim ix === dropDimension ix Dim1
+    prop "DropOuterDimension" $
       \(ix :: ix) -> tailDim ix === dropDimension ix (DimN :: Dimension (Dimensions ix))
-    it "InsertInnerDimension" $ property $
+    prop "InsertInnerDimension" $
       \(ixl :: Lower ix) i -> (snocDim ixl i :: ix) === insertDimension ixl Dim1 i
-    it "InsertOuterDimension" $ property $
+    prop "InsertOuterDimension" $
       \(ixl :: Lower ix) i -> (consDim i ixl :: ix) ===
                                insertDimension ixl (DimN :: Dimension (Dimensions ix)) i
-    it "PullOutInnerDimension" $ property $
+    prop "PullOutInnerDimension" $
       \(ix :: ix) -> unsnocDim ix === uncurry (flip (,)) (pullOutDimension ix Dim1)
-    it "PullInnerOuterDimension" $ property $
+    prop "PullInnerOuterDimension" $
       \(ix :: ix) -> unconsDim ix ===
                                pullOutDimension ix (DimN :: Dimension (Dimensions ix))
 
@@ -479,21 +481,21 @@ ix2UpSpec ::
   => Spec
 ix2UpSpec =
   describe "Higher/Lower" $ do
-    it "UnconsGetDrop" $ property $ prop_UnconsGetDrop @ix
-    it "UnsnocGetDrop" $ property $ prop_UnsnocGetDrop @ix
+    prop "UnconsGetDrop" $ prop_UnconsGetDrop @ix
+    prop "UnsnocGetDrop" $ prop_UnsnocGetDrop @ix
 
 
 -- | Spec that validates the Num instance for any `Index ix => ix`
 ixNumSpec :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
 ixNumSpec = do
   describe ("Num (" ++ showsType @ix ")") $ do
-    it "(+)" $ property $ prop_BinaryNumIx @ix (+)
-    it "(-)" $ property $ prop_BinaryNumIx @ix (-)
-    it "(*)" $ property $ prop_BinaryNumIx @ix (*)
-    it "negate" $ property $ prop_UnaryNumIx @ix negate
-    it "abs" $ property $ prop_UnaryNumIx @ix abs
-    it "signum" $ property $ prop_UnaryNumIx @ix signum
-    it "fromInteger" $ property $ \ (i :: Int) ->
+    prop "(+)" $ prop_BinaryNumIx @ix (+)
+    prop "(-)" $ prop_BinaryNumIx @ix (-)
+    prop "(*)" $ prop_BinaryNumIx @ix (*)
+    prop "negate" $ prop_UnaryNumIx @ix negate
+    prop "abs" $ prop_UnaryNumIx @ix abs
+    prop "signum" $ prop_UnaryNumIx @ix signum
+    prop "fromInteger" $ \ (i :: Int) ->
       (fromIntegral i :: ix) === liftIndex (const i) zeroIndex
   describe "Constants" $ do
     it "zeroIndex" $ (zeroIndex :: ix) `shouldBe` 0
@@ -503,15 +505,19 @@ ixNumSpec = do
 szNumSpec :: forall ix . (Typeable ix, Num ix, Index ix, Arbitrary ix) => Spec
 szNumSpec = do
   describe ("Num (" ++ showsType @(Sz ix) ")") $ do
-    it "(+)" $ property $ prop_BinaryNumSz @ix (+)
-    it "(-)" $ property $ prop_BinaryNumSz @ix (-)
-    it "(*)" $ property $ prop_BinaryNumSz @ix (*)
-    it "negate" $ property $ prop_UnaryNumSz @ix negate
-    it "abs" $ property $ prop_UnaryNumSz @ix abs
-    it "signum" $ property $ prop_UnaryNumSz @ix signum
-    it "fromInteger" $ property $ \ (i :: Int) ->
+    prop "(+)" $ prop_BinaryNumSz @ix (+)
+    prop "(-)" $ prop_BinaryNumSz @ix (-)
+    prop "(*)" $ prop_BinaryNumSz @ix (*)
+    prop "negate (throws error on non-zero)" $ \sz ->
+      sz /= zeroSz ==> assertException
+                       (\(ErrorCallWithLocation err loc) -> err `deepseq` loc `deepseq` True)
+                       (negate sz :: Sz ix)
+
+    prop "abs" $ prop_UnaryNumSz @ix abs
+    prop "signum" $ prop_UnaryNumSz @ix signum
+    prop "fromInteger" $ \ (i :: Int) ->
       (fromIntegral i :: Sz ix) === SafeSz (pureIndex (max 0 i))
-    it "fromIx" $ property $ \ (ix :: ix) -> unSz (Sz ix) === liftIndex (max 0) ix
+    prop "fromIx" $ \ (ix :: ix) -> unSz (Sz ix) === liftIndex (max 0) ix
   describe "Constants" $ do
     it "zeroSz" $ (zeroSz :: Sz ix) `shouldBe` 0
     it "oneSz" $ (oneSz :: Sz ix) `shouldBe` 1
@@ -529,17 +535,17 @@ szSpec ::
   => Spec
 szSpec = do
   describe "Higher/Lower" $ do
-    it "LiftSzNegate" $ property $ \ (sz :: Sz ix) -> liftSz negate sz === zeroSz
-    it "UnconsCons" $ property $ \ (sz :: Sz ix) -> sz === uncurry consSz (unconsSz sz)
-    it "UnsnocSnoc" $ property $ \ (sz :: Sz ix) -> sz === uncurry snocSz (unsnocSz sz)
-    it "PullOutInsert" $ property $ prop_PullOutInsertSize @ix
-    it "SetSzInnerSnoc" $ property $
+    prop "LiftSzNegate" $ \ (sz :: Sz ix) -> liftSz negate sz === zeroSz
+    prop "UnconsCons" $ \ (sz :: Sz ix) -> sz === uncurry consSz (unconsSz sz)
+    prop "UnsnocSnoc" $ \ (sz :: Sz ix) -> sz === uncurry snocSz (unsnocSz sz)
+    prop "PullOutInsert" $ prop_PullOutInsertSize @ix
+    prop "SetSzInnerSnoc" $
       \ (sz :: Sz ix) i -> setSzM sz 1 i `shouldReturn` snocSz (fst $ unsnocSz sz) i
   describe "Number of Elements" $ do
-    it "TotalElem" $ property $
+    prop "TotalElem" $
       \(sz :: Sz ix) -> totalElem sz === foldlIndex (*) 1 (unSz sz)
-    it "IsNonEmpty" $ property $
-      \(sz :: Sz ix) -> isNonEmpty sz === foldlIndex (\a x -> a && x > 0) True (unSz sz)
+    prop "IsNonZeroSz" $
+      \(sz :: Sz ix) -> isNotZeroSz sz === foldlIndex (\a x -> a && x > 0) True (unSz sz)
   describe "Iterators" $ do
-    it "IterLinearM" $ property $ prop_IterLinearM @ix
-    it "IterLinearM_" $ property $ prop_IterLinearM_ @ix
+    prop "IterLinearM" $ prop_IterLinearM @ix
+    prop "IterLinearM_" $ prop_IterLinearM_ @ix

@@ -17,6 +17,7 @@ module Data.Massiv.Core.Index
   , pattern Ix1
   , type Ix2(Ix2, (:.))
   , IxN((:>), Ix3, Ix4, Ix5)
+  , HighIxN
   , type Ix3
   , type Ix4
   , type Ix5
@@ -63,7 +64,8 @@ module Data.Massiv.Core.Index
   , Index(..)
   , zeroIndex
   , oneIndex
-  , isNonEmpty
+  , isZeroSz
+  , isNotZeroSz
   , headDim
   , tailDim
   , lastDim
@@ -97,17 +99,43 @@ module Data.Massiv.Core.Index
   ) where
 
 import Control.DeepSeq
-import Control.Exception (throw)
 import Control.Monad.Catch (MonadThrow(..))
 import Data.Coerce
 import Data.Functor.Identity (runIdentity)
-import Data.Massiv.Core.Exception (guardNumberOfElements)
+import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index.Internal
 import Data.Massiv.Core.Index.Ix
 import Data.Massiv.Core.Index.Stride
 import Data.Massiv.Core.Index.Tuple
 import Data.Massiv.Core.Iterator
 import GHC.TypeLits
+
+
+-- | 1-dimensional type synonym for size.
+--
+-- @since 0.3.0
+type Sz1 = Sz Ix1
+
+-- | 2-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz2 = Sz Ix2
+
+-- | 3-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz3 = Sz Ix3
+
+-- | 4-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz4 = Sz Ix4
+
+-- | 5-dimensional size type synonym.
+--
+-- @since 0.3.0
+type Sz5 = Sz Ix5
+
 
 -- | Approach to be used near the borders during various transformations.
 -- Whenever a function needs information not only about an element of interest, but
@@ -212,21 +240,34 @@ oneIndex :: Index ix => ix
 oneIndex = pureIndex 1
 {-# INLINE [1] oneIndex #-}
 
--- | Checks whether array with this size can hold at least one element.
+-- | Checks whether size can hold at least one element.
 --
 -- ==== __Examples__
 --
--- >>> isNonEmpty (Sz3 1 0 2)
+-- >>> isNotZeroSz (Sz3 1 0 2)
 -- False
 --
--- @since 0.1.0
-isNonEmpty :: Index ix => Sz ix -> Bool
-isNonEmpty !sz = isSafeIndex sz zeroIndex
-{-# INLINE [1] isNonEmpty #-}
+-- @since 1.0.0
+isNotZeroSz :: Index ix => Sz ix -> Bool
+isNotZeroSz !sz = isSafeIndex sz zeroIndex
+{-# INLINE [1] isNotZeroSz #-}
 -- TODO: benchmark against (also adjust `isEmpty` with fastest):
 -- - foldlIndex (*) 1 (unSz sz) /= 0
 -- - foldlIndex (\a x -> a && x /= 0) True (unSz sz)
 -- - totalElem sz == 0
+
+-- | Checks whether size can hold at least one element.
+--
+-- ==== __Examples__
+--
+-- >>> isZeroSz (Sz3 1 0 2)
+-- True
+--
+-- @since 1.0.0
+isZeroSz :: Index ix => Sz ix -> Bool
+isZeroSz = not . isNotZeroSz
+{-# INLINE [1] isZeroSz #-}
+
 
 -- | Convert a size to a linear size.
 --
@@ -283,8 +324,8 @@ initDim :: Index ix => ix -> Lower ix
 initDim = fst . unsnocDim
 {-# INLINE [1] initDim #-}
 
--- | Change the value of a specific dimension within the index. Throws `IndexException`. See
--- `setDimM` for a safer version and `setDimension` for a type safe version.
+-- | Change the value of a specific dimension within the index. See `setDimM` for a safer
+-- version and `setDimension` for a type safe version.
 --
 -- ==== __Examples__
 --
@@ -292,26 +333,24 @@ initDim = fst . unsnocDim
 -- 2 :> 10 :> 4 :. 5
 --
 -- @since 0.2.4
-setDim' :: Index ix => ix -> Dim -> Int -> ix
-setDim' ix dim = either throw id . setDimM ix dim
+setDim' :: (HasCallStack, Index ix) => ix -> Dim -> Int -> ix
+setDim' ix dim = throwEither . setDimM ix dim
 {-# INLINE [1] setDim' #-}
 
--- | Change the value from a specific dimension within the index. Throws `IndexException`. See
+-- | Change the value from a specific dimension within the index. See
 -- `getDimM` for a safer version and `getDimension` for a type safe version.
 --
 -- ==== __Examples__
 --
 -- >>> getDim' (2 :> 3 :> 4 :. 5) 3
 -- 3
--- >>> getDim' (2 :> 3 :> 4 :. 5) 0
--- *** Exception: IndexDimensionException: (Dim 0) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
-getDim' :: Index ix => ix -> Dim -> Int
-getDim' ix = either throw id . getDimM ix
+getDim' :: (HasCallStack, Index ix) => ix -> Dim -> Int
+getDim' ix = throwEither . getDimM ix
 {-# INLINE [1] getDim' #-}
 
--- | Update the value of a specific dimension within the index. Throws `IndexException`. See
+-- | Update the value of a specific dimension within the index. See
 -- `modifyDimM` for a safer version and `modifyDimension` for a type safe version.
 --
 -- ==== __Examples__
@@ -320,17 +359,17 @@ getDim' ix = either throw id . getDimM ix
 -- (4,2 :> 3 :> 14 :. 5)
 --
 -- @since 0.4.1
-modifyDim' :: Index ix => ix -> Dim -> (Int -> Int) -> (Int, ix)
-modifyDim' ix dim = either throw id . modifyDimM ix dim
+modifyDim' :: (HasCallStack, Index ix) => ix -> Dim -> (Int -> Int) -> (Int, ix)
+modifyDim' ix dim = throwEither . modifyDimM ix dim
 {-# INLINE [1] modifyDim' #-}
 
 -- | Remove a dimension from the index.
 --
 -- ==== __Examples__
 --
--- λ> dropDimM (2 :> 3 :> 4 :. 5) 3 :: Maybe Ix3
+-- >>> dropDimM (2 :> 3 :> 4 :. 5) 3 :: Maybe Ix3
 -- Just (2 :> 4 :. 5)
--- λ> dropDimM (2 :> 3 :> 4 :. 5) 6 :: Maybe Ix3
+-- >>> dropDimM (2 :> 3 :> 4 :. 5) 6 :: Maybe Ix3
 -- Nothing
 --
 -- @since 0.3.0
@@ -344,41 +383,36 @@ dropDimM ix = fmap snd . pullOutDimM ix
 --
 -- >>> dropDim' (2 :> 3 :> 4 :. 5) 3
 -- 2 :> 4 :. 5
--- >>> dropDim' (2 :> 3 :> 4 :. 5) 6
--- *** Exception: IndexDimensionException: (Dim 6) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
-dropDim' :: Index ix => ix -> Dim -> Lower ix
-dropDim' ix = either throw id . dropDimM ix
+dropDim' :: (HasCallStack, Index ix) => ix -> Dim -> Lower ix
+dropDim' ix = throwEither . dropDimM ix
 {-# INLINE [1] dropDim' #-}
 
--- | Lower the dimension of the index by pulling the specified dimension. Throws `IndexException`. See
+-- | Lower the dimension of the index by pulling the specified dimension. See
 -- `pullOutDimM` for a safer version and `pullOutDimension` for a type safe version.
 --
 -- ==== __Examples__
 --
--- λ> pullOutDim' (2 :> 3 :> 4 :. 5) 3
+-- >>> pullOutDim' (2 :> 3 :> 4 :. 5) 3
 -- (3,2 :> 4 :. 5)
 --
 -- @since 0.2.4
-pullOutDim' :: Index ix => ix -> Dim -> (Int, Lower ix)
-pullOutDim' ix = either throw id . pullOutDimM ix
+pullOutDim' :: (HasCallStack, Index ix) => ix -> Dim -> (Int, Lower ix)
+pullOutDim' ix = throwEither . pullOutDimM ix
 {-# INLINE [1] pullOutDim' #-}
 
--- | Raise the dimension of the index by inserting one in the specified dimension. Throws
--- `IndexException`. See `insertDimM` for a safer version and `insertDimension` for a type safe
--- version.
+-- | Raise the dimension of the index by inserting one in the specified dimension. See
+-- `insertDimM` for a safer version and `insertDimension` for a type safe version.
 --
 -- ==== __Examples__
 --
 -- >>> insertDim' (2 :> 3 :> 4 :. 5) 3 10 :: Ix5
 -- 2 :> 3 :> 10 :> 4 :. 5
--- >>> insertDim' (2 :> 3 :> 4 :. 5) 11 10 :: Ix5
--- *** Exception: IndexDimensionException: (Dim 11) for (2 :> 3 :> 4 :. 5)
 --
 -- @since 0.2.4
-insertDim' :: Index ix => Lower ix -> Dim -> Int -> ix
-insertDim' ix dim = either throw id . insertDimM ix dim
+insertDim' :: (HasCallStack, Index ix) => Lower ix -> Dim -> Int -> ix
+insertDim' ix dim = throwEither . insertDimM ix dim
 {-# INLINE [1] insertDim' #-}
 
 -- | Get the value level `Dim` from the type level equivalent.

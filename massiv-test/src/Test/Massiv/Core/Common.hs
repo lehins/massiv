@@ -62,29 +62,29 @@ instance Arbitrary Comp where
       ]
 
 
-arbitraryArray :: (Construct r ix e, Arbitrary e) => Gen (Sz ix) -> Gen (Array r ix e)
+arbitraryArray :: (Load r ix e, Arbitrary e) => Gen (Sz ix) -> Gen (Array r ix e)
 arbitraryArray szGen = makeArrayLinear <$> arbitrary <*> szGen <*> arbitrary
 
 -- | Arbitrary array
-instance (Arbitrary ix, Construct r ix e, Arbitrary e) =>
+instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
          Arbitrary (Array r ix e) where
   arbitrary = makeArrayLinear <$> arbitrary <*> arbitrary <*> arbitrary
 
 
-instance (Arbitrary ix, Construct r ix e, Arbitrary e) => Arbitrary (ArrTiny r ix e) where
+instance (Arbitrary ix, Load r ix e, Arbitrary e) => Arbitrary (ArrTiny r ix e) where
   arbitrary = ArrTiny <$> arbitraryArray (liftSz (`mod` 10) <$> arbitrary)
 
 -- | Arbitrary small and possibly empty array. Computation strategy can be either `Seq` or `Par`.
-instance (Arbitrary ix, Construct r ix e, Arbitrary e) =>
+instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
          Arbitrary (ArrTinyNE r ix e) where
   arbitrary = ArrTinyNE <$> arbitraryArray (liftSz (succ . (`mod` 10)) <$> arbitrary)
 
-instance (Arbitrary ix, Construct r ix e, Arbitrary e) =>
+instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
          Arbitrary (ArrNE r ix e) where
   arbitrary = ArrNE <$> arbitraryArray (unSzNE <$> arbitrary)
 
 
-instance (Arbitrary ix, Construct r ix e, Arbitrary e) =>
+instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
          Arbitrary (ArrIx r ix e) where
   arbitrary = do
     SzIx sz ix <- arbitrary
@@ -112,7 +112,7 @@ instance (Show ix, Index ix, Ragged L ix e, Load DW ix e, Show e) =>
              show windowStart ++ ") and size (" ++ show windowSize ++ ")") $
         getWindow dw
 
-instance (Arbitrary ix, CoArbitrary ix, Index ix, Arbitrary e, Typeable e) =>
+instance (Arbitrary ix, CoArbitrary ix, Load DW ix e, Arbitrary e, Typeable e) =>
          Arbitrary (ArrDW ix e) where
   arbitrary = do
     ArrTiny (arr :: Array D ix e) <- arbitrary

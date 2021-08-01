@@ -24,7 +24,8 @@
 --         Form (NF). This property is very useful for parallel processing, i.e. when calling
 --         `compute` you do want all of your elements to be fully evaluated.
 --
--- * `BL` - Similar to `B`, is also a boxed type, but lazy. It's elements are not evaluated.
+-- * `BL` - Similar to `B`, is also a boxed type, but lazy. It's elements are not evaluated when
+--         array is computed.
 --
 -- * `S` - Is a type of array that is backed by pinned memory, therefore pointers to those arrays
 --         can be passed to FFI calls, because Garbage Collector (GC) is guaranteed not to move
@@ -35,9 +36,6 @@
 --
 -- * `P` - Array that can hold Haskell primitives, such as `Int`, `Word`, `Double`, etc. Any element
 --        must be an instance of `Prim` class.
---
--- * `M` - General manifest array type, that any of the above representations can be converted to in
---       constant time using `toManifest`.
 --
 -- There are also array representations that only describe how values for its elements can be
 -- computed or loaded into memory, as such, they are represented by functions and do not impose the
@@ -64,15 +62,15 @@
 --
 -- Other Array types:
 --
--- * `L` and `LN` - those types aren't particularly useful on their own, but because of their unique
---       ability to be converted to and from nested lists in constant time, provide a perfect
---       intermediary for lists \<-> array conversion.
+-- * `L` - this type isn't particularly useful on its own, but because it has unique ability to be
+--       converted to and from nested lists in constant time, it provides a perfect intermediary for
+--       conversion of nested lists into manifest arrays.
 --
 -- Most of the `Manifest` arrays are capable of in-place mutation. Check out
 -- "Data.Massiv.Array.Mutable" module for available functionality.
 --
--- Many of the function names exported by this package will clash with the ones
--- from "Prelude", hence it can be more convenient to import like this:
+-- Many of the function names exported by this package will clash with the ones from "Prelude",
+-- hence it can be more convenient to import like this:
 --
 -- @
 -- import Prelude as P
@@ -85,6 +83,7 @@ module Data.Massiv.Array
   -- * Compute
   , getComp
   , setComp
+  , appComp
   , compute
   , computeS
   , computeP
@@ -108,6 +107,8 @@ module Data.Massiv.Array
   , elemsCount
   , isEmpty
   , isNotEmpty
+  , isNull
+  , isNotNull
   -- * Indexing
   , (!?)
   , (!)

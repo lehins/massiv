@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -17,10 +17,9 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest.Internal
-  ( M
-  , Manifest(..)
+  ( Manifest(..)
   , Array(..)
-  , toManifest
+  , flattenMArray
   , compute
   , computeS
   , computeP
@@ -38,190 +37,33 @@ module Data.Massiv.Array.Manifest.Internal
   , gcastArr
   , fromRaggedArrayM
   , fromRaggedArray'
-  , sizeofArray
-  , sizeofMutableArray
+  , unsafeLoadIntoS
+  , unsafeLoadIntoM
   , iterateUntil
   , iterateUntilM
   ) where
 
 import Control.Exception (try)
+import Control.DeepSeq
 import Control.Monad.ST
+import Control.Monad.Primitive
 import Control.Scheduler
-import qualified Data.Foldable as F (Foldable(..))
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Mutable
-import Data.Massiv.Array.Ops.Fold.Internal as A
 import Data.Massiv.Array.Mutable.Internal (unsafeCreateArray_)
-import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
-import Data.Massiv.Core.Operations
 import Data.Maybe (fromMaybe)
 import Data.Typeable
-import GHC.Base hiding (ord)
 import System.IO.Unsafe (unsafePerformIO)
 
-#if MIN_VERSION_primitive(0,6,2)
-import Data.Primitive.Array (sizeofArray, sizeofMutableArray)
-
-#else
-import qualified Data.Primitive.Array as A (Array(..), MutableArray(..))
-import GHC.Exts (sizeofArray#, sizeofMutableArray#)
-
-sizeofArray :: A.Array a -> Int
-sizeofArray (A.Array a) = I# (sizeofArray# a)
-{-# INLINE sizeofArray #-}
-
-sizeofMutableArray :: A.MutableArray s a -> Int
-sizeofMutableArray (A.MutableArray ma) = I# (sizeofMutableArray# ma)
-{-# INLINE sizeofMutableArray #-}
-#endif
-
-
--- | General Manifest representation
-data M
-
-data instance Array M ix e = MArray { mComp :: !Comp
-                                    , mSize :: !(Sz ix)
-                                    , mLinearIndex :: Int -> e }
-
-instance (Ragged L ix e, Show e) => Show (Array M ix e) where
-  showsPrec = showsArrayPrec id
-  showList = showArrayList
-
-
-instance (Eq e, Index ix) => Eq (Array M ix e) where
-  (==) = eqArrays (==)
-  {-# INLINE (==) #-}
-
-instance (Ord e, Index ix) => Ord (Array M ix e) where
-  compare = compareArrays compare
-  {-# INLINE compare #-}
-
-
--- | /O(1)/ - Conversion of `Manifest` arrays to `M` representation.
-toManifest :: Manifest r ix e => Array r ix e -> Array M ix e
-toManifest !arr = MArray (getComp arr) (size arr) (unsafeLinearIndexM arr)
-{-# INLINE toManifest #-}
-
-
--- | Row-major sequentia folding over a Manifest array.
-instance Index ix => Foldable (Array M ix) where
-  fold = fold
-  {-# INLINE fold #-}
-  foldMap = foldMono
-  {-# INLINE foldMap #-}
-  foldl = lazyFoldlS
-  {-# INLINE foldl #-}
-  foldl' = foldlS
-  {-# INLINE foldl' #-}
-  foldr = foldrFB
-  {-# INLINE foldr #-}
-  foldr' = foldrS
-  {-# INLINE foldr' #-}
-  null (MArray _ sz _) = totalElem sz == 0
-  {-# INLINE null #-}
-  length = totalElem . size
-  {-# INLINE length #-}
-  elem e = A.any (e ==)
-  {-# INLINE elem #-}
-  toList arr = build (\ c n -> foldrFB c n arr)
-  {-# INLINE toList #-}
-
-
-instance Index ix => Source M ix e where
-  unsafeLinearIndex = mLinearIndex
-  {-# INLINE unsafeLinearIndex #-}
-  unsafeLinearSlice ix sz arr = unsafeExtract ix sz (unsafeResize sz arr)
-  {-# INLINE unsafeLinearSlice #-}
-
-
-instance Index ix => Manifest M ix e where
-
-  unsafeLinearIndexM = mLinearIndex
-  {-# INLINE unsafeLinearIndexM #-}
-
-
-instance Index ix => Resize M ix where
-  unsafeResize !sz !arr = arr { mSize = sz }
-  {-# INLINE unsafeResize #-}
-
-instance Index ix => Extract M ix e where
-  unsafeExtract !sIx !newSz !arr =
-    MArray (getComp arr) newSz $ \ i ->
-      unsafeIndex arr (liftIndex2 (+) (fromLinearIndex newSz i) sIx)
-  {-# INLINE unsafeExtract #-}
-
-
-
-instance {-# OVERLAPPING #-} Slice M Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
-  {-# INLINE unsafeSlice #-}
-
-instance ( Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         ) =>
-         Slice M ix e where
-  unsafeSlice arr start cutSz dim = do
-    (_, newSz) <- pullOutSzM cutSz dim
-    return $ unsafeResize newSz (unsafeExtract start cutSz arr)
-  {-# INLINE unsafeSlice #-}
-
-instance {-# OVERLAPPING #-} OuterSlice M Ix1 e where
-  unsafeOuterSlice !arr = unsafeIndex arr
-  {-# INLINE unsafeOuterSlice #-}
-
-instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => OuterSlice M ix e where
-  unsafeOuterSlice !arr !i =
-    MArray (getComp arr) (snd (unconsSz (size arr))) (unsafeLinearIndex arr . (+ kStart))
-    where
-      !kStart = toLinearIndex (size arr) (consDim i (zeroIndex :: Lower ix))
-  {-# INLINE unsafeOuterSlice #-}
-
-instance {-# OVERLAPPING #-} InnerSlice M Ix1 e where
-  unsafeInnerSlice !arr _ = unsafeIndex arr
-  {-# INLINE unsafeInnerSlice #-}
-
-instance (Elt M ix e ~ Array M (Lower ix) e, Index ix, Index (Lower ix)) => InnerSlice M ix e where
-  unsafeInnerSlice !arr (szL, m) !i =
-    MArray (getComp arr) szL (\k -> unsafeLinearIndex arr (k * unSz m + kStart))
-    where
-      !kStart = toLinearIndex (size arr) (snocDim (zeroIndex :: Lower ix) i)
-  {-# INLINE unsafeInnerSlice #-}
-
-
-instance Index ix => Load M ix e where
-  size = mSize
-  {-# INLINE size #-}
-  getComp = mComp
-  {-# INLINE getComp #-}
-  loadArrayM scheduler (MArray _ sz f) = splitLinearlyWith_ scheduler (totalElem sz) f
-  {-# INLINE loadArrayM #-}
-
-instance Index ix => StrideLoad M ix e
-
-instance Index ix => Stream M ix e where
-  toStream = S.steps
-  {-# INLINE toStream #-}
-  toStreamIx = S.isteps
-  {-# INLINE toStreamIx #-}
-
-
-instance Num e => FoldNumeric M e where
-  unsafeDotProduct = defaultUnsafeDotProduct
-  {-# INLINE unsafeDotProduct #-}
-  powerSumArray = defaultPowerSumArray
-  {-# INLINE powerSumArray #-}
-  foldArray = defaultFoldArray
-  {-# INLINE foldArray #-}
 
 -- | Ensure that Array is computed, i.e. represented with concrete elements in memory, hence is the
 -- `Mutable` type class restriction. Use `setComp` if you'd like to change computation strategy
 -- before calling @compute@
 --
 -- @since 0.1.0
-compute :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -> Array r ix e
+compute :: forall r ix e r' . (Manifest r e, Load r' ix e) => Array r' ix e -> Array r ix e
 compute !arr = unsafePerformIO $ computeIO arr
 {-# INLINE compute #-}
 
@@ -229,7 +71,7 @@ compute !arr = unsafePerformIO $ computeIO arr
 -- the same as `computePrimM`, but executed in `ST`, thus pure.
 --
 -- @since 0.1.0
-computeS :: forall r ix e r' . (Mutable r ix e, Load r' ix e) => Array r' ix e -> Array r ix e
+computeS :: forall r ix e r' . (Manifest r e, Load r' ix e) => Array r' ix e -> Array r ix e
 computeS !arr = runST $ computePrimM arr
 {-# INLINE computeS #-}
 
@@ -240,7 +82,7 @@ computeS !arr = runST $ computePrimM arr
 --
 -- @since 0.5.4
 computeP ::
-     forall r ix e r'. (Mutable r ix e, Construct r' ix e, Load r' ix e)
+     forall r ix e r'. (Manifest r e, Load r' ix e)
   => Array r' ix e
   -> Array r ix e
 computeP arr = setComp (getComp arr) $ compute (setComp Par arr)
@@ -253,7 +95,7 @@ computeP arr = setComp (getComp arr) $ compute (setComp Par arr)
 --
 -- @since 0.4.5
 computeIO ::
-     forall r ix e r' m. (Mutable r ix e, Load r' ix e, MonadIO m)
+     forall r ix e r' m. (Manifest r e, Load r' ix e, MonadIO m)
   => Array r' ix e
   -> m (Array r ix e)
 computeIO arr = liftIO (loadArray arr >>= unsafeFreeze (getComp arr))
@@ -264,7 +106,7 @@ computeIO arr = liftIO (loadArray arr >>= unsafeFreeze (getComp arr))
 --
 -- @since 0.4.5
 computePrimM ::
-     forall r ix e r' m. (Mutable r ix e, Load r' ix e, PrimMonad m)
+     forall r ix e r' m. (Manifest r e, Load r' ix e, PrimMonad m)
   => Array r' ix e
   -> m (Array r ix e)
 computePrimM arr = loadArrayS arr >>= unsafeFreeze (getComp arr)
@@ -280,7 +122,7 @@ computePrimM arr = loadArrayS arr >>= unsafeFreeze (getComp arr)
 -- Array P Seq (Sz1 10)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 --
-computeAs :: (Mutable r ix e, Load r' ix e) => r -> Array r' ix e -> Array r ix e
+computeAs :: (Manifest r e, Load r' ix e) => r -> Array r' ix e -> Array r ix e
 computeAs _ = compute
 {-# INLINE computeAs #-}
 
@@ -300,7 +142,7 @@ computeAs _ = compute
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
 --
 -- @since 0.1.1
-computeProxy :: (Mutable r ix e, Load r' ix e) => proxy r -> Array r' ix e -> Array r ix e
+computeProxy :: (Manifest r e, Load r' ix e) => proxy r -> Array r' ix e -> Array r ix e
 computeProxy _ = compute
 {-# INLINE computeProxy #-}
 
@@ -309,16 +151,16 @@ computeProxy _ = compute
 -- resulting type is the same as the input.
 --
 -- @since 0.1.0
-computeSource :: forall r ix e r' . (Mutable r ix e, Source r' ix e)
+computeSource :: forall r ix e r' . (Manifest r e, Source r' e, Index ix)
               => Array r' ix e -> Array r ix e
-computeSource arr = maybe (compute arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
+computeSource arr = maybe (compute $ delay arr) (\Refl -> arr) (eqT :: Maybe (r' :~: r))
 {-# INLINE computeSource #-}
 
 
 -- | /O(n)/ - Make an exact immutable copy of an Array.
 --
 -- @since 0.1.0
-clone :: Mutable r ix e => Array r ix e -> Array r ix e
+clone :: (Manifest r e, Index ix) => Array r ix e -> Array r ix e
 clone arr = unsafePerformIO $ thaw arr >>= unsafeFreeze (getComp arr)
 {-# INLINE clone #-}
 
@@ -333,7 +175,7 @@ gcastArr arr = fmap (\Refl -> arr) (eqT :: Maybe (r :~: r'))
 -- result arrays are of the same representation, in which case it is an /O(1)/ operation.
 --
 -- @since 0.1.0
-convert :: forall r ix e r' . (Mutable r ix e, Load r' ix e)
+convert :: forall r ix e r' . (Manifest r e, Load r' ix e)
         => Array r' ix e -> Array r ix e
 convert arr = fromMaybe (compute arr) (gcastArr arr)
 {-# INLINE convert #-}
@@ -341,7 +183,7 @@ convert arr = fromMaybe (compute arr) (gcastArr arr)
 -- | Same as `convert`, but let's you supply resulting representation type as an argument.
 --
 -- @since 0.1.0
-convertAs :: (Mutable r ix e, Load r' ix e)
+convertAs :: (Manifest r e, Load r' ix e)
           => r -> Array r' ix e -> Array r ix e
 convertAs _ = convert
 {-# INLINE convertAs #-}
@@ -351,7 +193,7 @@ convertAs _ = convert
 -- proxy argument.
 --
 -- @since 0.1.1
-convertProxy :: (Mutable r ix e, Load r' ix e)
+convertProxy :: (Manifest r e, Load r' ix e)
              => proxy r -> Array r' ix e -> Array r ix e
 convertProxy _ = convert
 {-# INLINE convertProxy #-}
@@ -362,48 +204,48 @@ convertProxy _ = convert
 --
 -- @since 0.4.0
 fromRaggedArrayM ::
-     forall r ix e r' m . (Mutable r ix e, Ragged r' ix e, Load r' ix e, MonadThrow m)
+     forall r ix e r' m . (Manifest r e, Ragged r' ix e, MonadThrow m)
   => Array r' ix e
   -> m (Array r ix e)
 fromRaggedArrayM arr =
-  let sz = edgeSize arr
+  let sz = outerSize arr
    in either (\(e :: ShapeException) -> throwM e) pure $
       unsafePerformIO $ do
         marr <- unsafeNew sz
         traverse (\_ -> unsafeFreeze (getComp arr) marr) =<<
           try (withMassivScheduler_ (getComp arr) $ \scheduler ->
-                 loadRagged (scheduleWork scheduler) (unsafeLinearWrite marr) 0 (totalElem sz) sz arr)
+                stToIO $ loadRaggedST scheduler arr (unsafeLinearWrite marr) 0 (totalElem sz) sz)
 {-# INLINE fromRaggedArrayM #-}
 
 
--- | Same as `fromRaggedArrayM`, but will throw a pure exception if its shape is not
+-- | Same as `fromRaggedArrayM`, but will throw an impure exception if its shape is not
 -- rectangular.
 --
 -- @since 0.1.1
 fromRaggedArray' ::
-     forall r ix e r'. (Mutable r ix e, Load r' ix e, Ragged r' ix e)
+     forall r ix e r'. (HasCallStack, Manifest r e, Ragged r' ix e)
   => Array r' ix e
   -> Array r ix e
-fromRaggedArray' arr = either throw id $ fromRaggedArrayM arr
+fromRaggedArray' = throwEither . fromRaggedArrayM
 {-# INLINE fromRaggedArray' #-}
 
 
 -- | Same as `compute`, but with `Stride`.
 --
--- /O(n div k)/ - Where @n@ is numer of elements in the source array and @k@ is number of
+-- /O(n div k)/ - Where @n@ is number of elements in the source array and @k@ is number of
 -- elements in the stride.
 --
 -- @since 0.3.0
 computeWithStride ::
-     forall r ix e r'. (Mutable r ix e, StrideLoad r' ix e)
+     forall r ix e r'. (Manifest r e, StrideLoad r' ix e)
   => Stride ix
   -> Array r' ix e
   -> Array r ix e
 computeWithStride stride !arr =
   unsafePerformIO $ do
-    let !sz = strideSize stride (size arr)
+    let !sz = strideSize stride (outerSize arr)
     unsafeCreateArray_ (getComp arr) sz $ \scheduler marr ->
-      loadArrayWithStrideM scheduler stride sz arr (unsafeLinearWrite marr)
+      stToIO $ iterArrayLinearWithStrideST_ scheduler stride sz arr (unsafeLinearWrite marr)
 {-# INLINE computeWithStride #-}
 
 
@@ -411,10 +253,34 @@ computeWithStride stride !arr =
 --
 -- @since 0.3.0
 computeWithStrideAs ::
-     (Mutable r ix e, StrideLoad r' ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
+     (Manifest r e, StrideLoad r' ix e) => r -> Stride ix -> Array r' ix e -> Array r ix e
 computeWithStrideAs _ = computeWithStride
 {-# INLINE computeWithStrideAs #-}
 
+
+-- | Load into a supplied mutable vector sequentially. Returned array is not
+-- necesserally the same vector as the one that was supplied. It will be the
+-- same only if it had enough space to load all the elements in.
+--
+-- @since 0.5.7
+unsafeLoadIntoS ::
+     forall r r' ix e m s. (Load r ix e, Manifest r' e, MonadPrim s m)
+  => MVector s r' e
+  -> Array r ix e
+  -> m (MArray s r' ix e)
+unsafeLoadIntoS marr arr = stToPrim $ unsafeLoadIntoS marr arr
+{-# INLINE unsafeLoadIntoS #-}
+
+-- | Same as `unsafeLoadIntoS`, but respecting computation strategy.
+--
+-- @since 0.5.7
+unsafeLoadIntoM ::
+     forall r r' ix e m. (Load r ix e, Manifest r' e, MonadIO m)
+  => MVector RealWorld r' e
+  -> Array r ix e
+  -> m (MArray RealWorld r' ix e)
+unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoIO marr arr
+{-# INLINE unsafeLoadIntoM #-}
 
 
 -- | Efficiently iterate a function until a convergence condition is satisfied. If the
@@ -426,8 +292,8 @@ computeWithStrideAs _ = computeWithStride
 -- ====__Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> a = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> () <$ w (0 :. 0) 1
--- >>> a
+-- >>> let arr = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> () <$ w (0 :. 0) 1
+-- >>> arr
 -- Array P Seq (Sz (8 :. 8))
 --   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
@@ -438,9 +304,9 @@ computeWithStrideAs _ = computeWithStride
 --   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 0, 0, 0, 0, 0, 0, 0, 0 ]
 --   ]
--- >>> nextPascalRow cur above = if cur == 0 then above else cur
--- >>> pascal = makeStencil (Sz2 2 2) 1 $ \ get -> nextPascalRow (get (0 :. 0)) (get (-1 :. -1) + get (-1 :. 0))
--- >>> iterateUntil (\_ _ a -> (a ! (7 :. 7)) /= 0) (\ _ -> mapStencil (Fill 0) pascal) a
+-- >>> let nextPascalRow cur above = if cur == 0 then above else cur
+-- >>> let pascal = makeStencil (Sz2 2 2) 1 $ \ get -> nextPascalRow (get (0 :. 0)) (get (-1 :. -1) + get (-1 :. 0))
+-- >>> iterateUntil (\_ _ a -> (a ! (7 :. 7)) /= 0) (\ _ -> mapStencil (Fill 0) pascal) arr
 -- Array P Seq (Sz (8 :. 8))
 --   [ [ 1, 0, 0, 0, 0, 0, 0, 0 ]
 --   , [ 1, 1, 0, 0, 0, 0, 0, 0 ]
@@ -454,7 +320,7 @@ computeWithStrideAs _ = computeWithStride
 --
 -- @since 0.3.6
 iterateUntil ::
-     (Load r' ix e, Mutable r ix e)
+     (Load r' ix e, Manifest r e, NFData (Array r ix e))
   => (Int -> Array r ix e -> Array r ix e -> Bool)
   -- ^ Convergence condition. Accepts current iteration counter, array at the previous
   -- state and at the current state.
@@ -463,85 +329,59 @@ iterateUntil ::
   -- differ if necessary
   -> Array r ix e -- ^ Initial source array
   -> Array r ix e
-iterateUntil convergence iteration initArr0
-  | convergence 0 initArr0 initArr1 = initArr1
-  | otherwise =
-    unsafePerformIO $ do
-      let loadArr = iteration 1 initArr1
-      marr <- unsafeNew (size loadArr)
-      iterateLoop
-        (\n a comp marr' -> convergence n a <$> unsafeFreeze comp marr')
-        iteration
-        1
-        initArr1
-        loadArr
-        (asArr initArr0 marr)
-  where
-    !initArr1 = compute $ iteration 0 initArr0
-    asArr :: Array r ix e -> MArray s r ix e -> MArray s r ix e
-    asArr _ = id
+iterateUntil convergence iteration initArr0 = unsafePerformIO $ do
+  let loadArr0 = iteration 0 initArr0
+  initMVec1 <- unsafeNew (fromMaybe zeroSz (maxLinearSize loadArr0))
+  let conv n arr comp marr' = do
+        arr' <- unsafeFreeze comp marr'
+        arr' `deepseq` pure (convergence n arr arr', arr')
+  iterateLoop conv (\n -> pure . iteration n) 0 initArr0 loadArr0 initMVec1
 {-# INLINE iterateUntil #-}
 
--- | Monadic version of `iterateUntil` where at each iteration mutable version of an array
--- is available.
+-- | Monadic version of `iterateUntil` where at each iteration mutable version
+-- of an array is available. However it is less efficient then the pure
+-- alternative, because an intermediate array must be copied at each
+-- iteration.
 --
 -- @since 0.3.6
 iterateUntilM ::
-     (Load r' ix e, Mutable r ix e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
-  => (Int -> Array r ix e -> MArray (PrimState m) r ix e -> m Bool)
+     (Load r' ix e, Manifest r e, MonadIO m)
+  => (Int -> Array r ix e -> MArray RealWorld r ix e -> m Bool)
   -- ^ Convergence condition. Accepts current iteration counter, pure array at previous
   -- state and a mutable at the current state, therefore after each iteration its contents
   -- can be modifed if necessary.
-  -> (Int -> Array r ix e -> Array r' ix e)
+  -> (Int -> Array r ix e -> m (Array r' ix e))
   -- ^ A modifying function to apply at each iteration.  The size of resulting array may
   -- differ if necessary.
   -> Array r ix e -- ^ Initial source array
   -> m (Array r ix e)
 iterateUntilM convergence iteration initArr0 = do
-  let loadArr0 = iteration 0 initArr0
-  initMArr1 <- unsafeNew (size loadArr0)
-  computeInto initMArr1 loadArr0
-  shouldStop <- convergence 0 initArr0 initMArr1
-  initArr1 <- unsafeFreeze (getComp loadArr0) initMArr1
-  if shouldStop
-    then pure initArr1
-    else do
-      let loadArr1 = iteration 1 initArr1
-      marr <- unsafeNew (size loadArr1)
-      iterateLoop (\n a _ -> convergence n a) iteration 1 initArr1 loadArr1 marr
+  loadArr0 <- iteration 0 initArr0
+  initMVec1 <- liftIO $ unsafeNew (fromMaybe zeroSz (maxLinearSize loadArr0))
+  let conv n arr comp marr = (,) <$> convergence n arr marr <*> freeze comp marr
+  iterateLoop conv iteration 0 initArr0 loadArr0 initMVec1
 {-# INLINE iterateUntilM #-}
 
 
 iterateLoop ::
-     (Load r' ix e, Mutable r ix e, PrimMonad m, MonadIO m, PrimState m ~ RealWorld)
-  => (Int -> Array r ix e -> Comp -> MArray (PrimState m) r ix e -> m Bool)
-  -> (Int -> Array r ix e -> Array r' ix e)
+     (Load r' ix e, Manifest r e, MonadIO m)
+  => (Int -> Array r ix e -> Comp -> MArray RealWorld r ix e -> m (Bool, Array r ix e))
+  -> (Int -> Array r ix e -> m (Array r' ix e))
   -> Int
   -> Array r ix e
   -> Array r' ix e
-  -> MArray (PrimState m) r ix e
+  -> MVector RealWorld r e
   -> m (Array r ix e)
 iterateLoop convergence iteration = go
   where
-    go !n !arr !loadArr !marr = do
-      let !sz = size loadArr
-          !k = totalElem sz
-          !mk = totalElem (msize marr)
-          !comp = getComp loadArr
-      marr' <-
-        if k == mk
-          then pure marr
-          else if k < mk
-                 then unsafeLinearShrink marr sz
-                 else unsafeLinearGrow marr sz
-      computeInto marr' loadArr
-      shouldStop <- convergence n arr comp marr'
-      arr' <- unsafeFreeze comp marr'
+    go n !arr !loadArr !mvec = do
+      let !comp = getComp loadArr
+      marr' <- unsafeLoadIntoM mvec loadArr
+      (shouldStop, arr') <- convergence n arr comp marr'
       if shouldStop
         then pure arr'
         else do
-          nextMArr <- unsafeThaw arr
-          go (n + 1) arr' (iteration (n + 1) arr') nextMArr
+          nextMArr <- liftIO $ unsafeThaw arr
+          arr'' <- iteration (n + 1) arr'
+          go (n + 1) arr' arr'' $ flattenMArray nextMArr
 {-# INLINE iterateLoop #-}
-
-

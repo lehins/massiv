@@ -15,7 +15,6 @@ module Data.Massiv.Array.Stencil
   ( -- * Stencil
     Stencil
   , makeStencil
-  , makeStencilDef
   , getStencilSize
   , getStencilCenter
   -- ** Padding
@@ -70,7 +69,7 @@ getStencilCenter = stencilCenter
 --
 -- @since 0.1.0
 mapStencil ::
-     (Source r ix e, Manifest r ix e)
+     (Index ix, Manifest r e)
   => Border e -- ^ Border resolution technique
   -> Stencil ix e a -- ^ Stencil to map over the array
   -> Array r ix e -- ^ Source array
@@ -179,7 +178,7 @@ samePadding (Stencil (Sz sSz) sCenter _) border =
 --
 -- @since 0.4.3
 applyStencil ::
-     (Source r ix e, Manifest r ix e)
+     (Index ix, Manifest r e)
   => Padding ix e
   -- ^ Padding to be applied to the source array. This will dictate the resulting size of
   -- the array. No padding will cause it to shrink by the size of the stencil
@@ -252,26 +251,6 @@ makeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
       inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
     {-# INLINE stencil #-}
 {-# INLINE makeStencil #-}
-
--- | Same as `makeStencil`, but with ability to specify default value for stencil validation.
---
--- @since 0.2.3
-makeStencilDef
-  :: Index ix
-  => e -- ^ Default element that will be used for stencil validation only.
-  -> Sz ix -- ^ Size of the stencil
-  -> ix -- ^ Center of the stencil
-  -> ((ix -> e) -> a)
-  -- ^ Stencil function.
-  -> Stencil ix e a
-makeStencilDef _defVal !sSz !sCenter relStencil =
-  Stencil sSz sCenter stencil
-  where
-    stencil _ getVal !ix =
-      inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
-    {-# INLINE stencil #-}
-{-# INLINE makeStencilDef #-}
-{-# DEPRECATED makeStencilDef "In favor of `makeStencil`. Validation is no longer possible" #-}
 
 -- | Identity stencil that does not change the elements of the source array.
 --

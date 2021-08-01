@@ -13,7 +13,7 @@ import Test.Massiv.Core
 
 
 prop_Construct_makeArray_Manifest ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, Source r ix Int, Construct r ix Int)
+     forall r ix. (Ragged L ix Int, Source r Int, Load r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -23,7 +23,7 @@ prop_Construct_makeArray_Manifest comp sz f =
   delay (setComp Seq (makeArray comp sz (apply f . toLinearIndex sz) :: Array r ix Int))
 
 prop_Construct_makeArray_Delayed ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, Load r ix Int, Construct r ix Int)
+     forall r ix. (Ragged L ix Int, Load r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -34,7 +34,7 @@ prop_Construct_makeArray_Delayed comp sz f =
 
 prop_Functor ::
      forall r ix.
-     (Load D ix Int, Ragged L ix Int, Load r ix Int, Construct r ix Int, Functor (Array r ix))
+     (Ragged L ix Int, Load r ix Int, Functor (Array r ix))
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -46,11 +46,9 @@ prop_Functor comp sz f g =
 
 prop_Extract ::
      forall r ix.
-     ( Load D ix Int
-     , Ragged L ix Int
-     , Load (R r) ix Int
-     , Construct r ix Int
-     , Extract r ix Int
+     ( Ragged L ix Int
+     , Load r ix Int
+     , Source r Int
      )
   => Comp
   -> Sz ix
@@ -67,10 +65,9 @@ prop_Extract comp sz f start newSize =
 
 prop_IxUnbox ::
      forall ix.
-     ( Load D ix ix
-     , Ragged L ix ix
-     , Construct U ix ix
-     , Source U ix ix
+     ( Ragged L ix ix
+     , Source U ix
+     , Unbox ix
      )
   => Comp
   -> Sz ix
@@ -81,7 +78,7 @@ prop_IxUnbox comp sz f =
   delay (makeArrayLinear comp sz (apply f) :: Array U ix ix)
 
 prop_computeWithStride ::
-     forall r ix. (Load D ix Int, Ragged L ix Int, StrideLoad r ix Int, Construct r ix Int)
+     forall r ix. (Ragged L ix Int, StrideLoad r ix Int)
   => Comp
   -> Sz ix
   -> Fun Int Int
@@ -97,34 +94,36 @@ prop_computeWithStride comp sz f stride =
 
 specCommon ::
      forall ix.
-     (Arbitrary ix, Load D ix Int, StrideLoad DW ix Int, Ragged L ix Int, Ragged L ix ix, Unbox ix)
+     (Arbitrary ix, StrideLoad DW ix Int, Ragged L ix Int, Ragged L ix ix, Unbox ix)
   => Spec
 specCommon =
   describe "Construct" $ do
-    it "Construct_makeArray B" $ property $ prop_Construct_makeArray_Manifest @B @ix
-    it "Construct_makeArray N" $ property $ prop_Construct_makeArray_Manifest @N @ix
-    it "Construct_makeArray S" $ property $ prop_Construct_makeArray_Manifest @S @ix
-    it "Construct_makeArray P" $ property $ prop_Construct_makeArray_Manifest @P @ix
-    it "Construct_makeArray U" $ property $ prop_Construct_makeArray_Manifest @U @ix
-    it "Construct_makeArray_Delayed DI" $ property $ prop_Construct_makeArray_Delayed @DI @ix
-    it "Construct_makeArray_Delayed DL" $ property $ prop_Construct_makeArray_Delayed @DL @ix
-    it "Construct_makeArray_Delayed DW" $ property $ prop_Construct_makeArray_Delayed @DW @ix
-    it "Functor D" $ property $ prop_Functor @D @ix
-    it "Functor DI" $ property $ prop_Functor @DI @ix
-    it "Functor DL" $ property $ prop_Functor @DL @ix
-    it "Functor DW" $ property $ prop_Functor @DW @ix
-    it "Extract DI" $ property $ prop_Extract @DI @ix
-    it "Extract B" $ property $ prop_Extract @B @ix
-    it "Extract N" $ property $ prop_Extract @N @ix
-    it "Extract S" $ property $ prop_Extract @S @ix
-    it "Extract U" $ property $ prop_Extract @U @ix
-    it "computeWithStride DI" $ property $ prop_computeWithStride @DI @ix
-    it "computeWithStride DW" $ property $ prop_computeWithStride @DW @ix
-    it "computeWithStride B" $ property $ prop_computeWithStride @B @ix
-    it "computeWithStride N" $ property $ prop_computeWithStride @N @ix
-    it "computeWithStride S" $ property $ prop_computeWithStride @S @ix
-    it "computeWithStride U" $ property $ prop_computeWithStride @U @ix
-    it "IxUnbox" $ property $ prop_IxUnbox @ix
+    prop "Construct_makeArray B" $ prop_Construct_makeArray_Manifest @B @ix
+    prop "Construct_makeArray BN" $ prop_Construct_makeArray_Manifest @BN @ix
+    prop "Construct_makeArray BL" $ prop_Construct_makeArray_Manifest @BL @ix
+    prop "Construct_makeArray S" $ prop_Construct_makeArray_Manifest @S @ix
+    prop "Construct_makeArray P" $ prop_Construct_makeArray_Manifest @P @ix
+    prop "Construct_makeArray U" $ prop_Construct_makeArray_Manifest @U @ix
+    prop "Construct_makeArray_Delayed DI" $ prop_Construct_makeArray_Delayed @DI @ix
+    prop "Construct_makeArray_Delayed DL" $ prop_Construct_makeArray_Delayed @DL @ix
+    prop "Construct_makeArray_Delayed DW" $ prop_Construct_makeArray_Delayed @DW @ix
+    prop "Functor D" $ prop_Functor @D @ix
+    prop "Functor DI" $ prop_Functor @DI @ix
+    prop "Functor DL" $ prop_Functor @DL @ix
+    prop "Functor DW" $ prop_Functor @DW @ix
+    prop "Extract B" $ prop_Extract @B @ix
+    prop "Extract BN" $ prop_Extract @BN @ix
+    prop "Extract BL" $ prop_Extract @BL @ix
+    prop "Extract S" $ prop_Extract @S @ix
+    prop "Extract U" $ prop_Extract @U @ix
+    prop "computeWithStride DI" $ prop_computeWithStride @DI @ix
+    prop "computeWithStride DW" $ prop_computeWithStride @DW @ix
+    prop "computeWithStride B" $ prop_computeWithStride @B @ix
+    prop "computeWithStride BN" $ prop_computeWithStride @BN @ix
+    prop "computeWithStride BL" $ prop_computeWithStride @BL @ix
+    prop "computeWithStride S" $ prop_computeWithStride @S @ix
+    prop "computeWithStride U" $ prop_computeWithStride @U @ix
+    prop "IxUnbox" $ prop_IxUnbox @ix
 
 
 spec :: Spec

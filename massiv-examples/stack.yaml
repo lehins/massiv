@@ -1,13 +1,17 @@
-resolver: lts-16.31
-
+resolver: lts-18.3
 packages:
 - GameOfLife
 - vision
 - examples
 extra-deps:
 - ../massiv
-- Color-0.3.1@sha256:980a3869e25cbe91275113dd3273465e373b06d710c9e4ef3e0f07ec77815165,8193
-- massiv-io-0.4.1.0@sha256:fd1db3d851e0343833b8b3b6526be0f05782ee1f2152788616d71108d3b9676f,3667
-- scheduler-1.5.0@sha256:8b43f2991bf9a720b12192ba99525f705a44aeae9541a7bd73fbc7e7b56fd8f0,2437
+- github: lehins/massiv-io
+  commit: 45ab3265b50f792daafefa8d9b686483fb058538
+  subdirs:
+    - massiv-io
+- github: lehins/haskell-scheduler
+  commit: c5506d20d96fc3fb00c213791243b7246d39e822
+  subdirs:
+    - scheduler
 nix:
   packages: [ zlib libGLU ]

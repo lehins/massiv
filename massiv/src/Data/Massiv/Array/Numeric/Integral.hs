@@ -111,7 +111,7 @@ simpsonsStencil dx dim n
 
 -- | Integrate with a stencil along a particular dimension.
 integrateWith ::
-     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => (Dim -> Int -> Stencil ix e e)
   -> Dim -- ^ Dimension along which integration should be estimated.
   -> Int -- ^ @n@ - Number of samples
@@ -126,15 +126,15 @@ integrateWith stencil dim n arr =
 
 -- | Compute an approximation of integral using a supplied rule in a form of `Stencil`.
 integralApprox ::
-     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => (e -> Dim -> Int -> Stencil ix e e) -- ^ Integration Stencil
   -> e -- ^ @d@ - Length of interval per cell
   -> Sz ix -- ^ @sz@ - Result size of the matrix
   -> Int -- ^ @n@ - Number of samples
   -> Array r ix e -- ^ Array with values of @f(x,y,..)@ that will be used as source for integration.
-  -> Array M ix e
+  -> Array D ix e
 integralApprox stencil d sz n arr =
-  extract' zeroIndex sz $ toManifest $ loop 1 (<= coerce (dimensions sz)) (+ 1) arr integrateAlong
+  extract' zeroIndex sz $ loop 1 (<= coerce (dimensions sz)) (+ 1) arr integrateAlong
   where
     !dx = d / fromIntegral n
     integrateAlong dim = integrateWith (stencil dx) (Dim dim) n
@@ -144,7 +144,7 @@ integralApprox stencil d sz n arr =
 
 -- | Use midpoint rule to approximate an integral.
 midpointRule ::
-     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => Comp -- ^ Computation strategy.
   -> r -- ^ Intermediate array representation.
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
@@ -152,7 +152,7 @@ midpointRule ::
   -> e -- ^ @d@ - Distance per matrix cell.
   -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction.
-  -> Array M ix e
+  -> Array D ix e
 midpointRule comp r f a d sz n =
   integralApprox midpointStencil d sz n $ computeAs r $ fromFunctionMidpoint comp f a d sz n
 {-# INLINE midpointRule #-}
@@ -160,7 +160,7 @@ midpointRule comp r f a d sz n =
 
 -- | Use trapezoid rule to approximate an integral.
 trapezoidRule ::
-     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
@@ -168,14 +168,14 @@ trapezoidRule ::
   -> e -- ^ @d@ - Distance per matrix cell.
   -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction.
-  -> Array M ix e
+  -> Array D ix e
 trapezoidRule comp r f a d sz n =
   integralApprox trapezoidStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
 {-# INLINE trapezoidRule #-}
 
 -- | Use Simpson's rule to approximate an integral.
 simpsonsRule ::
-     (Fractional e, StrideLoad DW ix e, Mutable r ix e)
+     (Fractional e, StrideLoad DW ix e, Manifest r e)
   => Comp -- ^ Computation strategy
   -> r -- ^ Intermediate array representation
   -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
@@ -184,7 +184,7 @@ simpsonsRule ::
   -> Sz ix -- ^ @sz@ - Result matrix size.
   -> Int -- ^ @n@ - Number of sample points per cell in each direction. This value must be even,
          -- otherwise error.
-  -> Array M ix e
+  -> Array D ix e
 simpsonsRule comp r f a d sz n =
   integralApprox simpsonsStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
 {-# INLINE simpsonsRule #-}
@@ -260,8 +260,9 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- Approximation](http://tutorial.math.lamar.edu/Classes/CalcII/ApproximatingDefIntegrals.aspx),
 -- so if you need to brush up on some theory it is a great place to start.
 --
--- Implementation-wise, integral approximation here relies heavily on stencils with stride, as such
--- computation is fast and is automatically parallelizable.
+-- Implementation-wise, integral approximation here relies heavily on stencils
+-- with stride, because such computation is fast and is automatically
+-- parallelizable.
 --
 -- Here are some examples of where this can be useful:
 --
@@ -282,7 +283,7 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- stencils to compute an integral, but there are already functions that will do both steps for you:
 --
 -- >>> simpsonsRule Seq U (\ scale x -> f (scale x)) 0 2 (Sz1 1) 4
--- Array M Seq (Sz1 1)
+-- Array D Seq (Sz1 1)
 --   [ 17.353626 ]
 --
 -- @scale@ is the function that will change an array index into equally spaced and
@@ -305,7 +306,7 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 -- The problem with above example is that computed values do not accurately represent the total
 -- value contained within each vector cell. For that reason if your were to later use it for example
 -- as convolution stencil, approximation would be very poor. The way to solve it is to approximate
--- an integral across each cell of vector by drastically blowing up the `xArr` and then reducing it
+-- an integral across each cell of vector by drastically blowing up the @xArr@ and then reducing it
 -- to a smaller array by using one of the approximation rules:
 --
 -- >>> startValue = -2 :: Float
@@ -318,14 +319,14 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
 --   [ -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0 ]
 -- >>> yArrX4 = computeAs U $ fmap f xArrX4
 -- >>> integralApprox trapezoidStencil distPerCell desiredSize numSamples yArrX4
--- Array M Seq (Sz1 4)
+-- Array D Seq (Sz1 4)
 --   [ 16.074406, 1.4906789, 1.4906789, 16.074408 ]
 --
 -- We can clearly see the difference is huge, but it doesn't mean it is much better than our
 -- previous estimate. In order to get more accurate results we can use a better Simpson's rule for
--- approximation and many more sample points. There is no need to create individual arrays `xArr`
--- and `yArr`, there are functions like `simpsonRule` that will take care it for you:
+-- approximation and many more sample points. There is no need to create individual arrays @xArrX4@
+-- and @yArrX4@, there are functions like `simpsonsRule` that will take care of it for us:
 --
 -- >>> simpsonsRule Seq U (\ scale i -> f (scale i)) startValue distPerCell desiredSize 128
--- Array M Seq (Sz1 4)
+-- Array D Seq (Sz1 4)
 --   [ 14.989977, 1.4626511, 1.4626517, 14.989977 ]

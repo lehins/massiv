@@ -7,6 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Test.Massiv.Core.IndexSpec (spec) where
 
+import Control.Exception
 import Control.DeepSeq
 import Data.Massiv.Array
 import Data.Massiv.Array.Unsafe (Sz(SafeSz))
@@ -23,8 +24,6 @@ specIxN ::
      , Index ix
      , Bounded ix
      , Index (Lower ix)
-     , Typeable ix
-     , Typeable (Lower ix)
      , Arbitrary ix
      , Arbitrary (Lower ix)
      , IsIndexDimension ix (Dimensions ix)
@@ -66,9 +65,7 @@ specIxN = do
 
 specIxT ::
      forall ix ix'.
-     ( Typeable ix
-     , Typeable (Lower ix)
-     , Index ix
+     ( Index ix
      , Index (Lower ix)
      , Arbitrary ix
      , Arbitrary (Lower ix)
@@ -132,7 +129,6 @@ specSz ::
      ( Num ix
      -- , Unbox ix -- TODO: add Unbox instance and a spec for unboxed vectors
      , Index ix
-     , Typeable ix
      , Arbitrary ix
      )
   => Spec
@@ -140,7 +136,7 @@ specSz = do
   describe ("Sz (" ++ showsTypeRep (typeRep (Proxy :: Proxy ix)) ")") $ do
     szSpec @ix
     szNumSpec @ix
-    it "Show" $ property $ \sz -> ("Just (" ++ show (sz :: Sz ix) ++ ")") === show (Just sz)
+    prop "Show" $ \sz -> ("Just (" ++ show (sz :: Sz ix) ++ ")") === show (Just sz)
   eqSpecOnArbitrary @(Sz ix)
   ordSpecOnArbitrary @(Sz ix)
 

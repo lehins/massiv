@@ -16,10 +16,7 @@ prop_EqDelayed ::
 prop_EqDelayed arr = computeAs P arr === computeAs P (toInterleaved arr)
 
 
-prop_Resize ::
-     (Ragged L ix Int, Load D ix Int, Load DI ix Int)
-  => Array DI ix Int
-  -> Property
+prop_Resize :: (Ragged L ix Int) => Array DI ix Int -> Property
 prop_Resize arr =
   computeAs P (resize' k arr) === computeAs P (resize' k arrD)
   where

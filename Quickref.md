@@ -4,10 +4,10 @@
 
 Everyone is well accustomed to the fact that the order of indices corresponds to the number of
 dimensions an array can have in the reverse order, eg in `C`: `arr[i][j][k]` will mean that a
-3-dimensional array is indexed at an outer most 3rd dimension with index `i`, 2nd dimension `j` and
-the inner most 1st dimension `k`. In case of a 3d world `i` points to a page, `j` to a column and
-`k` to the row, but the astraction scales pretty well to any dimension as long as we agree on the
-order of things. Below are two ways to index an array in massiv:
+3-dimensional array is indexed at an outermost 3rd dimension with index `i`, 2nd dimension `j` and
+the innermost 1st dimension `k`. In the case of a 3D world `i` points to a page, `j` to a row and
+`k` to a column, but the astraction scales naturally to any dimension as long as we agree on the
+order of things. Below are various ways to index an array in massiv:
 
 ```haskell
 λ> arr = makeArrayR U Seq (Sz (2 :> 3 :. 4)) $ \ (i :> j :. k) -> i + j ^ k
@@ -16,17 +16,15 @@ order of things. Below are two ways to index an array in massiv:
 λ> arr !> 1 !> 2
 (Array M Seq (Sz1 (4))
   [ 2,3,5,9 ])
-λ> arr !> 1 !> 2 !> 3
+λ> arr !> 1 !> 2 ! 3
 9
 ```
 
-Former does the lookup of an element in the array, while the latter slices the array until it gets to
-the actual element. Normally they are equivalent, but since implemnetation i svastly different,
-difference in performance could be expected.
+Former does the lookup of an element in the array, while the latter slices the array until it gets
+to a row and only then looks up the actual element.
 
-Most important thing to agree upon is the fact that at the end of the day we do represent data in a
-linear row-major fashion, so the above indexing technique translates into a linear index that will
-get mapped into an element in memory at some point.
+Data is represented in a linear row-major fashion, so the above indexing technique translates into a
+linear index that will get mapped into an element in memory at some point.
 
 
 ## Hierarchy
@@ -34,23 +32,11 @@ get mapped into an element in memory at some point.
 ### Class dependency
 
 ```
-                                       Construct (D, DL, DS, DI, DW, B, N, P, U, S, LN) -> Ragged (L)
-                                                           \
-Load (DL, DS, DI, DW, L, LN) -> Source (D) -> Manifest (M) -`-> Mutable (B, N, P, U, S)
-   |\
-   | `> StrideLoad (D, DI, DW, M, B, N, P, U, S)
-   |\
-   | `> Extract (D, DS, DI, M, B, N, P, U, S)
-   |\
-   | `> Slice (D, M, B, N, P, U, S)
-   |\
-   | `> OuterSlice (D, M, B, N, P, U, S, L)
-    \
-     `> InnerSlice (D, M, B, N, P, U, S)
-
-Stream (D, DS, B, N, P, U, S, L, LN)
-
-Resize (D, DL, DI, B, N, P, U, S)
+Size (D, DL, DI, B, BN, BL, P, U, S)
+Shape (D, DL, DS, DI, DW, B, BN, BL, P, U, S, L, LN)
+StrideLoad (DI, DW) -> Load (DL, DS, L) -> Source (D) -> Manifest (B, BN, BL, P, U, S)
+                                       \
+                                        `-> Stream (D, B, BN, BL, P, U, S, L)
 ```
 
 ## Computation
@@ -62,7 +48,7 @@ to that:
   construction or conversion, eg. from a list or vector
 * array computation strategy will be combined according to its `Monoid` instance when two or more
   arrays are being joined together by some operation into another one.
-* Most of functions will respect the inner computation strategy, while other will ignore it due to
+* Most functions will respect the inner computation strategy, while others will ignore it due to
   their specific nature.
 
 ## Naming Conventions
@@ -106,7 +92,7 @@ argument. Functions with the `Inner` suffix use dimension `1`.
 ### Conversion from `array`
 
 Here is an example of how to convert a nested boxed array from `array` package to a
-rectangular `Matrix` with parallellization:
+rectangular `Matrix` with parallelization:
 
 
 ```haskell

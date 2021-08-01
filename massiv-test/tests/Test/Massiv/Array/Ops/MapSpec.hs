@@ -139,9 +139,9 @@ spec = do
 
 
 alt_imapM
-  :: (Applicative f, Mutable r2 t1 b, Source r1 t1 t2) =>
-     (t1 -> t2 -> f b) -> Array r1 t1 t2 -> f (Array r2 t1 b)
-alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWithIndex arr)
+  :: (Applicative f, Index ix, Manifest r2 b, Source r1 a) =>
+     (ix -> a -> f b) -> Array r1 ix a -> f (Array r2 ix b)
+alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (imap (,) arr)
   where
     loadList xs =
       runST $ do
@@ -150,10 +150,6 @@ alt_imapM f arr = fmap loadList $ P.traverse (uncurry f) $ foldrS (:) [] (zipWit
         unsafeFreeze (getComp arr) marr
     {-# INLINE loadList #-}
 
-zipWithIndex :: forall r ix e . Source r ix e => Array r ix e -> Array D ix (ix, e)
-zipWithIndex arr = A.zip (range Seq zeroIndex (unSz (size arr))) arr
-{-# INLINE zipWithIndex #-}
-
 
 prop_MapWS :: (Show (Array U ix Int), Index ix) => Array U ix Int -> Property
 prop_MapWS arr =
@@ -161,7 +157,7 @@ prop_MapWS arr =
   run $ do
     let comp = getComp arr
     count <- getCompWorkers comp
-    arrStates <- new @P (Sz count)
+    arrStates <- newMArray' @P (Sz count)
     states <- initWorkerStates comp (\(WorkerId i) -> pure $ \f -> modifyM_ arrStates f i)
     arr' <-
       forWS states arr $ \e smod -> do

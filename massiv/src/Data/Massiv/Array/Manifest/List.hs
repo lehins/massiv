@@ -13,8 +13,7 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Array.Manifest.List
-  (
-  -- ** List
+  ( -- ** List
     fromList
   , fromListsM
   , fromLists'
@@ -30,16 +29,16 @@ import Data.Massiv.Array.Ops.Fold (foldrInner)
 import Data.Massiv.Array.Ops.Fold.Internal (foldrFB)
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
-import GHC.Exts (build)
+import qualified GHC.Exts as GHC (build, IsList(..))
 
 -- | Convert a flat list into a vector
 --
 -- @since 0.1.0
 fromList ::
-     forall r e. Mutable r Ix1 e
+     forall r e. Manifest r e
   => Comp -- ^ Computation startegy to use
   -> [e] -- ^ Flat list
-  -> Array r Ix1 e
+  -> Vector r e
 fromList = fromLists'
 {-# INLINE fromList #-}
 
@@ -75,26 +74,37 @@ fromList = fromLists'
 --   , [ [4,5] ]
 --   ]
 -- )
--- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix3 Int)
+-- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: Maybe (Array B Ix3 Integer)
 -- Nothing
--- >>> fromListsM Seq [[[1,2,3]],[[4,5]]] :: IO (Array B Ix3 Int)
--- *** Exception: DimTooShortException: expected (Sz1 3), got (Sz1 2)
+-- >>> fromListsM Seq [[[1,2,3]],[[4,5,6],[7,8,9]]] :: IO (Array B Ix3 Integer)
+-- *** Exception: DimTooLongException for (Dim 2): expected (Sz1 1), got (Sz1 2)
+-- >>> fromListsM Seq [[1,2,3,4],[5,6,7]] :: IO (Matrix B Integer)
+-- *** Exception: DimTooShortException for (Dim 1): expected (Sz1 4), got (Sz1 3)
 --
 -- @since 0.3.0
-fromListsM :: forall r ix e m . (Nested LN ix e, Ragged L ix e, Mutable r ix e, MonadThrow m)
-           => Comp -> [ListItem ix e] -> m (Array r ix e)
-fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
+fromListsM ::
+     forall r ix e m. (Ragged L ix e, Manifest r e, MonadThrow m)
+  => Comp
+  -> [ListItem ix e]
+  -> m (Array r ix e)
+fromListsM comp = fromRaggedArrayM . setComp comp . fromListToListArray
 {-# INLINE fromListsM #-}
 
--- TODO: Figure out QuickCheck properties. Best guess idea so far IMHO is to add it as dependency
--- and move Arbitrary instances int the library
---
--- prop> fromLists' Seq xs == fromList xs
---
--- | Same as `fromListsM`, but will throw a pure error on irregular shaped lists.
+
+fromListToListArray ::
+     forall ix e. GHC.IsList (Array L ix e)
+  => [ListItem ix e]
+  -> Array L ix e
+fromListToListArray = GHC.fromList
+{-# INLINE fromListToListArray #-}
+
+
+-- | Same as `fromListsM`, but will throw an error on irregular shaped lists.
 --
 -- __Note__: This function is the same as if you would turn on @{-\# LANGUAGE OverloadedLists #-}@
 -- extension. For that reason you can also use `GHC.Exts.fromList`.
+--
+-- prop> \xs -> fromLists' Seq xs == (fromList Seq xs :: Vector P Int)
 --
 -- ====__Examples__
 --
@@ -116,23 +126,14 @@ fromListsM comp = fromRaggedArrayM . setComp comp . throughNested
 --   , [ 4, 5, 6 ]
 --   ]
 --
--- Example of failure on conversion of an irregular nested list.
---
--- >>> fromLists' Seq [[1],[3,4]] :: Array U Ix2 Int
--- Array U *** Exception: DimTooLongException
---
 -- @since 0.1.0
-fromLists' :: forall r ix e . (Nested LN ix e, Ragged L ix e, Mutable r ix e)
-         => Comp -- ^ Computation startegy to use
-         -> [ListItem ix e] -- ^ Nested list
-         -> Array r ix e
-fromLists' comp = fromRaggedArray' . setComp comp . throughNested
+fromLists' ::
+     forall r ix e. (HasCallStack, Ragged L ix e, Manifest r e)
+  => Comp -- ^ Computation startegy to use
+  -> [ListItem ix e] -- ^ Nested list
+  -> Array r ix e
+fromLists' comp = fromRaggedArray' . setComp comp . fromListToListArray
 {-# INLINE fromLists' #-}
-
-
-throughNested :: forall ix e . Nested LN ix e => [ListItem ix e] -> Array L ix e
-throughNested xs = fromNested (fromNested xs :: Array LN ix e)
-{-# INLINE throughNested #-}
 
 
 
@@ -145,8 +146,8 @@ throughNested xs = fromNested (fromNested xs :: Array LN ix e)
 -- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
 --
 -- @since 0.1.0
-toList :: Source r ix e => Array r ix e -> [e]
-toList !arr = build (\ c n -> foldrFB c n arr)
+toList :: (Index ix, Source r e) => Array r ix e -> [e]
+toList !arr = GHC.build (\ c n -> foldrFB c n arr)
 {-# INLINE toList #-}
 
 
@@ -171,10 +172,11 @@ toList !arr = build (\ c n -> foldrFB c n arr)
 -- [[[0 :> 0 :. 0,0 :> 0 :. 1,0 :> 0 :. 2]],[[1 :> 0 :. 0,1 :> 0 :. 1,1 :> 0 :. 2]]]
 --
 -- @since 0.1.0
-toLists :: (Nested LN ix e, Construct L ix e, Source r ix e)
-       => Array r ix e
-       -> [ListItem ix e]
-toLists = toNested . toNested . toListArray
+toLists ::
+     (Ragged L ix e, Shape r ix, Source r e)
+  => Array r ix e -- ^ Array to be converted to nested lists
+  -> [ListItem ix e]
+toLists = GHC.toList . toListArray
 {-# INLINE toLists #-}
 
 
@@ -191,7 +193,7 @@ toLists = toNested . toNested . toListArray
 -- [[(0,0,0),(0,0,1),(0,0,2)],[(1,0,0),(1,0,1),(1,0,2)]]
 --
 -- @since 0.1.0
-toLists2 :: (Source r ix e, Index (Lower ix)) => Array r ix e -> [[e]]
+toLists2 :: (Source r e, Index ix, Index (Lower ix)) => Array r ix e -> [[e]]
 toLists2 = toList . foldrInner (:) []
 {-# INLINE toLists2 #-}
 
@@ -200,7 +202,8 @@ toLists2 = toList . foldrInner (:) []
 -- get flattened.
 --
 -- @since 0.1.0
-toLists3 :: (Index (Lower (Lower ix)), Index (Lower ix), Source r ix e) => Array r ix e -> [[[e]]]
+toLists3 ::
+     (Source r e, Index ix, Index (Lower ix), Index (Lower (Lower ix))) => Array r ix e -> [[[e]]]
 toLists3 = toList . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists3 #-}
 
@@ -209,12 +212,17 @@ toLists3 = toList . foldrInner (:) [] . foldrInner (:) []
 --
 -- @since 0.1.0
 toLists4 ::
-     ( Index (Lower (Lower (Lower ix)))
-     , Index (Lower (Lower ix))
+     ( Source r e
+     , Index ix
      , Index (Lower ix)
-     , Source r ix e
+     , Index (Lower (Lower ix))
+     , Index (Lower (Lower (Lower ix)))
      )
   => Array r ix e
   -> [[[[e]]]]
 toLists4 = toList . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists4 #-}
+
+
+-- $setup
+-- >>> import Data.Massiv.Array as A

@@ -15,6 +15,7 @@
 --
 module Data.Massiv.Array.Delayed.Interleaved
   ( DI(..)
+  , Array(..)
   , toInterleaved
   , fromInterleaved
   ) where
@@ -30,52 +31,52 @@ data DI = DI
 
 newtype instance Array DI ix e = DIArray
   { diArray :: Array D ix e
-  } deriving (Eq, Ord, Functor, Applicative, Foldable, Num, Floating, Fractional)
+  } deriving (Eq, Ord, Functor, Applicative, Foldable)
 
 instance (Ragged L ix e, Show e) => Show (Array DI ix e) where
   showsPrec = showsArrayPrec diArray
   showList = showArrayList
 
-instance Index ix => Construct DI ix e where
+instance Strategy DI where
   setComp c arr = arr { diArray = (diArray arr) { dComp = c } }
   {-# INLINE setComp #-}
+  getComp = dComp . diArray
+  {-# INLINE getComp #-}
 
-  makeArray c sz = DIArray . makeArray c sz
-  {-# INLINE makeArray #-}
+instance Index ix => Shape DI ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
 
-instance Index ix => Resize DI ix where
+
+instance Size DI where
+  size (DIArray arr) = size arr
+  {-# INLINE size #-}
   unsafeResize sz = DIArray . unsafeResize sz . diArray
   {-# INLINE unsafeResize #-}
 
-instance Index ix => Extract DI ix e where
-  unsafeExtract sIx newSz = DIArray . unsafeExtract sIx newSz . diArray
-  {-# INLINE unsafeExtract #-}
-
 
 instance Index ix => Load DI ix e where
-  size (DIArray arr) = size arr
-  {-# INLINE size #-}
-  getComp = dComp . diArray
-  {-# INLINE getComp #-}
-  loadArrayM scheduler (DIArray (DArray _ sz f)) uWrite =
+  makeArray c sz = DIArray . makeArray c sz
+  {-# INLINE makeArray #-}
+  iterArrayLinearST_ scheduler (DIArray (DArray _ sz f)) uWrite =
     loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
       scheduleWork scheduler $
       iterLinearM_ sz start (totalElem sz) (numWorkers scheduler) (<) $ \ !k -> uWrite k . f
-  {-# INLINE loadArrayM #-}
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance Index ix => StrideLoad DI ix e where
-  loadArrayWithStrideM scheduler stride resultSize arr uWrite =
+  iterArrayLinearWithStrideST_ scheduler stride resultSize arr uWrite =
     let strideIx = unStride stride
         DIArray (DArray _ _ f) = arr
     in loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
           scheduleWork scheduler $
           iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
             \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
-  {-# INLINE loadArrayWithStrideM #-}
+  {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out
 -- of order (interleaved amongst cores), hence making unbalanced computation better parallelizable.
-toInterleaved :: Source r ix e => Array r ix e -> Array DI ix e
+toInterleaved :: (Index ix, Source r e) => Array r ix e -> Array DI ix e
 toInterleaved = DIArray . delay
 {-# INLINE toInterleaved #-}
 

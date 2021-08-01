@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [nightly, lts-17, lts-16, lts-14, lts-12]
+        resolver: [nightly, lts-18, lts-16, lts-14, lts-12]
         include:
           - resolver: lts-12
             ghc: 8.4.4
@@ -27,15 +27,18 @@ jobs:
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-16
             ghc: 8.8.4
-          - resolver: lts-17
+            stack-yaml: stack-extra-deps.yaml
+          - resolver: lts-18
             ghc: 8.10.4
 
           # Latest stable for MacOS: ghc-8.8.4
           - resolver: lts-16
             os: macos-latest
+            stack-yaml: stack-extra-deps.yaml
           # Latest stable for Windows: ghc-8.6.4
           - resolver: lts-14
             os: windows-latest
+            stack-yaml: stack-extra-deps.yaml
 
     env:
       STACK_YAML: stack.yaml
@@ -96,6 +99,18 @@ jobs:
         [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         stack $STACK_ARGS runghc git-modtime.hs
+    - name: Build
+      env:
+        COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+      run: |
+        set -ex
+        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
+        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+          stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
+        else
+          stack $STACK_ARGS build --test --no-run-tests --bench --no-run-benchmarks --haddock --no-haddock-deps
+        fi
     - name: Tests
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
@@ -109,7 +124,8 @@ jobs:
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-8.8.4.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
-          stack $STACK_ARGS test massiv-test:tests massiv:doctests --bench --no-run-benchmarks --haddock --no-haddock-deps
+          stack $STACK_ARGS test massiv:doctests
+          stack $STACK_ARGS test massiv-test:tests
         fi
 
   massiv-examples:
@@ -117,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      STACK_ARGS: '--resolver lts-16.31'
+      STACK_ARGS: '--resolver lts-18.3'
     steps:
     - uses: actions/checkout@v2
 

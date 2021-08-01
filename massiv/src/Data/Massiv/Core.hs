@@ -7,36 +7,36 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core
-  ( Array(List, unList)
+  ( Array(LArray)
+  , List(..)
   , Vector
   , MVector
   , Matrix
   , MMatrix
-  , Elt
-  , Construct
-  , Load(R, loadArrayM, loadArrayWithSetM)
+  , Load(iterArrayLinearST_, iterArrayLinearWithSetST_)
   , Stream(..)
   , Source
-  , Resize
-  , Extract
+  , Size
+  , Shape(..)
+  , LengthHint(..)
   , StrideLoad(..)
-  , Slice
-  , OuterSlice
-  , InnerSlice
   , Manifest
   , Mutable
   , Ragged
-  , Nested(..)
-  , NestedStruct
   , L(..)
-  , LN
   , ListItem
   , Scheduler
   , SchedulerWS
+  , Strategy
   , Comp(Seq, Par, Par', ParOn, ParN)
+  , getComp
+  , setComp
   , appComp
   , WorkerStates
   , initWorkerStates
+  , scheduleWork
+  , scheduleWork_
+  , withMassivScheduler_
   , module Data.Massiv.Core.Index
   -- * Numeric
   , FoldNumeric
@@ -44,7 +44,6 @@ module Data.Massiv.Core
   , NumericFloat
   -- * Exceptions
   , MonadThrow(..)
-  , throw
   , IndexException(..)
   , SizeException(..)
   , ShapeException(..)
@@ -66,6 +65,6 @@ import Data.Massiv.Core.Operations (FoldNumeric, Numeric, NumericFloat)
 -- | Append computation strategy using `Comp`'s `Monoid` instance.
 --
 -- @since 0.6.0
-appComp :: (Construct r ix e, Load r ix e) => Comp -> Array r ix e -> Array r ix e
+appComp :: Strategy r => Comp -> Array r ix e -> Array r ix e
 appComp comp arr = setComp (comp <> getComp arr) arr
 {-# INLINEABLE appComp #-}

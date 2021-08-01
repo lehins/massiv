@@ -1,8 +1,11 @@
-resolver: lts-16.3
-
+resolver: lts-18.3
 packages:
 - .
 extra-deps:
 - ../../massiv
+- github: lehins/haskell-scheduler
+  commit: c5506d20d96fc3fb00c213791243b7246d39e822
+  subdirs:
+    - scheduler
 nix:
   packages: [ zlib libGLU ]

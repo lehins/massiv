@@ -24,13 +24,13 @@ v1size :: Sz1
 v1size = Sz1 1000000
 
 
-randomV1 :: (Mutable r Ix1 e, Random e) => Vector r e
+randomV1 :: (Manifest r e, Random e) => Vector r e
 randomV1 = snd $ randomArrayS stdGen v1size random
 
 
 
 benchV1 ::
-     forall r e. (Typeable r, Typeable e, Construct r Ix1 e, Source r Ix1 e, Floating e, Numeric r e)
+     forall r e. (Typeable r, Typeable e, Source r e, Floating e, Numeric r e)
   => Vector r e
   -> Benchmark
 benchV1 v =
@@ -63,12 +63,12 @@ bVxVsize :: Sz1
 bVxVsize = aVxVsize
 
 
-randomVxV :: (Mutable r Ix1 e, Random e) => VxV r e
+randomVxV :: (Manifest r e, Random e) => VxV r e
 randomVxV =
   case randomArrayS stdGen aVxVsize random of
     (g, a) -> VxV {aVxV = a, bVxV = snd $ randomArrayS g bVxVsize random}
 
-showSizeVxV :: Load r Ix1 e => VxV r e -> String
+showSizeVxV :: Size r => VxV r e -> String
 showSizeVxV VxV {..} = show n1 <> " X " <> show n2
   where
     Sz1 n1 = size aVxV
@@ -76,7 +76,7 @@ showSizeVxV VxV {..} = show n1 <> " X " <> show n2
 
 
 benchVxV ::
-     forall r e. (Typeable r, Typeable e, Numeric r e, Mutable r Ix1 e)
+     forall r e. (Typeable r, Typeable e, Numeric r e, Manifest r e)
   => VxV r e
   -> Benchmark
 benchVxV vxv@VxV {..} =

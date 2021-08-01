@@ -2,7 +2,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -17,11 +16,11 @@ import Prelude as P
 import Test.Massiv.Core
 import Test.Massiv.Array.Delayed (stackSlices')
 
-prop_TransposeOuterInner :: Array D Ix2 Int -> Property
+prop_TransposeOuterInner :: Matrix D Int -> Property
 prop_TransposeOuterInner arr = transposeOuter arr === transpose arr
 
 prop_UpsampleDownsample ::
-     forall r ix e . (Eq (Array r ix e), Show (Array r ix e), Mutable r ix e)
+     forall r ix e . (Eq (Array r ix e), Show (Array r ix e), Load r ix e, Manifest r e)
   => ArrTiny r ix e
   -> Stride ix
   -> e
@@ -30,13 +29,7 @@ prop_UpsampleDownsample (ArrTiny arr) stride fill =
   arr === compute (downsample stride (compute @r (upsample fill stride arr)))
 
 prop_ExtractAppend ::
-     forall r ix e.
-     ( Eq (Array r ix e)
-     , Show (Array r ix e)
-     , Source (R r) ix e
-     , Extract r ix e
-     , Mutable r ix e
-     )
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Manifest r e, Index ix)
   => DimIx ix
   -> ArrIx r ix e
   -> Property
@@ -45,13 +38,14 @@ prop_ExtractAppend (DimIx dim) (ArrIx arr ix) =
 
 prop_SplitExtract ::
      forall r ix e.
-     ( Eq (Array r ix e)
-     , Eq (Array (R r) ix e)
+     ( Eq e
+     , Show e
+     , Eq (Array r ix e)
      , Show (Array r ix e)
-     , Show (Array (R r) ix e)
-     , Source (R r) ix e
-     , Mutable r ix e
-     , Extract r ix e
+     , Source r e
+     , Load r ix e
+     , Manifest r e
+     , Ragged L ix e
      )
   => DimIx ix
   -> ArrIx r ix e
@@ -63,11 +57,11 @@ prop_SplitExtract (DimIx dim) (ArrIx arr ix) (Positive n) =
   where i = getDim' ix dim
         k = getDim' (unSz (size arr)) dim
         n' = n `mod` (k - i)
-        (left, center, right) = either throw id (splitExtractM dim i (Sz n') arr)
+        (left, center, right) = throwEither (splitExtractM dim i (Sz n') arr)
         (splitLeft, splitRight) = splitAt' dim (i + n') arr
 
 prop_ConcatAppend ::
-     forall r ix. (Eq (Array r ix Int), Show (Array r ix Int), Mutable r ix Int)
+     forall r ix. (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Manifest r Int)
   => DimIx ix
   -> Comp
   -> Sz ix
@@ -80,7 +74,8 @@ prop_ConcatAppend (DimIx dim) comp sz (NonEmpty fns) =
     arrs = P.zipWith (\ f i -> makeArray @r comp sz ((+i) . apply f)) fns [0 .. ]
 
 prop_ConcatMConcatOuterM ::
-     forall r ix. (Eq (Array r ix Int), Show (Array r ix Int), Mutable r ix Int)
+     forall r ix.
+     (Eq (Array r ix Int), Show (Array r ix Int), Load r ix Int, Manifest r Int)
   => Comp
   -> Sz ix
   -> NonEmptyList (Fun ix Int)
@@ -105,7 +100,7 @@ prop_ConcatMconcat arrs =
   computeAs P (concat' 1 (A.empty : arrs)) === computeAs P (mconcat (fmap toLoadArray arrs))
 
 prop_ExtractSizeMismatch ::
-     (Resize r ix, Load r ix e, NFData (Array r Int e)) => ArrTiny r ix e -> Positive Int -> Property
+     (Size r, Load r ix e, NFData (Array r Int e)) => ArrTiny r ix e -> Positive Int -> Property
 prop_ExtractSizeMismatch (ArrTiny arr) (Positive n) =
   assertExceptionIO (SizeElementsMismatchException sz sz' ==) $ resizeM sz' arr
   where
@@ -124,19 +119,19 @@ prop_ExtractSizeMismatch (ArrTiny arr) (Positive n) =
 --   => ArrNE P ix Int
 --   -> Property
 -- prop_stackInnerSlices (ArrNE arr) =
---   arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+--   arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
 --   arr === compute (stackSlices' 1 (innerSlices arr))
 prop_stackInnerSlicesIx2 :: ArrNE P Ix2 Int -> Property
 prop_stackInnerSlicesIx2 (ArrNE arr) =
-  arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+  arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
   arr === compute (stackSlices' 1 (innerSlices arr))
 prop_stackInnerSlicesIx3 :: ArrNE P Ix3 Int -> Property
 prop_stackInnerSlicesIx3 (ArrNE arr) =
-  arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+  arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
   arr === compute (stackSlices' 1 (innerSlices arr))
 prop_stackInnerSlicesIx4 :: ArrNE P Ix4 Int -> Property
 prop_stackInnerSlicesIx4 (ArrNE arr) =
-  arr === either throw compute (stackInnerSlicesM (innerSlices arr)) .&&.
+  arr === compute (throwEither (stackInnerSlicesM (innerSlices arr))) .&&.
   arr === compute (stackSlices' 1 (innerSlices arr))
 
 -- prop_stackOuterSlices ::
@@ -150,19 +145,19 @@ prop_stackInnerSlicesIx4 (ArrNE arr) =
 --   => ArrNE P ix Int
 --   -> Property
 -- prop_stackOuterSlices (ArrNE arr) =
---   arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+--   arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
 --   arr === compute (stackSlices' (dimensions (Proxy :: Proxy ix)) (outerSlices arr))
 prop_stackOuterSlicesIx2 :: ArrNE P Ix2 Int -> Property
 prop_stackOuterSlicesIx2 (ArrNE arr) =
-  arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+  arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
   arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix2)) (outerSlices arr))
 prop_stackOuterSlicesIx3 :: ArrNE P Ix3 Int -> Property
 prop_stackOuterSlicesIx3 (ArrNE arr) =
-  arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+  arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
   arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix3)) (outerSlices arr))
 prop_stackOuterSlicesIx4 :: ArrNE P Ix4 Int -> Property
 prop_stackOuterSlicesIx4 (ArrNE arr) =
-  arr === either throw compute (stackOuterSlicesM (outerSlices arr)) .&&.
+  arr === compute (throwEither (stackOuterSlicesM (outerSlices arr))) .&&.
   arr === compute (stackSlices' (dimensions (Proxy :: Proxy Ix4)) (outerSlices arr))
 
 
@@ -173,10 +168,8 @@ prop_ZoomWithGridStrideCompute ::
      forall r ix e.
      ( Eq (Array r ix e)
      , Show (Array r ix e)
-     , StrideLoad (R r) ix e
      , StrideLoad r ix e
-     , Mutable r ix e
-     , Extract r ix e
+     , Manifest r e
      )
   => Array r ix e
   -> Stride ix
@@ -192,7 +185,7 @@ prop_ZoomWithGridStrideCompute arr stride defVal =
     stride' = Stride (liftIndex (+ 1) $ unStride stride)
 
 prop_ZoomStrideCompute ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), StrideLoad r ix e, Mutable r ix e)
+     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), StrideLoad r ix e, Manifest r e)
   => Array r ix e
   -> Stride ix
   -> Property
@@ -213,20 +206,18 @@ type Transform r ix e
      , Function e
      , Function ix
      , Eq (Array r ix e)
-     , Eq (Array (R r) ix e)
      , Eq (Array r ix Int)
      , Show (Array r ix e)
-     , Show (Array (R r) ix e)
      , Show (Array r ix Int)
      , NFData (Array r ix e)
      , NFData (Array r Int e)
-     , Resize r ix
-     , Extract r ix e
-     , Source (R r) ix e
+     , Load r ix e
+     , Load r ix Int
+     , Ragged L ix e
+     , Source r e
      , StrideLoad r ix e
-     , StrideLoad (R r) ix e
-     , Mutable r ix Int
-     , Mutable r ix e)
+     , Manifest r Int
+     , Manifest r e)
 
 specTransformR ::
      forall r ix e. Transform r ix e

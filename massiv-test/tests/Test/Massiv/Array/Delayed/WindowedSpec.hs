@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Test.Massiv.Array.Delayed.WindowedSpec (spec) where
@@ -33,11 +32,9 @@ spec = do
     it "Ix3" $ property $ prop_EqDelayed (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_EqDelayed (Proxy :: Proxy Ix4)
     it "Ix5" $ property $ prop_EqDelayed (Proxy :: Proxy Ix5)
-    it "Ix2T" $ property $ prop_EqDelayed (Proxy :: Proxy Ix2T)
   describe "Equivalency with Stride With Delayed" $ do
     it "Ix1" $ property $ prop_EqDelayedStride (Proxy :: Proxy Ix1)
     it "Ix2" $ property $ prop_EqDelayedStride (Proxy :: Proxy Ix2)
     it "Ix3" $ property $ prop_EqDelayedStride (Proxy :: Proxy Ix3)
     it "Ix4" $ property $ prop_EqDelayedStride (Proxy :: Proxy Ix4)
     it "Ix5" $ property $ prop_EqDelayedStride (Proxy :: Proxy Ix5)
-    it "Ix2T" $ property $ prop_EqDelayedStride (Proxy :: Proxy Ix2T)

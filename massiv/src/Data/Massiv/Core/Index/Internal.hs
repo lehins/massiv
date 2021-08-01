@@ -26,7 +26,6 @@ module Data.Massiv.Core.Index.Internal
   ( Sz(SafeSz)
   , pattern Sz
   , pattern Sz1
-  , type Sz1
   , unSz
   , zeroSz
   , oneSz
@@ -66,13 +65,41 @@ import Control.Exception (Exception(..), throw)
 import Control.Monad (when)
 import Control.Monad.Catch (MonadThrow(..))
 import Data.Coerce
+import Data.Kind
 import Data.Massiv.Core.Iterator
 import Data.Typeable
 import GHC.TypeLits
+import System.Random.Stateful
 
--- | `Sz` provides type safety guarantees preventing mixup with index, which is used for looking into
--- array cells, from the size, that describes total number of elements along each dimension in the
--- array. Moreover the @Sz@ constructor will prevent creation of invalid sizes with negative numbers.
+-- | `Sz` is the size of the array. It describes total number of elements along
+-- each dimension in the array. It is a wrapper around an index of the same
+-- dimension, however it provides type safety preventing mixup with
+-- index. Moreover the @Sz@ constructor and others such as
+-- `Data.Massiv.Core.Index.Sz1`, `Data.Massiv.Core.Index.Sz2`, ... that
+-- are specialized to specific dimensions, prevent creation of invalid sizes with
+-- negative values by clamping them to zero.
+--
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> Sz (1 :> 2 :. 3)
+-- Sz (1 :> 2 :. 3)
+--
+-- `Sz` has a `Num` instance, which is very convenient:
+--
+-- >>> Sz (1 :> 2 :. 3) + 5
+-- Sz (6 :> 7 :. 8)
+--
+-- However subtraction can sometimes lead to surprising behavior, because size is not
+-- allowed to take negative values it will be clamped at 0.
+--
+-- >>> Sz (1 :> 2 :. 3) - 2
+-- Sz (0 :> 0 :. 1)
+--
+-- __Warning__: It is always wrong to `negate` a size, thus it will result in an
+-- error. For that reason also watch out for partially applied @(`Prelude.-` sz)@, which is
+-- deugared into @`negate` sz@. See more info about it in
+-- [#114](https://github.com/lehins/massiv/issues/114).
 --
 -- @since 0.3.0
 newtype Sz ix =
@@ -92,19 +119,24 @@ pattern Sz ix <- SafeSz ix where
         Sz ix = SafeSz (liftIndex (max 0) ix)
 {-# COMPLETE Sz #-}
 
--- | 1-dimensional type synonym for size.
---
--- @since 0.3.0
-type Sz1 = Sz Ix1
-
 -- | 1-dimensional size constructor. Especially useful with literals: @(Sz1 5) == Sz (5 :: Int)@.
 --
 -- @since 0.3.0
-pattern Sz1 :: Ix1 -> Sz1
+pattern Sz1 :: Ix1 -> Sz Ix1
 pattern Sz1 ix  <- SafeSz ix where
         Sz1 ix = SafeSz (max 0 ix)
 {-# COMPLETE Sz1 #-}
 
+
+instance (UniformRange ix, Index ix) => Uniform (Sz ix) where
+  uniformM g = SafeSz <$> uniformRM (pureIndex 0, pureIndex maxBound) g
+  {-# INLINE uniformM #-}
+
+instance UniformRange ix => UniformRange (Sz ix) where
+  uniformRM (SafeSz l, SafeSz u) g = SafeSz <$> uniformRM (l, u) g
+  {-# INLINE uniformRM #-}
+
+instance (UniformRange ix, Index ix) => Random (Sz ix)
 
 instance Index ix => Show (Sz ix) where
   showsPrec n sz@(SafeSz usz) = showsPrecWrapped n (str ++)
@@ -115,16 +147,20 @@ instance Index ix => Show (Sz ix) where
           1 -> "1 " ++ show usz
           _ -> " (" ++ shows usz ")"
 
+-- | Calling `negate` is an error.
 instance (Num ix, Index ix) => Num (Sz ix) where
   (+) x y = Sz (coerce x + coerce y)
   {-# INLINE (+) #-}
   (-) x y = Sz (coerce x - coerce y)
   {-# INLINE (-) #-}
-  (*) x y = SafeSz (coerce x * coerce y)
+  (*) x y = Sz (coerce x * coerce y)
   {-# INLINE (*) #-}
   abs !x = x
   {-# INLINE abs #-}
-  negate !_x = 0
+  negate x
+    | x == zeroSz = x
+    | otherwise =
+      error $ "Attempted to negate: " ++ show x ++ ", this can lead to unexpected behavior. See https://github.com/lehins/massiv/issues/114"
   {-# INLINE negate #-}
   signum x = SafeSz (signum (coerce x))
   {-# INLINE signum #-}
@@ -222,7 +258,7 @@ liftSz2 f sz1 sz2 = Sz (liftIndex2 f (coerce sz1) (coerce sz2))
 -- Sz (1 :> 2 :. 3)
 --
 -- @since 0.3.0
-consSz :: Index ix => Sz1 -> Sz (Lower ix) -> Sz ix
+consSz :: Index ix => Sz Ix1 -> Sz (Lower ix) -> Sz ix
 consSz (SafeSz i) (SafeSz ix) = SafeSz (consDim i ix)
 {-# INLINE consSz #-}
 
@@ -236,7 +272,7 @@ consSz (SafeSz i) (SafeSz ix) = SafeSz (consDim i ix)
 -- Sz (2 :> 3 :. 1)
 --
 -- @since 0.3.0
-snocSz :: Index ix => Sz (Lower ix) -> Sz1 -> Sz ix
+snocSz :: Index ix => Sz (Lower ix) -> Sz Ix1 -> Sz ix
 snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 {-# INLINE snocSz #-}
 
@@ -279,7 +315,7 @@ insertSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> insertDimM sz dim sz1
 -- (Sz1 1,Sz (2 :. 3))
 --
 -- @since 0.3.0
-unconsSz :: Index ix => Sz ix -> (Sz1, Sz (Lower ix))
+unconsSz :: Index ix => Sz ix -> (Sz Ix1, Sz (Lower ix))
 unconsSz (SafeSz sz) = coerce (unconsDim sz)
 {-# INLINE unconsSz #-}
 
@@ -292,7 +328,7 @@ unconsSz (SafeSz sz) = coerce (unconsDim sz)
 -- (Sz (1 :. 2),Sz1 3)
 --
 -- @since 0.3.0
-unsnocSz :: Index ix => Sz ix -> (Sz (Lower ix), Sz1)
+unsnocSz :: Index ix => Sz ix -> (Sz (Lower ix), Sz Ix1)
 unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
 {-# INLINE unsnocSz #-}
 
@@ -317,6 +353,14 @@ newtype Dim = Dim { unDim :: Int } deriving (Eq, Ord, Num, Real, Integral, Enum,
 
 instance Show Dim where
   show (Dim d) = "(Dim " ++ show d ++ ")"
+
+instance Uniform Dim where
+  uniformM g = Dim <$> uniformRM (1, maxBound) g
+
+instance UniformRange Dim where
+  uniformRM r g = Dim <$> uniformRM (coerce r) g
+
+instance Random Dim
 
 -- | A way to select Array dimension at a type level.
 --
@@ -366,7 +410,7 @@ type IsIndexDimension ix n = (1 <= n, n <= Dimensions ix, Index ix, KnownNat n)
 -- argument.
 --
 -- @since 0.1.0
-type family Lower ix :: *
+type family Lower ix :: Type
 
 
 type family ReportInvalidDim (dims :: Nat) (n :: Nat) isNotZero isLess :: Bool where
@@ -387,6 +431,7 @@ class ( Eq ix
       , Ord ix
       , Show ix
       , NFData ix
+      , Typeable ix
       , Eq (Lower ix)
       , Ord (Lower ix)
       , Show (Lower ix)
@@ -708,7 +753,7 @@ data IndexException where
   -- | Index contains a zero value along one of the dimensions.
   IndexZeroException :: Index ix => !ix -> IndexException
   -- | Dimension is out of reach.
-  IndexDimensionException :: (NFData ix, Show ix, Typeable ix) => !ix -> !Dim -> IndexException
+  IndexDimensionException :: (NFData ix, Eq ix, Show ix, Typeable ix) => !ix -> !Dim -> IndexException
   -- | Index is out of bounds.
   IndexOutOfBoundsException :: Index ix => !(Sz ix) -> !ix -> IndexException
 
@@ -723,11 +768,13 @@ instance Show IndexException where
 instance Eq IndexException where
   e1 == e2 =
     case (e1, e2) of
-      (IndexZeroException i1, IndexZeroException i2) -> show i1 == show i2
-      (IndexDimensionException i1 d1, IndexDimensionException i2 d2) ->
-        show i1 == show i2 && d1 == d2
-      (IndexOutOfBoundsException sz1 i1, IndexOutOfBoundsException sz2 i2) ->
-        show sz1 == show sz2 && show i1 == show i2
+      (IndexZeroException i1, IndexZeroException i2t)
+        | Just i2 <- cast i2t -> i1 == i2
+      (IndexDimensionException i1 d1, IndexDimensionException i2t d2)
+        | Just i2 <- cast i2t -> i1 == i2 && d1 == d2
+      (IndexOutOfBoundsException sz1 i1, IndexOutOfBoundsException sz2t i2t)
+        | Just i2 <- cast i2t
+        , Just sz2 <- cast sz2t -> sz1 == sz2 && i1 == i2
       _ -> False
 
 instance NFData IndexException where
@@ -763,15 +810,22 @@ data SizeException where
 instance Eq SizeException where
   e1 == e2 =
     case (e1, e2) of
-      (SizeMismatchException sz1 sz1', SizeMismatchException sz2 sz2') ->
-        show sz1 == show sz2 && show sz1' == show sz2'
-      (SizeElementsMismatchException sz1 sz1', SizeElementsMismatchException sz2 sz2') ->
-        show sz1 == show sz2 && show sz1' == show sz2'
-      (SizeSubregionException sz1 i1 sz1', SizeSubregionException sz2 i2 sz2') ->
-        show sz1 == show sz2 && show i1 == show i2 && show sz1' == show sz2'
-      (SizeEmptyException sz1, SizeEmptyException sz2) -> show sz1 == show sz2
-      (SizeOverflowException sz1, SizeOverflowException sz2) -> show sz1 == show sz2
-      (SizeNegativeException sz1, SizeNegativeException sz2) -> show sz1 == show sz2
+      (SizeMismatchException sz1 sz1', SizeMismatchException sz2t sz2t')
+        | Just sz2 <- cast sz2t
+        , Just sz2' <- cast sz2t' -> sz1 == sz2 && sz1' == sz2'
+      (SizeElementsMismatchException sz1 sz1', SizeElementsMismatchException sz2t sz2t')
+        | Just sz2 <- cast sz2t
+        , Just sz2' <- cast sz2t' -> sz1 == sz2 && sz1' == sz2'
+      (SizeSubregionException sz1 i1 sz1', SizeSubregionException sz2t i2t sz2t')
+        | Just sz2 <- cast sz2t
+        , Just i2 <- cast i2t
+        , Just sz2' <- cast sz2t' -> sz1 == sz2 && i1 == i2 && sz1' == sz2'
+      (SizeEmptyException sz1, SizeEmptyException sz2t)
+        | Just sz2 <- cast sz2t -> sz1 == sz2
+      (SizeOverflowException sz1, SizeOverflowException sz2t)
+        | Just sz2 <- cast sz2t -> sz1 == sz2
+      (SizeNegativeException sz1, SizeNegativeException sz2t)
+        | Just sz2 <- cast sz2t -> sz1 == sz2
       _ -> False
 
 instance NFData SizeException where
@@ -808,16 +862,27 @@ instance Show SizeException where
 --
 -- @since 0.3.0
 data ShapeException
-  = DimTooShortException !Sz1 !Sz1
-  | DimTooLongException
+  = DimTooShortException !Dim !(Sz Ix1) !(Sz Ix1)
+  -- ^ Across a specific dimension there was not enough elements for the supplied size
+  | DimTooLongException !Dim !(Sz Ix1) !(Sz Ix1)
+  -- ^ Across a specific dimension there was too many elements for the supplied size
+  | ShapeNonEmpty
+  -- ^ Expected an empty size, but the shape was not empty.
   deriving Eq
 
 instance Show ShapeException where
-  showsPrec _ DimTooLongException = ("DimTooLongException" ++)
-  showsPrec n (DimTooShortException sz sz') =
-    showsPrecWrapped
-      n
-      (("DimTooShortException: expected (" ++) . shows sz . ("), got (" ++) . shows sz' . (")" ++))
+  showsPrec n =
+    \case
+      DimTooShortException d sz sz' -> showsShapeExc "DimTooShortException" d sz sz'
+      DimTooLongException d sz sz' -> showsShapeExc "DimTooLongException" d sz sz'
+      ShapeNonEmpty -> ("ShapeNonEmpty" ++)
+    where
+      showsShapeExc tyName d sz sz' =
+        showsPrecWrapped
+          n
+          ((tyName ++) .
+           (" for " ++) .
+           shows d . (": expected (" ++) . shows sz . ("), got (" ++) . shows sz' . (")" ++))
 
 instance Exception ShapeException
 

@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -24,7 +23,7 @@ prop_ProdSEqProdP :: Index ix => Array D ix Int -> Bool
 prop_ProdSEqProdP arr = product arr == product (setComp Par arr)
 
 
-foldOpsProp :: Source P ix Int => Fun Int Bool -> ArrTinyNE P ix Int -> Expectation
+foldOpsProp :: Index ix => Fun Int Bool -> ArrTinyNE P ix Int -> Expectation
 foldOpsProp f (ArrTinyNE arr) = do
   A.maximum' arr `shouldBe` getMax (foldMono Max arr)
   A.minimum' arr `shouldBe` getMin (foldSemi Min maxBound arr)
@@ -54,10 +53,7 @@ specFold dimStr =
     prop "foldOps" $ foldOpsProp @ix
 
 
-prop_foldOuterSliceToList ::
-     (Elt P ix Int ~ Array M (Lower ix) Int, OuterSlice P ix Int, Index (Lower ix))
-  => ArrTiny P ix Int
-  -> Property
+prop_foldOuterSliceToList :: (Index ix, Index (Lower ix)) => ArrTiny P ix Int -> Property
 prop_foldOuterSliceToList (ArrTiny arr) =
   foldOuterSlice A.toList arr === A.fold (A.map pure arr)
 
@@ -77,5 +73,5 @@ spec = do
         emptySelector = (== SizeEmptyException (Sz (zeroIndex :: ix)))
     it "maximumM" $ maximumM (A.empty :: Array D Ix1 Int) `shouldThrow` emptySelector @Ix1
     it "minimumM" $ minimumM (A.empty :: Array D Ix2 Int) `shouldThrow` emptySelector @Ix2
-    it "maximum'" $ (pure $! maximum' (A.empty :: Array D Ix3 Int)) `shouldThrow` emptySelector @Ix3
-    it "minimum'" $ (pure $! minimum' (A.empty :: Array D Ix4 Int)) `shouldThrow` emptySelector @Ix4
+    it "maximum'" $ (pure $! maximum' (A.empty :: Array D Ix3 Int)) `shouldThrow` selectErrorCall
+    it "minimum'" $ (pure $! minimum' (A.empty :: Array D Ix4 Int)) `shouldThrow` selectErrorCall

@@ -1,5 +1,5 @@
 name:                massiv
-version:             0.6.1.0
+version:             1.0.0.0
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -20,6 +20,7 @@ tested-with:          GHC == 8.4.3
                     , GHC == 8.6.5
                     , GHC == 8.8.4
                     , GHC == 8.10.2
+                    , GHC == 9.0.1
 
 flag unsafe-checks
   description: Enable all the bounds checks for unsafe functions at the cost of
@@ -81,8 +82,9 @@ library
                      , bytestring
                      , deepseq
                      , exceptions
-                     , scheduler >= 1.5.0
-                     , primitive
+                     , scheduler >= 2.0.0 && < 3.0.0
+                     , primitive >= 0.7.1.0
+                     , random >= 1.2.0
                      , unliftio-core
                      , vector
 
@@ -97,6 +99,7 @@ library
                       -Wincomplete-record-updates
                       -Wincomplete-uni-patterns
                       -Wredundant-constraints
+                      -Wno-simplifiable-class-constraints
 
 test-suite doctests
   type:             exitcode-stdio-1.0
@@ -107,7 +110,8 @@ test-suite doctests
                , QuickCheck
                , massiv
                , mersenne-random-pure64
-               , random
+               , random >= 1.2.0
+               , mwc-random >= 0.15.0.1
                , splitmix >= 0.0.1
                , template-haskell
   default-language:    Haskell2010

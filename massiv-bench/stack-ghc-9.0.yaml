@@ -1,10 +1,6 @@
-resolver: lts-11.22
+resolver: lts-18.3
 packages:
 - '.'
 extra-deps:
 - '../massiv/'
 - scheduler-2.0.0@sha256:3f053e3ff024fdcdd0983fb901313ef979921bc27e12dec97cd330878ddf78b1,2525
-- github: lehins/dh-core
-  commit: a24cd447718a23c9bb5732df5cfcc65bb91e5f2d
-  subdirs:
-    - dense-linear-algebra

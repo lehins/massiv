@@ -11,6 +11,8 @@ module Data.Massiv.Array.Delayed
   -- ** Delayed Pull Array
     D(..)
   , delay
+  , liftArray2'
+  , liftArray2M
   -- ** Delayed Push Array
   , DL(..)
   , toLoadArray

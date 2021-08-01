@@ -23,7 +23,7 @@ module Data.Massiv.Array.Delayed.Stream
   ) where
 
 import Control.Applicative
-import Control.Monad (void)
+import Control.Monad.ST
 import Data.Coerce
 import Data.Foldable
 import Data.Massiv.Array.Delayed.Pull
@@ -31,7 +31,6 @@ import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Core.Common
 import GHC.Exts
 import Prelude hiding (take, drop)
-import Data.Vector.Fusion.Bundle.Size (upperBound)
 
 -- | Delayed stream array that represents a sequence of values that can be loaded
 -- sequentially. Important distinction from other arrays is that its size might no be
@@ -45,23 +44,43 @@ newtype instance Array DS Ix1 e = DSArray
 -- | /O(1)/ - Convert delayed stream array into `Steps`.
 --
 -- @since 0.4.1
-toSteps :: Array DS Ix1 e -> Steps Id e
+toSteps :: Vector DS e -> Steps Id e
 toSteps = coerce
 {-# INLINE toSteps #-}
 
 -- | /O(1)/ - Convert `Steps` into delayed stream array
 --
 -- @since 0.4.1
-fromSteps :: Steps Id e -> Array DS Ix1 e
+fromSteps :: Steps Id e -> Vector DS e
 fromSteps = coerce
 {-# INLINE fromSteps #-}
 
 -- | /O(1)/ - Convert monadic `Steps` into delayed stream array
 --
 -- @since 0.5.0
-fromStepsM :: Monad m => Steps m e -> m (Array DS Ix1 e)
+fromStepsM :: Monad m => Steps m e -> m (Vector DS e)
 fromStepsM = fmap DSArray . S.transSteps
 {-# INLINE fromStepsM #-}
+
+
+instance Shape DS Ix1 where
+  linearSizeHint = stepsSize . dsArray
+  {-# INLINE linearSizeHint #-}
+
+  linearSize = SafeSz . unId . S.length . dsArray
+  {-# INLINE linearSize #-}
+
+  outerSize = linearSize
+  {-# INLINE outerSize #-}
+
+  isNull = S.unId . S.null . coerce
+  {-# INLINE isNull #-}
+
+
+--TODO remove
+instance Strategy DS where
+  getComp _ = Seq
+  setComp _ = id
 
 
 instance Functor (Array DS Ix1) where
@@ -114,8 +133,6 @@ instance Foldable (Array DS Ix1) where
   minimum = S.unId . S.foldl1 min . toSteps
   {-# INLINE minimum #-}
 
-
-
 instance Semigroup (Array DS Ix1 e) where
   (<>) a1 a2 = fromSteps (coerce a1 `S.append` coerce a2)
   {-# INLINE (<>) #-}
@@ -129,9 +146,9 @@ instance Monoid (Array DS Ix1 e) where
 
 instance IsList (Array DS Ix1 e) where
   type Item (Array DS Ix1 e) = e
-  fromList = fromSteps . S.fromList
+  fromList = fromSteps . fromList
   {-# INLINE fromList #-}
-  fromListN n = fromSteps . S.fromListN n
+  fromListN n = fromSteps . fromListN n
   {-# INLINE fromListN #-}
   toList = S.toList . coerce
   {-# INLINE toList #-}
@@ -147,7 +164,7 @@ instance S.Stream DS Ix1 e where
 -- | Flatten an array into a stream of values.
 --
 -- @since 0.4.1
-toStreamArray :: Source r ix e => Array r ix e -> Array DS Ix1 e
+toStreamArray :: (Index ix, Source r e) => Array r ix e -> Vector DS e
 toStreamArray = DSArray . S.steps
 {-# INLINE[1] toStreamArray #-}
 {-# RULES "toStreamArray/id" toStreamArray = id #-}
@@ -167,45 +184,24 @@ toStreamIxM = S.transStepsId . toStreamIx
 {-# INLINE toStreamIxM #-}
 
 
-instance Construct DS Ix1 e where
-  setComp _ arr = arr
-  {-# INLINE setComp #-}
-
-  makeArrayLinear _ (Sz k) = fromSteps . S.generate k
-  {-# INLINE makeArrayLinear #-}
-
-
-instance Extract DS Ix1 e where
-  unsafeExtract sIx newSz = fromSteps . S.slice sIx (unSz newSz) . dsArray
-  {-# INLINE unsafeExtract #-}
-
 -- | /O(n)/ - `size` implementation.
 instance Load DS Ix1 e where
-  size = coerce . S.unId . S.length . coerce
-  {-# INLINE size #-}
 
-  maxSize = coerce . upperBound . stepsSize . dsArray
-  {-# INLINE maxSize #-}
+  makeArrayLinear _ k = fromSteps . S.generate k
+  {-# INLINE makeArrayLinear #-}
+  replicate _ k = fromSteps . S.replicate k
+  {-# INLINE replicate #-}
 
-  isEmpty = S.unId . S.null . coerce
-  {-# INLINE isEmpty #-}
+  iterArrayLinearST_ _scheduler arr uWrite =
+    S.mapM_ (uncurry uWrite) $ S.indexed $ S.transStepsId (coerce arr)
+  {-# INLINE iterArrayLinearST_ #-}
 
-  getComp _ = Seq
-  {-# INLINE getComp #-}
-
-  loadArrayM _scheduler arr uWrite =
-    case stepsSize (dsArray arr) of
-      S.Exact _ ->
-        void $ S.foldlM (\i e -> uWrite i e >> pure (i + 1)) 0 (S.transStepsId (coerce arr))
-      _ -> error "Loading Stream array is not supported with loadArrayM"
-  {-# INLINE loadArrayM #-}
-
-  unsafeLoadIntoS marr (DSArray sts) =
+  unsafeLoadIntoST marr (DSArray sts) =
     S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
-  {-# INLINE unsafeLoadIntoS #-}
+  {-# INLINE unsafeLoadIntoST #-}
 
-  unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoS marr arr
-  {-# INLINE unsafeLoadIntoM #-}
+  unsafeLoadIntoIO marr arr = stToIO $ unsafeLoadIntoST marr arr
+  {-# INLINE unsafeLoadIntoIO #-}
 
 
 -- cons :: e -> Array DS Ix1 e -> Array DS Ix1 e
@@ -223,13 +219,13 @@ instance Load DS Ix1 e where
 
 -- TODO: skip the stride while loading
 -- instance StrideLoad DS Ix1 e where
---   loadArrayWithStrideM scheduler stride resultSize arr uWrite =
+--   iterArrayLinearWithStrideST_ scheduler stride resultSize arr uWrite =
 --     let strideIx = unStride stride
 --         DIArray (DArray _ _ f) = arr
 --     in loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
 --           scheduleWork scheduler $
 --           iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
 --             \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
---   {-# INLINE loadArrayWithStrideM #-}
+--   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 

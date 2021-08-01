@@ -25,22 +25,17 @@ module Data.Massiv.Core.Index.Ix
   , pattern Sz
   , type Ix1
   , pattern Ix1
-  , type Sz1
   , pattern Sz1
   , type Ix2(Ix2, (:.))
-  , type Sz2
   , pattern Sz2
   , type Ix3
   , pattern Ix3
-  , type Sz3
   , pattern Sz3
   , type Ix4
   , pattern Ix4
-  , type Sz4
   , pattern Sz4
   , type Ix5
   , pattern Ix5
-  , type Sz5
   , pattern Sz5
   , HighIxN
   ) where
@@ -49,10 +44,12 @@ import Control.Monad.Catch (MonadThrow(..))
 import Control.DeepSeq
 import Data.Massiv.Core.Index.Internal
 import Data.Proxy
+import qualified GHC.Arr as I
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Generic.Mutable as VM
 import qualified Data.Vector.Unboxed as VU
 import GHC.TypeLits
+import System.Random.Stateful
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
 #endif
@@ -73,15 +70,10 @@ pattern Ix2 :: Int -> Int -> Ix2
 pattern Ix2 i2 i1 = i2 :. i1
 {-# COMPLETE Ix2 #-}
 
--- | 2-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz2 = Sz Ix2
-
 -- | 2-dimensional size constructor. @(Sz2 i j) == Sz (i :. j)@
 --
 -- @since 0.3.0
-pattern Sz2 :: Int -> Int -> Sz2
+pattern Sz2 :: Int -> Int -> Sz Ix2
 pattern Sz2 i2 i1 = Sz (i2 :. i1)
 {-# COMPLETE Sz2 #-}
 
@@ -98,15 +90,10 @@ pattern Ix3 :: Int -> Int -> Int -> Ix3
 pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
 {-# COMPLETE Ix3 #-}
 
--- | 3-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz3 = Sz Ix3
-
 -- | 3-dimensional size constructor. @(Sz3 i j k) == Sz (i :> j :. k)@
 --
 -- @since 0.3.0
-pattern Sz3 :: Int -> Int -> Int -> Sz3
+pattern Sz3 :: Int -> Int -> Int -> Sz Ix3
 pattern Sz3 i3 i2 i1 = Sz (i3 :> i2 :. i1)
 {-# COMPLETE Sz3 #-}
 
@@ -122,15 +109,10 @@ pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
 pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
 {-# COMPLETE Ix4 #-}
 
--- | 4-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz4 = Sz Ix4
-
 -- | 4-dimensional size constructor. @(Sz4 i j k l) == Sz (i :> j :> k :. l)@
 --
 -- @since 0.3.0
-pattern Sz4 :: Int -> Int -> Int -> Int -> Sz4
+pattern Sz4 :: Int -> Int -> Int -> Int -> Sz Ix4
 pattern Sz4 i4 i3 i2 i1 = Sz (i4 :> i3 :> i2 :. i1)
 {-# COMPLETE Sz4 #-}
 
@@ -146,15 +128,10 @@ pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
 pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
 {-# COMPLETE Ix5 #-}
 
--- | 5-dimensional size type synonym.
---
--- @since 0.3.0
-type Sz5 = Sz Ix5
-
 -- | 5-dimensional size constructor.  @(Sz5 i j k l m) == Sz (i :> j :> k :> l :. m)@
 --
 -- @since 0.3.0
-pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz5
+pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz Ix5
 pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 {-# COMPLETE Sz5 #-}
 
@@ -182,6 +159,56 @@ instance Show Ix2 where
 
 instance Show (Ix (n - 1)) => Show (IxN n) where
   showsPrec n (i :> ix) = showsPrecWrapped n (shows i . (" :> " ++) . shows ix)
+
+instance Uniform Ix2 where
+  uniformM g = (:.) <$> uniformM g <*> uniformM g
+  {-# INLINE uniformM #-}
+
+instance UniformRange Ix2 where
+  uniformRM (l1 :. l2, u1 :. u2) g = (:.) <$> uniformRM (l1, u1) g <*> uniformRM (l2, u2) g
+  {-# INLINE uniformRM #-}
+
+instance Random Ix2
+
+instance Uniform (Ix (n - 1)) => Uniform (IxN n) where
+  uniformM g = (:>) <$> uniformM g <*> uniformM g
+  {-# INLINE uniformM #-}
+
+instance UniformRange (Ix (n - 1)) => UniformRange (IxN n) where
+  uniformRM (l1 :> l2, u1 :> u2) g = (:>) <$> uniformRM (l1, u1) g <*> uniformRM (l2, u2) g
+  {-# INLINE uniformRM #-}
+
+instance Random (Ix (n - 1)) => Random (IxN n) where
+  random g =
+    case random g of
+      (i, g') ->
+        case random g' of
+          (n, g'') -> (i :> n, g'')
+  {-# INLINE random #-}
+  randomR (l1 :> l2, u1 :> u2) g =
+    case randomR (l1, u1) g of
+      (i, g') ->
+        case randomR (l2, u2) g' of
+          (n, g'') -> (i :> n, g'')
+  {-# INLINE randomR #-}
+
+instance I.Ix Ix2 where
+  range (i1 :. j1, i2 :. j2) = [i :. j | i <- [i1 .. i2], j <- [j1 .. j2]]
+  {-# INLINE range #-}
+  unsafeIndex (l1 :. l2, u1 :. u2) (i1 :. i2) =
+    I.unsafeIndex (l1, u1) i1 * I.unsafeRangeSize (l2, u2) + I.unsafeIndex (l2, u2) i2
+  {-# INLINE unsafeIndex #-}
+  inRange (l1 :. l2, u1 :. u2) (i1 :. i2) = I.inRange (l1, u1) i1 && I.inRange (l2, u2) i2
+  {-# INLINE inRange #-}
+
+instance I.Ix (Ix (n - 1)) => I.Ix (IxN n) where
+  range (i1 :> j1, i2 :> j2) = [i :> j | i <- [i1 .. i2], j <- I.range (j1, j2)]
+  {-# INLINE range #-}
+  unsafeIndex (l1 :> l2, u1 :> u2) (i1 :> i2) =
+    I.unsafeIndex (l1, u1) i1 * I.unsafeRangeSize (l2, u2) + I.unsafeIndex (l2, u2) i2
+  {-# INLINE unsafeIndex #-}
+  inRange (l1 :> l2, u1 :> u2) (i1 :> i2) = I.inRange (l1, u1) i1 && I.inRange (l2, u2) i2
+  {-# INLINE inRange #-}
 
 
 instance Num Ix2 where
@@ -374,9 +401,9 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
 
 -- | Constraint synonym that encapsulates all constraints needed for dimension 4 and higher.
 --
--- @since 0.6.0
+-- @since 1.0.0
 type HighIxN n
-   = (4 <= n, KnownNat n, KnownNat (n - 1), Index (Ix (n - 1)), IxN (n - 1) ~ Ix (n - 1))
+   = (4 <= n, KnownNat n, KnownNat (n - 1), Index (IxN (n - 1)), IxN (n - 1) ~ Ix (n - 1))
 
 instance {-# OVERLAPPABLE #-} HighIxN n => Index (IxN n) where
   type Dimensions (IxN n) = n

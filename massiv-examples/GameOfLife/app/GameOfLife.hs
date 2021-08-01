@@ -101,7 +101,7 @@ startGameOfLife sz s = do
   let iLife = initLife sz inf2
       wSz = size (pixelGrid s iLife)
   G.windowSize $= sizeFromSz2 wSz
-  mArr <- new wSz
+  mArr <- newMArray' wSz
   displayCallback $= clear [ColorBuffer]
   drawLife s mArr iLife
   runGameOfLife s mArr iLife
@@ -111,14 +111,14 @@ drawLife :: Int -> MArray RealWorld S Ix2 Word8 -> Array S Ix2 Word8 -> IO ()
 drawLife s mArr arr = do
   computeInto mArr $ pixelGrid s arr
   A.withPtr mArr $ \ptr ->
-    drawPixels (sizeFromSz2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
+    drawPixels (sizeFromSz2 (sizeOfMArray mArr)) (PixelData Luminance UnsignedByte ptr)
 
 
 drawLifeStep :: Int -> MArray RealWorld S Ix2 Word8 -> Array D Ix2 (Word8, Word8) -> IO ()
 drawLifeStep s mArr arr = do
   imapM_ updateCellLife arr
   A.withPtr mArr $ \ptr ->
-    drawPixels (sizeFromSz2 (msize mArr)) (PixelData Luminance UnsignedByte ptr)
+    drawPixels (sizeFromSz2 (sizeOfMArray mArr)) (PixelData Luminance UnsignedByte ptr)
   where
     k = s + 1
     updateCellLife (i :. j) (prev, next) =

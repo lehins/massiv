@@ -16,7 +16,7 @@ on `massiv`.
 
 Another important use case is for advanced users that came up with their own index types
 or array representations and would like to run a standard set of specs on their instance
-implementations. For example a custom `Index ix`, or `Mutable r ix e` instances can use a
+implementations. For example a custom `Index ix`, or `Maniest r e` instances can use a
 predefined collection of `hspec` specs and/or `QuickCheck` properties to validate their
 implementation.
 

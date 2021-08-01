@@ -37,6 +37,8 @@ module Data.Massiv.Array.Ops.Construct
   , iunfoldrS_
   --, iunfoldrS
     -- *** Random
+  , uniformArray
+  , uniformRangeArray
   , randomArray
   , randomArrayS
   , randomArrayWS
@@ -74,6 +76,7 @@ import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Prelude hiding (enumFromTo, replicate)
+import System.Random.Stateful
 
 -- | Just like `makeArray` but with ability to specify the result representation as an
 -- argument. Note the `Data.Massiv.Array.U`nboxed type constructor in the below example.
@@ -94,28 +97,28 @@ import Prelude hiding (enumFromTo, replicate)
 --   ]
 --
 -- @since 0.1.0
-makeArrayR :: Construct r ix e => r -> Comp -> Sz ix -> (ix -> e) -> Array r ix e
+makeArrayR :: Load r ix e => r -> Comp -> Sz ix -> (ix -> e) -> Array r ix e
 makeArrayR _ = makeArray
 {-# INLINE makeArrayR #-}
 
 -- | Same as `makeArrayLinear`, but with ability to supply resulting representation
 --
 -- @since 0.3.0
-makeArrayLinearR :: Construct r ix e => r -> Comp -> Sz ix -> (Int -> e) -> Array r ix e
+makeArrayLinearR :: Load r ix e => r -> Comp -> Sz ix -> (Int -> e) -> Array r ix e
 makeArrayLinearR _ = makeArrayLinear
 {-# INLINE makeArrayLinearR #-}
 
 -- | Same as `makeArrayR`, but restricted to 1-dimensional arrays.
 --
 -- @since 0.1.0
-makeVectorR :: Construct r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Array r Ix1 e
+makeVectorR :: Load r Ix1 e => r -> Comp -> Sz1 -> (Ix1 -> e) -> Vector r e
 makeVectorR _ = makeArray
 {-# INLINE makeVectorR #-}
 
 
 newtype STA r ix a = STA {_runSTA :: forall s. MArray s r ix a -> ST s (Array r ix a)}
 
-runSTA :: Mutable r ix e => Sz ix -> STA r ix e -> Array r ix e
+runSTA :: (Manifest r e, Index ix) => Sz ix -> STA r ix e -> Array r ix e
 runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 {-# INLINE runSTA  #-}
 
@@ -127,7 +130,7 @@ runSTA !sz (STA m) = runST (unsafeNew sz >>= m)
 --
 -- @since 0.2.6
 makeArrayA ::
-     forall r ix e f. (Mutable r ix e, Applicative f)
+     forall r ix e f. (Manifest r e, Index ix, Applicative f)
   => Sz ix
   -> (ix -> f e)
   -> f (Array r ix e)
@@ -147,7 +150,7 @@ makeArrayA !sz f =
 --
 -- @since 0.4.5
 makeArrayLinearA ::
-     forall r ix e f. (Mutable r ix e, Applicative f)
+     forall r ix e f. (Manifest r e, Index ix, Applicative f)
   => Sz ix
   -> (Int -> f e)
   -> f (Array r ix e)
@@ -165,7 +168,7 @@ makeArrayLinearA !sz f =
 --
 -- @since 0.2.6
 makeArrayAR ::
-     forall r ix e f. (Mutable r ix e, Applicative f)
+     forall r ix e f. (Manifest r e, Index ix, Applicative f)
   => r
   -> Sz ix
   -> (ix -> f e)
@@ -208,7 +211,12 @@ iiterateN sz f = iunfoldrS_ sz $ \a ix -> let !a' = f a ix in (a', a')
 --   [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ]
 --
 -- @since 0.3.0
-unfoldrS_ :: forall ix e a . Construct DL ix e => Sz ix -> (a -> (e, a)) -> a -> Array DL ix e
+unfoldrS_ ::
+     forall ix e a. Index ix
+  => Sz ix
+  -> (a -> (e, a))
+  -> a
+  -> Array DL ix e
 unfoldrS_ sz f = iunfoldrS_ sz (\a _ -> f a)
 {-# INLINE unfoldrS_ #-}
 
@@ -216,15 +224,14 @@ unfoldrS_ sz f = iunfoldrS_ sz (\a _ -> f a)
 --
 -- @since 0.3.0
 iunfoldrS_ ::
-     forall ix e a. Construct DL ix e
+     forall ix e a. Index ix
   => Sz ix
   -> (a -> ix -> (e, a))
   -> a
   -> Array DL ix e
 iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: Loader e
     load _ startAt dlWrite _ =
       void $
       loopM startAt (< totalElem sz + startAt) (+ 1) acc0 $ \ !i !acc ->
@@ -239,7 +246,7 @@ iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
 -- `Data.Massiv.Array.Mutable.unfoldlPrimM` to achive such effect.
 --
 -- @since 0.3.0
-unfoldlS_ :: Construct DL ix e => Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
+unfoldlS_ :: Index ix => Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
 unfoldlS_ sz f = iunfoldlS_ sz (const f)
 {-# INLINE unfoldlS_ #-}
 
@@ -247,15 +254,14 @@ unfoldlS_ sz f = iunfoldlS_ sz (const f)
 --
 -- @since 0.3.0
 iunfoldlS_ ::
-     forall ix e a. Construct DL ix e
+     forall ix e a. Index ix
   => Sz ix
   -> (ix -> a -> (a, e))
   -> a
   -> Array DL ix e
 iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: Loader e
     load _ startAt dlWrite _ =
       void $
       loopDeepM startAt (< totalElem sz + startAt) (+ 1) acc0 $ \ !i !acc ->
@@ -286,20 +292,22 @@ iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
 --   ]
 --
 -- >>> import Data.Massiv.Array
--- >>> import System.Random as System
--- >>> gen = System.mkStdGen 217
--- >>> randomArray gen System.split System.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
+-- >>> import System.Random as Random
+-- >>> gen = Random.mkStdGen 217
+-- >>> randomArray gen Random.split Random.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
 -- Array DL (ParN 2) (Sz (2 :. 3))
---   [ [ 0.15191527341922206, 0.2045537167404079, 0.9635356052820256 ]
---   , [ 9.308278528094238e-2, 0.7200934018606843, 0.23173694193083583 ]
+--   [ [ 0.2616843941380331, 0.600959468331641, 0.4382415961606372 ]
+--   , [ 0.27812817813217605, 0.2993277194932741, 0.2774105268603957 ]
 --   ]
 --
--- @since 0.3.3
+-- @since 1.0.0
 randomArray ::
      forall ix e g. Index ix
   => g -- ^ Initial random value generator
   -> (g -> (g, g))
-     -- ^ A function that can split a generator in two independent generators
+     -- ^ A function that can split a generator into two independent
+     -- generators. It will only be called if supplied computation strategy
+     -- needs more than one worker threads.
   -> (g -> (e, g))
      -- ^ A function that produces a random value and the next generator
   -> Comp -- ^ Computation strategy.
@@ -308,7 +316,7 @@ randomArray ::
 randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothing load
   where
     !totalLength = totalElem sz
-    load :: Monad m => Scheduler m () -> Int -> (Int -> e -> m ()) -> m ()
+    load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
     load scheduler startAt writeAt =
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
         let slackStartAt = slackStart + startAt
@@ -328,6 +336,31 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
           scheduleWork_ scheduler $
           void $ loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
 {-# INLINE randomArray #-}
+
+
+-- | Generate a random array where all elements are sampled from a uniform distribution.
+--
+-- @since 1.0.0
+uniformArray ::
+     forall ix e g. (Index ix, RandomGen g, Uniform e)
+  => g -- ^ Initial random value generator.
+  -> Comp -- ^ Computation strategy.
+  -> Sz ix -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformArray gen = randomArray gen split uniform
+
+-- | Same as `uniformArray`, but will generate values in a supplied range.
+--
+-- @since 1.0.0
+uniformRangeArray ::
+     forall ix e g. (Index ix, RandomGen g, UniformRange e)
+  => g -- ^ Initial random value generator.
+  -> (e, e) -- ^ Inclusive range in which values will be generated in.
+  -> Comp -- ^ Computation strategy.
+  -> Sz ix -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformRangeArray gen r = randomArray gen split (uniformR r)
+
 
 -- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
 -- require splitability property. Another consequence is that it returns the new generator
@@ -358,13 +391,13 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
 -- >>> gen = System.mkStdGen 217
 -- >>> snd $ randomArrayS gen (Sz2 2 3) System.random :: Array P Ix2 Double
 -- Array P Seq (Sz (2 :. 3))
---   [ [ 0.7972230393466304, 0.4485860543300083, 0.257773196880671 ]
---   , [ 0.19115043859955794, 0.33784788936970034, 3.479381605706322e-2 ]
+--   [ [ 0.11217260506402493, 0.8870919238985904, 0.2616843941380331 ]
+--   , [ 0.600959468331641, 0.4382415961606372, 0.8375162573397977 ]
 --   ]
 --
 -- @since 0.3.4
 randomArrayS ::
-     forall r ix e g. Mutable r ix e
+     forall r ix e g. (Manifest r e, Index ix)
   => g -- ^ Initial random value generator
   -> Sz ix -- ^ Resulting size of the array.
   -> (g -> (e, g))
@@ -385,27 +418,32 @@ randomArrayS gen sz nextRandom =
 --
 -- ==== __Examples__
 --
--- In the example below we take a stateful random generator from
+-- In the example below we take a stateful random number generator from
 -- [wmc-random](https://www.stackage.org/package/mwc-random), which is not thread safe,
--- and safely parallelize it by giving each thread it's own generator:
+-- and safely parallelize it by giving each thread it's own generator. There is a caveat
+-- of course, statistical independence will depend on the entropy in your initial seeds,
+-- so do not use the example below verbatim, since initial seeds are sequential numbers.
 --
--- > λ> import Data.Massiv.Array
--- > λ> import System.Random.MWC (createSystemRandom, uniformR)
--- > λ> import System.Random.MWC.Distributions (standard)
--- > λ> gens <- initWorkerStates Par (\_ -> createSystemRandom)
--- > λ> randomArrayWS gens (Sz2 2 3) standard :: IO (Array P Ix2 Double)
--- > Array P Par (Sz (2 :. 3))
--- >   [ [ -0.9066144845415213, 0.5264323240310042, -1.320943607597422 ]
--- >   , [ -0.6837929005619592, -0.3041255565826211, 6.53353089112833e-2 ]
--- >   ]
--- > λ> randomArrayWS gens (Sz1 10) (uniformR (0, 9)) :: IO (Array P Ix1 Int)
--- > Array P Par (Sz1 10)
--- >   [ 3, 6, 1, 2, 1, 7, 6, 0, 8, 8 ]
+-- >>> import Data.Massiv.Array as A
+-- >>> import System.Random.MWC as MWC (initialize)
+-- >>> import System.Random.Stateful (uniformRM)
+-- >>> import Control.Scheduler (initWorkerStates, getWorkerId)
+-- >>> :set -XTypeApplications
+-- >>> gens <- initWorkerStates Par (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
+-- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
+-- Array P Par (Sz (2 :. 3))
+--   [ [ 8.999240522095299, 6.832223390653755, 3.065728078741671 ]
+--   , [ 7.242581103346686, 2.4565807301968623, 0.4514262066689775 ]
+--   ]
+-- >>> randomArrayWS gens (Sz1 6) (uniformRM (0, 9)) :: IO (Vector P Int)
+-- Array P Par (Sz1 6)
+--   [ 8, 8, 7, 1, 1, 2 ]
 --
 -- @since 0.3.4
 randomArrayWS ::
-     forall r ix e g m. (Mutable r ix e, MonadUnliftIO m, PrimMonad m)
-  => WorkerStates g -- ^ Use `initWorkerStates` to initialize you per thread generators
+     forall r ix e g m. (Manifest r e, Index ix, MonadUnliftIO m, PrimMonad m)
+  => WorkerStates g
+  -- ^ Use `Control.Scheduler.initWorkerStates` to initialize you per thread generators
   -> Sz ix -- ^ Resulting size of the array
   -> (g -> m e) -- ^ Generate the value using the per thread generator.
   -> m (Array r ix e)
@@ -474,12 +512,13 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 -- *** Exception: IndexZeroException: 0
 --
 -- @since 0.3.0
-rangeStepM :: (Index ix, MonadThrow m) =>
-              Comp -- ^ Computation strategy
-           -> ix -- ^ Start
-           -> ix -- ^ Step (Can't have zeros)
-           -> ix -- ^ End
-           -> m (Array D ix ix)
+rangeStepM ::
+     forall ix m. (Index ix, MonadThrow m)
+  => Comp -- ^ Computation strategy
+  -> ix -- ^ Start
+  -> ix -- ^ Step (Can't have zeros)
+  -> ix -- ^ End
+  -> m (Array D ix ix)
 rangeStepM comp !from !step !to
   | foldlIndex (\acc i -> acc || i == 0) False step = throwM $ IndexZeroException step
   | otherwise =
@@ -499,8 +538,8 @@ rangeStepM comp !from !step !to
 --   [ 1, 3, 5 ]
 --
 -- @since 0.3.0
-rangeStep' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
-rangeStep' comp from step = either throw id  . rangeStepM comp from step
+rangeStep' :: (HasCallStack, Index ix) => Comp -> ix -> ix -> ix -> Array D ix ix
+rangeStep' comp from step = throwEither . rangeStepM comp from step
 {-# INLINE rangeStep' #-}
 
 -- | Just like `range`, except the finish index is included.
@@ -512,7 +551,7 @@ rangeInclusive comp ixFrom ixTo =
 {-# INLINE rangeInclusive #-}
 
 
--- | Just like `rangeStep`, except the finish index is included.
+-- | Just like `rangeStepM`, except the finish index is included.
 --
 -- @since 0.3.0
 rangeStepInclusiveM :: (MonadThrow m, Index ix) => Comp -> ix -> ix -> ix -> m (Array D ix ix)
@@ -522,8 +561,8 @@ rangeStepInclusiveM comp ixFrom step ixTo = rangeStepM comp ixFrom step (liftInd
 -- | Just like `range`, except the finish index is included.
 --
 -- @since 0.3.1
-rangeStepInclusive' :: Index ix => Comp -> ix -> ix -> ix -> Array D ix ix
-rangeStepInclusive' comp ixFrom step = either throw id  . rangeStepInclusiveM comp ixFrom step
+rangeStepInclusive' :: (HasCallStack, Index ix) => Comp -> ix -> ix -> ix -> Array D ix ix
+rangeStepInclusive' comp ixFrom step = throwEither . rangeStepInclusiveM comp ixFrom step
 {-# INLINE rangeStepInclusive' #-}
 
 
@@ -568,7 +607,7 @@ rangeStepSize comp !from !step !sz =
 -- __/Similar/__:
 --
 -- [@Prelude.`Prelude.enumFromTo`@] Very similar to @[i .. i + n - 1]@, except that
--- `senumFromN` is faster, but it only works for `Num` and not for `Enum` elements
+-- `enumFromN` is faster, but it only works for `Num` and not for `Enum` elements
 --
 -- [@Data.Vector.Generic.`Data.Vector.Generic.enumFromN`@]
 --
@@ -662,7 +701,7 @@ enumFromStepN comp !from !step !sz = makeArrayLinear comp sz $ \ i -> from + fro
 --
 -- @since 0.2.6
 expandWithin ::
-     forall ix e r n a. (IsIndexDimension ix n, Manifest r (Lower ix) a)
+     forall n ix e r a. (IsIndexDimension ix n, Index (Lower ix), Manifest r a)
   => Dimension n
   -> Sz1
   -> (a -> Ix1 -> e)
@@ -681,22 +720,22 @@ expandWithin dim (Sz k) f arr =
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.2.6
-expandWithin'
-  :: (Index ix, Manifest r (Lower ix) a)
+expandWithin' ::
+     forall r ix a b. (HasCallStack, Index ix, Index (Lower ix), Manifest r a)
   => Dim
   -> Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
   -> Array D ix b
-expandWithin' dim k f arr = either throw id $ expandWithinM dim k f arr
+expandWithin' dim k f = throwEither . expandWithinM dim k f
 {-# INLINE expandWithin' #-}
 
 -- | Similar to `expandWithin`, except that dimension is specified at a value level, which means it
 -- will throw an exception on an invalid dimension.
 --
 -- @since 0.4.0
-expandWithinM
-  :: (Index ix, Manifest r (Lower ix) a, MonadThrow m)
+expandWithinM ::
+     forall r ix a b m. (Index ix, Index (Lower ix), Manifest r a, MonadThrow m)
   => Dim
   -> Sz1
   -> (a -> Ix1 -> b)
@@ -713,8 +752,8 @@ expandWithinM dim k f arr = do
 -- | Similar to `expandWithin`, except it uses the outermost dimension.
 --
 -- @since 0.2.6
-expandOuter
-  :: (Index ix, Manifest r (Lower ix) a)
+expandOuter ::
+     forall r ix a b. (Index ix, Index (Lower ix), Manifest r a)
   => Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a
@@ -731,8 +770,8 @@ expandOuter k f arr =
 -- | Similar to `expandWithin`, except it uses the innermost dimension.
 --
 -- @since 0.2.6
-expandInner
-  :: (Index ix, Manifest r (Lower ix) a)
+expandInner ::
+     forall r ix a b. (Index ix, Index (Lower ix), Manifest r a)
   => Sz1
   -> (a -> Ix1 -> b)
   -> Array r (Lower ix) a

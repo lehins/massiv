@@ -20,6 +20,7 @@
 module Data.Massiv.Array.Manifest.Primitive
   ( P(..)
   , Array(..)
+  , MArray(..)
   , Prim
   , toPrimitiveVector
   , toPrimitiveMVector
@@ -83,6 +84,9 @@ data instance Array P ix e = PArray { pComp   :: !Comp
                                     , pData   :: {-# UNPACK #-} !ByteArray
                                     }
 
+data instance MArray s P ix e =
+  MPArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(MutableByteArray s)
+
 instance (Ragged L ix e, Show e, Prim e) => Show (Array P ix e) where
   showsPrec = showsArrayPrec id
   showList = showArrayList
@@ -103,92 +107,52 @@ instance (Prim e, Ord e, Index ix) => Ord (Array P ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
-instance (Prim e, Index ix) => Construct P ix e where
+instance Strategy P where
+  getComp = pComp
+  {-# INLINE getComp #-}
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
 
-  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
-  {-# INLINE makeArrayLinear #-}
 
-  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
-  {-# INLINE replicate #-}
+instance Index ix => Shape P ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
 
-instance (Prim e, Index ix) => Source P ix e where
+instance Size P where
+  size = pSize
+  {-# INLINE size #-}
+  unsafeResize !sz !arr = arr { pSize = sz }
+  {-# INLINE unsafeResize #-}
+
+instance Prim e => Source P e where
   unsafeLinearIndex _arr@(PArray _ _ o a) i =
     INDEX_CHECK("(Source P ix e).unsafeLinearIndex",
                 SafeSz . elemsBA _arr, indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
+  unsafeOuterSlice (PArray c _ o a) szL i =
+    PArray c szL (i * totalElem szL + o) a
+  {-# INLINE unsafeOuterSlice #-}
+
   unsafeLinearSlice i k (PArray c _ o a) = PArray c k (i + o) a
   {-# INLINE unsafeLinearSlice #-}
 
 
-instance Index ix => Resize P ix where
-  unsafeResize !sz !arr = arr { pSize = sz }
-  {-# INLINE unsafeResize #-}
-
-instance (Prim e, Index ix) => Extract P ix e where
-  unsafeExtract !sIx !newSz !arr = unsafeExtract sIx newSz (toManifest arr)
-  {-# INLINE unsafeExtract #-}
-
-
-instance {-# OVERLAPPING #-} Prim e => Slice P Ix1 e where
-  unsafeSlice arr i _ _ = pure (unsafeLinearIndex arr i)
-  {-# INLINE unsafeSlice #-}
-
-
-instance ( Prim e
-         , Index ix
-         , Index (Lower ix)
-         , Elt P ix e ~ Elt M ix e
-         , Elt M ix e ~ Array M (Lower ix) e
-         ) =>
-         Slice P ix e where
-  unsafeSlice arr = unsafeSlice (toManifest arr)
-  {-# INLINE unsafeSlice #-}
-
-instance {-# OVERLAPPING #-} Prim e => OuterSlice P Ix1 e where
-  unsafeOuterSlice = unsafeLinearIndex
-  {-# INLINE unsafeOuterSlice #-}
-
-instance ( Prim e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt P ix e ~ Array M (Lower ix) e
-         ) =>
-         OuterSlice P ix e where
-  unsafeOuterSlice arr = unsafeOuterSlice (toManifest arr)
-  {-# INLINE unsafeOuterSlice #-}
-
-
-instance {-# OVERLAPPING #-} Prim e => InnerSlice P Ix1 e where
-  unsafeInnerSlice arr _ = unsafeLinearIndex arr
-  {-# INLINE unsafeInnerSlice #-}
-
-instance ( Prim e
-         , Index ix
-         , Index (Lower ix)
-         , Elt M ix e ~ Array M (Lower ix) e
-         , Elt P ix e ~ Array M (Lower ix) e
-         ) =>
-         InnerSlice P ix e where
-  unsafeInnerSlice arr = unsafeInnerSlice (toManifest arr)
-  {-# INLINE unsafeInnerSlice #-}
-
-instance (Index ix, Prim e) => Manifest P ix e where
+instance Prim e => Manifest P e where
 
   unsafeLinearIndexM _pa@(PArray _ _sz o a) i =
     INDEX_CHECK("(Manifest P ix e).unsafeLinearIndexM",
                 const (Sz (totalElem _sz)), indexByteArray) a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
+  sizeOfMArray (MPArray sz _ _) = sz
+  {-# INLINE sizeOfMArray #-}
 
-instance (Index ix, Prim e) => Mutable P ix e where
-  data MArray s P ix e = MPArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(MutableByteArray s)
+  unsafeResizeMArray sz (MPArray _ off marr) = MPArray sz off marr
+  {-# INLINE unsafeResizeMArray #-}
 
-  msize (MPArray sz _ _) = sz
-  {-# INLINE msize #-}
+  unsafeLinearSliceMArray i k (MPArray _ o a) = MPArray k (i + o) a
+  {-# INLINE unsafeLinearSliceMArray #-}
 
   unsafeThaw (PArray _ sz o a) = MPArray sz o <$> unsafeThawByteArray a
   {-# INLINE unsafeThaw #-}
@@ -209,12 +173,12 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE initialize #-}
 
   unsafeLinearRead _mpa@(MPArray _sz o ma) i =
-    INDEX_CHECK("(Mutable P ix e).unsafeLinearRead",
+    INDEX_CHECK("(Manifest P ix e).unsafeLinearRead",
                 const (Sz (totalElem _sz)), readByteArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite _mpa@(MPArray _sz o ma) i =
-    INDEX_CHECK("(Mutable P ix e).unsafeLinearWrite",
+    INDEX_CHECK("(Manifest P ix e).unsafeLinearWrite",
                 const (Sz (totalElem _sz)), writeByteArray) ma (i + o)
   {-# INLINE unsafeLinearWrite #-}
 
@@ -237,19 +201,20 @@ instance (Index ix, Prim e) => Mutable P ix e where
   {-# INLINE unsafeLinearShrink #-}
 
   unsafeLinearGrow (MPArray _ o ma) sz =
-    MPArray sz o <$> resizeMutableByteArrayCompat ma ((o + totalElem sz) * sizeOf (undefined :: e))
+    MPArray sz o <$> resizeMutableByteArray ma ((o + totalElem sz) * sizeOf (undefined :: e))
   {-# INLINE unsafeLinearGrow #-}
 
 
 instance (Prim e, Index ix) => Load P ix e where
-  type R P = M
-  size = pSize
-  {-# INLINE size #-}
-  getComp = pComp
-  {-# INLINE getComp #-}
-  loadArrayM !scheduler !arr =
+  makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
+  {-# INLINE makeArrayLinear #-}
+
+  replicate comp !sz !e = runST (newMArray sz e >>= unsafeFreeze comp)
+  {-# INLINE replicate #-}
+
+  iterArrayLinearST_ !scheduler !arr =
     splitLinearlyWith_ scheduler (elemsCount arr) (unsafeLinearIndex arr)
-  {-# INLINE loadArrayM #-}
+  {-# INLINE iterArrayLinearST_ #-}
 
 instance (Prim e, Index ix) => StrideLoad P ix e
 
@@ -278,13 +243,7 @@ instance (Prim e, Num e) => Numeric P e where
 instance (Prim e, Floating e) => NumericFloat P e
 
 
-instance ( Prim e
-         , IsList (Array L ix e)
-         , Nested LN ix e
-         , Nested L ix e
-         , Ragged L ix e
-         ) =>
-         IsList (Array P ix e) where
+instance (Prim e, IsList (Array L ix e), Ragged L ix e) => IsList (Array P ix e) where
   type Item (Array P ix e) = Item (Array L ix e)
   fromList = A.fromLists' Seq
   {-# INLINE fromList #-}
@@ -647,27 +606,3 @@ unsafeAtomicXorIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
   mba
   (o + toLinearIndex sz ix)
 {-# INLINE unsafeAtomicXorIntArray #-}
-
-
-#if !MIN_VERSION_primitive(0,7,1)
-shrinkMutableByteArray :: forall m. (PrimMonad m)
-  => MutableByteArray (PrimState m)
-  -> Int -- ^ new size
-  -> m ()
-shrinkMutableByteArray (MutableByteArray arr#) (I# n#)
-  = primitive_ (shrinkMutableByteArray# arr# n#)
-{-# INLINE shrinkMutableByteArray #-}
-#endif
-
-resizeMutableByteArrayCompat ::
-  PrimMonad m => MutableByteArray (PrimState m) -> Int -> m (MutableByteArray (PrimState m))
-#if MIN_VERSION_primitive(0,6,4)
-resizeMutableByteArrayCompat = resizeMutableByteArray
-#else
-resizeMutableByteArrayCompat (MutableByteArray arr#) (I# n#) =
-  primitive
-    (\s# ->
-       case resizeMutableByteArray# arr# n# s# of
-         (# s'#, arr'# #) -> (# s'#, MutableByteArray arr'# #))
-#endif
-{-# INLINE resizeMutableByteArrayCompat #-}

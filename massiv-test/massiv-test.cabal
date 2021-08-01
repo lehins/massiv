@@ -1,5 +1,5 @@
 name:                massiv-test
-version:             0.1.7.0
+version:             1.0.0.0
 synopsis:            Library that contains generators, properties and tests for Massiv Array Library.
 description:         This library is designed for users of massiv library that need random generators for writing custom property tests and reusing some of the predefined ones.
 homepage:            https://github.com/lehins/massiv
@@ -21,6 +21,7 @@ library
                     , Test.Massiv.Core.Index
                     , Test.Massiv.Core.Mutable
                     , Test.Massiv.Array.Delayed
+                    , Test.Massiv.Array.Load
                     , Test.Massiv.Array.Mutable
                     , Test.Massiv.Array.Numeric
                     , Test.Massiv.Utils
@@ -33,7 +34,7 @@ library
                      , exceptions
                      , QuickCheck
                      , hspec
-                     , massiv >= 0.6.1.0
+                     , massiv >= 1.0 && < 2
                      , scheduler
                      , primitive
                      , unliftio
@@ -74,6 +75,7 @@ test-suite tests
                     , Test.Massiv.Core.IndexSpec
                     , Test.Massiv.Core.ListSpec
                     , Test.Massiv.Core.SchedulerSpec
+  build-tool-depends: hspec-discover:hspec-discover
   build-depends:      base
                     , bytestring
                     , containers
@@ -127,6 +129,7 @@ test-suite tests-O0
                     , Test.Massiv.Core.IndexSpec
                     , Test.Massiv.Core.ListSpec
                     , Test.Massiv.Core.SchedulerSpec
+  build-tool-depends: hspec-discover:hspec-discover
   build-depends:      base
                     , bytestring
                     , containers

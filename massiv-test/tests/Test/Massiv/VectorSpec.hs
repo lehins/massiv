@@ -9,7 +9,6 @@ module Test.Massiv.VectorSpec (spec) where
 
 import Control.Arrow (first)
 import Control.Applicative
-import Control.DeepSeq
 import Control.Exception
 import Data.Bits
 import Data.Int
@@ -31,11 +30,8 @@ import System.Random.MWC as MWC
 
 infix 4 !==!, !!==!!
 
-sizeException :: SizeException -> Bool
-sizeException exc = exc `deepseq` True
-
 toUnboxV2 ::
-     (Unbox e, Unbox e1, Unbox e2, Index ix1, Index ix2)
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -44,7 +40,7 @@ toUnboxV2 f v1 v2 =
   fromUnboxedVector (getComp v1 <> getComp v2) (f (toUnboxedVector v1) (toUnboxedVector v2))
 
 toUnboxV3 ::
-     (Unbox e, Unbox e1, Unbox e2, Unbox e3, Index ix1, Index ix2, Index ix3)
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -53,7 +49,7 @@ toUnboxV3 ::
 toUnboxV3 f v1 v2 v3 = appComp (getComp v1) (toUnboxV2 (f (toUnboxedVector v1)) v2 v3)
 
 toUnboxV4 ::
-     (Unbox e, Unbox e1, Unbox e2, Unbox e3, Unbox e4, Index ix1, Index ix2, Index ix3, Index ix4)
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -63,18 +59,7 @@ toUnboxV4 ::
 toUnboxV4 f v1 v2 v3 v4 = appComp (getComp v1) (toUnboxV3 (f (toUnboxedVector v1)) v2 v3 v4)
 
 toUnboxV5 ::
-     ( Unbox e
-     , Unbox e1
-     , Unbox e2
-     , Unbox e3
-     , Unbox e4
-     , Unbox e5
-     , Index ix1
-     , Index ix2
-     , Index ix3
-     , Index ix4
-     , Index ix5
-     )
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -85,20 +70,7 @@ toUnboxV5 ::
 toUnboxV5 f v1 v2 v3 v4 v5 = appComp (getComp v1) (toUnboxV4 (f (toUnboxedVector v1)) v2 v3 v4 v5)
 
 toUnboxV6 ::
-     ( Unbox e
-     , Unbox e1
-     , Unbox e2
-     , Unbox e3
-     , Unbox e4
-     , Unbox e5
-     , Unbox e6
-     , Index ix1
-     , Index ix2
-     , Index ix3
-     , Index ix4
-     , Index ix5
-     , Index ix6
-     )
+     Unbox e
   => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e)
   -> Array U ix1 e1
   -> Array U ix2 e2
@@ -159,13 +131,14 @@ toPrimV6 f v1 = toPrimV5 (f (toPrimitiveVector v1))
 (!==!) :: (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
 (!==!) arr vec = toPrimitiveVector (convert arr) === vec
 
-(!!==!!) :: (Eq e, Show e, Prim e, Source r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
+(!!==!!) ::
+     (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
 (!!==!!) arr vec = property $ do
   eRes <- try (pure $! vec)
   case eRes of
-    Right vec' -> toPrimitiveVector (computeSource arr) `shouldBe` vec'
+    Right vec' -> toPrimitiveVector (compute arr) `shouldBe` vec'
     Left (_exc :: ErrorCall) ->
-      shouldThrow (pure $! computeAs P arr) sizeException
+      shouldThrow (pure $! computeAs P arr) selectErrorCall
 
 newtype SeedVector = SeedVector (VP.Vector Word32) deriving (Eq, Show)
 
@@ -445,7 +418,7 @@ prop_szipWith5 v1 v2 v3 v4 v5 f =
 prop_szipWith6 ::
      Vector DS Word64
   -> Vector B Word32
-  -> Vector N Word16
+  -> Vector BN Word16
   -> Vector S Word8
   -> Vector U Int8
   -> Vector P Int16
@@ -493,7 +466,7 @@ prop_sizipWith5 ::
   -> Vector S Word32
   -> Vector P Word16
   -> Vector U Word8
-  -> Vector N Int8
+  -> Vector BN Int8
   -> Fun (Ix1, (Word64, Word32, Word16, Word8, Int8)) Int
   -> Property
 prop_sizipWith5 v1 v2 v3 v4 v5 f =
@@ -503,8 +476,8 @@ prop_sizipWith5 v1 v2 v3 v4 v5 f =
 prop_sizipWith6 ::
      Vector DS Word64
   -> Vector D Word32
-  -> Vector B Word16
-  -> Vector N Word8
+  -> Vector BL Word16
+  -> Vector BN Word8
   -> Vector P Int8
   -> Vector P Int16
   -> Fun (Ix1, Word64, (Word32, Word16, Word8, Int8, Int16)) Int
@@ -807,11 +780,11 @@ spec =
             slength (sfromList []) `shouldBe` Nothing
             slength (sfromListN 1 []) `shouldBe` Nothing
             slength (sgenerate 1 id) `shouldBe` Just 1
-          it "snull" $ do
-            snull sempty `shouldBe` True
-            snull (fromLists' Seq [[]] :: Array P Ix2 Int) `shouldBe` True
-            snull (siterateN 3 id ()) `shouldBe` False
-            snull (0 ..: 1 :> 2 :> 3 :. 0) `shouldBe` True
+          it "isNull" $ do
+            isNull sempty `shouldBe` True
+            isNull (fromLists' Seq [[]] :: Array P Ix2 Int) `shouldBe` True
+            isNull (siterateN 3 id ()) `shouldBe` False
+            isNull (0 ..: 1 :> 2 :> 3 :. 0) `shouldBe` True
         describe "Indexing" $ do
           prop "head' (non-empty)" $ \(ArrNE arr :: ArrNE D Ix1 Int) ->
             head' arr === evaluate' arr 0 .&&. head' arr === shead' arr
@@ -884,6 +857,8 @@ spec =
           prop "ssingleton" $ \(e :: Word) -> V.ssingleton e !==! VP.singleton e
           prop "replicate" $ \comp k (e :: Word) ->
             V.replicate @DL comp (Sz k) e !==! VP.replicate k e
+          prop "replicate" $ \k (e :: Word) ->
+            V.replicate @DS Seq (Sz k) e !==! VP.replicate k e
           prop "sreplicate" $ \k (e :: Word) -> V.sreplicate (Sz k) e !==! VP.replicate k e
           prop "generate" $ \comp k (f :: Fun Int Word) ->
             V.generate comp (Sz k) (apply f) !==! VP.generate k (apply f)
@@ -955,7 +930,7 @@ spec =
           prop "fmap" $ \(v :: Vector DS Word) (f :: Fun Word Int) ->
             fmap (apply f) v !==! VP.map (apply f) (toPrimitiveVector (compute v))
           prop "<$" $ \(v :: Vector DS Word) (a :: Char) ->
-            (a <$ v) !==! VP.replicate (totalElem (size v)) a
+            (a <$ v) !==! VP.replicate (length v) a
           prop "smap" $ \(v :: Vector P Word) (f :: Fun Word Int) ->
             V.smap (apply f) v !==! VP.map (apply f) (toPrimitiveVector v)
           prop "simap" $ \(v :: Vector P Word) (f :: Fun (Int, Word) Int) ->

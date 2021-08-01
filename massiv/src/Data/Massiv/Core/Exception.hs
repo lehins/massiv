@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ImplicitParams #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Massiv.Core.Exception
@@ -11,19 +12,21 @@
 -- Portability : non-portable
 --
 module Data.Massiv.Core.Exception
-  ( ImpossibleException(..)
-  , throwImpossible
+  ( throwImpossible
   , throwEither
   , Uninitialized(..)
   , guardNumberOfElements
   , Exception(..)
   , SomeException
+  , HasCallStack
   ) where
 
 import Control.Exception
 import Control.Monad
 import Control.Monad.Catch
 import Data.Massiv.Core.Index.Internal
+import GHC.Stack
+import GHC.Exception
 
 #if !MIN_VERSION_exceptions(0, 10, 3)
 import Control.Monad.ST (ST)
@@ -34,31 +37,34 @@ instance MonadThrow (ST s) where
   throwM = unsafeIOToST . throwIO
 #endif
 
+-- | Throw an impossible error.
+--
+-- @since 0.5.6
+throwImpossible :: HasCallStack => Exception e => e -> a
+throwImpossible exc = throw (errorCallWithCallStackException msg ?callStack)
+  where
+    msg =
+      "<massiv> ImpossibleException (" ++
+      displayException exc ++
+      "): Either one of the unsafe functions was used or it is a bug in the library. " ++
+      "In latter case please report this error."
 
-newtype ImpossibleException =
-  ImpossibleException SomeException
-  deriving (Show)
-
-throwImpossible :: Exception e => e -> a
-throwImpossible = throw . ImpossibleException . toException
 {-# NOINLINE throwImpossible #-}
 
-throwEither :: Either SomeException a -> a
+-- | Throw an error on `Left` or produce the result on `Right`. Exception type is lost, so
+-- do not expect to be able to catch it as such. Stick to `IO` if you need exception control
+-- flow.
+--
+-- @since 0.5.6
+throwEither :: HasCallStack => Either SomeException a -> a
 throwEither =
   \case
-    Left exc -> throw exc
+    Left exc -> throw (errorCallWithCallStackException (displayException exc) ?callStack)
     Right res -> res
 {-# INLINE throwEither #-}
 
-instance Exception ImpossibleException where
-  displayException (ImpossibleException exc) =
-    "<massiv> ImpossibleException (" ++
-    displayException exc ++
-    "): Either one of the unsafe functions was used or it is a bug in the library. " ++
-    "In latter case please report this error."
-
 -- | An error that gets thrown when an unitialized element of a boxed array gets accessed. Can only
--- happen when array was constructed with `unsafeNew`.
+-- happen when array was constructed with `Data.Massiv.Array.Unsafe.unsafeNew`.
 data Uninitialized = Uninitialized deriving Show
 
 instance Exception Uninitialized where

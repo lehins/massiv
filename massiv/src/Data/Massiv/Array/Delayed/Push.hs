@@ -20,6 +20,7 @@
 module Data.Massiv.Array.Delayed.Push
   ( DL(..)
   , Array(..)
+  , Loader
   , toLoadArray
   , makeLoadArrayS
   , makeLoadArray
@@ -41,34 +42,36 @@ import Prelude hiding (map, zipWith)
 -- | Delayed load representation. Also known as Push array.
 data DL = DL deriving Show
 
+type Loader e =
+  forall s. Scheduler s () -- ^ Scheduler that will be used for loading
+         -> Ix1 -- ^ Start loading at this linear index
+         -> (Ix1 -> e -> ST s ()) -- ^ Linear element writing action
+         -> (Ix1 -> Sz1 -> e -> ST s ()) -- ^ Linear region setting action
+         -> ST s ()
+
 
 data instance Array DL ix e = DLArray
   { dlComp    :: !Comp
   , dlSize    :: !(Sz ix)
-  , dlLoad    :: forall m . Monad m
-              => Scheduler m ()
-              -> Ix1 -- start loading at this linear index
-              -> (Ix1 -> e -> m ()) -- linear element writing action
-              -> (Ix1 -> Sz1 -> e -> m ()) -- linear region setting action
-              -> m ()
+  , dlLoad    :: Loader e
   }
 
-instance Index ix => Construct DL ix e where
+instance Strategy DL where
+  getComp = dlComp
+  {-# INLINE getComp #-}
   setComp c arr = arr {dlComp = c}
   {-# INLINE setComp #-}
-  makeArrayLinear comp sz f = DLArray comp sz load
-    where
-      load :: Monad m =>
-        Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
-      load scheduler startAt dlWrite _ =
-        splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
-      {-# INLINE load #-}
-  {-# INLINE makeArrayLinear #-}
-  replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
-  {-# INLINE replicate #-}
 
-instance Index ix => Resize DL ix where
-  unsafeResize !sz arr = arr { dlSize = sz }
+
+instance Index ix => Shape DL ix where
+  maxLinearSize = Just . SafeSz . elemsCount
+  {-# INLINE maxLinearSize #-}
+
+
+instance Size DL where
+  size = dlSize
+  {-# INLINE size #-}
+  unsafeResize !sz !arr = arr { dlSize = sz }
   {-# INLINE unsafeResize #-}
 
 instance Semigroup (Array DL Ix1 e) where
@@ -91,8 +94,8 @@ mconcatDL !arrs =
   DLArray {dlComp = foldMap getComp arrs, dlSize = SafeSz k, dlLoad = load}
   where
     !k = F.foldl' (+) 0 (unSz . size <$> arrs)
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: forall s .
+      Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
     load scheduler startAt dlWrite dlSet =
       let loadArr !startAtCur DLArray {dlSize = SafeSz kCur, dlLoad} = do
             let !endAtCur = startAtCur + kCur
@@ -110,8 +113,8 @@ mappendDL (DLArray c1 sz1 load1) (DLArray c2 sz2 load2) =
   where
     !k1 = unSz sz1
     !k2 = unSz sz2
-    load :: Monad n =>
-      Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+    load :: forall s.
+      Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
     load scheduler !startAt dlWrite dlSet = do
       scheduleWork_ scheduler $ load1 scheduler startAt dlWrite dlSet
       scheduleWork_ scheduler $ load2 scheduler (startAt + k1) dlWrite dlSet
@@ -132,9 +135,9 @@ appendOuterM (DLArray c1 sz1 load1) (DLArray c2 sz2 load2) = do
       (!i2, !szl2) = unconsSz sz2
   unless (szl1 == szl2) $ throwM $ SizeMismatchException sz1 sz2
   pure $
-    DLArray {dlComp = c1 <> c2, dlSize = consSz (i1 + i2) szl1, dlLoad = load}
+    DLArray {dlComp = c1 <> c2, dlSize = consSz (liftSz2 (+) i1 i2) szl1, dlLoad = load}
   where
-    load :: Monad n => Scheduler n () -> Ix1 -> (Ix1 -> e -> n ()) -> (Ix1 -> Sz1 -> e -> n ()) -> n ()
+    load :: Loader e
     load scheduler !startAt dlWrite dlSet = do
       scheduleWork_ scheduler $ load1 scheduler startAt dlWrite dlSet
       scheduleWork_ scheduler $ load2 scheduler (startAt + totalElem sz1) dlWrite dlSet
@@ -171,8 +174,8 @@ makeLoadArrayS ::
   -> Array DL ix e
 makeLoadArrayS sz defVal writer = DLArray Seq sz load
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: forall s.
+      Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
     load _scheduler !startAt uWrite uSet = do
       uSet startAt (toLinearSz sz) defVal
       let safeWrite !ix !e
@@ -197,15 +200,15 @@ makeLoadArray ::
   -- ^ Size of the resulting array
   -> e
   -- ^ Default value to use for all cells that might have been ommitted by the writing function
-  -> (forall m. Monad m => Scheduler m () -> (ix -> e -> m Bool) -> m ())
+  -> (forall s. Scheduler s () -> (ix -> e -> ST s Bool) -> ST s ())
   -- ^ Writing function that described which elements to write into the target array. It
   -- accepts a scheduler, that can be used for parallelization, as well as a safe element
   -- writing function.
   -> Array DL ix e
 makeLoadArray comp sz defVal writer = DLArray comp sz load
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: forall s.
+      Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
     load scheduler !startAt uWrite uSet = do
       uSet startAt (toLinearSz sz) defVal
       let safeWrite !ix !e
@@ -232,7 +235,7 @@ unsafeMakeLoadArray ::
   -> Maybe e
   -- ^ An element to use for initialization of the mutable array that will be created in
   -- the future
-  -> (forall m. Monad m => Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> m ())
+  -> (forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ())
   -- ^ This function accepts:
   --
   -- * A scheduler that can be used for parallelization of loading
@@ -244,8 +247,7 @@ unsafeMakeLoadArray ::
   -> Array DL ix e
 unsafeMakeLoadArray comp sz mDefVal writer = DLArray comp sz load
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: Loader e
     load scheduler startAt uWrite uSet = do
       S.traverse_ (uSet startAt (toLinearSz sz)) mDefVal
       writer scheduler startAt uWrite
@@ -261,12 +263,12 @@ unsafeMakeLoadArrayAdjusted ::
   => Comp
   -> Sz ix
   -> Maybe e
-  -> (forall m. Monad m => Scheduler m () -> (Ix1 -> e -> m ()) -> m ())
+  -> (forall s. Scheduler s () -> (Ix1 -> e -> ST s ()) -> ST s ())
   -> Array DL ix e
 unsafeMakeLoadArrayAdjusted comp sz mDefVal writer = DLArray comp sz load
   where
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: forall s.
+      Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
     load scheduler !startAt uWrite dlSet = do
       S.traverse_ (dlSet startAt (toLinearSz sz)) mDefVal
       writer scheduler (\i -> uWrite (startAt + i))
@@ -277,16 +279,16 @@ unsafeMakeLoadArrayAdjusted comp sz mDefVal writer = DLArray comp sz load
 --
 -- @since 0.3.0
 toLoadArray ::
-     forall r ix e. Load r ix e
+     forall r ix e. (Size r, Load r ix e)
   => Array r ix e
   -> Array DL ix e
 toLoadArray arr = DLArray (getComp arr) sz load
   where
     !sz = size arr
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    load :: forall s.
+      Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
     load scheduler !startAt dlWrite dlSet =
-      loadArrayWithSetM scheduler arr (dlWrite . (+ startAt)) (\offset -> dlSet (offset + startAt))
+      iterArrayLinearWithSetST_ scheduler arr (dlWrite . (+ startAt)) (\offset -> dlSet (offset + startAt))
     {-# INLINE load #-}
 {-# INLINE[1] toLoadArray #-}
 {-# RULES "toLoadArray/id" toLoadArray = id #-}
@@ -295,28 +297,32 @@ toLoadArray arr = DLArray (getComp arr) sz load
 --
 -- @since 0.3.0
 fromStrideLoad ::
-     forall r ix e. StrideLoad r ix e
+     forall r ix e. (StrideLoad r ix e)
   => Stride ix
   -> Array r ix e
   -> Array DL ix e
 fromStrideLoad stride arr =
   DLArray (getComp arr) newsz load
   where
-    !newsz = strideSize stride (size arr)
-    load :: Monad m =>
-      Scheduler m () -> Ix1 -> (Ix1 -> e -> m ()) -> (Ix1 -> Sz1 -> e -> m ()) -> m ()
+    !newsz = strideSize stride (outerSize arr)
+    load :: Loader e
     load scheduler !startAt dlWrite _ =
-      loadArrayWithStrideM scheduler stride newsz arr (\ !i -> dlWrite (i + startAt))
+      iterArrayLinearWithStrideST_ scheduler stride newsz arr (\ !i -> dlWrite (i + startAt))
     {-# INLINE load #-}
 {-# INLINE fromStrideLoad #-}
 
 instance Index ix => Load DL ix e where
-  size = dlSize
-  {-# INLINE size #-}
-  getComp = dlComp
-  {-# INLINE getComp #-}
-  loadArrayWithSetM scheduler DLArray {dlLoad} = dlLoad scheduler 0
-  {-# INLINE loadArrayWithSetM #-}
+  makeArrayLinear comp sz f = DLArray comp sz load
+    where
+      load :: Loader e
+      load scheduler startAt dlWrite _ =
+        splitLinearlyWithStartAtM_ scheduler startAt (totalElem sz) (pure . f) dlWrite
+      {-# INLINE load #-}
+  {-# INLINE makeArrayLinear #-}
+  replicate comp !sz !e = makeLoadArray comp sz e $ \_ _ -> pure ()
+  {-# INLINE replicate #-}
+  iterArrayLinearWithSetST_ scheduler DLArray {dlLoad} = dlLoad scheduler 0
+  {-# INLINE iterArrayLinearWithSetST_ #-}
 
 instance Index ix => Functor (Array DL ix) where
   fmap f arr = arr {dlLoad = loadFunctor arr f}
@@ -327,21 +333,20 @@ instance Index ix => Functor (Array DL ix) where
 overwriteFunctor :: forall ix a b. Index ix => a -> Array DL ix b -> Array DL ix a
 overwriteFunctor e arr = arr {dlLoad = load}
   where
-    load :: Scheduler m () -> Ix1 -> (Ix1 -> a -> m ()) -> (Ix1 -> Sz1 -> a -> m ()) -> m ()
+    load :: Loader a
     load _ !startAt _ dlSet = dlSet startAt (linearSize arr) e
     {-# INLINE load #-}
 {-# INLINE overwriteFunctor #-}
 
 
 loadFunctor ::
-     Monad m
-  => Array DL ix a
+     Array DL ix a
   -> (a -> b)
-  -> Scheduler m ()
+  -> Scheduler s ()
   -> Ix1
-  -> (Ix1 -> b -> m ())
-  -> (Ix1 -> Sz1 -> b -> m ())
-  -> m ()
+  -> (Ix1 -> b -> ST s ())
+  -> (Ix1 -> Sz1 -> b -> ST s ())
+  -> ST s ()
 loadFunctor arr f scheduler startAt uWrite uSet =
   dlLoad arr scheduler startAt (\ !i e -> uWrite i (f e)) (\o sz e -> uSet o sz (f e))
 {-# INLINE loadFunctor #-}

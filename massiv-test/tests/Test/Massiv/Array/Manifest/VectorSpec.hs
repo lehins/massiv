@@ -16,11 +16,12 @@ import qualified Data.Vector.Unboxed as VU
 
 prop_castToFromVector
   :: ( VG.Vector (VRepr r) Int
-     , Mutable r ix Int
+     , Manifest r Int
      , Typeable (VRepr r)
      , ARepr (VRepr r) ~ r
      , Eq (Array r ix Int)
      , Show (Array r ix Int)
+     , Index ix
      )
   => proxy ix -> r -> ArrNE r ix Int -> Property
 prop_castToFromVector _ _ (ArrNE arr) =
@@ -29,13 +30,15 @@ prop_castToFromVector _ _ (ArrNE arr) =
 
 prop_toFromVector ::
      forall r ix v.
-     ( Mutable r ix Int
-     , Mutable (ARepr v) ix Int
+     ( Manifest r Int
+     , Manifest (ARepr v) Int
      , VRepr (ARepr v) ~ v
      , Eq (Array r ix Int)
      , VG.Vector v Int
      , Show (Array r ix Int)
      , Typeable v
+     , Load (ARepr v) ix Int
+     , Load r ix Int
      )
   => Proxy v
   -> Proxy ix

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -32,9 +33,13 @@ module Data.Massiv.Array.Unsafe
   , unsafeInnerSlice
   , unsafeLinearSlice
     -- * Mutable interface
+  , unsafeResizeMArray
+  , unsafeLinearSliceMArray
   , unsafeThaw
   , unsafeFreeze
   , unsafeNew
+  , unsafeLoadIntoST
+  , unsafeLoadIntoIO
   , unsafeLoadIntoS
   , unsafeLoadIntoM
   , unsafeCreateArray
@@ -85,22 +90,32 @@ module Data.Massiv.Array.Unsafe
   , unsafeUnstablePartitionRegionM
   , module Data.Massiv.Vector.Unsafe
   , module Data.Massiv.Array.Stencil.Unsafe
+    -- * Constructors
+  , Array(PArray, SArray, UArray, BArray, BLArray, BNArray, DArray, DLArray, DSArray, DIArray, DWArray)
+  , MArray(MPArray, MSArray, MUArray, MBArray, MBLArray, MBNArray)
   ) where
 
-import Data.Massiv.Array.Delayed.Pull (D)
-import Data.Massiv.Array.Delayed.Push (unsafeMakeLoadArray, unsafeMakeLoadArrayAdjusted)
+import Data.Massiv.Array.Delayed.Interleaved (Array(DIArray))
+import Data.Massiv.Array.Delayed.Pull (D, unsafeExtract, unsafeInnerSlice,
+                                       unsafeSlice)
+import Data.Massiv.Array.Delayed.Push (Array(DLArray), unsafeMakeLoadArray,
+                                       unsafeMakeLoadArrayAdjusted)
+import Data.Massiv.Array.Delayed.Stream (Array(DSArray))
+import Data.Massiv.Array.Delayed.Windowed (Array(DWArray))
 import Data.Massiv.Array.Manifest.Boxed
+import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.Primitive
 import Data.Massiv.Array.Manifest.Storable
+import Data.Massiv.Array.Manifest.Unboxed
 import Data.Massiv.Array.Mutable.Internal
 import Data.Massiv.Array.Ops.Sort (unsafeUnstablePartitionRegionM)
+import Data.Massiv.Array.Stencil.Unsafe
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.Index.Stride (Stride(SafeStride))
 import Data.Massiv.Vector.Unsafe
-import Data.Massiv.Array.Stencil.Unsafe
 
 
-unsafeBackpermute :: (Source r' ix' e, Index ix) =>
+unsafeBackpermute :: (Index ix', Source r' e, Index ix) =>
                      Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
 unsafeBackpermute !sz ixF !arr =
   makeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
@@ -111,7 +126,7 @@ unsafeBackpermute !sz ixF !arr =
 --
 -- @since 0.3.0
 unsafeTransform ::
-     (Source r' ix' e', Index ix)
+     (Index ix', Source r' e', Index ix)
   => (Sz ix' -> (Sz ix, a))
   -> (a -> (ix' -> e') -> ix -> e)
   -> Array r' ix' e'
@@ -126,7 +141,7 @@ unsafeTransform getSz get arr = makeArray (getComp arr) sz (get a (unsafeIndex a
 --
 -- @since 0.3.0
 unsafeTransform2 ::
-     (Source r1 ix1 e1, Source r2 ix2 e2, Index ix)
+     (Index ix1, Source r1 e1, Index ix2, Source r2 e2, Index ix)
   => (Sz ix1 -> Sz ix2 -> (Sz ix, a))
   -> (a -> (ix1 -> e1) -> (ix2 -> e2) -> ix -> e)
   -> Array r1 ix1 e1
