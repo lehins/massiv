@@ -32,7 +32,7 @@ library
                      , data-default-class
                      , deepseq
                      , exceptions
-                     , QuickCheck
+                     , QuickCheck >= 2.14
                      , hspec
                      , massiv >= 1.0 && < 2
                      , scheduler
