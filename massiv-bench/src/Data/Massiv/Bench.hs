@@ -1,7 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
 module Data.Massiv.Bench
-  ( module Data.Massiv.Bench
+  ( module Data.Massiv.Array
   , module Data.Massiv.Bench.Common
   ) where
 

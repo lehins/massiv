@@ -409,14 +409,15 @@ loadArray arr =
 --
 -- @since 0.1.3
 computeInto ::
-     (Size r', Load r' ix' e, Manifest r e, Index ix, MonadIO m)
+     (Load r' ix' e, Manifest r e, Index ix, MonadIO m)
   => MArray RealWorld r ix e -- ^ Target Array
   -> Array r' ix' e -- ^ Array to load
   -> m ()
 computeInto !mArr !arr =
   liftIO $ do
-    unless (totalElem (sizeOfMArray mArr) == totalElem (size arr)) $
-      throwM $ SizeElementsMismatchException (sizeOfMArray mArr) (size arr)
+    let sz = outerSize arr
+    unless (totalElem (sizeOfMArray mArr) == totalElem sz) $
+      throwM $ SizeElementsMismatchException (sizeOfMArray mArr) sz
     withMassivScheduler_ (getComp arr) $ \scheduler ->
       stToPrim $ iterArrayLinearST_ scheduler arr (unsafeLinearWrite mArr)
 {-# INLINE computeInto #-}

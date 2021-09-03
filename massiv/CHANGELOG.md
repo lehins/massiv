@@ -1,3 +1,7 @@
+# 1.0.1
+
+* Relax constraint on `computeInto` by removing requirement for `Size`
+
 # 1.0.0
 
 * Addition of `sumArrays'`, `sumArraysM` and `productArrays'`, `productArraysM`.
