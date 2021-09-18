@@ -85,8 +85,30 @@ import System.IO.Unsafe (unsafePerformIO)
 -- Boxed Lazy --
 ----------------
 
--- | Array representation for Boxed elements. This data structure is lazy with respect to
--- its elements, but is strict with respect to the spine.
+-- | Array representation for Boxed elements. This data structure is lazy with
+-- respect to its elements, but is strict with respect to the spine.
+--
+-- ====__Example__
+--
+-- Memoized version of a factorial that relies on laziness. Note that
+-- computing memoized factorial of a million would likely overflow memory.
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> :{
+-- mkMemoFactorial :: Int -> (Int -> Integer)
+-- mkMemoFactorial n =
+--   let arr = makeVectorR BL Seq (Sz1 n) fact
+--       fact i | i == 0 = 1
+--              | otherwise = (arr ! (i - 1)) * toInteger i
+--   in (arr !)
+-- :}
+--
+-- >>> let fact = mkMemoFactorial 1000001
+-- >>> fact 50
+-- 30414093201713378043612608166064768844377641568960512000000000000
+-- >>> length $ show $ fact 5000
+-- 16326
+--
 data BL = BL deriving Show
 
 data instance Array BL ix e = BLArray { blComp   :: !Comp
@@ -177,7 +199,7 @@ instance Manifest BL e where
                 SafeSz . A.sizeofMutableArray, A.readArray) ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBLArray _sz o ma) i e = e `seq`
+  unsafeLinearWrite (MBLArray _sz o ma) i e =
     INDEX_CHECK("(Manifest BL ix e).unsafeLinearWrite",
                 SafeSz . A.sizeofMutableArray, A.writeArray) ma (i + o) e
   {-# INLINE unsafeLinearWrite #-}
