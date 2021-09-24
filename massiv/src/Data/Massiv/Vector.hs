@@ -1697,8 +1697,8 @@ siforM_ = flip simapM_
 
 
 
--- | Zip two arrays in a row-major order together together into a flat vector. Resulting
--- length of a vector will be the smallest number of elements of the supplied arrays.
+-- | Zip two vectors together into a vector. The length of a resulting vector will
+-- be the smallest length of the supplied vectors.
 --
 -- ==== __Examples__
 --
@@ -1711,7 +1711,8 @@ szip ::
 szip = szipWith (,)
 {-# INLINE szip #-}
 
--- |
+-- | Zip three vectors together into a vector. The length of a resulting vector will
+-- be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szip3 ::
@@ -1723,7 +1724,8 @@ szip3 ::
 szip3 = szipWith3 (,,)
 {-# INLINE szip3 #-}
 
--- |
+-- | Zip four vectors together into a vector. The length of a resulting vector will
+-- be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szip4 ::
@@ -1737,7 +1739,8 @@ szip4 ::
 szip4 = szipWith4 (,,,)
 {-# INLINE szip4 #-}
 
--- |
+-- | Zip five vectors together into a vector. The length of a resulting vector will
+-- be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szip5 ::
@@ -1752,7 +1755,8 @@ szip5 ::
 szip5 = szipWith5 (,,,,)
 {-# INLINE szip5 #-}
 
--- |
+-- | Zip six vectors together into a vector. The length of a resulting vector will
+-- be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szip6 ::
@@ -1777,9 +1781,8 @@ szip6 = szipWith6 (,,,,,)
 
 
 
-
-
--- |
+-- | Zip two vectors together with a binary function into a vector. The length
+-- of a resulting vector will be the smallest length of the supplied vectors.
 --
 -- ==== __Examples__
 --
@@ -1794,7 +1797,8 @@ szipWith ::
 szipWith f v1 v2 = fromSteps $ S.zipWith f (S.toStream v1) (S.toStream v2)
 {-# INLINE szipWith #-}
 
--- |
+-- | Zip three vectors together with a ternary function into a vector. The length
+-- of a resulting vector will be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szipWith3 ::
@@ -1808,7 +1812,8 @@ szipWith3 ::
 szipWith3 f v1 v2 v3 = fromSteps $ S.zipWith3 f (S.toStream v1) (S.toStream v2) (S.toStream v3)
 {-# INLINE szipWith3 #-}
 
--- |
+-- | Zip four vectors together with a quaternary function into a vector. The length
+-- of a resulting vector will be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szipWith4 ::
@@ -1824,7 +1829,8 @@ szipWith4 f v1 v2 v3 v4 =
   fromSteps $ S.zipWith4 f (S.toStream v1) (S.toStream v2) (S.toStream v3) (S.toStream v4)
 {-# INLINE szipWith4 #-}
 
--- |
+-- | Zip five vectors together with a quinary function into a vector. The length
+-- of a resulting vector will be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szipWith5 ::
@@ -1842,7 +1848,8 @@ szipWith5 f v1 v2 v3 v4 v5 =
   S.zipWith5 f (S.toStream v1) (S.toStream v2) (S.toStream v3) (S.toStream v4) (S.toStream v5)
 {-# INLINE szipWith5 #-}
 
--- |
+-- | Zip six vectors together with a senary function into a vector. The length
+-- of a resulting vector will be the smallest length of the supplied vectors.
 --
 -- @since 0.5.0
 szipWith6 ::
@@ -1874,7 +1881,9 @@ szipWith6 f v1 v2 v3 v4 v5 v6 =
     (S.toStream v6)
 {-# INLINE szipWith6 #-}
 
--- |
+-- | Just like `szipWith`, zip two vectors together, but with an index aware
+-- function. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- ==== __Examples__
 --
@@ -1889,7 +1898,9 @@ sizipWith ::
 sizipWith f v1 v2 = fromSteps $ S.zipWith (uncurry f) (S.toStreamIx v1) (S.toStream v2)
 {-# INLINE sizipWith #-}
 
--- |
+-- | Just like `szipWith3`, zip three vectors together, but with an index aware
+-- function. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- @since 0.5.0
 sizipWith3 ::
@@ -1904,7 +1915,9 @@ sizipWith3 f v1 v2 v3 =
   fromSteps $ S.zipWith3 (uncurry f) (S.toStreamIx v1) (S.toStream v2) (S.toStream v3)
 {-# INLINE sizipWith3 #-}
 
--- |
+-- | Just like `szipWith4`, zip four vectors together, but with an index aware
+-- function. The length of a resulting vector will be the smallest
+-- length of the supplied vectors.
 --
 -- @since 0.5.0
 sizipWith4 ::
@@ -1921,7 +1934,9 @@ sizipWith4 f v1 v2 v3 v4 =
   S.zipWith4 (uncurry f) (S.toStreamIx v1) (S.toStream v2) (S.toStream v3) (S.toStream v4)
 {-# INLINE sizipWith4 #-}
 
--- |
+-- | Just like `szipWith5`, zip five vectors together, but with an index aware
+-- function. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- @since 0.5.0
 sizipWith5 ::
@@ -1945,7 +1960,9 @@ sizipWith5 f v1 v2 v3 v4 v5 =
     (S.toStream v5)
 {-# INLINE sizipWith5 #-}
 
--- |
+-- | Just like `szipWith6`, zip six vectors together, but with an index aware
+-- function. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- @since 0.5.0
 sizipWith6 ::
@@ -1978,7 +1995,9 @@ sizipWith6 f v1 v2 v3 v4 v5 v6 =
 {-# INLINE sizipWith6 #-}
 
 
--- |
+-- | Zip two vectors together with a binary monadic action into a vector. The
+-- length of a resulting vector will be the smallest length of the supplied
+-- vectors.
 --
 -- ==== __Examples__
 --
@@ -1993,7 +2012,9 @@ szipWithM ::
 szipWithM f v1 v2 = fromStepsM $ S.zipWithM f (toStreamM v1) (toStreamM v2)
 {-# INLINE szipWithM #-}
 
--- |
+-- | Zip three vectors together with a ternary monadic action into a vector. The
+-- length of a resulting vector will be the smallest length of the supplied
+-- vectors.
 --
 -- @since 0.5.0
 szipWith3M ::
@@ -2007,7 +2028,9 @@ szipWith3M ::
 szipWith3M f v1 v2 v3 = fromStepsM $ S.zipWith3M f (toStreamM v1) (toStreamM v2) (toStreamM v3)
 {-# INLINE szipWith3M #-}
 
--- |
+-- | Zip four vectors together with a quaternary monadic action into a vector. The
+-- length of a resulting vector will be the smallest length of the supplied
+-- vectors.
 --
 -- @since 0.5.0
 szipWith4M ::
@@ -2023,7 +2046,9 @@ szipWith4M f v1 v2 v3 v4 =
   fromStepsM $ S.zipWith4M f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
 {-# INLINE szipWith4M #-}
 
--- |
+-- | Zip five vectors together with a quinary monadic action into a vector. The
+-- length of a resulting vector will be the smallest length of the supplied
+-- vectors.
 --
 -- @since 0.5.0
 szipWith5M ::
@@ -2047,7 +2072,9 @@ szipWith5M f v1 v2 v3 v4 v5 =
   S.zipWith5M f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4) (toStreamM v5)
 {-# INLINE szipWith5M #-}
 
--- |
+-- | Zip six vectors together with a senary monadic action into a vector. The
+-- length of a resulting vector will be the smallest length of the supplied
+-- vectors.
 --
 -- @since 0.5.0
 szipWith6M ::
@@ -2081,7 +2108,9 @@ szipWith6M f v1 v2 v3 v4 v5 v6 =
 {-# INLINE szipWith6M #-}
 
 
--- |
+-- | Just like `szipWithM`, zip two vectors together, but with an index aware
+-- monadic action. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- ==== __Examples__
 --
@@ -2097,7 +2126,9 @@ sizipWithM f v1 v2 = fromStepsM $ S.zipWithM (uncurry f) (toStreamIxM v1) (toStr
 {-# INLINE sizipWithM #-}
 
 
--- |
+-- | Just like `szipWith3M`, zip three vectors together, but with an index aware
+-- monadic action. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- @since 0.5.0
 sizipWith3M ::
@@ -2112,7 +2143,9 @@ sizipWith3M f v1 v2 v3 =
   fromStepsM $ S.zipWith3M (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3)
 {-# INLINE sizipWith3M #-}
 
--- |
+-- | Just like `szipWith4M`, zip four vectors together, but with an index aware
+-- monadic action. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- @since 0.5.0
 sizipWith4M ::
@@ -2129,7 +2162,9 @@ sizipWith4M f v1 v2 v3 v4 =
   S.zipWith4M (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
 {-# INLINE sizipWith4M #-}
 
--- |
+-- | Just like `szipWith6M`, zip five vectors together, but with an index aware
+-- monadic action. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- @since 0.5.0
 sizipWith5M ::
@@ -2159,7 +2194,9 @@ sizipWith5M f v1 v2 v3 v4 v5 =
     (toStreamM v5)
 {-# INLINE sizipWith5M #-}
 
--- |
+-- | Just like `szipWith6M`, zip six vectors together, but with an index aware
+-- monadic action. The length of a resulting vector will be the smallest length of the
+-- supplied vectors.
 --
 -- ==== __Examples__
 --
@@ -2195,7 +2232,9 @@ sizipWith6M f v1 v2 v3 v4 v5 v6 =
 {-# INLINE sizipWith6M #-}
 
 
--- |
+-- | Similar to `szipWithM`, zip two vectors together with a binary monadic
+-- action, while discarding its result. The action will be invoked as many times as
+-- the length of the smallest vector.
 --
 -- ==== __Examples__
 --
@@ -2209,7 +2248,9 @@ szipWithM_ ::
 szipWithM_ f v1 v2 = S.zipWithM_ f (toStreamM v1) (toStreamM v2)
 {-# INLINE szipWithM_ #-}
 
--- |
+-- | Similar to `szipWith3M`, zip three vectors together with a ternary monadic
+-- action, while discarding its result. The action will be invoked as many times as
+-- the length of the smallest vector.
 --
 -- @since 0.5.0
 szipWith3M_ ::
@@ -2223,7 +2264,9 @@ szipWith3M_ ::
 szipWith3M_ f v1 v2 v3 = S.zipWith3M_ f (toStreamM v1) (toStreamM v2) (toStreamM v3)
 {-# INLINE szipWith3M_ #-}
 
--- |
+-- | Similar to `szipWith4M`, zip four vectors together with a quaternary monadic
+-- action, while discarding its result. The action will be invoked as many times as
+-- the length of the smallest vector.
 --
 -- @since 0.5.0
 szipWith4M_ ::
@@ -2239,7 +2282,9 @@ szipWith4M_ f v1 v2 v3 v4 =
   S.zipWith4M_ f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
 {-# INLINE szipWith4M_ #-}
 
--- |
+-- | Similar to `szipWith5M`, zip five vectors together with a quinary monadic
+-- action, while discarding its result. The action will be invoked as many times as
+-- the length of the smallest vector.
 --
 -- @since 0.5.0
 szipWith5M_ ::
@@ -2262,7 +2307,9 @@ szipWith5M_ f v1 v2 v3 v4 v5 =
   S.zipWith5M_ f (toStreamM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4) (toStreamM v5)
 {-# INLINE szipWith5M_ #-}
 
--- |
+-- | Similar to `szipWith6M`, zip six vectors together with a senary monadic
+-- action, while discarding its result. The action will be invoked as many times as
+-- the length of the smallest vector.
 --
 -- @since 0.5.0
 szipWith6M_ ::
@@ -2296,8 +2343,9 @@ szipWith6M_ f v1 v2 v3 v4 v5 v6 =
 
 
 
-
--- |
+-- | Same as `szipWithM_`, zip two vectors together, but with an index aware
+-- monadic action. The action will be invoked as many times as the length of the
+-- smallest vector.
 --
 -- ==== __Examples__
 --
@@ -2312,7 +2360,9 @@ sizipWithM_ f v1 v2 = S.zipWithM_ (uncurry f) (toStreamIxM v1) (toStreamM v2)
 {-# INLINE sizipWithM_ #-}
 
 
--- |
+-- | Same as `szipWith3M_`, zip three vectors together, but with an index aware
+-- monadic action. The action will be invoked as many times as the length of the
+-- smallest vector.
 --
 -- @since 0.5.0
 sizipWith3M_ ::
@@ -2326,7 +2376,9 @@ sizipWith3M_ ::
 sizipWith3M_ f v1 v2 v3 = S.zipWith3M_ (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3)
 {-# INLINE sizipWith3M_ #-}
 
--- |
+-- | Same as `szipWith4M_`, zip four vectors together, but with an index aware
+-- monadic action. The action will be invoked as many times as the length of the
+-- smallest vector.
 --
 -- @since 0.5.0
 sizipWith4M_ ::
@@ -2342,7 +2394,9 @@ sizipWith4M_ f v1 v2 v3 v4 =
   S.zipWith4M_ (uncurry f) (toStreamIxM v1) (toStreamM v2) (toStreamM v3) (toStreamM v4)
 {-# INLINE sizipWith4M_ #-}
 
--- |
+-- | Same as `szipWith5M_`, zip five vectors together, but with an index aware
+-- monadic action. The action will be invoked as many times as the length of the
+-- smallest vector.
 --
 -- @since 0.5.0
 sizipWith5M_ ::
@@ -2371,7 +2425,9 @@ sizipWith5M_ f v1 v2 v3 v4 v5 =
     (toStreamM v5)
 {-# INLINE sizipWith5M_ #-}
 
--- |
+-- | Same as `szipWith6M_`, zip six vectors together, but with an index aware
+-- monadic action. The action will be invoked as many times as the length of the
+-- smallest vector.
 --
 -- @since 0.5.0
 sizipWith6M_ ::
