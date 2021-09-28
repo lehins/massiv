@@ -1131,7 +1131,7 @@ sunfoldrN ::
 sunfoldrN n f = DSArray . S.unfoldrN n f
 {-# INLINE sunfoldrN #-}
 
--- | /O(n)/ - Same as `unfoldr`, but with monadic generating function.
+-- | /O(n)/ - Same as `sunfoldr`, but with monadic generating function.
 --
 -- ==== __Examples__
 --
@@ -1148,7 +1148,7 @@ sunfoldrM :: forall e s m. Monad m => (s -> m (Maybe (e, s))) -> s -> m (Vector 
 sunfoldrM f = fromStepsM . S.unfoldrM f
 {-# INLINE sunfoldrM #-}
 
--- | /O(n)/ - Same as `unfoldrN`, but with monadic generating function.
+-- | /O(n)/ - Same as `sunfoldrN`, but with monadic generating function.
 --
 -- ==== __Examples__
 --
@@ -1174,7 +1174,7 @@ sunfoldrNM (Sz n) f = fromStepsM . S.unfoldrNM n f
 {-# INLINE sunfoldrNM #-}
 
 
--- | /O(n)/ - Similar to `unfoldrN`, except the length of the resulting vector will be exactly @n@
+-- | /O(n)/ - Similar to `sunfoldrN`, except the length of the resulting vector will be exactly @n@
 --
 -- ==== __Examples__
 --
@@ -1187,7 +1187,7 @@ sunfoldrExactN :: forall e s. Sz1 -> (s -> (e, s)) -> s -> Vector DS e
 sunfoldrExactN n f = fromSteps . S.unfoldrExactN n f
 {-# INLINE sunfoldrExactN #-}
 
--- | /O(n)/ - Similar to `unfoldrNM`, except the length of the resulting vector will be exactly @n@
+-- | /O(n)/ - Similar to `sunfoldrNM`, except the length of the resulting vector will be exactly @n@
 --
 -- ==== __Examples__
 --
@@ -2463,7 +2463,8 @@ sizipWith6M_ f v1 v2 v3 v4 v5 v6 =
 
 
 
--- | Strict left fold sequentially over a streamed array.
+-- | Streaming fold over an array in a row-major fashion with a left biased
+-- function and a strict accumulator.
 --
 -- ==== __Examples__
 --
