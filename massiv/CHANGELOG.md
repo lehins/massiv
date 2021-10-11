@@ -1,7 +1,7 @@
 # 1.0.1
 
 * Relax constraint on `computeInto` by removing requirement for `Size`
-* Fix `BL`, which due to a forgotten `seq` it was not lazy.
+* Fix `BL`, which due to a forgotten `seq` was not lazy.
 
 # 1.0.0
 

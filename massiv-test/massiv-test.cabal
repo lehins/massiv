@@ -158,3 +158,4 @@ test-suite tests-O0
 source-repository head
   type:     git
   location: https://github.com/lehins/massiv
+  subdir:   massiv-test
