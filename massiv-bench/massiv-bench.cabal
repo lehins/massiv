@@ -35,7 +35,7 @@ benchmark any-all
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             AnyAll.hs
-  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N8
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , massiv
@@ -267,7 +267,7 @@ benchmark stencil
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
   main-is:             Stencil.hs
-  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N7
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , criterion
                      , deepseq

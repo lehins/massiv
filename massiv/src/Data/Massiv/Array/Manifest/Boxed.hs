@@ -86,7 +86,7 @@ import System.IO.Unsafe (unsafePerformIO)
 ----------------
 
 -- | Array representation for Boxed elements. This data structure is lazy with
--- respect to its elements, but is strict with respect to the spine.
+-- respect to its elements.
 --
 -- ====__Example__
 --
@@ -294,8 +294,8 @@ instance Num e => Numeric BL e where
 -- Boxed Strict --
 ------------------
 
--- | Array representation for Boxed elements. This structure is element and
--- spine strict, but elements are strict to Weak Head Normal Form (WHNF) only.
+-- | Array representation for Boxed elements. Its elements are strict to Weak
+-- Head Normal Form (WHNF) only.
 data B = B deriving Show
 
 newtype instance Array B ix e = BArray (Array BL ix e)
@@ -458,9 +458,8 @@ instance Num e => Numeric B e where
 -- Boxed Normal Form --
 -----------------------
 
--- | Array representation for Boxed elements. This structure is element and
--- spine strict, and elements are always in Normal Form (NF), therefore `NFData`
--- instance is required.
+  -- | Array representation for Boxed elements. Its elements are always in Normal
+-- Form (NF), therefore `NFData` instance is required.
 data BN = BN deriving Show
 
 -- | Type and pattern `N` have been added for backwards compatibility and will be replaced

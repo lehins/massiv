@@ -327,7 +327,7 @@ import Prelude hiding (drop, dropWhile, init, length, null, replicate, splitAt,
 -- [@Data.Foldable.`Data.Foldable.length`@] For some data structures, like a list for
 -- example, it is an /O(n)/ operation, because there is a need to evaluate the full spine
 -- and possibly even the elements in order to get the full length. With `Stream` vectors
--- that is rarely the case.
+-- that is not always the case.
 --
 -- [@Data.Vector.Generic.`Data.Vector.Generic.length`@] In the vector package this
 -- function will always break fusion, unless it is the only operation that is applied to
