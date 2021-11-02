@@ -1,8 +1,7 @@
-work-dir: ".stack-work-root"
+work-dir: ".stack-work-bench"
 resolver: lts-18.28
 packages:
-- 'massiv/'
-- 'massiv-test/'
-flags: {}
+- '.'
 extra-deps:
+- '../massiv/'
 - scheduler-2.0.0@sha256:3f053e3ff024fdcdd0983fb901313ef979921bc27e12dec97cd330878ddf78b1,2525

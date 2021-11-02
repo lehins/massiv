@@ -257,11 +257,18 @@ mutableNumericSpec =
       computeIO (identityMatrix (Sz n)) `shouldReturn`
         makeArray @r Seq (Sz2 n n) (\ (i :. j) -> if i == j then 1 else 0 :: e)
     prop "LowerTriangular" $ \ comp n f -> expectProp $ do
-      computeIO (lowerTriangular comp (Sz n) (applyFun f . fromIx2)) `shouldReturn`
+      computeIO (lowerTriangular comp (Sz n) (funIx2 f)) `shouldReturn`
         makeArray @r Seq (Sz2 n n) (\ (i :. j) -> if i >= j then applyFun f (i, j) else 0 :: e)
     prop "UpperTriangular" $ \ comp n f -> expectProp $ do
-      computeIO (upperTriangular comp (Sz n) (applyFun f . fromIx2)) `shouldReturn`
+      computeIO (upperTriangular comp (Sz n) (funIx2 f)) `shouldReturn`
         makeArray @r Seq (Sz2 n n) (\ (i :. j) -> if i <= j then applyFun f (i, j) else 0 :: e)
+    prop "LowerTriangular==UpperTriangular'" $ \ comp n f -> expectProp $ do
+      computeIO (lowerTriangular comp (Sz n) (funIx2 f)) `shouldReturn`
+        compute @r @Ix2 @e
+        (transpose (compute @r (upperTriangular comp (Sz n) (funIx2 f . swapIx2))))
+    where
+      funIx2 f = applyFun f . fromIx2
+      swapIx2 (x :. y) = y :. x
 
 mutableNumericFloatSpec ::
      forall r.

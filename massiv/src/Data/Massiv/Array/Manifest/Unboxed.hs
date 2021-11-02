@@ -8,7 +8,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Unboxed
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -26,15 +26,17 @@ module Data.Massiv.Array.Manifest.Unboxed
   ) where
 
 import Control.DeepSeq (NFData(..), deepseq)
-import Data.Massiv.Array.Delayed.Pull (eqArrays, compareArrays)
+import Control.Monad.Primitive (stToPrim)
+import Data.Massiv.Array.Delayed.Pull (D, compareArrays, eqArrays)
+import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
-import Data.Massiv.Vector.Stream as S (steps, isteps)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import Data.Massiv.Core.Operations
-import Data.Vector.Unboxed (Unbox)
+import Data.Massiv.Vector.Stream as S (isteps, steps)
 import qualified Data.Vector.Generic.Mutable as VGM
+import Data.Vector.Unboxed (Unbox)
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as MVU
 import GHC.Exts as GHC (IsList(..))
@@ -69,6 +71,7 @@ instance Strategy U where
   {-# INLINE getComp #-}
   setComp c arr = arr { uComp = c }
   {-# INLINE setComp #-}
+  repr = U
 
 
 instance (Unbox e, Eq e, Index ix) => Eq (Array U ix e) where
@@ -104,6 +107,9 @@ instance Size U where
   {-# INLINE unsafeResize #-}
 
 instance (Unbox e, Index ix) => Load U ix e where
+  makeArray comp sz f = compute (makeArray comp sz f :: Array D ix e)
+  {-# INLINE makeArray #-}
+
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 
@@ -144,7 +150,7 @@ instance Unbox e => Manifest U e where
   unsafeNew sz = MUArray sz <$> MVU.unsafeNew (totalElem sz)
   {-# INLINE unsafeNew #-}
 
-  initialize (MUArray _ marr) = VGM.basicInitialize marr
+  initialize (MUArray _ marr) = stToPrim (VGM.basicInitialize marr)
   {-# INLINE initialize #-}
 
   unsafeLinearCopy (MUArray _ mvFrom) iFrom (MUArray _ mvTo) iTo (Sz k) =

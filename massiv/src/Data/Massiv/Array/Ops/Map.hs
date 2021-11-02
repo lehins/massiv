@@ -5,7 +5,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Map
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -73,6 +73,8 @@ module Data.Massiv.Array.Ops.Map
   , izipWith3A
   ) where
 
+import Data.Traversable (traverse)
+import Data.Massiv.Array.Manifest.List
 import Control.Monad (void)
 import Control.Monad.Primitive
 import Control.Scheduler
@@ -92,7 +94,7 @@ import Prelude hiding (map, mapM, mapM_, sequenceA, traverse, unzip, unzip3,
 --
 -- @since 0.1.0
 map :: (Index ix, Source r e') => (e' -> e) -> Array r ix e' -> Array D ix e
-map f = imap (const f)
+map f = fmap f . delay
 {-# INLINE map #-}
 
 
@@ -164,7 +166,17 @@ unzip4 arr =
 -- source arrays in case their dimensions do not match.
 zipWith :: (Index ix, Source r1 e1, Source r2 e2)
         => (e1 -> e2 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array D ix e
-zipWith f = izipWith (\ _ e1 e2 -> f e1 e2)
+zipWith f arr1 arr2 = DArray comp sz prefIndex
+  where
+    sz = SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))
+    comp = getComp arr1 <> getComp arr2
+    prefIndex = PrefIndex (\ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+      -- Somehow checking for size equality destroys performance
+      --  | PrefIndexLinear gi1 <- unsafePrefIndex arr1,
+      --    PrefIndexLinear gi2 <- unsafePrefIndex arr2,
+      --    size arr1 == size arr2 =
+      --      PrefIndexLinear (\i -> f (gi1 i) (gi2 i))
+      --  | otherwise = PrefIndex (\ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
 {-# INLINE zipWith #-}
 
 
@@ -174,15 +186,30 @@ izipWith :: (Index ix, Source r1 e1, Source r2 e2)
 izipWith f arr1 arr2 =
   DArray
     (getComp arr1 <> getComp arr2)
-    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))) $ \ !ix ->
-    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
+    (SafeSz (liftIndex2 min (coerce (size arr1)) (coerce (size arr2))))
+    (PrefIndex (\ix -> f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)))
 {-# INLINE izipWith #-}
 
 
 -- | Just like `zipWith`, except zip three arrays with a function.
-zipWith3 :: (Index ix, Source r1 e1, Source r2 e2, Source r3 e3)
-         => (e1 -> e2 -> e3 -> e) -> Array r1 ix e1 -> Array r2 ix e2 -> Array r3 ix e3 -> Array D ix e
-zipWith3 f = izipWith3 (\ _ e1 e2 e3 -> f e1 e2 e3)
+zipWith3 ::
+     (Index ix, Source r1 e1, Source r2 e2, Source r3 e3)
+  => (e1 -> e2 -> e3 -> e)
+  -> Array r1 ix e1
+  -> Array r2 ix e2
+  -> Array r3 ix e3
+  -> Array D ix e
+zipWith3 f arr1 arr2 arr3 = izipWith3 (\_ e1 e2 e3 -> f e1 e2 e3) arr1 arr2 arr3
+  -- See note on zipWith
+  --  | sz1 == size arr2 && sz1 == size arr3
+  --  , PrefIndexLinear gi1 <- unsafePrefIndex arr1
+  --  , PrefIndexLinear gi2 <- unsafePrefIndex arr2
+  --  , PrefIndexLinear gi3 <- unsafePrefIndex arr3 =
+  --    makeArrayLinear comp sz1 (\ !i -> f (gi1 i) (gi2 i) (gi3 i))
+  --  | otherwise = izipWith3 (\_ e1 e2 e3 -> f e1 e2 e3) arr1 arr2 arr3
+  -- where
+  --   comp = getComp arr1 <> getComp arr2 <> getComp arr3
+  --   sz1 = size arr1
 {-# INLINE zipWith3 #-}
 
 
@@ -201,8 +228,8 @@ izipWith3 f arr1 arr2 arr3 =
        (liftIndex2
           min
           (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))
-          (coerce (size arr3)))) $ \ !ix ->
-    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix)
+          (coerce (size arr3))))
+    (PrefIndex $ \ !ix -> f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix))
 {-# INLINE izipWith3 #-}
 
 
@@ -218,7 +245,19 @@ zipWith4 ::
   -> Array r3 ix e3
   -> Array r4 ix e4
   -> Array D ix e
-zipWith4 f = izipWith4 (\ _ e1 e2 e3 e4 -> f e1 e2 e3 e4)
+zipWith4 f arr1 arr2 arr3 arr4 =
+  izipWith4 (\ _ e1 e2 e3 e4 -> f e1 e2 e3 e4) arr1 arr2 arr3 arr4
+  -- See note on zipWith
+  --  | sz1 == size arr2 && sz1 == size arr3 && sz1 == size arr4
+  --  , PrefIndexLinear gi1 <- unsafePrefIndex arr1
+  --  , PrefIndexLinear gi2 <- unsafePrefIndex arr2
+  --  , PrefIndexLinear gi3 <- unsafePrefIndex arr3
+  --  , PrefIndexLinear gi4 <- unsafePrefIndex arr4 =
+  --    makeArrayLinear comp sz1 (\ !i -> f (gi1 i) (gi2 i) (gi3 i) (gi4 i))
+  --  | otherwise = izipWith4 (\ _ e1 e2 e3 e4 -> f e1 e2 e3 e4) arr1 arr2 arr3 arr4
+  --  where
+  --    comp = getComp arr1 <> getComp arr2 <> getComp arr3 <> getComp arr4
+  --    sz1 = size arr1
 {-# INLINE zipWith4 #-}
 
 
@@ -234,7 +273,7 @@ izipWith4
   -> Array r4 ix e4
   -> Array D ix e
 izipWith4 f arr1 arr2 arr3 arr4 =
-  DArray
+  makeArray
     (getComp arr1 <> getComp arr2 <> getComp arr3 <> getComp arr4)
     (SafeSz
        (liftIndex2
@@ -243,8 +282,9 @@ izipWith4 f arr1 arr2 arr3 arr4 =
              min
              (liftIndex2 min (coerce (size arr1)) (coerce (size arr2)))
              (coerce (size arr3)))
-          (coerce (size arr4)))) $ \ !ix ->
-    f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix) (unsafeIndex arr4 ix)
+          (coerce (size arr4))))
+    (\ !ix ->
+       f ix (unsafeIndex arr1 ix) (unsafeIndex arr2 ix) (unsafeIndex arr3 ix) (unsafeIndex arr4 ix))
 {-# INLINE izipWith4 #-}
 
 
@@ -253,12 +293,19 @@ izipWith4 f arr1 arr2 arr3 arr4 =
 --
 -- @since 0.3.0
 zipWithA ::
-     (Source r1 e1, Source r2 e2, Applicative f, Manifest r e, Index ix)
-  => (e1 -> e2 -> f e)
-  -> Array r1 ix e1
-  -> Array r2 ix e2
-  -> f (Array r ix e)
-zipWithA f = izipWithA (const f)
+  (Source r1 e1, Source r2 e2, Applicative f, Manifest r e, Index ix) =>
+  (e1 -> e2 -> f e) ->
+  Array r1 ix e1 ->
+  Array r2 ix e2 ->
+  f (Array r ix e)
+zipWithA f arr1 arr2
+  | sz1 == size arr2
+  , PrefIndexLinear gi1 <- unsafePrefIndex arr1
+  , PrefIndexLinear gi2 <- unsafePrefIndex arr2 =
+    setComp (getComp arr1 <> getComp arr2) <$> makeArrayLinearA sz1 (\ !i -> f (gi1 i) (gi2 i))
+  | otherwise = izipWithA (const f) arr1 arr2
+  where
+    !sz1 = size arr1
 {-# INLINE zipWithA #-}
 
 -- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
@@ -326,7 +373,8 @@ traverseA ::
   => (a -> f e)
   -> Array r' ix a
   -> f (Array r ix e)
-traverseA f arr = makeArrayLinearA (size arr) (f . unsafeLinearIndex arr)
+traverseA f arr =
+  unsafeResize (size arr) . fromList (getComp arr) <$> traverse f (toList arr)
 {-# INLINE traverseA #-}
 
 -- | Traverse sequentially over a source array, while discarding the result.
@@ -338,7 +386,12 @@ traverseA_ ::
   => (e -> f a)
   -> Array r ix e
   -> f ()
-traverseA_ f arr = loopA_ 0 (< totalElem (size arr)) (+ 1) (f . unsafeLinearIndex arr)
+traverseA_ f arr =
+  case unsafePrefIndex arr of
+    PrefIndex gix -> iterA_ zeroIndex (unSz sz) oneIndex (<) (f . gix)
+    PrefIndexLinear gi -> loopA_ 0 (< totalElem sz) (+ 1) (f . gi)
+  where
+    sz = size arr
 {-# INLINE traverseA_ #-}
 
 -- | Sequence actions in a source array.
@@ -388,7 +441,11 @@ itraverseA_ ::
   -> Array r ix a
   -> f ()
 itraverseA_ f arr =
-  loopA_ 0 (< totalElem sz) (+ 1) (\ !i -> f (fromLinearIndex sz i) (unsafeLinearIndex arr i))
+  case unsafePrefIndex arr of
+    PrefIndex gix ->
+      iterA_ zeroIndex (unSz sz) oneIndex (<) (\ !ix -> f ix (gix ix))
+    PrefIndexLinear gi ->
+      iterTargetA_ defRowMajor 0 sz zeroIndex oneStride $ \i ix -> f ix (gi i)
   where
     sz = size arr
 {-# INLINE itraverseA_ #-}
@@ -403,7 +460,17 @@ traversePrim ::
   => (a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-traversePrim f = itraversePrim (const f)
+traversePrim f arr = do
+  let sz = size arr
+  marr <- unsafeNew sz
+  case unsafePrefIndex arr of
+    PrefIndex gix ->
+      iterTargetA_ defRowMajor 0 sz zeroIndex oneStride $ \i ix ->
+        f (gix ix) >>= unsafeLinearWrite marr i
+    PrefIndexLinear gi ->
+      loopA_ 0 (< totalElem sz) (+ 1) $ \i ->
+        f (gi i) >>= unsafeLinearWrite marr i
+  unsafeFreeze (getComp arr) marr
 {-# INLINE traversePrim #-}
 
 -- | Same as `traversePrim`, but traverse with index aware action.
@@ -415,13 +482,17 @@ itraversePrim ::
   => (ix -> a -> m b)
   -> Array r' ix a
   -> m (Array r ix b)
-itraversePrim f arr =
-  setComp (getComp arr) <$>
-  generateArrayLinearS
-    (size arr)
-    (\ !i ->
-       let ix = fromLinearIndex (size arr) i
-        in f ix (unsafeLinearIndex arr i))
+itraversePrim f arr = do
+  let sz = size arr
+  marr <- unsafeNew sz
+  case unsafePrefIndex arr of
+    PrefIndex gix ->
+      iterTargetA_ defRowMajor 0 sz zeroIndex oneStride $ \i ix ->
+        f ix (gix ix) >>= unsafeLinearWrite marr i
+    PrefIndexLinear gi ->
+      iterTargetA_ defRowMajor 0 sz zeroIndex oneStride $ \i ix ->
+        f ix (gi i) >>= unsafeLinearWrite marr i
+  unsafeFreeze (getComp arr) marr
 {-# INLINE itraversePrim #-}
 
 --------------------------------------------------------------------------------
@@ -490,7 +561,7 @@ iforM = flip itraverseA
 --
 -- @since 0.1.0
 mapM_ :: (Source r a, Index ix, Monad m) => (a -> m b) -> Array r ix a -> m ()
-mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeIndex arr)
+mapM_ = traverseA_
 {-# INLINE mapM_ #-}
 
 
@@ -509,13 +580,31 @@ mapM_ f !arr = iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) (f . unsafeI
 -- 499500
 --
 forM_ :: (Source r a, Index ix, Monad m) => Array r ix a -> (a -> m b) -> m ()
-forM_ = flip mapM_
+forM_ = flip traverseA_
 {-# INLINE forM_ #-}
+
+
+-- | Map a monadic index aware function over an array sequentially, while discarding the result.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> imapM_ (curry print) $ range Seq (Ix1 10) 15
+-- (0,10)
+-- (1,11)
+-- (2,12)
+-- (3,13)
+-- (4,14)
+--
+-- @since 0.1.0
+imapM_ :: (Index ix, Source r a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
+imapM_ = itraverseA_
+{-# INLINE imapM_ #-}
 
 
 -- | Just like `imapM_`, except with flipped arguments.
 iforM_ :: (Source r a, Index ix, Monad m) => Array r ix a -> (ix -> a -> m b) -> m ()
-iforM_ = flip imapM_
+iforM_ = flip itraverseA_
 {-# INLINE iforM_ #-}
 
 

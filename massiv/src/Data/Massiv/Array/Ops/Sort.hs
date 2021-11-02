@@ -4,7 +4,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Sort
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -15,6 +15,9 @@ module Data.Massiv.Array.Ops.Sort
   , quicksort
   , quicksortBy
   , quicksortByM
+  , quicksortAs
+  , quicksortAsBy
+  , quicksortAsByM
   , quicksortM_
   , quicksortByM_
   , unsafeUnstablePartitionRegionM
@@ -98,11 +101,45 @@ unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
 {-# INLINE unsafeUnstablePartitionRegionM #-}
 
 
--- | This is an implementation of [Quicksort](https://en.wikipedia.org/wiki/Quicksort), which is an
--- efficient, but unstable sort that uses Median-of-three for pivot choosing, as such it performs
--- very well not only for random values, but also for common edge cases like already sorted,
--- reversed sorted and arrays with many duplicate elements. It will also respect the computation
--- strategy and will result in a nice speed up for systems with multiple CPUs.
+-- | Same as `quicksort` except it accepts any array that is computable.
+--
+-- @since 1.0.2
+quicksortAs ::
+     (Load r Ix1 e, Manifest r' e, Ord e) => r' -> Vector r e -> Vector r' e
+quicksortAs _ arr = unsafePerformIO $ withLoadMArray_ arr quicksortM_
+{-# INLINE quicksortAs #-}
+
+-- | Same as `quicksortBy` except it accepts any array that is computable.
+--
+-- @since 1.0.2
+quicksortAsBy ::
+     (Load r Ix1 e, Manifest r' e) => r' -> (e -> e -> Ordering) -> Vector r e -> Vector r' e
+quicksortAsBy _ f arr =
+  unsafePerformIO $ withLoadMArray_ arr (quicksortByM_ (\x y -> pure $ f x y))
+{-# INLINE quicksortAsBy #-}
+
+
+-- | Same as `quicksortByM` except it accepts any array that is computable.
+--
+-- @since 1.0.2
+quicksortAsByM ::
+     (Load r Ix1 e, Manifest r' e, MonadUnliftIO m)
+  => r'
+  -> (e -> e -> m Ordering)
+  -> Vector r e
+  -> m (Vector r' e)
+quicksortAsByM _ f arr =
+  withRunInIO $ \run -> withLoadMArray_ arr (quicksortByM_ (\x y -> run (f x y)))
+{-# INLINE quicksortAsByM #-}
+
+
+-- | This is an implementation of
+-- [Quicksort](https://en.wikipedia.org/wiki/Quicksort), which is an efficient,
+-- but unstable sort. This implementation uses Median-of-three for pivot
+-- choosing, as such it performs very well not only for random values, but also
+-- for common edge cases like already sorted, reversed sorted and arrays with
+-- many duplicate elements. It will also respect the computation strategy and
+-- will result in a nice speed up for systems with multiple CPUs.
 --
 -- @since 0.3.2
 quicksort ::

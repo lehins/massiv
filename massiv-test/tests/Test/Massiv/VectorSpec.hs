@@ -128,7 +128,8 @@ toPrimV6 ::
 toPrimV6 f v1 = toPrimV5 (f (toPrimitiveVector v1))
 
 
-(!==!) :: (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
+(!==!) ::
+     (Eq e, Show e, Prim e, Load r Ix1 e) => V.Vector r e -> VP.Vector e -> Property
 (!==!) arr vec = toPrimitiveVector (convert arr) === vec
 
 (!!==!!) ::

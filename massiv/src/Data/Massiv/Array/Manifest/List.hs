@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.List
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

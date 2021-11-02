@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Stream
--- Copyright   : (c) Alexey Kuleshevich 2019-2021
+-- Copyright   : (c) Alexey Kuleshevich 2019-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -76,11 +76,11 @@ instance Shape DS Ix1 where
   isNull = S.unId . S.null . coerce
   {-# INLINE isNull #-}
 
-
---TODO remove
+-- | For now only `Seq` strategy.
 instance Strategy DS where
   getComp _ = Seq
   setComp _ = id
+  repr = DS
 
 
 instance Functor (Array DS Ix1) where
@@ -101,8 +101,6 @@ instance Applicative (Array DS Ix1) where
 #endif
 
 instance Monad (Array DS Ix1) where
-  return = fromSteps . S.singleton
-  {-# INLINE return #-}
   (>>=) arr f = coerce (S.concatMap (coerce . f) (dsArray arr))
   {-# INLINE (>>=) #-}
 
@@ -141,8 +139,10 @@ instance Semigroup (Array DS Ix1 e) where
 instance Monoid (Array DS Ix1 e) where
   mempty = DSArray S.empty
   {-# INLINE mempty #-}
+#if !MIN_VERSION_base(4,11,0)
   mappend = (<>)
   {-# INLINE mappend #-}
+#endif
 
 instance IsList (Array DS Ix1 e) where
   type Item (Array DS Ix1 e) = e

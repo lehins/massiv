@@ -13,8 +13,7 @@ import Data.Massiv.Array
 import Data.Massiv.Array.Unsafe (Sz(SafeSz))
 import Test.Massiv.Core.Index
 import Test.Massiv.Utils
-import Test.Validity.Eq (eqSpecOnArbitrary)
-import Test.Validity.Ord (ordSpecOnArbitrary)
+
 
 
 specIxN ::
@@ -38,8 +37,9 @@ specIxN = do
   describe "Bounded" $ do
     it "minBound" $ fromIntegral (minBound :: Int) `shouldBe` (minBound :: ix)
     it "maxBound" $ fromIntegral (maxBound :: Int) `shouldBe` (maxBound :: ix)
-  eqSpecOnArbitrary @ix
-  ordSpecOnArbitrary @ix
+  specLaws $ eqLaws (Proxy @ix)
+  specLaws $ ordLaws (Proxy @ix)
+  specLaws $ numLaws (Proxy @ix)
   describe "Stride" $ do
     it "Positive" $
       property $ \(ix :: ix) ->
@@ -47,8 +47,8 @@ specIxN = do
           str@(Stride ix') -> foldlIndex (\a x -> a && x > 0) True ix' .&&.
                               unStride str === liftIndex (max 1) ix
     it "Show" $ property $ \str -> ("Just (" ++ show (str :: Stride ix) ++ ")") === show (Just str)
-    eqSpecOnArbitrary @(Stride ix)
-    ordSpecOnArbitrary @(Stride ix)
+    specLaws $ eqLaws (Proxy @(Stride ix))
+    specLaws $ ordLaws (Proxy @(Stride ix))
     it "DeebpSeq" $ property $ \ (str :: Stride ix) -> rnf str `shouldBe` ()
     it "oneStride" $ unStride oneStride `shouldBe` (1 :: ix)
     it "toLinearIndexStride" $ property $ \ str (SzIx sz ix :: SzIx ix) ->
@@ -137,8 +137,8 @@ specSz = do
     szSpec @ix
     szNumSpec @ix
     prop "Show" $ \sz -> ("Just (" ++ show (sz :: Sz ix) ++ ")") === show (Just sz)
-  eqSpecOnArbitrary @(Sz ix)
-  ordSpecOnArbitrary @(Sz ix)
+  specLaws $ eqLaws (Proxy @(Sz ix))
+  specLaws $ ordLaws (Proxy @(Sz ix))
 
 specIx :: Spec
 specIx = do
@@ -172,4 +172,4 @@ spec = do
     it "Fill exception" $
       assertException (ExpectedException==) (Fill (throw ExpectedException :: Int))
     it "rnf" $ property $ \ (b :: Border Int) -> rnf b `shouldBe` ()
-  eqSpecOnArbitrary @(Border Int)
+  specLaws $ eqLaws (Proxy @(Border Int))

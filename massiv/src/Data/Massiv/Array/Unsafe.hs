@@ -5,7 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Module      : Data.Massiv.Array.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -117,8 +117,7 @@ import Data.Massiv.Vector.Unsafe
 
 unsafeBackpermute :: (Index ix', Source r' e, Index ix) =>
                      Sz ix -> (ix -> ix') -> Array r' ix' e -> Array D ix e
-unsafeBackpermute !sz ixF !arr =
-  makeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
+unsafeBackpermute !sz ixF !arr = makeArray (getComp arr) sz (unsafeIndex arr . ixF)
 {-# INLINE unsafeBackpermute #-}
 
 -- | Same 'Data.Array.transform'', except no bounds checking is performed, thus making it faster,

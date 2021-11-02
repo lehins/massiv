@@ -11,7 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -60,9 +60,10 @@ import Control.Exception
 import Control.Monad ((>=>))
 import Control.Monad.Primitive
 import qualified Data.Foldable as F (Foldable(..))
+import Data.Massiv.Array.Delayed.Pull (D)
 import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
-import Data.Massiv.Array.Manifest.Internal (computeAs)
+import Data.Massiv.Array.Manifest.Internal (compute, computeAs)
 import Data.Massiv.Array.Manifest.List as L
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Fold
@@ -78,6 +79,9 @@ import qualified Data.Vector.Mutable as MVB
 import GHC.Exts as GHC
 import Prelude hiding (mapM, replicate)
 import System.IO.Unsafe (unsafePerformIO)
+#if !MIN_VERSION_vector(0,13,0)
+import Unsafe.Coerce (unsafeCoerce)
+#endif
 
 #include "massiv.h"
 
@@ -149,6 +153,7 @@ instance Strategy BL where
   {-# INLINE setComp #-}
   getComp = blComp
   {-# INLINE getComp #-}
+  repr = BL
 
 
 instance Source BL e where
@@ -216,6 +221,9 @@ instance Index ix => Shape BL ix where
   {-# INLINE maxLinearSize #-}
 
 instance Index ix => Load BL ix e where
+  makeArray comp sz f = compute (makeArray comp sz f :: Array D ix e)
+  {-# INLINE makeArray #-}
+
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 
@@ -334,6 +342,7 @@ instance Strategy B where
   {-# INLINE getComp #-}
   setComp c arr = coerceBoxedArray (coerce arr) { blComp = c }
   {-# INLINE setComp #-}
+  repr = B
 
 
 instance Index ix => Shape B ix where
@@ -383,6 +392,9 @@ instance Manifest B e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance Index ix => Load B ix e where
+  makeArray comp sz f = compute (makeArray comp sz f :: Array D ix e)
+  {-# INLINE makeArray #-}
+
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 
@@ -492,11 +504,12 @@ instance (Index ix, NFData e, Ord e) => Ord (Array BN ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
-instance Strategy N where
+instance Strategy BN where
   setComp c = coerce (setComp c)
   {-# INLINE setComp #-}
   getComp = blComp . coerce
   {-# INLINE getComp #-}
+  repr = BN
 
 instance NFData e => Source BN e where
   unsafeLinearIndex (BNArray arr) = unsafeLinearIndex arr
@@ -553,6 +566,8 @@ instance NFData e => Manifest BN e where
   {-# INLINE unsafeLinearWrite #-}
 
 instance (Index ix, NFData e) => Load BN ix e where
+  makeArray comp sz f = compute (makeArray comp sz f :: Array D ix e)
+  {-# INLINE makeArray #-}
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
   replicate comp sz e = runST (newMArray sz e >>= unsafeFreeze comp)
@@ -741,7 +756,7 @@ fromMutableArraySeq ::
   -> m (MArray (PrimState m) BL Ix1 e)
 fromMutableArraySeq with ma = do
   let !sz = A.sizeofMutableArray ma
-  loopM_ 0 (< sz) (+ 1) (A.readArray ma >=> (`with` return ()))
+  loopA_ 0 (< sz) (+ 1) (A.readArray ma >=> (`with` return ()))
   return $! MBLArray (SafeSz sz) 0 ma
 {-# INLINE fromMutableArraySeq #-}
 
@@ -770,14 +785,27 @@ evalNormalForm :: (Index ix, NFData e) => Array B ix e -> Array N ix e
 evalNormalForm (BArray arr) = arr `deepseqArray` BNArray arr
 {-# INLINE evalNormalForm #-}
 
--- | /O(1)/ - Converts a boxed `Array` into a `VB.Vector`.
+-- | /O(1)/ - Converts a boxed `Array` into a `VB.Vector` without touching any
+-- elements.
 --
 -- @since 0.5.0
-toBoxedVector :: Index ix => Array BL ix a -> VB.Vector a
-toBoxedVector arr = runST $ VB.unsafeFreeze . toBoxedMVector =<< unsafeThaw arr
 {-# INLINE toBoxedVector #-}
+toBoxedVector :: Index ix => Array BL ix a -> VB.Vector a
+toBoxedVector BLArray{blOffset = off, blSize = sz, blData = arr } =
+#if MIN_VERSION_vector(0,13,0)
+  VB.unsafeFromArraySlice arr off (totalElem sz)
+#elif MIN_VERSION_vector(0,12,2)
+  VB.unsafeTake (totalElem sz) (VB.unsafeDrop off (VB.fromArray arr))
+#else
+  fromVectorCast $ VectorCast off (totalElem sz) arr
 
--- | /O(1)/ - Converts a boxed `MArray` into a `VMB.MVector`.
+fromVectorCast :: VectorCast a -> VB.Vector a
+fromVectorCast = unsafeCoerce
+#endif
+
+
+
+-- | /O(1)/ - Converts a boxed `MArray` into a `MVB.MVector`.
 --
 -- @since 0.5.0
 toBoxedMVector :: Index ix => MArray s BL ix a -> MVB.MVector s a
@@ -800,7 +828,7 @@ evalBoxedVector comp = evalLazyArray . setComp comp . fromBoxedVector
 evalBoxedMVector :: PrimMonad m => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) B Ix1 a)
 evalBoxedMVector (MVB.MVector o k ma) =
   let marr = MBArray (MBLArray (SafeSz k) o ma)
-   in marr <$ loopM_ o (< k) (+ 1) (A.readArray ma >=> (`seq` pure ()))
+   in marr <$ loopA_ o (< k) (+ 1) (A.readArray ma >=> (`seq` pure ()))
 {-# INLINE evalBoxedMVector #-}
 
 
@@ -808,11 +836,23 @@ evalBoxedMVector (MVB.MVector o k ma) =
 --
 -- @since 0.6.0
 fromBoxedVector :: VB.Vector a -> Vector BL a
-fromBoxedVector v =
-  runST $ do
-    MVB.MVector o k ma <- VB.unsafeThaw v
-    unsafeFreeze Seq $ MBLArray (SafeSz k) o ma
 {-# INLINE fromBoxedVector #-}
+fromBoxedVector v =
+  BLArray {blComp = Seq, blSize = SafeSz n, blOffset = offset, blData = arr}
+  where
+#if MIN_VERSION_vector(0,13,0)
+    (arr, offset, n) = VB.toArraySlice v
+#else
+    VectorCast offset n arr = toVectorCast v
+
+-- This internal type is needed to get into the internals of a boxed vector,
+-- since it is not possible until vector-0.13 version.
+data VectorCast a =
+  VectorCast {-# UNPACK #-}!Int {-# UNPACK #-}!Int {-# UNPACK #-}!(A.Array a)
+
+toVectorCast :: VB.Vector a -> VectorCast a
+toVectorCast = unsafeCoerce
+#endif
 
 
 -- | /O(1)/ - Convert mutable boxed vector to a lazy mutable boxed array. Both keep
@@ -849,7 +889,7 @@ evalNormalBoxedMVector ::
      (NFData a, PrimMonad m) => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) N Ix1 a)
 evalNormalBoxedMVector (MVB.MVector o k ma) =
   let marr = MBNArray (MBLArray (SafeSz k) o ma)
-   in marr <$ loopM_ o (< k) (+ 1) (A.readArray ma >=> (`deepseq` pure ()))
+   in marr <$ loopA_ o (< k) (+ 1) (A.readArray ma >=> pure . rnf)
 {-# INLINE evalNormalBoxedMVector #-}
 
 -- | /O(n)/ - Convert a boxed vector and evaluate all elements to WHNF. Computation

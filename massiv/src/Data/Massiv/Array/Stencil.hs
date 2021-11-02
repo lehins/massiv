@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -193,7 +193,7 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
       DArray
         (getComp arr)
         sz
-        (stencilF (borderIndex border arr) (borderIndex border arr) . liftIndex2 (+) offset)
+        (PrefIndex (stencilF (borderIndex border arr) (borderIndex border arr) . liftIndex2 (+) offset))
     -- Size by which the resulting array will shrink (not accounting for padding)
     !shrinkSz = Sz (liftIndex (subtract 1) (unSz sSz))
     !sz = liftSz2 (-) (SafeSz (liftIndex2 (+) po (liftIndex2 (+) pb (unSz (size arr))))) shrinkSz
@@ -247,8 +247,7 @@ makeStencil
   -> Stencil ix e a
 makeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
   where
-    stencil _ getVal !ix =
-      inline relStencil $ \ !ixD -> getVal (liftIndex2 (+) ix ixD)
+    stencil _ getVal !ix = inline (relStencil (getVal . liftIndex2 (+) ix))
     {-# INLINE stencil #-}
 {-# INLINE makeStencil #-}
 

@@ -265,6 +265,7 @@ unsafeMutableSpec ::
      , Show e
      , Eq e
      , Load r ix e
+     , Arbitrary (Array r ix e)
      , Arbitrary e
      , Arbitrary ix
      , Typeable e

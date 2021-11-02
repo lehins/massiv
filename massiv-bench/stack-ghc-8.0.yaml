@@ -1,3 +1,4 @@
+work-dir: ".stack-work-bench"
 resolver: lts-9.21
 packages:
 - '.'

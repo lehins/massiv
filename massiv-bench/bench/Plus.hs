@@ -10,25 +10,23 @@ import Prelude as P
 
 main :: IO ()
 main = do
-  let !sz = Sz2 1600 1200
+  let !sz = Sz2 8000 6000
+      arr1 = arrRLightIx2 P Seq sz
+      arr2 = arrRHeavyIx2 P Seq sz
   defaultMain
     [ bgroup
         "Plus"
-        [ env (return (arrRLightIx2 U Seq sz)) $ \arr ->
-            let arrD = delay arr
-             in bgroup
-                  "Seq"
-                  [ bench "(+) D" $ whnf (A.computeAs U . (!+!) arrD) arrD
-                  --, bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
-                  , bench "zipWith (+)" $ whnf (A.computeAs U . A.zipWith (+) arr) arr
-                  ]
-        , env (return (arrRLightIx2 U Par sz)) $ \arr ->
-            let arrD = delay arr
-             in bgroup
-                  "Par"
-                  [ bench "(+) D" $ whnf (A.computeAs U . (!+!) arrD) arrD
-                  --, bench "(.+)" $ whnf (A.computeAs U . (.+) arr) arr
-                  , bench "zipWith (+)" $ whnf (A.computeAs U . A.zipWith (+) arr) arr
-                  ]
+        [ env (return (arr1, arr2)) $ \ ~(a1, a2) ->
+            bgroup
+              "Seq"
+              [ bench "(+) P" $ whnf (a1 !+!) a2
+              , bench "zipWith (+)" $ whnf (A.computeAs P . A.zipWith (+) a1) a2
+              ]
+        , env (return (setComp (ParN 4) arr1, arr2)) $ \ ~(a1, a2) ->
+            bgroup
+              "ParN 4" -- memory bound, too many workers only make it slower
+              [ bench "(+) P" $ whnf (a1 !+!) a2
+              , bench "zipWith (+)" $ whnf (A.computeAs P . A.zipWith (+) a1) a2
+              ]
         ]
     ]

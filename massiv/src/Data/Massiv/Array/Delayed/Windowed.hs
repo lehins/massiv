@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Windowed
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -67,6 +67,7 @@ instance Strategy DW where
   {-# INLINE setComp #-}
   getComp = dComp . dwArray
   {-# INLINE getComp #-}
+  repr = DW
 
 
 instance Functor (Array DW ix) where
@@ -197,12 +198,12 @@ loadWithIx1 ::
   -> Array DW Ix1 e
   -> (Ix1 -> e -> m a)
   -> m (Ix1 -> Ix1 -> m (), Ix1, Ix1)
-loadWithIx1 with (DWArray (DArray _ sz indexB) mWindow) uWrite = do
+loadWithIx1 with (DWArray a@(DArray _ sz _) mWindow) uWrite = do
   let Window it wk indexW _ = fromMaybe zeroWindow mWindow
       wEnd = it + unSz wk
-  with $ iterM_ 0 it 1 (<) $ \ !i -> uWrite i (indexB i)
-  with $ iterM_ wEnd (unSz sz) 1 (<) $ \ !i -> uWrite i (indexB i)
-  return (\from to -> with $ iterM_ from to 1 (<) $ \ !i -> uWrite i (indexW i), it, wEnd)
+  with $ iterA_ 0 it 1 (<) $ \ !i -> uWrite i (unsafeIndex a i)
+  with $ iterA_ wEnd (unSz sz) 1 (<) $ \ !i -> uWrite i (unsafeIndex a i)
+  return (\from to -> with $ iterA_ from to 1 (<) $ \ !i -> uWrite i (indexW i), it, wEnd)
 {-# INLINE loadWithIx1 #-}
 
 instance Index ix => Shape DW ix where
@@ -219,7 +220,7 @@ instance Load DW Ix1 e where
   iterArrayLinearST_ scheduler arr uWrite = do
     (loadWindow, wStart, wEnd) <- loadWithIx1 (scheduleWork scheduler) arr uWrite
     let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
-    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
+    loopA_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
       let !it' = wid * chunkWidth + wStart
        in loadWindow it' (it' + chunkWidth)
     when (slackWidth > 0) $
@@ -231,7 +232,7 @@ instance StrideLoad DW Ix1 e where
   iterArrayLinearWithStrideST_ scheduler stride sz arr uWrite = do
       (loadWindow, (wStart, wEnd)) <- loadArrayWithIx1 (scheduleWork scheduler) arr stride sz uWrite
       let (chunkWidth, slackWidth) = (wEnd - wStart) `quotRem` numWorkers scheduler
-      loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
+      loopA_ 0 (< numWorkers scheduler) (+ 1) $ \ !wid ->
         let !it' = wid * chunkWidth + wStart
          in loadWindow (it', it' + chunkWidth)
       when (slackWidth > 0) $
@@ -247,18 +248,18 @@ loadArrayWithIx1 ::
   -> Sz1
   -> (Ix1 -> e -> m a)
   -> m ((Ix1, Ix1) -> m (), (Ix1, Ix1))
-loadArrayWithIx1 with (DWArray (DArray _ arrSz indexB) mWindow) stride _ uWrite = do
+loadArrayWithIx1 with (DWArray darr@(DArray _ arrSz _) mWindow) stride _ uWrite = do
   let Window it wk indexW _ = fromMaybe zeroWindow mWindow
       wEnd = it + unSz wk
       strideIx = unStride stride
-  with $ iterM_ 0 it strideIx (<) $ \ !i -> uWrite (i `div` strideIx) (indexB i)
+  with $ iterA_ 0 it strideIx (<) $ \ !i -> uWrite (i `div` strideIx) (unsafeIndex darr i)
   with $
-    iterM_ (strideStart stride wEnd) (unSz arrSz) strideIx (<) $ \ !i ->
-      uWrite (i `div` strideIx) (indexB i)
+    iterA_ (strideStart stride wEnd) (unSz arrSz) strideIx (<) $ \ !i ->
+      uWrite (i `div` strideIx) (unsafeIndex darr i)
   return
     ( \(from, to) ->
         with $
-        iterM_ (strideStart stride from) to strideIx (<) $ \ !i ->
+        iterA_ (strideStart stride from) to strideIx (<) $ \ !i ->
           uWrite (i `div` strideIx) (indexW i)
     , (it, wEnd))
 {-# INLINE loadArrayWithIx1 #-}
@@ -272,20 +273,21 @@ loadWithIx2 ::
   -> (Int -> t1 -> m ())
   -> m (Ix2 -> m (), Ix2)
 loadWithIx2 with arr uWrite = do
-  let DWArray (DArray _ (Sz (m :. n)) indexB) window = arr
-  let Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
-  let ib :. jb = (wm + it) :. (wn + jt)
+  let DWArray darr window = arr
+      Sz (m :. n) = dSize darr
+      Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
+      ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       stride = oneStride
       !sz = strideSize stride $ outerSize arr
-      writeB !ix = uWrite (toLinearIndex sz ix) (indexB ix)
+      writeB !ix = uWrite (toLinearIndex sz ix) (unsafeIndex darr ix)
       {-# INLINE writeB #-}
       writeW !ix = uWrite (toLinearIndex sz ix) (indexW ix)
       {-# INLINE writeW #-}
-  with $ iterM_ (0 :. 0) (it :. n) (1 :. 1) (<) writeB
-  with $ iterM_ (ib :. 0) (m :. n) (1 :. 1) (<) writeB
-  with $ iterM_ (it :. 0) (ib :. jt) (1 :. 1) (<) writeB
-  with $ iterM_ (it :. jb) (ib :. n) (1 :. 1) (<) writeB
+  with $ iterA_ (0 :. 0) (it :. n) (1 :. 1) (<) writeB
+  with $ iterA_ (ib :. 0) (m :. n) (1 :. 1) (<) writeB
+  with $ iterA_ (it :. 0) (ib :. jt) (1 :. 1) (<) writeB
+  with $ iterA_ (it :. jb) (ib :. n) (1 :. 1) (<) writeB
   let f (it' :. ib') = with $ unrollAndJam blockHeight (it' :. jt) (ib' :. jb) 1 writeW
       {-# INLINE f #-}
   return (f, it :. ib)
@@ -300,22 +302,23 @@ loadArrayWithIx2 ::
   -> (Int -> e -> m ())
   -> m (Ix2 -> m (), Ix2)
 loadArrayWithIx2 with arr stride sz uWrite = do
-  let DWArray (DArray _ (Sz (m :. n)) indexB) window = arr
-  let Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
-  let ib :. jb = (wm + it) :. (wn + jt)
+  let DWArray darr window = arr
+      Sz (m :. n) = dSize darr
+      Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
+      ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       strideIx@(is :. js) = unStride stride
-      writeB !ix = uWrite (toLinearIndexStride stride sz ix) (indexB ix)
+      writeB !ix = uWrite (toLinearIndexStride stride sz ix) (unsafeIndex darr ix)
       {-# INLINE writeB #-}
       writeW !ix = uWrite (toLinearIndexStride stride sz ix) (indexW ix)
       {-# INLINE writeW #-}
-  with $ iterM_ (0 :. 0) (it :. n) strideIx (<) writeB
-  with $ iterM_ (strideStart stride (ib :. 0)) (m :. n) strideIx (<) writeB
-  with $ iterM_ (strideStart stride (it :. 0)) (ib :. jt) strideIx (<) writeB
-  with $ iterM_ (strideStart stride (it :. jb)) (ib :. n) strideIx (<) writeB
+  with $ iterA_ (0 :. 0) (it :. n) strideIx (<) writeB
+  with $ iterA_ (strideStart stride (ib :. 0)) (m :. n) strideIx (<) writeB
+  with $ iterA_ (strideStart stride (it :. 0)) (ib :. jt) strideIx (<) writeB
+  with $ iterA_ (strideStart stride (it :. jb)) (ib :. n) strideIx (<) writeB
   let f (it' :. ib')
         | is > 1 || blockHeight <= 1 -- Turn off unrolling for vertical strides
-         = iterM_ (strideStart stride (it' :. jt)) (ib' :. jb) strideIx (<) writeW
+         = iterA_ (strideStart stride (it' :. jt)) (ib' :. jb) strideIx (<) writeW
         | otherwise =
           unrollAndJam blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
       {-# INLINE f #-}
@@ -326,7 +329,7 @@ loadArrayWithIx2 with arr stride sz uWrite = do
 loadWindowIx2 :: Monad m => Int -> (Ix2 -> m ()) -> Ix2 -> m ()
 loadWindowIx2 nWorkers loadWindow (it :. ib) = do
   let !(chunkHeight, slackHeight) = (ib - it) `quotRem` nWorkers
-  loopM_ 0 (< nWorkers) (+ 1) $ \ !wid ->
+  loopA_ 0 (< nWorkers) (+ 1) $ \ !wid ->
     let !it' = wid * chunkHeight + it
      in loadWindow (it' :. (it' + chunkHeight))
   when (slackHeight > 0) $
@@ -370,9 +373,8 @@ loadArrayWithIxN ::
   -> ST s ()
 loadArrayWithIxN scheduler stride szResult arr uWrite = do
   let DWArray darr window = arr
-      DArray {dSize = szSource, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
-      !(headSourceSize, lowerSourceSize) = unconsSz szSource
+      !(headSourceSize, lowerSourceSize) = unconsSz (dSize darr)
       !lowerSize = snd $ unconsSz szResult
       !(s, lowerStrideIx) = unconsDim $ unStride stride
       !(curWindowStart, lowerWindowStart) = unconsDim windowStart
@@ -388,7 +390,12 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
           }
       mkLowerArray mw i =
         DWArray
-          {dwArray = DArray Seq lowerSourceSize (indexBorder . consDim i), dwWindow = ($ i) <$> mw}
+          { dwArray = darr { dComp = Seq
+                           , dSize = lowerSourceSize
+                           , dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)
+                           }
+          , dwWindow = ($ i) <$> mw
+          }
       loadLower mw !i =
         iterArrayLinearWithStrideST_
           scheduler
@@ -397,13 +404,13 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
           (mkLowerArray mw i)
           (\k -> uWrite (k + pageElements * (i `div` s)))
       {-# NOINLINE loadLower #-}
-  loopM_ 0 (< headDim windowStart) (+ s) (loadLower Nothing)
-  loopM_
+  loopA_ 0 (< headDim windowStart) (+ s) (loadLower Nothing)
+  loopA_
     (strideStart (Stride s) curWindowStart)
     (< curWindowEnd)
     (+ s)
     (loadLower (Just mkLowerWindow))
-  loopM_ (strideStart (Stride s) curWindowEnd) (< unSz headSourceSize) (+ s) (loadLower Nothing)
+  loopA_ (strideStart (Stride s) curWindowEnd) (< unSz headSourceSize) (+ s) (loadLower Nothing)
 {-# INLINE loadArrayWithIxN #-}
 
 
@@ -416,9 +423,8 @@ loadWithIxN ::
   -> ST s ()
 loadWithIxN scheduler arr uWrite = do
   let DWArray darr window = arr
-      DArray {dSize = sz, dIndex = indexBorder} = darr
       Window {windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
-      !(si, szL) = unconsSz sz
+      !(si, szL) = unconsSz (dSize darr)
       !windowEnd = liftIndex2 (+) windowStart (unSz windowSize)
       !(t, windowStartL) = unconsDim windowStart
       !pageElements = totalElem szL
@@ -430,14 +436,18 @@ loadWithIxN scheduler arr uWrite = do
           , windowUnrollIx2 = windowUnrollIx2
           }
       mkLowerArray mw i =
-        DWArray {dwArray = DArray Seq szL (indexBorder . consDim i), dwWindow = ($ i) <$> mw}
+        DWArray
+          { dwArray =
+              darr {dComp = Seq, dSize = szL, dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)}
+          , dwWindow = ($ i) <$> mw
+          }
       loadLower mw !i =
         scheduleWork_ scheduler $
         iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
       {-# NOINLINE loadLower #-}
-  loopM_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
-  loopM_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
-  loopM_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower Nothing)
+  loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
+  loopA_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
+  loopA_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower Nothing)
 {-# INLINE loadWithIxN #-}
 
 
@@ -465,11 +475,11 @@ unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
              6 -> f6
              _ -> f7
   let !ibS = ib - ((ib - it) `mod` bH)
-  loopM_ it (< ibS) (+ bH) $ \ !i ->
-    loopM_ jt (< jb) (+ js) $ \ !j ->
+  loopA_ it (< ibS) (+ bH) $ \ !i ->
+    loopA_ jt (< jb) (+ js) $ \ !j ->
       f' (i :. j)
-  loopM_ ibS (< ib) (+ 1) $ \ !i ->
-    loopM_ jt (< jb) (+ js) $ \ !j ->
+  loopA_ ibS (< ib) (+ 1) $ \ !i ->
+    loopA_ jt (< jb) (+ js) $ \ !j ->
       f (i :. j)
 {-# INLINE unrollAndJam #-}
 

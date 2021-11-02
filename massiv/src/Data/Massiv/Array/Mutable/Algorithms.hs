@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable.Algorithms
--- Copyright   : (c) Alexey Kuleshevich 2019-2021
+-- Copyright   : (c) Alexey Kuleshevich 2019-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

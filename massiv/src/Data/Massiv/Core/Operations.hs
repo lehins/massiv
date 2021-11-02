@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Core.Operations
--- Copyright   : (c) Alexey Kuleshevich 2019-2021
+-- Copyright   : (c) Alexey Kuleshevich 2019-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -149,9 +149,7 @@ defaultUnsafeLiftArray2 ::
   -> Array r ix e
   -> Array r ix e
 defaultUnsafeLiftArray2 f a1 a2 =
-  makeArrayLinear
-    (getComp a1 <> getComp a2)
-    (SafeSz (liftIndex2 min (unSz (size a1)) (unSz (size a2)))) $ \ !i ->
+  makeArrayLinear (getComp a1 <> getComp a2) (size a1) $ \ !i ->
     f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
 {-# INLINE defaultUnsafeLiftArray2 #-}
 

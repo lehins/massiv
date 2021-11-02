@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Core.Common
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -26,6 +26,7 @@ module Data.Massiv.Core.Common
   , Stream(..)
   , Strategy(..)
   , Source(..)
+  , PrefIndex(..)
   , Load(..)
   , StrideLoad(..)
   , Size(..)
@@ -37,7 +38,6 @@ module Data.Massiv.Core.Common
   , numWorkers
   , scheduleWork
   , scheduleWork_
-  , withMassivScheduler_
   , WorkerStates
   , unsafeRead
   , unsafeWrite
@@ -72,7 +72,6 @@ module Data.Massiv.Core.Common
   , inline2
   , module Data.Massiv.Core.Index
   -- * Common Operations
-  , imapM_
   , Semigroup((<>))
   -- * Exceptions
   , MonadThrow(..)
@@ -99,9 +98,7 @@ import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO(..))
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Control.Scheduler (Comp(..), Scheduler, WorkerStates, numWorkers,
-                          scheduleWork, scheduleWork_, trivialScheduler_,
-                          withScheduler_)
-import Control.Scheduler.Global
+                          scheduleWork, scheduleWork_, trivialScheduler_)
 import GHC.Exts (IsList)
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
@@ -110,8 +107,6 @@ import Data.Typeable
 import Data.Kind
 import qualified Data.Vector.Fusion.Stream.Monadic as S (Stream)
 import Data.Vector.Fusion.Util
-
-#include "massiv.h"
 
 -- | The array family. Representations @r@ describe how data is arranged or computed. All
 -- arrays have a common property that each index @ix@ always maps to the same unique
@@ -181,6 +176,16 @@ class Typeable r => Strategy r where
   --
   -- @since 0.1.0
   getComp :: Array r ix e -> Comp
+
+  -- | Array representation. Representation is never evaluated in @massiv@,
+  -- therefore default implementation is bottom. However, it is recommended to
+  -- supply a constructor that doesn't result in an error when evaluated.
+  --
+  -- @since 1.0.2
+  repr :: r
+  repr =
+    error $ "Array representation should never be evaluated: " ++
+            show (typeRep (Proxy :: Proxy r))
 
 
 -- | Size hint
@@ -278,7 +283,18 @@ class Size r where
   -- @since 0.1.0
   unsafeResize :: (Index ix, Index ix') => Sz ix' -> Array r ix e -> Array r ix' e
 
+-- | Prefered indexing function.
+data PrefIndex ix e
+  = PrefIndex (ix -> e)
+  | PrefIndexLinear (Int -> e)
 
+instance Functor (PrefIndex ix) where
+  fmap f = \case
+    PrefIndex ig -> PrefIndex (f . ig)
+    PrefIndexLinear ig -> PrefIndexLinear (f . ig)
+  {-# INLINE fmap #-}
+  (<$) e _ = PrefIndexLinear (const e)
+  {-# INLINE (<$) #-}
 
 -- | Arrays that can be used as source to practically any manipulation function.
 class (Strategy r, Size r) => Source r e where
@@ -289,9 +305,7 @@ class (Strategy r, Size r) => Source r e where
   --
   -- @since 0.1.0
   unsafeIndex :: Index ix => Array r ix e -> ix -> e
-  unsafeIndex =
-    INDEX_CHECK("(Source r e).unsafeIndex",
-                size, \ !arr -> unsafeLinearIndex arr . toLinearIndex (size arr))
+  unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
   {-# INLINE unsafeIndex #-}
 
   -- | Lookup element in the array using flat index in a row-major fashion. No
@@ -301,6 +315,14 @@ class (Strategy r, Size r) => Source r e where
   unsafeLinearIndex :: Index ix => Array r ix e -> Int -> e
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
+
+  -- | Alternative indexing function that can choose an index that is most
+  -- efficient for underlying representation
+  --
+  -- @since 1.0.2
+  unsafePrefIndex :: Index ix => Array r ix e -> PrefIndex ix e
+  unsafePrefIndex !arr = PrefIndexLinear (unsafeLinearIndex arr)
+  {-# INLINE unsafePrefIndex #-}
 
 
   -- | /O(1)/ - Take a slice out of an array from the outside
@@ -317,10 +339,9 @@ class (Strategy r, Size r) => Source r e where
   -- @since 0.5.0
   unsafeLinearSlice :: Index ix => Ix1 -> Sz1 -> Array r ix e -> Array r Ix1 e
 
-
 -- | Any array that can be computed and loaded into memory
 class (Strategy r, Shape r ix) => Load r ix e where
-  {-# MINIMAL (makeArray | makeArrayLinear), (iterArrayLinearST_ | iterArrayLinearWithSetST_)#-}
+  {-# MINIMAL (makeArray | makeArrayLinear), (iterArrayLinearST_ | iterArrayLinearWithSetST_) #-}
 
   -- | Construct an Array. Resulting type either has to be unambiguously inferred or restricted
   -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
@@ -387,14 +408,12 @@ class (Strategy r, Shape r ix) => Load r ix e where
     -> ST s ()
   iterArrayLinearST_ scheduler arr uWrite =
     iterArrayLinearWithSetST_ scheduler arr uWrite $ \offset sz e ->
-      loopM_ offset (< (offset + unSz sz)) (+1) (`uWrite` e)
+      loopA_ offset (< (offset + unSz sz)) (+1) (`uWrite` e)
   {-# INLINE iterArrayLinearST_ #-}
 
   -- | Similar to `iterArrayLinearST_`. Except it also accepts a function that is
   -- potentially optimized for setting many cells in a region to the same
-  -- value. There is no guarantees, but some array representations, might
-  -- utilize this region setting function, in which case for such regions index
-  -- aware action will not be called.
+  -- value.
   --
   -- @since 1.0.0
   iterArrayLinearWithSetST_
@@ -453,6 +472,7 @@ resizeMVector mvec k =
                else unsafeLinearGrow mvec k
 {-# INLINE resizeMVector #-}
 
+
 class Load r ix e => StrideLoad r ix e where
   -- | Load an array into memory with stride. Default implementation requires an instance of
   -- `Source`.
@@ -472,12 +492,12 @@ class Load r ix e => StrideLoad r ix e where
     -> (Int -> e -> ST s ())
     -> ST s ()
   iterArrayLinearWithStrideST_ scheduler stride resultSize arr =
-    splitLinearlyWith_ scheduler (totalElem resultSize) unsafeLinearWriteWithStride
+    splitLinearlyWith_ scheduler (totalElem resultSize) unsafeLinearIndexWithStride
     where
       !strideIx = unStride stride
-      unsafeLinearWriteWithStride =
+      unsafeLinearIndexWithStride =
         unsafeIndex arr . liftIndex2 (*) strideIx . fromLinearIndex resultSize
-      {-# INLINE unsafeLinearWriteWithStride #-}
+      {-# INLINE unsafeLinearIndexWithStride #-}
   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 -- class (Load r ix e) => StrideLoad r ix e where
@@ -490,9 +510,10 @@ class Load r ix e => StrideLoad r ix e where
   --   -> MArray RealWorld r' ix e
   --   -> m (MArray RealWorld r' ix e)
 
--- | Starting with massiv-1.0 `Mutable` and `Manifest` are synonymous. However,
--- this type class synonym will be deprecated in the next major version.
+-- | Starting with massiv-1.0 `Mutable` and `Manifest` are synonymous. Since massiv-1.1
+-- it is deprecated and will be removed in massiv-1.2
 type Mutable r e = Manifest r e
+{-# DEPRECATED Mutable "In favor of `Manifest`" #-}
 
 -- | Manifest arrays are backed by actual memory and values are looked up versus
 -- computed as it is with delayed arrays. Because manifest arrays are located in
@@ -573,7 +594,7 @@ class Source r e => Manifest r e where
   unsafeLinearSet :: (Index ix, PrimMonad m) =>
                      MArray (PrimState m) r ix e -> Ix1 -> Sz1 -> e -> m ()
   unsafeLinearSet marr offset len e =
-    loopM_ offset (< (offset + unSz len)) (+1) (\i -> unsafeLinearWrite marr i e)
+    loopA_ offset (< (offset + unSz len)) (+1) (\i -> unsafeLinearWrite marr i e)
   {-# INLINE unsafeLinearSet #-}
 
   -- | Copy part of one mutable array into another
@@ -588,7 +609,7 @@ class Source r e => Manifest r e where
                    -> m ()
   unsafeLinearCopy marrFrom iFrom marrTo iTo (SafeSz k) = do
     let delta = iTo - iFrom
-    loopM_ iFrom (< k + iFrom) (+1) $ \i ->
+    loopA_ iFrom (< k + iFrom) (+1) $ \i ->
       unsafeLinearRead marrFrom i >>= unsafeLinearWrite marrTo (i + delta)
   {-# INLINE unsafeLinearCopy #-}
 
@@ -604,7 +625,7 @@ class Source r e => Manifest r e where
                         -> m ()
   unsafeArrayLinearCopy arrFrom iFrom marrTo iTo (SafeSz k) = do
     let delta = iTo - iFrom
-    loopM_ iFrom (< k + iFrom) (+1) $ \i ->
+    loopA_ iFrom (< k + iFrom) (+1) $ \i ->
       unsafeLinearWrite marrTo (i + delta) (unsafeLinearIndex arrFrom i)
   {-# INLINE unsafeArrayLinearCopy #-}
 
@@ -642,19 +663,6 @@ unsafeDefaultLinearShrink marr sz = do
   unsafeLinearCopy marr 0 marr' 0 $ SafeSz (totalElem sz)
   pure marr'
 {-# INLINE unsafeDefaultLinearShrink #-}
-
-
--- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
---
--- @since 1.0.0
-withMassivScheduler_ :: Comp -> (Scheduler RealWorld () -> IO ()) -> IO ()
-withMassivScheduler_ comp f =
-  case comp of
-    Par -> withGlobalScheduler_ globalScheduler f
-    Seq -> f trivialScheduler_
-    _   -> withScheduler_ comp f
-{-# INLINE withMassivScheduler_ #-}
-
 
 -- | Read an array element
 --
@@ -975,25 +983,6 @@ evaluateM arr ix
 evaluate' :: (HasCallStack, Index ix, Source r e) => Array r ix e -> ix -> e
 evaluate' arr ix = throwEither (evaluateM arr ix)
 {-# INLINE evaluate' #-}
-
-
--- | Map a monadic index aware function over an array sequentially, while discarding the result.
---
--- ==== __Examples__
---
--- >>> import Data.Massiv.Array
--- >>> imapM_ (curry print) $ range Seq (Ix1 10) 15
--- (0,10)
--- (1,11)
--- (2,12)
--- (3,13)
--- (4,14)
---
--- @since 0.1.0
-imapM_ :: (Index ix, Source r a, Monad m) => (ix -> a -> m b) -> Array r ix a -> m ()
-imapM_ f !arr =
-  iterM_ zeroIndex (unSz (size arr)) (pureIndex 1) (<) $ \ !ix -> f ix (unsafeIndex arr ix)
-{-# INLINE imapM_ #-}
 
 
 

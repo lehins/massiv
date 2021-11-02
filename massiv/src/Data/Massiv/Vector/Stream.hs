@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -11,7 +12,7 @@
 {-# OPTIONS_HADDOCK hide, not-home #-}
 -- |
 -- Module      : Data.Massiv.Vector.Stream
--- Copyright   : (c) Alexey Kuleshevich 2019-2021
+-- Copyright   : (c) Alexey Kuleshevich 2019-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -162,9 +163,10 @@ instance Monad m => Semigroup (Steps m e) where
 instance Monad m => Monoid (Steps m e) where
   mempty = empty
   {-# INLINE mempty #-}
+#if !MIN_VERSION_base(4,11,0)
   mappend = append
   {-# INLINE mappend #-}
-
+#endif
 
 instance GHC.Exts.IsList (Steps Id e) where
   type Item (Steps Id e) = e
@@ -202,32 +204,49 @@ instance Foldable (Steps Id) where
   {-# INLINE minimum #-}
 
 
--- TODO: benchmark: `fmap snd . isteps`
 steps :: forall r ix e m . (Monad m, Index ix, Source r e) => Array r ix e -> Steps m e
-steps arr = k `seq` arr `seq` Steps (S.Stream step 0) (LengthExact (coerce k))
-  where
-    k = totalElem $ size arr
-    step i
-      | i < k =
-        let e = unsafeLinearIndex arr i
-         in e `seq` return $ S.Yield e (i + 1)
-      | otherwise = return S.Done
-    {-# INLINE step #-}
-{-# INLINE steps #-}
+steps !arr =
+  case unsafePrefIndex arr of
+    PrefIndex gix -> gix <$> ixRangeSteps (size arr)
+    PrefIndexLinear gi ->
+      Steps (S.Stream step 0) (LengthExact (coerce k))
+      where
+        k = totalElem $ size arr
+        step i
+          | i < k =
+            let e = gi i
+             in e `seq` pure $ S.Yield e (i + 1)
+          | otherwise = pure S.Done
+        {-# INLINE [0] step #-}
+{-# INLINE [1] steps #-}
 
+ixRangeSteps :: forall ix m . (Monad m, Index ix) => Sz ix -> Steps m ix
+ixRangeSteps sz = Steps (S.Stream step initStep) (LengthExact k)
+  where
+    !k = toLinearSz sz
+    !initStep = if k == zeroSz then Nothing else Just zeroIndex
+    step (Just ix) = stepNextMF ix (unSz sz) oneIndex (<) $ \ mIx -> pure $ S.Yield ix mIx
+    step Nothing = pure S.Done
+    {-# INLINE [0] step #-}
+{-# INLINE [1] ixRangeSteps #-}
 
 isteps :: forall r ix e m . (Monad m, Index ix, Source r e) => Array r ix e -> Steps m (ix, e)
-isteps arr = k `seq` arr `seq` Steps (S.Stream step 0) (LengthExact (coerce k))
+isteps !arr =
+  case unsafePrefIndex arr of
+    PrefIndex gix -> (\ !ix -> let e = gix ix in e `seq` (ix, e)) <$> ixRangeSteps sz
+    PrefIndexLinear gi ->
+      let k = totalElem sz
+          step i
+            | i < k =
+              let e = gi i
+               in e `seq` pure $ S.Yield (fromLinearIndex sz i, e) (i + 1)
+            | otherwise = pure S.Done
+          {-# INLINE [0] step #-}
+      in Steps (S.Stream step 0) (LengthExact (coerce k))
   where
-    sz = size arr
-    k = totalElem sz
-    step i
-      | i < k =
-        let e = unsafeLinearIndex arr i
-         in e `seq` return $ S.Yield (fromLinearIndex sz i, e) (i + 1)
-      | otherwise = return S.Done
-    {-# INLINE step #-}
+    !sz = size arr
 {-# INLINE isteps #-}
+
 
 toBundle :: (Monad m, Index ix, Source r e) => Array r ix e -> B.Bundle m v e
 toBundle arr =
@@ -309,7 +328,7 @@ unstreamMaxM marr (S.Stream step s) = stepLoad s 0
           unsafeLinearWrite marr i e'
           stepLoad t' (i + 1)
         S.Skip t' -> stepLoad t' i
-        S.Done -> return i
+        S.Done -> pure i
     {-# INLINE stepLoad #-}
 {-# INLINE unstreamMaxM #-}
 
@@ -695,12 +714,12 @@ mapMaybeStreamM f (S.Stream step t) = S.Stream step' t
       case r of
         S.Yield x s' -> do
           b <- f x
-          return $
+          pure $
             case b of
               Nothing -> S.Skip s'
               Just b' -> S.Yield b' s'
-        S.Skip s' -> return $ S.Skip s'
-        S.Done -> return S.Done
+        S.Skip s' -> pure $ S.Skip s'
+        S.Done -> pure S.Done
     {-# INLINE [0] step' #-}
 {-# INLINE mapMaybeStreamM #-}
 

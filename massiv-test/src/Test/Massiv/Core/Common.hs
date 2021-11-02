@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Test.Massiv.Core.Common
   ( ArrNE(..)
@@ -57,24 +59,54 @@ instance Arbitrary Comp where
     frequency
       [ (20, pure Seq)
       , (10, pure Par)
+      , (10, pure Par')
       , (15, ParOn <$> arbitrary)
       , (15, ParN . getSmall <$> arbitrary)
       ]
 
 
 arbitraryArray :: (Load r ix e, Arbitrary e) => Gen (Sz ix) -> Gen (Array r ix e)
-arbitraryArray szGen = makeArrayLinear <$> arbitrary <*> szGen <*> arbitrary
+arbitraryArray szGen =
+  oneof
+    [ do
+        comp <- arbitrary
+        sz <- szGen
+        f <- arbitrary
+        pure $ makeArray comp sz (applyFun f . toLinearIndex sz)
+    , makeArrayLinear <$> arbitrary <*> szGen <*> arbitrary
+    ]
 
 -- | Arbitrary array
-instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
-         Arbitrary (Array r ix e) where
-  arbitrary = makeArrayLinear <$> arbitrary <*> arbitrary <*> arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array D ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array DL ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array DI ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Load DW ix e, Arbitrary e) => Arbitrary (Array DW ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (ix ~ Ix1, Arbitrary e) => Arbitrary (Array DS ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array B ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array BL ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e, NFData e) => Arbitrary (Array BN ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e, Prim e) => Arbitrary (Array P ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e, Storable e) => Arbitrary (Array S ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Index ix, Arbitrary e, Unbox e) => Arbitrary (Array U ix e) where
+  arbitrary = arbitraryArray arbitrary
+instance (Arbitrary ix, Load L ix e, Arbitrary e) => Arbitrary (Array L ix e) where
+  arbitrary = arbitraryArray arbitrary
 
 
 instance (Arbitrary ix, Load r ix e, Arbitrary e) => Arbitrary (ArrTiny r ix e) where
   arbitrary = ArrTiny <$> arbitraryArray (liftSz (`mod` 10) <$> arbitrary)
 
--- | Arbitrary small and possibly empty array. Computation strategy can be either `Seq` or `Par`.
+-- | Arbitrary small and possibly empty array.
 instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
          Arbitrary (ArrTinyNE r ix e) where
   arbitrary = ArrTinyNE <$> arbitraryArray (liftSz (succ . (`mod` 10)) <$> arbitrary)

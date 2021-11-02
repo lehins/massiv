@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Numeric
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -147,9 +147,9 @@ applyExactSize2M ::
   -> Array r ix e
   -> m (Array r ix e)
 applyExactSize2M f a1 a2
-  | size a1 == size a2 = pure $ f a1 a2
-  | isZeroSz sz1 && isZeroSz sz2 = pure $ unsafeResize zeroSz a1
-  | otherwise = throwM $ SizeMismatchException sz1 sz2
+  | size a1 == size a2 = pure $! f a1 a2
+  | isZeroSz sz1 && isZeroSz sz2 = pure $! unsafeResize zeroSz a1
+  | otherwise = throwM $! SizeMismatchException sz1 sz2
   where
     !sz1 = size a1
     !sz2 = size a2
@@ -180,7 +180,7 @@ applyExactSize2M f a1 a2
 --   [ 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40 ]
 --
 -- @since 0.5.6
-(!+!) :: (Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
+(!+!) :: (HasCallStack, Index ix, Numeric r e) => Array r ix e -> Array r ix e -> Array r ix e
 (!+!) a1 a2 = throwEither (a1 .+. a2)
 {-# INLINE (!+!) #-}
 
@@ -364,7 +364,7 @@ unsafeDotProductIO v1 v2 = do
     withScheduler comp $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> liftIO $ do
         let n = SafeSz chunkLength
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $
           pure $! unsafeDotProduct (unsafeLinearSlice start n v1) (unsafeLinearSlice start n v2)
         when (slackStart < totalLength) $ do
@@ -398,7 +398,7 @@ powerSumArrayIO v p = do
     withScheduler (getComp v) $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> liftIO $ do
         let n = SafeSz chunkLength
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $ pure $! powerSumArray (unsafeLinearSlice start n v) p
         when (slackStart < totalLength) $ do
           let k = SafeSz (totalLength - slackStart)
@@ -718,7 +718,7 @@ multiplyMatricesTransposed arr1 arr2
   | isEmpty arr1 || isEmpty arr2 = pure $ setComp comp empty
   | otherwise =
     pure $
-    DArray comp (SafeSz (m1 :. n2)) $ \(i :. j) ->
+    makeArray comp (SafeSz (m1 :. n2)) $ \(i :. j) ->
       unsafeDotProduct (unsafeLinearSlice (i * n1) n arr1) (unsafeLinearSlice (j * n1) n arr2)
   where
     comp = getComp arr1 <> getComp arr2
@@ -744,7 +744,7 @@ multiplyMatricesTransposed arr1 arr2
 -- @since 0.3.6
 identityMatrix :: Num e => Sz1 -> Matrix DL e
 identityMatrix (Sz n) =
-  makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopM_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
+  makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopA_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
 {-# INLINE identityMatrix #-}
 
 -- | Create a lower triangular (L in LU decomposition) matrix of size @NxN@
@@ -762,15 +762,16 @@ identityMatrix (Sz n) =
 --   ]
 --
 -- @since 0.5.2
-lowerTriangular :: Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
-lowerTriangular comp (Sz1 n) f =
-  let sz = Sz2 n n
-   in unsafeMakeLoadArrayAdjusted comp sz (Just 0) $ \scheduler wr ->
-        forM_ (0 ..: n) $ \i ->
-          scheduleWork scheduler $
-          forM_ (0 ... i) $ \j ->
-            let ix = i :. j
-             in wr (toLinearIndex sz ix) (f ix)
+lowerTriangular :: forall e. Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
+lowerTriangular comp (Sz1 n) f = DLArray comp (SafeSz (n :. n)) load
+  where
+    load :: Loader e
+    load scheduler startAt uWrite uSet = do
+      forM_ (0 ..: n) $ \i -> do
+        let !k = startAt + i * n
+        scheduleWork_ scheduler $ do
+          forM_ (0 ... i) $ \j -> uWrite (k + j) (f (i :. j))
+          uSet (k + i + 1) (Sz (n - i - 1)) 0
 {-# INLINE lowerTriangular #-}
 
 -- | Create an upper triangular (U in LU decomposition) matrix of size @NxN@
@@ -788,15 +789,16 @@ lowerTriangular comp (Sz1 n) f =
 --   ]
 --
 -- @since 0.5.2
-upperTriangular :: Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
-upperTriangular comp (Sz1 n) f =
-  let sz = Sz2 n n
-   in unsafeMakeLoadArrayAdjusted comp sz (Just 0) $ \scheduler wr ->
-        forM_ (0 ..: n) $ \i ->
-          scheduleWork scheduler $
-          forM_ (i ..: n) $ \j ->
-            let ix = i :. j
-             in wr (toLinearIndex sz ix) (f ix)
+upperTriangular :: forall e. Num e => Comp -> Sz1 -> (Ix2 -> e) -> Matrix DL e
+upperTriangular comp (Sz1 n) f = DLArray comp (SafeSz (n :. n)) load
+  where
+    load :: Loader e
+    load scheduler startAt uWrite uSet = do
+      forM_ (0 ..: n) $ \i -> do
+        let !k = startAt + i * n
+        scheduleWork_ scheduler $ do
+          uSet k (SafeSz i) 0
+          forM_ (i ..: n) $ \j -> uWrite (k + j) (f (i :. j))
 {-# INLINE upperTriangular #-}
 
 -- | Negate each element of the array

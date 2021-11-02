@@ -1,6 +1,6 @@
 -- |
 -- Module      : Data.Massiv.Core
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -16,6 +16,7 @@ module Data.Massiv.Core
   , Load(iterArrayLinearST_, iterArrayLinearWithSetST_)
   , Stream(..)
   , Source
+  , PrefIndex(..)
   , Size
   , Shape(..)
   , LengthHint(..)
@@ -36,7 +37,6 @@ module Data.Massiv.Core
   , initWorkerStates
   , scheduleWork
   , scheduleWork_
-  , withMassivScheduler_
   , module Data.Massiv.Core.Index
   -- * Numeric
   , FoldNumeric

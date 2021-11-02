@@ -189,6 +189,7 @@ mutableSpec ::
      , Show e
      , Eq e
      , Manifest r e
+     , Arbitrary (Array r ix e)
      , CoArbitrary ix
      , Arbitrary e
      , CoArbitrary e

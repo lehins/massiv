@@ -5,7 +5,7 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 -- |
 -- Module      : Data.Massiv.Core.Index
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
@@ -86,9 +86,12 @@ module Data.Massiv.Core.Index
   , insertDimension
   -- * Iterators
   , iter
+  , iterA_
+  , iterM_
   , iterLinearM
   , iterLinearM_
-  , module Data.Massiv.Core.Iterator
+  , module Data.Massiv.Core.Loop
+  , module Data.Massiv.Core.Index.Iterator
   , module Data.Massiv.Core.Index.Tuple
   -- * Exceptions
   , IndexException(..)
@@ -107,7 +110,8 @@ import Data.Massiv.Core.Index.Internal
 import Data.Massiv.Core.Index.Ix
 import Data.Massiv.Core.Index.Stride
 import Data.Massiv.Core.Index.Tuple
-import Data.Massiv.Core.Iterator
+import Data.Massiv.Core.Index.Iterator
+import Data.Massiv.Core.Loop
 import GHC.TypeLits
 
 
@@ -542,7 +546,7 @@ iter sIx eIx incIx cond acc f =
 -- ==== __Examples__
 --
 -- >>> sz = Sz2 3 4
--- >>> iterLinearM sz 0 3 1 (<) 100 $ \ k ix acc -> print (fromLinearIndex sz k == ix) >> pure (acc + k)
+-- >>> iterLinearM sz 0 3 1 (<) 100 $ \ k ix acc -> (acc + k) <$ print (fromLinearIndex sz k == ix)
 -- True
 -- True
 -- True
@@ -582,9 +586,8 @@ iterLinearM_ :: (Index ix, Monad m) =>
              -> (Int -> ix -> m ()) -- ^ Monadic action that takes index in both forms
              -> m ()
 iterLinearM_ sz !k0 !k1 !inc cond f =
-  loopM_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
+  loopA_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
-
 
 -- | This is used by @INDEX_CHECK@ macro and thus used whenever the @unsafe-checks@ cabal
 -- flag is on.

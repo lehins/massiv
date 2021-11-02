@@ -11,7 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -112,6 +112,7 @@ instance Strategy P where
   {-# INLINE getComp #-}
   setComp c arr = arr { pComp = c }
   {-# INLINE setComp #-}
+  repr = P
 
 
 instance Index ix => Shape P ix where
@@ -206,6 +207,8 @@ instance Prim e => Manifest P e where
 
 
 instance (Prim e, Index ix) => Load P ix e where
+  makeArray comp sz f = compute (makeArray comp sz f :: Array D ix e)
+  {-# INLINE makeArray #-}
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 

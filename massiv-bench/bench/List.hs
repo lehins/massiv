@@ -1,12 +1,10 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
--- import Data.Massiv.Array.Manifest.Vector as A
+import Data.Massiv.Array.Unsafe as A
 -- import Data.Massiv.Bench as A
 import qualified Data.Vector.Primitive as VP
 -- import Data.Primitive.ByteArray
@@ -23,23 +21,37 @@ main = do
   arr3d <- resizeM sz3d arr2d
   defaultMain
     [ bgroup
+        "toLists"
+        [ env (pure arr3d) $ \arr ->
+            bench "Array P Ix3" $ nf toLists3 arr
+        , env (pure arr2d) $ \arr ->
+            bench "Array P Ix2" $ nf toLists2 arr
+        , env (pure arr3d) $ \arr ->
+            bench "Array P Ix1" $ nf toList arr
+        , env (pure arr3d) $ \arr ->
+            bench "loopDeepM" $ nfIO (loopDeepM 0 (< elemsCount arr) (+ 1) [] (\i acc -> pure $! unsafeLinearIndex arr i : acc))
+        , env (pure arr3d) $ \arr -> bench "foldrS" $ nf (foldrS (:) []) arr
+        , env (pure $ toPrimitiveVector arr3d) $ \vp ->
+            bench "VP.Vector" $ nf VP.toList vp
+        ]
+    , bgroup
         "fromLists (Seq)"
-        [ env (return $ toLists3 arr3d) $ \xs ->
+        [ env (pure $ toLists3 arr3d) $ \xs ->
             bench "Array P Ix3" $ nfIO (A.fromListsM @P @Ix3 Seq xs)
-        , env (return $ toLists2 arr2d) $ \xs ->
+        , env (pure $ toLists2 arr2d) $ \xs ->
             bench "Array P Ix2" $ nfIO (A.fromListsM @P @Ix2 Seq xs)
-        , env (return $ toList arr3d) $ \xs ->
+        , env (pure $ toList arr3d) $ \xs ->
             bench "Array P Ix1" $ nfIO (A.fromListsM @P @Ix1 Seq xs)
-        , env (return $ toList arr3d) $ \xs ->
+        , env (pure $ toList arr3d) $ \xs ->
             bench "VP.Vector" $ nf VP.fromList xs
         ]
     , bgroup
         "fromLists (Par)"
-        [ env (return $ toLists3 arr3d) $ \xs ->
+        [ env (pure $ toLists3 arr3d) $ \xs ->
             bench "Array P Ix3" $ nfIO (A.fromListsM @P @Ix3 Par xs)
-        , env (return $ toLists2 arr2d) $ \xs ->
+        , env (pure $ toLists2 arr2d) $ \xs ->
             bench "Array P Ix2" $ nfIO (A.fromListsM @P @Ix2 Par xs)
-        , env (return $ toList arr3d) $ \xs ->
+        , env (pure $ toList arr3d) $ \xs ->
             bench "Array P Ix1" $ nfIO (A.fromListsM @P @Ix1 Par xs)
         ]
     ]

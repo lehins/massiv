@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-module Test.Massiv.Array.MutableSpec (spec) where
+module Test.Massiv.Array.MutableSpec where
 
 import Data.Massiv.Array as A
 import Test.Massiv.Core
@@ -64,11 +64,11 @@ specMutableR = do
   mutableSpec @r @Ix2 @e
   mutableSpec @r @Ix3 @e
   mutableSpec @r @Ix4 @e
+  --mutableSpec @r @Ix5 @e -- slows down the test suite
   loadSpec @r @Ix1 @e
   loadSpec @r @Ix2 @e
   loadSpec @r @Ix3 @e
   loadSpec @r @Ix4 @e
-  --mutableSpec @r @Ix5 @e -- slows down the test suite
   localMutableSpec @r @Ix1 @e
   localMutableSpec @r @Ix2 @e
   localMutableSpec @r @Ix3 @e
@@ -253,9 +253,6 @@ spec = do
   specMutableR @B @Int16
   specMutableR @BN @Int16
   specMutableR @BL @Int16
-  specUnboxedMutableR @S @Int16
-  specUnboxedMutableR @P @Int16
-  specUnboxedMutableR @U @Int16
   atomicIntSpec @Ix1
   atomicIntSpec @Ix2
   atomicIntSpec @Ix3

@@ -141,8 +141,7 @@ specSliceN ::
      ( HasCallStack
      , Source r e
      , Load r ix e
-     , Arbitrary ix
-     , Arbitrary e
+     , Arbitrary (Array r ix e)
      , Show (Array r ix e)
      , Ragged L (Lower ix) e
      , Show e

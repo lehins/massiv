@@ -4,8 +4,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -13,7 +11,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -- |
 -- Module      : Data.Massiv.Core.List
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -123,6 +121,7 @@ instance (Shape L (Ix (n - 1)), Index (IxN n)) => Shape L (IxN n) where
 
 outerLength :: Array L ix e -> Sz Int
 outerLength = SafeSz . length . unList . lData
+{-# INLINE outerLength #-}
 
 
 instance Ragged L Ix1 e where
@@ -227,7 +226,7 @@ unsafeGenerateParM comp !sz f = do
         !k = unSz ksz
     withScheduler comp $ \ scheduler ->
       splitLinearly (numWorkers scheduler) k $ \ chunkLength slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $ do
             res <- loopDeepM start (< (start + chunkLength)) (+ 1) [] $ \i acc ->
               return (fmap lData (generateRaggedM Seq szL (\ !ixL -> f (consDim i ixL))):acc)
@@ -245,6 +244,7 @@ instance Strategy L where
   {-# INLINE setComp #-}
   getComp = lComp
   {-# INLINE getComp #-}
+  repr = L
 
 -- -- TODO: benchmark against using unsafeGenerateM directly
 -- unsafeGenerateN ::

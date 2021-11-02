@@ -6,7 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -40,6 +40,7 @@ module Data.Massiv.Array.Ops.Fold.Internal
   , foldrP
   , ifoldlP
   , ifoldrP
+  , foldlIO
   , ifoldlIO
   , ifoldrIO
   , splitReduce
@@ -49,11 +50,12 @@ module Data.Massiv.Array.Ops.Fold.Internal
   ) where
 
 import Control.Monad (void, when)
+import Control.Monad.Primitive
 import Control.Scheduler
 import qualified Data.Foldable as F
 import Data.Functor.Identity (runIdentity)
 import Data.Massiv.Core.Common
-import Prelude hiding (foldl, foldr, any)
+import Prelude hiding (any, foldl, foldr)
 import System.IO.Unsafe (unsafePerformIO)
 
 
@@ -86,7 +88,14 @@ foldMono f = foldlInternal (\a e -> a `mappend` f e) mempty mappend mempty
 --
 -- @since 0.1.0
 foldlM :: (Index ix, Source r e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m a
-foldlM f = ifoldlM (\ a _ b -> f a b)
+foldlM f acc arr =
+  case unsafePrefIndex arr of
+    PrefIndex gix ->
+      iterM zeroIndex (unSz sz) (pureIndex 1) (<) acc $ \ !ix !a -> f a (gix ix)
+    PrefIndexLinear gi ->
+      loopM 0 (< totalElem sz) (+ 1) acc $ \ !i !a -> f a (gi i)
+  where
+    sz = size arr
 {-# INLINE foldlM #-}
 
 
@@ -94,7 +103,7 @@ foldlM f = ifoldlM (\ a _ b -> f a b)
 --
 -- @since 0.1.0
 foldlM_ :: (Index ix, Source r e, Monad m) => (a -> e -> m a) -> a -> Array r ix e -> m ()
-foldlM_ f = ifoldlM_ (\ a _ b -> f a b)
+foldlM_ f acc = void . foldlM f acc
 {-# INLINE foldlM_ #-}
 
 
@@ -103,7 +112,11 @@ foldlM_ f = ifoldlM_ (\ a _ b -> f a b)
 -- @since 0.1.0
 ifoldlM :: (Index ix, Source r e, Monad m) => (a -> ix -> e -> m a) -> a -> Array r ix e -> m a
 ifoldlM f !acc !arr =
-  iterM zeroIndex (unSz (size arr)) (pureIndex 1) (<) acc $ \ !ix !a -> f a ix (unsafeIndex arr ix)
+  case unsafePrefIndex arr of
+    PrefIndex gix ->
+      iterM zeroIndex (unSz (size arr)) (pureIndex 1) (<) acc $ \ !ix !a -> f a ix (gix ix)
+    PrefIndexLinear gi ->
+      iterTargetM defRowMajor 0 (size arr) zeroIndex oneStride acc $ \i ix !a -> f a ix (gi i)
 {-# INLINE ifoldlM #-}
 
 
@@ -119,7 +132,14 @@ ifoldlM_ f acc = void . ifoldlM f acc
 --
 -- @since 0.1.0
 foldrM :: (Index ix, Source r e, Monad m) => (e -> a -> m a) -> a -> Array r ix e -> m a
-foldrM f = ifoldrM (\_ e a -> f e a)
+foldrM f acc arr =
+  case unsafePrefIndex arr of
+    PrefIndex gix ->
+      iterM (liftIndex (subtract 1) (unSz sz)) zeroIndex (pureIndex (-1)) (>=) acc (f . gix)
+    PrefIndexLinear gi ->
+      loopM (totalElem sz - 1) (>= 0) (subtract 1) acc (f . gi)
+  where
+    !sz = size arr
 {-# INLINE foldrM #-}
 
 
@@ -136,8 +156,8 @@ foldrM_ f = ifoldrM_ (\_ e a -> f e a)
 -- @since 0.1.0
 ifoldrM :: (Index ix, Source r e, Monad m) => (ix -> e -> a -> m a) -> a -> Array r ix e -> m a
 ifoldrM f !acc !arr =
-  iterM (liftIndex (subtract 1) (unSz (size arr))) zeroIndex (pureIndex (-1)) (>=) acc $ \ !ix !acc0 ->
-    f ix (unsafeIndex arr ix) acc0
+  iterM (liftIndex (subtract 1) (unSz (size arr))) zeroIndex (pureIndex (-1)) (>=) acc $ \ !ix ->
+    f ix (unsafeIndex arr ix)
 {-# INLINE ifoldrM #-}
 
 
@@ -157,7 +177,7 @@ lazyFoldlS :: (Index ix, Source r e) => (a -> e -> a) -> a -> Array r ix e -> a
 lazyFoldlS f initAcc arr = go initAcc 0
   where
     len = totalElem (size arr)
-    go acc k
+    go acc !k
       | k < len = go (f acc (unsafeLinearIndex arr k)) (k + 1)
       | otherwise = acc
 {-# INLINE lazyFoldlS #-}
@@ -175,7 +195,7 @@ lazyFoldrS = foldrFB
 --
 -- @since 0.1.0
 foldlS :: (Index ix, Source r e) => (a -> e -> a) -> a -> Array r ix e -> a
-foldlS f = ifoldlS (\ a _ e -> f a e)
+foldlS f acc = runIdentity . foldlM (\ a e -> pure $! f a e) acc
 {-# INLINE foldlS #-}
 
 
@@ -184,7 +204,7 @@ foldlS f = ifoldlS (\ a _ e -> f a e)
 -- @since 0.1.0
 ifoldlS :: (Index ix, Source r e)
         => (a -> ix -> e -> a) -> a -> Array r ix e -> a
-ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> return $ f a ix e) acc
+ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> pure $! f a ix e) acc
 {-# INLINE ifoldlS #-}
 
 
@@ -192,7 +212,7 @@ ifoldlS f acc = runIdentity . ifoldlM (\ a ix e -> return $ f a ix e) acc
 --
 -- @since 0.1.0
 foldrS :: (Index ix, Source r e) => (e -> a -> a) -> a -> Array r ix e -> a
-foldrS f = ifoldrS (\_ e a -> f e a)
+foldrS f acc = runIdentity . foldrM (\ e a -> pure $! f e a) acc
 {-# INLINE foldrS #-}
 
 
@@ -200,7 +220,7 @@ foldrS f = ifoldrS (\_ e a -> f e a)
 --
 -- @since 0.1.0
 ifoldrS :: (Index ix, Source r e) => (ix -> e -> a -> a) -> a -> Array r ix e -> a
-ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> return $ f ix e a) acc
+ifoldrS f acc = runIdentity . ifoldrM (\ ix e a -> pure $! f ix e a) acc
 {-# INLINE ifoldrS #-}
 
 
@@ -213,7 +233,7 @@ foldrFB c n arr = go 0
     !k = totalElem (size arr)
     go !i
       | i == k = n
-      | otherwise = let !v = unsafeLinearIndex arr i in v `c` go (i + 1)
+      | otherwise = let v = unsafeLinearIndex arr i in v `c` go (i + 1)
 {-# INLINE [0] foldrFB #-}
 
 
@@ -242,7 +262,8 @@ foldlP :: (MonadIO m, Index ix, Source r e) =>
        -> (b -> a -> b) -- ^ Chunk results folding function @f@.
        -> b -- ^ Accumulator for results of chunks folding.
        -> Array r ix e -> m b
-foldlP f fAcc g gAcc = liftIO . ifoldlP (\ x _ -> f x) fAcc g gAcc
+foldlP f fAcc g gAcc =
+  liftIO . foldlIO (\acc -> pure . f acc) fAcc (\acc -> pure . g acc) gAcc
 {-# INLINE foldlP #-}
 
 -- | /O(n)/ - Left fold with an index aware function, computed in parallel. Just
@@ -253,7 +274,7 @@ foldlP f fAcc g gAcc = liftIO . ifoldlP (\ x _ -> f x) fAcc g gAcc
 ifoldlP :: (MonadIO m, Index ix, Source r e) =>
            (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> m b
 ifoldlP f fAcc g gAcc =
-  liftIO . ifoldlIO (\acc ix -> return . f acc ix) fAcc (\acc -> return . g acc) gAcc
+  liftIO . ifoldlIO (\acc ix -> pure . f acc ix) fAcc (\acc -> pure . g acc) gAcc
 {-# INLINE ifoldlP #-}
 
 
@@ -296,15 +317,47 @@ ifoldrP f fAcc g gAcc = liftIO . ifoldrIO (\ix e -> pure . f ix e) fAcc (\e -> p
 
 -- | This folding function breaks referential transparency on some functions
 -- @f@, therefore it is kept here for internal use only.
-foldlInternal :: (Index ix, Source r e) => (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
+foldlInternal ::
+     (Index ix, Source r e) => (a -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
 foldlInternal g initAcc f resAcc = unsafePerformIO . foldlP g initAcc f resAcc
 {-# INLINE foldlInternal #-}
 
 
-ifoldlInternal :: (Index ix, Source r e) => (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
+ifoldlInternal ::
+     (Index ix, Source r e) => (a -> ix -> e -> a) -> a -> (b -> a -> b) -> b -> Array r ix e -> b
 ifoldlInternal g initAcc f resAcc = unsafePerformIO . ifoldlP g initAcc f resAcc
 {-# INLINE ifoldlInternal #-}
 
+
+-- | Similar to `foldlP`, except that folding functions themselves do live in IO
+--
+-- @since 0.1.0
+foldlIO ::
+     (MonadUnliftIO m, Index ix, Source r e)
+  => (a -> e -> m a) -- ^ Index aware folding IO action
+  -> a -- ^ Accumulator
+  -> (b -> a -> m b) -- ^ Folding action that is applied to the results of a parallel fold
+  -> b -- ^ Accumulator for chunks folding
+  -> Array r ix e
+  -> m b
+foldlIO f !initAcc g !tAcc !arr
+  | getComp arr == Seq = foldlM f initAcc arr >>= g tAcc
+  | otherwise = do
+    let splitAcc _ = pure (initAcc, initAcc)
+        !sz = size arr
+    results <-
+      withScheduler (getComp arr) $ \scheduler ->
+        withRunInIO $ \run ->
+          stToPrim $
+          case unsafePrefIndex arr of
+            PrefIndex gix ->
+              iterFullAccST defRowMajor scheduler zeroIndex sz initAcc splitAcc $ \ !ix !acc ->
+                ioToPrim (run (f acc (gix ix)))
+            PrefIndexLinear gi ->
+              iterFullAccST defRowMajor scheduler 0 (toLinearSz sz) initAcc splitAcc $ \ !i !acc ->
+                ioToPrim (run (f acc (gi i)))
+    F.foldlM g tAcc results
+{-# INLINE foldlIO #-}
 
 -- | Similar to `ifoldlP`, except that folding functions themselves do live in IO
 --
@@ -320,21 +373,20 @@ ifoldlIO ::
 ifoldlIO f !initAcc g !tAcc !arr
   | getComp arr == Seq = ifoldlM f initAcc arr >>= g tAcc
   | otherwise = do
-      let !sz = size arr
-          !totalLength = totalElem sz
-      results <-
-        withScheduler (getComp arr) $ \scheduler -> do
-          withRunInIO $ \run -> do
-            splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-              loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-                scheduleWork scheduler $ run $
-                iterLinearM sz start (start + chunkLength) 1 (<) initAcc $ \ !i ix !acc ->
-                  f acc ix (unsafeLinearIndex arr i)
-              when (slackStart < totalLength) $
-                scheduleWork scheduler $ run $
-                iterLinearM sz slackStart totalLength 1 (<) initAcc $ \ !i ix !acc ->
-                  f acc ix (unsafeLinearIndex arr i)
-      F.foldlM g tAcc results
+    let !sz = size arr
+        splitAcc _ = pure (initAcc, initAcc)
+    results <-
+      withScheduler (getComp arr) $ \scheduler ->
+        withRunInIO $ \run ->
+          stToPrim $
+          case unsafePrefIndex arr of
+            PrefIndex gix ->
+              iterFullAccST defRowMajor scheduler zeroIndex sz initAcc splitAcc $ \ !ix !acc ->
+                ioToPrim (run (f acc ix (gix ix)))
+            PrefIndexLinear gi ->
+              iterTargetFullAccST defRowMajor scheduler 0 sz initAcc splitAcc $ \ !i !ix !acc ->
+                ioToPrim (run (f acc ix (gi i)))
+    F.foldlM g tAcc results
 {-# INLINE ifoldlIO #-}
 
 -- | Slice an array into linear row-major vector chunks and apply an action to each of
@@ -356,7 +408,7 @@ splitReduce f g !tAcc !arr = do
     withScheduler (getComp arr) $ \scheduler -> do
       withRunInIO $ \run -> do
         splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-          loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+          loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
             scheduleWork scheduler $ run $ f scheduler $
               unsafeLinearSlice start (SafeSz chunkLength) arr
           when (slackStart < totalLength) $
@@ -383,12 +435,12 @@ ifoldrIO f !initAcc g !tAcc !arr
           splitLinearly (numWorkers scheduler) totalLength $ \ chunkLength slackStart -> do
             when (slackStart < totalLength) $
               scheduleWork scheduler $ run $
-              iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix !acc ->
-                f ix (unsafeLinearIndex arr i) acc
-            loopM_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
+              iterLinearM sz (totalLength - 1) slackStart (-1) (>=) initAcc $ \ !i ix ->
+                f ix (unsafeLinearIndex arr i)
+            loopA_ slackStart (> 0) (subtract chunkLength) $ \ !start ->
               scheduleWork scheduler $ run $
-                iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix !acc ->
-                  f ix (unsafeLinearIndex arr i) acc
+                iterLinearM sz (start - 1) (start - chunkLength) (-1) (>=) initAcc $ \ !i ix ->
+                  f ix (unsafeLinearIndex arr i)
     F.foldlM (flip g) tAcc results
 {-# INLINE ifoldrIO #-}
 
@@ -448,6 +500,9 @@ anySliceSuM batch ix0 (Sz1 k) f arr = go ix0
 
 -- | Parallelizable implementation of `any` with unrolling
 anyPu :: (Index ix, Source r e) => (e -> Bool) -> Array r ix e -> IO Bool
+-- TODO: switch to splitReduce
+-- anyPu f arr =
+--   splitReduce anySu (\r acc -> pure (r || acc)) False
 anyPu f arr = do
   let !sz = size arr
       !totalLength = totalElem sz
@@ -455,7 +510,7 @@ anyPu f arr = do
     withScheduler (getComp arr) $ \scheduler -> do
       batch <- getCurrentBatch scheduler
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $ anySliceSuM batch start (Sz (start + chunkLength)) f arr
         when (slackStart < totalLength) $
           scheduleWork scheduler $ anySliceSuM batch slackStart (Sz totalLength) f arr
@@ -471,5 +526,5 @@ any :: (Index ix, Source r e) => (e -> Bool) -> Array r ix e -> Bool
 any f arr =
   case getComp arr of
     Seq -> anySu f arr
-    _ -> unsafePerformIO $ anyPu f arr
+    _   -> unsafePerformIO $ anyPu f arr
 {-# INLINE any #-}

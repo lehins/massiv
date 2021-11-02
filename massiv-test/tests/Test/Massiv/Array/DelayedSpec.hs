@@ -49,11 +49,11 @@ delayedSpec ::
   -> Spec
 delayedSpec dimName proxy =
   describe dimName $ do
-    it "computeWithStrideEqDownsample" $ property $ prop_computeWithStrideEqDownsample proxy
-    it "computeWithStrideInterleavedEqDownsample" $
-      property $ prop_computeWithStrideInterleavedEqDownsample proxy
-    it "computeWithStrideWindowedEqDownsample" $
-      property $ prop_computeWithStrideWindowedEqDownsample proxy
+    prop "computeWithStrideEqDownsample" $ prop_computeWithStrideEqDownsample proxy
+    prop "computeWithStrideInterleavedEqDownsample" $
+      prop_computeWithStrideInterleavedEqDownsample proxy
+    prop "computeWithStrideWindowedEqDownsample" $
+      prop_computeWithStrideWindowedEqDownsample proxy
 
 spec :: Spec
 spec = do

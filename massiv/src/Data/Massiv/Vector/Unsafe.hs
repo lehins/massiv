@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 -- |
 -- Module      : Data.Massiv.Vector.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2020-2021
+-- Copyright   : (c) Alexey Kuleshevich 2020-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -64,7 +64,7 @@ unsafeHead = (`unsafeLinearIndex` 0)
 --
 -- @since 0.5.0
 unsafeLast :: Source r e => Vector r e -> e
-unsafeLast v = unsafeLinearIndex v (max 0 (unSz (size v) - 1))
+unsafeLast v = unsafeLinearIndex v (unSz (size v) - 1)
 {-# INLINE unsafeLast #-}
 
 ----------------------

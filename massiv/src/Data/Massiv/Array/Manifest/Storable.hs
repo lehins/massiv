@@ -9,7 +9,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Storable
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -40,7 +40,7 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive
-import Data.Massiv.Array.Delayed.Pull (compareArrays, eqArrays)
+import Data.Massiv.Array.Delayed.Pull (D, compareArrays, eqArrays)
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Manifest.List as A
 import Data.Massiv.Array.Mutable
@@ -103,6 +103,7 @@ instance Strategy S where
   {-# INLINE getComp #-}
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
+  repr = S
 
 plusFp :: ForeignPtr a -> Int -> ForeignPtr b
 plusFp (ForeignPtr addr c) (I# d) = ForeignPtr (plusAddr# addr d) c
@@ -185,8 +186,8 @@ instance Storable e => Manifest S e where
     INDEX_CHECK("(Manifest S ix e).unsafeLinearWrite", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (\p -> pokeElemOff p o e))) fp o
   {-# INLINE unsafeLinearWrite #-}
 
-  unsafeLinearSet (MSArray _ fp) i k =
-    MVG.basicSet (MVS.unsafeFromForeignPtr0 (advanceForeignPtr fp i) (unSz k))
+  unsafeLinearSet (MSArray _ fp) i k e =
+    stToPrim (MVG.basicSet (MVS.unsafeFromForeignPtr0 (advanceForeignPtr fp i) (unSz k)) e)
   {-# INLINE unsafeLinearSet #-}
 
   unsafeLinearCopy (MSArray _ fpFrom) iFrom (MSArray _ fpTo) iTo (Sz k) = do
@@ -218,6 +219,9 @@ instance Storable e => Manifest S e where
   {-# INLINE unsafeLinearShrink #-}
 
 instance (Index ix, Storable e) => Load S ix e where
+  makeArray comp sz f = compute (makeArray comp sz f :: Array D ix e)
+  {-# INLINE makeArray #-}
+
   makeArrayLinear !comp !sz f = unsafePerformIO $ generateArrayLinear comp sz (pure . f)
   {-# INLINE makeArrayLinear #-}
 

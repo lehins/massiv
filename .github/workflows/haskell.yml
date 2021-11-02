@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        resolver: [lts-12, lts-14, lts-16, lts-18] #, nightly]
+        resolver: [lts-12, lts-14, lts-16, lts-18, lts-19, nightly]
         include:
           - resolver: lts-12
             ghc: 8.4.4
@@ -31,16 +31,22 @@ jobs:
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-18
             ghc: 8.10.7
-          # - resolver: nightly # reports a problem with happy?!
-          #   ghc: 9.0.1
+          - resolver: lts-19
+            ghc: 9.0.2
+          - resolver: nightly
+            ghc: 9.2.4
         exclude:
+          - resolver: lts-14
+            os: windows-latest # OOM on building Test.Massiv.VectorSpec
+          - resolver: lts-16
+            os: windows-latest # OOM on building Test.Massiv.VectorSpec
           - resolver: lts-18
             os: windows-latest # Too buggy, occasional ghc crashes
 
     env:
       STACK_YAML: stack.yaml
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
-      cache-version: v6 # bump up this version to invalidate currently stored cache
+      cache-version: v7 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
     - uses: haskell/actions/setup@v1
@@ -58,9 +64,9 @@ jobs:
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
-          .stack-work
-          massiv/.stack-work
-          massiv-test/.stack-work
+          .stack-work-root
+          massiv/.stack-work-root
+          massiv-test/.stack-work-root
         key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
@@ -75,22 +81,16 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
-      # - name: Install happy # https://github.com/commercialhaskell/stackage/issues/6252
-      #   if: matrix.resolver == 'nightly'
-      #   run: |
-      #     set -ex
-      #     cabal update
-      #     cabal install happy -f -bootstrap
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        mkdir -p .stack-work
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/c426e74aa129b7cb14e83305fd2639ccc41b03cd/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        mkdir -p .stack-work-root
         # Windows is confused about stack's default user directory
-        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
+        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work-root/tree-contents.txt
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
         else
@@ -122,15 +122,15 @@ jobs:
           - { cabal: "3.6", os: ubuntu-latest, ghc: "8.0.2" }
           - { cabal: "3.6", os: ubuntu-latest, ghc: "8.2.2" }
           - { cabal: "3.6", os: ubuntu-latest, ghc: "9.0.1" }
-          # - { cabal: "3.6", os: ubuntu-latest, ghc: "9.2.1" } # genvalidity is incompatible
+          - { cabal: "3.6", os: ubuntu-latest, ghc: "9.2.1" }
           # - { cabal: "3.6", os: windows-latest, ghc: "8.0.2" } # OOM on tests
-          - { cabal: "3.6", os: windows-latest, ghc: "8.2.2" }
+          # - { cabal: "3.6", os: windows-latest, ghc: "8.2.2" } # OOM on tests
           # - { cabal: "3.6", os: windows-latest, ghc: "9.0.1" } # OOM on tests
-          # - { cabal: "3.6", os: windows-latest, ghc: "9.2.1" } # genvalidity is incompatible
-          # - { cabal: "3.6", os: macOS-latest, ghc: "8.0.2" } # genvalidity-hspec-0.7.0.2 is broken
+          - { cabal: "3.6", os: windows-latest, ghc: "9.2.1" }
+          - { cabal: "3.6", os: macOS-latest, ghc: "8.0.2" }
           - { cabal: "3.6", os: macOS-latest, ghc: "8.2.2" }
           - { cabal: "3.6", os: macOS-latest, ghc: "9.0.1" }
-          # - { cabal: "3.6", os: macOS-latest, ghc: "9.2.1" } # genvalidity is incompatible
+          - { cabal: "3.6", os: macOS-latest, ghc: "9.2.1" }
 
     env:
       cache-version: v2 # bump up this version to invalidate currently stored cache
@@ -203,16 +203,17 @@ jobs:
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
-          massiv/.stack-work
-          massiv-bench/.stack-work
+          massiv/.stack-work-bench
+          massiv-bench/.stack-work-bench
         key: bench-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           bench-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
     - name: Build
       run: |
         set -ex
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/c426e74aa129b7cb14e83305fd2639ccc41b03cd/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        mkdir -p .stack-work-bench
+        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work-bench/tree-contents.txt
         cd massiv-bench
         stack $STACK_ARGS build --bench --no-run-benchmarks
 
@@ -253,6 +254,7 @@ jobs:
 
     - name: Build and Test
       run: |
+        sudo apt-get update
         sudo apt-get install freeglut3-dev
         cd massiv-examples
         stack test $STACK_ARGS --bench --no-run-benchmarks --haddock --no-haddock-deps

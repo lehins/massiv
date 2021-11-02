@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -39,7 +39,7 @@ makeUnsafeStencil
 makeUnsafeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
   where
     stencil unsafeGetVal _getVal !ix =
-      inline $ relStencil ix (unsafeGetVal . liftIndex2 (+) ix)
+      inline (relStencil ix (unsafeGetVal . liftIndex2 (+) ix))
     {-# INLINE stencil #-}
 {-# INLINE makeUnsafeStencil #-}
 

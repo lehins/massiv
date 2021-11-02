@@ -3,7 +3,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Stride
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -19,9 +19,9 @@ module Data.Massiv.Core.Index.Stride
   , strideSize
   ) where
 
-import Control.DeepSeq
+import Control.DeepSeq (NFData)
 import Data.Massiv.Core.Index.Internal
-import System.Random.Stateful
+import System.Random.Stateful (Random, Uniform(..), UniformRange(..))
 
 -- | Stride provides a way to ignore elements of an array if an index is divisible by a
 -- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be
