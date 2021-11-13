@@ -17,62 +17,74 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
-        resolver: [nightly, lts-18, lts-16, lts-14, lts-12]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        resolver: [lts-12, lts-14, lts-16, lts-18, nightly]
         include:
           - resolver: lts-12
             ghc: 8.4.4
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-14
+            ghc: 8.6.5
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-16
             ghc: 8.8.4
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-18
-            ghc: 8.10.4
+            ghc: 8.10.7
+          - resolver: nightly
+            ghc: 9.0.1
 
-          # Latest stable for MacOS: ghc-8.8.4
-          - resolver: lts-16
-            os: macos-latest
-            stack-yaml: stack-extra-deps.yaml
-          # Latest stable for Windows: ghc-8.6.4
-          - resolver: lts-14
-            os: windows-latest
-            stack-yaml: stack-extra-deps.yaml
+          # # Latest stable for MacOS: ghc-8.8.4
+          # - resolver: lts-16
+          #   os: macos-latest
+          #   stack-yaml: stack-extra-deps.yaml
+          # # Latest stable for Windows: ghc-8.6.4
+          # - resolver: lts-14
+          #   os: windows-latest
+          #   stack-yaml: stack-extra-deps.yaml
 
     env:
       STACK_YAML: stack.yaml
-      STACK_ARGS: '--resolver ${{ matrix.resolver }}'
+      STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v5 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      name: Setup Haskell
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        enable-stack: true
+        stack-version: 'latest'
 
     - name: Cache
       id: cache
       uses: actions/cache@v2
-      if: matrix.os != 'macos-latest'
+      # if: matrix.os != 'macos-latest'
       with:
         path: |
           ~/.stack
           .stack-work
           massiv/.stack-work
+          massiv-test/.stack-work
+          massiv-bench/.stack-work
         key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    - name: Cache
-      id: cache-macos
-      uses: actions/cache@v2
-      if: matrix.os == 'macos-latest'
-      with:
-        path: |
-          ~/.stack
-        key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    - name: Workaround setup-exe-cache failure on macos
-      if: steps.cache-macos.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
-      run: |
-        rm -r ~/.stack/setup-exe-cache
+    # - name: Cache
+    #   id: cache-macos
+    #   uses: actions/cache@v2
+    #   if: matrix.os == 'macos-latest'
+    #   with:
+    #     path: |
+    #       ~/.stack
+    #     key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+    #     restore-keys: |
+    #       ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+    # - name: Workaround setup-exe-cache failure on macos
+    #   if: steps.cache-macos.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
+    #   run: |
+    #     rm -r ~/.stack/setup-exe-cache
     - name: Windows Cache
       id: cache-windows
       uses: actions/cache@v2
@@ -85,26 +97,26 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
 
-    - name: Ubuntu install GHC
-      if: matrix.ghc != '' && matrix.os == 'ubuntu-latest'
-      run: |
-        sudo add-apt-repository ppa:hvr/ghc -y
-        sudo apt-get update
-        sudo apt-get install ghc-${{ matrix.ghc }}
-    - name: Install Stack and local GHC
-      run: |
-        set -ex
-        curl -sSL https://get.haskellstack.org/ | sh -s - -f
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
-        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        stack $STACK_ARGS runghc git-modtime.hs
+    # - name: Ubuntu install GHC
+    #   if: matrix.ghc != '' && matrix.os == 'ubuntu-latest'
+    #   run: |
+    #     sudo add-apt-repository ppa:hvr/ghc -y
+    #     sudo apt-get update
+    #     sudo apt-get install ghc-${{ matrix.ghc }}
+    # - name: Install Stack and local GHC
+    #   run: |
+    #     set -ex
+    #     curl -sSL https://get.haskellstack.org/ | sh -s - -f
+    #     curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+    #     [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
+    #     [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
+    #     stack $STACK_ARGS runghc git-modtime.hs
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
+        # [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
@@ -116,7 +128,7 @@ jobs:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
+        # [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps
@@ -133,9 +145,16 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      STACK_ARGS: '--resolver lts-18.3'
+      STACK_ARGS: '--resolver lts-18.16 --system-ghc'
     steps:
     - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      name: Setup Haskell
+      with:
+        ghc-version: '8.10.7'
+        enable-stack: true
+        stack-version: 'latest'
 
     - name: Extract branch name
       shell: bash
