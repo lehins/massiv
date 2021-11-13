@@ -37,7 +37,7 @@ jobs:
     env:
       STACK_YAML: stack.yaml
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
-      cache-version: v5 # bump up this version to invalidate currently stored cache
+      cache-version: v6 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
     - uses: haskell/actions/setup@v1
@@ -124,7 +124,7 @@ jobs:
           # - { cabal: "3.6", os: macOS-latest, ghc: "9.2.1" } # genvalidity is incompatible
 
     env:
-      cache-version: v1 # bump up this version to invalidate currently stored cache
+      cache-version: v2 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
     - uses: haskell/actions/setup@v1
@@ -177,7 +177,7 @@ jobs:
     env:
       STACK_YAML: stack.yaml
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
-      cache-version: v1 # bump up this version to invalidate currently stored cache
+      cache-version: v2 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
     - uses: haskell/actions/setup@v1
@@ -246,6 +246,4 @@ jobs:
       run: |
         sudo apt-get install freeglut3-dev
         cd massiv-examples
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        stack script $STACK_ARGS git-modtime.hs
         stack test $STACK_ARGS --bench --no-run-benchmarks --haddock --no-haddock-deps
