@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        resolver: [lts-12, lts-14, lts-16, lts-18, nightly]
+        resolver: [lts-12, lts-14, lts-16, lts-18] #, nightly]
         include:
           - resolver: lts-12
             ghc: 8.4.4
@@ -31,8 +31,8 @@ jobs:
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-18
             ghc: 8.10.7
-          - resolver: nightly
-            ghc: 9.0.1
+          # - resolver: nightly
+          #   ghc: 9.0.1
 
           # # Latest stable for MacOS: ghc-8.8.4
           # - resolver: lts-16
@@ -137,12 +137,15 @@ jobs:
           - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.0.2"  }
           - { cabal: "3.6", os: ubuntu-latest,  ghc: "8.2.2"  }
           - { cabal: "3.6", os: ubuntu-latest,  ghc: "9.0.1"  }
+          - { cabal: "3.6", os: ubuntu-latest,  ghc: "9.2.1"  }
           - { cabal: "3.6", os: windows-latest,  ghc: "8.0.2"  }
           - { cabal: "3.6", os: windows-latest,  ghc: "8.2.2"  }
           - { cabal: "3.6", os: windows-latest,  ghc: "9.0.1"  }
+          - { cabal: "3.6", os: windows-latest,  ghc: "9.2.1"  }
           - { cabal: "3.6", os: macOS-latest,  ghc: "8.0.2"  }
           - { cabal: "3.6", os: macOS-latest,  ghc: "8.2.2"  }
           - { cabal: "3.6", os: macOS-latest,  ghc: "9.0.1"  }
+          - { cabal: "3.6", os: macOS-latest,  ghc: "9.2.1"  }
 
     env:
       cache-version: v1 # bump up this version to invalidate currently stored cache
@@ -216,6 +219,7 @@ jobs:
         set -ex
         curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         stack $STACK_ARGS runghc git-modtime.hs
+        cd massiv-bench
         stack $STACK_ARGS build --bench --no-run-benchmarks
 
 
@@ -257,7 +261,6 @@ jobs:
       run: |
         sudo apt-get install freeglut3-dev
         cd massiv-examples
-        curl -sSL https://get.haskellstack.org/ | sh -s - -f
         curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         stack script $STACK_ARGS git-modtime.hs
         stack test $STACK_ARGS --bench --no-run-benchmarks --haddock --no-haddock-deps
