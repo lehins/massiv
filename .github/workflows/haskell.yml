@@ -129,9 +129,9 @@ jobs:
           - { cabal: "3.6", os: ubuntu-latest, ghc: "8.2.2" }
           - { cabal: "3.6", os: ubuntu-latest, ghc: "9.0.1" }
           # - { cabal: "3.6", os: ubuntu-latest, ghc: "9.2.1" } # genvalidity is incompatible
-          - { cabal: "3.6", os: windows-latest, ghc: "8.0.2" }
+          # - { cabal: "3.6", os: windows-latest, ghc: "8.0.2" } # OOM on tests
           - { cabal: "3.6", os: windows-latest, ghc: "8.2.2" }
-          # - { cabal: "3.6", os: windows-latest, ghc: "9.0.1" } OOM on tests
+          # - { cabal: "3.6", os: windows-latest, ghc: "9.0.1" } # OOM on tests
           # - { cabal: "3.6", os: windows-latest, ghc: "9.2.1" } # genvalidity is incompatible
           # - { cabal: "3.6", os: macOS-latest, ghc: "8.0.2" } # genvalidity-hspec-0.7.0.2 is broken
           - { cabal: "3.6", os: macOS-latest, ghc: "8.2.2" }
