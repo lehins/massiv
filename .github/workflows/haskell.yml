@@ -51,7 +51,6 @@ jobs:
     - name: Cache
       id: cache
       uses: actions/cache@v2
-      # if: matrix.os != 'macos-latest'
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
@@ -61,20 +60,6 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    # - name: Cache
-    #   id: cache-macos
-    #   uses: actions/cache@v2
-    #   if: matrix.os == 'macos-latest'
-    #   with:
-    #     path: |
-    #       ~/.stack
-    #     key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    #     restore-keys: |
-    #       ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    # - name: Workaround setup-exe-cache failure on macos
-    #   if: steps.cache-macos.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
-    #   run: |
-    #     rm -r ~/.stack/setup-exe-cache
     - name: Windows Cache
       id: cache-windows
       uses: actions/cache@v2
@@ -93,7 +78,7 @@ jobs:
         set -ex
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         stack $STACK_ARGS update
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         mkdir -p .stack-work
         # Windows is confused about stack's default user directory
         stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
@@ -219,7 +204,7 @@ jobs:
     - name: Build
       run: |
         set -ex
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
         cd massiv-bench
         stack $STACK_ARGS build --bench --no-run-benchmarks
@@ -263,6 +248,6 @@ jobs:
       run: |
         sudo apt-get install freeglut3-dev
         cd massiv-examples
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         stack script $STACK_ARGS git-modtime.hs
         stack test $STACK_ARGS --bench --no-run-benchmarks --haddock --no-haddock-deps
