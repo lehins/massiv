@@ -43,10 +43,13 @@ library
   default-language:    Haskell2010
   ghc-options:        -Wall
                       -Wincomplete-record-updates
-                      -Wincomplete-uni-patterns
                       -Wredundant-constraints
                       -fno-warn-orphans
-  if impl(ghc < 8.2)
+  if impl(ghc >= 8.2)
+    ghc-options:
+                      -Wincomplete-uni-patterns
+  else
+    ghc-options:
                       -Wno-incomplete-patterns
                       -Wno-unused-imports
 
@@ -97,11 +100,17 @@ test-suite tests
   default-language:   Haskell2010
   ghc-options:       -Wall
                      -Wincomplete-record-updates
-                     -Wincomplete-uni-patterns
                      -Wredundant-constraints
                      -fno-warn-orphans
                      -threaded
                      -with-rtsopts=-N2
+  if impl(ghc >= 8.2)
+    ghc-options:
+                      -Wincomplete-uni-patterns
+  else
+    ghc-options:
+                      -Wno-incomplete-patterns
+                      -Wno-unused-imports
 
 
 test-suite tests-O0
@@ -151,12 +160,18 @@ test-suite tests-O0
   default-language:   Haskell2010
   ghc-options:       -Wall
                      -Wincomplete-record-updates
-                     -Wincomplete-uni-patterns
                      -Wredundant-constraints
                      -fno-warn-orphans
                      -threaded
                      -with-rtsopts=-N2
                      -O0
+  if impl(ghc >= 8.2)
+    ghc-options:
+                      -Wincomplete-uni-patterns
+  else
+    ghc-options:
+                      -Wno-incomplete-patterns
+                      -Wno-unused-imports
 
 source-repository head
   type:     git

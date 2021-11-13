@@ -84,27 +84,26 @@ jobs:
     #   if: steps.cache-macos.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
     #   run: |
     #     rm -r ~/.stack/setup-exe-cache
-    # - name: Windows Cache
-    #   id: cache-windows
-    #   uses: actions/cache@v2
-    #   if: matrix.os == 'windows-latest'
-    #   with:
-    #     path: |
-    #       C:\\Users\\RUNNER~1\\AppData\\Roaming\\stack
-    #       C:\\Users\\RUNNER~1\\AppData\\Local\\Programs\\stack
-    #     key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
-    #     restore-keys: |
-    #       ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
+    - name: Windows Cache
+      id: cache-windows
+      uses: actions/cache@v2
+      if: matrix.os == 'windows-latest'
+      with:
+        path: |
+          C:\\Users\\RUNNER~1\\AppData\\Roaming\\stack
+          C:\\Users\\RUNNER~1\\AppData\\Local\\Programs\\stack
+        key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        echo "${{ steps.setup-haskell-cabal.outputs.stack-root }}"
+        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
+        stack $STACK_ARGS update
         curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         stack $STACK_ARGS runghc git-modtime.hs
-        # [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
-        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
         else
@@ -115,7 +114,6 @@ jobs:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        # [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps
@@ -134,18 +132,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { cabal: "3.6", os: ubuntu-latest, ghc: "8.0.2" }
+          # - { cabal: "3.6", os: ubuntu-latest, ghc: "8.0.2" } # genvalidity-hspec-0.7.0.2 is broken
           - { cabal: "3.6", os: ubuntu-latest, ghc: "8.2.2" }
           - { cabal: "3.6", os: ubuntu-latest, ghc: "9.0.1" }
-          # - { cabal: "3.6", os: ubuntu-latest, ghc: "9.2.1" }
+          # - { cabal: "3.6", os: ubuntu-latest, ghc: "9.2.1" } # genvalidity is incompatible
           - { cabal: "3.6", os: windows-latest, ghc: "8.0.2" }
           - { cabal: "3.6", os: windows-latest, ghc: "8.2.2" }
-          - { cabal: "3.6", os: windows-latest, ghc: "9.0.1" }
-          # - { cabal: "3.6", os: windows-latest, ghc: "9.2.1" }
+          # - { cabal: "3.6", os: windows-latest, ghc: "9.0.1" } OOM on tests
+          # - { cabal: "3.6", os: windows-latest, ghc: "9.2.1" } # genvalidity is incompatible
           - { cabal: "3.6", os: macOS-latest, ghc: "8.0.2" }
           - { cabal: "3.6", os: macOS-latest, ghc: "8.2.2" }
           - { cabal: "3.6", os: macOS-latest, ghc: "9.0.1" }
-          # - { cabal: "3.6", os: macOS-latest, ghc: "9.2.1" }
+          # - { cabal: "3.6", os: macOS-latest, ghc: "9.2.1" } # genvalidity is incompatible
 
     env:
       cache-version: v1 # bump up this version to invalidate currently stored cache
