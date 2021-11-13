@@ -168,11 +168,11 @@ jobs:
       run: |
         set -ex
         cabal configure --haddock-all --enable-tests --project-file cabal-ci.project
-        cabal build all --write-ghc-environment-files=always
+        cabal build all --write-ghc-environment-files=always --project-file cabal-ci.project
     - name: Test
       run: |
         set -ex
-        cabal test all
+        cabal test all --project-file cabal-ci.project
 
   massiv-bench:
     name: Benchmarks
