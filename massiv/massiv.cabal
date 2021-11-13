@@ -1,5 +1,5 @@
 name:                massiv
-version:             1.0.1.0
+version:             1.0.1.1
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -13,13 +13,12 @@ build-type:          Simple
 extra-source-files:  README.md
                    , CHANGELOG.md
 cabal-version:       >=1.10
-tested-with:          GHC == 8.4.3
+tested-with:          GHC == 8.0.2
+                    , GHC == 8.2.2
                     , GHC == 8.4.4
-                    , GHC == 8.6.3
-                    , GHC == 8.6.4
                     , GHC == 8.6.5
                     , GHC == 8.8.4
-                    , GHC == 8.10.2
+                    , GHC == 8.10.7
                     , GHC == 9.0.1
 
 flag unsafe-checks
