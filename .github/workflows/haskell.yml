@@ -96,7 +96,7 @@ jobs:
         curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         mkdir -p .stack-work
         # Windows is confused about stack's default user directory
-        stack $STACK_ARGS runghc git-modtime.hs -f .stack-work/tree-contents.txt
+        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
         else
@@ -220,7 +220,7 @@ jobs:
       run: |
         set -ex
         curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        stack $STACK_ARGS runghc git-modtime.hs -f .stack-work/tree-contents.txt
+        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
         cd massiv-bench
         stack $STACK_ARGS build --bench --no-run-benchmarks
 
