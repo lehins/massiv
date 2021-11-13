@@ -16,6 +16,7 @@ cabal.sandbox.config
 *.hp
 *.eventlog
 .stack-work*
-*.project.local
+*.project.local*
+.ghc.environment*
 bench-*.html
 massiv-examples/files/*

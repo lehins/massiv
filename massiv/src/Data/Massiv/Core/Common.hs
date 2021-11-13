@@ -89,10 +89,13 @@ module Data.Massiv.Core.Common
   , MonadIO(liftIO)
   , PrimMonad(PrimState)
   , RealWorld
+#if !MIN_VERSION_base(4,11,0)
+  , module Data.Semigroup
+#endif
   ) where
 
 #if !MIN_VERSION_base(4,11,0)
-import Data.Semigroup
+import Data.Semigroup hiding (sconcat)
 #endif
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO(..))

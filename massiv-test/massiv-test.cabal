@@ -46,6 +46,9 @@ library
                       -Wincomplete-uni-patterns
                       -Wredundant-constraints
                       -fno-warn-orphans
+  if impl(ghc < 8.2)
+                      -Wno-incomplete-patterns
+                      -Wno-unused-imports
 
 test-suite tests
   type:               exitcode-stdio-1.0
