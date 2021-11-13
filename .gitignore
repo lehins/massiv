@@ -16,6 +16,6 @@ cabal.sandbox.config
 *.hp
 *.eventlog
 .stack-work*
-cabal.project.local
+*.project.local
 bench-*.html
 massiv-examples/files/*
