@@ -11,7 +11,7 @@ defaults: { run: { shell: bash } }
 
 
 jobs:
-  massiv-test-stack:
+  massiv-test-with-stack:
     name: Test with Stack
     runs-on: ${{ matrix.os }}
     strategy:
@@ -127,7 +127,7 @@ jobs:
           stack $STACK_ARGS test massiv-test:tests
         fi
 
-  massiv-test-stack:
+  massiv-test-with-cabal:
     name: Test with Cabal
     runs-on: ${{ matrix.os }}
     strategy:
