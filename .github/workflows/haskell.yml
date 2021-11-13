@@ -160,8 +160,6 @@ jobs:
         set -ex
         cd massiv
         cabal -vnormal check
-        cd ../massiv-test
-        cabal -vnormal check
         cd ..
 
   massiv-bench:
