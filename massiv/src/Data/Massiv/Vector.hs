@@ -779,9 +779,8 @@ tailM v = do
   pure $ unsafeTail v
 {-# INLINE tailM #-}
 
-
-
--- | /O(1)/ - Get the vector with the first @n@ elements. Never fails
+-- | /O(1)/ - Take first @n@ elements from a vector. This function never fails and has
+-- similar semantics as the `Data.List.take` for lists.
 --
 -- ==== __Examples__
 --
@@ -856,7 +855,7 @@ takeM k v = do
   pure $ unsafeTake k v
 {-# INLINE takeM #-}
 
--- | /O(1)/ - Get a `Stream` vector with the first @n@ elements. Never fails
+-- | /O(1)/ - Create a `Stream` vector with the first @n@ elements. Never fails
 --
 -- ==== __Examples__
 --
@@ -865,9 +864,22 @@ stake :: forall r e. Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
 stake n = fromSteps . S.take n . S.toStream
 {-# INLINE stake #-}
 
--- |
+-- | /O(1)/ - Drop @n@ elements from a vector. This function never fails and has
+-- similar semantics as the `Data.List.drop` for lists.
 --
 -- ==== __Examples__
+--
+-- >>> import Data.Massiv.Array as A
+-- >>> v = makeVectorR D Seq 10 id
+-- >>> v
+-- Array D Seq (Sz1 10)
+--   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
+-- >>> A.drop 5 v
+-- Array D Seq (Sz1 5)
+--   [ 5, 6, 7, 8, 9 ]
+-- >>> A.drop 25 v
+-- Array D Seq (Sz1 0)
+--   [  ]
 --
 -- @since 0.5.0
 drop :: forall r e. Source r e => Sz1 -> Vector r e -> Vector r e
@@ -898,7 +910,9 @@ sdrop :: forall r e. Stream r Ix1 e => Sz1 -> Vector r e -> Vector DS e
 sdrop n = fromSteps . S.drop n . S.toStream
 {-# INLINE sdrop #-}
 
--- |
+-- | /O(1)/ - Drop @n@ elements from a vector. Unlike `drop`, this function will
+-- produce an error when supplied number of elements to drop is larger than size
+-- of the supplied vector
 --
 -- ==== __Examples__
 --
@@ -920,8 +934,7 @@ dropM k@(Sz d) v = do
 {-# INLINE dropM #-}
 
 
--- | Samel as `sliceAt`, except it never fails.
---
+-- | Same as 'sliceAt'', except it never fails.
 --
 -- ==== __Examples__
 --
