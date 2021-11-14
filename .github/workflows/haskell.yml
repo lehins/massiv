@@ -11,68 +11,58 @@ defaults: { run: { shell: bash } }
 
 
 jobs:
-  tests:
-    name: CI
+  massiv-test-with-stack:
+    name: Test with Stack
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
-        resolver: [nightly, lts-18, lts-16, lts-14, lts-12]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        resolver: [lts-12, lts-14, lts-16, lts-18] #, nightly]
         include:
           - resolver: lts-12
             ghc: 8.4.4
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-14
-            stack-yaml: stack-extra-deps.yaml
+            ghc: 8.6.5
+            stack-yaml: stack-coveralls.yaml
           - resolver: lts-16
             ghc: 8.8.4
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-18
-            ghc: 8.10.4
-
-          # Latest stable for MacOS: ghc-8.8.4
-          - resolver: lts-16
-            os: macos-latest
-            stack-yaml: stack-extra-deps.yaml
-          # Latest stable for Windows: ghc-8.6.4
-          - resolver: lts-14
-            os: windows-latest
-            stack-yaml: stack-extra-deps.yaml
+            ghc: 8.10.7
+          # - resolver: nightly # reports a problem with happy?!
+          #   ghc: 9.0.1
+        exclude:
+          - resolver: lts-18
+            os: windows-latest # Too buggy, occasional ghc crashes
 
     env:
       STACK_YAML: stack.yaml
-      STACK_ARGS: '--resolver ${{ matrix.resolver }}'
-      cache-version: v5 # bump up this version to invalidate currently stored cache
+      STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
+      cache-version: v6 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      name: Setup Haskell
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        enable-stack: true
+        stack-version: 'latest'
 
     - name: Cache
       id: cache
       uses: actions/cache@v2
-      if: matrix.os != 'macos-latest'
       with:
         path: |
-          ~/.stack
+          ${{ steps.setup-haskell-cabal.outputs.stack-root }}
           .stack-work
           massiv/.stack-work
+          massiv-test/.stack-work
         key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    - name: Cache
-      id: cache-macos
-      uses: actions/cache@v2
-      if: matrix.os == 'macos-latest'
-      with:
-        path: |
-          ~/.stack
-        key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
-    - name: Workaround setup-exe-cache failure on macos
-      if: steps.cache-macos.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
-      run: |
-        rm -r ~/.stack/setup-exe-cache
     - name: Windows Cache
       id: cache-windows
       uses: actions/cache@v2
@@ -84,39 +74,27 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
-
-    - name: Ubuntu install GHC
-      if: matrix.ghc != '' && matrix.os == 'ubuntu-latest'
-      run: |
-        sudo add-apt-repository ppa:hvr/ghc -y
-        sudo apt-get update
-        sudo apt-get install ghc-${{ matrix.ghc }}
-    - name: Install Stack and local GHC
-      run: |
-        set -ex
-        curl -sSL https://get.haskellstack.org/ | sh -s - -f
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
-        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        stack $STACK_ARGS runghc git-modtime.hs
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
+        stack $STACK_ARGS update
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        mkdir -p .stack-work
+        # Windows is confused about stack's default user directory
+        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
         else
-          stack $STACK_ARGS build --test --no-run-tests --bench --no-run-benchmarks --haddock --no-haddock-deps
+          stack $STACK_ARGS build --test --no-run-tests --haddock --no-haddock-deps
         fi
-    - name: Tests
+    - name: Test
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        [ -n "${{ matrix.ghc }}" ] && [ "${{ matrix.os }}" == "ubuntu-latest" ] && STACK_ARGS="$STACK_ARGS --system-ghc"
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
         if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps
@@ -128,14 +106,127 @@ jobs:
           stack $STACK_ARGS test massiv-test:tests
         fi
 
+  massiv-test-with-cabal:
+    name: Test with Cabal
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { cabal: "3.6", os: ubuntu-latest, ghc: "8.0.2" }
+          - { cabal: "3.6", os: ubuntu-latest, ghc: "8.2.2" }
+          - { cabal: "3.6", os: ubuntu-latest, ghc: "9.0.1" }
+          # - { cabal: "3.6", os: ubuntu-latest, ghc: "9.2.1" } # genvalidity is incompatible
+          # - { cabal: "3.6", os: windows-latest, ghc: "8.0.2" } # OOM on tests
+          - { cabal: "3.6", os: windows-latest, ghc: "8.2.2" }
+          # - { cabal: "3.6", os: windows-latest, ghc: "9.0.1" } # OOM on tests
+          # - { cabal: "3.6", os: windows-latest, ghc: "9.2.1" } # genvalidity is incompatible
+          # - { cabal: "3.6", os: macOS-latest, ghc: "8.0.2" } # genvalidity-hspec-0.7.0.2 is broken
+          - { cabal: "3.6", os: macOS-latest, ghc: "8.2.2" }
+          - { cabal: "3.6", os: macOS-latest, ghc: "9.0.1" }
+          # - { cabal: "3.6", os: macOS-latest, ghc: "9.2.1" } # genvalidity is incompatible
+
+    env:
+      cache-version: v2 # bump up this version to invalidate currently stored cache
+    steps:
+    - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      name: Setup Haskell
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: ${{ matrix.cabal }}
+
+    - name: Cache Cabal Store
+      id: cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+          massiv/dist-newstyle
+          massiv-test/dist-newstyle
+        key: cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
+        restore-keys: |
+          cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
+    - name: Build
+      run: |
+        set -ex
+        cabal configure --haddock-all --enable-tests --project-file cabal-ci.project
+        cabal build all --write-ghc-environment-files=always --project-file cabal-ci.project
+    - name: Test
+      run: |
+        set -ex
+        cabal test all --project-file cabal-ci.project
+    - name: Check Cabal Files
+      run: |
+        set -ex
+        cd massiv
+        cabal -vnormal check
+        cd ..
+
+  massiv-bench:
+    name: Benchmarks
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        resolver: [lts-18]
+        include:
+          - resolver: lts-18
+            ghc: 8.10.7
+
+    env:
+      STACK_YAML: stack.yaml
+      STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
+      cache-version: v2 # bump up this version to invalidate currently stored cache
+    steps:
+    - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      name: Setup Haskell
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        enable-stack: true
+        stack-version: 'latest'
+
+    - name: Cache
+      id: cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.stack-root }}
+          massiv/.stack-work
+          massiv-bench/.stack-work
+        key: bench-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+        restore-keys: |
+          bench-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+    - name: Build
+      run: |
+        set -ex
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work/tree-contents.txt
+        cd massiv-bench
+        stack $STACK_ARGS build --bench --no-run-benchmarks
+
+
   massiv-examples:
+    name: Examples
 
     runs-on: ubuntu-latest
 
     env:
-      STACK_ARGS: '--resolver lts-18.3'
+      STACK_ARGS: '--resolver lts-18.16 --system-ghc'
     steps:
     - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      name: Setup Haskell
+      with:
+        ghc-version: '8.10.7'
+        enable-stack: true
+        stack-version: 'latest'
 
     - name: Extract branch name
       shell: bash
@@ -158,7 +249,4 @@ jobs:
       run: |
         sudo apt-get install freeglut3-dev
         cd massiv-examples
-        curl -sSL https://get.haskellstack.org/ | sh -s - -f
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/786c3fe7e9e1345d7b403019f52e344627224edf/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        stack script $STACK_ARGS git-modtime.hs
         stack test $STACK_ARGS --bench --no-run-benchmarks --haddock --no-haddock-deps

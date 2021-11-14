@@ -77,8 +77,7 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Core
 import Data.Massiv.Core.Index.Internal
-import Data.Massiv.Core.Common (size, unsafeIndex, unsafeResize, evaluate', evaluateM)
-import Data.Proxy
+import Data.Massiv.Core.Common --(size, unsafeIndex, unsafeResize, evaluate', evaluateM)
 import Prelude as P hiding (concat, drop, mapM_, reverse, splitAt, take,
                      traverse)
 

@@ -1,8 +1,7 @@
-resolver: lts-18.3
+resolver: lts-18.16
 packages:
 - 'massiv/'
 - 'massiv-test/'
-- 'massiv-bench/'
 flags: {}
 extra-deps:
 - scheduler-2.0.0@sha256:3f053e3ff024fdcdd0983fb901313ef979921bc27e12dec97cd330878ddf78b1,2525

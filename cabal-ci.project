@@ -1,0 +1,7 @@
+packages:
+  massiv
+  massiv-test
+
+constraints:
+  , genvalidity == 0.9.1.0
+  , genvalidity-hspec == 0.7.0.2

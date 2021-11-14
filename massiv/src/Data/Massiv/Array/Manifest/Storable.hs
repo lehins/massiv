@@ -48,18 +48,18 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.List
 import Data.Massiv.Core.Operations
 import Data.Massiv.Vector.Stream as S (isteps, steps)
-import Data.Primitive.Ptr (setPtr)
 import Data.Primitive.ByteArray
+import Data.Primitive.Ptr (setPtr)
+import Data.Word
 import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array (advancePtr, copyArray)
 import Foreign.Ptr
 import Foreign.Storable
-import GHC.Exts as GHC (IsList(..))
+import GHC.Exts as GHC
 import GHC.ForeignPtr
 import Prelude hiding (mapM)
 import System.IO.Unsafe (unsafePerformIO)
-import Data.Word
 import Unsafe.Coerce
 
 import qualified Data.Vector.Generic.Mutable as MVG
@@ -104,8 +104,11 @@ instance Strategy S where
   setComp c arr = arr { sComp = c }
   {-# INLINE setComp #-}
 
+plusFp :: ForeignPtr a -> Int -> ForeignPtr b
+plusFp (ForeignPtr addr c) (I# d) = ForeignPtr (plusAddr# addr d) c
+
 advanceForeignPtr :: forall e . Storable e => ForeignPtr e -> Int -> ForeignPtr e
-advanceForeignPtr fp i = plusForeignPtr fp (i * sizeOf (undefined :: e))
+advanceForeignPtr fp i = plusFp fp (i * sizeOf (undefined :: e))
 {-# INLINE advanceForeignPtr #-}
 
 indexForeignPtr :: Storable e => ForeignPtr e -> Int -> e
