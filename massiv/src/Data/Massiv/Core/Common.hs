@@ -784,7 +784,7 @@ singleton = makeArray Seq oneSz . const
 
 infixl 4 !, !?, ??
 
--- | /O(1)/ - Infix version of `index'`.
+-- | /O(1)/ - Infix version of 'index''.
 --
 -- ==== __Examples__
 --

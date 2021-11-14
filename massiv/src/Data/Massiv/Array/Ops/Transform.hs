@@ -795,7 +795,7 @@ stackInnerSlicesM = stackSlicesM 1
 
 -- | /O(1)/ - Split an array into two at an index along a specified dimension.
 --
--- /Related/: `splitAt'`, `splitExtractM`, `Data.Massiv.Vector.sliceAt'`, `Data.Massiv.Vector.sliceAtM`
+-- /Related/: 'splitAt'', `splitExtractM`, 'Data.Massiv.Vector.sliceAt'', `Data.Massiv.Vector.sliceAtM`
 --
 -- /__Exceptions__/: `IndexDimensionException`, `SizeSubregionException`
 --
@@ -818,7 +818,7 @@ splitAtM dim i arr = do
 -- | /O(1)/ - Split an array into two at an index along a specified dimension. Throws an
 -- error for a wrong dimension or incorrect indices.
 --
--- /Related/: `splitAtM`, `splitExtractM`, `Data.Massiv.Vector.sliceAt'`, `Data.Massiv.Vector.sliceAtM`
+-- /Related/: `splitAtM`, `splitExtractM`, 'Data.Massiv.Vector.sliceAt'', `Data.Massiv.Vector.sliceAtM`
 --
 -- ==== __Examples__
 --
@@ -1172,7 +1172,7 @@ transform2M getSzM getM arr1 arr2 = do
 {-# INLINE transform2M #-}
 
 
--- | Same as `transform'`, but operates on two arrays
+-- | Same as 'transform'', but operates on two arrays
 --
 -- @since 0.3.0
 transform2' ::

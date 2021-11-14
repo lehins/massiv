@@ -352,7 +352,7 @@ slength v =
 
 -- | /O(1)/ - Get the first element of a `Source` vector. Throws an error on empty.
 --
--- /Related/: `shead'`, `headM`, `sheadM`, `unconsM`.
+-- /Related/: 'shead'', `headM`, `sheadM`, `unconsM`.
 --
 -- ==== __Examples__
 --
@@ -378,7 +378,7 @@ head' = throwEither . headM
 
 -- | /O(1)/ - Get the first element of a `Source` vector.
 --
--- /Related/: `head'`, `shead'`, `sheadM`, `unconsM`.
+-- /Related/: 'head'', 'shead'', `sheadM`, `unconsM`.
 --
 -- /__Throws Exceptions__/: `SizeEmptyException` when array is empty
 --
@@ -411,7 +411,7 @@ headM v
 
 -- | /O(1)/ - Get the first element of a `Stream` vector. Throws an error on empty.
 --
--- /Related/: `head'`, `headM`, `sheadM`, `unconsM`.
+-- /Related/: 'head'', `headM`, `sheadM`, `unconsM`.
 --
 -- ==== __Examples__
 --
@@ -430,7 +430,7 @@ shead' = throwEither . sheadM
 
 -- | /O(1)/ - Get the first element of a `Stream` vector.
 --
--- /Related/: `head'`, `shead'`, `headM`, `unconsM`.
+-- /Related/: 'head'', 'shead'', `headM`, `unconsM`.
 --
 -- /__Throws Exceptions__/: `SizeEmptyException`
 --
@@ -460,7 +460,7 @@ sheadM v =
 -- | /O(1)/ - Take one element off of the `Source` vector from the left side, as well as
 -- the remaining part of the vector in delayed `D` representation.
 --
--- /Related/: `head'`, `shead'`, `headM`, `sheadM`, `cons`
+-- /Related/: 'head'', 'shead'', `headM`, `sheadM`, `cons`
 --
 -- /__Throws Exceptions__/: `SizeEmptyException`
 --
@@ -490,7 +490,7 @@ unconsM arr
 -- | /O(1)/ - Take one element off of the vector from the right side, as well as the
 -- remaining part of the vector.
 --
--- /Related/: `last'`, `lastM`, `snoc`
+-- /Related/: 'last'', `lastM`, `snoc`
 --
 -- /__Throws Exceptions__/: `SizeEmptyException`
 --
@@ -539,7 +539,7 @@ last' = throwEither . lastM
 
 -- | /O(1)/ - Get the last element of a `Source` vector.
 --
--- /Related/: `last'`, `unsnocM`
+-- /Related/: 'last'', `unsnocM`
 --
 -- /__Throws Exceptions__/: `SizeEmptyException`
 --
@@ -933,7 +933,7 @@ sliceAt (Sz k) v = (unsafeTake d v, unsafeDrop d v)
     !d = SafeSz (min k n)
 {-# INLINE sliceAt #-}
 
--- | Same as `Data.Massiv.Array.splitAt'`, except for a flat vector.
+-- | Same as 'Data.Massiv.Array.splitAt'', except for a flat vector.
 --
 -- ==== __Examples__
 --
@@ -1209,7 +1209,7 @@ sunfoldrExactNM n f = fromStepsM . S.unfoldrExactNM n f
 -- | /O(n)/ - Enumerate from a starting number @x@ exactly @n@ times with a step @1@.
 --
 -- /Related/: `senumFromStepN`, `enumFromN`, `enumFromStepN`, `rangeSize`,
--- `rangeStepSize`, `range`, `rangeStep'`
+-- `rangeStepSize`, `range`, 'rangeStep''
 --
 -- ==== __Examples__
 --
@@ -2722,7 +2722,7 @@ sminimum' = sfoldl1' min
 
 -- | /O(n)/ - Find the smallest value in the array.
 --
--- /Related/: `sminimum'`, `minimum`, `minimumM`.
+-- /Related/: 'sminimum'', `minimum`, `minimumM`.
 --
 -- /__Throws Exceptions__/: `SizeEmptyException` when array is empty
 --

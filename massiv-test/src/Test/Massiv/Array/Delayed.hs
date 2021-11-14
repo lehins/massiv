@@ -30,7 +30,7 @@ import Test.Massiv.Utils as T
 import qualified GHC.Exts as Exts
 import Data.List as L
 
--- | Alternative implementation of `stackSlicesM` with `concat'`. Useful for testing and benchmarks
+-- | Alternative implementation of `stackSlicesM` with 'concat''. Useful for testing and benchmarks
 stackSlices' ::
      (Functor f, Foldable f, Source r e, Index ix, Load r (Lower ix) e)
   => Dim

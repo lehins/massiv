@@ -121,7 +121,7 @@ unsafeBackpermute !sz ixF !arr =
   makeArray (getComp arr) sz $ \ !ix -> unsafeIndex arr (ixF ix)
 {-# INLINE unsafeBackpermute #-}
 
--- | Same `Data.Array.transform'`, except no bounds checking is performed, thus making it faster,
+-- | Same 'Data.Array.transform'', except no bounds checking is performed, thus making it faster,
 -- but unsafe.
 --
 -- @since 0.3.0
@@ -136,7 +136,7 @@ unsafeTransform getSz get arr = makeArray (getComp arr) sz (get a (unsafeIndex a
     (sz, a) = getSz (size arr)
 {-# INLINE unsafeTransform #-}
 
--- | Same `Data.Array.transform2'`, except no bounds checking is performed, thus making it faster,
+-- | Same 'Data.Array.transform2'', except no bounds checking is performed, thus making it faster,
 -- but unsafe.
 --
 -- @since 0.3.0
