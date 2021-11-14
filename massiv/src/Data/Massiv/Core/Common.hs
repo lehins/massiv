@@ -95,7 +95,7 @@ module Data.Massiv.Core.Common
   ) where
 
 #if !MIN_VERSION_base(4,11,0)
-import Data.Semigroup hiding (sconcat)
+import Data.Semigroup hiding ((<>))
 #endif
 import Control.Monad.Catch (MonadThrow(..))
 import Control.Monad.IO.Unlift (MonadIO(liftIO), MonadUnliftIO(..))
