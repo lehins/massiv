@@ -143,9 +143,9 @@ jobs:
           dist-newstyle
           massiv/dist-newstyle
           massiv-test/dist-newstyle
-        key: cabal-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+        key: cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
         restore-keys: |
-          cabal-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+          cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
     - name: Build
       run: |
         set -ex
