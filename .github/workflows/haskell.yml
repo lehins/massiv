@@ -33,6 +33,9 @@ jobs:
             ghc: 8.10.7
           # - resolver: nightly # reports a problem with happy?!
           #   ghc: 9.0.1
+        exclude:
+          - resolver: lts-18
+            os: windows-latest # Too buggy, occasional ghc crashes
 
     env:
       STACK_YAML: stack.yaml
