@@ -74,13 +74,17 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
+    - name: Install happy # https://github.com/commercialhaskell/stackage/issues/6252
+      if: matrix.resolver == 'nightly'
+      run: |
+        set -ex
+        stack $STACK_ARGS install happy
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        stack $STACK_ARGS update
         curl -sSL https://raw.githubusercontent.com/lehins/utils/5d9b17f2f084ce54978dbd71974970483063a540/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
         mkdir -p .stack-work
         # Windows is confused about stack's default user directory
@@ -90,11 +94,6 @@ jobs:
         else
           stack $STACK_ARGS build --test --no-run-tests --haddock --no-haddock-deps
         fi
-    - name: Install happy # https://github.com/commercialhaskell/stackage/issues/6252
-      if: matrix.resolver == 'nightly'
-      run: |
-        set -ex
-        stack $STACK_ARGS install happy
     - name: Test
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
