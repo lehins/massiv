@@ -79,6 +79,7 @@ jobs:
       if: matrix.resolver == 'nightly'
       run: |
         set -ex
+        cabal update
         cabal install happy -f -bootstrap
     - name: Build
       env:
