@@ -50,6 +50,7 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         enable-stack: true
         stack-version: 'latest'
+        cabal-version: '3.6'
 
     - name: Cache
       id: cache
@@ -78,7 +79,7 @@ jobs:
       if: matrix.resolver == 'nightly'
       run: |
         set -ex
-        stack $STACK_ARGS install happy
+        cabal install happy -f -bootstrap
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
