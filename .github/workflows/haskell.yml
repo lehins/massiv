@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        resolver: [lts-12, lts-14, lts-16, lts-18, nightly]
+        resolver: [lts-12, lts-14, lts-16, lts-18] #, nightly]
         include:
           - resolver: lts-12
             ghc: 8.4.4
@@ -31,12 +31,11 @@ jobs:
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-18
             ghc: 8.10.7
-          - resolver: nightly # reports a problem with happy?!
-            ghc: 9.0.1
+          # - resolver: nightly # reports a problem with happy?!
+          #   ghc: 9.0.1
         exclude:
           - resolver: lts-18
             os: windows-latest # Too buggy, occasional ghc crashes
-          - resolver: nightly # happy is buggy
 
     env:
       STACK_YAML: stack.yaml
@@ -76,12 +75,12 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
-    # - name: Install happy # https://github.com/commercialhaskell/stackage/issues/6252
-    #   if: matrix.resolver == 'nightly'
-    #   run: |
-    #     set -ex
-    #     cabal update
-    #     cabal install happy -f -bootstrap
+      # - name: Install happy # https://github.com/commercialhaskell/stackage/issues/6252
+      #   if: matrix.resolver == 'nightly'
+      #   run: |
+      #     set -ex
+      #     cabal update
+      #     cabal install happy -f -bootstrap
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
