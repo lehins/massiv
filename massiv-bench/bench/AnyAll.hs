@@ -34,11 +34,13 @@ anyBench name arr =
     [ env (pure (A.toList arr)) $ \ ls -> bench "list" $ whnf (F.any even) ls
     , env (pure (A.toVector arr)) $ \ vec -> bench "vector" $ whnf (VP.any even) vec
     , bench "F.any (DS)" $ whnf (F.any even . toStreamArray) arr
-    , bench "sany (DS)" $ whnf (sany even . toStreamArray) arr
+    , bench "sany (DS)" $ whnf (sany even) arr
     , bench "F.any (D - Seq)" $ whnf (F.any even . delay) arr
     , bench "F.any (D - Par)" $ whnf (F.any even . delay) (setComp Par arr)
     , bench "any (D - Seq)" $ whnf (A.any even . delay) arr
     , bench "any (D - Par)" $ whnf (A.any even . delay) (setComp Par arr)
+    , bench "any (P - Seq)" $ whnf (A.any even) arr
+    , bench "any (P - Par)" $ whnf (A.any even) (setComp Par arr)
     ]
 
 allBench :: String -> Vector P Int -> Benchmark
@@ -48,11 +50,13 @@ allBench name arr =
     [ env (pure (A.toList arr)) $ \ ls -> bench "list" $ whnf (F.all odd) ls
     , env (pure (A.toVector arr)) $ \ vec -> bench "vector" $ whnf (VP.all odd) vec
     , bench "F.all (DS)" $ whnf (F.all odd . toStreamArray) arr
-    , bench "sall (DS)" $ whnf (sall odd . toStreamArray) arr
+    , bench "sall (DS)" $ whnf (sall odd) arr
     , bench "F.all (D - Seq)" $ whnf (F.all odd . delay) arr
     , bench "F.all (D - Par)" $ whnf (F.all odd . delay) (setComp Par arr)
     , bench "all (D - Seq)" $ whnf (A.all odd . delay) arr
     , bench "all (D - Par)" $ whnf (A.all odd . delay) (setComp Par arr)
+    , bench "all (P - Seq)" $ whnf (A.all odd) arr
+    , bench "all (P - Par)" $ whnf (A.all odd) (setComp Par arr)
     ]
 
 

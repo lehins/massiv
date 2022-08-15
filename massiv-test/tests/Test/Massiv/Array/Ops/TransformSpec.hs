@@ -199,6 +199,7 @@ type Transform r ix e
      , Eq e
      , Arbitrary e
      , Arbitrary ix
+     , Arbitrary (Array r ix e)
      , Typeable e
      , Typeable ix
      , CoArbitrary e

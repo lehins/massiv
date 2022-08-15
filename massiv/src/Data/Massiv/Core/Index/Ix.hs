@@ -7,12 +7,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Ix
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -40,16 +40,17 @@ module Data.Massiv.Core.Index.Ix
   , HighIxN
   ) where
 
-import Control.Monad.Catch (MonadThrow(..))
 import Control.DeepSeq
+import Control.Monad.Catch (MonadThrow(..))
 import Data.Massiv.Core.Index.Internal
 import Data.Proxy
-import qualified GHC.Arr as I
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Generic.Mutable as VM
 import qualified Data.Vector.Unboxed as VU
+import qualified GHC.Arr as I
 import GHC.TypeLits
 import System.Random.Stateful
+import Data.Massiv.Core.Loop
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
 #endif
@@ -310,8 +311,9 @@ instance Index Ix2 where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex (SafeSz (_ :. k1)) (i2 :. i1) = k1 * i2 + i1
   {-# INLINE [1] toLinearIndex #-}
-  fromLinearIndex (SafeSz (_ :. k1)) i = case i `quotRem` k1 of
-                                           (i2, i1) -> i2 :. i1
+  fromLinearIndex (SafeSz (_ :. k1)) i =
+    case i `quotRem` k1 of
+      (i2, i1) -> i2 :. i1
   {-# INLINE [1] fromLinearIndex #-}
   consDim = (:.)
   {-# INLINE [1] consDim #-}
@@ -321,21 +323,21 @@ instance Index Ix2 where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i2 :. i1) = (i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getDimM (i2 :.  _) 2 = pure i2
-  getDimM ( _ :. i1) 1 = pure i1
-  getDimM ix         d = throwM $ IndexDimensionException ix d
+  getDimM (i2 :. _) 2 = pure i2
+  getDimM (_ :. i1) 1 = pure i1
+  getDimM ix d        = throwM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
-  setDimM ( _ :. i1) 2 i2 = pure (i2 :. i1)
-  setDimM (i2 :.  _) 1 i1 = pure (i2 :. i1)
-  setDimM ix         d _  = throwM $ IndexDimensionException ix d
+  setDimM (_ :. i1) 2 i2 = pure (i2 :. i1)
+  setDimM (i2 :. _) 1 i1 = pure (i2 :. i1)
+  setDimM ix d _         = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   pullOutDimM (i2 :. i1) 2 = pure (i2, i1)
   pullOutDimM (i2 :. i1) 1 = pure (i1, i2)
-  pullOutDimM ix         d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix d         = throwM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM i1 2 i2 = pure (i2 :. i1)
   insertDimM i2 1 i1 = pure (i2 :. i1)
-  insertDimM ix d  _ = throwM $ IndexDimensionException ix d
+  insertDimM ix d _  = throwM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :. i
   {-# INLINE [1] pureIndex #-}
@@ -346,6 +348,10 @@ instance Index Ix2 where
   repairIndex (SafeSz (k :. szL)) (i :. ixL) rBelow rOver =
     repairIndex (SafeSz k) i rBelow rOver :. repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
+  iterF (s :. sIxL) (e :. eIxL) (inc :. incIxL) cond initAct f =
+    loopF s (`cond` e) (+ inc) initAct $ \ !i g ->
+      loopF sIxL (`cond` eIxL) (+ incIxL) g $ \ !j -> f (i :. j)
+  {-# INLINE iterF #-}
 
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
@@ -357,10 +363,15 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   isSafeIndex (SafeSz (k3 :> k2 :. k1)) (i3 :> i2 :. i1) =
     0 <= i3 && 0 <= i2 && 0 <= i1 && i3 < k3 && i2 < k2 && i1 < k1
   {-# INLINE [1] isSafeIndex #-}
-  toLinearIndex (SafeSz (_ :> k2 :. k1)) (i3 :> i2 :. i1) = (k2 * i3 + i2) * k1 + i1
+  toLinearIndex (SafeSz (_ :> k2 :. k1)) (i3 :> i2 :. i1) = (i3 * k2 + i2) * k1 + i1
   {-# INLINE [1] toLinearIndex #-}
   fromLinearIndex (SafeSz (_ :> ix)) i = let !(q, ixL) = fromLinearIndexAcc ix i in q :> ixL
-  {-# INLINE [1] fromLinearIndex #-}
+  {-# INLINE fromLinearIndex #-}
+  fromLinearIndexAcc (m :> ix) !k = (q, r :> ixL)
+    where
+      !(!kL, !ixL) = fromLinearIndexAcc ix k
+      !(!q, !r) = quotRem kL m
+  {-# INLINE fromLinearIndexAcc #-}
   consDim = (:>)
   {-# INLINE [1] consDim #-}
   unconsDim (i3 :> ix) = (i3, ix)
@@ -398,6 +409,27 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   repairIndex (SafeSz (n :> szL)) (i :> ixL) rBelow rOver =
     repairIndex (SafeSz n) i rBelow rOver :> repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
+  iterTargetRowMajorAccM iAcc iStart sz (b3 :> b2 :. b1) (s3 :> s2 :. s1) initAcc action =
+    let n = totalElem sz
+        iShift = iStart + iAcc * n
+     in loopM 0 (< n) (+ 1) initAcc $ \ !i !acc ->
+          let (i3 :> i2 :. i1) = fromLinearIndex sz i
+          in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1)) acc
+  {-# INLINE iterTargetRowMajorAccM #-}
+  iterTargetRowMajorAccST_ iAcc fact scheduler iStart sz (b3 :> b2 :. b1) (s3 :> s2 :. s1) acc splitAcc action =
+    let n = totalElem sz
+        iShift = iStart + iAcc * n
+     in iterLinearAccST_ fact scheduler 0 1 n acc splitAcc $ \ !i ->
+          let (i3 :> i2 :. i1) = fromLinearIndex sz i
+          in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1))
+  {-# INLINE iterTargetRowMajorAccST_ #-}
+  iterTargetRowMajorAccST iAcc fact scheduler iStart sz (b3 :> b2 :. b1) (s3 :> s2 :. s1) acc splitAcc action =
+    let n = totalElem sz
+        iShift = iStart + iAcc * n
+     in iterLinearAccST fact scheduler 0 1 n acc splitAcc $ \ !i ->
+          let (i3 :> i2 :. i1) = fromLinearIndex sz i
+          in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1))
+  {-# INLINE iterTargetRowMajorAccST #-}
 
 -- | Constraint synonym that encapsulates all constraints needed for dimension 4 and higher.
 --

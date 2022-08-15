@@ -51,7 +51,7 @@ instance NFData (Matrix r e) => NFData (MxM r e) where
 
 
 showSizeMxM :: Size r => MxM r e -> String
-showSizeMxM MxM {..} = show m1 <> "x" <> show n1 <> " X " <> show m2 <> "x" <> show n2
+showSizeMxM MxM {..} = show m1 ++ "x" ++ show n1 ++ " X " ++ show m2 ++ "x" ++ show n2
   where
     Sz2 m1 n1 = size aMxM
     Sz2 m2 n2 = size bMxM
@@ -62,7 +62,7 @@ benchMxM ::
   => MxM r e
   -> Benchmark
 benchMxM mxm@MxM {..} =
-  bgroup (showsType @(MxM r e) (" - (" <> showSizeMxM mxm <> ")"))
+  bgroup (showsType @(MxM r e) (" - (" ++ showSizeMxM mxm ++ ")"))
   [ bench "Seq" $ whnfIO (computeIO @r =<< aMxM .><. bMxM)
   , bench "Par" $ whnfIO (computeIO @r =<< aMxM .><. setComp Par bMxM)
   ]
@@ -94,7 +94,7 @@ randomMxV =
     (g, a) -> MxV {aMxV = a, bMxV = snd $ randomArrayS g bMxVsize random}
 
 showSizeMxV :: Size r => MxV r e -> String
-showSizeMxV MxV {..} = show m1 <> "x" <> show n1 <> " X " <> show n <> "x1"
+showSizeMxV MxV {..} = show m1 ++ "x" ++ show n1 ++ " X " ++ show n ++ "x1"
   where
     Sz2 m1 n1 = size aMxV
     Sz1 n = size bMxV
@@ -105,7 +105,7 @@ benchMxV ::
   => MxV r e
   -> Benchmark
 benchMxV mxv@MxV {..} =
-  bgroup (showsType @(MxV r e) (" - (" <> showSizeMxV mxv <> ")"))
+  bgroup (showsType @(MxV r e) (" - (" ++ showSizeMxV mxv ++ ")"))
   [ bgroup ".><"
     [ bench "Seq" $ whnfIO (computeIO @r =<< aMxV .>< bMxV)
     , bench "Par" $ whnfIO (computeIO @r =<< aMxV .>< setComp Par bMxV)
@@ -140,7 +140,7 @@ bVxMsize :: Sz2
 bVxMsize = Sz2 5000 8000
 
 showSizeVxM :: Size r => VxM r e -> String
-showSizeVxM VxM {..} = "1x" <> show n <> " X " <> show m2 <> "x" <> show n2
+showSizeVxM VxM {..} = "1x" ++ show n ++ " X " ++ show m2 ++ "x" ++ show n2
   where
     Sz1 n = size aVxM
     Sz2 m2 n2 = size bVxM
@@ -156,7 +156,7 @@ benchVxM ::
   => VxM r e
   -> Benchmark
 benchVxM mxv@VxM {..} =
-  bgroup (showsType @(VxM r e) (" - (" <> showSizeVxM mxv <> ")"))
+  bgroup (showsType @(VxM r e) (" - (" ++ showSizeVxM mxv ++ ")"))
   [ bgroup "><."
     [ bench "Seq" $ whnfIO (computeIO @r =<< aVxM ><. bVxM)
     , bench "Par" $ whnfIO (computeIO @r =<< aVxM ><. setComp Par bVxM)
@@ -176,7 +176,7 @@ benchVxM mxv@VxM {..} =
 
 -- benchSquareM :: forall r e. Benchmark
 -- benchSquareM mxv@VxM {..} =
---   bgroup (showsType @(Matrix r e) (" - (" <> showSizeVxM mxv <> ")"))
+--   bgroup (showsType @(Matrix r e) (" - (" ++ showSizeVxM mxv ++ ")"))
 --   [ bgro "Seq" $ whnfIO (computeIO @r $ identityMatrix squareMatrix)
 --   , bench "Par" $ whnfIO (computeIO @r =<< aVxM ><. setComp Par bVxM)
 --   ]

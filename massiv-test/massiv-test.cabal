@@ -1,5 +1,5 @@
 name:                massiv-test
-version:             1.0.0.0
+version:             1.1.0.0
 synopsis:            Library that contains generators, properties and tests for Massiv Array Library.
 description:         This library is designed for users of massiv library that need random generators for writing custom property tests and reusing some of the predefined ones.
 homepage:            https://github.com/lehins/massiv
@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018-2021 Alexey Kuleshevich
+copyright:           2018-2022 Alexey Kuleshevich
 category:            Data, Data Structures, Parallelism
 build-type:          Simple
 extra-source-files:  README.md
@@ -33,6 +33,7 @@ library
                      , deepseq
                      , exceptions
                      , QuickCheck >= 2.14
+                     , quickcheck-classes-base
                      , hspec
                      , massiv >= 1.0 && < 2
                      , scheduler
@@ -72,6 +73,7 @@ test-suite tests
                     , Test.Massiv.Array.Ops.TransformSpec
                     , Test.Massiv.Array.Manifest.PrimitiveSpec
                     , Test.Massiv.Array.Manifest.VectorSpec
+                    , Test.Massiv.Array.Manifest.UnboxedSpec
                     , Test.Massiv.Array.ManifestSpec
                     , Test.Massiv.Array.NumericSpec
                     , Test.Massiv.Array.Numeric.IntegralSpec
@@ -87,14 +89,14 @@ test-suite tests
                     , containers
                     , data-default
                     , deepseq
-                    , genvalidity-hspec
-                    , massiv >= 0.6
+                    , massiv
                     , massiv-test
                     , mwc-random
                     , hspec
                     , primitive
                     , scheduler
                     , QuickCheck
+                    , quickcheck-classes-base
                     , vector
 
   default-language:   Haskell2010
@@ -132,6 +134,7 @@ test-suite tests-O0
                     , Test.Massiv.Array.Ops.TransformSpec
                     , Test.Massiv.Array.Manifest.PrimitiveSpec
                     , Test.Massiv.Array.Manifest.VectorSpec
+                    , Test.Massiv.Array.Manifest.UnboxedSpec
                     , Test.Massiv.Array.ManifestSpec
                     , Test.Massiv.Array.NumericSpec
                     , Test.Massiv.Array.Numeric.IntegralSpec
@@ -147,14 +150,14 @@ test-suite tests-O0
                     , containers
                     , data-default
                     , deepseq
-                    , genvalidity-hspec
-                    , massiv >= 0.6
+                    , massiv
                     , massiv-test
                     , mwc-random
                     , hspec
                     , primitive
                     , scheduler
                     , QuickCheck
+                    , quickcheck-classes-base
                     , vector
 
   default-language:   Haskell2010

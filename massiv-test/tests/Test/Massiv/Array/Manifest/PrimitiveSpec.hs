@@ -5,9 +5,10 @@ module Test.Massiv.Array.Manifest.PrimitiveSpec (spec) where
 
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe
-import Test.Massiv.Core
-import Data.Word
 import Data.Primitive.ByteArray
+import Data.Word
+import Test.Massiv.Array.MutableSpec (specUnboxedMutableR)
+import Test.Massiv.Core
 
 prop_ToFromByteArray ::
      forall ix. (Ragged L ix Word16)
@@ -56,3 +57,4 @@ spec =
       prop "ToFromPrimitiveVector" $ prop_ToFromPrimitiveVector @Ix1
       prop "ToFromPrimitiveVector" $ prop_ToFromPrimitiveVector @Ix2
       prop "ToFromPrimitiveVector" $ prop_ToFromPrimitiveVector @Ix3
+    specUnboxedMutableR @P @Word16

@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Construct
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -29,13 +29,10 @@ module Data.Massiv.Array.Ops.Construct
   , iiterateN
     -- *** Unfolding
   , unfoldlS_
-  -- , unfoldlS
   , iunfoldlS_
-  --, iunfoldlS
   , unfoldrS_
-  --, unfoldrS
   , iunfoldrS_
-  --, iunfoldrS
+  , makeSplitSeedArray
     -- *** Random
   , uniformArray
   , uniformRangeArray
@@ -134,16 +131,10 @@ makeArrayA ::
   => Sz ix
   -> (ix -> f e)
   -> f (Array r ix e)
-makeArrayA !sz f =
-  let n = totalElem sz
-      go !i
-        | i < n =
-          liftA2
-            (\e (STA st) -> STA (\ma -> unsafeLinearWrite ma i e >> st ma))
-            (f (fromLinearIndex sz i))
-            (go (i + 1))
-        | otherwise = pure (STA (unsafeFreeze Seq))
-   in runSTA sz <$> go 0
+makeArrayA sz@(Sz n) f =
+  fmap (runSTA sz) $
+  iterF zeroIndex n oneIndex (<) (pure (STA (unsafeFreeze Seq))) $ \ix g ->
+    liftA2 (\e (STA st) -> STA (\ma -> unsafeWrite ma ix e >> st ma)) (f ix) g
 {-# INLINE makeArrayA  #-}
 
 -- | Same as `makeArrayA`, but with linear index.
@@ -155,12 +146,9 @@ makeArrayLinearA ::
   -> (Int -> f e)
   -> f (Array r ix e)
 makeArrayLinearA !sz f =
-  let n = totalElem sz
-      go !i
-        | i < n =
-          liftA2 (\e (STA st) -> STA (\ma -> unsafeLinearWrite ma i e >> st ma)) (f i) (go (i + 1))
-        | otherwise = pure (STA (unsafeFreeze Seq))
-   in runSTA sz <$> go 0
+  fmap (runSTA sz) $
+  loopF 0 (< totalElem sz) (+ 1) (pure (STA (unsafeFreeze Seq))) $ \i ->
+    liftA2 (\e (STA st) -> STA (\ma -> unsafeLinearWrite ma i e >> st ma)) (f i)
 {-# INLINE makeArrayLinearA  #-}
 
 
@@ -234,16 +222,16 @@ iunfoldrS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
     load :: Loader e
     load _ startAt dlWrite _ =
       void $
-      loopM startAt (< totalElem sz + startAt) (+ 1) acc0 $ \ !i !acc ->
-        let (e, acc') = f acc $ fromLinearIndex sz (i - startAt)
-         in acc' <$ dlWrite i e
+      iterTargetM defRowMajor startAt sz zeroIndex oneStride acc0 $ \ !i !ix !acc ->
+        case f acc ix of
+          (e, !acc') -> acc' <$ dlWrite i e
     {-# INLINE load #-}
 {-# INLINE iunfoldrS_ #-}
 
 
 -- | Unfold sequentially from the end. There is no way to save the accumulator after
 -- unfolding is done, since resulting array is delayed, but it's possible to use
--- `Data.Massiv.Array.Mutable.unfoldlPrimM` to achive such effect.
+-- `Data.Massiv.Array.Mutable.unfoldlPrimM` to achieve such effect.
 --
 -- @since 0.3.0
 unfoldlS_ :: Index ix => Sz ix -> (a -> (a, e)) -> a -> Array DL ix e
@@ -279,6 +267,9 @@ iunfoldlS_ sz f acc0 = DLArray {dlComp = Seq, dlSize = sz, dlLoad = load}
 -- Because of the pure nature of the generator and its splitability we are not only able
 -- to parallelize the random value generation, but also guarantee that it will be
 -- deterministic, granted none of the arguments have changed.
+--
+-- __Note__: Starting with massiv-1.1.0 this function will be deprecated in
+-- favor of a more general `genSplitArray`
 --
 -- ==== __Examples__
 --
@@ -332,10 +323,48 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
             scheduleWork_ scheduler $
               void $ loopM start (< start + chunkLength) (+ 1) genI0 writeRandom
             pure genI1
-        when (slackStartAt < totalLength + startAt) $
+        when (slackStart < totalLength) $
           scheduleWork_ scheduler $
           void $ loopM slackStartAt (< totalLength + startAt) (+ 1) genForSlack writeRandom
 {-# INLINE randomArray #-}
+
+
+
+
+-- | Create a delayed array with an initial seed and a splitting function. It is
+-- somewhat similar to `iunfoldlS_` function, but it is capable of parallelizing
+-- computation and iterating over the array accoriding to the supplied
+-- `Iterator`. Upon parallelization every job will get the second part of the
+-- result produced by the split function, while the first part will be used for
+-- subsequent splits. This function is similar to
+-- `Data.Massiv.Array.Manifest.generateSplitSeedArray`
+--
+-- @since 1.0.2
+makeSplitSeedArray ::
+     forall ix e g it. (Iterator it, Index ix)
+  => it -- ^ Iterator
+  -> g -- ^ Initial seed
+  -> (g -> (g, g))
+     -- ^ A function that can split a seed into two independent seeds. It will
+     -- be called the same number of times as the number of jobs that will get
+     -- scheduled during parallelization. Eg. only once for the sequential case.
+  -> Comp -- ^ Computation strategy.
+  -> Sz ix -- ^ Resulting size of the array.
+  -> (Ix1 -> ix -> g -> (e, g))
+     -- ^ A function that produces a value and the next seed. It takes both
+     -- versions of the index, in linear and in multi-dimensional forms, as well as
+     -- the current seeding value.
+  -> Array DL ix e
+makeSplitSeedArray it seed splitSeed comp sz genFunc =
+  DLArray {dlComp = comp, dlSize = sz, dlLoad = load}
+  where
+    load :: Loader e
+    load scheduler startAt writeAt _ =
+      iterTargetFullAccST_ it scheduler startAt sz seed (pure . splitSeed) $ \ i ix g ->
+        case genFunc (i - startAt) ix g of
+          (x, g') -> g' <$ writeAt i x
+    {-# INLINE load #-}
+{-# INLINE makeSplitSeedArray #-}
 
 
 -- | Generate a random array where all elements are sampled from a uniform distribution.
@@ -348,6 +377,7 @@ uniformArray ::
   -> Sz ix -- ^ Resulting size of the array.
   -> Array DL ix e
 uniformArray gen = randomArray gen split uniform
+{-# INLINE uniformArray #-}
 
 -- | Same as `uniformArray`, but will generate values in a supplied range.
 --
@@ -360,6 +390,7 @@ uniformRangeArray ::
   -> Sz ix -- ^ Resulting size of the array.
   -> Array DL ix e
 uniformRangeArray gen r = randomArray gen split (uniformR r)
+{-# INLINE uniformRangeArray #-}
 
 
 -- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
@@ -516,7 +547,7 @@ rangeStepM ::
      forall ix m. (Index ix, MonadThrow m)
   => Comp -- ^ Computation strategy
   -> ix -- ^ Start
-  -> ix -- ^ Step (Can't have zeros)
+  -> ix -- ^ Step. Negative and positive values are ok, but can't have zeros
   -> ix -- ^ End
   -> m (Array D ix ix)
 rangeStepM comp !from !step !to

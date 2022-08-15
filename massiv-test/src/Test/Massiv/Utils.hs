@@ -16,6 +16,7 @@ module Test.Massiv.Utils
   , applyFun2Compat
   , expectProp
   , propIO
+  , specLaws
   -- * Epsilon comparison
   , epsilonExpect
   , epsilonFoldableExpect
@@ -36,12 +37,21 @@ import Test.QuickCheck.Monadic as X
 import Test.Hspec as X
 import Test.Hspec.QuickCheck as X
 import Test.QuickCheck.Function as X
+import Test.QuickCheck.Classes.Base as X
 import Control.DeepSeq as X (NFData, deepseq)
 import Control.Exception (ErrorCall (..))
 import UnliftIO.Exception (Exception(..), SomeException, catch, catchAny)
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup as X ((<>))
 #endif
+
+
+
+specLaws :: HasCallStack => Laws -> Spec
+specLaws laws =
+  describe (lawsTypeclass laws) $
+    mapM_ (uncurry prop) (lawsProperties laws)
+
 
 
 -- | Use Typeable to show the type.

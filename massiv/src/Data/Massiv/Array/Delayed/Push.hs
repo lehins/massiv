@@ -11,7 +11,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Push
--- Copyright   : (c) Alexey Kuleshevich 2019-2021
+-- Copyright   : (c) Alexey Kuleshevich 2019-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -61,6 +61,7 @@ instance Strategy DL where
   {-# INLINE getComp #-}
   setComp c arr = arr {dlComp = c}
   {-# INLINE setComp #-}
+  repr = DL
 
 
 instance Index ix => Shape DL ix where
@@ -81,8 +82,10 @@ instance Semigroup (Array DL Ix1 e) where
 instance Monoid (Array DL Ix1 e) where
   mempty = DLArray {dlComp = mempty, dlSize = zeroSz, dlLoad = \_ _ _ _ -> pure ()}
   {-# INLINE mempty #-}
+#if !MIN_VERSION_base(4,11,0)
   mappend = mappendDL
   {-# INLINE mappend #-}
+#endif
   mconcat [] = mempty
   mconcat [x] = x
   mconcat [x, y] = x <> y
@@ -172,18 +175,7 @@ makeLoadArrayS ::
   -> (forall m. Monad m => (ix -> e -> m Bool) -> m ())
   -- ^ Writing function that described which elements to write into the target array.
   -> Array DL ix e
-makeLoadArrayS sz defVal writer = DLArray Seq sz load
-  where
-    load :: forall s.
-      Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> (Ix1 -> Sz1 -> e -> ST s ()) -> ST s ()
-    load _scheduler !startAt uWrite uSet = do
-      uSet startAt (toLinearSz sz) defVal
-      let safeWrite !ix !e
-            | isSafeIndex sz ix = uWrite (startAt + toLinearIndex sz ix) e >> pure True
-            | otherwise = pure False
-          {-# INLINE safeWrite #-}
-      writer safeWrite
-    {-# INLINE load #-}
+makeLoadArrayS sz defVal writer = makeLoadArray Seq sz defVal (const writer)
 {-# INLINE makeLoadArrayS #-}
 
 -- | Specify how an array should be loaded into memory. Unlike `makeLoadArrayS`, loading

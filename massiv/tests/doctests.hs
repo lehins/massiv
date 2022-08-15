@@ -12,6 +12,7 @@ main = doctest ["-Iinclude","src"]
 
 -- TODO: fix doctest support
 main :: IO ()
-main = putStrLn "\nDoctests are not supported for ghc version 8.2 and prior as well as 8.10\n"
+main =
+  putStrLn "\nDoctests are not supported for ghc version 8.2 and prior as well as 8.10 and newer\n"
 
 #endif

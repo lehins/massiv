@@ -8,7 +8,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          lehins@yandex.ru
-copyright:           2017-2021 Alexey Kuleshevich
+copyright:           2017-2022 Alexey Kuleshevich
 category:            Data, Data Structures
 build-type:          Simple
 extra-source-files:  README.md
@@ -30,6 +30,28 @@ library
                      , scheduler
   default-language:    Haskell2010
   ghc-options:         -Wall
+
+benchmark iter
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Iter.hs
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , scheduler
+  default-language:    Haskell2010
+
+benchmark random
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Random.hs
+  ghc-options:         -Wall -threaded -O2 -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , criterion
+                     , massiv
+                     , random
+  default-language:    Haskell2010
 
 benchmark any-all
   type:                exitcode-stdio-1.0

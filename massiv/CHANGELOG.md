@@ -1,3 +1,45 @@
+# 1.0.2
+
+* Addition of `Iterator` type class and related fucntions:
+  * Addition of `RowMajor`, `RowMajorLinear` and `RowMajorUnbalanced` iterators.
+  * Switch parallel left fold to new iterator
+* Improvements to functions that do the looping:
+  * Addition of `loopNextA_` and `loopNextM`
+  * Deprecate `loopM_` in favor of `loopA_`
+  * Addition of `loopA` and `loopF` for applicative iterators
+  * Addition of `iloopA_` and `iloopM`
+  * Addition of `nextMaybeF`
+  * Addition of `iterLinearST_`, `iterLinearAccST_` and `iterLinearAccST`
+  * Addition of an optimized `scheduleMassivWork` for internal use
+  * Addition of a new workhorse: `splitWorkWithFactorST`
+  * Addition of a new workhorse: `splitWorkWithFactorST`
+* Changes to `Index` class:
+  * Deprecate `iterM_` in favor of `iterA_`
+  * Adititon of sequential iterators: `iterTargetRowMajorA_`,
+    `iterTargetRowMajorAccM` needed for `RowMajor` iterator
+  * Addition of parallelizable iterators: `iterRowMajorST`,
+    `iterTargetRowMajorAccST`, `iterTargetRowMajorAccST_` needed
+    for `RowMajor` iterator
+  * Addition of `iterF` for using with applicative iterators.
+  * Addition of `stepNextMF` for streaming iteration of multi-dimensional
+    arrays.
+* Addition of `repr`.
+* Addition of `quicksortAs`, `quicksortAsBy`, `quicksortAsByM`
+* Fix backwards compatibility with ghc-8.0
+* Get rid of dependency on `genvalidity`: too many compatibility issues for
+  little gain
+* Introduce `PrefIndex` and `unsafePrefIndex`: a preference when indexing into
+  multidimensional `Source` arrays. Adopt it where possible for left and right
+  folds, traversals, but not zipping
+* Improve multi-dimensional indices for streams. Improve `steps` and `isteps`
+* Get rid of build warnings for ghc-9.4
+  * Make `Monoid` and `Monad` instances forward compatible
+* Compatibility with `vector-0.13`:
+  * Fix `Unbox` instance for `IxN`
+  * Fix safety of boxed vector conversion: `toBoxedVector`/`fromBoxedVector`
+* Re-export Manifest realetd functions from `Data.Massiv.Array.Manifest`
+  as a migration strategy for the move in the next minor version bump.
+
 # 1.0.1
 
 * Relax constraint on `computeInto` by removing requirement for `Size`

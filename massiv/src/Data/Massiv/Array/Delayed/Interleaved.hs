@@ -7,7 +7,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Interleaved
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -27,6 +27,8 @@ import Data.Massiv.Core.List (L, showArrayList, showsArrayPrec)
 
 -- | Delayed array that will be loaded in an interleaved fashion during parallel
 -- computation.
+--
+-- /Warning/ - Will be deprecated in the next major version update.
 data DI = DI
 
 newtype instance Array DI ix e = DIArray
@@ -42,6 +44,7 @@ instance Strategy DI where
   {-# INLINE setComp #-}
   getComp = dComp . diArray
   {-# INLINE getComp #-}
+  repr = DI
 
 instance Index ix => Shape DI ix where
   maxLinearSize = Just . SafeSz . elemsCount
@@ -58,24 +61,24 @@ instance Size DI where
 instance Index ix => Load DI ix e where
   makeArray c sz = DIArray . makeArray c sz
   {-# INLINE makeArray #-}
-  iterArrayLinearST_ scheduler (DIArray (DArray _ sz f)) uWrite =
-    loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
-      scheduleWork scheduler $
-      iterLinearM_ sz start (totalElem sz) (numWorkers scheduler) (<) $ \ !k -> uWrite k . f
+  iterArrayLinearST_ scheduler (DIArray darr@(DArray _ sz _)) uWrite =
+    loopA_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
+      scheduleWork_ scheduler $
+        iterLinearM_ sz start (totalElem sz) (numWorkers scheduler) (<) $ \ !k ->
+          uWrite k . unsafeIndex darr
   {-# INLINE iterArrayLinearST_ #-}
 
 instance Index ix => StrideLoad DI ix e where
-  iterArrayLinearWithStrideST_ scheduler stride resultSize arr uWrite =
-    let strideIx = unStride stride
-        DIArray (DArray _ _ f) = arr
-    in loopM_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
-          scheduleWork scheduler $
-          iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
-            \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
+  iterArrayLinearWithStrideST_ scheduler stride resultSize (DIArray arr) uWrite =
+    loopA_ 0 (< numWorkers scheduler) (+ 1) $ \ !start ->
+      scheduleWork_ scheduler $
+        iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
+          \ !i ix -> uWrite i (unsafeIndex arr (liftIndex2 (*) (unStride stride) ix))
   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 -- | Convert a source array into an array that, when computed, will have its elemets evaluated out
 -- of order (interleaved amongst cores), hence making unbalanced computation better parallelizable.
+--
 toInterleaved :: (Index ix, Source r e) => Array r ix e -> Array DI ix e
 toInterleaved = DIArray . delay
 {-# INLINE toInterleaved #-}

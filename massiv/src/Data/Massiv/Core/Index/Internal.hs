@@ -10,13 +10,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 -- |
 -- Module      : Data.Massiv.Core.Index.Internal
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
@@ -51,6 +52,8 @@ module Data.Massiv.Core.Index.Internal
   , ReportInvalidDim
   , Lower
   , Index(..)
+  , iterA_
+  , iterM_
   , Ix0(..)
   , type Ix1
   , pattern Ix1
@@ -60,13 +63,15 @@ module Data.Massiv.Core.Index.Internal
   , showsPrecWrapped
   ) where
 
+import Control.Monad.ST
+import Control.Scheduler
 import Control.DeepSeq
 import Control.Exception (Exception(..), throw)
-import Control.Monad (when)
+import Control.Monad (when, void)
 import Control.Monad.Catch (MonadThrow(..))
 import Data.Coerce
 import Data.Kind
-import Data.Massiv.Core.Iterator
+import Data.Massiv.Core.Loop
 import Data.Typeable
 import GHC.TypeLits
 import System.Random.Stateful
@@ -123,7 +128,7 @@ pattern Sz ix <- SafeSz ix where
 --
 -- @since 0.3.0
 pattern Sz1 :: Ix1 -> Sz Ix1
-pattern Sz1 ix  <- SafeSz ix where
+pattern Sz1 ix <- SafeSz ix where
         Sz1 ix = SafeSz (max 0 ix)
 {-# COMPLETE Sz1 #-}
 
@@ -160,7 +165,9 @@ instance (Num ix, Index ix) => Num (Sz ix) where
   negate x
     | x == zeroSz = x
     | otherwise =
-      error $ "Attempted to negate: " ++ show x ++ ", this can lead to unexpected behavior. See https://github.com/lehins/massiv/issues/114"
+      error $
+      "Attempted to negate: " ++ show x ++
+      ", this can lead to unexpected behavior. See https://github.com/lehins/massiv/issues/114"
   {-# INLINE negate #-}
   signum x = SafeSz (signum (coerce x))
   {-# INLINE signum #-}
@@ -179,6 +186,7 @@ mkSzM ix = do
         when (acc' /= 0 && acc' < acc) $ throwM $ SizeOverflowException (SafeSz ix)
         pure acc'
   Sz ix <$ foldlIndex (\acc i -> acc >>= guardNegativeOverflow i) (pure 1) ix
+{-# INLINE mkSzM #-}
 
 
 
@@ -565,7 +573,7 @@ class ( Eq ix
   {-# INLINE [1] toLinearIndex #-}
 
   -- | Convert linear index from size and index with an accumulator. Currently is useless and will
-  -- likley be removed in future versions.
+  -- likely be removed in future versions.
   --
   -- @since 0.1.0
   toLinearIndexAcc :: Ix1 -> ix -> ix -> Ix1
@@ -581,9 +589,9 @@ class ( Eq ix
   -- @since 0.1.0
   fromLinearIndex :: Sz ix -> Ix1 -> ix
   default fromLinearIndex :: Index (Lower ix) => Sz ix -> Ix1 -> ix
-  fromLinearIndex (SafeSz sz) k = consDim q ixL
+  fromLinearIndex (SafeSz sz) !k = consDim q ixL
     where
-      !(q, ixL) = fromLinearIndexAcc (snd (unconsDim sz)) k
+      !(!q, !ixL) = fromLinearIndexAcc (snd (unconsDim sz)) k
   {-# INLINE [1] fromLinearIndex #-}
 
   -- | Compute an index from size and linear index using an accumulator, thus trying to optimize for
@@ -592,11 +600,11 @@ class ( Eq ix
   -- @since 0.1.0
   fromLinearIndexAcc :: ix -> Ix1 -> (Int, ix)
   default fromLinearIndexAcc :: Index (Lower ix) => ix -> Ix1 -> (Ix1, ix)
-  fromLinearIndexAcc ix' !k = (q, consDim r ixL)
+  fromLinearIndexAcc !ix' !k = (q, consDim r ixL)
     where
-      !(m, ix) = unconsDim ix'
-      !(kL, ixL) = fromLinearIndexAcc ix k
-      !(q, r) = quotRem kL m
+      !(!m, !ix) = unconsDim ix'
+      !(!kL, !ixL) = fromLinearIndexAcc ix k
+      !(!q, !r) = quotRem kL m
   {-# INLINE [1] fromLinearIndexAcc #-}
 
   -- | A way to make sure index is withing the bounds for the supplied size. Takes two functions
@@ -641,20 +649,228 @@ class ( Eq ix
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM #-}
 
-  -- TODO: Implement in terms of iterM, benchmark it and remove from `Index`
-  -- | Same as `iterM`, but don't bother with accumulator and return value.
+  iterRowMajorST :: Int -- ^ Scheduler multiplying factor. Must be positive
+                 -> Scheduler s a -- ^ Scheduler to use
+                 -> ix -- ^ Start index
+                 -> ix -- ^ Stride
+                 -> Sz ix -- ^ Size
+                 -> a -- ^ Initial accumulator
+                 -> (a -> ST s (a, a)) -- ^ Function that splits accumulator for each scheduled job.
+                 -> (ix -> a -> ST s a) -- ^ Action
+                 -> ST s a
+  default iterRowMajorST :: Index (Lower ix)
+                         => Int
+                         -> Scheduler s a
+                         -> ix
+                         -> ix
+                         -> Sz ix
+                         -> a
+                         -> (a -> ST s (a, a))
+                         -> (ix -> a -> ST s a)
+                         -> ST s a
+  iterRowMajorST !fact scheduler ixStart ixStride sz initAcc splitAcc f = do
+    let !(SafeSz n, szL@(SafeSz nL)) = unconsSz sz
+    if n > 0
+      then do
+        let !(!start, !ixL) = unconsDim ixStart
+            !(!stride, !sL) = unconsDim ixStride
+        if numWorkers scheduler > 1 && fact > 1 && n < numWorkers scheduler * fact
+          then do
+            let !newFact = 1 + (fact `quot` n)
+            loopM start (< start + n * stride) (+ stride) initAcc $ \j acc ->
+              iterRowMajorST newFact scheduler ixL sL szL acc splitAcc (f . consDim j)
+          else
+            splitWorkWithFactorST fact scheduler start stride n initAcc splitAcc $
+              \ _ _ chunkStartAdj chunkStopAdj acc ->
+                loopM chunkStartAdj (< chunkStopAdj) (+ stride) acc $ \j a ->
+                  iterM ixL nL sL (<) a (f . consDim j)
+      else pure initAcc
+  {-# INLINE iterRowMajorST #-}
+
+  -- | Similar to `iterM`, but no restriction on a Monad.
   --
-  -- @since 0.1.0
-  iterM_ :: Monad m => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
-  default iterM_ :: (Index (Lower ix), Monad m) =>
-    ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
-  iterM_ !sIx eIx !incIx cond f =
-    loopM_ s (`cond` e) (+ inc) $ \ !i -> iterM_ sIxL eIxL incIxL cond $ \ !ix -> f (consDim i ix)
+  -- @since 1.0.2
+  iterF :: ix -> ix -> ix -> (Int -> Int -> Bool) -> f a -> (ix -> f a -> f a) -> f a
+  default iterF :: (Index (Lower ix)) =>
+    ix -> ix -> ix -> (Int -> Int -> Bool) -> f a -> (ix -> f a -> f a) -> f a
+  iterF !sIx !eIx !incIx cond initAct f =
+    loopF s (`cond` e) (+ inc) initAct $ \ !i g ->
+      iterF sIxL eIxL incIxL cond g (\ !ix -> f (consDim i ix))
     where
       !(s, sIxL) = unconsDim sIx
       !(e, eIxL) = unconsDim eIx
       !(inc, incIxL) = unconsDim incIx
-  {-# INLINE iterM_ #-}
+  {-# INLINE iterF #-}
+
+  -- | A single step in iteration
+  --
+  -- @since 0.1.0
+  stepNextMF :: ix -> ix -> ix -> (Int -> Int -> Bool) -> (Maybe ix -> f a) -> f a
+  default stepNextMF :: (Index (Lower ix)) =>
+    ix -> ix -> ix -> (Int -> Int -> Bool) -> (Maybe ix -> f a) -> f a
+  stepNextMF !sIx !eIx !incIx cond f =
+    nextMaybeF s (`cond` e) (+ inc) $ \ !mni ->
+      stepNextMF sIxL eIxL incIxL cond $ \ mIxN ->
+        f $!
+          case mIxN of
+            Just ixN -> Just $! consDim s ixN
+            Nothing ->
+              case mni of
+                Just ni -> Just $! consDim ni (pureIndex 0)
+                Nothing -> Nothing
+    where
+      !(s, sIxL) = unconsDim sIx
+      !(e, eIxL) = unconsDim eIx
+      !(inc, incIxL) = unconsDim incIx
+  {-# INLINE stepNextMF #-}
+
+  iterTargetRowMajorA_ :: Applicative f
+                       => Int -- ^ Target linear index accumulator
+                       -> Int -- ^ Target linear index start
+                       -> Sz ix -- ^ Target size
+                       -> ix -- ^ Source start index
+                       -> ix -- ^ Source stride
+                       -> (Ix1 -> ix -> f a)
+                       -- ^ Action that accepts a linear index of the target,
+                       -- multi-dimensional index of the source and accumulator
+                       -> f ()
+  default iterTargetRowMajorA_ :: (Applicative f, Index (Lower ix))
+                        => Int
+                        -> Int
+                        -> Sz ix
+                        -> ix
+                        -> ix
+                        -> (Ix1 -> ix -> f a)
+                        -> f ()
+  iterTargetRowMajorA_ !iAcc !iStart szRes ixStart ixStride f = do
+    let !(SafeSz nRes, !szL) = unconsSz szRes
+        !(!start, !ixL) = unconsDim ixStart
+        !(!stride, !sL) = unconsDim ixStride
+    iloopA_ (iAcc * nRes) start (< start + nRes * stride) (+ stride) $ \k j ->
+      iterTargetRowMajorA_ k iStart szL ixL sL $ \i jl -> f i (consDim j jl)
+  {-# INLINE iterTargetRowMajorA_ #-}
+
+  iterTargetRowMajorAccM :: Monad m =>
+                            Int -- ^ Target linear index accumulator
+                         -> Int -- ^ Target linear index start
+                         -> Sz ix -- ^ Target size
+                         -> ix -- ^ Source start index
+                         -> ix -- ^ Source stride
+                         -> a -- ^ Accumulator
+                         -> (Ix1 -> ix -> a -> m a)
+                         -- ^ Action that accepts a linear index of the target,
+                         -- multi-dimensional index of the source and accumulator
+                         -> m a
+  default iterTargetRowMajorAccM :: (Monad m, Index (Lower ix))
+                        => Int
+                        -> Int
+                        -> Sz ix
+                        -> ix
+                        -> ix
+                        -> a
+                        -> (Ix1 -> ix -> a -> m a)
+                        -> m a
+  iterTargetRowMajorAccM !iAcc !iStart szRes ixStart ixStride initAcc f = do
+    let !(SafeSz nRes, !szL) = unconsSz szRes
+        !(!start, !ixL) = unconsDim ixStart
+        !(!stride, !sL) = unconsDim ixStride
+    iloopM (iAcc * nRes) start (< start + nRes * stride) (+ stride) initAcc $ \k j acc ->
+      iterTargetRowMajorAccM k iStart szL ixL sL acc $ \i jl -> f i (consDim j jl)
+  {-# INLINE iterTargetRowMajorAccM #-}
+
+  iterTargetRowMajorAccST ::
+       Int -- ^ Linear index accumulator
+    -> Int -- ^ Scheduler multiplying factor. Must be positive
+    -> Scheduler s a -- ^ Scheduler to use
+    -> Int -- ^ Target linear index start
+    -> Sz ix -- ^ Target size
+    -> ix -- ^ Source start index
+    -> ix -- ^ Source stride
+    -> a -- ^ Initial accumulator
+    -> (a -> ST s (a, a)) -- ^ Function that splits accumulator for each scheduled job.
+    -> (Ix1 -> ix -> a -> ST s a) -- ^ Action
+    -> ST s a
+  default iterTargetRowMajorAccST :: Index (Lower ix)
+                                  => Int
+                                  -> Int
+                                  -> Scheduler s a
+                                  -> Int
+                                  -> Sz ix
+                                  -> ix
+                                  -> ix
+                                  -> a
+                                  -> (a -> ST s (a, a))
+                                  -> (Ix1 -> ix -> a -> ST s a)
+                                  -> ST s a
+  iterTargetRowMajorAccST !iAcc !fact scheduler iStart sz ixStart ixStride initAcc splitAcc f = do
+    let !(SafeSz n, nL) = unconsSz sz
+    if n > 0
+      then do
+        let !(!start, !ixL) = unconsDim ixStart
+            !(!stride, !sL) = unconsDim ixStride
+            !iAccL = iAcc * n
+        if numWorkers scheduler > 1 && fact > 1 && n < numWorkers scheduler * fact
+          then do
+            let newFact = 1 + (fact `quot` n)
+            iloopM iAccL start (< start + n * stride) (+ stride) initAcc $ \k j acc -> do
+              iterTargetRowMajorAccST k newFact scheduler iStart nL ixL sL acc splitAcc $ \i ->
+                f i . consDim j
+          else
+            splitWorkWithFactorST fact scheduler start stride n initAcc splitAcc $
+              \ chunkStart _ chunkStartAdj chunkStopAdj acc ->
+                iloopM (iAccL + chunkStart) chunkStartAdj (< chunkStopAdj) (+ stride) acc $ \k j a ->
+                  iterTargetRowMajorAccM k iStart nL ixL sL a $ \i -> f i . consDim j
+      else pure initAcc
+  {-# INLINE iterTargetRowMajorAccST #-}
+
+
+  iterTargetRowMajorAccST_
+    :: Int -- ^ Index accumulator
+    -> Int -- ^ Scheduler multiplying factor. Must be positive
+    -> Scheduler s () -- ^ Scheduler to use
+    -> Int -- ^ Target linear start index
+    -> Sz ix -- ^ Target size
+    -> ix -- ^ Source start index
+    -> ix -- ^ Source stride
+    -> a -- ^ Initial accumulator
+    -> (a -> ST s (a, a)) -- ^ Function that splits accumulator for each scheduled job.
+    -> (Ix1 -> ix -> a -> ST s a) -- ^ Action
+    -> ST s ()
+  default iterTargetRowMajorAccST_
+    :: Index (Lower ix)
+    => Int
+    -> Int
+    -> Scheduler s ()
+    -> Int
+    -> Sz ix
+    -> ix
+    -> ix
+    -> a
+    -> (a -> ST s (a, a))
+    -> (Ix1 -> ix -> a -> ST s a)
+    -> ST s ()
+  iterTargetRowMajorAccST_ !iAcc !fact scheduler iStart sz ixStart ixStride initAcc splitAcc f = do
+    let !(SafeSz n, szL) = unconsSz sz
+    when (n > 0) $ do
+      let !(!start, !ixL) = unconsDim ixStart
+          !(!stride, !sL) = unconsDim ixStride
+          !iAccL = iAcc * n
+      if numWorkers scheduler > 1 && fact > 1 && n < numWorkers scheduler * fact
+        then do
+          let !newFact = 1 + (fact `quot` n)
+          void $ iloopM iAccL start (< n * stride) (+ stride) initAcc $ \k j acc -> do
+            (accCur, accNext) <- splitAcc acc
+            scheduleWork_ scheduler $
+              iterTargetRowMajorAccST_ k newFact scheduler iStart szL ixL sL accCur splitAcc $ \i ->
+                f i . consDim j
+            pure accNext
+         else
+           void $ splitWorkWithFactorST fact scheduler start stride n initAcc splitAcc $
+             \ chunkStart _ chunkStartAdj chunkStopAdj acc ->
+               void $
+               iloopM (iAccL + chunkStart) chunkStartAdj (< chunkStopAdj) (+ stride) acc $ \k j a ->
+                 iterTargetRowMajorAccM k iStart szL ixL sL a $ \i -> f i . consDim j
+  {-# INLINE iterTargetRowMajorAccST_ #-}
 
 -- | Zero-dimension, i.e. a scalar. Can't really be used directly as there is no instance of
 -- `Index` for it, and is included for completeness.
@@ -697,7 +913,7 @@ instance Index Ix1 where
   {-# INLINE [1] isSafeIndex #-}
   toLinearIndex _ = id
   {-# INLINE [1] toLinearIndex #-}
-  toLinearIndexAcc !acc m i  = acc * m + i
+  toLinearIndexAcc !acc m i = acc * m + i
   {-# INLINE [1] toLinearIndexAcc #-}
   fromLinearIndex _ = id
   {-# INLINE [1] fromLinearIndex #-}
@@ -720,8 +936,8 @@ instance Index Ix1 where
   getDimM ix 1 = pure ix
   getDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
-  setDimM _  1 ix = pure ix
-  setDimM ix d _  = throwM $ IndexDimensionException ix d
+  setDimM _ 1 ix = pure ix
+  setDimM ix d _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   modifyDimM ix 1 f = pure (ix, f ix)
   modifyDimM ix d _ = throwM $ IndexDimensionException ix d
@@ -730,7 +946,7 @@ instance Index Ix1 where
   pullOutDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM Ix0 1 i = pure i
-  insertDimM ix  d _ = throwM $ IndexDimensionException ix d
+  insertDimM ix d _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i
   {-# INLINE [1] pureIndex #-}
@@ -740,10 +956,66 @@ instance Index Ix1 where
   {-# INLINE [1] liftIndex2 #-}
   foldlIndex f = f
   {-# INLINE [1] foldlIndex #-}
-  iterM k0 k1 inc cond = loopM k0 (`cond` k1) (+inc)
+  iterM k0 k1 inc cond = loopM k0 (`cond` k1) (+ inc)
   {-# INLINE iterM #-}
-  iterM_ k0 k1 inc cond = loopM_ k0 (`cond` k1) (+inc)
-  {-# INLINE iterM_ #-}
+  iterF k0 k1 inc cond = loopF k0 (`cond` k1) (+ inc)
+  {-# INLINE iterF #-}
+  stepNextMF k0 k1 inc cond = nextMaybeF k0 (`cond` k1) (+ inc)
+  {-# INLINE stepNextMF #-}
+
+  iterRowMajorST fact scheduler start step n =
+    iterLinearAccST fact scheduler start step (unSz n)
+  {-# INLINE iterRowMajorST #-}
+
+  iterTargetRowMajorA_ iAcc iStart (SafeSz nRes) start stride =
+    iloopA_ (iAcc * nRes + iStart) start (< start + nRes * stride) (+ stride)
+  {-# INLINE iterTargetRowMajorA_ #-}
+
+  iterTargetRowMajorAccM iAcc iStart (SafeSz nRes) start stride =
+    iloopM (iAcc * nRes + iStart) start (< start + nRes * stride) (+ stride)
+  {-# INLINE iterTargetRowMajorAccM #-}
+
+  iterTargetRowMajorAccST iAcc fact scheduler iStart sz start stride initAcc splitAcc action = do
+    let !n = unSz sz
+        !iAccL = iStart + iAcc * n
+    splitWorkWithFactorST fact scheduler start stride n initAcc splitAcc $
+      \ chunkStart _ chunkStartAdj chunkStopAdj acc ->
+        iloopM (iAccL + chunkStart) chunkStartAdj (< chunkStopAdj) (+ stride) acc action
+  {-# INLINE iterTargetRowMajorAccST #-}
+
+  iterTargetRowMajorAccST_ iAcc fact scheduler iStart sz start stride initAcc splitAcc action = do
+    let !n = unSz sz
+        !iAccL = iStart + iAcc * n
+    void $ splitWorkWithFactorST fact scheduler start stride n initAcc splitAcc $
+      \ chunkStart _ chunkStartAdj chunkStopAdj acc ->
+        void $ iloopM (iAccL + chunkStart) chunkStartAdj (< chunkStopAdj) (+ stride) acc action
+  {-# INLINE iterTargetRowMajorAccST_ #-}
+
+
+-- | Same as `iterM`, but don't bother with accumulator and return value.
+--
+-- @since 0.1.0
+iterM_ :: (Index ix, Monad m) => ix -> ix -> ix -> (Int -> Int -> Bool) -> (ix -> m a) -> m ()
+iterM_ sIx eIx incIx cond f = iterM sIx eIx incIx cond () $ \ !ix !a -> f ix >> pure a
+{-# INLINE iterM_ #-}
+{-# DEPRECATED iterM_ "In favor of more lax `iterA_`" #-}
+
+-- | Same as `iterM`, Iterate over a region with specific step, but using
+-- `Applicative` instead of a `Monad` and don't bother with accumulator or return value.
+--
+-- @since 1.0.2
+iterA_ ::
+     forall ix f a. (Index ix, Applicative f)
+  => ix -- ^ Starting index
+  -> ix -- ^ Ending index (not included)
+  -> ix -- ^ Stepping index
+  -> (Int -> Int -> Bool) -- ^ Continuation function. Loop will stop on `False`
+  -> (ix -> f a) -- ^ Action applied to an index. Result is ignored.
+  -> f ()
+iterA_ sIx eIx incIx cond f =
+  iterF sIx eIx incIx cond (pure ()) $ \ix go -> f ix *> go
+{-# INLINE iterA_ #-}
+
 
 
 -- | Exceptions that get thrown when there is a problem with an index, size or dimension.

@@ -7,14 +7,13 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 
 ## Status
 
-| Language | Github Actions | Coveralls |Gitter.im |
-|:--------:|:--------------:|:---------:|:--------:|
+| Language | Github Actions | Coveralls | Gitter.im |
+|:--------:|:--------------:|:---------:|:---------:|
 | ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Build Status](https://github.com/lehins/massiv/workflows/massiv-CI/badge.svg)](https://github.com/lehins/massiv/actions) | [![Coverage Status](https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master)](https://coveralls.io/github/lehins/massiv?branch=master) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 |      Package       | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
-|  [`massiv`](https://github.com/lehins/massiv/tree/master/massiv)|                                       [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv)|                                                                                                        [![Nightly](https://www.stackage.org/package/massiv/badge/nightly)](https://www.stackage.org/nightly/package/massiv)|                                                                                         [![Nightly](https://www.stackage.org/package/massiv/badge/lts)](https://www.stackage.org/lts/package/massiv)|
-|  [`massiv-io`](https://github.com/lehins/massiv-io)|                                [![Hackage](https://img.shields.io/hackage/v/massiv-io.svg)](https://hackage.haskell.org/package/massiv-io)|                                                                                                  [![Nightly](https://www.stackage.org/package/massiv-io/badge/nightly)](https://www.stackage.org/nightly/package/massiv-io)|                                                                                   [![Nightly](https://www.stackage.org/package/massiv-io/badge/lts)](https://www.stackage.org/lts/package/massiv-io)|
+|  [`massiv`](https://github.com/lehins/massiv/tree/master/massiv)|                                       [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv)|                                                                                                        [![Nightly](https://www.stackage.org/package/massiv/badge/nightly)](https://www.stackage.org/nightly/package/massiv)| ](https://www.stackage.org/package/massiv-io/badge/lts)](https://www.stackage.org/lts/package/massiv-io)|
 |  [`massiv-test`](https://github.com/lehins/massiv/tree/master/massiv-test)|                            [![Hackage](https://img.shields.io/hackage/v/massiv-test.svg)](https://hackage.haskell.org/package/massiv-test)|                                                                                              [![Nightly](https://www.stackage.org/package/massiv-test/badge/nightly)](https://www.stackage.org/nightly/package/massiv-test)|                                                                               [![Nightly](https://www.stackage.org/package/massiv-test/badge/lts)](https://www.stackage.org/lts/package/massiv-test)|
 |  [`haskell-scheduler`](https://github.com/lehins/haskell-scheduler)|                                   [![Hackage](https://img.shields.io/hackage/v/scheduler.svg)](https://hackage.haskell.org/package/scheduler)|                                                                                          [![Nightly](https://www.stackage.org/package/scheduler/badge/nightly)](https://www.stackage.org/nightly/package/scheduler)|                                                                   [![Nightly](https://www.stackage.org/package/scheduler/badge/lts)](https://www.stackage.org/lts/package/scheduler)|
 
@@ -666,5 +665,6 @@ Here is also a blog post that compares [Performance of Haskell Array libraries t
 
 # Further resources on learning `massiv`:
 
+* [2021 - Haskell eXchange - Multi-dimensional Arrays that Do Not Exist](#2021---haskell-exchange---multi-dimensional-arrays-that-do-not-exist)
 * [2019 - Monadic Party - Haskell arrays with Massiv](https://github.com/lehins/talks#2019---monadic-party---haskell-arrays-with-massiv)
 * [2018 - Monadic Warsaw #14 - Haskell arrays that are easy and fast](https://github.com/lehins/talks#2018---monadic-warsaw-14---haskell-arrays-that-are-easy-and-fast)

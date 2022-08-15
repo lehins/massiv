@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
 -- |
 -- Module      : Data.Massiv.Vector
--- Copyright   : (c) Alexey Kuleshevich 2020-2021
+-- Copyright   : (c) Alexey Kuleshevich 2020-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

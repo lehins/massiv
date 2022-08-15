@@ -1,8 +1,8 @@
+work-dir: ".stack-work-root"
 resolver: lts-14.27
 packages:
 - 'massiv/'
 - 'massiv-test/'
-flags: {}
 extra-deps:
 - scheduler-2.0.0@sha256:3f053e3ff024fdcdd0983fb901313ef979921bc27e12dec97cd330878ddf78b1,2525
 - unliftio-0.2.18@sha256:87fb541127d21939d3efc49ed9bc3df6eadc9eb06ffa7755fc857f62e15daf20,3395
@@ -14,6 +14,7 @@ extra-deps:
 - splitmix-0.1.0.3@sha256:fc3aae74c467f4b608050bef53aec17904a618731df9407e655d8f3bf8c32d5c,6049
 
 - QuickCheck-2.14.2@sha256:4ce29211223d5e6620ebceba34a3ca9ccf1c10c0cf387d48aea45599222ee5aa,7736
+- quickcheck-classes-base-0.6.1.0@sha256:38b4e40486caa86543dc157bcdf1c3351207a53362703fd90924dcc64e4285d4,3714
 - hspec-2.8.2@sha256:27523f8fb7b84729d7c8160c1db991fc2afac52b1bc4e99f0e239a1321031079,1709
 - hspec-core-2.8.2@sha256:251d8d96d06078ee41c4350c707fbdb9235cbcac3d89ea4a4075f1715d7c3a8f,4955
 - hspec-discover-2.8.2@sha256:e7d9f95303e3763114aa36b7f115bfa131ba490d8018c6468089b502dd208ec8,2183

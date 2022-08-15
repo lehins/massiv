@@ -1,5 +1,5 @@
 name:                massiv
-version:             1.0.1.1
+version:             1.0.2.0
 synopsis:            Massiv (Массив) is an Array Library.
 description:         Multi-dimensional Arrays with fusion, stencils and parallel computation.
 homepage:            https://github.com/lehins/massiv
@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Alexey Kuleshevich
 maintainer:          alexey@kuleshevi.ch
-copyright:           2018-2021 Alexey Kuleshevich
+copyright:           2018-2022 Alexey Kuleshevich
 category:            Array, Data, Data Structures, Parallelism
 build-type:          Simple
 extra-source-files:  README.md
@@ -19,11 +19,12 @@ tested-with:          GHC == 8.0.2
                     , GHC == 8.6.5
                     , GHC == 8.8.4
                     , GHC == 8.10.7
-                    , GHC == 9.0.1
+                    , GHC == 9.0.2
+                    , GHC == 9.2.4
 
 flag unsafe-checks
   description: Enable all the bounds checks for unsafe functions at the cost of
-               significant performance penalty
+               performance penalty
   default: False
   manual: True
 
@@ -75,17 +76,18 @@ library
                      , Data.Massiv.Core.Index.Ix
                      , Data.Massiv.Core.Index.Stride
                      , Data.Massiv.Core.Index.Tuple
-                     , Data.Massiv.Core.Iterator
+                     , Data.Massiv.Core.Index.Iterator
+                     , Data.Massiv.Core.Loop
                      , Data.Massiv.Vector.Unsafe
   build-depends:       base >= 4.9 && < 5
                      , bytestring
                      , deepseq
                      , exceptions
-                     , scheduler >= 2.0.0 && < 3.0.0
+                     , scheduler >= 2.0.0 && < 3
                      , primitive >= 0.7.1.0
                      , random >= 1.2.0
                      , unliftio-core
-                     , vector
+                     , vector >= 0.12
 
   include-dirs: include
   install-includes: massiv.h

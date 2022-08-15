@@ -7,7 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module      : Data.Massiv.Array.Mutable
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -61,6 +61,7 @@ module Data.Massiv.Array.Mutable
   , generateArrayLinear
   , generateArrayS
   , generateArrayLinearS
+  , generateSplitSeedArray
   -- *** Stateful worker threads
   , generateArrayWS
   , generateArrayLinearWS
@@ -108,15 +109,17 @@ module Data.Massiv.Array.Mutable
 
 -- TODO: add fromListM, et al.
 
-import Data.Maybe (fromMaybe)
-import Control.Monad (void, when, unless, (>=>))
-import Control.Monad.ST
+import Control.Monad (unless, void, when, (>=>))
 import Control.Monad.Primitive
+import Control.Monad.ST
 import Control.Scheduler
-import Data.Massiv.Core.Common
-import Data.Massiv.Array.Mutable.Internal
+import Data.IORef
 import Data.Massiv.Array.Delayed.Pull (D)
+import Data.Massiv.Array.Mutable.Internal
+import Data.Massiv.Core.Common
+import Data.Maybe (fromMaybe)
 import Prelude hiding (mapM, read)
+import System.IO.Unsafe (unsafePerformIO)
 
 -- | /O(1)/ - Change the size of a mutable array. Throws
 -- `SizeElementsMismatchException` if total number of elements does not match
@@ -285,7 +288,7 @@ thaw arr =
     marr <- unsafeNew sz
     withMassivScheduler_ (getComp arr) $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork_ scheduler $ unsafeArrayLinearCopy arr start marr start (SafeSz chunkLength)
         let slackLength = totalLength - slackStart
         when (slackLength > 0) $
@@ -346,7 +349,7 @@ freeze comp smarr =
     tmarr <- unsafeNew sz
     withMassivScheduler_ comp $ \scheduler ->
       splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork_ scheduler $ unsafeLinearCopy smarr start tmarr start (SafeSz chunkLength)
         let slackLength = totalLength - slackStart
         when (slackLength > 0) $
@@ -445,7 +448,7 @@ makeMArrayLinearS ::
   -> m (MArray (PrimState m) r ix e)
 makeMArrayLinearS sz f = do
   marr <- unsafeNew sz
-  loopM_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (\ !i -> f i >>= unsafeLinearWrite marr i)
+  loopA_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (\ !i -> f i >>= unsafeLinearWrite marr i)
   return marr
 {-# INLINE makeMArrayLinearS #-}
 
@@ -615,8 +618,8 @@ createArrayST sz action = runST $ createArrayS sz action
 -- @since 0.2.6
 generateArrayS ::
      forall r ix e m. (Manifest r e, Index ix, PrimMonad m)
-  => Sz ix -- ^ Resulting size of the array
-  -> (ix -> m e) -- ^ Element producing generator
+  => Sz ix -- ^ Size of the array
+  -> (ix -> m e) -- ^ Element producing action
   -> m (Array r ix e)
 generateArrayS sz gen = generateArrayLinearS sz (gen . fromLinearIndex sz)
 {-# INLINE generateArrayS #-}
@@ -631,7 +634,7 @@ generateArrayLinearS ::
   -> m (Array r ix e)
 generateArrayLinearS sz gen = do
   marr <- unsafeNew sz
-  loopM_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) $ \i -> gen i >>= unsafeLinearWrite marr i
+  loopA_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) $ \i -> gen i >>= unsafeLinearWrite marr i
   unsafeFreeze Seq marr
 {-# INLINE generateArrayLinearS #-}
 
@@ -657,10 +660,63 @@ generateArrayLinear ::
      forall r ix e m. (MonadUnliftIO m, Manifest r e, Index ix)
   => Comp
   -> Sz ix
-  -> (Int -> m e)
+  -> (Ix1 -> m e)
   -> m (Array r ix e)
 generateArrayLinear comp sz f = makeMArrayLinear comp sz f >>= liftIO . unsafeFreeze comp
 {-# INLINE generateArrayLinear #-}
+
+
+-- | Similar to `Data.Massiv.Array.makeSplitSeedArray`, except it will produce a
+-- Manifest array and will return back the last unused seed together with all
+-- final seeds produced by each scheduled job. This function can be thought of
+-- as an unfolding done in parallel while iterating in a customizable manner.
+--
+-- @since 1.0.2
+generateSplitSeedArray ::
+     forall r ix e g it. (Iterator it, Manifest r e, Index ix)
+  => it -- ^ Iterator
+  -> g -- ^ Initial seed
+  -> (forall s. g -> ST s (g, g))
+     -- ^ An ST action that can split a seed into two independent seeds. It will
+     -- be called the same number of times as the number of jobs that will get
+     -- scheduled during parallelization. Eg. only once for the sequential case.
+  -> Comp -- ^ Computation strategy.
+  -> Sz ix -- ^ Resulting size of the array.
+  -> (forall s. Ix1 -> ix -> g -> ST s (e, g))
+     -- ^ An ST action that produces a value and the next seed. It takes both
+     -- versions of the index, in linear and in multi-dimensional forms, as well
+     -- as the current seeding value. Returns the element for the array cell
+     -- together with the new seed that will be used for the next element
+     -- generation
+  -> (g, [g], Array r ix e)
+  -- ^ Returned values are:
+  --
+  -- * The final split of the supplied seed.
+  --
+  -- * Results of scheduled jobs in the same order that they where scheduled
+  --
+  -- * Final array that was fully filled using the supplied action and iterator.
+generateSplitSeedArray it seed splitSeed comp sz genFunc =
+  unsafePerformIO $ do
+    marr <- unsafeNew sz
+    ref <- newIORef Nothing
+    res <- withSchedulerR comp $ \ scheduler -> do
+      fin <- stToIO $
+        iterTargetFullAccST it scheduler 0 sz seed splitSeed $ \ !i ix !g ->
+          genFunc i ix g >>= \ (x, g') -> g' <$ unsafeLinearWrite marr i x
+      writeIORef ref $ Just fin
+    mFin <- readIORef ref
+    case res of
+      Finished gs |
+        Just fin <- mFin -> do
+          arr <- unsafeFreeze comp marr
+          pure (fin, gs, arr)
+      -- This case does not make much sence for array filling and can only
+      -- happen with a custom 'Iterator' defined outside massiv, therefore it is
+      -- ok to not support it.
+      _ -> error $ "Parallelized array filling finished prematurely. " ++
+           "This feature is not supported by the 'generateSplitSeedArray' function."
+{-# INLINE generateSplitSeedArray #-}
 
 
 -- | Same as `generateArrayWS`, but use linear indexing instead.
@@ -701,21 +757,20 @@ generateArrayWS states sz make = generateArrayLinearWS states sz (make . fromLin
 --
 -- ====__Examples__
 --
--- Create an array with Fibonacci numbers while performing and `IO` action on the accumulator for
--- each element of the array.
+-- Create an array with Fibonacci numbers while performing an `IO` action at each iteration.
 --
 -- >>> import Data.Massiv.Array
--- >>> unfoldrPrimM_ (Sz1 10) (\a@(f0, f1) -> let fn = f0 + f1 in print a >> return (f0, (f1, fn))) (0, 1) :: IO (Array P Ix1 Int)
--- (0,1)
--- (1,1)
--- (1,2)
--- (2,3)
--- (3,5)
--- (5,8)
--- (8,13)
--- (13,21)
--- (21,34)
--- (34,55)
+-- >>> unfoldrPrimM_ (Sz1 10) (\(f0, f1) -> (f0, (f1, f0 + f1)) <$ print f1) (0, 1) :: IO (Array P Ix1 Int)
+-- 1
+-- 1
+-- 2
+-- 3
+-- 5
+-- 8
+-- 13
+-- 21
+-- 34
+-- 55
 -- Array P Seq (Sz1 10)
 --   [ 0, 1, 1, 2, 3, 5, 8, 13, 21, 34 ]
 --
@@ -865,7 +920,7 @@ unfoldlPrimM sz gen acc0 =
 -- @since 0.4.0
 forPrimM_ :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m ()) -> m ()
 forPrimM_ marr f =
-  loopM_ 0 (< totalElem (sizeOfMArray marr)) (+1) (unsafeLinearRead marr >=> f)
+  loopA_ 0 (< totalElem (sizeOfMArray marr)) (+1) (unsafeLinearRead marr >=> f)
 {-# INLINE forPrimM_ #-}
 
 -- | Sequentially loop over a mutable array while modifying each element with an action.
@@ -873,7 +928,7 @@ forPrimM_ marr f =
 -- @since 0.4.0
 forPrimM :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
 forPrimM marr f =
-  loopM_ 0 (< totalElem (sizeOfMArray marr)) (+1) (unsafeLinearModify marr f)
+  loopA_ 0 (< totalElem (sizeOfMArray marr)) (+1) (unsafeLinearModify marr f)
 {-# INLINE forPrimM #-}
 
 
@@ -904,7 +959,7 @@ iforPrimM marr f = iforLinearPrimM marr (f . fromLinearIndex (sizeOfMArray marr)
 iforLinearPrimM_ ::
      (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (Int -> e -> m ()) -> m ()
 iforLinearPrimM_ marr f =
-  loopM_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (\i -> unsafeLinearRead marr i >>= f i)
+  loopA_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (\i -> unsafeLinearRead marr i >>= f i)
 {-# INLINE iforLinearPrimM_ #-}
 
 -- | Sequentially loop over a mutable array while modifying each element with an index aware action.
@@ -913,7 +968,7 @@ iforLinearPrimM_ marr f =
 iforLinearPrimM ::
      (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (Int -> e -> m e) -> m ()
 iforLinearPrimM marr f =
-  loopM_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (\i -> unsafeLinearModify marr (f i) i)
+  loopA_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (\i -> unsafeLinearModify marr (f i) i)
 {-# INLINE iforLinearPrimM #-}
 
 
@@ -943,7 +998,7 @@ ifor2PrimM_ ::
   -> m ()
 ifor2PrimM_ m1 m2 f = do
   let sz = liftIndex2 min (unSz (sizeOfMArray m1)) (unSz (sizeOfMArray m2))
-  iterM_ zeroIndex sz oneIndex (<) $ \ix -> do
+  iterA_ zeroIndex sz oneIndex (<) $ \ix -> do
     e1 <- unsafeRead m1 ix
     e2 <- unsafeRead m2 ix
     f ix e1 e2
@@ -1128,7 +1183,7 @@ readM :: (Manifest r e, Index ix, PrimMonad m, MonadThrow m) =>
         MArray (PrimState m) r ix e -> ix -> m e
 readM marr ix =
   read marr ix >>= \case
-    Just e -> pure e
+    Just e  -> pure e
     Nothing -> throwM $ IndexOutOfBoundsException (sizeOfMArray marr) ix
 {-# INLINE readM #-}
 
@@ -1304,7 +1359,7 @@ zipSwapM_ startIx m1 m2 = do
   let sz1 = sizeOfMArray m1
       sz2 = sizeOfMArray m2
       sz = liftIndex2 min (unSz sz1) (unSz sz2)
-  iterM_ startIx sz oneIndex (<) $ \ix -> do
+  iterA_ startIx sz oneIndex (<) $ \ix -> do
     let i1 = toLinearIndex sz1 ix
         i2 = toLinearIndex sz2 ix
     e1 <- unsafeLinearRead m1 i1

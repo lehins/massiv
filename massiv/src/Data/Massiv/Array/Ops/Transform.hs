@@ -6,7 +6,7 @@
 {-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
 -- |
 -- Module      : Data.Massiv.Array.Ops.Transform
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -542,10 +542,10 @@ appendM n !arr1 !arr2 = do
   let load :: Loader e
       load scheduler !startAt dlWrite _dlSet = do
         scheduleWork scheduler $
-          iterM_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
+          iterA_ zeroIndex (unSz sz1) (pureIndex 1) (<) $ \ix ->
             dlWrite (startAt + toLinearIndex newSz ix) (unsafeIndex arr1 ix)
         scheduleWork scheduler $
-          iterM_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
+          iterA_ zeroIndex (unSz sz2) (pureIndex 1) (<) $ \ix ->
             let i = getDim' ix n
                 ix' = setDim' ix n (i + k1')
              in dlWrite (startAt + toLinearIndex newSz ix') (unsafeIndex arr2 ix)

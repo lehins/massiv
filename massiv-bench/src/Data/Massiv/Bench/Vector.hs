@@ -35,11 +35,11 @@ benchV1 ::
   -> Benchmark
 benchV1 v =
   bgroup "normL2"
-  [ bgroup (showsType @(Vector r e) (" - (" <> show (size v) <> ")"))
+  [ bgroup (showsType @(Vector r e) (" - (" ++ show (size v) ++ ")"))
     [ bench "Seq" $ whnf normL2 v
     , bench "Par" $ whnf (normL2 . setComp Par) v
     ]
-  , bgroup (showsType @(Vector D e) (" - (" <> show (size v) <> ")"))
+  , bgroup (showsType @(Vector D e) (" - (" ++ show (size v) ++ ")"))
     [ bench "Seq" $ whnf (normL2 . delay) v
     , bench "Par" $ whnf (normL2 . delay . setComp Par) v
     ]
@@ -69,7 +69,7 @@ randomVxV =
     (g, a) -> VxV {aVxV = a, bVxV = snd $ randomArrayS g bVxVsize random}
 
 showSizeVxV :: Size r => VxV r e -> String
-showSizeVxV VxV {..} = show n1 <> " X " <> show n2
+showSizeVxV VxV {..} = show n1 ++ " X " ++ show n2
   where
     Sz1 n1 = size aVxV
     Sz1 n2 = size bVxV
@@ -82,11 +82,11 @@ benchVxV ::
 benchVxV vxv@VxV {..} =
   bgroup "dotProduct"
   [
-    bgroup (showsType @(VxV r e) (" - (" <> showSizeVxV vxv <> ")"))
+    bgroup (showsType @(VxV r e) (" - (" ++ showSizeVxV vxv ++ ")"))
     [ bench "Seq" $ whnf (aVxV !.!) bVxV
     , bench "Par" $ whnf (setComp Par aVxV !.!) bVxV
     ]
-  , bgroup (showsType @(VxV D e) (" - (" <> showSizeVxV vxv <> ")"))
+  , bgroup (showsType @(VxV D e) (" - (" ++ showSizeVxV vxv ++ ")"))
     [ bench "Seq" $ whnf ((delay aVxV !.!) . delay) bVxV
     , bench "Par" $ whnf ((delay aVxV !.!) . setComp Par . delay) bVxV
     ]

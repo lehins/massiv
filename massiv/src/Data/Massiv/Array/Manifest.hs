@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.Massiv.Array.Manifest
--- Copyright   : (c) Alexey Kuleshevich 2018-2021
+-- Copyright   : (c) Alexey Kuleshevich 2018-2022
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -17,6 +17,33 @@
 module Data.Massiv.Array.Manifest
   ( -- * Manifest
     Manifest
+  -- ** Generate
+  , generateArray
+  , generateArrayLinear
+  , generateArrayS
+  , generateArrayLinearS
+  , generateSplitSeedArray
+  -- ** Stateful worker threads
+  , generateArrayWS
+  , generateArrayLinearWS
+  -- ** Unfold
+  , unfoldrPrimM_
+  , iunfoldrPrimM_
+  , unfoldrPrimM
+  , iunfoldrPrimM
+  , unfoldlPrimM_
+  , iunfoldlPrimM_
+  , unfoldlPrimM
+  , iunfoldlPrimM
+  -- ** Mapping
+  , forPrimM
+  , forPrimM_
+  , iforPrimM
+  , iforPrimM_
+  , iforLinearPrimM
+  , iforLinearPrimM_
+  , for2PrimM_
+  , ifor2PrimM_
   -- * Boxed
   , B(..)
   , BL(..)

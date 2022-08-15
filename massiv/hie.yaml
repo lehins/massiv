@@ -1,0 +1,5 @@
+cradle:
+  stack:
+    components:
+      - path: "src"
+        component: "massiv:lib"
