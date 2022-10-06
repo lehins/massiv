@@ -24,7 +24,7 @@ import GHC.Exts (inline)
 -- an accumulator function.
 --
 -- /Note/ - Using `Data.Massiv.Array.Stencil.Unsafe.makeUnsafeConvolutionStencil` will be
--- much faster, therefore it is recommended to switch from this function, after manual
+-- slightly faster, therefore it is recommended to switch from this function, after manual
 -- verification that the created stencil behaves as expected.
 --
 -- ==== __Examples__
