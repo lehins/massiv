@@ -17,41 +17,41 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Manifest.Primitive
-  ( P (..)
-  , Array (..)
-  , MArray (..)
-  , Prim
-  , toPrimitiveVector
-  , toPrimitiveMVector
-  , fromPrimitiveVector
-  , fromPrimitiveMVector
-  , toByteArray
-  , toByteArrayM
-  , unwrapByteArray
-  , unwrapByteArrayOffset
-  , unwrapMutableByteArray
-  , unwrapMutableByteArrayOffset
-  , fromByteArray
-  , fromByteArrayM
-  , fromByteArrayOffsetM
-  , toMutableByteArray
-  , toMutableByteArrayM
-  , fromMutableByteArrayM
-  , fromMutableByteArrayOffsetM
-  , fromMutableByteArray
-  , shrinkMutableByteArray
-  , unsafeAtomicReadIntArray
-  , unsafeAtomicWriteIntArray
-  , unsafeCasIntArray
-  , unsafeAtomicModifyIntArray
-  , unsafeAtomicAddIntArray
-  , unsafeAtomicSubIntArray
-  , unsafeAtomicAndIntArray
-  , unsafeAtomicNandIntArray
-  , unsafeAtomicOrIntArray
-  , unsafeAtomicXorIntArray
-  ) where
+module Data.Massiv.Array.Manifest.Primitive (
+  P (..),
+  Array (..),
+  MArray (..),
+  Prim,
+  toPrimitiveVector,
+  toPrimitiveMVector,
+  fromPrimitiveVector,
+  fromPrimitiveMVector,
+  toByteArray,
+  toByteArrayM,
+  unwrapByteArray,
+  unwrapByteArrayOffset,
+  unwrapMutableByteArray,
+  unwrapMutableByteArrayOffset,
+  fromByteArray,
+  fromByteArrayM,
+  fromByteArrayOffsetM,
+  toMutableByteArray,
+  toMutableByteArrayM,
+  fromMutableByteArrayM,
+  fromMutableByteArrayOffsetM,
+  fromMutableByteArray,
+  shrinkMutableByteArray,
+  unsafeAtomicReadIntArray,
+  unsafeAtomicWriteIntArray,
+  unsafeCasIntArray,
+  unsafeAtomicModifyIntArray,
+  unsafeAtomicAddIntArray,
+  unsafeAtomicSubIntArray,
+  unsafeAtomicAndIntArray,
+  unsafeAtomicNandIntArray,
+  unsafeAtomicOrIntArray,
+  unsafeAtomicXorIntArray,
+) where
 
 import Control.DeepSeq (NFData (..), deepseq)
 import Control.Monad

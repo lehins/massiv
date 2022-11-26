@@ -15,25 +15,25 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Manifest.Storable
-  ( S (..)
-  , Array (..)
-  , MArray (..)
-  , Storable
-  , toStorableVector
-  , toStorableMVector
-  , fromStorableVector
-  , fromStorableMVector
-  , withPtr
-  , unsafeWithPtr
-  , unsafeMallocMArray
-  , unsafeArrayToForeignPtr
-  , unsafeMArrayToForeignPtr
-  , unsafeArrayFromForeignPtr
-  , unsafeArrayFromForeignPtr0
-  , unsafeMArrayFromForeignPtr
-  , unsafeMArrayFromForeignPtr0
-  ) where
+module Data.Massiv.Array.Manifest.Storable (
+  S (..),
+  Array (..),
+  MArray (..),
+  Storable,
+  toStorableVector,
+  toStorableMVector,
+  fromStorableVector,
+  fromStorableMVector,
+  withPtr,
+  unsafeWithPtr,
+  unsafeMallocMArray,
+  unsafeArrayToForeignPtr,
+  unsafeMArrayToForeignPtr,
+  unsafeArrayFromForeignPtr,
+  unsafeArrayFromForeignPtr0,
+  unsafeMArrayFromForeignPtr,
+  unsafeMArrayFromForeignPtr0,
+) where
 
 import Control.DeepSeq (NFData (..), deepseq)
 import Control.Exception

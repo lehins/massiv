@@ -11,92 +11,92 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Ops.Fold
-  ( -- ** Unstructured folds
-    -- $unstruct_folds
-    fold
-  , ifoldMono
-  , foldMono
-  , ifoldSemi
-  , foldSemi
-  , foldOuterSlice
-  , ifoldOuterSlice
-  , foldInnerSlice
-  , ifoldInnerSlice
-  , minimumM
-  , minimum'
-  , maximumM
-  , maximum'
-  , sum
-  , product
-  , and
-  , or
-  , all
-  , any
-  , elem
-  , eqArrays
-  , compareArrays
+module Data.Massiv.Array.Ops.Fold (
+  -- ** Unstructured folds
+  -- $unstruct_folds
+  fold,
+  ifoldMono,
+  foldMono,
+  ifoldSemi,
+  foldSemi,
+  foldOuterSlice,
+  ifoldOuterSlice,
+  foldInnerSlice,
+  ifoldInnerSlice,
+  minimumM,
+  minimum',
+  maximumM,
+  maximum',
+  sum,
+  product,
+  and,
+  or,
+  all,
+  any,
+  elem,
+  eqArrays,
+  compareArrays,
 
-    -- ** Single dimension folds
+  -- ** Single dimension folds
 
-    -- *** Safe inner most
+  -- *** Safe inner most
 
   --
   -- Folding along the inner most dimension will always be faster when compared to doing the same
   -- operation along any other dimension, this is due to the fact that inner most folds follow the
   -- memory layout of data.
-  , ifoldlInner
-  , foldlInner
-  , ifoldrInner
-  , foldrInner
-  , foldInner
+  ifoldlInner,
+  foldlInner,
+  ifoldrInner,
+  foldrInner,
+  foldInner,
 
-    -- *** Type safe within
-  , ifoldlWithin
-  , foldlWithin
-  , ifoldrWithin
-  , foldrWithin
-  , foldWithin
+  -- *** Type safe within
+  ifoldlWithin,
+  foldlWithin,
+  ifoldrWithin,
+  foldrWithin,
+  foldWithin,
 
-    -- *** Partial within
-  , ifoldlWithin'
-  , foldlWithin'
-  , ifoldrWithin'
-  , foldrWithin'
-  , foldWithin'
+  -- *** Partial within
+  ifoldlWithin',
+  foldlWithin',
+  ifoldrWithin',
+  foldrWithin',
+  foldWithin',
 
-    -- ** Sequential folds
-    -- $seq_folds
-  , foldlS
-  , foldrS
-  , ifoldlS
-  , ifoldrS
+  -- ** Sequential folds
+  -- $seq_folds
+  foldlS,
+  foldrS,
+  ifoldlS,
+  ifoldrS,
 
-    -- *** Monadic
-  , foldlM
-  , foldrM
-  , foldlM_
-  , foldrM_
-  , ifoldlM
-  , ifoldrM
-  , ifoldlM_
-  , ifoldrM_
+  -- *** Monadic
+  foldlM,
+  foldrM,
+  foldlM_,
+  foldrM_,
+  ifoldlM,
+  ifoldrM,
+  ifoldlM_,
+  ifoldrM_,
 
-    -- *** Special folds
-  , foldrFB
-  , lazyFoldlS
-  , lazyFoldrS
+  -- *** Special folds
+  foldrFB,
+  lazyFoldlS,
+  lazyFoldrS,
 
-    -- ** Parallel folds
-    -- $par_folds
-  , foldlP
-  , foldrP
-  , ifoldlP
-  , ifoldrP
-  , ifoldlIO
-  , ifoldrIO
+  -- ** Parallel folds
+  -- $par_folds
+  foldlP,
+  foldrP,
+  ifoldlP,
+  ifoldrP,
+  ifoldlIO,
+  ifoldrIO,
   -- , splitReduce
-  ) where
+) where
 
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Ops.Construct

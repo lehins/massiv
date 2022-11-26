@@ -14,16 +14,16 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Manifest.Unboxed
-  ( U (..)
-  , Unbox
-  , Array (..)
-  , MArray (..)
-  , toUnboxedVector
-  , toUnboxedMVector
-  , fromUnboxedVector
-  , fromUnboxedMVector
-  ) where
+module Data.Massiv.Array.Manifest.Unboxed (
+  U (..),
+  Unbox,
+  Array (..),
+  MArray (..),
+  toUnboxedVector,
+  toUnboxedMVector,
+  fromUnboxedVector,
+  fromUnboxedMVector,
+) where
 
 import Control.DeepSeq (NFData (..), deepseq)
 import Control.Monad.Primitive (stToPrim)

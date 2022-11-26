@@ -171,7 +171,7 @@ toByteString ::
 toByteString = castToByteString .
 #if __GLASGOW_HASKELL__ >= 820
   convert
-  {- For ghc-8.0 `covert` results in "internal error: ARR_WORDS object entered!" -}
+  {- For ghc-8.0 `convert` results in "internal error: ARR_WORDS object entered!" -}
 #else
   compute
 #endif

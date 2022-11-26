@@ -23,45 +23,45 @@
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Index.Internal
-  ( Sz (SafeSz)
-  , pattern Sz
-  , pattern Sz1
-  , unSz
-  , zeroSz
-  , oneSz
-  , liftSz
-  , liftSz2
-  , consSz
-  , unconsSz
-  , snocSz
-  , unsnocSz
-  , setSzM
-  , insertSzM
-  , pullOutSzM
-  , mkSzM
-  , Dim (..)
-  , Dimension (DimN)
-  , pattern Dim1
-  , pattern Dim2
-  , pattern Dim3
-  , pattern Dim4
-  , pattern Dim5
-  , IsIndexDimension
-  , IsDimValid
-  , ReportInvalidDim
-  , Lower
-  , Index (..)
-  , iterA_
-  , iterM_
-  , Ix0 (..)
-  , type Ix1
-  , pattern Ix1
-  , IndexException (..)
-  , SizeException (..)
-  , ShapeException (..)
-  , showsPrecWrapped
-  ) where
+module Data.Massiv.Core.Index.Internal (
+  Sz (SafeSz),
+  pattern Sz,
+  pattern Sz1,
+  unSz,
+  zeroSz,
+  oneSz,
+  liftSz,
+  liftSz2,
+  consSz,
+  unconsSz,
+  snocSz,
+  unsnocSz,
+  setSzM,
+  insertSzM,
+  pullOutSzM,
+  mkSzM,
+  Dim (..),
+  Dimension (DimN),
+  pattern Dim1,
+  pattern Dim2,
+  pattern Dim3,
+  pattern Dim4,
+  pattern Dim5,
+  IsIndexDimension,
+  IsDimValid,
+  ReportInvalidDim,
+  Lower,
+  Index (..),
+  iterA_,
+  iterM_,
+  Ix0 (..),
+  type Ix1,
+  pattern Ix1,
+  IndexException (..),
+  SizeException (..),
+  ShapeException (..),
+  showsPrecWrapped,
+) where
 
 import Control.DeepSeq
 import Control.Exception (Exception (..), throw)

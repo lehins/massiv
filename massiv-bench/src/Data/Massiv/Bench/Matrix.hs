@@ -5,19 +5,19 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.Massiv.Bench.Matrix
-  ( MxM (..)
-  , randomMxM
-  , benchMxM
-  , MxV (..)
-  , randomMxV
-  , benchMxV
-  , VxM (..)
-  , randomVxM
-  , benchVxM
-  , showsType
-  , stdGen
-  ) where
+module Data.Massiv.Bench.Matrix (
+  MxM (..),
+  randomMxM,
+  benchMxM,
+  MxV (..),
+  randomMxV,
+  benchMxV,
+  VxM (..),
+  randomVxM,
+  benchVxM,
+  showsType,
+  stdGen,
+) where
 
 import Control.DeepSeq
 import Criterion.Main

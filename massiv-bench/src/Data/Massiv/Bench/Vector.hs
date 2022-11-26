@@ -5,14 +5,14 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.Massiv.Bench.Vector
-  ( randomV1
-  , benchV1
-  , VxV (..)
-  , randomVxV
-  , benchVxV
-  , showsType
-  ) where
+module Data.Massiv.Bench.Vector (
+  randomV1,
+  benchV1,
+  VxV (..),
+  randomVxV,
+  benchVxV,
+  showsType,
+) where
 
 import Control.DeepSeq
 import Criterion.Main

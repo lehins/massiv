@@ -11,13 +11,13 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Stencil.Unsafe
-  ( -- * Stencil
-    makeUnsafeStencil
-  , makeUnsafeConvolutionStencil
-  , makeUnsafeCorrelationStencil
-  , unsafeTransformStencil
-  ) where
+module Data.Massiv.Array.Stencil.Unsafe (
+  -- * Stencil
+  makeUnsafeStencil,
+  makeUnsafeConvolutionStencil,
+  makeUnsafeCorrelationStencil,
+  unsafeTransformStencil,
+) where
 
 import Data.Massiv.Array.Stencil.Internal
 import Data.Massiv.Core.Common

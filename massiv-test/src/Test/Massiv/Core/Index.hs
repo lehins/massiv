@@ -11,30 +11,30 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
-module Test.Massiv.Core.Index
-  ( DimIx (..)
-  , SzNE (..)
-  , SzIx (..)
-  , SzTiny (..)
-  , ixToList
-  , arbitraryIx1
-  , toIx
+module Test.Massiv.Core.Index (
+  DimIx (..),
+  SzNE (..),
+  SzIx (..),
+  SzTiny (..),
+  ixToList,
+  arbitraryIx1,
+  toIx,
 
-    -- * Specs
+  -- * Specs
 
-    -- ** Index
-  , specIx1
-  , ixSpec
-  , ix2UpSpec
-  , ixNumSpec
+  -- ** Index
+  specIx1,
+  ixSpec,
+  ix2UpSpec,
+  ixNumSpec,
 
-    -- ** Size
-  , szNumSpec
-  , szSpec
+  -- ** Size
+  szNumSpec,
+  szSpec,
 
-    -- * Re-exports
-  , module Data.Massiv.Core.Index
-  ) where
+  -- * Re-exports
+  module Data.Massiv.Core.Index,
+) where
 
 import Control.DeepSeq
 import Control.Exception (throw)
@@ -208,9 +208,8 @@ prop_CountElements thresh sz =
 
 prop_IterMonotonic :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonic thresh sz =
-  totalElem sz < thresh ==>
-    fst $
-      iter (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono
+  (totalElem sz < thresh) ==>
+    fst (iter (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono)
   where
     mono curIx (prevMono, prevIx) =
       let isMono = prevMono && prevIx < curIx
@@ -218,7 +217,7 @@ prop_IterMonotonic thresh sz =
 
 prop_IterMonotonicM :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonicM thresh sz =
-  totalElem sz < thresh ==>
+  (totalElem sz < thresh) ==>
     fst $
       runIdentity $
         iterM (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono
@@ -229,9 +228,8 @@ prop_IterMonotonicM thresh sz =
 
 prop_IterMonotonicBackwards :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonicBackwards thresh sz@(Sz szix) =
-  totalElem sz < thresh ==>
-    fst $
-      iter (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono
+  (totalElem sz < thresh) ==>
+    fst (iter (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono)
   where
     mono curIx (prevMono, prevIx) =
       let isMono = prevMono && prevIx > curIx
@@ -239,7 +237,7 @@ prop_IterMonotonicBackwards thresh sz@(Sz szix) =
 
 prop_IterMonotonicBackwardsM :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonicBackwardsM thresh sz@(Sz szix) =
-  totalElem sz < thresh ==>
+  (totalElem sz < thresh) ==>
     fst $
       runIdentity $
         iterM (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono

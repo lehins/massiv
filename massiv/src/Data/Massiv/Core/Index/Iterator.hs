@@ -11,25 +11,25 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Index.Iterator
-  ( Iterator (..)
+module Data.Massiv.Core.Index.Iterator (
+  Iterator (..),
 
-    -- * Extra iterator functions
-  , iterTargetAccST
-  , iterTargetAccST_
-  , iterTargetFullWithStrideAccST
-  , iterTargetFullWithStrideAccST_
-  , iterTargetST_
-  , iterTargetFullWithStrideST_
+  -- * Extra iterator functions
+  iterTargetAccST,
+  iterTargetAccST_,
+  iterTargetFullWithStrideAccST,
+  iterTargetFullWithStrideAccST_,
+  iterTargetST_,
+  iterTargetFullWithStrideST_,
 
-    -- * Iterator implementations
-  , RowMajor (RowMajor)
-  , defRowMajor
-  , RowMajorLinear (RowMajorLinear)
-  , defRowMajorLinear
-  , RowMajorUnbalanced (RowMajorUnbalanced)
-  , defRowMajorUnbalanced
-  ) where
+  -- * Iterator implementations
+  RowMajor (RowMajor),
+  defRowMajor,
+  RowMajorLinear (RowMajorLinear),
+  defRowMajorLinear,
+  RowMajorUnbalanced (RowMajorUnbalanced),
+  defRowMajorUnbalanced,
+) where
 
 import Control.Monad
 import Control.Monad.ST

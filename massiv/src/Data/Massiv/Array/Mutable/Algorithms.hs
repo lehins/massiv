@@ -8,12 +8,12 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Mutable.Algorithms
-  ( quicksortM_
-  , quicksortByM_
-  , unstablePartitionM
-  , iterateUntilM
-  ) where
+module Data.Massiv.Array.Mutable.Algorithms (
+  quicksortM_,
+  quicksortByM_,
+  unstablePartitionM,
+  iterateUntilM,
+) where
 
 import Data.Massiv.Array.Manifest.Internal (iterateUntilM)
 import Data.Massiv.Array.Ops.Sort

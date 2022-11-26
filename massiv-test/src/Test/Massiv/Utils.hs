@@ -4,30 +4,30 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Massiv.Utils
-  ( showsType
-  , showsArrayType
-  , assertException
-  , assertExceptionIO
-  , assertSomeException
-  , assertSomeExceptionIO
-  , toStringException
-  , selectErrorCall
-  , ExpectedException (..)
-  , applyFun2Compat
-  , expectProp
-  , propIO
-  , specLaws
+module Test.Massiv.Utils (
+  showsType,
+  showsArrayType,
+  assertException,
+  assertExceptionIO,
+  assertSomeException,
+  assertSomeExceptionIO,
+  toStringException,
+  selectErrorCall,
+  ExpectedException (..),
+  applyFun2Compat,
+  expectProp,
+  propIO,
+  specLaws,
 
-    -- * Epsilon comparison
-  , epsilonExpect
-  , epsilonFoldableExpect
-  , epsilonMaybeEq
-  , epsilonEq
-  , epsilonEqDouble
-  , epsilonEqFloat
-  , module X
-  ) where
+  -- * Epsilon comparison
+  epsilonExpect,
+  epsilonFoldableExpect,
+  epsilonMaybeEq,
+  epsilonEq,
+  epsilonEqDouble,
+  epsilonEqFloat,
+  module X,
+) where
 
 import Control.DeepSeq as X (NFData, deepseq)
 import Control.Exception (ErrorCall (..))

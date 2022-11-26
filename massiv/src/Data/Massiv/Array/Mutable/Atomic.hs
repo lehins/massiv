@@ -11,19 +11,19 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Mutable.Atomic
-  ( -- * Atomic element-wise mutation
-    atomicReadIntArray
-  , atomicWriteIntArray
-  , atomicModifyIntArray
-  , atomicAddIntArray
-  , atomicSubIntArray
-  , atomicAndIntArray
-  , atomicNandIntArray
-  , atomicOrIntArray
-  , atomicXorIntArray
-  , casIntArray
-  ) where
+module Data.Massiv.Array.Mutable.Atomic (
+  -- * Atomic element-wise mutation
+  atomicReadIntArray,
+  atomicWriteIntArray,
+  atomicModifyIntArray,
+  atomicAddIntArray,
+  atomicSubIntArray,
+  atomicAndIntArray,
+  atomicNandIntArray,
+  atomicOrIntArray,
+  atomicXorIntArray,
+  casIntArray,
+) where
 
 import Control.Monad.Primitive
 import Data.Massiv.Array.Manifest.Primitive

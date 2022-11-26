@@ -6,14 +6,14 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Test.Massiv.Core.Common
-  ( ArrNE (..)
-  , ArrTiny (..)
-  , ArrTinyNE (..)
-  , ArrIx (..)
-  , ArrDW (..)
-  , module X
-  ) where
+module Test.Massiv.Core.Common (
+  ArrNE (..),
+  ArrTiny (..),
+  ArrTinyNE (..),
+  ArrIx (..),
+  ArrDW (..),
+  module X,
+) where
 
 import Data.Massiv.Array
 import Test.Massiv.Core.Index as X

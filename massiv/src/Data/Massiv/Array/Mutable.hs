@@ -13,111 +13,111 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Mutable
-  ( -- ** Size
-    sizeOfMArray
-  , msize
-  , resizeMArrayM
-  , flattenMArray
-  , outerSliceMArrayM
-  , outerSlicesMArray
+module Data.Massiv.Array.Mutable (
+  -- ** Size
+  sizeOfMArray,
+  msize,
+  resizeMArrayM,
+  flattenMArray,
+  outerSliceMArrayM,
+  outerSlicesMArray,
 
-    -- ** Element-wise mutation
-  , read
-  , readM
-  , write
-  , write_
-  , writeM
-  , modify
-  , modify_
-  , modifyM
-  , modifyM_
-  , swap
-  , swap_
-  , swapM
-  , swapM_
-  , zipSwapM_
+  -- ** Element-wise mutation
+  read,
+  readM,
+  write,
+  write_,
+  writeM,
+  modify,
+  modify_,
+  modifyM,
+  modifyM_,
+  swap,
+  swap_,
+  swapM,
+  swapM_,
+  zipSwapM_,
 
-    -- ** Operations on @MArray@
+  -- ** Operations on @MArray@
 
-    -- *** Immutable conversion
-  , thaw
-  , thawS
-  , freeze
-  , freezeS
+  -- *** Immutable conversion
+  thaw,
+  thawS,
+  freeze,
+  freezeS,
 
-    -- *** Create mutable
-  , newMArray
-  , newMArray'
-  , makeMArray
-  , makeMArrayLinear
-  , makeMArrayS
-  , makeMArrayLinearS
+  -- *** Create mutable
+  newMArray,
+  newMArray',
+  makeMArray,
+  makeMArrayLinear,
+  makeMArrayS,
+  makeMArrayLinearS,
 
-    -- *** Create pure
-  , createArray_
-  , createArray
-  , createArrayS_
-  , createArrayS
-  , createArrayST_
-  , createArrayST
+  -- *** Create pure
+  createArray_,
+  createArray,
+  createArrayS_,
+  createArrayS,
+  createArrayST_,
+  createArrayST,
 
-    -- *** Generate
-  , generateArray
-  , generateArrayLinear
-  , generateArrayS
-  , generateArrayLinearS
-  , generateSplitSeedArray
+  -- *** Generate
+  generateArray,
+  generateArrayLinear,
+  generateArrayS,
+  generateArrayLinearS,
+  generateSplitSeedArray,
 
-    -- *** Stateful worker threads
-  , generateArrayWS
-  , generateArrayLinearWS
+  -- *** Stateful worker threads
+  generateArrayWS,
+  generateArrayLinearWS,
 
-    -- *** Unfold
-  , unfoldrPrimM_
-  , iunfoldrPrimM_
-  , unfoldrPrimM
-  , iunfoldrPrimM
-  , unfoldlPrimM_
-  , iunfoldlPrimM_
-  , unfoldlPrimM
-  , iunfoldlPrimM
+  -- *** Unfold
+  unfoldrPrimM_,
+  iunfoldrPrimM_,
+  unfoldrPrimM,
+  iunfoldrPrimM,
+  unfoldlPrimM_,
+  iunfoldlPrimM_,
+  unfoldlPrimM,
+  iunfoldlPrimM,
 
-    -- *** Mapping
-  , forPrimM
-  , forPrimM_
-  , iforPrimM
-  , iforPrimM_
-  , iforLinearPrimM
-  , iforLinearPrimM_
-  , for2PrimM_
-  , ifor2PrimM_
+  -- *** Mapping
+  forPrimM,
+  forPrimM_,
+  iforPrimM,
+  iforPrimM_,
+  iforLinearPrimM,
+  iforLinearPrimM_,
+  for2PrimM_,
+  ifor2PrimM_,
 
-    -- *** Modify
-  , withMArray
-  , withMArray_
-  , withLoadMArray_
-  , withMArrayS
-  , withLoadMArrayS
-  , withMArrayS_
-  , withLoadMArrayS_
-  , withMArrayST
-  , withLoadMArrayST
-  , withMArrayST_
-  , withLoadMArrayST_
+  -- *** Modify
+  withMArray,
+  withMArray_,
+  withLoadMArray_,
+  withMArrayS,
+  withLoadMArrayS,
+  withMArrayS_,
+  withLoadMArrayS_,
+  withMArrayST,
+  withLoadMArrayST,
+  withMArrayST_,
+  withLoadMArrayST_,
 
-    -- *** Initialize
-  , initialize
-  , initializeNew
+  -- *** Initialize
+  initialize,
+  initializeNew,
 
-    -- ** Computation
-  , Manifest
-  , MArray
-  , RealWorld
-  , computeInto
-  , loadArray
-  , loadArrayS
-  ) where
+  -- ** Computation
+  Manifest,
+  MArray,
+  RealWorld,
+  computeInto,
+  loadArray,
+  loadArrayS,
+) where
 
 -- TODO: add fromListM, et al.
 

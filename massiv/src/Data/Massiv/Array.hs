@@ -77,97 +77,97 @@
 -- import Prelude as P
 -- import Data.Massiv.Array as A
 -- @
-module Data.Massiv.Array
-  ( -- * Construct
-      module Data.Massiv.Array.Ops.Construct
+module Data.Massiv.Array (
+  -- * Construct
+  module Data.Massiv.Array.Ops.Construct,
 
-    -- * Compute
-  , getComp
-  , setComp
-  , appComp
-  , compute
-  , computeS
-  , computeP
-  , computeIO
-  , computePrimM
-  , computeAs
-  , computeProxy
-  , computeSource
-  , computeWithStride
-  , computeWithStrideAs
-  , clone
-  , convert
-  , convertAs
-  , convertProxy
-  , fromRaggedArrayM
-  , fromRaggedArray'
+  -- * Compute
+  getComp,
+  setComp,
+  appComp,
+  compute,
+  computeS,
+  computeP,
+  computeIO,
+  computePrimM,
+  computeAs,
+  computeProxy,
+  computeSource,
+  computeWithStride,
+  computeWithStrideAs,
+  clone,
+  convert,
+  convertAs,
+  convertProxy,
+  fromRaggedArrayM,
+  fromRaggedArray',
 
-    -- * Vector
-  , module Data.Massiv.Vector
+  -- * Vector
+  module Data.Massiv.Vector,
 
-    -- * Size
-  , size
-  , elemsCount
-  , isEmpty
-  , isNotEmpty
-  , isNull
-  , isNotNull
+  -- * Size
+  size,
+  elemsCount,
+  isEmpty,
+  isNotEmpty,
+  isNull,
+  isNotNull,
 
-    -- * Indexing
-  , (!?)
-  , (!)
-  , (??)
-  , indexM
-  , index
-  , index'
-  , defaultIndex
-  , borderIndex
-  , evaluateM
-  , evaluate'
+  -- * Indexing
+  (!?),
+  (!),
+  (??),
+  indexM,
+  index,
+  index',
+  defaultIndex,
+  borderIndex,
+  evaluateM,
+  evaluate',
 
-    -- * Mapping
-  , module Data.Massiv.Array.Ops.Map
+  -- * Mapping
+  module Data.Massiv.Array.Ops.Map,
 
-    -- * Folding
-    -- $folding
-  , module Data.Massiv.Array.Ops.Fold
+  -- * Folding
+  -- $folding
+  module Data.Massiv.Array.Ops.Fold,
 
-    -- * Transforming
-  , module Data.Massiv.Array.Ops.Transform
+  -- * Transforming
+  module Data.Massiv.Array.Ops.Transform,
 
-    -- * Slicing
-  , module Data.Massiv.Array.Ops.Slice
+  -- * Slicing
+  module Data.Massiv.Array.Ops.Slice,
 
-    -- * Algorithms
+  -- * Algorithms
 
-    -- ** Sorting
-  , quicksort
-  , quicksortBy
-  , quicksortByM
-  , tally
+  -- ** Sorting
+  quicksort,
+  quicksortBy,
+  quicksortByM,
+  tally,
 
-    -- ** Iterations
-  , iterateUntil
+  -- ** Iterations
+  iterateUntil,
 
-    -- * Conversion
-  , module Data.Massiv.Array.Manifest.List
+  -- * Conversion
+  module Data.Massiv.Array.Manifest.List,
 
-    -- * Mutable
-  , module Data.Massiv.Array.Mutable
+  -- * Mutable
+  module Data.Massiv.Array.Mutable,
 
-    -- * Core
-  , module Data.Massiv.Core
+  -- * Core
+  module Data.Massiv.Core,
 
-    -- * Representations
-  , module Data.Massiv.Array.Delayed
-  , module Data.Massiv.Array.Manifest
+  -- * Representations
+  module Data.Massiv.Array.Delayed,
+  module Data.Massiv.Array.Manifest,
 
-    -- * Stencil
-  , module Data.Massiv.Array.Stencil
+  -- * Stencil
+  module Data.Massiv.Array.Stencil,
 
-    -- * Numeric Operations
-  , module Data.Massiv.Array.Numeric
-  ) where
+  -- * Numeric Operations
+  module Data.Massiv.Array.Numeric,
+) where
 
 import Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Manifest
@@ -185,24 +185,24 @@ import Data.Massiv.Array.Stencil
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
 import Data.Massiv.Vector
-import Prelude as P hiding
-  ( all
-  , and
-  , any
-  , enumFromTo
-  , foldl
-  , foldr
-  , mapM
-  , mapM_
-  , maximum
-  , minimum
-  , or
-  , product
-  , replicate
-  , splitAt
-  , sum
-  , zip
-  )
+import Prelude as P hiding (
+  all,
+  and,
+  any,
+  enumFromTo,
+  foldl,
+  foldr,
+  mapM,
+  mapM_,
+  maximum,
+  minimum,
+  or,
+  product,
+  replicate,
+  splitAt,
+  sum,
+  zip,
+ )
 
 -- $folding
 --

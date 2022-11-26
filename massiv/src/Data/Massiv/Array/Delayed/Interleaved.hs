@@ -13,12 +13,12 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Delayed.Interleaved
-  ( DI (..)
-  , Array (..)
-  , toInterleaved
-  , fromInterleaved
-  ) where
+module Data.Massiv.Array.Delayed.Interleaved (
+  DI (..),
+  Array (..),
+  toInterleaved,
+  fromInterleaved,
+) where
 
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Core.Common

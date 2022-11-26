@@ -5,20 +5,20 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Massiv.Array.Mutable
-  ( -- * Spec for safe Mutable instance
-    mutableSpec
-  , prop_GenerateArray
-  , prop_iMapiMapM
-  , prop_Shrink
-  , prop_GrowShrink
-  , prop_unfoldrList
-  , prop_unfoldrReverseUnfoldl
-  , prop_toStreamArrayManifest
+module Test.Massiv.Array.Mutable (
+  -- * Spec for safe Mutable instance
+  mutableSpec,
+  prop_GenerateArray,
+  prop_iMapiMapM,
+  prop_Shrink,
+  prop_GrowShrink,
+  prop_unfoldrList,
+  prop_unfoldrReverseUnfoldl,
+  prop_toStreamArrayManifest,
 
-    -- * Atomic ops spec
-  , atomicIntSpec
-  ) where
+  -- * Atomic ops spec
+  atomicIntSpec,
+) where
 
 import Control.Scheduler
 import Data.Bits

@@ -9,15 +9,15 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Index.Stride
-  ( Stride (SafeStride)
-  , pattern Stride
-  , unStride
-  , oneStride
-  , toLinearIndexStride
-  , strideStart
-  , strideSize
-  ) where
+module Data.Massiv.Core.Index.Stride (
+  Stride (SafeStride),
+  pattern Stride,
+  unStride,
+  oneStride,
+  toLinearIndexStride,
+  strideStart,
+  strideSize,
+) where
 
 import Control.DeepSeq (NFData)
 import Data.Massiv.Core.Index.Internal

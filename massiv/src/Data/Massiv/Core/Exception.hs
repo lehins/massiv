@@ -11,15 +11,15 @@
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Exception
-  ( throwImpossible
-  , throwEither
-  , Uninitialized (..)
-  , guardNumberOfElements
-  , Exception (..)
-  , SomeException
-  , HasCallStack
-  ) where
+module Data.Massiv.Core.Exception (
+  throwImpossible,
+  throwEither,
+  Uninitialized (..),
+  guardNumberOfElements,
+  Exception (..),
+  SomeException,
+  HasCallStack,
+) where
 
 import Control.Exception
 import Control.Monad

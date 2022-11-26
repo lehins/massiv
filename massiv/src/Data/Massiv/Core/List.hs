@@ -17,15 +17,15 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.List
-  ( L (..)
-  , Array (..)
-  , List (..)
-  , toListArray
-  , showsArrayPrec
-  , showArrayList
-  , ListItem
-  ) where
+module Data.Massiv.Core.List (
+  L (..),
+  Array (..),
+  List (..),
+  toListArray,
+  showsArrayPrec,
+  showArrayList,
+  ListItem,
+) where
 
 import Control.Monad (unless, when)
 import Control.Scheduler

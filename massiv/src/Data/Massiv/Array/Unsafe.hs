@@ -11,116 +11,116 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Unsafe
-  ( -- * Creation
-    unsafeMakeLoadArray
-  , unsafeMakeLoadArrayAdjusted
+module Data.Massiv.Array.Unsafe (
+  -- * Creation
+  unsafeMakeLoadArray,
+  unsafeMakeLoadArrayAdjusted,
 
-    -- * Indexing
-  , Sz (SafeSz)
-  , Stride (SafeStride)
-  , unsafeIndex
-  , unsafeLinearIndex
-  , unsafeLinearIndexM
+  -- * Indexing
+  Sz (SafeSz),
+  Stride (SafeStride),
+  unsafeIndex,
+  unsafeLinearIndex,
+  unsafeLinearIndexM,
 
-    -- * Manipulations
-  , unsafeBackpermute
-  , unsafeResize
-  , unsafeExtract
-  , unsafeTransform
-  , unsafeTransform2
+  -- * Manipulations
+  unsafeBackpermute,
+  unsafeResize,
+  unsafeExtract,
+  unsafeTransform,
+  unsafeTransform2,
 
-    -- * Slicing
-  , unsafeSlice
-  , unsafeOuterSlice
-  , unsafeInnerSlice
-  , unsafeLinearSlice
+  -- * Slicing
+  unsafeSlice,
+  unsafeOuterSlice,
+  unsafeInnerSlice,
+  unsafeLinearSlice,
 
-    -- * Mutable interface
-  , unsafeResizeMArray
-  , unsafeLinearSliceMArray
-  , unsafeThaw
-  , unsafeFreeze
-  , unsafeNew
-  , unsafeLoadIntoST
-  , unsafeLoadIntoIO
-  , unsafeLoadIntoS
-  , unsafeLoadIntoM
-  , unsafeCreateArray
-  , unsafeCreateArray_
-  , unsafeCreateArrayS
+  -- * Mutable interface
+  unsafeResizeMArray,
+  unsafeLinearSliceMArray,
+  unsafeThaw,
+  unsafeFreeze,
+  unsafeNew,
+  unsafeLoadIntoST,
+  unsafeLoadIntoIO,
+  unsafeLoadIntoS,
+  unsafeLoadIntoM,
+  unsafeCreateArray,
+  unsafeCreateArray_,
+  unsafeCreateArrayS,
 
-    -- ** Read
-  , unsafeRead
-  , unsafeLinearRead
+  -- ** Read
+  unsafeRead,
+  unsafeLinearRead,
 
-    -- ** Write
-  , unsafeWrite
-  , unsafeLinearWrite
+  -- ** Write
+  unsafeWrite,
+  unsafeLinearWrite,
 
-    -- ** Modify
-  , unsafeModify
-  , unsafeLinearModify
+  -- ** Modify
+  unsafeModify,
+  unsafeLinearModify,
 
-    -- ** Swap
-  , unsafeSwap
-  , unsafeLinearSwap
+  -- ** Swap
+  unsafeSwap,
+  unsafeLinearSwap,
 
-    -- ** Range modification
-  , unsafeLinearSet
-  , unsafeLinearCopy
-  , unsafeArrayLinearCopy
+  -- ** Range modification
+  unsafeLinearSet,
+  unsafeLinearCopy,
+  unsafeArrayLinearCopy,
 
-    -- ** Resizing
-  , unsafeLinearShrink
-  , unsafeLinearGrow
+  -- ** Resizing
+  unsafeLinearShrink,
+  unsafeLinearGrow,
 
-    -- * Pointer access
-  , unsafeMallocMArray
-  , unsafeWithPtr
-  , unsafeArrayToForeignPtr
-  , unsafeMArrayToForeignPtr
-  , unsafeArrayFromForeignPtr
-  , unsafeArrayFromForeignPtr0
-  , unsafeMArrayFromForeignPtr
-  , unsafeMArrayFromForeignPtr0
+  -- * Pointer access
+  unsafeMallocMArray,
+  unsafeWithPtr,
+  unsafeArrayToForeignPtr,
+  unsafeMArrayToForeignPtr,
+  unsafeArrayFromForeignPtr,
+  unsafeArrayFromForeignPtr0,
+  unsafeMArrayFromForeignPtr,
+  unsafeMArrayFromForeignPtr0,
 
-    -- ** Atomic Operations
-  , unsafeAtomicReadIntArray
-  , unsafeAtomicWriteIntArray
-  , unsafeAtomicModifyIntArray
-  , unsafeAtomicAddIntArray
-  , unsafeAtomicSubIntArray
-  , unsafeAtomicAndIntArray
-  , unsafeAtomicNandIntArray
-  , unsafeAtomicOrIntArray
-  , unsafeAtomicXorIntArray
-  , unsafeCasIntArray
+  -- ** Atomic Operations
+  unsafeAtomicReadIntArray,
+  unsafeAtomicWriteIntArray,
+  unsafeAtomicModifyIntArray,
+  unsafeAtomicAddIntArray,
+  unsafeAtomicSubIntArray,
+  unsafeAtomicAndIntArray,
+  unsafeAtomicNandIntArray,
+  unsafeAtomicOrIntArray,
+  unsafeAtomicXorIntArray,
+  unsafeCasIntArray,
 
-    -- ** Other operations
-  , coerceBoxedArray
-  , coerceNormalBoxedArray
-  , unsafeUnstablePartitionRegionM
-  , module Data.Massiv.Vector.Unsafe
-  , module Data.Massiv.Array.Stencil.Unsafe
+  -- ** Other operations
+  coerceBoxedArray,
+  coerceNormalBoxedArray,
+  unsafeUnstablePartitionRegionM,
+  module Data.Massiv.Vector.Unsafe,
+  module Data.Massiv.Array.Stencil.Unsafe,
 
-    -- * Constructors
-  , Array (PArray, SArray, UArray, BArray, BLArray, BNArray, DArray, DLArray, DSArray, DIArray, DWArray)
-  , MArray (MPArray, MSArray, MUArray, MBArray, MBLArray, MBNArray)
-  ) where
+  -- * Constructors
+  Array (PArray, SArray, UArray, BArray, BLArray, BNArray, DArray, DLArray, DSArray, DIArray, DWArray),
+  MArray (MPArray, MSArray, MUArray, MBArray, MBLArray, MBNArray),
+) where
 
 import Data.Massiv.Array.Delayed.Interleaved (Array (DIArray))
-import Data.Massiv.Array.Delayed.Pull
-  ( D
-  , unsafeExtract
-  , unsafeInnerSlice
-  , unsafeSlice
-  )
-import Data.Massiv.Array.Delayed.Push
-  ( Array (DLArray)
-  , unsafeMakeLoadArray
-  , unsafeMakeLoadArrayAdjusted
-  )
+import Data.Massiv.Array.Delayed.Pull (
+  D,
+  unsafeExtract,
+  unsafeInnerSlice,
+  unsafeSlice,
+ )
+import Data.Massiv.Array.Delayed.Push (
+  Array (DLArray),
+  unsafeMakeLoadArray,
+  unsafeMakeLoadArrayAdjusted,
+ )
 import Data.Massiv.Array.Delayed.Stream (Array (DSArray))
 import Data.Massiv.Array.Delayed.Windowed (Array (DWArray))
 import Data.Massiv.Array.Manifest.Boxed

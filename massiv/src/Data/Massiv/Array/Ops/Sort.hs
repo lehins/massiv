@@ -10,18 +10,18 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Ops.Sort
-  ( tally
-  , quicksort
-  , quicksortBy
-  , quicksortByM
-  , quicksortAs
-  , quicksortAsBy
-  , quicksortAsByM
-  , quicksortM_
-  , quicksortByM_
-  , unsafeUnstablePartitionRegionM
-  ) where
+module Data.Massiv.Array.Ops.Sort (
+  tally,
+  quicksort,
+  quicksortBy,
+  quicksortByM,
+  quicksortAs,
+  quicksortAsBy,
+  quicksortAsByM,
+  quicksortM_,
+  quicksortByM_,
+  unsafeUnstablePartitionRegionM,
+) where
 
 import Control.Monad (when)
 import Control.Monad.IO.Unlift

@@ -11,16 +11,16 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Delayed.Stream
-  ( DS (..)
-  , Array (..)
-  , toStreamArray
-  , toStreamM
-  , toStreamIxM
-  , toSteps
-  , fromSteps
-  , fromStepsM
-  ) where
+module Data.Massiv.Array.Delayed.Stream (
+  DS (..),
+  Array (..),
+  toStreamArray,
+  toStreamM,
+  toStreamIxM,
+  toSteps,
+  fromSteps,
+  fromStepsM,
+) where
 
 import Control.Applicative
 import Control.Monad.ST

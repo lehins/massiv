@@ -12,12 +12,12 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Stencil.Internal
-  ( Stencil (..)
-  , dimapStencil
-  , lmapStencil
-  , rmapStencil
-  ) where
+module Data.Massiv.Array.Stencil.Internal (
+  Stencil (..),
+  dimapStencil,
+  lmapStencil,
+  rmapStencil,
+) where
 
 import Control.Applicative
 import Control.DeepSeq

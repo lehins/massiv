@@ -7,25 +7,25 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Vector.Unsafe
-  ( -- * Vector
+module Data.Massiv.Vector.Unsafe (
+  -- * Vector
 
-    -- ** Accessors
+  -- ** Accessors
 
-    -- *** Indexing
-    unsafeHead
-  , unsafeLast
+  -- *** Indexing
+  unsafeHead,
+  unsafeLast,
 
-    -- *** Monadic Indexing
-  , unsafeIndexM
-  , unsafeHeadM
-  , unsafeLastM
+  -- *** Monadic Indexing
+  unsafeIndexM,
+  unsafeHeadM,
+  unsafeLastM,
 
-    -- *** Slicing
-  , unsafeInit
-  , unsafeTail
-  , unsafeTake
-  , unsafeDrop
+  -- *** Slicing
+  unsafeInit,
+  unsafeTail,
+  unsafeTake,
+  unsafeDrop,
   -- -- ** Modifying
   -- -- *** Bulk updates
   -- , unsafeUpdate
@@ -37,11 +37,11 @@ module Data.Massiv.Vector.Unsafe
   -- -- ** Predicates
   -- , unsafePartition
 
-    -- ** Unbounded streams
-  , unsafeUnfoldrN
-  , unsafeUnfoldrNM
-  , unsafeFromListN
-  ) where
+  -- ** Unbounded streams
+  unsafeUnfoldrN,
+  unsafeUnfoldrNM,
+  unsafeFromListN,
+) where
 
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Stream

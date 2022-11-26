@@ -5,9 +5,9 @@
 {-# LANGUAGE TypeApplications #-}
 
 -- Here are tests for all instances for all main classes
-module Test.Massiv.ArraySpec
-  ( spec
-  ) where
+module Test.Massiv.ArraySpec (
+  spec,
+) where
 
 import Data.Massiv.Array
 import Test.Massiv.Core

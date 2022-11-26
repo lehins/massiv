@@ -18,127 +18,127 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Vector.Stream
-  ( -- | This module has a similar purpose as the 'Data.Vector.Fusion.Bundle.Monadic', but
-    -- quite a bit simpler.
-    --
-    -- __Important__ - This module is still experimental, as such it is considered
-    -- internal and exported for the curious users only.
-    Steps (..)
-  , Stream (..)
+module Data.Massiv.Vector.Stream (
+  -- | This module has a similar purpose as the 'Data.Vector.Fusion.Bundle.Monadic', but
+  -- quite a bit simpler.
+  --
+  -- __Important__ - This module is still experimental, as such it is considered
+  -- internal and exported for the curious users only.
+  Steps (..),
+  Stream (..),
 
-    -- * Conversion
-  , steps
-  , isteps
-  , consume
-  , fromStream
-  , fromStreamM
-  , fromStreamExactM
-  , unstreamExact
-  , unstreamMax
-  , unstreamMaxM
-  , unstreamUnknown
-  , unstreamUnknownM
-  , unstreamIntoM
+  -- * Conversion
+  steps,
+  isteps,
+  consume,
+  fromStream,
+  fromStreamM,
+  fromStreamExactM,
+  unstreamExact,
+  unstreamMax,
+  unstreamMaxM,
+  unstreamUnknown,
+  unstreamUnknownM,
+  unstreamIntoM,
 
-    -- * Bundle
-  , toBundle
-  , fromBundle
-  , fromBundleM
+  -- * Bundle
+  toBundle,
+  fromBundle,
+  fromBundleM,
 
-    -- * Operations on Steps
-  , length
-  , null
-  , empty
-  , singleton
-  , generate
-  , headMaybe
-  , last
-  , cons
-  , uncons
-  , snoc
-  , drop
-  , take
-  , slice
-  , iterateN
-  , iterateNM
-  , replicate
-  , replicateM
-  , generateM
-  , traverse
-  , map
-  , mapM
-  , mapM_
-  , indexed
-  , concatMap
-  , append
-  , zipWith
-  , zipWith3
-  , zipWith4
-  , zipWith5
-  , zipWith6
-  , zipWithM
-  , zipWith3M
-  , zipWith4M
-  , zipWith5M
-  , zipWith6M
-  , zipWithM_
-  , zipWith3M_
-  , zipWith4M_
-  , zipWith5M_
-  , zipWith6M_
+  -- * Operations on Steps
+  length,
+  null,
+  empty,
+  singleton,
+  generate,
+  headMaybe,
+  last,
+  cons,
+  uncons,
+  snoc,
+  drop,
+  take,
+  slice,
+  iterateN,
+  iterateNM,
+  replicate,
+  replicateM,
+  generateM,
+  traverse,
+  map,
+  mapM,
+  mapM_,
+  indexed,
+  concatMap,
+  append,
+  zipWith,
+  zipWith3,
+  zipWith4,
+  zipWith5,
+  zipWith6,
+  zipWithM,
+  zipWith3M,
+  zipWith4M,
+  zipWith5M,
+  zipWith6M,
+  zipWithM_,
+  zipWith3M_,
+  zipWith4M_,
+  zipWith5M_,
+  zipWith6M_,
 
-    -- ** Folding
-  , foldl
-  , foldl1
-  , foldlM
-  , foldl1M
-  , foldlLazy
-  , foldl1Lazy
-  , foldlLazyM
-  , foldl1LazyM
-  , foldrLazy
-  , foldr1Lazy
-  , foldrLazyM
-  , foldr1LazyM
-  , or
-  , and
+  -- ** Folding
+  foldl,
+  foldl1,
+  foldlM,
+  foldl1M,
+  foldlLazy,
+  foldl1Lazy,
+  foldlLazyM,
+  foldl1LazyM,
+  foldrLazy,
+  foldr1Lazy,
+  foldrLazyM,
+  foldr1LazyM,
+  or,
+  and,
 
-    -- ** Unfolding
-  , unfoldr
-  , unfoldrN
-  , unsafeUnfoldrN
-  , unfoldrM
-  , unfoldrNM
-  , unsafeUnfoldrNM
-  , unfoldrExactN
-  , unfoldrExactNM
+  -- ** Unfolding
+  unfoldr,
+  unfoldrN,
+  unsafeUnfoldrN,
+  unfoldrM,
+  unfoldrNM,
+  unsafeUnfoldrNM,
+  unfoldrExactN,
+  unfoldrExactNM,
 
-    -- ** Enumeration
-  , enumFromStepN
+  -- ** Enumeration
+  enumFromStepN,
 
-    -- * Lists
-  , toList
-  , fromList
-  , fromListN
-  , unsafeFromListN
+  -- * Lists
+  toList,
+  fromList,
+  fromListN,
+  unsafeFromListN,
 
-    -- ** Filter
-  , mapMaybe
-  , mapMaybeA
-  , mapMaybeM
-  , filter
-  , filterA
-  , filterM
+  -- ** Filter
+  mapMaybe,
+  mapMaybeA,
+  mapMaybeM,
+  filter,
+  filterA,
+  filterM,
 
-    -- * Transformations
-  , transSteps
-  , transStepsId
+  -- * Transformations
+  transSteps,
+  transStepsId,
 
-    -- * Useful re-exports
-  , module Data.Vector.Fusion.Util
-  , Id (..)
-  ) where
+  -- * Useful re-exports
+  module Data.Vector.Fusion.Util,
+  Id (..),
+) where
 
 import qualified Control.Monad as M
 import Control.Monad.ST
@@ -152,27 +152,27 @@ import qualified Data.Vector.Fusion.Bundle.Size as B
 import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
 import qualified GHC.Exts (IsList (..))
-import Prelude hiding
-  ( and
-  , concatMap
-  , drop
-  , filter
-  , foldl
-  , foldl1
-  , foldr
-  , foldr1
-  , length
-  , map
-  , mapM
-  , mapM_
-  , null
-  , or
-  , replicate
-  , take
-  , traverse
-  , zipWith
-  , zipWith3
-  )
+import Prelude hiding (
+  and,
+  concatMap,
+  drop,
+  filter,
+  foldl,
+  foldl1,
+  foldr,
+  foldr1,
+  length,
+  map,
+  mapM,
+  mapM_,
+  null,
+  or,
+  replicate,
+  take,
+  traverse,
+  zipWith,
+  zipWith3,
+ )
 
 instance Monad m => Functor (Steps m) where
   fmap f str = str{stepsStream = S.map f (stepsStream str)}

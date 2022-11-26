@@ -12,17 +12,17 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Manifest.List
-  ( -- ** List
-    fromList
-  , fromListsM
-  , fromLists'
-  , toList
-  , toLists
-  , toLists2
-  , toLists3
-  , toLists4
-  ) where
+module Data.Massiv.Array.Manifest.List (
+  -- ** List
+  fromList,
+  fromListsM,
+  fromLists',
+  toList,
+  toLists,
+  toLists2,
+  toLists3,
+  toLists4,
+) where
 
 import Data.Massiv.Array.Manifest.Internal
 import Data.Massiv.Array.Ops.Fold (foldrInner)

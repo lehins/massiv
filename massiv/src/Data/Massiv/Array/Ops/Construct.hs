@@ -13,63 +13,63 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Ops.Construct
-  ( -- ** With constant value
-    empty
-  , singleton
-  , replicate
+module Data.Massiv.Array.Ops.Construct (
+  -- ** With constant value
+  empty,
+  singleton,
+  replicate,
 
-    -- ** With a function
-  , makeArray
-  , makeArrayLinear
-  , makeArrayR
-  , makeArrayLinearR
-  , makeVectorR
+  -- ** With a function
+  makeArray,
+  makeArrayLinear,
+  makeArrayR,
+  makeArrayLinearR,
+  makeVectorR,
 
-    -- *** Iterating
-  , iterateN
-  , iiterateN
+  -- *** Iterating
+  iterateN,
+  iiterateN,
 
-    -- *** Unfolding
-  , unfoldlS_
-  , iunfoldlS_
-  , unfoldrS_
-  , iunfoldrS_
-  , makeSplitSeedArray
+  -- *** Unfolding
+  unfoldlS_,
+  iunfoldlS_,
+  unfoldrS_,
+  iunfoldrS_,
+  makeSplitSeedArray,
 
-    -- *** Random
-  , uniformArray
-  , uniformRangeArray
-  , randomArray
-  , randomArrayS
-  , randomArrayWS
+  -- *** Random
+  uniformArray,
+  uniformRangeArray,
+  randomArray,
+  randomArrayS,
+  randomArrayWS,
 
-    -- *** Applicative
-  , makeArrayA
-  , makeArrayAR
-  , makeArrayLinearA
+  -- *** Applicative
+  makeArrayA,
+  makeArrayAR,
+  makeArrayLinearA,
 
-    -- ** Enumeration
-  , (...)
-  , (..:)
-  , range
-  , rangeStepM
-  , rangeStep'
-  , rangeInclusive
-  , rangeStepInclusiveM
-  , rangeStepInclusive'
-  , rangeSize
-  , rangeStepSize
-  , enumFromN
-  , enumFromStepN
+  -- ** Enumeration
+  (...),
+  (..:),
+  range,
+  rangeStepM,
+  rangeStep',
+  rangeInclusive,
+  rangeStepInclusiveM,
+  rangeStepInclusive',
+  rangeSize,
+  rangeStepSize,
+  enumFromN,
+  enumFromStepN,
 
-    -- ** Expansion
-  , expandWithin
-  , expandWithinM
-  , expandWithin'
-  , expandOuter
-  , expandInner
-  ) where
+  -- ** Expansion
+  expandWithin,
+  expandWithinM,
+  expandWithin',
+  expandOuter,
+  expandInner,
+) where
 
 import Control.Applicative hiding (empty)
 import Control.Monad (void, when)

@@ -11,16 +11,16 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Operations
-  ( FoldNumeric (..)
-  , defaultPowerSumArray
-  , defaultUnsafeDotProduct
-  , defaultFoldArray
-  , Numeric (..)
-  , defaultUnsafeLiftArray
-  , defaultUnsafeLiftArray2
-  , NumericFloat (..)
-  ) where
+module Data.Massiv.Core.Operations (
+  FoldNumeric (..),
+  defaultPowerSumArray,
+  defaultUnsafeDotProduct,
+  defaultFoldArray,
+  Numeric (..),
+  defaultUnsafeLiftArray,
+  defaultUnsafeLiftArray2,
+  NumericFloat (..),
+) where
 
 import Data.Massiv.Core.Common
 

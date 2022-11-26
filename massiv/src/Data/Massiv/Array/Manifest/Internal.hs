@@ -16,32 +16,32 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Manifest.Internal
-  ( Manifest (..)
-  , Array (..)
-  , flattenMArray
-  , compute
-  , computeS
-  , computeP
-  , computeIO
-  , computePrimM
-  , computeAs
-  , computeProxy
-  , computeSource
-  , computeWithStride
-  , computeWithStrideAs
-  , clone
-  , convert
-  , convertAs
-  , convertProxy
-  , gcastArr
-  , fromRaggedArrayM
-  , fromRaggedArray'
-  , unsafeLoadIntoS
-  , unsafeLoadIntoM
-  , iterateUntil
-  , iterateUntilM
-  ) where
+module Data.Massiv.Array.Manifest.Internal (
+  Manifest (..),
+  Array (..),
+  flattenMArray,
+  compute,
+  computeS,
+  computeP,
+  computeIO,
+  computePrimM,
+  computeAs,
+  computeProxy,
+  computeSource,
+  computeWithStride,
+  computeWithStrideAs,
+  clone,
+  convert,
+  convertAs,
+  convertProxy,
+  gcastArr,
+  fromRaggedArrayM,
+  fromRaggedArray',
+  unsafeLoadIntoS,
+  unsafeLoadIntoM,
+  iterateUntil,
+  iterateUntilM,
+) where
 
 import Control.DeepSeq
 import Control.Exception (try)

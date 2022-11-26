@@ -1,9 +1,9 @@
-module Test.Massiv.Core
-  ( module Index
-  , module Commmon
-  , module Utils
-  , module Test.Hspec.QuickCheck
-  ) where
+module Test.Massiv.Core (
+  module Index,
+  module Commmon,
+  module Utils,
+  module Test.Hspec.QuickCheck,
+) where
 
 import Test.Hspec.QuickCheck
 import Test.Massiv.Core.Common as Commmon

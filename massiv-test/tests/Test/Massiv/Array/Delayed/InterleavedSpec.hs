@@ -2,9 +2,9 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Massiv.Array.Delayed.InterleavedSpec
-  ( spec
-  ) where
+module Test.Massiv.Array.Delayed.InterleavedSpec (
+  spec,
+) where
 
 import Data.Massiv.Array
 import Test.Massiv.Core

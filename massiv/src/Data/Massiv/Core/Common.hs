@@ -16,85 +16,85 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Common
-  ( Array
-  , Vector
-  , Matrix
-  , MArray
-  , MVector
-  , MMatrix
-  , Steps (..)
-  , Stream (..)
-  , Strategy (..)
-  , Source (..)
-  , PrefIndex (..)
-  , Load (..)
-  , StrideLoad (..)
-  , Size (..)
-  , Shape (..)
-  , Manifest (..)
-  , Mutable
-  , Comp (..)
-  , Scheduler
-  , numWorkers
-  , scheduleWork
-  , scheduleWork_
-  , WorkerStates
-  , unsafeRead
-  , unsafeWrite
-  , unsafeModify
-  , unsafeLinearModify
-  , unsafeSwap
-  , unsafeLinearSwap
-  , unsafeDefaultLinearShrink
-  , Ragged (..)
-  , empty
-  , singleton
+module Data.Massiv.Core.Common (
+  Array,
+  Vector,
+  Matrix,
+  MArray,
+  MVector,
+  MMatrix,
+  Steps (..),
+  Stream (..),
+  Strategy (..),
+  Source (..),
+  PrefIndex (..),
+  Load (..),
+  StrideLoad (..),
+  Size (..),
+  Shape (..),
+  Manifest (..),
+  Mutable,
+  Comp (..),
+  Scheduler,
+  numWorkers,
+  scheduleWork,
+  scheduleWork_,
+  WorkerStates,
+  unsafeRead,
+  unsafeWrite,
+  unsafeModify,
+  unsafeLinearModify,
+  unsafeSwap,
+  unsafeLinearSwap,
+  unsafeDefaultLinearShrink,
+  Ragged (..),
+  empty,
+  singleton,
 
-    -- * Size
-  , elemsCount
-  , isNotNull
-  , isEmpty
-  , isNotEmpty
-  , Sz (SafeSz)
-  , LengthHint (..)
+  -- * Size
+  elemsCount,
+  isNotNull,
+  isEmpty,
+  isNotEmpty,
+  Sz (SafeSz),
+  LengthHint (..),
 
-    -- * Indexing
-  , (!?)
-  , index
-  , indexM
-  , (!)
-  , index'
-  , (??)
-  , defaultIndex
-  , borderIndex
-  , evaluateM
-  , evaluate'
-  , inline0
-  , inline1
-  , inline2
-  , module Data.Massiv.Core.Index
+  -- * Indexing
+  (!?),
+  index,
+  indexM,
+  (!),
+  index',
+  (??),
+  defaultIndex,
+  borderIndex,
+  evaluateM,
+  evaluate',
+  inline0,
+  inline1,
+  inline2,
+  module Data.Massiv.Core.Index,
 
-    -- * Common Operations
-  , Semigroup ((<>))
+  -- * Common Operations
+  Semigroup ((<>)),
 
-    -- * Exceptions
-  , MonadThrow (..)
-  , IndexException (..)
-  , SizeException (..)
-  , ShapeException (..)
-  , module Data.Massiv.Core.Exception
-  , Proxy (..)
-  , Id (..)
+  -- * Exceptions
+  MonadThrow (..),
+  IndexException (..),
+  SizeException (..),
+  ShapeException (..),
+  module Data.Massiv.Core.Exception,
+  Proxy (..),
+  Id (..),
 
-    -- * Stateful Monads
-  , runST
-  , ST
-  , MonadUnliftIO (..)
-  , MonadIO (liftIO)
-  , PrimMonad (PrimState)
-  , RealWorld
-  ) where
+  -- * Stateful Monads
+  runST,
+  ST,
+  MonadUnliftIO (..),
+  MonadIO (liftIO),
+  PrimMonad (PrimState),
+  RealWorld,
+) where
 
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup (Semigroup((<>)))
@@ -103,15 +103,15 @@ import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Unlift (MonadIO (liftIO), MonadUnliftIO (..))
 import Control.Monad.Primitive
 import Control.Monad.ST
-import Control.Scheduler
-  ( Comp (..)
-  , Scheduler
-  , WorkerStates
-  , numWorkers
-  , scheduleWork
-  , scheduleWork_
-  , trivialScheduler_
-  )
+import Control.Scheduler (
+  Comp (..),
+  Scheduler,
+  WorkerStates,
+  numWorkers,
+  scheduleWork,
+  scheduleWork_,
+  trivialScheduler_,
+ )
 import Data.Kind
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index

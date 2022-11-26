@@ -11,106 +11,106 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Numeric
-  ( -- * Numeric
-    Numeric
-  , NumericFloat
-  , liftNumArray2M
+module Data.Massiv.Array.Numeric (
+  -- * Numeric
+  Numeric,
+  NumericFloat,
+  liftNumArray2M,
 
-    -- ** Pointwise addition
-  , (.+)
-  , (+.)
-  , (.+.)
-  , (!+!)
-  , sumArraysM
-  , sumArrays'
+  -- ** Pointwise addition
+  (.+),
+  (+.),
+  (.+.),
+  (!+!),
+  sumArraysM,
+  sumArrays',
 
-    -- ** Pointwise subtraction
-  , (.-)
-  , (-.)
-  , (.-.)
-  , (!-!)
+  -- ** Pointwise subtraction
+  (.-),
+  (-.),
+  (.-.),
+  (!-!),
 
-    -- ** Pointwise multiplication
-  , (.*)
-  , (*.)
-  , (.*.)
-  , (!*!)
-  , (.^)
-  , productArraysM
-  , productArrays'
+  -- ** Pointwise multiplication
+  (.*),
+  (*.),
+  (.*.),
+  (!*!),
+  (.^),
+  productArraysM,
+  productArrays',
 
-    -- ** Dot product
-  , (!.!)
-  , dotM
+  -- ** Dot product
+  (!.!),
+  dotM,
 
-    -- ** Matrix multiplication
-  , (.><)
-  , (!><)
-  , multiplyMatrixByVector
-  , (><.)
-  , (><!)
-  , multiplyVectorByMatrix
-  , (.><.)
-  , (!><!)
-  , multiplyMatrices
-  , multiplyMatricesTransposed
+  -- ** Matrix multiplication
+  (.><),
+  (!><),
+  multiplyMatrixByVector,
+  (><.),
+  (><!),
+  multiplyVectorByMatrix,
+  (.><.),
+  (!><!),
+  multiplyMatrices,
+  multiplyMatricesTransposed,
 
-    -- * Norms
-  , normL2
+  -- * Norms
+  normL2,
 
-    -- * Simple matrices
-  , identityMatrix
-  , lowerTriangular
-  , upperTriangular
-  , negateA
-  , absA
-  , signumA
+  -- * Simple matrices
+  identityMatrix,
+  lowerTriangular,
+  upperTriangular,
+  negateA,
+  absA,
+  signumA,
 
-    -- * Integral
-  , quotA
-  , remA
-  , divA
-  , modA
-  , quotRemA
-  , divModA
+  -- * Integral
+  quotA,
+  remA,
+  divA,
+  modA,
+  quotRemA,
+  divModA,
 
-    -- * Fractional
-  , (./)
-  , (/.)
-  , (./.)
-  , (!/!)
-  , (.^^)
-  , recipA
+  -- * Fractional
+  (./),
+  (/.),
+  (./.),
+  (!/!),
+  (.^^),
+  recipA,
 
-    -- * Floating
-  , expA
-  , logA
-  , sqrtA
-  , (.**)
-  , logBaseA
-  , sinA
-  , cosA
-  , tanA
-  , asinA
-  , acosA
-  , atanA
-  , sinhA
-  , coshA
-  , tanhA
-  , asinhA
-  , acoshA
-  , atanhA
+  -- * Floating
+  expA,
+  logA,
+  sqrtA,
+  (.**),
+  logBaseA,
+  sinA,
+  cosA,
+  tanA,
+  asinA,
+  acosA,
+  atanA,
+  sinhA,
+  coshA,
+  tanhA,
+  asinhA,
+  acoshA,
+  atanhA,
 
-    -- * RealFrac
-  , truncateA
-  , roundA
-  , ceilingA
-  , floorA
+  -- * RealFrac
+  truncateA,
+  roundA,
+  ceilingA,
+  floorA,
 
-    -- * RealFloat
-  , atan2A
-  ) where
+  -- * RealFloat
+  atan2A,
+) where
 
 import Control.Monad (when)
 import Control.Scheduler

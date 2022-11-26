@@ -12,15 +12,15 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Manifest.Vector
-  ( fromVectorM
-  , fromVector'
-  , castFromVector
-  , toVector
-  , castToVector
-  , ARepr
-  , VRepr
-  ) where
+module Data.Massiv.Array.Manifest.Vector (
+  fromVectorM,
+  fromVector',
+  castFromVector,
+  toVector,
+  castToVector,
+  ARepr,
+  VRepr,
+) where
 
 import Control.Monad (guard, join, msum)
 import Data.Kind

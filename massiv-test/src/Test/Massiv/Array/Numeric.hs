@@ -6,12 +6,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Massiv.Array.Numeric
-  ( -- * Spec for safe Manifest instance
-    prop_MatrixMatrixMultiply
-  , mutableNumericSpec
-  , mutableNumericFloatSpec
-  ) where
+module Test.Massiv.Array.Numeric (
+  -- * Spec for safe Manifest instance
+  prop_MatrixMatrixMultiply,
+  mutableNumericSpec,
+  mutableNumericFloatSpec,
+) where
 
 import Data.Massiv.Array as A
 import Test.Massiv.Core.Common ()

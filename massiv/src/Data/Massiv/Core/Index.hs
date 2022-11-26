@@ -11,102 +11,102 @@
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Index
-  ( Ix0 (..)
-  , type Ix1
-  , pattern Ix1
-  , type Ix2 (Ix2, (:.))
-  , IxN ((:>), Ix3, Ix4, Ix5)
-  , HighIxN
-  , type Ix3
-  , type Ix4
-  , type Ix5
-  , Ix
+module Data.Massiv.Core.Index (
+  Ix0 (..),
+  type Ix1,
+  pattern Ix1,
+  type Ix2 (Ix2, (:.)),
+  IxN ((:>), Ix3, Ix4, Ix5),
+  HighIxN,
+  type Ix3,
+  type Ix4,
+  type Ix5,
+  Ix,
 
-    -- ** Size
-  , type Sz1
-  , type Sz2
-  , type Sz3
-  , type Sz4
-  , type Sz5
-  , Sz (Sz, Sz1, Sz2, Sz3, Sz4, Sz5)
-  , unSz
-  , zeroSz
-  , oneSz
-  , liftSz
-  , liftSz2
-  , consSz
-  , unconsSz
-  , snocSz
-  , unsnocSz
-  , setSzM
-  , insertSzM
-  , pullOutSzM
-  , toLinearSz
-  , mkSzM
+  -- ** Size
+  type Sz1,
+  type Sz2,
+  type Sz3,
+  type Sz4,
+  type Sz5,
+  Sz (Sz, Sz1, Sz2, Sz3, Sz4, Sz5),
+  unSz,
+  zeroSz,
+  oneSz,
+  liftSz,
+  liftSz2,
+  consSz,
+  unconsSz,
+  snocSz,
+  unsnocSz,
+  setSzM,
+  insertSzM,
+  pullOutSzM,
+  toLinearSz,
+  mkSzM,
 
-    -- ** Dimension
-  , Dim (..)
-  , Dimension (Dim1, Dim2, Dim3, Dim4, Dim5, DimN)
-  , IsIndexDimension
-  , IsDimValid
-  , ReportInvalidDim
+  -- ** Dimension
+  Dim (..),
+  Dimension (Dim1, Dim2, Dim3, Dim4, Dim5, DimN),
+  IsIndexDimension,
+  IsDimValid,
+  ReportInvalidDim,
 
-    -- ** Stride
-  , Stride (Stride)
-  , unStride
-  , toLinearIndexStride
-  , strideStart
-  , strideSize
-  , oneStride
+  -- ** Stride
+  Stride (Stride),
+  unStride,
+  toLinearIndexStride,
+  strideStart,
+  strideSize,
+  oneStride,
 
-    -- ** Border
-  , Border (..)
-  , handleBorderIndex
+  -- ** Border
+  Border (..),
+  handleBorderIndex,
 
-    -- ** Index functions
-  , Lower
-  , Index (..)
-  , zeroIndex
-  , oneIndex
-  , isZeroSz
-  , isNotZeroSz
-  , headDim
-  , tailDim
-  , lastDim
-  , initDim
-  , getDim'
-  , setDim'
-  , modifyDim'
-  , dropDimM
-  , dropDim'
-  , pullOutDim'
-  , insertDim'
-  , fromDimension
-  , getDimension
-  , setDimension
-  , modifyDimension
-  , dropDimension
-  , pullOutDimension
-  , insertDimension
+  -- ** Index functions
+  Lower,
+  Index (..),
+  zeroIndex,
+  oneIndex,
+  isZeroSz,
+  isNotZeroSz,
+  headDim,
+  tailDim,
+  lastDim,
+  initDim,
+  getDim',
+  setDim',
+  modifyDim',
+  dropDimM,
+  dropDim',
+  pullOutDim',
+  insertDim',
+  fromDimension,
+  getDimension,
+  setDimension,
+  modifyDimension,
+  dropDimension,
+  pullOutDimension,
+  insertDimension,
 
-    -- * Iterators
-  , iter
-  , iterA_
-  , iterM_
-  , iterLinearM
-  , iterLinearM_
-  , module Data.Massiv.Core.Loop
-  , module Data.Massiv.Core.Index.Iterator
-  , module Data.Massiv.Core.Index.Tuple
+  -- * Iterators
+  iter,
+  iterA_,
+  iterM_,
+  iterLinearM,
+  iterLinearM_,
+  module Data.Massiv.Core.Loop,
+  module Data.Massiv.Core.Index.Iterator,
+  module Data.Massiv.Core.Index.Tuple,
 
-    -- * Exceptions
-  , IndexException (..)
-  , SizeException (..)
-  , ShapeException (..)
-  , guardNumberOfElements
-  , indexWith
-  ) where
+  -- * Exceptions
+  IndexException (..),
+  SizeException (..),
+  ShapeException (..),
+  guardNumberOfElements,
+  indexWith,
+) where
 
 import Control.DeepSeq
 import Control.Monad.Catch (MonadThrow (..))

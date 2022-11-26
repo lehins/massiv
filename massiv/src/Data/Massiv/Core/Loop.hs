@@ -10,54 +10,54 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Loop
-  ( loop
-  , loopF
-  , nextMaybeF
-  , loopA
-  , loopA_
-  , loopM
-  , loopM_
-  , iloopM
-  , iloopA_
-  , loopNextM
-  , loopNextA_
-  , loopDeepM
-  , splitLinearly
-  , splitLinearlyM
-  , splitLinearlyM_
-  , splitLinearlyWith_
-  , splitLinearlyWithM_
-  , splitLinearlyWithStartAtM_
-  , splitLinearlyWithStatefulM_
-  , iterLinearST_
-  , iterLinearAccST_
-  , iterLinearAccST
-  , splitNumChunks
-  , stepStartAdjust
+module Data.Massiv.Core.Loop (
+  loop,
+  loopF,
+  nextMaybeF,
+  loopA,
+  loopA_,
+  loopM,
+  loopM_,
+  iloopM,
+  iloopA_,
+  loopNextM,
+  loopNextA_,
+  loopDeepM,
+  splitLinearly,
+  splitLinearlyM,
+  splitLinearlyM_,
+  splitLinearlyWith_,
+  splitLinearlyWithM_,
+  splitLinearlyWithStartAtM_,
+  splitLinearlyWithStatefulM_,
+  iterLinearST_,
+  iterLinearAccST_,
+  iterLinearAccST,
+  splitNumChunks,
+  stepStartAdjust,
 
-    -- * Experimental
-  , splitWorkWithFactorST
-  , scheduleMassivWork
-  , withMassivScheduler_
-  ) where
+  -- * Experimental
+  splitWorkWithFactorST,
+  scheduleMassivWork,
+  withMassivScheduler_,
+) where
 
 import Control.Monad (void, when)
 import Control.Monad.IO.Unlift (MonadUnliftIO (..))
 import Control.Monad.Primitive
 import Control.Monad.ST (ST)
-import Control.Scheduler
-  ( Comp (..)
-  , Scheduler
-  , SchedulerWS
-  , numWorkers
-  , scheduleWork
-  , scheduleWorkState_
-  , scheduleWork_
-  , trivialScheduler_
-  , unwrapSchedulerWS
-  , withScheduler_
-  )
+import Control.Scheduler (
+  Comp (..),
+  Scheduler,
+  SchedulerWS,
+  numWorkers,
+  scheduleWork,
+  scheduleWorkState_,
+  scheduleWork_,
+  trivialScheduler_,
+  unwrapSchedulerWS,
+  withScheduler_,
+ )
 import Control.Scheduler.Global (globalScheduler, withGlobalScheduler_)
 import Data.Coerce
 import Data.Functor.Identity

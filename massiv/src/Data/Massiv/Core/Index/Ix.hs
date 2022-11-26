@@ -18,27 +18,27 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Index.Ix
-  ( Ix
-  , IxN ((:>))
-  , type Sz
-  , pattern Sz
-  , type Ix1
-  , pattern Ix1
-  , pattern Sz1
-  , type Ix2 (Ix2, (:.))
-  , pattern Sz2
-  , type Ix3
-  , pattern Ix3
-  , pattern Sz3
-  , type Ix4
-  , pattern Ix4
-  , pattern Sz4
-  , type Ix5
-  , pattern Ix5
-  , pattern Sz5
-  , HighIxN
-  ) where
+module Data.Massiv.Core.Index.Ix (
+  Ix,
+  IxN ((:>)),
+  type Sz,
+  pattern Sz,
+  type Ix1,
+  pattern Ix1,
+  pattern Sz1,
+  type Ix2 (Ix2, (:.)),
+  pattern Sz2,
+  type Ix3,
+  pattern Ix3,
+  pattern Sz3,
+  type Ix4,
+  pattern Ix4,
+  pattern Sz4,
+  type Ix5,
+  pattern Ix5,
+  pattern Sz5,
+  HighIxN,
+) where
 
 import Control.DeepSeq
 import Control.Monad.Catch (MonadThrow (..))

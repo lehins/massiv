@@ -12,41 +12,41 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Ops.Fold.Internal
-  ( foldlS
-  , foldrS
-  , ifoldlS
-  , ifoldrS
+module Data.Massiv.Array.Ops.Fold.Internal (
+  foldlS,
+  foldrS,
+  ifoldlS,
+  ifoldrS,
   -- Monadic
-  , foldlM
-  , foldrM
-  , foldlM_
-  , foldrM_
-  , ifoldlM
-  , ifoldrM
-  , ifoldlM_
-  , ifoldrM_
+  foldlM,
+  foldrM,
+  foldlM_,
+  foldrM_,
+  ifoldlM,
+  ifoldrM,
+  ifoldlM_,
+  ifoldrM_,
   -- Special folds
-  , fold
-  , foldMono
-  , foldlInternal
-  , ifoldlInternal
-  , foldrFB
-  , lazyFoldlS
-  , lazyFoldrS
+  fold,
+  foldMono,
+  foldlInternal,
+  ifoldlInternal,
+  foldrFB,
+  lazyFoldlS,
+  lazyFoldrS,
   -- Parallel folds
-  , foldlP
-  , foldrP
-  , ifoldlP
-  , ifoldrP
-  , foldlIO
-  , ifoldlIO
-  , ifoldrIO
-  , splitReduce
-  , any
-  , anySu
-  , anyPu
-  ) where
+  foldlP,
+  foldrP,
+  ifoldlP,
+  ifoldrP,
+  foldlIO,
+  ifoldlIO,
+  ifoldrIO,
+  splitReduce,
+  any,
+  anySu,
+  anyPu,
+) where
 
 import Control.Monad (void, when)
 import Control.Monad.Primitive

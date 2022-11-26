@@ -8,12 +8,12 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Stencil.Convolution
-  ( makeConvolutionStencil
-  , makeConvolutionStencilFromKernel
-  , makeCorrelationStencil
-  , makeCorrelationStencilFromKernel
-  ) where
+module Data.Massiv.Array.Stencil.Convolution (
+  makeConvolutionStencil,
+  makeConvolutionStencilFromKernel,
+  makeCorrelationStencil,
+  makeCorrelationStencilFromKernel,
+) where
 
 import Data.Massiv.Array.Ops.Fold (ifoldlS)
 import Data.Massiv.Array.Stencil.Internal

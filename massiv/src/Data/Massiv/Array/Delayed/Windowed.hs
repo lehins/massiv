@@ -16,15 +16,15 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Delayed.Windowed
-  ( DW (..)
-  , Array (..)
-  , Window (..)
-  , insertWindow
-  , getWindow
-  , dropWindow
-  , makeWindowedArray
-  ) where
+module Data.Massiv.Array.Delayed.Windowed (
+  DW (..),
+  Array (..),
+  Window (..),
+  insertWindow,
+  getWindow,
+  dropWindow,
+  makeWindowedArray,
+) where
 
 import Control.Monad (when)
 import Data.Massiv.Array.Delayed.Pull

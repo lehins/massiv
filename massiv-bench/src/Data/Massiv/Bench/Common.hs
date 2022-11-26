@@ -3,16 +3,16 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Data.Massiv.Bench.Common
-  ( makeRandomArray
-  , showsType
-  , stdGen
-  , lightFunc
-  , heavyFunc
-  , lightFuncIx2
-  , arrRLightIx2
-  , arrRHeavyIx2
-  ) where
+module Data.Massiv.Bench.Common (
+  makeRandomArray,
+  showsType,
+  stdGen,
+  lightFunc,
+  heavyFunc,
+  lightFuncIx2,
+  arrRLightIx2,
+  arrRHeavyIx2,
+) where
 
 import Data.Massiv.Array
 import Data.Typeable

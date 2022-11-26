@@ -7,11 +7,11 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Mutable.Internal
-  ( unsafeCreateArray
-  , unsafeCreateArray_
-  , unsafeCreateArrayS
-  ) where
+module Data.Massiv.Array.Mutable.Internal (
+  unsafeCreateArray,
+  unsafeCreateArray_,
+  unsafeCreateArrayS,
+) where
 
 import Control.Scheduler
 import Data.Massiv.Core.Common

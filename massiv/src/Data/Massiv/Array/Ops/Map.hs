@@ -11,75 +11,75 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Ops.Map
-  ( map
-  , imap
+module Data.Massiv.Array.Ops.Map (
+  map,
+  imap,
 
-    -- ** Traversing
+  -- ** Traversing
 
-    -- *** Applicative
-  , traverseA
-  , traverseA_
-  , itraverseA
-  , itraverseA_
-  , sequenceA
-  , sequenceA_
+  -- *** Applicative
+  traverseA,
+  traverseA_,
+  itraverseA,
+  itraverseA_,
+  sequenceA,
+  sequenceA_,
 
-    -- *** PrimMonad
-  , traversePrim
-  , itraversePrim
+  -- *** PrimMonad
+  traversePrim,
+  itraversePrim,
 
-    -- ** Monadic mapping
+  -- ** Monadic mapping
 
-    -- *** Sequential
-  , mapM
-  , forM
-  , imapM
-  , iforM
-  , mapM_
-  , forM_
-  , imapM_
-  , iforM_
+  -- *** Sequential
+  mapM,
+  forM,
+  imapM,
+  iforM,
+  mapM_,
+  forM_,
+  imapM_,
+  iforM_,
 
-    -- *** Parallelizable
-  , mapIO
-  , mapWS
-  , mapIO_
-  , imapIO
-  , imapWS
-  , imapIO_
-  , forIO
-  , forWS
-  , forIO_
-  , iforIO
-  , iforWS
-  , iforIO_
-  , imapSchedulerM_
-  , iforSchedulerM_
-  , iterArrayLinearM_
-  , iterArrayLinearWithSetM_
-  , iterArrayLinearWithStrideM_
+  -- *** Parallelizable
+  mapIO,
+  mapWS,
+  mapIO_,
+  imapIO,
+  imapWS,
+  imapIO_,
+  forIO,
+  forWS,
+  forIO_,
+  iforIO,
+  iforWS,
+  iforIO_,
+  imapSchedulerM_,
+  iforSchedulerM_,
+  iterArrayLinearM_,
+  iterArrayLinearWithSetM_,
+  iterArrayLinearWithStrideM_,
 
-    -- ** Zipping
-  , zip
-  , zip3
-  , zip4
-  , unzip
-  , unzip3
-  , unzip4
-  , zipWith
-  , zipWith3
-  , zipWith4
-  , izipWith
-  , izipWith3
-  , izipWith4
+  -- ** Zipping
+  zip,
+  zip3,
+  zip4,
+  unzip,
+  unzip3,
+  unzip4,
+  zipWith,
+  zipWith3,
+  zipWith4,
+  izipWith,
+  izipWith3,
+  izipWith4,
 
-    -- *** Applicative
-  , zipWithA
-  , izipWithA
-  , zipWith3A
-  , izipWith3A
-  ) where
+  -- *** Applicative
+  zipWithA,
+  izipWithA,
+  zipWith3A,
+  izipWith3A,
+) where
 
 import Control.Monad (void)
 import Control.Monad.Primitive
@@ -91,19 +91,19 @@ import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct (makeArrayA, makeArrayLinearA)
 import Data.Massiv.Core.Common
 import Data.Traversable (traverse)
-import Prelude hiding
-  ( map
-  , mapM
-  , mapM_
-  , sequenceA
-  , traverse
-  , unzip
-  , unzip3
-  , zip
-  , zip3
-  , zipWith
-  , zipWith3
-  )
+import Prelude hiding (
+  map,
+  mapM,
+  mapM_,
+  sequenceA,
+  traverse,
+  unzip,
+  unzip3,
+  zip,
+  zip3,
+  zipWith,
+  zipWith3,
+ )
 
 --------------------------------------------------------------------------------
 -- map -------------------------------------------------------------------------

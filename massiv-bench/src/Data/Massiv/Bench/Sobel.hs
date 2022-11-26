@@ -1,11 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
 
-module Data.Massiv.Bench.Sobel
-  ( sobelX
-  , sobelY
-  , sobelOperator
-  , sobelBenchGroup
-  ) where
+module Data.Massiv.Bench.Sobel (
+  sobelX,
+  sobelY,
+  sobelOperator,
+  sobelBenchGroup,
+) where
 
 import Criterion.Main
 import Data.Massiv.Array as A

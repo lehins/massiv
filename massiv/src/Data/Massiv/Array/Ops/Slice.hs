@@ -10,28 +10,28 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Ops.Slice
-  ( -- ** From the outside
-    (!>)
-  , (!?>)
-  , (??>)
+module Data.Massiv.Array.Ops.Slice (
+  -- ** From the outside
+  (!>),
+  (!?>),
+  (??>),
 
-    -- ** From the inside
-  , (<!)
-  , (<!?)
-  , (<??)
+  -- ** From the inside
+  (<!),
+  (<!?),
+  (<??),
 
-    -- ** From within
-  , (<!>)
-  , (<!?>)
-  , (<??>)
+  -- ** From within
+  (<!>),
+  (<!?>),
+  (<??>),
 
-    -- ** Many slices
-  , outerSlices
-  , innerSlices
-  , withinSlices
-  , withinSlicesM
-  ) where
+  -- ** Many slices
+  outerSlices,
+  innerSlices,
+  withinSlices,
+  withinSlicesM,
+) where
 
 import Control.Monad (unless)
 import Data.Massiv.Array.Delayed.Pull

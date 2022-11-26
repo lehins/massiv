@@ -5,56 +5,56 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core
-  ( Array (LArray)
-  , List (..)
-  , Vector
-  , MVector
-  , Matrix
-  , MMatrix
-  , Load (iterArrayLinearST_, iterArrayLinearWithSetST_)
-  , Stream (..)
-  , Source
-  , PrefIndex (..)
-  , Size
-  , Shape (..)
-  , LengthHint (..)
-  , StrideLoad (..)
-  , Manifest
-  , Mutable
-  , Ragged
-  , L (..)
-  , ListItem
-  , Scheduler
-  , SchedulerWS
-  , Strategy
-  , Comp (Seq, Par, Par', ParOn, ParN)
-  , getComp
-  , setComp
-  , appComp
-  , WorkerStates
-  , initWorkerStates
-  , scheduleWork
-  , scheduleWork_
-  , module Data.Massiv.Core.Index
+module Data.Massiv.Core (
+  Array (LArray),
+  List (..),
+  Vector,
+  MVector,
+  Matrix,
+  MMatrix,
+  Load (iterArrayLinearST_, iterArrayLinearWithSetST_),
+  Stream (..),
+  Source,
+  PrefIndex (..),
+  Size,
+  Shape (..),
+  LengthHint (..),
+  StrideLoad (..),
+  Manifest,
+  Mutable,
+  Ragged,
+  L (..),
+  ListItem,
+  Scheduler,
+  SchedulerWS,
+  Strategy,
+  Comp (Seq, Par, Par', ParOn, ParN),
+  getComp,
+  setComp,
+  appComp,
+  WorkerStates,
+  initWorkerStates,
+  scheduleWork,
+  scheduleWork_,
+  module Data.Massiv.Core.Index,
 
-    -- * Numeric
-  , FoldNumeric
-  , Numeric
-  , NumericFloat
+  -- * Numeric
+  FoldNumeric,
+  Numeric,
+  NumericFloat,
 
-    -- * Exceptions
-  , MonadThrow (..)
-  , IndexException (..)
-  , SizeException (..)
-  , ShapeException (..)
-  , module Data.Massiv.Core.Exception
+  -- * Exceptions
+  MonadThrow (..),
+  IndexException (..),
+  SizeException (..),
+  ShapeException (..),
+  module Data.Massiv.Core.Exception,
 
-    -- * Stateful Monads
-  , MonadUnliftIO
-  , MonadIO (liftIO)
-  , PrimMonad (PrimState)
-  ) where
+  -- * Stateful Monads
+  MonadUnliftIO,
+  MonadIO (liftIO),
+  PrimMonad (PrimState),
+) where
 
 import Control.Scheduler (SchedulerWS, initWorkerStates)
 import Data.Massiv.Core.Common

@@ -5,18 +5,18 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Test.Massiv.Core.Mutable
-  ( -- * Spec for Mutable instance
-    unsafeMutableSpec
-  , prop_UnsafeNewMsize
-  , prop_UnsafeThawFreeze
-  , prop_UnsafeInitializeNew
-  , prop_UnsafeArrayLinearCopy
+module Test.Massiv.Core.Mutable (
+  -- * Spec for Mutable instance
+  unsafeMutableSpec,
+  prop_UnsafeNewMsize,
+  prop_UnsafeThawFreeze,
+  prop_UnsafeInitializeNew,
+  prop_UnsafeArrayLinearCopy,
 
-    -- ** Properties that aren't valid for boxed
-  , unsafeMutableUnboxedSpec
-  , prop_UnsafeInitialize
-  ) where
+  -- ** Properties that aren't valid for boxed
+  unsafeMutableUnboxedSpec,
+  prop_UnsafeInitialize,
+) where
 
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe

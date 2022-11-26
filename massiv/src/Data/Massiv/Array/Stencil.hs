@@ -11,41 +11,41 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Stencil
-  ( -- * Stencil
-    Stencil
-  , makeStencil
-  , getStencilSize
-  , getStencilCenter
+module Data.Massiv.Array.Stencil (
+  -- * Stencil
+  Stencil,
+  makeStencil,
+  getStencilSize,
+  getStencilCenter,
 
-    -- ** Padding
-  , Padding (..)
-  , noPadding
-  , samePadding
+  -- ** Padding
+  Padding (..),
+  noPadding,
+  samePadding,
 
-    -- ** Application
-  , mapStencil
-  , applyStencil
+  -- ** Application
+  mapStencil,
+  applyStencil,
 
-    -- ** Common stencils
-  , idStencil
-  , sumStencil
-  , productStencil
-  , avgStencil
-  , maxStencil
-  , minStencil
-  , foldlStencil
-  , foldrStencil
-  , foldStencil
+  -- ** Common stencils
+  idStencil,
+  sumStencil,
+  productStencil,
+  avgStencil,
+  maxStencil,
+  minStencil,
+  foldlStencil,
+  foldrStencil,
+  foldStencil,
 
-    -- ** Profunctor
-  , dimapStencil
-  , lmapStencil
-  , rmapStencil
+  -- ** Profunctor
+  dimapStencil,
+  lmapStencil,
+  rmapStencil,
 
-    -- * Convolution
-  , module Data.Massiv.Array.Stencil.Convolution
-  ) where
+  -- * Convolution
+  module Data.Massiv.Array.Stencil.Convolution,
+) where
 
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Windowed

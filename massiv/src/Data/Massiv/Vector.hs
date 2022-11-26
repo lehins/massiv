@@ -10,118 +10,118 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Vector
-  ( Vector
-  , MVector
+module Data.Massiv.Vector (
+  Vector,
+  MVector,
 
-    -- * Accessors
+  -- * Accessors
 
-    -- *** Size
-  , slength
-  , maxLinearSize
-  , size
-  , isNull
-  , isNotNull
+  -- *** Size
+  slength,
+  maxLinearSize,
+  size,
+  isNull,
+  isNotNull,
 
-    -- *** Indexing
-  , (!?)
-  , (!)
-  , index
-  , index'
-  , head'
-  , shead'
-  , last'
+  -- *** Indexing
+  (!?),
+  (!),
+  index,
+  index',
+  head',
+  shead',
+  last',
 
-    -- *** Monadic Indexing
-  , indexM
-  , headM
-  , sheadM
-  , lastM
-  , unconsM
-  , unsnocM
+  -- *** Monadic Indexing
+  indexM,
+  headM,
+  sheadM,
+  lastM,
+  unconsM,
+  unsnocM,
 
-    -- ** Slicing
-  , slice
-  , slice'
-  , sliceM
-  , sslice
-  , sliceAt
-  , sliceAt'
-  , sliceAtM
+  -- ** Slicing
+  slice,
+  slice',
+  sliceM,
+  sslice,
+  sliceAt,
+  sliceAt',
+  sliceAtM,
 
-    -- *** Init
-  , init
-  , init'
-  , initM
+  -- *** Init
+  init,
+  init',
+  initM,
 
-    -- *** Tail
-  , tail
-  , tail'
-  , tailM
+  -- *** Tail
+  tail,
+  tail',
+  tailM,
 
-    -- *** Take
-  , take
-  , take'
-  , takeM
-  , takeWhile
-  , stake
+  -- *** Take
+  take,
+  take',
+  takeM,
+  takeWhile,
+  stake,
 
-    -- *** Drop
-  , drop
-  , dropWhile
-  , drop'
-  , dropM
-  , sdrop
+  -- *** Drop
+  drop,
+  dropWhile,
+  drop',
+  dropM,
+  sdrop,
 
-    -- * Construction
+  -- * Construction
 
-    -- ** Initialization
-  , empty
-  , sempty
-  , singleton
-  , ssingleton
-  , cons
-  , snoc
-  , A.replicate
-  , sreplicate
-  , generate
-  , sgenerate
+  -- ** Initialization
+  empty,
+  sempty,
+  singleton,
+  ssingleton,
+  cons,
+  snoc,
+  A.replicate,
+  sreplicate,
+  generate,
+  sgenerate,
   -- , iterateN
   -- , iiterateN
-  , siterate
-  , siterateN
+  siterate,
+  siterateN,
 
-    -- ** Monadic initialization
-  , sreplicateM
-  , sgenerateM
-  , siterateNM
+  -- ** Monadic initialization
+  sreplicateM,
+  sgenerateM,
+  siterateNM,
   -- , create
   -- , createT
 
-    -- ** Unfolding
-  , sunfoldr
-  , sunfoldrM
-  , sunfoldrN
-  , sunfoldrNM
-  , sunfoldrExactN
-  , sunfoldrExactNM
+  -- ** Unfolding
+  sunfoldr,
+  sunfoldrM,
+  sunfoldrN,
+  sunfoldrNM,
+  sunfoldrExactN,
+  sunfoldrExactNM,
   -- , constructN
   -- , constructrN
 
-    -- ** Enumeration
-  , (...)
-  , (..:)
-  , enumFromN
-  , senumFromN
-  , enumFromStepN
-  , senumFromStepN
+  -- ** Enumeration
+  (...),
+  (..:),
+  enumFromN,
+  senumFromN,
+  enumFromStepN,
+  senumFromStepN,
 
-    -- ** Concatenation
+  -- ** Concatenation
 
   -- , consS -- cons
   -- , snocS -- snoc
-  , sappend -- (++)
-  , sconcat -- concat
+  sappend, -- (++)
+  sconcat, -- concat
   -- -- ** Restricitng memory usage
   -- , force
   -- -- * Modifying
@@ -138,74 +138,74 @@ module Data.Massiv.Vector
   -- , modify
   -- -- * Elementwise
   -- -- ** Mapping
-  , smap
-  , simap
+  smap,
+  simap,
   -- , sconcatMap
 
-    -- ** Monadic mapping
-  , straverse
-  , sitraverse
-  , smapM
-  , smapM_
-  , simapM
-  , simapM_
-  , sforM
-  , sforM_
-  , siforM
-  , siforM_
+  -- ** Monadic mapping
+  straverse,
+  sitraverse,
+  smapM,
+  smapM_,
+  simapM,
+  simapM_,
+  sforM,
+  sforM_,
+  siforM,
+  siforM_,
 
-    -- ** Zipping
-  , szip
-  , szip3
-  , szip4
-  , szip5
-  , szip6
-  , szipWith
-  , szipWith3
-  , szipWith4
-  , szipWith5
-  , szipWith6
-  , sizipWith
-  , sizipWith3
-  , sizipWith4
-  , sizipWith5
-  , sizipWith6
+  -- ** Zipping
+  szip,
+  szip3,
+  szip4,
+  szip5,
+  szip6,
+  szipWith,
+  szipWith3,
+  szipWith4,
+  szipWith5,
+  szipWith6,
+  sizipWith,
+  sizipWith3,
+  sizipWith4,
+  sizipWith5,
+  sizipWith6,
 
-    -- ** Monadic zipping
-  , szipWithM
-  , szipWith3M
-  , szipWith4M
-  , szipWith5M
-  , szipWith6M
-  , sizipWithM
-  , sizipWith3M
-  , sizipWith4M
-  , sizipWith5M
-  , sizipWith6M
-  , szipWithM_
-  , szipWith3M_
-  , szipWith4M_
-  , szipWith5M_
-  , szipWith6M_
-  , sizipWithM_
-  , sizipWith3M_
-  , sizipWith4M_
-  , sizipWith5M_
-  , sizipWith6M_
+  -- ** Monadic zipping
+  szipWithM,
+  szipWith3M,
+  szipWith4M,
+  szipWith5M,
+  szipWith6M,
+  sizipWithM,
+  sizipWith3M,
+  sizipWith4M,
+  sizipWith5M,
+  sizipWith6M,
+  szipWithM_,
+  szipWith3M_,
+  szipWith4M_,
+  szipWith5M_,
+  szipWith6M_,
+  sizipWithM_,
+  sizipWith3M_,
+  sizipWith4M_,
+  sizipWith5M_,
+  sizipWith6M_,
 
-    -- * Predicates
+  -- * Predicates
 
-    -- ** Filtering
-  , sfilter
-  , sifilter
-  , sfilterM
-  , sifilterM
+  -- ** Filtering
+  sfilter,
+  sifilter,
+  sfilterM,
+  sifilterM,
   -- , uniq -- sunique?
-  , smapMaybe
-  , smapMaybeM
-  , scatMaybes
-  , simapMaybe
-  , simapMaybeM
+  smapMaybe,
+  smapMaybeM,
+  scatMaybes,
+  simapMaybe,
+  simapMaybeM,
   -- , stakeWhile
   -- , sdropWhile
   -- -- ** Partitioning
@@ -218,34 +218,34 @@ module Data.Massiv.Vector
   -- , elem
   -- , notElem
   -- , find
-  , findIndex
+  findIndex,
   -- , findIndices
   -- , elemIndex
   -- , elemIndices
 
-    -- * Folding
-  , sfoldl
-  , sfoldlM
-  , sfoldlM_
-  , sifoldl
-  , sifoldlM
-  , sifoldlM_
-  , sfoldl1'
-  , sfoldl1M
-  , sfoldl1M_
+  -- * Folding
+  sfoldl,
+  sfoldlM,
+  sfoldlM_,
+  sifoldl,
+  sifoldlM,
+  sifoldlM_,
+  sfoldl1',
+  sfoldl1M,
+  sfoldl1M_,
 
-    -- ** Specialized folds
-  , sor
-  , sand
-  , sall
-  , sany
-  , ssum
-  , sproduct
-  , smaximum'
-  , smaximumM
+  -- ** Specialized folds
+  sor,
+  sand,
+  sall,
+  sany,
+  ssum,
+  sproduct,
+  smaximum',
+  smaximumM,
   -- , maximumBy
-  , sminimum'
-  , sminimumM
+  sminimum',
+  sminimumM,
   -- , minimumBy
   -- , minIndex
   -- , minIndexBy
@@ -269,35 +269,35 @@ module Data.Massiv.Vector
   -- , scanr1
   -- , scanr1'
 
-    -- * Conversions
+  -- * Conversions
 
-    -- ** Lists
-  , stoList
-  , fromList
-  , sfromList
-  , sfromListN
+  -- ** Lists
+  stoList,
+  fromList,
+  sfromList,
+  sfromListN,
 
-    -- * Computation
-  , compute
-  , computeS
-  , computeIO
-  , computePrimM
-  , computeAs
-  , computeProxy
-  , computeSource
-  , computeWithStride
-  , computeWithStrideAs
-  , clone
-  , convert
-  , convertAs
-  , convertProxy
+  -- * Computation
+  compute,
+  computeS,
+  computeIO,
+  computePrimM,
+  computeAs,
+  computeProxy,
+  computeSource,
+  computeWithStride,
+  computeWithStrideAs,
+  clone,
+  convert,
+  convertAs,
+  convertProxy,
 
-    -- ** Re-exports
-  , module Data.Massiv.Core
-  , module Data.Massiv.Array.Delayed
-  , module Data.Massiv.Array.Manifest
-  , module Data.Massiv.Array.Mutable
-  ) where
+  -- ** Re-exports
+  module Data.Massiv.Core,
+  module Data.Massiv.Array.Delayed,
+  module Data.Massiv.Array.Manifest,
+  module Data.Massiv.Array.Mutable,
+) where
 
 import Control.Monad hiding (filterM, replicateM)
 import Data.Coerce
@@ -316,18 +316,18 @@ import Data.Massiv.Core.Common
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Vector.Unsafe
 import Data.Maybe
-import Prelude hiding
-  ( drop
-  , dropWhile
-  , init
-  , length
-  , null
-  , replicate
-  , splitAt
-  , tail
-  , take
-  , takeWhile
-  )
+import Prelude hiding (
+  drop,
+  dropWhile,
+  init,
+  length,
+  null,
+  replicate,
+  splitAt,
+  tail,
+  take,
+  takeWhile,
+ )
 
 -- ========= --
 -- Accessors --

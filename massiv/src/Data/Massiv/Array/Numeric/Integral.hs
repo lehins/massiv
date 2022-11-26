@@ -8,31 +8,31 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Numeric.Integral
-  ( -- $integral_intro
-    midpointRule
-  , midpointStencil
+module Data.Massiv.Array.Numeric.Integral (
+  -- $integral_intro
+  midpointRule,
+  midpointStencil,
 
-    -- ** Trapezoid Rule
-  , trapezoidRule
-  , trapezoidStencil
+  -- ** Trapezoid Rule
+  trapezoidRule,
+  trapezoidStencil,
 
-    -- ** Simpson's Rule
-  , simpsonsRule
-  , simpsonsStencil
+  -- ** Simpson's Rule
+  simpsonsRule,
+  simpsonsStencil,
 
-    -- * General Integral approximation
-  , integrateWith
-  , integralApprox
+  -- * General Integral approximation
+  integrateWith,
+  integralApprox,
 
-    -- * From functions
+  -- * From functions
 
-    -- ** Sampled at the edge
-  , fromFunction
+  -- ** Sampled at the edge
+  fromFunction,
 
-    -- ** Sampled at the midpoint
-  , fromFunctionMidpoint
-  ) where
+  -- ** Sampled at the midpoint
+  fromFunctionMidpoint,
+) where
 
 import Data.Coerce
 import Data.Massiv.Array.Delayed.Pull (D)

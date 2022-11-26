@@ -12,65 +12,65 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Ops.Transform
-  ( -- ** Transpose
-    transpose
-  , transposeInner
-  , transposeOuter
+module Data.Massiv.Array.Ops.Transform (
+  -- ** Transpose
+  transpose,
+  transposeInner,
+  transposeOuter,
 
-    -- ** Reverse
-  , reverse
-  , reverse'
-  , reverseM
+  -- ** Reverse
+  reverse,
+  reverse',
+  reverseM,
 
-    -- ** Backpermute
-  , backpermuteM
-  , backpermute'
+  -- ** Backpermute
+  backpermuteM,
+  backpermute',
 
-    -- ** Resize
-  , resizeM
-  , resize'
-  , flatten
+  -- ** Resize
+  resizeM,
+  resize',
+  flatten,
 
-    -- ** Extract
-  , extractM
-  , extract'
-  , extractFromToM
-  , extractFromTo'
-  , deleteRowsM
-  , deleteColumnsM
-  , deleteRegionM
+  -- ** Extract
+  extractM,
+  extract',
+  extractFromToM,
+  extractFromTo',
+  deleteRowsM,
+  deleteColumnsM,
+  deleteRegionM,
 
-    -- ** Append/Split
-  , appendOuterM
-  , appendM
-  , append'
-  , concatOuterM
-  , concatM
-  , concat'
-  , stackSlicesM
-  , stackOuterSlicesM
-  , stackInnerSlicesM
-  , splitAtM
-  , splitAt'
-  , splitExtractM
-  , replaceSlice
-  , replaceOuterSlice
+  -- ** Append/Split
+  appendOuterM,
+  appendM,
+  append',
+  concatOuterM,
+  concatM,
+  concat',
+  stackSlicesM,
+  stackOuterSlicesM,
+  stackInnerSlicesM,
+  splitAtM,
+  splitAt',
+  splitExtractM,
+  replaceSlice,
+  replaceOuterSlice,
 
-    -- ** Upsample/Downsample
-  , upsample
-  , downsample
+  -- ** Upsample/Downsample
+  upsample,
+  downsample,
 
-    -- ** Zoom
-  , zoom
-  , zoomWithGrid
+  -- ** Zoom
+  zoom,
+  zoomWithGrid,
 
-    -- ** Transform
-  , transformM
-  , transform'
-  , transform2M
-  , transform2'
-  ) where
+  -- ** Transform
+  transformM,
+  transform',
+  transform2M,
+  transform2',
+) where
 
 import Control.Monad as M (foldM_, forM_, unless)
 import Control.Monad.ST
@@ -85,15 +85,15 @@ import Data.Massiv.Array.Ops.Construct
 import Data.Massiv.Array.Ops.Map
 import Data.Massiv.Core
 import Data.Massiv.Core.Common -- (size, unsafeIndex, unsafeResize, evaluate', evaluateM)
-import Prelude as P hiding
-  ( concat
-  , drop
-  , mapM_
-  , reverse
-  , splitAt
-  , take
-  , traverse
-  )
+import Prelude as P hiding (
+  concat,
+  drop,
+  mapM_,
+  reverse,
+  splitAt,
+  take,
+  traverse,
+ )
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
 -- fully encapsulated in a source array, otherwise `SizeSubregionException` will be thrown.

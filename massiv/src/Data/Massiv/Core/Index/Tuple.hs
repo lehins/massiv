@@ -12,40 +12,40 @@
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Index.Tuple
-  ( -- * Tuple based indices
+module Data.Massiv.Core.Index.Tuple (
+  -- * Tuple based indices
 
-    -- ** 1-dimensional
-    Ix1T
+  -- ** 1-dimensional
+  Ix1T,
 
-    -- ** 2-dimensional
-  , Ix2T
-  , toIx2
-  , fromIx2
+  -- ** 2-dimensional
+  Ix2T,
+  toIx2,
+  fromIx2,
 
-    -- ** 3-dimensional
-  , Ix3T
-  , toIx3
-  , fromIx3
+  -- ** 3-dimensional
+  Ix3T,
+  toIx3,
+  fromIx3,
 
-    -- ** 4-dimensional
-  , Ix4T
-  , toIx4
-  , fromIx4
+  -- ** 4-dimensional
+  Ix4T,
+  toIx4,
+  fromIx4,
 
-    -- ** 5-dimensional
-  , Ix5T
-  , toIx5
-  , fromIx5
-  ) where
+  -- ** 5-dimensional
+  Ix5T,
+  toIx5,
+  fromIx5,
+) where
 
 import Control.Monad.Catch (MonadThrow (..))
-import Data.Massiv.Core.Index.Internal
-  ( Index (..)
-  , IndexException (..)
-  , Lower
-  , Sz (..)
-  )
+import Data.Massiv.Core.Index.Internal (
+  Index (..),
+  IndexException (..),
+  Lower,
+  Sz (..),
+ )
 import Data.Massiv.Core.Index.Ix
 
 -- | Another 1-dimensional index type synonym for `Int`, same as `Ix1` and is here just for

@@ -17,20 +17,20 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Delayed.Pull
-  ( D (..)
-  , Array (..)
-  , delay
-  , eqArrays
-  , compareArrays
-  , imap
-  , liftArray2'
-  , liftArray2M
-  , unsafeExtract
-  , unsafeSlice
-  , unsafeInnerSlice
-  , zipWithInternal
-  ) where
+module Data.Massiv.Array.Delayed.Pull (
+  D (..),
+  Array (..),
+  delay,
+  eqArrays,
+  compareArrays,
+  imap,
+  liftArray2',
+  liftArray2M,
+  unsafeExtract,
+  unsafeSlice,
+  unsafeInnerSlice,
+  zipWithInternal,
+) where
 
 import Control.Applicative
 import qualified Data.Foldable as F

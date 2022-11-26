@@ -5,41 +5,41 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Array.Delayed
-  ( -- * Delayed
+module Data.Massiv.Array.Delayed (
+  -- * Delayed
 
-    -- ** Delayed Pull Array
-    D (..)
-  , delay
-  , liftArray2'
-  , liftArray2M
+  -- ** Delayed Pull Array
+  D (..),
+  delay,
+  liftArray2',
+  liftArray2M,
 
-    -- ** Delayed Push Array
-  , DL (..)
-  , toLoadArray
-  , makeLoadArrayS
-  , makeLoadArray
-  , fromStrideLoad
+  -- ** Delayed Push Array
+  DL (..),
+  toLoadArray,
+  makeLoadArrayS,
+  makeLoadArray,
+  fromStrideLoad,
 
-    -- ** Delayed Stream Array
-  , DS (..)
-  , toStreamArray
-  , toSteps
-  , fromSteps
+  -- ** Delayed Stream Array
+  DS (..),
+  toStreamArray,
+  toSteps,
+  fromSteps,
 
-    -- ** Delayed Interleaved Array
-  , DI (..)
-  , toInterleaved
-  , fromInterleaved
+  -- ** Delayed Interleaved Array
+  DI (..),
+  toInterleaved,
+  fromInterleaved,
 
-    -- ** Delayed Windowed Array
-  , DW (..)
-  , Window (..)
-  , insertWindow
-  , getWindow
-  , dropWindow
-  , makeWindowedArray
-  ) where
+  -- ** Delayed Windowed Array
+  DW (..),
+  Window (..),
+  insertWindow,
+  getWindow,
+  dropWindow,
+  makeWindowedArray,
+) where
 
 import Data.Massiv.Array.Delayed.Interleaved
 import Data.Massiv.Array.Delayed.Pull

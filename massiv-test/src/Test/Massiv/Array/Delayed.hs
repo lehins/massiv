@@ -6,22 +6,22 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Test.Massiv.Array.Delayed
-  ( -- * Spec for safe Mutable instance
-    delayedStreamSpec
+module Test.Massiv.Array.Delayed (
+  -- * Spec for safe Mutable instance
+  delayedStreamSpec,
 
-    -- * Useful properties for testing toList conversion
-  , prop_toStream
-  , prop_toStreamIsList
-  , prop_toStreamFoldable
-  , prop_sfilter
-  , prop_smapMaybe
-  , prop_takeDrop
-  , prop_sunfoldr
+  -- * Useful properties for testing toList conversion
+  prop_toStream,
+  prop_toStreamIsList,
+  prop_toStreamFoldable,
+  prop_sfilter,
+  prop_smapMaybe,
+  prop_takeDrop,
+  prop_sunfoldr,
 
-    -- * Random reimplementations
-  , stackSlices'
-  ) where
+  -- * Random reimplementations
+  stackSlices',
+) where
 
 import Data.Foldable as F
 import Data.List as L
