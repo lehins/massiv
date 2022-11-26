@@ -18,8 +18,8 @@
 -- Stability   : experimental
 -- Portability : non-portable
 module Data.Massiv.Array.Delayed.Pull
-  ( D(..)
-  , Array(..)
+  ( D (..)
+  , Array (..)
   , delay
   , eqArrays
   , compareArrays
@@ -45,16 +45,15 @@ import Prelude hiding (zipWith)
 #include "massiv.h"
 
 -- | Delayed representation.
-data D =
-  D
+data D
+  = D
   deriving (Show)
 
-
-data instance  Array D ix e =
-  DArray { dComp :: !Comp
-         , dSize :: !(Sz ix)
-         , dPrefIndex :: !(PrefIndex ix e)
-         }
+data instance Array D ix e = DArray
+  { dComp :: !Comp
+  , dSize :: !(Sz ix)
+  , dPrefIndex :: !(PrefIndex ix e)
+  }
 
 instance (Ragged L ix e, Show e) => Show (Array D ix e) where
   showsPrec = showsArrayPrec id
@@ -72,7 +71,7 @@ instance Size D where
   {-# INLINE unsafeResize #-}
 
 instance Strategy D where
-  setComp c arr = arr {dComp = c}
+  setComp c arr = arr{dComp = c}
   {-# INLINE setComp #-}
   getComp = dComp
   {-# INLINE getComp #-}
@@ -106,8 +105,8 @@ unsafeExtract !sIx !newSz !arr =
 {-# INLINE unsafeExtract #-}
 
 -- | /O(1)/ - Take a slice out of an array from within
-unsafeSlice ::
-     (Source r e, Index ix, Index (Lower ix), MonadThrow m)
+unsafeSlice
+  :: (Source r e, Index ix, Index (Lower ix), MonadThrow m)
   => Array r ix e
   -> ix
   -> Sz ix
@@ -119,8 +118,8 @@ unsafeSlice arr start cut@(SafeSz cutSz) dim = do
 {-# INLINE unsafeSlice #-}
 
 -- | /O(1)/ - Take a slice out of an array from the inside
-unsafeInnerSlice ::
-     (Source r e, Index ix) => Array r ix e -> Sz (Lower ix) -> Int -> Array D (Lower ix) e
+unsafeInnerSlice
+  :: (Source r e, Index ix) => Array r ix e -> Sz (Lower ix) -> Int -> Array D (Lower ix) e
 unsafeInnerSlice !arr szL !i =
   DArray (getComp arr) szL $ PrefIndex (unsafeIndex arr . (`snocDim` i))
 {-# INLINE unsafeInnerSlice #-}
@@ -177,7 +176,7 @@ instance Index ix => Load D ix e where
   {-# INLINE makeArray #-}
   makeArrayLinear comp sz = DArray comp sz . PrefIndexLinear
   {-# INLINE makeArrayLinear #-}
-  iterArrayLinearST_ !scheduler DArray {..} uWrite =
+  iterArrayLinearST_ !scheduler DArray{..} uWrite =
     case dPrefIndex of
       PrefIndex f ->
         iterTargetFullST_ defRowMajor scheduler 0 dSize $ \ !i -> uWrite i . f
@@ -186,7 +185,7 @@ instance Index ix => Load D ix e where
   {-# INLINE iterArrayLinearST_ #-}
 
 instance Index ix => StrideLoad D ix e where
-  iterArrayLinearWithStrideST_ !scheduler !stride sz DArray {..} uWrite =
+  iterArrayLinearWithStrideST_ !scheduler !stride sz DArray{..} uWrite =
     case dPrefIndex of
       PrefIndex f ->
         iterTargetFullWithStrideST_ defRowMajor scheduler 0 sz stride $ \i ->
@@ -205,8 +204,9 @@ instance Index ix => Stream D ix e where
 -- | Map an index aware function over an array
 --
 -- @since 0.1.0
-imap ::
-     forall r ix e a. (Index ix, Source r e)
+imap
+  :: forall r ix e a
+   . (Index ix, Source r e)
   => (ix -> e -> a)
   -> Array r ix e
   -> Array D ix a
@@ -228,7 +228,7 @@ instance Num e => FoldNumeric D e where
   {-# INLINE foldArray #-}
 
 instance Num e => Numeric D e where
-  unsafeLiftArray f arr = arr {dPrefIndex = f <$> dPrefIndex arr}
+  unsafeLiftArray f arr = arr{dPrefIndex = f <$> dPrefIndex arr}
   {-# INLINE unsafeLiftArray #-}
   unsafeLiftArray2 f a1 a2 = zipWithInternal (size a1) f a1 a2
   {-# INLINE unsafeLiftArray2 #-}
@@ -242,16 +242,17 @@ delay arr =
     PrefIndex gix -> makeArray (getComp arr) (size arr) gix
     PrefIndexLinear gi -> makeArrayLinear (getComp arr) (size arr) gi
 {-# INLINE [1] delay #-}
+
 {-# RULES
-"delay" [~1] forall (arr :: Array D ix e) . delay arr = arr
- #-}
+"delay" [~1] forall (arr :: Array D ix e). delay arr = arr
+  #-}
 
 -- | Compute array equality by applying a comparing function to each
 -- element. Empty arrays are always equal, regardless of their size.
 --
 -- @since 0.5.7
-eqArrays ::
-     (Index ix, Source r1 e1, Source r2 e2)
+eqArrays
+  :: (Index ix, Source r1 e1, Source r2 e2)
   => (e1 -> e2 -> Bool)
   -> Array r1 ix e1
   -> Array r2 ix e2
@@ -259,13 +260,16 @@ eqArrays ::
 eqArrays f arr1 arr2 =
   let sz1 = size arr1
       sz2 = size arr2
-   in (sz1 == sz2 &&
-       not
-         (A.any
-            not
-            (makeArray @D (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
-               f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)))) ||
-      (isZeroSz sz1 && isZeroSz sz2)
+   in ( sz1 == sz2
+          && not
+            ( A.any
+                not
+                ( makeArray @D (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
+                    f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
+                )
+            )
+      )
+        || (isZeroSz sz1 && isZeroSz sz2)
 {-# INLINE eqArrays #-}
 
 -- | Compute array ordering by applying a comparing function to each element.
@@ -273,25 +277,26 @@ eqArrays f arr1 arr2 =
 -- you need an ordering but do not care about which one is used.
 --
 -- @since 0.5.7
-compareArrays ::
-     (Index ix, Source r1 e1, Source r2 e2)
+compareArrays
+  :: (Index ix, Source r1 e1, Source r2 e2)
   => (e1 -> e2 -> Ordering)
   -> Array r1 ix e1
   -> Array r2 ix e2
   -> Ordering
 compareArrays f arr1 arr2 =
-  compare (size arr1) (size arr2) <>
-  A.fold
-    (makeArray @D (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
-       f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
+  compare (size arr1) (size arr2)
+    <> A.fold
+      ( makeArray @D (getComp arr1 <> getComp arr2) (size arr1) $ \ix ->
+          f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix)
+      )
 {-# INLINE compareArrays #-}
 
 -- | Same as `liftArray2M`, but throws an imprecise exception on mismatched
 -- sizes.
 --
 -- @since 1.0.0
-liftArray2' ::
-     (HasCallStack, Index ix, Source r1 a, Source r2 b)
+liftArray2'
+  :: (HasCallStack, Index ix, Source r1 a, Source r2 b)
   => (a -> b -> e)
   -> Array r1 ix a
   -> Array r2 ix b
@@ -303,8 +308,8 @@ liftArray2' f arr1 arr2 = throwEither $ liftArray2M f arr1 arr2
 -- have to be the same, otherwise it throws `SizeMismatchException`.
 --
 -- @since 1.0.0
-liftArray2M ::
-     (Index ix, Source r1 a, Source r2 b, MonadThrow m)
+liftArray2M
+  :: (Index ix, Source r1 a, Source r2 b, MonadThrow m)
   => (a -> b -> e)
   -> Array r1 ix a
   -> Array r2 ix b
@@ -318,8 +323,8 @@ liftArray2M f !arr1 !arr2
     sz2 = size arr2
 {-# INLINE liftArray2M #-}
 
-zipWithInternal ::
-     (Index ix, Source r1 e1, Source r2 e2)
+zipWithInternal
+  :: (Index ix, Source r1 e1, Source r2 e2)
   => Sz ix
   -> (e1 -> e2 -> e3)
   -> Array r1 ix e1
@@ -329,7 +334,7 @@ zipWithInternal sz f arr1 arr2 =
   case unsafePrefIndex arr1 of
     PrefIndexLinear gi1
       | PrefIndexLinear gi2 <- unsafePrefIndex arr2 ->
-        makeArrayLinear comp sz (\ !i -> f (gi1 i) (gi2 i))
+          makeArrayLinear comp sz (\ !i -> f (gi1 i) (gi2 i))
     _ -> makeArray comp sz (\ !ix -> f (unsafeIndex arr1 ix) (unsafeIndex arr2 ix))
   where
     comp = getComp arr1 <> getComp arr2

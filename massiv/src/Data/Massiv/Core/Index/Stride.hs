@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternSynonyms #-}
+
 -- |
 -- Module      : Data.Massiv.Core.Index.Stride
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -8,9 +9,8 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Core.Index.Stride
-  ( Stride(SafeStride)
+  ( Stride (SafeStride)
   , pattern Stride
   , unStride
   , oneStride
@@ -21,7 +21,7 @@ module Data.Massiv.Core.Index.Stride
 
 import Control.DeepSeq (NFData)
 import Data.Massiv.Core.Index.Internal
-import System.Random.Stateful (Random, Uniform(..), UniformRange(..))
+import System.Random.Stateful (Random, Uniform (..), UniformRange (..))
 
 -- | Stride provides a way to ignore elements of an array if an index is divisible by a
 -- corresponding value in a stride. So, for a @Stride (i :. j)@ only elements with indices will be
@@ -51,20 +51,19 @@ import System.Random.Stateful (Random, Uniform(..), UniformRange(..))
 -- @since 0.2.1
 newtype Stride ix = SafeStride ix deriving (Eq, Ord, NFData)
 
-
 -- | A safe bidirectional pattern synonym for `Stride` construction that will make sure stride
 -- elements are always positive.
 --
 -- @since 0.2.1
 pattern Stride :: Index ix => ix -> Stride ix
-pattern Stride ix <- SafeStride ix where
-        Stride ix = SafeStride (liftIndex (max 1) ix)
-{-# COMPLETE Stride #-}
+pattern Stride ix <- SafeStride ix
+  where
+    Stride ix = SafeStride (liftIndex (max 1) ix)
 
+{-# COMPLETE Stride #-}
 
 instance Index ix => Show (Stride ix) where
   showsPrec n (SafeStride ix) = showsPrecWrapped n (("Stride " ++) . showsPrec 1 ix)
-
 
 instance (UniformRange ix, Index ix) => Uniform (Stride ix) where
   uniformM g = SafeStride <$> uniformRM (pureIndex 1, pureIndex maxBound) g
@@ -75,7 +74,6 @@ instance UniformRange ix => UniformRange (Stride ix) where
   {-# INLINE uniformRM #-}
 
 instance (UniformRange ix, Index ix) => Random (Stride ix)
-
 
 -- | Just a helper function for unwrapping `Stride`.
 --
@@ -106,15 +104,17 @@ strideSize (SafeStride stride) (SafeSz sz) =
 -- | Compute linear index with stride using the original size and index
 --
 -- @since 0.2.1
-toLinearIndexStride ::
-     Index ix
-  => Stride ix -- ^ Stride
-  -> Sz ix -- ^ Size
-  -> ix -- ^ Index
+toLinearIndexStride
+  :: Index ix
+  => Stride ix
+  -- ^ Stride
+  -> Sz ix
+  -- ^ Size
+  -> ix
+  -- ^ Index
   -> Int
 toLinearIndexStride (SafeStride stride) sz ix = toLinearIndex sz (liftIndex2 div ix stride)
 {-# INLINE toLinearIndexStride #-}
-
 
 -- | A default stride of @1@, where all elements are kept
 --
@@ -122,5 +122,3 @@ toLinearIndexStride (SafeStride stride) sz ix = toLinearIndex sz (liftIndex2 div
 oneStride :: Index ix => Stride ix
 oneStride = SafeStride (pureIndex 1)
 {-# INLINE oneStride #-}
-
-

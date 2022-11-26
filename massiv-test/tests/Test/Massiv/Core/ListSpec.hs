@@ -4,14 +4,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+
 module Test.Massiv.Core.ListSpec (spec) where
 
 import Data.Massiv.Array
-import Test.Massiv.Core
 import Test.Massiv.Array.Delayed
-
+import Test.Massiv.Core
 
 spec :: Spec
 spec = do
-  describe "L" $
-    it "toStream" $ property (prop_toStreamIsList @L @Int)
+  describe "L" $ do
+    prop "toStream" $ prop_toStreamIsList @L @Int

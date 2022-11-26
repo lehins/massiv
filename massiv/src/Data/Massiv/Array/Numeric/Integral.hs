@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Numeric.Integral
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -7,28 +8,29 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Array.Numeric.Integral
-  (
-  -- $integral_intro
-  --
-  -- * Integral Approximation
-  -- ** Midpoint Rule
+  ( -- $integral_intro
     midpointRule
   , midpointStencil
-  -- ** Trapezoid Rule
+
+    -- ** Trapezoid Rule
   , trapezoidRule
   , trapezoidStencil
-  -- ** Simpson's Rule
+
+    -- ** Simpson's Rule
   , simpsonsRule
   , simpsonsStencil
-  -- * General Integral approximation
+
+    -- * General Integral approximation
   , integrateWith
   , integralApprox
-  -- * From functions
-  -- ** Sampled at the edge
+
+    -- * From functions
+
+    -- ** Sampled at the edge
   , fromFunction
-  -- ** Sampled at the midpoint
+
+    -- ** Sampled at the midpoint
   , fromFunctionMidpoint
   ) where
 
@@ -42,7 +44,6 @@ import Data.Massiv.Array.Stencil
 import Data.Massiv.Array.Unsafe
 import Data.Massiv.Core.Common
 
-
 -- |
 --
 -- __Midpoint Rule__
@@ -50,17 +51,19 @@ import Data.Massiv.Core.Common
 -- \[
 -- \int_{{\,a}}^{{\,b}}{{f\left( x \right)\,dx}} \approx \Delta x \cdot \,f\left( {x_1 + \frac{\Delta x}{2}} \right) + \Delta x \cdot \,f\left( {x_2 + \frac{\Delta x}{2}} \right) +  \cdots  + \Delta x \cdot \,f\left( {x_n + \frac{\Delta x}{2}} \right)
 -- \]
-midpointStencil ::
-     (Fractional e, Index ix)
-  => e -- ^ @Δx@ - distance between sample points
-  -> Dim -- ^ Dimension along which to integrate
-  -> Int -- ^ @n@ - number of sample points.
+midpointStencil
+  :: (Fractional e, Index ix)
+  => e
+  -- ^ @Δx@ - distance between sample points
+  -> Dim
+  -- ^ Dimension along which to integrate
+  -> Int
+  -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 midpointStencil dx dim k =
   makeUnsafeStencil (Sz (setDim' (pureIndex 1) dim k)) zeroIndex $ \_ g ->
     dx * loop 0 (< k) (+ 1) 0 (\i -> (+ g (setDim' zeroIndex dim i)))
 {-# INLINE midpointStencil #-}
-
 
 -- |
 --
@@ -69,19 +72,22 @@ midpointStencil dx dim k =
 -- \[
 -- \int_{{\,a}}^{{\,b}}{{f\left( x \right)\,dx}} \approx \frac{{\Delta x}}{2}\cdot\left( {f\left( {{x_0}} \right) + f\left( {{x_1}} \right)} \right) + \frac{{\Delta x}}{2}\cdot\left( {f\left( {{x_1}} \right) + f\left( {{x_2}} \right)} \right) +  \cdots  + \frac{{\Delta x}}{2}\cdot\left( {f\left( {{x_{n - 1}}} \right) + f\left( {{x_n}} \right)} \right)
 -- \]
-trapezoidStencil ::
-     (Fractional e, Index ix)
-  => e -- ^ @Δx@ - distance between sample points
-  -> Dim -- ^ Dimension along which to integrate
-  -> Int -- ^ @n@ - number of sample points.
+trapezoidStencil
+  :: (Fractional e, Index ix)
+  => e
+  -- ^ @Δx@ - distance between sample points
+  -> Dim
+  -- ^ Dimension along which to integrate
+  -> Int
+  -- ^ @n@ - number of sample points.
   -> Stencil ix e e
 trapezoidStencil dx dim n =
   makeUnsafeStencil (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \_ g ->
-    dx / 2 *
-    (loop 1 (< n) (+ 1) (g zeroIndex) (\i -> (+ 2 * g (setDim' zeroIndex dim i))) +
-     g (setDim' zeroIndex dim n))
+    (dx / 2)
+      * ( loop 1 (< n) (+ 1) (g zeroIndex) (\i -> (+ 2 * g (setDim' zeroIndex dim i)))
+            + g (setDim' zeroIndex dim n)
+        )
 {-# INLINE trapezoidStencil #-}
-
 
 -- |
 --
@@ -90,31 +96,36 @@ trapezoidStencil dx dim n =
 -- \[
 -- \int_{{\,a}}^{{\,b}}{{f\left( x \right)\,dx}} \approx \frac{{\Delta x}}{3}\cdot\left( {f\left( {{x_0}} \right) + 4\cdot f\left( {{x_1}} \right) + f\left( {{x_2}} \right)} \right) + \frac{{\Delta x}}{3}\cdot\left( {f\left( {{x_2}} \right) + 4\cdot f\left( {{x_3}} \right) + f\left( {{x_4}} \right)} \right) +  \cdots  + \frac{{\Delta x}}{3}\cdot\left( {f\left( {{x_{n - 2}}} \right) + 4\cdot f\left( {{x_{n - 1}}} \right) + f\left( {{x_n}} \right)} \right)
 -- \]
-simpsonsStencil ::
-     (Fractional e, Index ix)
-  => e -- ^ @Δx@ - distance between sample points
-  -> Dim -- ^ Dimension along which to integrate
-  -> Int -- ^ @n@ - Number of sample points. This value should be even, otherwise error.
+simpsonsStencil
+  :: (Fractional e, Index ix)
+  => e
+  -- ^ @Δx@ - distance between sample points
+  -> Dim
+  -- ^ Dimension along which to integrate
+  -> Int
+  -- ^ @n@ - Number of sample points. This value should be even, otherwise error.
   -> Stencil ix e e
 simpsonsStencil dx dim n
   | odd n =
-    error $
-    "Number of sample points for Simpson's rule stencil should be even, but received: " ++ show n
+      error $
+        "Number of sample points for Simpson's rule stencil should be even, but received: " ++ show n
   | otherwise =
-    makeUnsafeStencil (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \_ g ->
-      let simAcc i (prev, acc) =
-            let !fx3 = g (setDim' zeroIndex dim (i + 2))
-                !newAcc = acc + prev + 4 * g (setDim' zeroIndex dim (i + 1)) + fx3
-             in (fx3, newAcc)
-       in dx / 3 * snd (loop 2 (< n - 1) (+ 2) (simAcc 0 (g zeroIndex, 0)) simAcc)
+      makeUnsafeStencil (Sz (setDim' (pureIndex 1) dim (n + 1))) zeroIndex $ \_ g ->
+        let simAcc i (prev, acc) =
+              let !fx3 = g (setDim' zeroIndex dim (i + 2))
+                  !newAcc = acc + prev + 4 * g (setDim' zeroIndex dim (i + 1)) + fx3
+               in (fx3, newAcc)
+         in dx / 3 * snd (loop 2 (< n - 1) (+ 2) (simAcc 0 (g zeroIndex, 0)) simAcc)
 {-# INLINE simpsonsStencil #-}
 
 -- | Integrate with a stencil along a particular dimension.
-integrateWith ::
-     (Fractional e, StrideLoad DW ix e, Manifest r e)
+integrateWith
+  :: (Fractional e, StrideLoad DW ix e, Manifest r e)
   => (Dim -> Int -> Stencil ix e e)
-  -> Dim -- ^ Dimension along which integration should be estimated.
-  -> Int -- ^ @n@ - Number of samples
+  -> Dim
+  -- ^ Dimension along which integration should be estimated.
+  -> Int
+  -- ^ @n@ - Number of samples
   -> Array r ix e
   -> Array r ix e
 integrateWith stencil dim n arr =
@@ -123,15 +134,19 @@ integrateWith stencil dim n arr =
     !nsz = setDim' (pureIndex 1) dim n
 {-# INLINE integrateWith #-}
 
-
 -- | Compute an approximation of integral using a supplied rule in a form of `Stencil`.
-integralApprox ::
-     (Fractional e, StrideLoad DW ix e, Manifest r e)
-  => (e -> Dim -> Int -> Stencil ix e e) -- ^ Integration Stencil
-  -> e -- ^ @d@ - Length of interval per cell
-  -> Sz ix -- ^ @sz@ - Result size of the matrix
-  -> Int -- ^ @n@ - Number of samples
-  -> Array r ix e -- ^ Array with values of @f(x,y,..)@ that will be used as source for integration.
+integralApprox
+  :: (Fractional e, StrideLoad DW ix e, Manifest r e)
+  => (e -> Dim -> Int -> Stencil ix e e)
+  -- ^ Integration Stencil
+  -> e
+  -- ^ @d@ - Length of interval per cell
+  -> Sz ix
+  -- ^ @sz@ - Result size of the matrix
+  -> Int
+  -- ^ @n@ - Number of samples
+  -> Array r ix e
+  -- ^ Array with values of @f(x,y,..)@ that will be used as source for integration.
   -> Array D ix e
 integralApprox stencil d sz n arr =
   extract' zeroIndex sz $ loop 1 (<= coerce (dimensions sz)) (+ 1) arr integrateAlong
@@ -141,54 +156,72 @@ integralApprox stencil d sz n arr =
     {-# INLINE integrateAlong #-}
 {-# INLINE integralApprox #-}
 
-
 -- | Use midpoint rule to approximate an integral.
-midpointRule ::
-     (Fractional e, StrideLoad DW ix e, Manifest r e)
-  => Comp -- ^ Computation strategy.
-  -> r -- ^ Intermediate array representation.
-  -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
-  -> e -- ^ @a@ - Starting value point.
-  -> e -- ^ @d@ - Distance per matrix cell.
-  -> Sz ix -- ^ @sz@ - Result matrix size.
-  -> Int -- ^ @n@ - Number of sample points per cell in each direction.
+midpointRule
+  :: (Fractional e, StrideLoad DW ix e, Manifest r e)
+  => Comp
+  -- ^ Computation strategy.
+  -> r
+  -- ^ Intermediate array representation.
+  -> ((Int -> e) -> ix -> e)
+  -- ^ @f(x,y,...)@ - Function to integrate
+  -> e
+  -- ^ @a@ - Starting value point.
+  -> e
+  -- ^ @d@ - Distance per matrix cell.
+  -> Sz ix
+  -- ^ @sz@ - Result matrix size.
+  -> Int
+  -- ^ @n@ - Number of sample points per cell in each direction.
   -> Array D ix e
 midpointRule comp r f a d sz n =
   integralApprox midpointStencil d sz n $ computeAs r $ fromFunctionMidpoint comp f a d sz n
 {-# INLINE midpointRule #-}
 
-
 -- | Use trapezoid rule to approximate an integral.
-trapezoidRule ::
-     (Fractional e, StrideLoad DW ix e, Manifest r e)
-  => Comp -- ^ Computation strategy
-  -> r -- ^ Intermediate array representation
-  -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - function to integrate
-  -> e -- ^ @a@ - Starting value point.
-  -> e -- ^ @d@ - Distance per matrix cell.
-  -> Sz ix -- ^ @sz@ - Result matrix size.
-  -> Int -- ^ @n@ - Number of sample points per cell in each direction.
+trapezoidRule
+  :: (Fractional e, StrideLoad DW ix e, Manifest r e)
+  => Comp
+  -- ^ Computation strategy
+  -> r
+  -- ^ Intermediate array representation
+  -> ((Int -> e) -> ix -> e)
+  -- ^ @f(x,y,...)@ - function to integrate
+  -> e
+  -- ^ @a@ - Starting value point.
+  -> e
+  -- ^ @d@ - Distance per matrix cell.
+  -> Sz ix
+  -- ^ @sz@ - Result matrix size.
+  -> Int
+  -- ^ @n@ - Number of sample points per cell in each direction.
   -> Array D ix e
 trapezoidRule comp r f a d sz n =
   integralApprox trapezoidStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
 {-# INLINE trapezoidRule #-}
 
 -- | Use Simpson's rule to approximate an integral.
-simpsonsRule ::
-     (Fractional e, StrideLoad DW ix e, Manifest r e)
-  => Comp -- ^ Computation strategy
-  -> r -- ^ Intermediate array representation
-  -> ((Int -> e) -> ix -> e) -- ^ @f(x,y,...)@ - Function to integrate
-  -> e -- ^ @a@ - Starting value point.
-  -> e -- ^ @d@ - Distance per matrix cell.
-  -> Sz ix -- ^ @sz@ - Result matrix size.
-  -> Int -- ^ @n@ - Number of sample points per cell in each direction. This value must be even,
-         -- otherwise error.
+simpsonsRule
+  :: (Fractional e, StrideLoad DW ix e, Manifest r e)
+  => Comp
+  -- ^ Computation strategy
+  -> r
+  -- ^ Intermediate array representation
+  -> ((Int -> e) -> ix -> e)
+  -- ^ @f(x,y,...)@ - Function to integrate
+  -> e
+  -- ^ @a@ - Starting value point.
+  -> e
+  -- ^ @d@ - Distance per matrix cell.
+  -> Sz ix
+  -- ^ @sz@ - Result matrix size.
+  -> Int
+  -- ^ @n@ - Number of sample points per cell in each direction. This value must be even,
+  -- otherwise error.
   -> Array D ix e
 simpsonsRule comp r f a d sz n =
   integralApprox simpsonsStencil d sz n $ computeAs r $ fromFunction comp f a d sz n
 {-# INLINE simpsonsRule #-}
-
 
 -- | Create an array from a function with sample points at the edges
 --
@@ -204,17 +237,21 @@ simpsonsRule comp r f a d sz n =
 --   , [ -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 ]
 --   , [ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0 ]
 --   ]
---
-fromFunction ::
-     (Index ix, Fractional a)
-  => Comp -- ^ Computation strategy
+fromFunction
+  :: (Index ix, Fractional a)
+  => Comp
+  -- ^ Computation strategy
   -> ((Int -> a) -> ix -> e)
   -- ^ A function that will produce elements of scaled up array. First argument is a scaling
   -- function that should be applied to individual indicies.
-  -> a -- ^ @a@ - Starting point
-  -> a -- ^ @d@ - Distance per cell
-  -> Sz ix -- ^ @sz@ - Size of the desired array
-  -> Int -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
+  -> a
+  -- ^ @a@ - Starting point
+  -> a
+  -- ^ @d@ - Distance per cell
+  -> Sz ix
+  -- ^ @sz@ - Size of the desired array
+  -> Int
+  -- ^ @n@ - Scaling factor, i.e. number of sample points per cell.
   -> Array D ix e
 fromFunction comp f a d (Sz sz) n =
   f scale <$> rangeInclusive comp zeroIndex (liftIndex (n *) sz)
@@ -223,7 +260,6 @@ fromFunction comp f a d (Sz sz) n =
     scale i = a + d * fromIntegral i / nFrac
     {-# INLINE scale #-}
 {-# INLINE fromFunction #-}
-
 
 -- | Similar to `fromFunction`, but will create an array from a function with sample points in the
 -- middle of cells.
@@ -239,10 +275,15 @@ fromFunction comp f a d (Sz sz) n =
 --   , [ -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 ]
 --   , [ 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 ]
 --   ]
---
 fromFunctionMidpoint
-  :: (Index ix, Fractional a) =>
-     Comp -> ((Int -> a) -> ix -> e) -> a -> a -> Sz ix -> Int -> Array D ix e
+  :: (Index ix, Fractional a)
+  => Comp
+  -> ((Int -> a) -> ix -> e)
+  -> a
+  -> a
+  -> Sz ix
+  -> Int
+  -> Array D ix e
 fromFunctionMidpoint comp f a d (Sz sz) n =
   f scale <$> rangeInclusive comp zeroIndex (liftIndex (\i -> n * i - 1) sz)
   where
@@ -251,7 +292,6 @@ fromFunctionMidpoint comp f a d (Sz sz) n =
     scale i = dx2 + a + d * fromIntegral i / nFrac
     {-# INLINE scale #-}
 {-# INLINE fromFunctionMidpoint #-}
-
 
 -- $integral_intro
 --

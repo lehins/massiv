@@ -1,11 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
---import Data.Massiv.Array.Delayed.Stream
+
+-- import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Manifest.Vector as A
 import Data.Massiv.Bench as A
 import qualified Data.Vector.Primitive as VP

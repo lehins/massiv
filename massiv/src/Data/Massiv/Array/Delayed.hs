@@ -5,32 +5,36 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Array.Delayed
   ( -- * Delayed
-  -- ** Delayed Pull Array
-    D(..)
+
+    -- ** Delayed Pull Array
+    D (..)
   , delay
   , liftArray2'
   , liftArray2M
-  -- ** Delayed Push Array
-  , DL(..)
+
+    -- ** Delayed Push Array
+  , DL (..)
   , toLoadArray
   , makeLoadArrayS
   , makeLoadArray
   , fromStrideLoad
-  -- ** Delayed Stream Array
-  , DS(..)
+
+    -- ** Delayed Stream Array
+  , DS (..)
   , toStreamArray
   , toSteps
   , fromSteps
-  -- ** Delayed Interleaved Array
-  , DI(..)
+
+    -- ** Delayed Interleaved Array
+  , DI (..)
   , toInterleaved
   , fromInterleaved
-  -- ** Delayed Windowed Array
-  , DW(..)
-  , Window(..)
+
+    -- ** Delayed Windowed Array
+  , DW (..)
+  , Window (..)
   , insertWindow
   , getWindow
   , dropWindow

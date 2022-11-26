@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+
 module Main where
 
 import Criterion.Main
@@ -69,15 +70,18 @@ main = do
             ]
         ]
 
-
 randomArrayBench :: forall ix. Index ix => StdGen -> Comp -> Sz ix -> Benchmark
 randomArrayBench !stdGen !comp !sz =
   bench (show sz) $
-   whnfIO (computeIO $
-   randomArray stdGen split uniform comp sz :: IO (Array P ix Word))
+    whnfIO
+      ( computeIO $
+          randomArray stdGen split uniform comp sz
+          :: IO (Array P ix Word)
+      )
 
-makeSplitSeedArrayBench ::
-     forall it ix. (Index ix, Iterator it)
+makeSplitSeedArrayBench
+  :: forall it ix
+   . (Index ix, Iterator it)
   => it
   -> StdGen
   -> Comp
@@ -85,12 +89,12 @@ makeSplitSeedArrayBench ::
   -> Benchmark
 makeSplitSeedArrayBench it !stdGen !comp !sz =
   bench (show sz) $
-   whnfIO $
-   (computeIO @P $ makeSplitSeedArray @ix @Word it stdGen split comp sz (\_ _ -> uniform))
+    whnfIO $
+      (computeIO @P $ makeSplitSeedArray @ix @Word it stdGen split comp sz (\_ _ -> uniform))
 
-
-generateSplitSeedArrayBench ::
-     forall it ix. (Index ix, Iterator it)
+generateSplitSeedArrayBench
+  :: forall it ix
+   . (Index ix, Iterator it)
   => it
   -> StdGen
   -> Comp
@@ -98,4 +102,4 @@ generateSplitSeedArrayBench ::
   -> Benchmark
 generateSplitSeedArrayBench it !stdGen !comp sz =
   bench (show sz) $
-  nf (\n -> generateSplitSeedArray @P @ix @Word it stdGen (pure . split) comp n (\_ _ -> pure . uniform)) sz
+    nf (\n -> generateSplitSeedArray @P @ix @Word it stdGen (pure . split) comp n (\_ _ -> pure . uniform)) sz

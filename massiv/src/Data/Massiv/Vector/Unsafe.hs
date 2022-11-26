@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      : Data.Massiv.Vector.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2020-2022
@@ -6,19 +7,21 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Vector.Unsafe
-  (
-  -- * Vector
-  -- ** Accessors
-  -- *** Indexing
+  ( -- * Vector
+
+    -- ** Accessors
+
+    -- *** Indexing
     unsafeHead
   , unsafeLast
-  -- *** Monadic Indexing
+
+    -- *** Monadic Indexing
   , unsafeIndexM
   , unsafeHeadM
   , unsafeLastM
-  -- *** Slicing
+
+    -- *** Slicing
   , unsafeInit
   , unsafeTail
   , unsafeTake
@@ -33,15 +36,16 @@ module Data.Massiv.Vector.Unsafe
   -- , unsafeBackpermute
   -- -- ** Predicates
   -- , unsafePartition
-  -- ** Unbounded streams
+
+    -- ** Unbounded streams
   , unsafeUnfoldrN
   , unsafeUnfoldrNM
   , unsafeFromListN
   ) where
 
 import Data.Coerce
-import Data.Massiv.Core.Common
 import Data.Massiv.Array.Delayed.Stream
+import Data.Massiv.Core.Common
 import qualified Data.Massiv.Vector.Stream as S
 
 -- ========= --
@@ -51,7 +55,6 @@ import qualified Data.Massiv.Vector.Stream as S
 --------------
 -- Indexing --
 --------------
-
 
 -- |
 --
@@ -78,7 +81,6 @@ unsafeIndexM :: (Source r e, Monad m) => Vector r e -> Ix1 -> m e
 unsafeIndexM v i = pure $! unsafeLinearIndex v i
 {-# INLINE unsafeIndexM #-}
 
-
 -- |
 --
 -- @since 0.5.0
@@ -93,11 +95,9 @@ unsafeLastM :: (Monad m, Source r e) => Vector r e -> m e
 unsafeLastM v = pure $! unsafeLast v
 {-# INLINE unsafeLastM #-}
 
-
 -------------
 -- Slicing --
 -------------
-
 
 -- |
 --
@@ -106,14 +106,12 @@ unsafeInit :: Source r e => Vector r e -> Vector r e
 unsafeInit v = unsafeLinearSlice 0 (SafeSz (coerce (size v) - 1)) v
 {-# INLINE unsafeInit #-}
 
-
 -- |
 --
 -- @since 0.5.0
 unsafeTail :: Source r e => Vector r e -> Vector r e
 unsafeTail = unsafeDrop oneSz
 {-# INLINE unsafeTail #-}
-
 
 -- |
 --
@@ -128,7 +126,6 @@ unsafeTake = unsafeLinearSlice 0
 unsafeDrop :: Source r e => Sz1 -> Vector r e -> Vector r e
 unsafeDrop (Sz d) v = unsafeLinearSlice d (SafeSz (coerce (size v) - d)) v
 {-# INLINE unsafeDrop #-}
-
 
 -- | /O(n)/ - Convert a list of a known length to a delayed stream vector.
 --
@@ -150,18 +147,17 @@ unsafeFromListN n = fromSteps . S.unsafeFromListN n
 -- `Control.Exception.Base.HeapOverflow` exception.
 --
 -- @since 0.5.1
-unsafeUnfoldrN ::
-     Sz1
+unsafeUnfoldrN
+  :: Sz1
   -- ^ @n@ - maximum number of elements that the vector will have
   -> (s -> Maybe (e, s))
   -- ^ Unfolding function. Stops when `Nothing` is returned or maximum number of elements
   -- is reached.
-  -> s -- ^ Inititial element.
+  -> s
+  -- ^ Inititial element.
   -> Vector DS e
 unsafeUnfoldrN n f = DSArray . S.unsafeUnfoldrN n f
 {-# INLINE unsafeUnfoldrN #-}
-
-
 
 -- | /O(n)/ - Same as `unsafeUnfoldrN`, but with monadic generating function.
 --

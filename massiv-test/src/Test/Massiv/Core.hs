@@ -5,7 +5,7 @@ module Test.Massiv.Core
   , module Test.Hspec.QuickCheck
   ) where
 
-import Test.Massiv.Core.Index as Index (DimIx(..), SzIx(..), SzNE(..))
-import Test.Massiv.Core.Common as Commmon
-import Test.Massiv.Utils as Utils
 import Test.Hspec.QuickCheck
+import Test.Massiv.Core.Common as Commmon
+import Test.Massiv.Core.Index as Index (DimIx (..), SzIx (..), SzNE (..))
+import Test.Massiv.Utils as Utils

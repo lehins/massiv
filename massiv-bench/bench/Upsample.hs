@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+
 module Main where
 
 import Criterion.Main
@@ -13,7 +14,6 @@ main = do
       !strOdd = Stride (3 :. 6)
       !strPowerOf2 = Stride (2 :. 4)
   defaultMain [mkUpsampleBenchGroup "Odd" sz strOdd, mkUpsampleBenchGroup "PowerOf2" sz strPowerOf2]
-
 
 mkUpsampleBenchGroup :: String -> Sz2 -> Stride Ix2 -> Benchmark
 mkUpsampleBenchGroup gname sz str =

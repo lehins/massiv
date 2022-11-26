@@ -5,31 +5,30 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Core
-  ( Array(LArray)
-  , List(..)
+  ( Array (LArray)
+  , List (..)
   , Vector
   , MVector
   , Matrix
   , MMatrix
-  , Load(iterArrayLinearST_, iterArrayLinearWithSetST_)
-  , Stream(..)
+  , Load (iterArrayLinearST_, iterArrayLinearWithSetST_)
+  , Stream (..)
   , Source
-  , PrefIndex(..)
+  , PrefIndex (..)
   , Size
-  , Shape(..)
-  , LengthHint(..)
-  , StrideLoad(..)
+  , Shape (..)
+  , LengthHint (..)
+  , StrideLoad (..)
   , Manifest
   , Mutable
   , Ragged
-  , L(..)
+  , L (..)
   , ListItem
   , Scheduler
   , SchedulerWS
   , Strategy
-  , Comp(Seq, Par, Par', ParOn, ParN)
+  , Comp (Seq, Par, Par', ParOn, ParN)
   , getComp
   , setComp
   , appComp
@@ -38,29 +37,31 @@ module Data.Massiv.Core
   , scheduleWork
   , scheduleWork_
   , module Data.Massiv.Core.Index
-  -- * Numeric
+
+    -- * Numeric
   , FoldNumeric
   , Numeric
   , NumericFloat
-  -- * Exceptions
-  , MonadThrow(..)
-  , IndexException(..)
-  , SizeException(..)
-  , ShapeException(..)
+
+    -- * Exceptions
+  , MonadThrow (..)
+  , IndexException (..)
+  , SizeException (..)
+  , ShapeException (..)
   , module Data.Massiv.Core.Exception
-  -- * Stateful Monads
+
+    -- * Stateful Monads
   , MonadUnliftIO
-  , MonadIO(liftIO)
-  , PrimMonad(PrimState)
+  , MonadIO (liftIO)
+  , PrimMonad (PrimState)
   ) where
 
 import Control.Scheduler (SchedulerWS, initWorkerStates)
 import Data.Massiv.Core.Common
+import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.List
-import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Operations (FoldNumeric, Numeric, NumericFloat)
-
 
 -- | Append computation strategy using `Comp`'s `Monoid` instance.
 --

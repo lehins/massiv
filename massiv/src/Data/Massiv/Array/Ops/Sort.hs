@@ -2,6 +2,7 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Ops.Sort
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -9,7 +10,6 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Array.Ops.Sort
   ( tally
   , quicksort
@@ -23,8 +23,8 @@ module Data.Massiv.Array.Ops.Sort
   , unsafeUnstablePartitionRegionM
   ) where
 
-import Control.Monad.IO.Unlift
 import Control.Monad (when)
+import Control.Monad.IO.Unlift
 import Control.Monad.Primitive
 import Control.Scheduler
 import Data.Massiv.Array.Delayed.Stream
@@ -57,73 +57,72 @@ tally arr
     sz@(Sz k) = size sorted
     count (!i, !n, !prev)
       | i < k =
-        let !e' = unsafeLinearIndex sorted i
-         in if prev == e'
-              then Just (Nothing, (i + 1, n + 1, prev))
-              else Just (Just (prev, n), (i + 1, 1, e'))
+          let !e' = unsafeLinearIndex sorted i
+           in if prev == e'
+                then Just (Nothing, (i + 1, n + 1, prev))
+                else Just (Just (prev, n), (i + 1, 1, e'))
       | otherwise = Just (Just (prev, n), (i + 1, n, prev))
     {-# INLINE count #-}
     sorted = quicksort $ flatten arr
 {-# INLINE tally #-}
 
-
-
 -- | Partition a segment of a vector. Starting and ending indices are unchecked.
 --
 -- @since 1.0.0
-unsafeUnstablePartitionRegionM ::
-     forall r e m. (Manifest r e, PrimMonad m)
+unsafeUnstablePartitionRegionM
+  :: forall r e m
+   . (Manifest r e, PrimMonad m)
   => MVector (PrimState m) r e
   -> (e -> m Bool)
-  -> Ix1 -- ^ Start index of the region
-  -> Ix1 -- ^ End index of the region
+  -> Ix1
+  -- ^ Start index of the region
+  -> Ix1
+  -- ^ End index of the region
   -> m Ix1
 unsafeUnstablePartitionRegionM marr f start end = fromLeft start (end + 1)
   where
     fromLeft i j
       | i == j = pure i
       | otherwise = do
-        e <- f =<< unsafeLinearRead marr i
-        if e
-          then fromLeft (i + 1) j
-          else fromRight i (j - 1)
+          e <- f =<< unsafeLinearRead marr i
+          if e
+            then fromLeft (i + 1) j
+            else fromRight i (j - 1)
     fromRight i j
       | i == j = pure i
       | otherwise = do
-        x <- unsafeLinearRead marr j
-        e <- f x
-        if e
-          then do
-            unsafeLinearWrite marr j =<< unsafeLinearRead marr i
-            unsafeLinearWrite marr i x
-            fromLeft (i + 1) j
-          else fromRight i (j - 1)
+          x <- unsafeLinearRead marr j
+          e <- f x
+          if e
+            then do
+              unsafeLinearWrite marr j =<< unsafeLinearRead marr i
+              unsafeLinearWrite marr i x
+              fromLeft (i + 1) j
+            else fromRight i (j - 1)
 {-# INLINE unsafeUnstablePartitionRegionM #-}
-
 
 -- | Same as `quicksort` except it accepts any array that is computable.
 --
 -- @since 1.0.2
-quicksortAs ::
-     (Load r Ix1 e, Manifest r' e, Ord e) => r' -> Vector r e -> Vector r' e
+quicksortAs
+  :: (Load r Ix1 e, Manifest r' e, Ord e) => r' -> Vector r e -> Vector r' e
 quicksortAs _ arr = unsafePerformIO $ withLoadMArray_ arr quicksortM_
 {-# INLINE quicksortAs #-}
 
 -- | Same as `quicksortBy` except it accepts any array that is computable.
 --
 -- @since 1.0.2
-quicksortAsBy ::
-     (Load r Ix1 e, Manifest r' e) => r' -> (e -> e -> Ordering) -> Vector r e -> Vector r' e
+quicksortAsBy
+  :: (Load r Ix1 e, Manifest r' e) => r' -> (e -> e -> Ordering) -> Vector r e -> Vector r' e
 quicksortAsBy _ f arr =
   unsafePerformIO $ withLoadMArray_ arr (quicksortByM_ (\x y -> pure $ f x y))
 {-# INLINE quicksortAsBy #-}
 
-
 -- | Same as `quicksortByM` except it accepts any array that is computable.
 --
 -- @since 1.0.2
-quicksortAsByM ::
-     (Load r Ix1 e, Manifest r' e, MonadUnliftIO m)
+quicksortAsByM
+  :: (Load r Ix1 e, Manifest r' e, MonadUnliftIO m)
   => r'
   -> (e -> e -> m Ordering)
   -> Vector r e
@@ -131,7 +130,6 @@ quicksortAsByM ::
 quicksortAsByM _ f arr =
   withRunInIO $ \run -> withLoadMArray_ arr (quicksortByM_ (\x y -> run (f x y)))
 {-# INLINE quicksortAsByM #-}
-
 
 -- | This is an implementation of
 -- [Quicksort](https://en.wikipedia.org/wiki/Quicksort), which is an efficient,
@@ -142,17 +140,16 @@ quicksortAsByM _ f arr =
 -- will result in a nice speed up for systems with multiple CPUs.
 --
 -- @since 0.3.2
-quicksort ::
-     (Manifest r e, Ord e) => Vector r e -> Vector r e
+quicksort
+  :: (Manifest r e, Ord e) => Vector r e -> Vector r e
 quicksort arr = unsafePerformIO $ withMArray_ arr quicksortM_
 {-# INLINE quicksort #-}
-
 
 -- | Same as `quicksortBy`, but instead of `Ord` constraint expects a custom `Ordering`.
 --
 -- @since 0.6.1
-quicksortByM ::
-     (Manifest r e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
+quicksortByM
+  :: (Manifest r e, MonadUnliftIO m) => (e -> e -> m Ordering) -> Vector r e -> m (Vector r e)
 quicksortByM f arr = withRunInIO $ \run -> withMArray_ arr (quicksortByM_ (\x y -> run (f x y)))
 {-# INLINE quicksortByM #-}
 
@@ -167,20 +164,19 @@ quicksortBy f arr =
 -- | Manifest version of `quicksort`
 --
 -- @since 0.3.2
-quicksortM_ ::
-     (Ord e, Manifest r e, MonadPrimBase s m)
+quicksortM_
+  :: (Ord e, Manifest r e, MonadPrimBase s m)
   => Scheduler s ()
   -> MVector s r e
   -> m ()
 quicksortM_ = quicksortInternalM_ (\e1 e2 -> pure $ e1 < e2) (\e1 e2 -> pure $ e1 == e2)
 {-# INLINE quicksortM_ #-}
 
-
 -- | Same as `quicksortM_`, but instead of `Ord` constraint expects a custom `Ordering`.
 --
 -- @since 0.6.1
-quicksortByM_ ::
-     (Manifest r e, MonadPrimBase s m)
+quicksortByM_
+  :: (Manifest r e, MonadPrimBase s m)
   => (e -> e -> m Ordering)
   -> Scheduler s ()
   -> MVector s r e
@@ -189,9 +185,8 @@ quicksortByM_ compareM =
   quicksortInternalM_ (\x y -> (LT ==) <$> compareM x y) (\x y -> (EQ ==) <$> compareM x y)
 {-# INLINE quicksortByM_ #-}
 
-
-quicksortInternalM_ ::
-     (Manifest r e, MonadPrimBase s m)
+quicksortInternalM_
+  :: (Manifest r e, MonadPrimBase s m)
   => (e -> e -> m Bool)
   -> (e -> e -> m Bool)
   -> Scheduler s ()

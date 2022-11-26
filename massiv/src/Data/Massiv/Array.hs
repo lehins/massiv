@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-duplicate-exports #-}
+
 -- |
 -- Module      : Data.Massiv.Array
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -76,11 +77,11 @@
 -- import Prelude as P
 -- import Data.Massiv.Array as A
 -- @
---
 module Data.Massiv.Array
   ( -- * Construct
-    module Data.Massiv.Array.Ops.Construct
-  -- * Compute
+      module Data.Massiv.Array.Ops.Construct
+
+    -- * Compute
   , getComp
   , setComp
   , appComp
@@ -100,16 +101,19 @@ module Data.Massiv.Array
   , convertProxy
   , fromRaggedArrayM
   , fromRaggedArray'
-  -- * Vector
+
+    -- * Vector
   , module Data.Massiv.Vector
-  -- * Size
+
+    -- * Size
   , size
   , elemsCount
   , isEmpty
   , isNotEmpty
   , isNull
   , isNotNull
-  -- * Indexing
+
+    -- * Indexing
   , (!?)
   , (!)
   , (??)
@@ -120,41 +124,51 @@ module Data.Massiv.Array
   , borderIndex
   , evaluateM
   , evaluate'
-  -- * Mapping
+
+    -- * Mapping
   , module Data.Massiv.Array.Ops.Map
-  -- * Folding
 
-  -- $folding
-
+    -- * Folding
+    -- $folding
   , module Data.Massiv.Array.Ops.Fold
-  -- * Transforming
+
+    -- * Transforming
   , module Data.Massiv.Array.Ops.Transform
-  -- * Slicing
+
+    -- * Slicing
   , module Data.Massiv.Array.Ops.Slice
-  -- * Algorithms
-  -- ** Sorting
+
+    -- * Algorithms
+
+    -- ** Sorting
   , quicksort
   , quicksortBy
   , quicksortByM
   , tally
-  -- ** Iterations
+
+    -- ** Iterations
   , iterateUntil
-  -- * Conversion
+
+    -- * Conversion
   , module Data.Massiv.Array.Manifest.List
-  -- * Mutable
+
+    -- * Mutable
   , module Data.Massiv.Array.Mutable
-  -- * Core
+
+    -- * Core
   , module Data.Massiv.Core
-  -- * Representations
+
+    -- * Representations
   , module Data.Massiv.Array.Delayed
   , module Data.Massiv.Array.Manifest
-  -- * Stencil
+
+    -- * Stencil
   , module Data.Massiv.Array.Stencil
-  -- * Numeric Operations
+
+    -- * Numeric Operations
   , module Data.Massiv.Array.Numeric
   ) where
 
-import Data.Massiv.Vector
 import Data.Massiv.Array.Delayed
 import Data.Massiv.Array.Manifest
 import Data.Massiv.Array.Manifest.Internal
@@ -170,12 +184,26 @@ import Data.Massiv.Array.Ops.Transform
 import Data.Massiv.Array.Stencil
 import Data.Massiv.Core
 import Data.Massiv.Core.Common
-import Prelude as P hiding (all, and, any, enumFromTo, foldl, foldr, mapM,
-                            mapM_, maximum, minimum, or, product, replicate, splitAt,
-                            sum, zip)
+import Data.Massiv.Vector
+import Prelude as P hiding
+  ( all
+  , and
+  , any
+  , enumFromTo
+  , foldl
+  , foldr
+  , mapM
+  , mapM_
+  , maximum
+  , minimum
+  , or
+  , product
+  , replicate
+  , splitAt
+  , sum
+  , zip
+  )
 
-{- $folding
-
-All folding is done in a row-major order.
-
--}
+-- $folding
+--
+--All folding is done in a row-major order.

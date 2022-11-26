@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Internal
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -11,9 +12,8 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Array.Stencil.Internal
-  ( Stencil(..)
+  ( Stencil (..)
   , dimapStencil
   , lmapStencil
   , rmapStencil
@@ -28,11 +28,10 @@ import Data.Massiv.Core.Common
 -- `Data.Massiv.Array.makeStencil` and `Data.Massiv.Array.makeConvolutionStencil` in order
 -- to create a stencil.
 data Stencil ix e a = Stencil
-  { stencilSize   :: !(Sz ix)
+  { stencilSize :: !(Sz ix)
   , stencilCenter :: !ix
-  , stencilFunc   :: (ix -> e) -> (ix -> e) -> ix -> a
+  , stencilFunc :: (ix -> e) -> (ix -> e) -> ix -> a
   }
-
 
 instance Index ix => NFData (Stencil ix e a) where
   rnf (Stencil sz ix f) = sz `deepseq` ix `deepseq` f `seq` ()
@@ -41,14 +40,13 @@ instance Functor (Stencil ix e) where
   fmap = rmapStencil
   {-# INLINE fmap #-}
 
-
 -- Profunctor
 
 -- | A Profunctor dimap. Same caviat applies as in `lmapStencil`
 --
 -- @since 0.2.3
 dimapStencil :: (c -> d) -> (a -> b) -> Stencil ix d a -> Stencil ix c b
-dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
+dimapStencil f g stencil@Stencil{stencilFunc = sf} = stencil{stencilFunc = sf'}
   where
     sf' us s = g . sf (f . us) (f . s)
     {-# INLINE sf' #-}
@@ -63,7 +61,7 @@ dimapStencil f g stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'
 --
 -- @since 0.2.3
 lmapStencil :: (c -> d) -> Stencil ix d a -> Stencil ix c a
-lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
+lmapStencil f stencil@Stencil{stencilFunc = sf} = stencil{stencilFunc = sf'}
   where
     sf' us s = sf (f . us) (f . s)
     {-# INLINE sf' #-}
@@ -76,7 +74,7 @@ lmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
 --
 -- @since 0.2.3
 rmapStencil :: (a -> b) -> Stencil ix e a -> Stencil ix e b
-rmapStencil f stencil@Stencil {stencilFunc = sf} = stencil {stencilFunc = sf'}
+rmapStencil f stencil@Stencil{stencilFunc = sf} = stencil{stencilFunc = sf'}
   where
     sf' us s = f . sf us s
     {-# INLINE sf' #-}

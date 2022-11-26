@@ -8,5 +8,5 @@ import Spec
 
 main :: IO ()
 main = do
-    hSetBuffering stdout LineBuffering
-    hspec spec
+  hSetBuffering stdout LineBuffering
+  hspec spec

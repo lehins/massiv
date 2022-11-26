@@ -2,18 +2,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Main where
 
+import Control.Monad.Trans.Maybe
 import Criterion.Main
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Manifest.Vector as A
 import Data.Massiv.Bench as A
-import qualified Data.Vector.Primitive as VP
 import Data.Primitive.ByteArray
 import Data.Primitive.PrimArray
+import qualified Data.Vector.Primitive as VP
 import Prelude as P
-import Control.Monad.Trans.Maybe
-
 
 main :: IO ()
 main = do
@@ -41,7 +41,8 @@ main = do
         , env (return (toPrimArray arr)) $ \v ->
             bench "PrimArray" $ nf (traversePrimArray incNotNaN) v
         ]
-    , bgroup "traversePrim"
+    , bgroup
+        "traversePrim"
         [ env (pure arr) $ \a ->
             bench "Array P" $ nfIO (runMaybeT $ traversePrim @P incNotNaNT a)
         , env (return (toPrimArray arr)) $ \v ->

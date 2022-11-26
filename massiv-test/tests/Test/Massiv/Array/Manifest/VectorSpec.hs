@@ -3,16 +3,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+
 module Test.Massiv.Array.Manifest.VectorSpec (spec) where
 
-import Data.Massiv.Array.Manifest.Vector
 import Data.Massiv.Array as A
-import Test.Massiv.Core
+import Data.Massiv.Array.Manifest.Vector
 import qualified Data.Vector as VB
 import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+import Test.Massiv.Core
 
 prop_castToFromVector
   :: ( VG.Vector (VRepr r) Int
@@ -23,14 +24,16 @@ prop_castToFromVector
      , Show (Array r ix Int)
      , Index ix
      )
-  => proxy ix -> r -> ArrNE r ix Int -> Property
+  => proxy ix
+  -> r
+  -> ArrNE r ix Int
+  -> Property
 prop_castToFromVector _ _ (ArrNE arr) =
   Just arr === (castToVector arr >>= castFromVector (getComp arr) (size arr))
 
-
-prop_toFromVector ::
-     forall r ix v.
-     ( Manifest r Int
+prop_toFromVector
+  :: forall r ix v
+   . ( Manifest r Int
      , Manifest (ARepr v) Int
      , VRepr (ARepr v) ~ v
      , Eq (Array r ix Int)
@@ -48,8 +51,7 @@ prop_toFromVector ::
 prop_toFromVector _ _ _ (ArrNE arr) =
   let comp = getComp arr
       arr' = fromVector' comp (size arr) (toVector arr :: v Int)
-  in arr' === arr .&&. (getComp arr' === comp)
-
+   in arr' === arr .&&. (getComp arr' === comp)
 
 toFromVectorSpec :: Spec
 toFromVectorSpec = do
@@ -76,7 +78,6 @@ toFromVectorSpec = do
         describe "Through Storable Vector" $ do
           it "Ix1" $ property $ prop_toFromVector (Proxy :: Proxy VS.Vector) (Proxy :: Proxy Ix1) r
           it "Ix2" $ property $ prop_toFromVector (Proxy :: Proxy VS.Vector) (Proxy :: Proxy Ix2) r
-
 
 spec :: Spec
 spec = describe "toFromVector" toFromVectorSpec

@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 -- |
 -- Module      : Data.Massiv.Core.Index.Ix
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -17,16 +18,15 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Core.Index.Ix
   ( Ix
-  , IxN((:>))
+  , IxN ((:>))
   , type Sz
   , pattern Sz
   , type Ix1
   , pattern Ix1
   , pattern Sz1
-  , type Ix2(Ix2, (:.))
+  , type Ix2 (Ix2, (:.))
   , pattern Sz2
   , type Ix3
   , pattern Ix3
@@ -41,8 +41,9 @@ module Data.Massiv.Core.Index.Ix
   ) where
 
 import Control.DeepSeq
-import Control.Monad.Catch (MonadThrow(..))
+import Control.Monad.Catch (MonadThrow (..))
 import Data.Massiv.Core.Index.Internal
+import Data.Massiv.Core.Loop
 import Data.Proxy
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Generic.Mutable as VM
@@ -50,14 +51,11 @@ import qualified Data.Vector.Unboxed as VU
 import qualified GHC.Arr as I
 import GHC.TypeLits
 import System.Random.Stateful
-import Data.Massiv.Core.Loop
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
 #endif
 
-
 infixr 5 :>, :.
-
 
 -- | 2-dimensional index. This is also a base index for higher dimensions.
 --
@@ -69,6 +67,7 @@ data Ix2 = {-# UNPACK #-} !Int :. {-# UNPACK #-} !Int
 -- @since 0.1.0
 pattern Ix2 :: Int -> Int -> Ix2
 pattern Ix2 i2 i1 = i2 :. i1
+
 {-# COMPLETE Ix2 #-}
 
 -- | 2-dimensional size constructor. @(Sz2 i j) == Sz (i :. j)@
@@ -76,6 +75,7 @@ pattern Ix2 i2 i1 = i2 :. i1
 -- @since 0.3.0
 pattern Sz2 :: Int -> Int -> Sz Ix2
 pattern Sz2 i2 i1 = Sz (i2 :. i1)
+
 {-# COMPLETE Sz2 #-}
 
 -- | 3-dimensional type synonym. Useful as a alternative to enabling @DataKinds@ and using type
@@ -89,6 +89,7 @@ type Ix3 = IxN 3
 -- @since 0.1.0
 pattern Ix3 :: Int -> Int -> Int -> Ix3
 pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
+
 {-# COMPLETE Ix3 #-}
 
 -- | 3-dimensional size constructor. @(Sz3 i j k) == Sz (i :> j :. k)@
@@ -96,6 +97,7 @@ pattern Ix3 i3 i2 i1 = i3 :> i2 :. i1
 -- @since 0.3.0
 pattern Sz3 :: Int -> Int -> Int -> Sz Ix3
 pattern Sz3 i3 i2 i1 = Sz (i3 :> i2 :. i1)
+
 {-# COMPLETE Sz3 #-}
 
 -- | 4-dimensional type synonym.
@@ -108,6 +110,7 @@ type Ix4 = IxN 4
 -- @since 0.1.0
 pattern Ix4 :: Int -> Int -> Int -> Int -> Ix4
 pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
+
 {-# COMPLETE Ix4 #-}
 
 -- | 4-dimensional size constructor. @(Sz4 i j k l) == Sz (i :> j :> k :. l)@
@@ -115,6 +118,7 @@ pattern Ix4 i4 i3 i2 i1 = i4 :> i3 :> i2 :. i1
 -- @since 0.3.0
 pattern Sz4 :: Int -> Int -> Int -> Int -> Sz Ix4
 pattern Sz4 i4 i3 i2 i1 = Sz (i4 :> i3 :> i2 :. i1)
+
 {-# COMPLETE Sz4 #-}
 
 -- | 5-dimensional type synonym.
@@ -127,6 +131,7 @@ type Ix5 = IxN 5
 -- @since 0.1.0
 pattern Ix5 :: Int -> Int -> Int -> Int -> Int -> Ix5
 pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
+
 {-# COMPLETE Ix5 #-}
 
 -- | 5-dimensional size constructor.  @(Sz5 i j k l m) == Sz (i :> j :> k :> l :. m)@
@@ -134,6 +139,7 @@ pattern Ix5 i5 i4 i3 i2 i1 = i5 :> i4 :> i3 :> i2 :. i1
 -- @since 0.3.0
 pattern Sz5 :: Int -> Int -> Int -> Int -> Int -> Sz Ix5
 pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
+
 {-# COMPLETE Sz5 #-}
 
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
@@ -150,10 +156,8 @@ type family Ix (n :: Nat) = r | r -> n where
   Ix 2 = Ix2
   Ix n = IxN n
 
-
 type instance Lower Ix2 = Ix1
 type instance Lower (IxN n) = Ix (n - 1)
-
 
 instance Show Ix2 where
   showsPrec n (i :. j) = showsPrecWrapped n (shows i . (" :. " ++) . shows j)
@@ -211,7 +215,6 @@ instance I.Ix (Ix (n - 1)) => I.Ix (IxN n) where
   inRange (l1 :> l2, u1 :> u2) (i1 :> i2) = I.inRange (l1, u1) i1 && I.inRange (l2, u2) i2
   {-# INLINE inRange #-}
 
-
 instance Num Ix2 where
   (+) = liftIndex2 (+)
   {-# INLINE [1] (+) #-}
@@ -260,8 +263,6 @@ instance {-# OVERLAPPABLE #-} HighIxN n => Num (IxN n) where
   fromInteger = pureIndex . fromInteger
   {-# INLINE [1] fromInteger #-}
 
-
-
 instance Bounded Ix2 where
   minBound = pureIndex minBound
   {-# INLINE minBound #-}
@@ -286,20 +287,17 @@ instance NFData Ix2 where
 instance NFData (IxN n) where
   rnf ix = ix `seq` ()
 
-
 instance Eq Ix2 where
-  (i1 :. j1)  == (i2 :. j2) = i1 == i2 && j1 == j2
+  (i1 :. j1) == (i2 :. j2) = i1 == i2 && j1 == j2
 
 instance Eq (Ix (n - 1)) => Eq (IxN n) where
   (i1 :> ix1) == (i2 :> ix2) = i1 == i2 && ix1 == ix2
-
 
 instance Ord Ix2 where
   compare (i1 :. j1) (i2 :. j2) = compare i1 i2 <> compare j1 j2
 
 instance Ord (Ix (n - 1)) => Ord (IxN n) where
   compare (i1 :> ix1) (i2 :> ix2) = compare i1 i2 <> compare ix1 ix2
-
 
 instance Index Ix2 where
   type Dimensions Ix2 = 2
@@ -325,19 +323,19 @@ instance Index Ix2 where
   {-# INLINE [1] unsnocDim #-}
   getDimM (i2 :. _) 2 = pure i2
   getDimM (_ :. i1) 1 = pure i1
-  getDimM ix d        = throwM $ IndexDimensionException ix d
+  getDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
   setDimM (_ :. i1) 2 i2 = pure (i2 :. i1)
   setDimM (i2 :. _) 1 i1 = pure (i2 :. i1)
-  setDimM ix d _         = throwM $ IndexDimensionException ix d
+  setDimM ix d _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   pullOutDimM (i2 :. i1) 2 = pure (i2, i1)
   pullOutDimM (i2 :. i1) 1 = pure (i1, i2)
-  pullOutDimM ix d         = throwM $ IndexDimensionException ix d
+  pullOutDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM i1 2 i2 = pure (i2 :. i1)
   insertDimM i2 1 i1 = pure (i2 :. i1)
-  insertDimM ix d _  = throwM $ IndexDimensionException ix d
+  insertDimM ix d _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :. i
   {-# INLINE [1] pureIndex #-}
@@ -352,7 +350,6 @@ instance Index Ix2 where
     loopF s (`cond` e) (+ inc) initAct $ \ !i g ->
       loopF sIxL (`cond` eIxL) (+ incIxL) g $ \ !j -> f (i :. j)
   {-# INLINE iterF #-}
-
 
 instance {-# OVERLAPPING #-} Index (IxN 3) where
   type Dimensions Ix3 = 3
@@ -380,25 +377,25 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   {-# INLINE [1] snocDim #-}
   unsnocDim (i3 :> i2 :. i1) = (i3 :. i2, i1)
   {-# INLINE [1] unsnocDim #-}
-  getDimM (i3 :>  _ :.  _) 3 = pure i3
-  getDimM ( _ :> i2 :.  _) 2 = pure i2
-  getDimM ( _ :>  _ :. i1) 1 = pure i1
-  getDimM ix               d = throwM $ IndexDimensionException ix d
+  getDimM (i3 :> _ :. _) 3 = pure i3
+  getDimM (_ :> i2 :. _) 2 = pure i2
+  getDimM (_ :> _ :. i1) 1 = pure i1
+  getDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] getDimM #-}
-  setDimM ( _ :> i2 :. i1) 3 i3 = pure (i3 :> i2 :. i1)
-  setDimM (i3 :>  _ :. i1) 2 i2 = pure (i3 :> i2 :. i1)
-  setDimM (i3 :> i2 :.  _) 1 i1 = pure (i3 :> i2 :. i1)
-  setDimM ix               d _  = throwM $ IndexDimensionException ix d
+  setDimM (_ :> i2 :. i1) 3 i3 = pure (i3 :> i2 :. i1)
+  setDimM (i3 :> _ :. i1) 2 i2 = pure (i3 :> i2 :. i1)
+  setDimM (i3 :> i2 :. _) 1 i1 = pure (i3 :> i2 :. i1)
+  setDimM ix d _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] setDimM #-}
   pullOutDimM (i3 :> i2 :. i1) 3 = pure (i3, i2 :. i1)
   pullOutDimM (i3 :> i2 :. i1) 2 = pure (i2, i3 :. i1)
   pullOutDimM (i3 :> i2 :. i1) 1 = pure (i1, i3 :. i2)
-  pullOutDimM ix               d = throwM $ IndexDimensionException ix d
+  pullOutDimM ix d = throwM $ IndexDimensionException ix d
   {-# INLINE [1] pullOutDimM #-}
   insertDimM (i2 :. i1) 3 i3 = pure (i3 :> i2 :. i1)
   insertDimM (i3 :. i1) 2 i2 = pure (i3 :> i2 :. i1)
   insertDimM (i3 :. i2) 1 i1 = pure (i3 :> i2 :. i1)
-  insertDimM ix         d  _ = throwM $ IndexDimensionException ix d
+  insertDimM ix d _ = throwM $ IndexDimensionException ix d
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> i :. i
   {-# INLINE [1] pureIndex #-}
@@ -414,28 +411,28 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
         iShift = iStart + iAcc * n
      in loopM 0 (< n) (+ 1) initAcc $ \ !i !acc ->
           let (i3 :> i2 :. i1) = fromLinearIndex sz i
-          in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1)) acc
+           in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1)) acc
   {-# INLINE iterTargetRowMajorAccM #-}
   iterTargetRowMajorAccST_ iAcc fact scheduler iStart sz (b3 :> b2 :. b1) (s3 :> s2 :. s1) acc splitAcc action =
     let n = totalElem sz
         iShift = iStart + iAcc * n
      in iterLinearAccST_ fact scheduler 0 1 n acc splitAcc $ \ !i ->
           let (i3 :> i2 :. i1) = fromLinearIndex sz i
-          in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1))
+           in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1))
   {-# INLINE iterTargetRowMajorAccST_ #-}
   iterTargetRowMajorAccST iAcc fact scheduler iStart sz (b3 :> b2 :. b1) (s3 :> s2 :. s1) acc splitAcc action =
     let n = totalElem sz
         iShift = iStart + iAcc * n
      in iterLinearAccST fact scheduler 0 1 n acc splitAcc $ \ !i ->
           let (i3 :> i2 :. i1) = fromLinearIndex sz i
-          in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1))
+           in action (iShift + i) ((b3 + s3 * i3) :> (b2 + s2 * i2) :. (b1 + s1 * i1))
   {-# INLINE iterTargetRowMajorAccST #-}
 
 -- | Constraint synonym that encapsulates all constraints needed for dimension 4 and higher.
 --
 -- @since 1.0.0
-type HighIxN n
-   = (4 <= n, KnownNat n, KnownNat (n - 1), Index (IxN (n - 1)), IxN (n - 1) ~ Ix (n - 1))
+type HighIxN n =
+  (4 <= n, KnownNat n, KnownNat (n - 1), Index (IxN (n - 1)), IxN (n - 1) ~ Ix (n - 1))
 
 instance {-# OVERLAPPABLE #-} HighIxN n => Index (IxN n) where
   type Dimensions (IxN n) = n
@@ -464,12 +461,12 @@ instance {-# OVERLAPPABLE #-} HighIxN n => Index (IxN n) where
   pullOutDimM ix@(i :> ixl) d
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure (i, ixl)
     | otherwise =
-      maybe (throwM $ IndexDimensionException ix d) (pure . fmap (i :>)) (pullOutDimM ixl d)
+        maybe (throwM $ IndexDimensionException ix d) (pure . fmap (i :>)) (pullOutDimM ixl d)
   {-# INLINE [1] pullOutDimM #-}
   insertDimM ix@(i :> ixl) d di
     | d == dimensions (Proxy :: Proxy (IxN n)) = pure (di :> ix)
     | otherwise =
-      maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (insertDimM ixl d di)
+        maybe (throwM $ IndexDimensionException ix d) (pure . (i :>)) (insertDimM ixl d di)
   {-# INLINE [1] insertDimM #-}
   pureIndex i = i :> (pureIndex i :: Ix (n - 1))
   {-# INLINE [1] pureIndex #-}
@@ -480,8 +477,6 @@ instance {-# OVERLAPPABLE #-} HighIxN n => Index (IxN n) where
   repairIndex (SafeSz (n :> szL)) (i :> ixL) rBelow rOver =
     repairIndex (SafeSz n) i rBelow rOver :> repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
-
-
 
 ---- Unbox Ix
 
@@ -520,7 +515,6 @@ instance VM.MVector VU.MVector Ix2 where
   {-# INLINE basicInitialize #-}
 #endif
 
-
 newtype instance VU.Vector Ix2 = V_Ix2 (VU.Vector (Int, Int))
 
 instance V.Vector VU.Vector Ix2 where
@@ -539,16 +533,12 @@ instance V.Vector VU.Vector Ix2 where
   elemseq _ = seq
   {-# INLINE elemseq #-}
 
-
-
 ---- Unbox Ix
-
-
 
 -- | Unboxing of a `IxN`.
 instance (3 <= n, VU.Unbox (Ix (n - 1))) => VU.Unbox (IxN n)
 
-newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (Ix (n-1)))
+newtype instance VU.MVector s (IxN n) = MV_IxN (VU.MVector s Int, VU.MVector s (Ix (n - 1)))
 
 instance (3 <= n, VU.Unbox (Ix (n - 1))) => VM.MVector VU.MVector (IxN n) where
   basicLength (MV_IxN (_, mvec)) = VM.basicLength mvec
@@ -599,8 +589,7 @@ instance (3 <= n, VU.Unbox (Ix (n - 1))) => VM.MVector VU.MVector (IxN n) where
   {-# INLINE basicInitialize #-}
 #endif
 
-
-newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n-1)))
+newtype instance VU.Vector (IxN n) = V_IxN (VU.Vector Int, VU.Vector (Ix (n - 1)))
 
 instance (3 <= n, VU.Unbox (Ix (n - 1))) => V.Vector VU.Vector (IxN n) where
   basicUnsafeFreeze (MV_IxN (mvec1, mvec)) = do

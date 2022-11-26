@@ -1,9 +1,10 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+
 module Test.Massiv.Core.Mutable
   ( -- * Spec for Mutable instance
     unsafeMutableSpec
@@ -11,7 +12,8 @@ module Test.Massiv.Core.Mutable
   , prop_UnsafeThawFreeze
   , prop_UnsafeInitializeNew
   , prop_UnsafeArrayLinearCopy
-  -- ** Properties that aren't valid for boxed
+
+    -- ** Properties that aren't valid for boxed
   , unsafeMutableUnboxedSpec
   , prop_UnsafeInitialize
   ) where
@@ -21,21 +23,19 @@ import Data.Massiv.Array.Unsafe
 import Test.Massiv.Core.Common
 import Test.Massiv.Utils
 
-
-
-prop_UnsafeNewMsize ::
-     forall r ix e.
-     (Arbitrary ix, Index ix, Manifest r e)
+prop_UnsafeNewMsize
+  :: forall r ix e
+   . (Arbitrary ix, Index ix, Manifest r e)
   => Property
-prop_UnsafeNewMsize = property $ \ sz -> do
+prop_UnsafeNewMsize = property $ \sz -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
   sz `shouldBe` sizeOfMArray marr
 
-prop_UnsafeNewLinearWriteRead ::
-     forall r ix e.
-     (Eq e, Show e, Manifest r e, Index ix, Arbitrary ix, Arbitrary e)
+prop_UnsafeNewLinearWriteRead
+  :: forall r ix e
+   . (Eq e, Show e, Manifest r e, Index ix, Arbitrary ix, Arbitrary e)
   => Property
-prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
+prop_UnsafeNewLinearWriteRead = property $ \(SzIx sz ix) e1 e2 -> do
   marr :: MArray RealWorld r ix e <- unsafeNew sz
   let i = toLinearIndex sz ix
   unsafeLinearWrite marr i e1
@@ -43,17 +43,16 @@ prop_UnsafeNewLinearWriteRead = property $ \ (SzIx sz ix) e1 e2 -> do
   unsafeLinearModify marr (\ !_ -> pure e2) i `shouldReturn` e1
   unsafeLinearRead marr i `shouldReturn` e2
 
-
-prop_UnsafeThawFreeze ::
-     forall r ix e.
-     (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
-  => Array r ix e -> Property
+prop_UnsafeThawFreeze
+  :: forall r ix e
+   . (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
+  => Array r ix e
+  -> Property
 prop_UnsafeThawFreeze arr = arr === runST (unsafeFreeze (getComp arr) =<< unsafeThaw arr)
 
-
-prop_UnsafeInitializeNew ::
-     forall r ix e.
-     ( Eq (Array r ix e)
+prop_UnsafeInitializeNew
+  :: forall r ix e
+   . ( Eq (Array r ix e)
      , Show (Array r ix e)
      , Show e
      , Arbitrary e
@@ -64,12 +63,12 @@ prop_UnsafeInitializeNew ::
   => Property
 prop_UnsafeInitializeNew =
   property $ \comp sz e ->
-    (compute (A.replicate comp sz e :: Array DL ix e) :: Array r ix e) ===
-    runST (unsafeFreeze comp =<< initializeNew (Just e) sz)
+    (compute (A.replicate comp sz e :: Array DL ix e) :: Array r ix e)
+      === runST (unsafeFreeze comp =<< initializeNew (Just e) sz)
 
-prop_UnsafeInitialize ::
-     forall r ix e.
-     ( Eq (Array r ix e)
+prop_UnsafeInitialize
+  :: forall r ix e
+   . ( Eq (Array r ix e)
      , Show (Array r ix e)
      , Arbitrary ix
      , Index ix
@@ -84,25 +83,27 @@ prop_UnsafeInitialize =
       marr2 :: MArray s r ix e <- initializeNew Nothing sz
       (===) <$> unsafeFreeze comp marr1 <*> unsafeFreeze comp marr2
 
-
-prop_UnsafeLinearCopy ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
+prop_UnsafeLinearCopy
+  :: forall r ix e
+   . (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
   => Array r ix e
   -> Property
 prop_UnsafeLinearCopy arr =
-  (arr, arr) ===
-  runST
-    (do let sz = size arr
-        marrs <- thawS arr
-        marrd <- unsafeNew sz
-        unsafeLinearCopy marrs 0 marrd 0 (Sz (totalElem sz))
-        arrd <- unsafeFreeze (getComp arr) marrd
-        arrs <- unsafeFreeze (getComp arr) marrs
-        pure (arrs, arrd))
+  (arr, arr)
+    === runST
+      ( do
+          let sz = size arr
+          marrs <- thawS arr
+          marrd <- unsafeNew sz
+          unsafeLinearCopy marrs 0 marrd 0 (Sz (totalElem sz))
+          arrd <- unsafeFreeze (getComp arr) marrd
+          arrs <- unsafeFreeze (getComp arr) marrs
+          pure (arrs, arrd)
+      )
 
-prop_UnsafeLinearCopyPart ::
-     forall r ix e.
-     ( Eq (Vector r e)
+prop_UnsafeLinearCopyPart
+  :: forall r ix e
+   . ( Eq (Vector r e)
      , Show (Vector r e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
@@ -128,22 +129,24 @@ prop_UnsafeLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
         unsafeLinearCopy marrs i marrd j k
         (,) <$> unsafeFreeze (getComp arr) marrs <*> unsafeFreeze (getComp arr) marrd
 
-
-prop_UnsafeArrayLinearCopy ::
-     forall r ix e. (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
+prop_UnsafeArrayLinearCopy
+  :: forall r ix e
+   . (Eq (Array r ix e), Show (Array r ix e), Index ix, Manifest r e)
   => Array r ix e
   -> Property
 prop_UnsafeArrayLinearCopy arr =
-  arr ===
-  runST
-    (do let sz = size arr
-        marr <- unsafeNew sz
-        unsafeArrayLinearCopy arr 0 marr 0 (Sz (totalElem sz))
-        unsafeFreeze (getComp arr) marr)
+  arr
+    === runST
+      ( do
+          let sz = size arr
+          marr <- unsafeNew sz
+          unsafeArrayLinearCopy arr 0 marr 0 (Sz (totalElem sz))
+          unsafeFreeze (getComp arr) marr
+      )
 
-
-prop_UnsafeArrayLinearCopyPart ::
-     forall r ix e. (Eq (Vector r e), Show (Vector r e), Index ix, Manifest r e)
+prop_UnsafeArrayLinearCopyPart
+  :: forall r ix e
+   . (Eq (Vector r e), Show (Vector r e), Index ix, Manifest r e)
   => ArrIx r ix e
   -> NonNegative Ix1
   -> Ix1
@@ -162,9 +165,9 @@ prop_UnsafeArrayLinearCopyPart (ArrIx arr ix) (NonNegative delta) toOffset =
         unsafeArrayLinearCopy arr i marr j k
         unsafeFreeze (getComp arr) marr
 
-prop_UnsafeLinearSet ::
-     forall r ix e.
-     ( Eq (Vector r e)
+prop_UnsafeLinearSet
+  :: forall r ix e
+   . ( Eq (Vector r e)
      , Show (Vector r e)
      , Index ix
      , Manifest r e
@@ -175,8 +178,8 @@ prop_UnsafeLinearSet ::
   -> e
   -> Property
 prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
-  compute (A.replicate Seq k e :: Array DL Ix1 e) ===
-  slice' i k (flatten (arrd :: Array r ix e))
+  compute (A.replicate Seq k e :: Array DL Ix1 e)
+    === slice' i k (flatten (arrd :: Array r ix e))
   where
     i = toLinearIndex sz ix
     k = Sz (totalElem sz - i - delta)
@@ -186,9 +189,9 @@ prop_UnsafeLinearSet comp (SzIx sz ix) (NonNegative delta) e =
         unsafeLinearSet marrd i k e
         unsafeFreeze comp marrd
 
-prop_UnsafeLinearShrink ::
-     forall r ix e.
-     ( Eq (Vector r e)
+prop_UnsafeLinearShrink
+  :: forall r ix e
+   . ( Eq (Vector r e)
      , Show (Vector r e)
      , Manifest r e
      , Index ix
@@ -207,9 +210,9 @@ prop_UnsafeLinearShrink (ArrIx arr ix) =
         marr' <- unsafeLinearShrink marr sz'
         unsafeFreeze (getComp arr) marr'
 
-prop_UnsafeLinearGrow ::
-     forall r ix e.
-     ( Eq (Array r ix e)
+prop_UnsafeLinearGrow
+  :: forall r ix e
+   . ( Eq (Array r ix e)
      , Show (Array r ix e)
      , Eq (Vector r e)
      , Show (Vector r e)
@@ -220,8 +223,10 @@ prop_UnsafeLinearGrow ::
   -> e
   -> Property
 prop_UnsafeLinearGrow (ArrIx arr ix) e =
-  slice' 0 k (flatten arr) === slice' 0 k (flatten arrGrown) .&&.
-  arrCopied === arrGrown
+  slice' 0 k (flatten arr)
+    === slice' 0 k (flatten arrGrown)
+    .&&. arrCopied
+    === arrGrown
   where
     sz = size arr
     sz' = Sz (liftIndex2 (+) (unSz sz) ix)
@@ -237,9 +242,9 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
           unsafeLinearSet marrCopied (totalElem sz) (Sz (totalElem sz' - totalElem sz)) e
         (,) <$> unsafeFreeze (getComp arr) marrCopied <*> unsafeFreeze (getComp arr) marrGrown
 
-
-prop_UnsafeLinearSliceMArray ::
-     forall r ix e. (HasCallStack, Index ix, Manifest r e, Eq (Vector r e), Show (Vector r e))
+prop_UnsafeLinearSliceMArray
+  :: forall r ix e
+   . (HasCallStack, Index ix, Manifest r e, Eq (Vector r e), Show (Vector r e))
   => Array r ix e
   -> Property
 prop_UnsafeLinearSliceMArray arr =
@@ -254,10 +259,9 @@ prop_UnsafeLinearSliceMArray arr =
       i <- chooseInt (0, n - k)
       pure (i, Sz k)
 
-
-unsafeMutableSpec ::
-     forall r ix e.
-     ( Eq (Vector r e)
+unsafeMutableSpec
+  :: forall r ix e
+   . ( Eq (Vector r e)
      , Show (Vector r e)
      , Eq (Array r ix e)
      , Show (Array r ix e)
@@ -286,9 +290,9 @@ unsafeMutableSpec =
     prop "UnsafeLinearGrow" $ prop_UnsafeLinearGrow @r @ix @e
     prop "UnsafeLinearSliceMArray" $ prop_UnsafeLinearSliceMArray @r @ix @e
 
-unsafeMutableUnboxedSpec ::
-     forall r ix e.
-     ( Typeable e
+unsafeMutableUnboxedSpec
+  :: forall r ix e
+   . ( Typeable e
      , Eq (Array r ix e)
      , Show (Array r ix e)
      , Index ix
@@ -298,4 +302,5 @@ unsafeMutableUnboxedSpec ::
   => Spec
 unsafeMutableUnboxedSpec =
   describe ("Manifest Unboxed (" ++ showsArrayType @r @ix @e ") (Unsafe)") $
-    it "UnsafeInitialize" $ prop_UnsafeInitialize @r @ix @e
+    it "UnsafeInitialize" $
+      prop_UnsafeInitialize @r @ix @e

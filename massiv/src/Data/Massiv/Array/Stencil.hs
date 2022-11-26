@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Stencil
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -10,21 +11,23 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
 module Data.Massiv.Array.Stencil
   ( -- * Stencil
     Stencil
   , makeStencil
   , getStencilSize
   , getStencilCenter
-  -- ** Padding
-  , Padding(..)
+
+    -- ** Padding
+  , Padding (..)
   , noPadding
   , samePadding
-  -- ** Application
+
+    -- ** Application
   , mapStencil
   , applyStencil
-  -- ** Common stencils
+
+    -- ** Common stencils
   , idStencil
   , sumStencil
   , productStencil
@@ -34,11 +37,13 @@ module Data.Massiv.Array.Stencil
   , foldlStencil
   , foldrStencil
   , foldStencil
-  -- ** Profunctor
+
+    -- ** Profunctor
   , dimapStencil
   , lmapStencil
   , rmapStencil
-  -- * Convolution
+
+    -- * Convolution
   , module Data.Massiv.Array.Stencil.Convolution
   ) where
 
@@ -68,15 +73,17 @@ getStencilCenter = stencilCenter
 -- `Data.Massiv.Array.compute`d in order to be useful.
 --
 -- @since 0.1.0
-mapStencil ::
-     (Index ix, Manifest r e)
-  => Border e -- ^ Border resolution technique
-  -> Stencil ix e a -- ^ Stencil to map over the array
-  -> Array r ix e -- ^ Source array
+mapStencil
+  :: (Index ix, Manifest r e)
+  => Border e
+  -- ^ Border resolution technique
+  -> Stencil ix e a
+  -- ^ Stencil to map over the array
+  -> Array r ix e
+  -- ^ Source array
   -> Array DW ix a
 mapStencil b stencil = applyStencil (samePadding stencil b) stencil
 {-# INLINE mapStencil #-}
-
 
 -- | Padding of the source array before stencil application.
 --
@@ -143,11 +150,12 @@ mapStencil b stencil = applyStencil (samePadding stencil b) stencil
 --
 -- @since 0.4.3
 data Padding ix e = Padding
-  { paddingFromOrigin  :: !(Sz ix)
-  , paddingFromBottom  :: !(Sz ix)
+  { paddingFromOrigin :: !(Sz ix)
+  , paddingFromBottom :: !(Sz ix)
   , paddingWithElement :: !(Border e)
   -- ^ Element to do padding with
-  } deriving (Eq, Show)
+  }
+  deriving (Eq, Show)
 
 -- | Also known as "valid" padding. When stencil is applied to an array, that array will
 -- shrink, unless the stencil is of size 1.
@@ -166,10 +174,9 @@ samePadding :: Index ix => Stencil ix e a -> Border e -> Padding ix e
 samePadding (Stencil (Sz sSz) sCenter _) border =
   Padding
     { paddingFromOrigin = Sz sCenter
-    , paddingFromBottom = Sz (liftIndex2 (-) sSz (liftIndex (+1) sCenter))
+    , paddingFromBottom = Sz (liftIndex2 (-) sSz (liftIndex (+ 1) sCenter))
     , paddingWithElement = border
     }
-
 
 -- | Apply a constructed stencil over an array. Resulting array must be
 -- `Data.Massiv.Array.compute`d in order to be useful. Unlike `mapStencil`, the size of
@@ -177,13 +184,15 @@ samePadding (Stencil (Sz sSz) sCenter _) border =
 -- depend on the padding.
 --
 -- @since 0.4.3
-applyStencil ::
-     (Index ix, Manifest r e)
+applyStencil
+  :: (Index ix, Manifest r e)
   => Padding ix e
   -- ^ Padding to be applied to the source array. This will dictate the resulting size of
   -- the array. No padding will cause it to shrink by the size of the stencil
-  -> Stencil ix e a -- ^ Stencil to apply to the array
-  -> Array r ix e -- ^ Source array
+  -> Stencil ix e a
+  -- ^ Stencil to apply to the array
+  -> Array r ix e
+  -- ^ Source array
   -> Array DW ix a
 applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !arr =
   insertWindow warr window
@@ -207,7 +216,6 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
         }
 {-# INLINE applyStencil #-}
 
-
 -- | Construct a stencil from a function, which describes how to calculate the
 -- value at a point while having access to neighboring elements with a function
 -- that accepts idices relative to the center of stencil. Trying to index
@@ -225,18 +233,22 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
 --
 -- /Note/ - Make sure to add an @INLINE@ pragma, otherwise performance will be terrible.
 --
--- > average3x3Stencil :: Fractional a => Stencil Ix2 a a
--- > average3x3Stencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
--- >   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
--- >      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
--- >      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
--- > {-# INLINE average3x3Stencil #-}
+-- @
+-- average3x3Stencil :: Fractional a => Stencil Ix2 a a
+-- average3x3Stencil = makeStencil (Sz (3 :. 3)) (1 :. 1) $ \ get ->
+--   (  get (-1 :. -1) + get (-1 :. 0) + get (-1 :. 1) +
+--      get ( 0 :. -1) + get ( 0 :. 0) + get ( 0 :. 1) +
+--      get ( 1 :. -1) + get ( 1 :. 0) + get ( 1 :. 1)   ) / 9
+-- {\-# INLINE average3x3Stencil #-\}
+-- @
 --
 -- @since 0.1.0
 makeStencil
   :: Index ix
-  => Sz ix -- ^ Size of the stencil
-  -> ix -- ^ Center of the stencil
+  => Sz ix
+  -- ^ Size of the stencil
+  -> ix
+  -- ^ Center of the stencil
   -> ((ix -> e) -> a)
   -- ^ Stencil function that receives a "get" function as it's argument that can
   -- retrieve values of cells in the source array with respect to the center of
@@ -255,9 +267,8 @@ makeStencil !sSz !sCenter relStencil = Stencil sSz sCenter stencil
 --
 -- @since 0.4.3
 idStencil :: Index ix => Stencil ix e e
-idStencil = makeUnsafeStencil oneSz zeroIndex $ \ _ get -> get zeroIndex
+idStencil = makeUnsafeStencil oneSz zeroIndex $ \_ get -> get zeroIndex
 {-# INLINE idStencil #-}
-
 
 -- | Stencil that does a left fold in a row-major order. Regardless of the supplied size
 -- resulting stencil will be centered at zero, although by using `Padding` it is possible
@@ -318,7 +329,6 @@ foldrStencil f acc0 sz =
         iter ixStart zeroIndex (pureIndex (-1)) (>=) acc0 $ \ix -> f (get ix)
 {-# INLINE foldrStencil #-}
 
-
 -- | Create a stencil that will fold all elements in the region monoidally.
 --
 -- @since 0.4.3
@@ -358,7 +368,6 @@ foldStencil = foldlStencil mappend mempty
 maxStencil :: (Bounded e, Ord e, Index ix) => Sz ix -> Stencil ix e e
 maxStencil = dimapStencil coerce getMax . foldStencil
 {-# INLINE maxStencil #-}
-
 
 -- | Create a stencil centered at 0 that will extract the maximum value in the region of
 -- supplied size.

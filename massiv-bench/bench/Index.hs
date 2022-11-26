@@ -5,9 +5,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+
 module Main where
-
-
 
 import Criterion.Main
 import Data.Array.Repa as R
@@ -15,14 +14,12 @@ import Data.Array.Repa.Specialised.Dim2 as R
 import Data.Massiv.Core as M
 import Prelude as P
 
-
 class R.Shape sh => ExtraShape sh where
   type ShLower sh :: *
   liftShape :: (Int -> Int) -> sh -> sh
   liftShape2 :: (Int -> Int -> Int) -> sh -> sh -> sh
   unsnocShape :: sh -> (ShLower sh, Int)
   snocShape :: ShLower sh -> Int -> sh
-
 
 instance ExtraShape R.Z where
   type ShLower Z = Z
@@ -53,13 +50,17 @@ main = do
       i3 = (100 :> 200 M.:. 300, 10 :> 20 M.:. 17) :: (Ix3, Ix3)
       t3 = ((100, 200, 300), (10, 20, 17)) :: (Ix3T, Ix3T)
       r3 =
-        (R.Z R.:. 100 R.:. 200 R.:. 300, R.Z R.:. 10 R.:. 20 R.:. 17) :: ( R.DIM3
-                                                                         , R.DIM3)
+        (R.Z R.:. 100 R.:. 200 R.:. 300, R.Z R.:. 10 R.:. 20 R.:. 17)
+          :: ( R.DIM3
+             , R.DIM3
+             )
       i4 = (100 :> 200 :> 300 M.:. 40, 10 :> 20 :> 17 M.:. 34) :: (Ix4, Ix4)
       t4 = ((100, 200, 300, 40), (10, 20, 17, 34)) :: (Ix4T, Ix4T)
       r4 =
         ( R.Z R.:. 100 R.:. 200 R.:. 300 R.:. 40
-        , R.Z R.:. 90 R.:. 190 R.:. 290 R.:. 34) :: (R.DIM4, R.DIM4)
+        , R.Z R.:. 90 R.:. 190 R.:. 290 R.:. 34
+        )
+          :: (R.DIM4, R.DIM4)
       ixs2 = (i2, t2, r2)
       ixs3 = (i3, t3, r3)
       ixs4 = (i4, t4, r4)
@@ -163,10 +164,11 @@ main = do
         ]
     ]
 
-
-
-toLinearIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+toLinearIndexGroup
+  :: (Index ix1, Index ix2, R.Shape sh)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 toLinearIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
@@ -175,9 +177,11 @@ toLinearIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
     , bench "Repa" $ whnf (toIndex sz3) i3
     ]
 
-
-fromLinearIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+fromLinearIndexGroup
+  :: (Index ix1, Index ix2, R.Shape sh)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 fromLinearIndexGroup groupName ((sz1, _), (sz2, _), (sz3, _)) =
   bgroup
     groupName
@@ -186,9 +190,11 @@ fromLinearIndexGroup groupName ((sz1, _), (sz2, _), (sz3, _)) =
     , bench "Repa" $ whnf (fromIndex sz3) 100
     ]
 
-
-toFromLinearIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+toFromLinearIndexGroup
+  :: (Index ix1, Index ix2, R.Shape sh)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 toFromLinearIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
@@ -197,9 +203,11 @@ toFromLinearIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
     , bench "Repa" $ whnf (fromIndex sz3 . toIndex sz3) i3
     ]
 
-
-totalElemGroup :: (Index ix1, Index ix2, R.Shape sh) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+totalElemGroup
+  :: (Index ix1, Index ix2, R.Shape sh)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 totalElemGroup groupName ((_, i1), (_, i2), (_, i3)) =
   bgroup
     groupName
@@ -208,10 +216,11 @@ totalElemGroup groupName ((_, i1), (_, i2), (_, i3)) =
     , bench "Repa" $ whnf R.size i3
     ]
 
-
-
-isSafeIndexGroup :: (Index ix1, Index ix2, R.Shape sh) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+isSafeIndexGroup
+  :: (Index ix1, Index ix2, R.Shape sh)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 isSafeIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
@@ -220,10 +229,11 @@ isSafeIndexGroup groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
     , bench "Repa" $ whnf (R.inShapeRange R.zeroDim sz3) i3
     ]
 
-
-
-handleBorderIndexGroup :: (Index ix1, Index ix2) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+handleBorderIndexGroup
+  :: (Index ix1, Index ix2)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 handleBorderIndexGroup groupName ((sz1, i1), (sz2, i2), _) =
   bgroup
     groupName
@@ -231,8 +241,9 @@ handleBorderIndexGroup groupName ((sz1, i1), (sz2, i2), _) =
     , bench "Tuple" $ nf (handleBorderIndex Edge sz2 id) i2
     ]
 
-
-unconsConsDimGroup :: forall ix1 ix2 a. (Index (Lower ix1), Index ix1, Index (Lower ix2), Index ix2)
+unconsConsDimGroup
+  :: forall ix1 ix2 a
+   . (Index (Lower ix1), Index ix1, Index (Lower ix2), Index ix2)
   => String
   -> ((ix1, ix1), (ix2, ix2), a)
   -> Benchmark
@@ -243,10 +254,9 @@ unconsConsDimGroup groupName ((_, i1), (_, i2), _) =
     , bench "Tuple" $ nf ((consDim 8 . snd . unconsDim) :: ix2 -> ix2) i2
     ]
 
-
-unsnocSnocDimGroup ::
-     forall ix1 ix2 sh.
-     ( Index (Lower ix1)
+unsnocSnocDimGroup
+  :: forall ix1 ix2 sh
+   . ( Index (Lower ix1)
      , Index ix1
      , Index (Lower ix2)
      , Index ix2
@@ -264,9 +274,11 @@ unsnocSnocDimGroup groupName ((_, i1), (_, i2), (_, i3)) =
     , bench "Repa" $ whnf (((`snocShape` 8) . fst . unsnocShape) :: sh -> sh) i3
     ]
 
-
-liftIndexGroup :: (Index ix1, Index ix2, ExtraShape sh) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+liftIndexGroup
+  :: (Index ix1, Index ix2, ExtraShape sh)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 liftIndexGroup groupName ((_, i1), (_, i2), (_, i3)) =
   bgroup
     groupName
@@ -275,10 +287,11 @@ liftIndexGroup groupName ((_, i1), (_, i2), (_, i3)) =
     , bench "Repa" $ whnf (liftShape succ) i3
     ]
 
-
-
-liftIndex2Group :: (Index ix1, Index ix2, ExtraShape sh) =>
-  String -> ((ix1, ix1), (ix2, ix2), (sh, sh)) -> Benchmark
+liftIndex2Group
+  :: (Index ix1, Index ix2, ExtraShape sh)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), (sh, sh))
+  -> Benchmark
 liftIndex2Group groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
   bgroup
     groupName
@@ -288,10 +301,11 @@ liftIndex2Group groupName ((sz1, i1), (sz2, i2), (sz3, i3)) =
     , bench "Repa Add" $ whnf (addDim sz3) i3
     ]
 
-
-
-getIndexGroup :: (Index ix1, Index ix2) =>
-  String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
+getIndexGroup
+  :: (Index ix1, Index ix2)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), a)
+  -> Benchmark
 getIndexGroup groupName ((_, i1), (_, i2), _) =
   bgroup
     groupName
@@ -307,9 +321,11 @@ getIndexGroup groupName ((_, i1), (_, i2), _) =
         ]
     ]
 
-
-setIndexGroup :: (Index ix1, Index ix2) =>
-  String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
+setIndexGroup
+  :: (Index ix1, Index ix2)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), a)
+  -> Benchmark
 setIndexGroup groupName ((_, i1), (_, i2), _) =
   bgroup
     groupName
@@ -325,9 +341,11 @@ setIndexGroup groupName ((_, i1), (_, i2), _) =
         ]
     ]
 
-
-dropDimGroup :: (Index ix1, Index (Lower ix2), Index ix2) =>
-  String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
+dropDimGroup
+  :: (Index ix1, Index (Lower ix2), Index ix2)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), a)
+  -> Benchmark
 dropDimGroup groupName ((_, i1), (_, i2), _) =
   bgroup
     groupName
@@ -343,28 +361,32 @@ dropDimGroup groupName ((_, i1), (_, i2), _) =
         ]
     ]
 
-
-
-iterGroup :: (Index ix1, Index ix2) =>
-  String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
+iterGroup
+  :: (Index ix1, Index ix2)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), a)
+  -> Benchmark
 iterGroup groupName ((sz1, i1), (sz2, i2), _) =
   bgroup
     groupName
     [ bench "Ix" $
-      nf (\ix -> iter ix sz1 1 (<) 0 (\i acc -> totalElem i + acc)) i1
+        nf (\ix -> iter ix sz1 1 (<) 0 (\i acc -> totalElem i + acc)) i1
     , bench "Tuple" $
-      nf (\ix -> iter ix sz2 1 (<) 0 (\i acc -> totalElem i + acc)) i2
+        nf (\ix -> iter ix sz2 1 (<) 0 (\i acc -> totalElem i + acc)) i2
     ]
 
-
-iterMGroup :: (Index ix1, Index ix2) =>
-  String -> ((ix1, ix1), (ix2, ix2), a) -> Benchmark
+iterMGroup
+  :: (Index ix1, Index ix2)
+  => String
+  -> ((ix1, ix1), (ix2, ix2), a)
+  -> Benchmark
 iterMGroup groupName ((sz1, i1), (sz2, i2), _) =
   bgroup
     groupName
     [ bench "Ix" $
-      nfIO $ iterM i1 sz1 1 (<) 0 (\i acc -> return (totalElem i + acc))
+        nfIO $
+          iterM i1 sz1 1 (<) 0 (\i acc -> return (totalElem i + acc))
     , bench "Tuple" $
-      nfIO $ iterM i2 sz2 1 (<) 0 (\i acc -> return (totalElem i + acc))
+        nfIO $
+          iterM i2 sz2 1 (<) 0 (\i acc -> return (totalElem i + acc))
     ]
-

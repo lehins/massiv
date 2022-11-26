@@ -1,16 +1,25 @@
 {-# LANGUAGE FlexibleContexts #-}
+
 module Main where
 
+import Criterion.Main
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
-import Criterion.Main
 
 avg3x3 :: Fractional a => (Ix2 -> a) -> a
 avg3x3 get =
-  (get (0 :. 0) + get (0 :. 1) + get (0 :. 2) +
-   get (1 :. 0) + get (1 :. 1) + get (1 :. 2) +
-   get (2 :. 0) + get (2 :. 1) + get (2 :. 2) ) / 9
+  ( get (0 :. 0)
+      + get (0 :. 1)
+      + get (0 :. 2)
+      + get (1 :. 0)
+      + get (1 :. 1)
+      + get (1 :. 2)
+      + get (2 :. 0)
+      + get (2 :. 1)
+      + get (2 :. 2)
+  )
+    / 9
 {-# INLINE avg3x3 #-}
 
 avg3x3Stencil :: Fractional a => Stencil Ix2 a a
@@ -22,10 +31,16 @@ avg3x3StencilUnsafe = makeUnsafeStencil (Sz (3 :. 3)) 0 (const avg3x3)
 {-# INLINE avg3x3StencilUnsafe #-}
 
 sum3x3StencilConv :: Fractional a => Stencil Ix2 a a
-sum3x3StencilConv = makeConvolutionStencil (Sz2 3 3) 0 $ \ get ->
-  get (0 :. 0) 1 . get (0 :. 1) 1 . get (0 :. 2) 1 .
-  get (1 :. 0) 1 . get (1 :. 1) 1 . get (1 :. 2) 1 .
-  get (2 :. 0) 1 . get (2 :. 1) 1 . get (2 :. 2) 1
+sum3x3StencilConv = makeConvolutionStencil (Sz2 3 3) 0 $ \get ->
+  get (0 :. 0) 1
+    . get (0 :. 1) 1
+    . get (0 :. 2) 1
+    . get (1 :. 0) 1
+    . get (1 :. 1) 1
+    . get (1 :. 2) 1
+    . get (2 :. 0) 1
+    . get (2 :. 1) 1
+    . get (2 :. 2) 1
 {-# INLINE sum3x3StencilConv #-}
 
 sum3x3StencilConvKern :: (Prim a, Fractional a) => Stencil Ix2 a a
@@ -43,28 +58,28 @@ main = do
             bgroup
               "Average Seq"
               [ bench "Stencil" $
-                whnf (computeAs P . A.mapStencil (Fill 0) avg3x3StencilUnsafe) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) avg3x3StencilUnsafe) arr
               , bench "Stencil (safe)" $ whnf (computeAs P . A.mapStencil (Fill 0) avg3x3Stencil) arr
               , bench "Convolve Array Ix2" $
-                whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConv / 9)) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConv / 9)) arr
               , bench "Convolve Kernel Array Ix2" $
-                whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConvKern / 9)) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConvKern / 9)) arr
               , bench "Foldl Array Ix2" $
-                whnf (computeAs P . A.mapStencil (Fill 0) (foldlStencil (+) 0 (Sz 3) / 9)) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) (foldlStencil (+) 0 (Sz 3) / 9)) arr
               , bench "Monoid Array Ix2" $
-                whnf (computeAs P . A.mapStencil (Fill 0) (avgStencil (Sz 3))) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) (avgStencil (Sz 3))) arr
               ]
         , env (return (arrRLightIx2 P Par sz)) $ \arr ->
             bgroup
               "Average Par"
               [ bench "Stencil" $
-                whnf (computeAs P . A.mapStencil (Fill 0) avg3x3StencilUnsafe) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) avg3x3StencilUnsafe) arr
               , bench "Stencil (safe)" $
-                whnf (computeAs P . A.mapStencil (Fill 0) avg3x3Stencil) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) avg3x3Stencil) arr
               , bench "Convolve Array Ix2" $
-                whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConv / 9)) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) (sum3x3StencilConv / 9)) arr
               , bench "Monoid Array Ix2" $
-                whnf (computeAs P . A.mapStencil (Fill 0) (avgStencil (Sz 3))) arr
+                  whnf (computeAs P . A.mapStencil (Fill 0) (avgStencil (Sz 3))) arr
               ]
         ]
     ]
