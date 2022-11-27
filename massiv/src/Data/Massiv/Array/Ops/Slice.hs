@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Ops.Slice
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -9,35 +10,34 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Ops.Slice
-  (
+module Data.Massiv.Array.Ops.Slice (
   -- ** From the outside
-    (!>)
-  , (!?>)
-  , (??>)
+  (!>),
+  (!?>),
+  (??>),
+
   -- ** From the inside
-  , (<!)
-  , (<!?)
-  , (<??)
+  (<!),
+  (<!?),
+  (<??),
+
   -- ** From within
-  , (<!>)
-  , (<!?>)
-  , (<??>)
+  (<!>),
+  (<!?>),
+  (<??>),
+
   -- ** Many slices
-  , outerSlices
-  , innerSlices
-  , withinSlices
-  , withinSlicesM
-  ) where
+  outerSlices,
+  innerSlices,
+  withinSlices,
+  withinSlicesM,
+) where
 
 import Control.Monad (unless)
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Core.Common
 
-
 infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
-
 
 -- | /O(1)/ - Slices the array from the outside. For 2-dimensional array this will
 -- be equivalent of taking a row. Throws an error when index is out of bounds.
@@ -79,21 +79,22 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 --
 -- @since 0.1.0
-(!>) ::
-     forall r ix e. (HasCallStack, Index ix, Index (Lower ix), Source r e)
+(!>)
+  :: forall r ix e
+   . (HasCallStack, Index ix, Index (Lower ix), Source r e)
   => Array r ix e
   -> Int
   -> Array r (Lower ix) e
 (!>) !arr !ix = throwEither (arr !?> ix)
 {-# INLINE (!>) #-}
 
-
 -- | /O(1)/ - Just like `!>` slices the array from the outside, but returns
 -- `Nothing` when index is out of bounds.
 --
 -- @since 0.1.0
-(!?>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+(!?>)
+  :: forall r ix e m
+   . (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => Array r ix e
   -> Int
   -> m (Array r (Lower ix) e)
@@ -102,7 +103,6 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
   unless (isSafeIndex k i) $ throwM $ IndexOutOfBoundsException k i
   pure $ unsafeOuterSlice arr szL i
 {-# INLINE (!?>) #-}
-
 
 -- | /O(1)/ - Safe slicing continuation from the outside. Similarly to (`!>`) slices the array from
 -- the outside, but takes `Maybe` array as input and returns `Nothing` when index is out of bounds.
@@ -119,20 +119,21 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- *** Exception: IndexOutOfBoundsException: -10 is not safe for (Sz1 2)
 --
 -- @since 0.1.0
-(??>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+(??>)
+  :: forall r ix e m
+   . (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => m (Array r ix e)
   -> Int
   -> m (Array r (Lower ix) e)
 (??>) marr !ix = marr >>= (!?> ix)
 {-# INLINE (??>) #-}
 
-
 -- | /O(1)/ - Safe slice from the inside
 --
 -- @since 0.1.0
-(<!?) ::
-     forall r ix e m. (MonadThrow m, Index ix, Source r e)
+(<!?)
+  :: forall r ix e m
+   . (MonadThrow m, Index ix, Source r e)
   => Array r ix e
   -> Int
   -> m (Array D (Lower ix) e)
@@ -142,36 +143,36 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
   pure $ unsafeInnerSlice arr szL i
 {-# INLINE (<!?) #-}
 
-
 -- | /O(1)/ - Similarly to (`!>`) slice an array from an opposite direction.
 --
 -- @since 0.1.0
-(<!) ::
-     forall r ix e. (HasCallStack, Index ix, Source r e)
+(<!)
+  :: forall r ix e
+   . (HasCallStack, Index ix, Source r e)
   => Array r ix e
   -> Int
   -> Array D (Lower ix) e
 (<!) !arr !ix = throwEither (arr <!? ix)
 {-# INLINE (<!) #-}
 
-
 -- | /O(1)/ - Safe slicing continuation from the inside
 --
 -- @since 0.1.0
-(<??) ::
-     forall r ix e m. (MonadThrow m, Index ix, Source r e)
+(<??)
+  :: forall r ix e m
+   . (MonadThrow m, Index ix, Source r e)
   => m (Array r ix e)
   -> Int
   -> m (Array D (Lower ix) e)
 (<??) marr !ix = marr >>= (<!? ix)
 {-# INLINE (<??) #-}
 
-
 -- | /O(1)/ - Same as (`<!>`), but fails gracefully with a `Nothing`, instead of an error
 --
 -- @since 0.1.0
-(<!?>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+(<!?>)
+  :: forall r ix e m
+   . (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => Array r ix e
   -> (Dim, Int)
   -> m (Array D (Lower ix) e)
@@ -182,9 +183,8 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
   internalInnerSlice dim cutSz arr i
 {-# INLINE (<!?>) #-}
 
-
-internalInnerSlice ::
-     (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+internalInnerSlice
+  :: (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => Dim
   -> Sz ix
   -> Array r ix e
@@ -195,29 +195,29 @@ internalInnerSlice dim cutSz arr i = do
   unsafeSlice arr start cutSz dim
 {-# INLINE internalInnerSlice #-}
 
-
-
 -- prop> arr !> i == arr <!> (dimensions (size arr), i)
 -- prop> arr <! i == arr <!> (1,i)
 --
+
 -- | /O(1)/ - Slices the array in any available dimension. Throws an error when
 -- index is out of bounds or dimensions is invalid.
 --
 -- @since 0.1.0
-(<!>) ::
-     forall r ix e. (HasCallStack, Index ix, Index (Lower ix), Source r e)
+(<!>)
+  :: forall r ix e
+   . (HasCallStack, Index ix, Index (Lower ix), Source r e)
   => Array r ix e
   -> (Dim, Int)
   -> Array D (Lower ix) e
 (<!>) !arr !dix = throwEither (arr <!?> dix)
 {-# INLINE (<!>) #-}
 
-
 -- | /O(1)/ - Safe slicing continuation from within.
 --
 -- @since 0.1.0
-(<??>) ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+(<??>)
+  :: forall r ix e m
+   . (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => m (Array r ix e)
   -> (Dim, Int)
   -> m (Array D (Lower ix) e)
@@ -238,15 +238,15 @@ internalInnerSlice dim cutSz arr i = do
 --   [ 2 :. 0, 2 :. 1 ]
 --
 -- @since 0.5.4
-outerSlices ::
-     forall r ix e. (Index ix, Index (Lower ix), Source r e)
+outerSlices
+  :: forall r ix e
+   . (Index ix, Index (Lower ix), Source r e)
   => Array r ix e
   -> Array D Ix1 (Array r (Lower ix) e)
 outerSlices arr = makeArray (getComp arr) k (unsafeOuterSlice (setComp Seq arr) szL)
   where
     (k, szL) = unconsSz $ size arr
 {-# INLINE outerSlices #-}
-
 
 -- | Create a delayed array of inner slices.
 --
@@ -260,8 +260,9 @@ outerSlices arr = makeArray (getComp arr) k (unsafeOuterSlice (setComp Seq arr) 
 --   [ 0 :. 1, 1 :. 1, 2 :. 1 ]
 --
 -- @since 0.5.4
-innerSlices ::
-     forall r ix e. (Index ix, Source r e)
+innerSlices
+  :: forall r ix e
+   . (Index ix, Source r e)
   => Array r ix e
   -> Array D Ix1 (Array D (Lower ix) e)
 innerSlices arr = makeArray (getComp arr) k (unsafeInnerSlice (setComp Seq arr) szL)
@@ -315,14 +316,14 @@ innerSlices arr = makeArray (getComp arr) k (unsafeInnerSlice (setComp Seq arr) 
 --   ]
 --
 -- @since 0.5.4
-withinSlices ::
-     forall n r ix e. (IsIndexDimension ix n, Index (Lower ix), Source r e)
+withinSlices
+  :: forall n r ix e
+   . (IsIndexDimension ix n, Index (Lower ix), Source r e)
   => Dimension n
   -> Array r ix e
   -> Array D Ix1 (Array D (Lower ix) e)
 withinSlices dim = either throwImpossible id . withinSlicesM (fromDimension dim)
 {-# INLINE withinSlices #-}
-
 
 -- | Create a delayed array of slices from within. Same as `withinSlices`, but throws an
 -- error on invalid dimension.
@@ -330,8 +331,9 @@ withinSlices dim = either throwImpossible id . withinSlicesM (fromDimension dim)
 -- /__Throws Exceptions__/: `IndexDimensionException`
 --
 -- @since 0.5.4
-withinSlicesM ::
-     forall r ix e m. (MonadThrow m, Index ix, Index (Lower ix), Source r e)
+withinSlicesM
+  :: forall r ix e m
+   . (MonadThrow m, Index ix, Index (Lower ix), Source r e)
   => Dim
   -> Array r ix e
   -> m (Array D Ix1 (Array D (Lower ix) e))

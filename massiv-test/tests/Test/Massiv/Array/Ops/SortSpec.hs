@@ -1,13 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
+
 module Test.Massiv.Array.Ops.SortSpec (spec) where
 
+import Data.Foldable as F
 import Data.List as L
+import Data.Map.Strict as M
 import Data.Massiv.Array as A
 import Test.Massiv.Core as A
-import Data.Foldable as F
-import Data.Map.Strict as M
 
 prop_IsSorted :: (b -> b) -> ([Int] -> b) -> (b -> [Int]) -> [Int] -> Property
 prop_IsSorted sortWith from to xs =
@@ -19,12 +20,11 @@ tallyMap = foldrS addCount M.empty
     addCount :: Word -> Map Word Int -> Map Word Int
     addCount !el !counter = M.insertWith (+) el 1 counter
 
-
 spec :: Spec
 spec = do
   describe "QuickSort" $ do
     it "Seq" $ property $ prop_IsSorted (quicksort @P) (A.fromList Seq) A.toList
     it "Par" $ property $ prop_IsSorted (quicksort @P) (A.fromList (ParN 4)) A.toList
   describe "Tally" $
-    prop "Same as Map" $ \ arr ->
-       M.toList (tallyMap arr) === F.toList (tally arr)
+    prop "Same as Map" $ \arr ->
+      M.toList (tallyMap arr) === F.toList (tally arr)

@@ -1,6 +1,6 @@
-module Test.Massiv.Array.Numeric.IntegralSpec
-  ( spec
-  ) where
+module Test.Massiv.Array.Numeric.IntegralSpec (
+  spec,
+) where
 
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Numeric.Integral

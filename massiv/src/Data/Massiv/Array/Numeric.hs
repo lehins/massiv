@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Numeric
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -10,122 +11,132 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Numeric
-  ( -- * Numeric
-    Numeric
-  , NumericFloat
-  , liftNumArray2M
-    -- ** Pointwise addition
-  , (.+)
-  , (+.)
-  , (.+.)
-  , (!+!)
-  , sumArraysM
-  , sumArrays'
-  -- ** Pointwise subtraction
-  , (.-)
-  , (-.)
-  , (.-.)
-  , (!-!)
-  -- ** Pointwise multiplication
-  , (.*)
-  , (*.)
-  , (.*.)
-  , (!*!)
-  , (.^)
-  , productArraysM
-  , productArrays'
-  -- ** Dot product
-  , (!.!)
-  , dotM
-  -- ** Matrix multiplication
-  , (.><)
-  , (!><)
-  , multiplyMatrixByVector
-  , (><.)
-  , (><!)
-  , multiplyVectorByMatrix
-  , (.><.)
-  , (!><!)
-  , multiplyMatrices
-  , multiplyMatricesTransposed
-  -- * Norms
-  , normL2
-  -- * Simple matrices
-  , identityMatrix
-  , lowerTriangular
-  , upperTriangular
-  , negateA
-  , absA
-  , signumA
-  -- * Integral
-  , quotA
-  , remA
-  , divA
-  , modA
-  , quotRemA
-  , divModA
-  -- * Fractional
-  , (./)
-  , (/.)
-  , (./.)
-  , (!/!)
-  , (.^^)
-  , recipA
-  -- * Floating
-  , expA
-  , logA
-  , sqrtA
-  , (.**)
-  , logBaseA
-  , sinA
-  , cosA
-  , tanA
-  , asinA
-  , acosA
-  , atanA
-  , sinhA
-  , coshA
-  , tanhA
-  , asinhA
-  , acoshA
-  , atanhA
-  -- * RealFrac
-  , truncateA
-  , roundA
-  , ceilingA
-  , floorA
-  -- * RealFloat
-  , atan2A
-  ) where
+module Data.Massiv.Array.Numeric (
+  -- * Numeric
+  Numeric,
+  NumericFloat,
+  liftNumArray2M,
 
-import Data.Massiv.Array.Mutable
+  -- ** Pointwise addition
+  (.+),
+  (+.),
+  (.+.),
+  (!+!),
+  sumArraysM,
+  sumArrays',
+
+  -- ** Pointwise subtraction
+  (.-),
+  (-.),
+  (.-.),
+  (!-!),
+
+  -- ** Pointwise multiplication
+  (.*),
+  (*.),
+  (.*.),
+  (!*!),
+  (.^),
+  productArraysM,
+  productArrays',
+
+  -- ** Dot product
+  (!.!),
+  dotM,
+
+  -- ** Matrix multiplication
+  (.><),
+  (!><),
+  multiplyMatrixByVector,
+  (><.),
+  (><!),
+  multiplyVectorByMatrix,
+  (.><.),
+  (!><!),
+  multiplyMatrices,
+  multiplyMatricesTransposed,
+
+  -- * Norms
+  normL2,
+
+  -- * Simple matrices
+  identityMatrix,
+  lowerTriangular,
+  upperTriangular,
+  negateA,
+  absA,
+  signumA,
+
+  -- * Integral
+  quotA,
+  remA,
+  divA,
+  modA,
+  quotRemA,
+  divModA,
+
+  -- * Fractional
+  (./),
+  (/.),
+  (./.),
+  (!/!),
+  (.^^),
+  recipA,
+
+  -- * Floating
+  expA,
+  logA,
+  sqrtA,
+  (.**),
+  logBaseA,
+  sinA,
+  cosA,
+  tanA,
+  asinA,
+  acosA,
+  atanA,
+  sinhA,
+  coshA,
+  tanhA,
+  asinhA,
+  acoshA,
+  atanhA,
+
+  -- * RealFrac
+  truncateA,
+  roundA,
+  ceilingA,
+  floorA,
+
+  -- * RealFloat
+  atan2A,
+) where
+
+import Control.Monad (when)
+import Control.Scheduler
+import qualified Data.Foldable as F
+import Data.Function
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Manifest.Internal
-import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Array.Ops.Construct
+import Data.Massiv.Array.Ops.Map as A
 import Data.Massiv.Core
 import Data.Massiv.Core.Common as A
 import Data.Massiv.Core.Operations
-import Prelude as P
 import System.IO.Unsafe
-import Control.Scheduler
-import Control.Monad (when)
-import qualified Data.Foldable as F
-import Data.Function
+import Prelude as P
 
-infixr 8  .^, .^^
-infixl 7  !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
-infixl 6  !+!, .+., .+, +., !-!, .-., .-, -.
+infixr 8 .^, .^^
+infixl 7 !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
+infixl 6 !+!, .+., .+, +., !-!, .-., .-, -.
 
 -- | Similar to `liftArray2M`, except it can be applied only to representations
 -- with `Numeric` instance and result representation stays the same.
 --
 -- @since 1.0.0
-liftNumArray2M ::
-     (Index ix, Numeric r e, MonadThrow m)
+liftNumArray2M
+  :: (Index ix, Numeric r e, MonadThrow m)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e
@@ -139,9 +150,8 @@ liftNumArray2M f a1 a2
     !sz2 = size a2
 {-# INLINE liftNumArray2M #-}
 
-
-applyExactSize2M ::
-     (Index ix, Size r, MonadThrow m)
+applyExactSize2M
+  :: (Index ix, Size r, MonadThrow m)
   => (Array r ix e -> Array r ix e -> Array r ix e)
   -> Array r ix e
   -> Array r ix e
@@ -154,7 +164,6 @@ applyExactSize2M f a1 a2
     !sz1 = size a1
     !sz2 = size a2
 {-# INLINE applyExactSize2M #-}
-
 
 -- | Add two arrays together pointwise. Same as `!+!` but produces monadic computation
 -- that allows for handling failure.
@@ -204,11 +213,10 @@ applyExactSize2M f a1 a2
 -- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
-(.-.) ::
-     (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.-.)
+  :: (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.-.) = applyExactSize2M subtractionPointwise
 {-# INLINE (.-.) #-}
-
 
 -- | Subtract one array from another pointwise. Prefer to use monadic version of this
 -- function `.-.` whenever possible, because it is better to avoid partial functions.
@@ -242,18 +250,16 @@ applyExactSize2M f a1 a2
 (-.) = scalarMinus
 {-# INLINE (-.) #-}
 
-
 -- | Multiply two arrays together pointwise. Same as `!*!` but produces monadic
 -- computation that allows for handling failure.
 --
 -- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
-(.*.) ::
-     (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
+(.*.)
+  :: (Index ix, Numeric r e, MonadThrow m) => Array r ix e -> Array r ix e -> m (Array r ix e)
 (.*.) = applyExactSize2M multiplicationPointwise
 {-# INLINE (.*.) #-}
-
 
 -- | Multiplication of two arrays pointwise,
 -- i.e. <https://en.wikipedia.org/wiki/Hadamard_product_(matrices) Hadamard product>.
@@ -275,7 +281,6 @@ applyExactSize2M f a1 a2
 (!*!) a1 a2 = throwEither (a1 .*. a2)
 {-# INLINE (!*!) #-}
 
-
 -- | Multiply each element of the array by a scalar value. Scalar is on the right.
 --
 -- ====__Example__
@@ -292,7 +297,6 @@ applyExactSize2M f a1 a2
 (.*) :: (Index ix, Numeric r e) => Array r ix e -> e -> Array r ix e
 (.*) = multiplyScalar
 {-# INLINE (.*) #-}
-
 
 -- | Multiply each element of the array by a scalar value. Scalar is on the left.
 --
@@ -311,7 +315,6 @@ applyExactSize2M f a1 a2
 (*.) = flip multiplyScalar
 {-# INLINE (*.) #-}
 
-
 -- | Raise each element of the array to a power.
 --
 -- ====__Example__
@@ -328,7 +331,6 @@ applyExactSize2M f a1 a2
 (.^) :: (Index ix, Numeric r e) => Array r ix e -> Int -> Array r ix e
 (.^) = powerPointwise
 {-# INLINE (.^) #-}
-
 
 -- | Dot product of two vectors.
 --
@@ -353,9 +355,8 @@ dotM v1 v2
     comp = getComp v1 <> getComp v2
 {-# INLINE dotM #-}
 
-
-unsafeDotProductIO ::
-     (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
+unsafeDotProductIO
+  :: (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
   => Array r ix b
   -> Array r ix b
   -> m b
@@ -366,18 +367,18 @@ unsafeDotProductIO v1 v2 = do
         let n = SafeSz chunkLength
         loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
           scheduleWork scheduler $
-          pure $! unsafeDotProduct (unsafeLinearSlice start n v1) (unsafeLinearSlice start n v2)
+            pure $!
+              unsafeDotProduct (unsafeLinearSlice start n v1) (unsafeLinearSlice start n v2)
         when (slackStart < totalLength) $ do
           let k = SafeSz (totalLength - slackStart)
           scheduleWork scheduler $
             pure $!
-            unsafeDotProduct (unsafeLinearSlice slackStart k v1) (unsafeLinearSlice slackStart k v2)
+              unsafeDotProduct (unsafeLinearSlice slackStart k v1) (unsafeLinearSlice slackStart k v2)
   pure $! F.foldl' (+) 0 results
   where
     totalLength = totalElem (size v1)
     comp = getComp v1 <> getComp v2
 {-# INLINE unsafeDotProductIO #-}
-
 
 -- | Compute L2 norm of an array.
 --
@@ -388,8 +389,8 @@ normL2 v
   | otherwise = sqrt $! unsafePerformIO $ powerSumArrayIO v 2
 {-# INLINE normL2 #-}
 
-powerSumArrayIO ::
-     (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
+powerSumArrayIO
+  :: (MonadUnliftIO m, Index ix, FoldNumeric r b, Source r b)
   => Array r ix b
   -> Int
   -> m b
@@ -408,17 +409,18 @@ powerSumArrayIO v p = do
     totalLength = totalElem (size v)
 {-# INLINE powerSumArrayIO #-}
 
-
 -- | Multiply a matrix by a column vector. Same as `!><` but produces monadic
 -- computation that allows for handling failure.
 --
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(.><) ::
-     (MonadThrow m, FoldNumeric r e, Source r e)
-  => Matrix r e -- ^ Matrix
-  -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
+(.><)
+  :: (MonadThrow m, FoldNumeric r e, Source r e)
+  => Matrix r e
+  -- ^ Matrix
+  -> Vector r e
+  -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector D e)
 (.><) mm v
   | mCols /= n = throwM $ SizeMismatchException (size mm) (Sz2 n 1)
@@ -436,28 +438,30 @@ powerSumArrayIO v p = do
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.7
-multiplyMatrixByVector ::
-     (MonadThrow m, Numeric r e, Manifest r e)
-  => Matrix r e -- ^ Matrix
-  -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
+multiplyMatrixByVector
+  :: (MonadThrow m, Numeric r e, Manifest r e)
+  => Matrix r e
+  -- ^ Matrix
+  -> Vector r e
+  -- ^ Column vector (Used many times, so make sure it is computed)
   -> m (Vector r e)
 multiplyMatrixByVector mm v = compute <$> mm .>< v
 {-# INLINE multiplyMatrixByVector #-}
-
 
 -- | Multiply a matrix by a column vector
 --
 -- [Partial] Throws impure exception when inner dimensions do not agree
 --
 -- @since 0.5.6
-(!><) ::
-     (Numeric r e, Source r e)
-  => Matrix r e -- ^ Matrix
-  -> Vector r e -- ^ Column vector (Used many times, so make sure it is computed)
+(!><)
+  :: (Numeric r e, Source r e)
+  => Matrix r e
+  -- ^ Matrix
+  -> Vector r e
+  -- ^ Column vector (Used many times, so make sure it is computed)
   -> Vector D e
 (!><) mm v = throwEither (mm .>< v)
 {-# INLINE (!><) #-}
-
 
 -- | Multiply a row vector by a matrix. Same as `><!` but produces monadic computation
 -- that allows for handling failure.
@@ -465,10 +469,13 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.6
-(><.) :: (MonadThrow m, Numeric r e, Manifest r e) =>
-         Vector r e -- ^ Row vector
-      -> Matrix r e -- ^ Matrix
-      -> m (Vector r e)
+(><.)
+  :: (MonadThrow m, Numeric r e, Manifest r e)
+  => Vector r e
+  -- ^ Row vector
+  -> Matrix r e
+  -- ^ Matrix
+  -> m (Vector r e)
 (><.) = multiplyVectorByMatrix
 {-# INLINE (><.) #-}
 
@@ -478,52 +485,53 @@ multiplyMatrixByVector mm v = compute <$> mm .>< v
 -- /__Throws Exception__/: `SizeMismatchException` when inner dimensions of arrays do not match.
 --
 -- @since 0.5.7
-multiplyVectorByMatrix ::
-     (MonadThrow m, Numeric r e, Manifest r e)
-  => Vector r e -- ^ Row vector
-  -> Matrix r e -- ^ Matrix
+multiplyVectorByMatrix
+  :: (MonadThrow m, Numeric r e, Manifest r e)
+  => Vector r e
+  -- ^ Row vector
+  -> Matrix r e
+  -- ^ Matrix
   -> m (Vector r e)
 multiplyVectorByMatrix v mm
   | mRows /= n = throwM $ SizeMismatchException (Sz2 1 n) (size mm)
   | mRows == 0 || mCols == 0 = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
   | otherwise =
-    pure $!
-    unsafePerformIO $ do
-      mv <- newMArray (Sz mCols) 0
-      withMassivScheduler_ comp $ \scheduler -> do
-        let loopCols x ivto =
-              fix $ \go im iv ->
-                when (iv < ivto) $ do
-                  _ <- unsafeLinearModify mv (\a -> pure $ a + unsafeLinearIndex mm im * x) iv
-                  go (im + 1) (iv + 1)
-            loopRows i0 from to =
-              flip fix i0 $ \go i ->
-                when (i < mRows) $ do
-                  loopCols (unsafeLinearIndex v i) to (i * mCols + from) from
-                  go (i + 1)
-        splitLinearlyM_ scheduler mCols (loopRows 0)
-      unsafeFreeze comp mv
+      pure $!
+        unsafePerformIO $ do
+          mv <- newMArray (Sz mCols) 0
+          withMassivScheduler_ comp $ \scheduler -> do
+            let loopCols x ivto =
+                  fix $ \go im iv ->
+                    when (iv < ivto) $ do
+                      _ <- unsafeLinearModify mv (\a -> pure $ a + unsafeLinearIndex mm im * x) iv
+                      go (im + 1) (iv + 1)
+                loopRows i0 from to =
+                  flip fix i0 $ \go i ->
+                    when (i < mRows) $ do
+                      loopCols (unsafeLinearIndex v i) to (i * mCols + from) from
+                      go (i + 1)
+            splitLinearlyM_ scheduler mCols (loopRows 0)
+          unsafeFreeze comp mv
   where
     comp = getComp mm <> getComp v
     Sz2 mRows mCols = size mm
     Sz1 n = size v
 {-# INLINE multiplyVectorByMatrix #-}
 
-
 -- | Multiply a row vector by a matrix.
 --
 -- [Partial] Throws impure exception when inner dimensions do not agree
 --
 -- @since 0.5.6
-(><!) ::
-     (Numeric r e, Manifest r e)
-  => Vector r e -- ^ Row vector (Used many times, so make sure it is computed)
-  -> Matrix r e -- ^ Matrix
+(><!)
+  :: (Numeric r e, Manifest r e)
+  => Vector r e
+  -- ^ Row vector (Used many times, so make sure it is computed)
+  -> Matrix r e
+  -- ^ Matrix
   -> Vector r e
 (><!) v mm = throwEither (v ><. mm)
 {-# INLINE (><!) #-}
-
-
 
 -- | Multiply two matrices together.
 --
@@ -558,141 +566,144 @@ multiplyVectorByMatrix v mm
 (.><.) = multiplyMatrices
 {-# INLINE (.><.) #-}
 
-
 -- | Synonym for `.><.`
 --
 -- @since 0.5.6
-multiplyMatrices ::
-     (Numeric r e, Manifest r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
+multiplyMatrices
+  :: (Numeric r e, Manifest r e, MonadThrow m) => Matrix r e -> Matrix r e -> m (Matrix r e)
 multiplyMatrices arrA arrB
-   -- mA == 1 = -- TODO: call multiplyVectorByMatrix
-   -- nA == 1 = -- TODO: call multiplyMatrixByVector
+  -- mA == 1 = -- TODO: call multiplyVectorByMatrix
+  -- nA == 1 = -- TODO: call multiplyMatrixByVector
   | nA /= mB = throwM $ SizeMismatchException (size arrA) (size arrB)
   | isEmpty arrA || isEmpty arrB = pure $ runST (unsafeFreeze comp =<< unsafeNew zeroSz)
   | otherwise = pure $! unsafePerformIO $ do
-    marrC <- newMArray (SafeSz (mA :. nB)) 0
-    withScheduler_ comp $ \scheduler -> do
-      let withC00 iA jB f = let !ixC00 = iA * nB + jB
-                            in f ixC00 =<< unsafeLinearRead marrC ixC00
-          withC01 ixC00 f = let !ixC01 = ixC00 + 1
-                            in f ixC01 =<< unsafeLinearRead marrC ixC01
-          withC10 ixC00 f = let !ixC10 = ixC00 + nB
-                            in f ixC10 =<< unsafeLinearRead marrC ixC10
-          withC11 ixC01 f = let !ixC11 = ixC01 + nB
-                            in f ixC11 =<< unsafeLinearRead marrC ixC11
-          withB00 iB jB f = let !ixB00 = iB * nB + jB
-                            in f ixB00 $! unsafeLinearIndex arrB ixB00
-          withB00B10 iB jB f =
-            withB00 iB jB $ \ixB00 b00 -> let !ixB10 = ixB00 + nB
-                                          in f ixB00 b00 ixB10 $! unsafeLinearIndex arrB ixB10
-          withA00 iA jA f = let !ixA00 = iA * nA + jA
-                            in f ixA00 $! unsafeLinearIndex arrA ixA00
-          withA00A10 iA jA f =
-            withA00 iA jA $ \ixA00 a00 -> let !ixA10 = ixA00 + nA
-                                          in f ixA00 a00 ixA10 $! unsafeLinearIndex arrA ixA10
-      let loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB jB
-            | jB < n2B = do
-              withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                    !b11 = unsafeLinearIndex arrB (ixB10 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-                  withC01 ixC00 $ \ixC01 c01 -> do
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
+      marrC <- newMArray (SafeSz (mA :. nB)) 0
+      withScheduler_ comp $ \scheduler -> do
+        let withC00 iA jB f =
+              let !ixC00 = iA * nB + jB
+               in f ixC00 =<< unsafeLinearRead marrC ixC00
+            withC01 ixC00 f =
+              let !ixC01 = ixC00 + 1
+               in f ixC01 =<< unsafeLinearRead marrC ixC01
+            withC10 ixC00 f =
+              let !ixC10 = ixC00 + nB
+               in f ixC10 =<< unsafeLinearRead marrC ixC10
+            withC11 ixC01 f =
+              let !ixC11 = ixC01 + nB
+               in f ixC11 =<< unsafeLinearRead marrC ixC11
+            withB00 iB jB f =
+              let !ixB00 = iB * nB + jB
+               in f ixB00 $! unsafeLinearIndex arrB ixB00
+            withB00B10 iB jB f =
+              withB00 iB jB $ \ixB00 b00 ->
+                let !ixB10 = ixB00 + nB
+                 in f ixB00 b00 ixB10 $! unsafeLinearIndex arrB ixB10
+            withA00 iA jA f =
+              let !ixA00 = iA * nA + jA
+               in f ixA00 $! unsafeLinearIndex arrA ixA00
+            withA00A10 iA jA f =
+              withA00 iA jA $ \ixA00 a00 ->
+                let !ixA10 = ixA00 + nA
+                 in f ixA00 a00 ixA10 $! unsafeLinearIndex arrA ixA10
+        let loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB jB
+              | jB < n2B = do
+                  withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
+                    let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                        !b11 = unsafeLinearIndex arrB (ixB10 + 1)
+                    withC00 iA jB $ \ixC00 c00 -> do
+                      unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
+                      withC01 ixC00 $ \ixC01 c01 -> do
+                        unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
+                        withC10 ixC00 $ \ixC10 c10 ->
+                          unsafeLinearWrite marrC ixC10 (c10 + a10 * b00 + a11 * b10)
+                        withC11 ixC01 $ \ixC11 c11 ->
+                          unsafeLinearWrite marrC ixC11 (c11 + a10 * b01 + a11 * b11)
+                  loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB (jB + 2)
+              | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
+                  withC00 iA jB $ \ixC00 c00 -> do
+                    unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
                     withC10 ixC00 $ \ixC10 c10 ->
                       unsafeLinearWrite marrC ixC10 (c10 + a10 * b00 + a11 * b10)
-                    withC11 ixC01 $ \ixC11 c11 ->
-                      unsafeLinearWrite marrC ixC11 (c11 + a10 * b01 + a11 * b11)
-              loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB (jB + 2)
+              | otherwise = pure ()
 
-            | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
-                          withC00 iA jB $ \ixC00 c00 -> do
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-                            withC10 ixC00 $ \ixC10 c10 ->
-                              unsafeLinearWrite marrC ixC10 (c10 + a10 * b00 + a11 * b10)
-            | otherwise = pure ()
+            loopColsB_UnRowBColA_RowA a00 a01 iA iB jB
+              | jB < n2B = do
+                  withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
+                    let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                        !b11 = unsafeLinearIndex arrB (ixB10 + 1)
+                    withC00 iA jB $ \ixC00 c00 -> do
+                      unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
+                      withC01 ixC00 $ \ixC01 c01 ->
+                        unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
+                  loopColsB_UnRowBColA_RowA a00 a01 iA iB (jB + 2)
+              | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
+                  withC00 iA jB $ \ixC00 c00 ->
+                    unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
+              | otherwise = pure ()
 
-          loopColsB_UnRowBColA_RowA a00 a01 iA iB jB
-            | jB < n2B = do
-              withB00B10 iB jB $ \ixB00 b00 ixB10 b10 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                    !b11 = unsafeLinearIndex arrB (ixB10 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-                  withC01 ixC00 $ \ixC01 c01 ->
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01 + a01 * b11)
-              loopColsB_UnRowBColA_RowA a00 a01 iA iB (jB + 2)
-
-            | jB < nB = withB00B10 iB jB $ \_ b00 _ b10 ->
-                          withC00 iA jB $ \ixC00 c00 ->
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00 + a01 * b10)
-            | otherwise = pure ()
-
-          loopColsB_RowBColA_UnRowA a00 a10 iA iB jB
-            | jB < n2B = do
-              withB00 iB jB $ \ixB00 b00 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
-                  withC01 ixC00 $ \ixC01 c01 -> do
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
+            loopColsB_RowBColA_UnRowA a00 a10 iA iB jB
+              | jB < n2B = do
+                  withB00 iB jB $ \ixB00 b00 -> do
+                    let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                    withC00 iA jB $ \ixC00 c00 -> do
+                      unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+                      withC01 ixC00 $ \ixC01 c01 -> do
+                        unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
+                        withC10 ixC00 $ \ixC10 c10 ->
+                          unsafeLinearWrite marrC ixC10 (c10 + a10 * b00)
+                        withC11 ixC01 $ \ixC11 c11 ->
+                          unsafeLinearWrite marrC ixC11 (c11 + a10 * b01)
+                  loopColsB_RowBColA_UnRowA a00 a10 iA iB (jB + 2)
+              | jB < nB = withB00 iB jB $ \_ b00 ->
+                  withC00 iA jB $ \ixC00 c00 -> do
+                    unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
                     withC10 ixC00 $ \ixC10 c10 ->
                       unsafeLinearWrite marrC ixC10 (c10 + a10 * b00)
-                    withC11 ixC01 $ \ixC11 c11 ->
-                      unsafeLinearWrite marrC ixC11 (c11 + a10 * b01)
-              loopColsB_RowBColA_UnRowA a00 a10 iA iB (jB + 2)
+              | otherwise = pure ()
 
-            | jB < nB = withB00 iB jB $ \_ b00 ->
-                          withC00 iA jB $ \ixC00 c00 -> do
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
-                            withC10 ixC00 $ \ixC10 c10 ->
-                              unsafeLinearWrite marrC ixC10 (c10 + a10 * b00)
-            | otherwise = pure ()
+            loopColsB_RowBColA_RowA a00 iA iB jB
+              | jB < n2B = do
+                  withB00 iB jB $ \ixB00 b00 -> do
+                    let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
+                    withC00 iA jB $ \ixC00 c00 -> do
+                      unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+                      withC01 ixC00 $ \ixC01 c01 -> do
+                        unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
+                  loopColsB_RowBColA_RowA a00 iA iB (jB + 2)
+              | jB < nB = withB00 iB jB $ \_ b00 ->
+                  withC00 iA jB $ \ixC00 c00 ->
+                    unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+              | otherwise = pure ()
 
-          loopColsB_RowBColA_RowA a00 iA iB jB
-            | jB < n2B = do
-              withB00 iB jB $ \ixB00 b00 -> do
-                let !b01 = unsafeLinearIndex arrB (ixB00 + 1)
-                withC00 iA jB $ \ixC00 c00 -> do
-                  unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
-                  withC01 ixC00 $ \ixC01 c01 -> do
-                    unsafeLinearWrite marrC ixC01 (c01 + a00 * b01)
-              loopColsB_RowBColA_RowA a00 iA iB (jB + 2)
-            | jB < nB = withB00 iB jB $ \_ b00 ->
-                          withC00 iA jB $ \ixC00 c00 ->
-                            unsafeLinearWrite marrC ixC00 (c00 + a00 * b00)
+            loopRowsB_UnRowA iA iB
+              | iB < m2B = do
+                  withA00A10 iA iB $ \ixA00 a00 ixA10 a10 -> do
+                    let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
+                        !a11 = unsafeLinearIndex arrA (ixA10 + 1)
+                    loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB 0
+                  loopRowsB_UnRowA iA (iB + 2)
+              | iB < mB =
+                  withA00A10 iA iB $ \_ a00 _ a10 -> loopColsB_RowBColA_UnRowA a00 a10 iA iB 0
+              | otherwise = pure ()
 
-            | otherwise = pure ()
+            loopRowsB_RowA iA iB
+              | iB < m2B = do
+                  withA00 iA iB $ \ixA00 a00 -> do
+                    let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
+                    loopColsB_UnRowBColA_RowA a00 a01 iA iB 0
+                  loopRowsB_RowA iA (iB + 2)
+              | iB < mB = withA00 iA iB $ \_ a00 -> loopColsB_RowBColA_RowA a00 iA iB 0
+              | otherwise = pure ()
 
-          loopRowsB_UnRowA iA iB
-            | iB < m2B = do
-              withA00A10 iA iB $ \ixA00 a00 ixA10 a10 -> do
-                let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
-                    !a11 = unsafeLinearIndex arrA (ixA10 + 1)
-                loopColsB_UnRowBColA_UnRowA a00 a01 a10 a11 iA iB 0
-              loopRowsB_UnRowA iA (iB + 2)
-            | iB < mB =
-              withA00A10 iA iB $ \_ a00 _ a10 -> loopColsB_RowBColA_UnRowA a00 a10 iA iB 0
-            | otherwise = pure ()
+            loopRowsA iA
+              | iA < m2A = do
+                  scheduleWork_ scheduler $ loopRowsB_UnRowA iA 0
+                  loopRowsA (iA + 2)
+              | iA < mA = scheduleWork_ scheduler $ loopRowsB_RowA iA 0
+              | otherwise = pure ()
+        loopRowsA 0
 
-          loopRowsB_RowA iA iB
-            | iB < m2B = do
-              withA00 iA iB $ \ixA00 a00 -> do
-                let !a01 = unsafeLinearIndex arrA (ixA00 + 1)
-                loopColsB_UnRowBColA_RowA a00 a01 iA iB 0
-              loopRowsB_RowA iA (iB + 2)
-            | iB < mB = withA00 iA iB $ \_ a00 -> loopColsB_RowBColA_RowA a00 iA iB 0
-            | otherwise = pure ()
-
-          loopRowsA iA
-            | iA < m2A = do
-              scheduleWork_ scheduler $ loopRowsB_UnRowA iA 0
-              loopRowsA (iA + 2)
-            | iA < mA = scheduleWork_ scheduler $ loopRowsB_RowA iA 0
-            | otherwise = pure ()
-      loopRowsA 0
-
-    unsafeFreeze comp marrC
+      unsafeFreeze comp marrC
   where
     comp = getComp arrA <> getComp arrB
     m2A = mA - mA `rem` 2
@@ -708,8 +719,8 @@ multiplyMatrices arrA arrB
 -- > m1 .><. transpose m2 == multiplyMatricesTransposed m1 m2
 --
 -- @since 0.5.6
-multiplyMatricesTransposed ::
-     (Numeric r e, Manifest r e, MonadThrow m)
+multiplyMatricesTransposed
+  :: (Numeric r e, Manifest r e, MonadThrow m)
   => Matrix r e
   -> Matrix r e
   -> m (Matrix D e)
@@ -717,9 +728,9 @@ multiplyMatricesTransposed arr1 arr2
   | n1 /= m2 = throwM $ SizeMismatchException (size arr1) (Sz2 m2 n2)
   | isEmpty arr1 || isEmpty arr2 = pure $ setComp comp empty
   | otherwise =
-    pure $
-    makeArray comp (SafeSz (m1 :. n2)) $ \(i :. j) ->
-      unsafeDotProduct (unsafeLinearSlice (i * n1) n arr1) (unsafeLinearSlice (j * n1) n arr2)
+      pure $
+        makeArray comp (SafeSz (m1 :. n2)) $ \(i :. j) ->
+          unsafeDotProduct (unsafeLinearSlice (i * n1) n arr1) (unsafeLinearSlice (j * n1) n arr2)
   where
     comp = getComp arr1 <> getComp arr2
     n = SafeSz n1
@@ -744,7 +755,7 @@ multiplyMatricesTransposed arr1 arr2
 -- @since 0.3.6
 identityMatrix :: Num e => Sz1 -> Matrix DL e
 identityMatrix (Sz n) =
-  makeLoadArrayS (Sz2 n n) 0 $ \ w -> loopA_ 0 (< n) (+1) $ \ i -> w (i :. i) 1
+  makeLoadArrayS (Sz2 n n) 0 $ \w -> loopA_ 0 (< n) (+ 1) $ \i -> w (i :. i) 1
 {-# INLINE identityMatrix #-}
 
 -- | Create a lower triangular (L in LU decomposition) matrix of size @NxN@
@@ -828,14 +839,13 @@ signumA = unsafeLiftArray signum
 -- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.4.0
-(./.) ::
-     (Index ix, NumericFloat r e, MonadThrow m)
+(./.)
+  :: (Index ix, NumericFloat r e, MonadThrow m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
 (./.) = applyExactSize2M divisionPointwise
 {-# INLINE (./.) #-}
-
 
 -- | Divide two arrays pointwise. Prefer to use monadic version of this function `./.`
 -- whenever possible, because it is better to avoid partial functions.
@@ -870,7 +880,7 @@ signumA = unsafeLiftArray signum
 --   [ 5.0, 4.7619047, 4.5454545, 4.347826, 4.1666665 ]
 --
 -- @since 0.5.6
-(/.) ::(Index ix,  NumericFloat r e) => e -> Array r ix e -> Array r ix e
+(/.) :: (Index ix, NumericFloat r e) => e -> Array r ix e -> Array r ix e
 (/.) = scalarDivide
 {-# INLINE (/.) #-}
 
@@ -887,13 +897,15 @@ signumA = unsafeLiftArray signum
 --   [ 0.2, 0.21, 0.22, 0.23, 0.24 ]
 --
 -- @since 0.4.0
-(./) ::(Index ix,  NumericFloat r e) => Array r ix e -> e -> Array r ix e
+(./) :: (Index ix, NumericFloat r e) => Array r ix e -> e -> Array r ix e
 (./) = divideScalar
 {-# INLINE (./) #-}
 
 (.^^)
   :: (Index ix, Numeric r e, Fractional e, Integral b)
-  => Array r ix e -> b -> Array r ix e
+  => Array r ix e
+  -> b
+  -> Array r ix e
 (.^^) arr n = unsafeLiftArray (^^ n) arr
 {-# INLINE (.^^) #-}
 
@@ -905,7 +917,6 @@ signumA = unsafeLiftArray signum
 recipA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 recipA = recipPointwise
 {-# INLINE recipA #-}
-
 
 -- | Apply exponent to each element of the array.
 --
@@ -934,7 +945,6 @@ logA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 logA = unsafeLiftArray log
 {-# INLINE logA #-}
 
-
 -- | Apply logarithm to each element of the array where the base is in the same cell in
 -- the second array.
 --
@@ -945,15 +955,15 @@ logA = unsafeLiftArray log
 -- @since 0.4.0
 logBaseA
   :: (Index ix, Source r1 e, Source r2 e, Floating e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> Array D ix e
 logBaseA = liftArray2' logBase
 {-# INLINE logBaseA #-}
+
 -- TODO: siwtch to
 -- (breaking) logBaseA :: Array r ix e -> e -> Array D ix e
 -- logBasesM :: Array r ix e -> Array r ix e -> m (Array D ix e)
-
-
-
 
 -- | Apply power to each element of the array where the power value is in the same cell
 -- in the second array.
@@ -965,15 +975,16 @@ logBaseA = liftArray2' logBase
 -- @since 0.4.0
 (.**)
   :: (Index ix, Source r1 e, Source r2 e, Floating e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> Array D ix e
 (.**) = liftArray2' (**)
 {-# INLINE (.**) #-}
+
 -- TODO:
 -- !**! :: Array r1 ix e -> Array r2 ix e -> Array D ix e
 -- .**. :: Array r1 ix e -> Array r2 ix e -> m (Array D ix e)
 -- (breaking) .** :: Array r1 ix e -> e -> Array D ix e
-
-
 
 -- | Apply sine function to each element of the array.
 --
@@ -1083,7 +1094,6 @@ atanhA :: (Index ix, NumericFloat r e) => Array r ix e -> Array r ix e
 atanhA = unsafeLiftArray atanh
 {-# INLINE atanhA #-}
 
-
 -- | Perform a pointwise quotient where first array contains numerators and the second
 -- one denominators
 --
@@ -1094,10 +1104,11 @@ atanhA = unsafeLiftArray atanh
 -- @since 0.1.0
 quotA
   :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> Array D ix e
 quotA = liftArray2' quot
 {-# INLINE quotA #-}
-
 
 -- | Perform a pointwise remainder computation
 --
@@ -1108,7 +1119,9 @@ quotA = liftArray2' quot
 -- @since 0.1.0
 remA
   :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> Array D ix e
 remA = liftArray2' rem
 {-# INLINE remA #-}
 
@@ -1122,9 +1135,12 @@ remA = liftArray2' rem
 -- @since 0.1.0
 divA
   :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> Array D ix e
 divA = liftArray2' div
 {-# INLINE divA #-}
+
 -- TODO:
 --  * Array r ix e -> Array r ix e -> m (Array r ix e)
 --  * Array r ix e -> e -> Array r ix e
@@ -1139,11 +1155,11 @@ divA = liftArray2' div
 -- @since 0.1.0
 modA
   :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
-  => Array r1 ix e -> Array r2 ix e -> Array D ix e
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> Array D ix e
 modA = liftArray2' mod
 {-# INLINE modA #-}
-
-
 
 -- | Perform a pointwise quotient with remainder where first array contains numerators
 -- and the second one denominators
@@ -1155,10 +1171,11 @@ modA = liftArray2' mod
 -- @since 0.1.0
 quotRemA
   :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
-  => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> (Array D ix e, Array D ix e)
 quotRemA arr1 = A.unzip . liftArray2' quotRem arr1
 {-# INLINE quotRemA #-}
-
 
 -- | Perform a pointwise integer division with modulo where first array contains
 -- numerators and the second one denominators
@@ -1170,11 +1187,11 @@ quotRemA arr1 = A.unzip . liftArray2' quotRem arr1
 -- @since 0.1.0
 divModA
   :: (HasCallStack, Index ix, Source r1 e, Source r2 e, Integral e)
-  => Array r1 ix e -> Array r2 ix e -> (Array D ix e, Array D ix e)
+  => Array r1 ix e
+  -> Array r2 ix e
+  -> (Array D ix e, Array D ix e)
 divModA arr1 = A.unzip . liftArray2' divMod arr1
 {-# INLINE divModA #-}
-
-
 
 -- | Truncate each element of the array.
 --
@@ -1185,7 +1202,6 @@ truncateA :: (Index ix, Source r a, RealFrac a, Integral e) => Array r ix a -> A
 truncateA = A.map truncate
 {-# INLINE truncateA #-}
 
-
 -- | Round each element of the array.
 --
 -- > truncateA arr == map truncate arr
@@ -1195,7 +1211,6 @@ roundA :: (Index ix, Source r a, RealFrac a, Integral e) => Array r ix a -> Arra
 roundA = A.map round
 {-# INLINE roundA #-}
 
-
 -- | Ceiling of each element of the array.
 --
 -- > truncateA arr == map truncate arr
@@ -1204,7 +1219,6 @@ roundA = A.map round
 ceilingA :: (Index ix, Source r a, RealFrac a, Integral e) => Array r ix a -> Array D ix e
 ceilingA = A.map ceiling
 {-# INLINE ceilingA #-}
-
 
 -- | Floor each element of the array.
 --
@@ -1222,8 +1236,8 @@ floorA = A.map floor
 -- /__Throws Exception__/: `SizeMismatchException` when array sizes do not match.
 --
 -- @since 0.1.0
-atan2A ::
-     (Index ix, Numeric r e, RealFloat e, MonadThrow m)
+atan2A
+  :: (Index ix, Numeric r e, RealFloat e, MonadThrow m)
   => Array r ix e
   -> Array r ix e
   -> m (Array r ix e)
@@ -1291,13 +1305,14 @@ sumArrays' = throwEither . sumArraysM
 --   ]
 --
 -- @since 1.0.0
-sumArraysM ::
-     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+sumArraysM
+  :: (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
 sumArraysM as =
   case F.toList as of
     [] -> pure empty
-    (x:xs) -> F.foldlM (.+.) x xs
+    (x : xs) -> F.foldlM (.+.) x xs
 {-# INLINE sumArraysM #-}
+
 -- OPTIMIZE: Allocate a single result array and write sums into it incrementally.
 
 -- | Same as `productArraysM`. Compute product of arrays pointwise. All arrays must have
@@ -1305,11 +1320,10 @@ sumArraysM as =
 -- will result in an error.
 --
 -- @since 1.0.0
-productArrays' ::
-     (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
+productArrays'
+  :: (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
 productArrays' = throwEither . productArraysM
 {-# INLINE productArrays' #-}
-
 
 -- | Compute product of arrays pointwise. All arrays must have the same size.
 --
@@ -1364,10 +1378,10 @@ productArrays' = throwEither . productArraysM
 --   ]
 --
 -- @since 1.0.0
-productArraysM ::
-     (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
+productArraysM
+  :: (Foldable t, Load r ix e, Numeric r e, MonadThrow m) => t (Array r ix e) -> m (Array r ix e)
 productArraysM as =
   case F.toList as of
     [] -> pure empty
-    (x:xs) -> F.foldlM (.*.) x xs
+    (x : xs) -> F.foldlM (.*.) x xs
 {-# INLINE productArraysM #-}

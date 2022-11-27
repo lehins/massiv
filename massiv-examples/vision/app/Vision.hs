@@ -5,7 +5,6 @@ module Main where
 import Data.Massiv.Array
 import Data.Massiv.Array.IO
 
-
 type SRGBPixel = (SRGB 'Linear)
 
 identity :: Elevator a => Stencil Ix2 (Pixel SRGBPixel a) (Pixel SRGBPixel a)
@@ -19,9 +18,17 @@ identity =
 box :: (Elevator a, Fractional a) => Stencil Ix2 (Pixel SRGBPixel a) (Pixel SRGBPixel a)
 box =
   makeStencil sz c $ \get ->
-    ( get  (-1 :. -1) + get  (-1 :. 0) + get (-1 :. 1)
-    + get  (0 :. -1) + get  (0 :. 0) + get (0 :. 1)
-    + get  (1 :. -1) + get  (1 :. 0) + get (1 :. 1)) / 9
+    ( get (-1 :. -1)
+        + get (-1 :. 0)
+        + get (-1 :. 1)
+        + get (0 :. -1)
+        + get (0 :. 0)
+        + get (0 :. 1)
+        + get (1 :. -1)
+        + get (1 :. 0)
+        + get (1 :. 1)
+    )
+      / 9
   where
     c = 1 :. 1
     sz = Sz (3 :. 3)

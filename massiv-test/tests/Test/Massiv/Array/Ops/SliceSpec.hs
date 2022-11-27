@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+
 module Test.Massiv.Array.Ops.SliceSpec (spec) where
 
 import Control.Applicative ((<|>))
@@ -13,8 +14,8 @@ import Test.Massiv.Core
 -- Size --
 -----------
 
-prop_ExtractEqualsExtractFromTo ::
-     (Source r e, Eq e, Show e, Ragged L ix e)
+prop_ExtractEqualsExtractFromTo
+  :: (Source r e, Eq e, Show e, Ragged L ix e)
   => proxy (r, ix, e)
   -> SzIx ix
   -> Array r ix e
@@ -22,9 +23,8 @@ prop_ExtractEqualsExtractFromTo ::
 prop_ExtractEqualsExtractFromTo _ (SzIx (Sz eIx) sIx) arr =
   (extractFromToM sIx eIx arr <|> Nothing) === extractM sIx (Sz (liftIndex2 (-) eIx sIx)) arr
 
-
-specSizeN ::
-     ( HasCallStack
+specSizeN
+  :: ( HasCallStack
      , Eq e
      , Show e
      , Ragged L ix e
@@ -37,16 +37,16 @@ specSizeN ::
   -> Spec
 specSizeN proxy =
   describe "extract" $
-    it "ExtractEqualsExtractFromTo" $ property $ prop_ExtractEqualsExtractFromTo proxy
-
+    it "ExtractEqualsExtractFromTo" $
+      property $
+        prop_ExtractEqualsExtractFromTo proxy
 
 -----------
 -- Slice --
 -----------
 
-
-prop_SliceOuter ::
-     ( HasCallStack
+prop_SliceOuter
+  :: ( HasCallStack
      , Source r e
      , Index ix
      , Ragged L (Lower ix) e
@@ -61,17 +61,16 @@ prop_SliceOuter ::
 prop_SliceOuter _ i arr =
   expectProp $
     if isSafeIndex (fst (unconsSz (size arr))) i
-    then do
-      e1 <- arr !?> i
-      e2 <- arr <!?> (dimensions (size arr), i)
-      delay e1 `shouldBe` e2
-    else do
-      arr !?> i `shouldSatisfy` isNothing
-      arr <!?> (dimensions (size arr), i) `shouldSatisfy` isNothing
+      then do
+        e1 <- arr !?> i
+        e2 <- arr <!?> (dimensions (size arr), i)
+        delay e1 `shouldBe` e2
+      else do
+        arr !?> i `shouldSatisfy` isNothing
+        arr <!?> (dimensions (size arr), i) `shouldSatisfy` isNothing
 
-
-prop_SliceInner ::
-     (HasCallStack, Source r e, Index ix, Ragged L (Lower ix) e, Show e, Eq e)
+prop_SliceInner
+  :: (HasCallStack, Source r e, Index ix, Ragged L (Lower ix) e, Show e, Eq e)
   => proxy (r, ix, e)
   -> Int
   -> Array r ix e
@@ -79,14 +78,13 @@ prop_SliceInner ::
 prop_SliceInner _ i arr =
   expectProp $ do
     if isSafeIndex (snd (unsnocSz (size arr))) i
-    then do
-      e1 <- arr <!? i
-      e2 <- arr <!?> (1, i)
-      e1 `shouldBe` e2
-    else do
-      arr <!? i `shouldSatisfy` isNothing
-      arr <!?> (1, i) `shouldSatisfy` isNothing
-
+      then do
+        e1 <- arr <!? i
+        e2 <- arr <!?> (1, i)
+        e1 `shouldBe` e2
+      else do
+        arr <!? i `shouldSatisfy` isNothing
+        arr <!?> (1, i) `shouldSatisfy` isNothing
 
 prop_SliceIndexDim2 :: (HasCallStack, Source r Int) => ArrIx r Ix2 Int -> Property
 prop_SliceIndexDim2 (ArrIx arr ix@(i :. j)) =
@@ -96,7 +94,6 @@ prop_SliceIndexDim2 (ArrIx arr ix@(i :. j)) =
     evaluateM (arr <! j) i `shouldReturn` val
     evaluateM (arr <!> (2, i)) j `shouldReturn` val
     evaluateM (arr <!> (1, j)) i `shouldReturn` val
-
 
 prop_SliceIndexDim3 :: (HasCallStack, Source r Int) => ArrIx r Ix3 Int -> Property
 prop_SliceIndexDim3 (ArrIx arr ix@(i :> j :. k)) =
@@ -113,13 +110,12 @@ prop_SliceIndexDim3 (ArrIx arr ix@(i :> j :. k)) =
     evaluateM (arr <!> (1, k) <!> (2, i)) j `shouldReturn` val
     evaluateM (arr <!> (1, k) <!> (1, j)) i `shouldReturn` val
 
-
 prop_SliceIndexDim4 :: (HasCallStack, Source r Int) => ArrIx r Ix4 Int -> Property
 prop_SliceIndexDim4 (ArrIx arr ix@(i1 :> i2 :> i3 :. i4)) =
   expectProp $ do
     val <- evaluateM arr ix
     evaluateM (arr <!> (4, i1) <!> (3, i2) <!> (2, i3)) i4 `shouldReturn` val
-    evaluateM (arr <!> (4, i1) <!> (2, i3) <! i4)  i2 `shouldReturn` val
+    evaluateM (arr <!> (4, i1) <!> (2, i3) <! i4) i2 `shouldReturn` val
     evaluateM (arr <!> (3, i2) <!> (3, i1)) (i3 :. i4) `shouldReturn` val
     evaluateM (arr <!> (2, i3) <!> (2, i2)) (i1 :. i4) `shouldReturn` val
     evaluateM (arr <!> (2, i3) <!> (1, i4) !> i1) i2 `shouldReturn` val
@@ -134,11 +130,8 @@ prop_SliceIndexDim4 (ArrIx arr ix@(i1 :> i2 :> i3 :. i4)) =
     evaluateM (arr <! i4 <! i3 <! i2) i1 `shouldReturn` val
     evaluateM (arr <! i4 <! i3 !> i1) i2 `shouldReturn` val
 
-
-
-
-specSliceN ::
-     ( HasCallStack
+specSliceN
+  :: ( HasCallStack
      , Source r e
      , Load r ix e
      , Arbitrary (Array r ix e)
@@ -154,8 +147,6 @@ specSliceN proxy =
   describe "Slice" $ do
     prop "SliceOuter" $ prop_SliceOuter proxy
     prop "SliceInner" $ prop_SliceInner proxy
-
-
 
 spec :: Spec
 spec = do

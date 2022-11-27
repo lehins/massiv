@@ -2,11 +2,11 @@
 
 module Test.Massiv.Array.Delayed.StreamSpec (spec) where
 
+import Data.Int
 import Data.Massiv.Array
-import Test.Massiv.Core
 import Test.Massiv.Array.Delayed
 import Test.Massiv.Array.Load
-import Data.Int
+import Test.Massiv.Core
 
 spec :: Spec
 spec = do

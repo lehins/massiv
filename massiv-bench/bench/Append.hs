@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+
 module Main where
 
 import Criterion.Main
@@ -24,7 +25,7 @@ main = do
         "Append"
         [ bench "mappend" $ whnf (\a -> A.computeAs P (toLoadArray a <> toLoadArray a)) arr
         , bench "appendOuterM" $
-          whnfIO (A.computeAs P <$> appendOuterM (toLoadArray arr2D) (toLoadArray arr2D))
+            whnfIO (A.computeAs P <$> appendOuterM (toLoadArray arr2D) (toLoadArray arr2D))
         , bench "appendM (inner)" $ whnfIO (A.computeAs P <$> A.appendM 1 arr2D arr2D)
         , bench "appendM (outer)" $ whnfIO (A.computeAs P <$> A.appendM 2 arr2D arr2D)
         , bench "mconcat" $ whnf (\a -> A.computeAs P (mconcat [toLoadArray a, toLoadArray a])) arr
@@ -32,18 +33,18 @@ main = do
     , bgroup
         "cons"
         [ bench ("Array DL Ix1 Int (" ++ show kSmall ++ ")") $
-          nf (A.computeAs P . consArray kSmall) empty
-        -- , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
+            nf (A.computeAs P . consArray kSmall) empty
+        , -- , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
           --   nf (A.computeAs P . sconsArray kSmall) empty
-        , bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (consVector kSmall) VP.empty
+          bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (consVector kSmall) VP.empty
         , bench ("[Int] (" ++ show kSmall ++ ")") $ nf (consList kSmall) []
         ]
     , bgroup
         "uncons"
         [ bench ("Array P Ix1 Int (" ++ show kSmall ++ ")") $ nf (unconsArray kSmall) arr
-        -- , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
-        --   nf (sunconsArray kSmall . toStreamArray) arr
-        , env (pure (A.toVector arr :: VP.Vector Double)) $ \v ->
+        , -- , bench ("Array DS Ix1 Int (" ++ show kSmall ++ ")") $
+          --   nf (sunconsArray kSmall . toStreamArray) arr
+          env (pure (A.toVector arr :: VP.Vector Double)) $ \v ->
             bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (unconsVector kSmall) v
         , env (pure (toList arr :: [Double])) $ \xs ->
             bench ("[Int] (" ++ show kSmall ++ ")") $ nf (unconsList kSmall) xs
@@ -51,7 +52,7 @@ main = do
     , bgroup
         "snoc"
         [ bench ("Array DL Ix1 Int (" ++ show kSmall ++ ")") $
-          nf (A.computeAs P . snocArray kSmall) empty
+            nf (A.computeAs P . snocArray kSmall) empty
         , bench ("VP.Vector Int (" ++ show kSmall ++ ")") $ nf (snocVector kSmall) VP.empty
         , bench ("DList Int (" ++ show kSmall ++ ")") $ nf (snocList kSmall) DL.empty
         ]
@@ -64,7 +65,7 @@ main = do
         "unfoldrN"
         [ bench "Array (DL)" $ whnf (A.computeAs P . unfoldrS_ (Sz k) (\i -> (i :: Int, i + 1))) 0
         , bench "Array (DS)" $
-          whnf (A.computeAs P . A.sunfoldrN (Sz k) (\i -> Just (i :: Int, i + 1))) 0
+            whnf (A.computeAs P . A.sunfoldrN (Sz k) (\i -> Just (i :: Int, i + 1))) 0
         , bench "Vector" $ whnf (VP.unfoldrN k (\i -> Just (i :: Int, i + 1))) 0
         ]
     ]
@@ -98,9 +99,9 @@ main = do
     snocVector !n !acc = snocVector (n - 1) (acc `VP.snoc` n)
     unconsArray n arr
       | 1 < n =
-        case unconsM arr of
-          Nothing -> error "Unexpected end of delayed array"
-          Just (!_e, arr') -> unconsArray (n - 1) arr'
+          case unconsM arr of
+            Nothing -> error "Unexpected end of delayed array"
+            Just (!_e, arr') -> unconsArray (n - 1) arr'
       | otherwise = fst $ fromJust $ unconsM arr
     -- sunconsArray n arr
     --   | 1 < n =
@@ -111,16 +112,16 @@ main = do
     unconsVector :: Prim a => Int -> VP.Vector a -> a
     unconsVector n xs
       | 1 < n =
-        case unconsVP xs of
-          Nothing -> error "Unexpected end of vector"
-          Just (!_e, xs') -> unconsVector (n - 1) xs'
+          case unconsVP xs of
+            Nothing -> error "Unexpected end of vector"
+            Just (!_e, xs') -> unconsVector (n - 1) xs'
       | otherwise = fst $ fromJust $ unconsVP xs
     unconsList :: Int -> [a] -> a
     unconsList n xs
       | 1 < n =
-        case List.uncons xs of
-          Nothing -> error "Unexpected end of list"
-          Just (!_e, xs') -> unconsList (n - 1) xs'
+          case List.uncons xs of
+            Nothing -> error "Unexpected end of list"
+            Just (!_e, xs') -> unconsList (n - 1) xs'
       | otherwise = fst $ fromJust $ List.uncons xs
 
 mkAppendBenchGroup :: String -> Dim -> Sz2 -> Benchmark
@@ -144,7 +145,6 @@ mkAppendBenchGroup gname dim sz =
           -- , bench "appendPull" $ whnf (A.computeAs P . fromJust . appendPull dim arr) arr
           ]
     ]
-
 
 unconsVP :: Prim a => VP.Vector a -> Maybe (a, VP.Vector a)
 unconsVP xs = flip (,) (VP.unsafeTail xs) <$> xs VP.!? 0

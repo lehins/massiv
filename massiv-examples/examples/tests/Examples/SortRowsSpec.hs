@@ -1,9 +1,9 @@
 module Examples.SortRowsSpec (spec) where
 
 import Data.Massiv.Array as A
-import Test.QuickCheck
 import Examples.SortRows
 import Test.Hspec
+import Test.QuickCheck
 
 isGrowingStencil :: A.Stencil Ix1 Int Bool
 isGrowingStencil = A.makeStencil 2 1 $ \get -> get (-1) <= get 0
@@ -16,7 +16,6 @@ prop_Sorted comp (Positive m) (Positive n) =
         sortedArr = sortRows arr
      in A.and $ makeArrayR D Seq (Sz1 m) $ \i ->
           A.and $ A.computeAs U (A.mapStencil (Fill minBound) isGrowingStencil (sortedArr !> i))
-
 
 spec :: Spec
 spec = describe "Sorting Properties" $ do

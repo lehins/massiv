@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Unsafe
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -10,19 +11,17 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Stencil.Unsafe
-  ( -- * Stencil
-    makeUnsafeStencil
-  , makeUnsafeConvolutionStencil
-  , makeUnsafeCorrelationStencil
-  , unsafeTransformStencil
-  ) where
+module Data.Massiv.Array.Stencil.Unsafe (
+  -- * Stencil
+  makeUnsafeStencil,
+  makeUnsafeConvolutionStencil,
+  makeUnsafeCorrelationStencil,
+  unsafeTransformStencil,
+) where
 
 import Data.Massiv.Array.Stencil.Internal
 import Data.Massiv.Core.Common
 import GHC.Exts (inline)
-
 
 -- | Similar to `Data.Massiv.Array.Stencil.makeStencil`, but there are no guarantees that the
 -- stencil will not read out of bounds memory. This stencil is also a bit more powerful in sense it
@@ -31,8 +30,10 @@ import GHC.Exts (inline)
 -- @since 0.3.0
 makeUnsafeStencil
   :: Index ix
-  => Sz ix -- ^ Size of the stencil
-  -> ix -- ^ Center of the stencil
+  => Sz ix
+  -- ^ Size of the stencil
+  -> ix
+  -- ^ Center of the stencil
   -> (ix -> (ix -> e) -> a)
   -- ^ Stencil function.
   -> Stencil ix e a
@@ -80,7 +81,6 @@ makeUnsafeCorrelationStencil !sSz !sCenter relStencil = Stencil sSz sCenter sten
     {-# INLINE stencil #-}
 {-# INLINE makeUnsafeCorrelationStencil #-}
 
-
 -- | Perform an arbitrary transformation of a stencil. This stencil modifier can be used for
 -- example to turn a vector stencil into a matrix stencil implement, or transpose a matrix
 -- stencil. It is really easy to get this wrong, so be extremely careful.
@@ -112,18 +112,22 @@ makeUnsafeCorrelationStencil !sSz !sCenter relStencil = Stencil sSz sCenter sten
 --   ]
 --
 -- @since 0.5.4
-unsafeTransformStencil ::
-     (Sz ix' -> Sz ix)
+unsafeTransformStencil
+  :: (Sz ix' -> Sz ix)
   -- ^ Forward modifier for the size
   -> (ix' -> ix)
   -- ^ Forward index modifier
-  -> (((ix' -> e) -> (ix' -> e) -> ix' -> a)
-      -> (ix -> e) -> (ix -> e) -> ix -> a)
+  -> ( ((ix' -> e) -> (ix' -> e) -> ix' -> a)
+       -> (ix -> e)
+       -> (ix -> e)
+       -> ix
+       -> a
+     )
   -- ^ Inverse stencil function modifier
   -> Stencil ix' e a
   -- ^ Original stencil.
   -> Stencil ix e a
-unsafeTransformStencil transformSize transformIndex transformFunc Stencil {..} =
+unsafeTransformStencil transformSize transformIndex transformFunc Stencil{..} =
   Stencil
     { stencilSize = transformSize stencilSize
     , stencilCenter = transformIndex stencilCenter
@@ -131,14 +135,11 @@ unsafeTransformStencil transformSize transformIndex transformFunc Stencil {..} =
     }
 {-# INLINE unsafeTransformStencil #-}
 
-
-
 {-
 
 Invalid stencil transformer function.
 
 TODO: figure out if there is a safe way to do stencil index trnasformation.
-
 
 transformStencil ::
      (Default e, Index ix)
@@ -154,6 +155,5 @@ transformStencil ::
 transformStencil transformSize transformIndex transformIndex' stencil =
   validateStencil def $! unsafeTransformStencil transformSize transformIndex transformIndex' stencil
 {-# INLINE transformStencil #-}
-
 
 -}

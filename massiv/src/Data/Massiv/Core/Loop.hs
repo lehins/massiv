@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 -- |
 -- Module      : Data.Massiv.Core.Loop
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -9,46 +10,54 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Core.Loop
-  ( loop
-  , loopF
-  , nextMaybeF
-  , loopA
-  , loopA_
-  , loopM
-  , loopM_
-  , iloopM
-  , iloopA_
-  , loopNextM
-  , loopNextA_
-  , loopDeepM
-  , splitLinearly
-  , splitLinearlyM
-  , splitLinearlyM_
-  , splitLinearlyWith_
-  , splitLinearlyWithM_
-  , splitLinearlyWithStartAtM_
-  , splitLinearlyWithStatefulM_
-  , iterLinearST_
-  , iterLinearAccST_
-  , iterLinearAccST
-  , splitNumChunks
-  , stepStartAdjust
+module Data.Massiv.Core.Loop (
+  loop,
+  loopF,
+  nextMaybeF,
+  loopA,
+  loopA_,
+  loopM,
+  loopM_,
+  iloopM,
+  iloopA_,
+  loopNextM,
+  loopNextA_,
+  loopDeepM,
+  splitLinearly,
+  splitLinearlyM,
+  splitLinearlyM_,
+  splitLinearlyWith_,
+  splitLinearlyWithM_,
+  splitLinearlyWithStartAtM_,
+  splitLinearlyWithStatefulM_,
+  iterLinearST_,
+  iterLinearAccST_,
+  iterLinearAccST,
+  splitNumChunks,
+  stepStartAdjust,
+
   -- * Experimental
-  , splitWorkWithFactorST
-  , scheduleMassivWork
-  , withMassivScheduler_
-  ) where
+  splitWorkWithFactorST,
+  scheduleMassivWork,
+  withMassivScheduler_,
+) where
 
 import Control.Monad (void, when)
-import Control.Monad.IO.Unlift (MonadUnliftIO(..))
+import Control.Monad.IO.Unlift (MonadUnliftIO (..))
 import Control.Monad.Primitive
 import Control.Monad.ST (ST)
-import Control.Scheduler (Comp(..), Scheduler, SchedulerWS,
-                          numWorkers, scheduleWork, scheduleWorkState_,
-                          scheduleWork_, trivialScheduler_, unwrapSchedulerWS,
-                          withScheduler_)
+import Control.Scheduler (
+  Comp (..),
+  Scheduler,
+  SchedulerWS,
+  numWorkers,
+  scheduleWork,
+  scheduleWorkState_,
+  scheduleWork_,
+  trivialScheduler_,
+  unwrapSchedulerWS,
+  withScheduler_,
+ )
 import Control.Scheduler.Global (globalScheduler, withGlobalScheduler_)
 import Data.Coerce
 import Data.Functor.Identity
@@ -76,15 +85,14 @@ loopM !initial condition increment !initAcc f =
       | otherwise = pure acc
 {-# INLINE loopM #-}
 
-
 -- | Efficient monadic loop with an accumulator and extra linear index incremented by 1.
 --
 -- >>> iloopM 100 1 (< 20) (+ 2) [] (\i ix a -> Just ((i, ix) : a))
 -- Just [(109,19),(108,17),(107,15),(106,13),(105,11),(104,9),(103,7),(102,5),(101,3),(100,1)]
 --
 -- @since 1.0.2
-iloopM ::
-     Monad m => Int -> Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> Int -> a -> m a) -> m a
+iloopM
+  :: Monad m => Int -> Int -> (Int -> Bool) -> (Int -> Int) -> a -> (Int -> Int -> a -> m a) -> m a
 iloopM !istart !initIx condition increment !initAcc f = go istart initIx initAcc
   where
     go !i !step !acc
@@ -101,7 +109,7 @@ loopM_ !initial condition increment f = go initial
     go !step
       | condition step = f step >> go (increment step)
       | otherwise = pure ()
-  --loopF initial condition increment (pure ()) (\i ma -> f i >> ma)
+-- loopF initial condition increment (pure ()) (\i ma -> f i >> ma)
 {-# INLINE loopM_ #-}
 {-# DEPRECATED loopM_ "In favor of `loopA_`" #-}
 
@@ -115,8 +123,8 @@ loopM_ !initial condition increment f = go initial
 -- (104,9)
 --
 -- @since 1.0.2
-iloopA_ ::
-     Applicative f => Int -> Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> Int -> f a) -> f ()
+iloopA_
+  :: Applicative f => Int -> Int -> (Int -> Bool) -> (Int -> Int) -> (Int -> Int -> f a) -> f ()
 iloopA_ !istart !initIx condition increment f = go istart initIx
   where
     go !i !step
@@ -133,8 +141,8 @@ loopNextA_ !initial condition increment f = go initial
   where
     go !step
       | condition step =
-        let !next = increment step
-        in f step next *> go next
+          let !next = increment step
+           in f step next *> go next
       | otherwise = pure ()
 {-# INLINE loopNextA_ #-}
 
@@ -147,8 +155,8 @@ loopNextM !initial condition increment !initAcc f = go initial initAcc
   where
     go !step !acc
       | condition step =
-        let !next = increment step
-        in f step next acc >>= go next
+          let !next = increment step
+           in f step next acc >>= go next
       | otherwise = pure acc
 {-# INLINE loopNextM #-}
 
@@ -170,7 +178,6 @@ loopA !initial condition increment lastAction f =
   loopF initial condition increment lastAction (\i ma -> f i <*> ma)
 {-# INLINE loopA #-}
 
-
 loopF :: Int -> (Int -> Bool) -> (Int -> Int) -> f a -> (Int -> f a -> f a) -> f a
 loopF !initial condition increment lastAction f = go initial
   where
@@ -179,11 +186,10 @@ loopF !initial condition increment lastAction f = go initial
       | otherwise = lastAction
 {-# INLINE loopF #-}
 
-
 nextMaybeF :: Int -> (Int -> Bool) -> (Int -> Int) -> (Maybe Int -> f a) -> f a
 nextMaybeF !cur condition increment f =
   let !i = increment cur
-  in f $! if condition i then Just i else Nothing
+   in f $! if condition i then Just i else Nothing
 {-# INLINE nextMaybeF #-}
 
 -- | Similar to `loopM`, but way less efficient monadic loop with an accumulator that reverses
@@ -203,14 +209,17 @@ loopDeepM !initial condition increment !initAcc f =
   loopF initial condition increment (pure initAcc) (\i ma -> ma >>= f i)
 {-# INLINE loopDeepM #-}
 
-
 -- | Divide length in chunks and apply a function to the computed results
 --
 -- @since 0.2.1
-splitLinearly :: Int -- ^ Number of chunks
-              -> Int -- ^ Total length
-              -> (Int -> Int -> a) -- ^ Function that accepts a chunk length and slack start index
-              -> a
+splitLinearly
+  :: Int
+  -- ^ Number of chunks
+  -> Int
+  -- ^ Total length
+  -> (Int -> Int -> a)
+  -- ^ Function that accepts a chunk length and slack start index
+  -> a
 splitLinearly numChunks totalLength action = action chunkLength slackStart
   where
     !chunkLength = totalLength `quot` numChunks
@@ -220,24 +229,25 @@ splitLinearly numChunks totalLength action = action chunkLength slackStart
 -- | Iterator that expects an action that accepts starting linear index as well as the ending
 --
 -- @since 0.5.7
-splitLinearlyM_ ::
-     MonadPrimBase s m => Scheduler s () -> Int -> (Int -> Int -> m ()) -> m ()
+splitLinearlyM_
+  :: MonadPrimBase s m => Scheduler s () -> Int -> (Int -> Int -> m ()) -> m ()
 splitLinearlyM_ scheduler totalLength action =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-    loopNextA_ 0 (< slackStart) (+ chunkLength) $ \ start next ->
+    loopNextA_ 0 (< slackStart) (+ chunkLength) $ \start next ->
       scheduleWork_ scheduler $ action start next
     when (slackStart < totalLength) $
-      scheduleWork_ scheduler $ action slackStart totalLength
+      scheduleWork_ scheduler $
+        action slackStart totalLength
 {-# INLINE splitLinearlyM_ #-}
 
 -- | Iterator that expects an action that accepts starting linear index as well as the ending
 --
 -- @since 1.0.2
-splitLinearlyM ::
-     MonadPrimBase s m => Scheduler s a -> Int -> (Int -> Int -> m a) -> m ()
+splitLinearlyM
+  :: MonadPrimBase s m => Scheduler s a -> Int -> (Int -> Int -> m a) -> m ()
 splitLinearlyM scheduler totalLength action =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-    loopNextA_ 0 (< slackStart) (+ chunkLength) $ \ start next ->
+    loopNextA_ 0 (< slackStart) (+ chunkLength) $ \start next ->
       scheduleWork scheduler (action start next)
     when (slackStart < totalLength) $
       scheduleWork scheduler (action slackStart totalLength)
@@ -247,81 +257,87 @@ splitLinearlyM scheduler totalLength action =
 -- generator see `splitLinearlyWithM_`.
 --
 -- @since 0.2.1
-splitLinearlyWith_ ::
-     MonadPrimBase s m => Scheduler s () -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m ()
+splitLinearlyWith_
+  :: MonadPrimBase s m => Scheduler s () -> Int -> (Int -> b) -> (Int -> b -> m ()) -> m ()
 splitLinearlyWith_ scheduler totalLength index =
   splitLinearlyWithM_ scheduler totalLength (pure . index)
 {-# INLINE splitLinearlyWith_ #-}
 
-
 -- | Iterator that can be used to split computation jobs
 --
 -- @since 0.2.6
-splitLinearlyWithM_ ::
-     MonadPrimBase s m => Scheduler s () -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
+splitLinearlyWithM_
+  :: MonadPrimBase s m => Scheduler s () -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
 splitLinearlyWithM_ scheduler totalLength make write =
   splitLinearlyM_ scheduler totalLength go
   where
-    go start end = loopM_ start (< end) (+ 1) $ \ k -> make k >>= write k
+    go start end = loopM_ start (< end) (+ 1) $ \k -> make k >>= write k
     {-# INLINE go #-}
 {-# INLINE splitLinearlyWithM_ #-}
-
 
 -- | Iterator that can be used to split computation jobs
 --
 -- @since 0.3.0
-splitLinearlyWithStartAtM_ ::
-     MonadPrimBase s m => Scheduler s () -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
+splitLinearlyWithStartAtM_
+  :: MonadPrimBase s m => Scheduler s () -> Int -> Int -> (Int -> m b) -> (Int -> b -> m c) -> m ()
 splitLinearlyWithStartAtM_ scheduler startAt totalLength make write =
   splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
     loopM_ startAt (< (slackStart + startAt)) (+ chunkLength) $ \ !start ->
       scheduleWork_ scheduler $
-      loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k -> make k >>= write k
+        loopM_ start (< (start + chunkLength)) (+ 1) $
+          \ !k -> make k >>= write k
     when (slackStart < totalLength) $
       scheduleWork_ scheduler $
-        loopM_ (slackStart + startAt) (< (totalLength + startAt)) (+ 1) $ \ !k -> make k >>= write k
+        loopM_ (slackStart + startAt) (< (totalLength + startAt)) (+ 1) $
+          \ !k -> make k >>= write k
 {-# INLINE splitLinearlyWithStartAtM_ #-}
-
-
 
 -- | Iterator that can be used to split computation jobs, while using a stateful scheduler.
 --
 -- @since 0.3.4
-splitLinearlyWithStatefulM_ ::
-     MonadUnliftIO m
+splitLinearlyWithStatefulM_
+  :: MonadUnliftIO m
   => SchedulerWS ws ()
-  -> Int -- ^ Total linear length
-  -> (Int -> ws -> m b) -- ^ Element producing action
-  -> (Int -> b -> m c) -- ^ Element storing action
+  -> Int
+  -- ^ Total linear length
+  -> (Int -> ws -> m b)
+  -- ^ Element producing action
+  -> (Int -> b -> m c)
+  -- ^ Element storing action
   -> m ()
 splitLinearlyWithStatefulM_ schedulerWS totalLength make store =
   let nWorkers = numWorkers (unwrapSchedulerWS schedulerWS)
    in withRunInIO $ \run ->
-      splitLinearly nWorkers totalLength $ \chunkLength slackStart -> do
-        loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+        splitLinearly nWorkers totalLength $ \chunkLength slackStart -> do
+          loopM_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+            scheduleWorkState_ schedulerWS $ \s ->
+              loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
+                run (make k s >>= store k)
           scheduleWorkState_ schedulerWS $ \s ->
-            loopM_ start (< (start + chunkLength)) (+ 1) $ \ !k ->
+            loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
               run (make k s >>= store k)
-        scheduleWorkState_ schedulerWS $ \s ->
-          loopM_ slackStart (< totalLength) (+ 1) $ \ !k ->
-            run (make k s >>= store k)
 {-# INLINE splitLinearlyWithStatefulM_ #-}
-
 
 -- | This is a major helper function for fair splitting and parallelization of
 -- work with ability to use some arbitrary accumulator and splittable seed
 --
 -- @since 1.0.2
-splitWorkWithFactorST ::
-     Int -- ^ Multiplying factor to be applied to number of workers for number
-         -- of jobs to schedule. Higher the factor, more jobs will be
-         -- scheduled. Only positive values are valid.
+splitWorkWithFactorST
+  :: Int
+  -- ^ Multiplying factor to be applied to number of workers for number
+  -- of jobs to schedule. Higher the factor, more jobs will be
+  -- scheduled. Only positive values are valid.
   -> Scheduler s a
-  -> Int -- ^ Starting index
-  -> Int -- ^ Stepping value. Can be negative, but must not be zero.
-  -> Int -- ^ Total number of steps to be taken
-  -> b -- ^ Initial value for an accumulator
-  -> (b -> ST s (b, b)) -- ^ An action to split accumulator for multiple threads
+  -> Int
+  -- ^ Starting index
+  -> Int
+  -- ^ Stepping value. Can be negative, but must not be zero.
+  -> Int
+  -- ^ Total number of steps to be taken
+  -> b
+  -- ^ Initial value for an accumulator
+  -> (b -> ST s (b, b))
+  -- ^ An action to split accumulator for multiple threads
   -> (Int -> Int -> Int -> Int -> b -> ST s a)
   -- ^ A job to be scheduled. Accepts:
   --
@@ -355,8 +371,8 @@ splitWorkWithFactorST fact scheduler start step totalLength initAcc splitAcc act
 -- | Linear iterator that supports multiplying factor
 --
 -- @since 1.0.2
-iterLinearST_ ::
-     Int
+iterLinearST_
+  :: Int
   -> Scheduler s ()
   -> Int
   -> Int
@@ -365,16 +381,16 @@ iterLinearST_ ::
   -> ST s ()
 iterLinearST_ fact scheduler start step n action = do
   let totalLength = (n - start) `quot` step
-  splitWorkWithFactorST fact scheduler start step totalLength () (\_ -> pure ((), ()))
-    $ \ _ _ chunkStartAdj chunkStopAdj _ ->
-    loopA_ chunkStartAdj (< chunkStopAdj) (+ step) action
+  splitWorkWithFactorST fact scheduler start step totalLength () (\_ -> pure ((), ())) $
+    \_ _ chunkStartAdj chunkStopAdj _ ->
+      loopA_ chunkStartAdj (< chunkStopAdj) (+ step) action
 {-# INLINE iterLinearST_ #-}
 
 -- | Linear iterator that supports multiplying factor and accumulator, but the results are discarded.
 --
 -- @since 1.0.2
-iterLinearAccST_ ::
-     Int
+iterLinearAccST_
+  :: Int
   -> Scheduler s ()
   -> Int
   -> Int
@@ -385,20 +401,22 @@ iterLinearAccST_ ::
   -> ST s ()
 iterLinearAccST_ fact scheduler start step n initAcc splitAcc action = do
   let totalLength = (n - start) `quot` step
-  void $ splitWorkWithFactorST fact scheduler start step totalLength initAcc splitAcc
-    $ \ _ _ chunkStartAdj chunkStopAdj accCur ->
-    void $ loopM chunkStartAdj (< chunkStopAdj) (+ step) accCur action
+  void $
+    splitWorkWithFactorST fact scheduler start step totalLength initAcc splitAcc $
+      \_ _ chunkStartAdj chunkStopAdj accCur ->
+        void $ loopM chunkStartAdj (< chunkStopAdj) (+ step) accCur action
 {-# INLINE iterLinearAccST_ #-}
 
 -- | Linear iterator that supports multiplying factor and accumulator. Results
 -- of actions are stored in the scheduler.
 --
 -- @since 1.0.2
-iterLinearAccST ::
-     Int
+iterLinearAccST
+  :: Int
   -> Scheduler s a
   -> Int
-  -> Int -- ^ Step. Must be non-zero
+  -> Int
+  -- ^ Step. Must be non-zero
   -> Int
   -> a
   -> (a -> ST s (a, a))
@@ -406,11 +424,10 @@ iterLinearAccST ::
   -> ST s a
 iterLinearAccST fact scheduler start step n initAcc splitAcc action = do
   let totalLength = (n - start) `quot` step
-  splitWorkWithFactorST fact scheduler start step totalLength initAcc splitAcc
-    $ \ _ _ chunkStartAdj chunkStopAdj accCur ->
-    loopM chunkStartAdj (< chunkStopAdj) (+ step) accCur action
+  splitWorkWithFactorST fact scheduler start step totalLength initAcc splitAcc $
+    \_ _ chunkStartAdj chunkStopAdj accCur ->
+      loopM chunkStartAdj (< chunkStopAdj) (+ step) accCur action
 {-# INLINE iterLinearAccST #-}
-
 
 -- | Helper for figuring out the chunk length and slack start
 splitNumChunks :: Int -> Int -> Int -> (Int, Int)
@@ -423,25 +440,23 @@ splitNumChunks fact nw totalLength =
         | otherwise = nw
       !chunkLength = totalLength `quot` numChunks
       !slackStart = chunkLength * numChunks
-  in (chunkLength, slackStart)
-
+   in (chunkLength, slackStart)
 
 -- | Helper for adjusting stride of a chunk
 stepStartAdjust :: Int -> Int -> Int
 stepStartAdjust step ix = ix + ((step - (ix `mod` step)) `mod` step)
 {-# INLINE stepStartAdjust #-}
 
-
 -- | Internal version of a `scheduleWork` that will be replaced by
 -- `scheduleWork_` by the compiler whenever action produces `()`
 scheduleMassivWork :: PrimBase m => Scheduler (PrimState m) a -> m a -> m ()
 scheduleMassivWork = scheduleWork
-{-# INLINE[0] scheduleMassivWork #-}
+{-# INLINE [0] scheduleMassivWork #-}
 
 {-# RULES
-"scheduleWork/scheduleWork_/ST" forall (scheduler :: Scheduler s ()) (action :: ST s ()) . scheduleMassivWork scheduler action = scheduleWork_ scheduler action
-"scheduleWork/scheduleWork_/IO" forall (scheduler :: Scheduler RealWorld ()) (action :: IO ()) . scheduleMassivWork scheduler action = scheduleWork_ scheduler action
- #-}
+"scheduleWork/scheduleWork_/ST" forall (scheduler :: Scheduler s ()) (action :: ST s ()). scheduleMassivWork scheduler action = scheduleWork_ scheduler action
+"scheduleWork/scheduleWork_/IO" forall (scheduler :: Scheduler RealWorld ()) (action :: IO ()). scheduleMassivWork scheduler action = scheduleWork_ scheduler action
+  #-}
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
 --
@@ -451,5 +466,5 @@ withMassivScheduler_ comp f =
   case comp of
     Par -> withGlobalScheduler_ globalScheduler f
     Seq -> f trivialScheduler_
-    _   -> withScheduler_ comp f
+    _ -> withScheduler_ comp f
 {-# INLINE withMassivScheduler_ #-}

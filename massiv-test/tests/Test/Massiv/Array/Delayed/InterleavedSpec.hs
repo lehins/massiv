@@ -1,20 +1,19 @@
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE TypeApplications #-}
-module Test.Massiv.Array.Delayed.InterleavedSpec
-  ( spec
-  ) where
+
+module Test.Massiv.Array.Delayed.InterleavedSpec (
+  spec,
+) where
 
 import Data.Massiv.Array
 import Test.Massiv.Core
 
-
-prop_EqDelayed ::
-     (Ragged L ix Int, Load D ix Int, Load DI ix Int)
+prop_EqDelayed
+  :: (Ragged L ix Int, Load D ix Int, Load DI ix Int)
   => Array D ix Int
   -> Property
 prop_EqDelayed arr = computeAs P arr === computeAs P (toInterleaved arr)
-
 
 prop_Resize :: (Ragged L ix Int) => Array DI ix Int -> Property
 prop_Resize arr =

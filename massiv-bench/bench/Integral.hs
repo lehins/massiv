@@ -1,12 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+
 module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Numeric.Integral
 import Prelude as P
-
 
 gaussian2 :: Floating a => a -> a -> a -> a
 gaussian2 stdDev y x = exp (-(x ^ (2 :: Int) + y ^ (2 :: Int)) / var2) / (var2 * pi)

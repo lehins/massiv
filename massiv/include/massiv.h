@@ -3,9 +3,9 @@
 #define MASSIV_INCLUDE
 
 #if MASSIV_UNSAFE_CHECKS
-#define INDEX_CHECK(name, s, f) (indexWith __FILE__ __LINE__ (name) (s) (f))
+#define HAS_CALL_STACK (HasCallStack)
 #else
-#define INDEX_CHECK(name, s, f) ((f))
+#define HAS_CALL_STACK ()
 #endif
 
 #endif

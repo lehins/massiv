@@ -5,21 +5,19 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Test.Massiv.Core.Common
-  ( ArrNE(..)
-  , ArrTiny(..)
-  , ArrTinyNE(..)
-  , ArrIx(..)
-  , ArrDW(..)
-  , module X
-  ) where
+
+module Test.Massiv.Core.Common (
+  ArrNE (..),
+  ArrTiny (..),
+  ArrTinyNE (..),
+  ArrIx (..),
+  ArrDW (..),
+  module X,
+) where
 
 import Data.Massiv.Array
 import Test.Massiv.Core.Index as X
 import Test.Massiv.Utils
-
-
-
 
 -- | Arbitrary non-empty array. Computation strategy can be either `Seq` or `Par`.
 --
@@ -52,8 +50,6 @@ deriving instance (Show (Array r ix e)) => Show (ArrTiny r ix e)
 deriving instance (Show (Array r ix e)) => Show (ArrTinyNE r ix e)
 deriving instance (Show (Array r ix e), Show ix) => Show (ArrIx r ix e)
 
-
-
 instance Arbitrary Comp where
   arbitrary =
     frequency
@@ -63,7 +59,6 @@ instance Arbitrary Comp where
       , (15, ParOn <$> arbitrary)
       , (15, ParN . getSmall <$> arbitrary)
       ]
-
 
 arbitraryArray :: (Load r ix e, Arbitrary e) => Gen (Sz ix) -> Gen (Array r ix e)
 arbitraryArray szGen =
@@ -79,6 +74,7 @@ arbitraryArray szGen =
 -- | Arbitrary array
 instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array D ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array DL ix e) where
   arbitrary = arbitraryArray arbitrary
 instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array DI ix e) where
@@ -102,57 +98,69 @@ instance (Arbitrary ix, Index ix, Arbitrary e, Unbox e) => Arbitrary (Array U ix
 instance (Arbitrary ix, Load L ix e, Arbitrary e) => Arbitrary (Array L ix e) where
   arbitrary = arbitraryArray arbitrary
 
-
 instance (Arbitrary ix, Load r ix e, Arbitrary e) => Arbitrary (ArrTiny r ix e) where
   arbitrary = ArrTiny <$> arbitraryArray (liftSz (`mod` 10) <$> arbitrary)
 
 -- | Arbitrary small and possibly empty array.
-instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
-         Arbitrary (ArrTinyNE r ix e) where
+instance
+  (Arbitrary ix, Load r ix e, Arbitrary e)
+  => Arbitrary (ArrTinyNE r ix e)
+  where
   arbitrary = ArrTinyNE <$> arbitraryArray (liftSz (succ . (`mod` 10)) <$> arbitrary)
 
-instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
-         Arbitrary (ArrNE r ix e) where
+instance
+  (Arbitrary ix, Load r ix e, Arbitrary e)
+  => Arbitrary (ArrNE r ix e)
+  where
   arbitrary = ArrNE <$> arbitraryArray (unSzNE <$> arbitrary)
 
-
-instance (Arbitrary ix, Load r ix e, Arbitrary e) =>
-         Arbitrary (ArrIx r ix e) where
+instance
+  (Arbitrary ix, Load r ix e, Arbitrary e)
+  => Arbitrary (ArrIx r ix e)
+  where
   arbitrary = do
     SzIx sz ix <- arbitrary
     func <- arbitrary
     comp <- arbitrary
     return $ ArrIx (makeArrayLinear comp sz func) ix
 
-
 data ArrDW ix e = ArrDW (Array D ix e) (Array DW ix e)
 
-instance (Show ix, Index ix, Ragged L ix e, Load DW ix e, Show e) =>
-         Show (ArrDW ix e) where
+instance
+  (Show ix, Index ix, Ragged L ix e, Load DW ix e, Show e)
+  => Show (ArrDW ix e)
+  where
   show (ArrDW d dw) =
-    "Delayed:\n" ++
-    show d ++
-    "\nCorresponding Windowed:\n" ++
-    --show dw ++
-    windowInfo
+    "Delayed:\n"
+      ++ show d
+      ++ "\nCorresponding Windowed:\n"
+      ++
+      -- show dw ++
+      windowInfo
     where
       windowInfo =
         maybe
           "\n No Window"
-          (\Window {windowStart, windowSize} ->
-             "\n With Window starting index (" ++
-             show windowStart ++ ") and size (" ++ show windowSize ++ ")") $
-        getWindow dw
+          ( \Window{windowStart, windowSize} ->
+              "\n With Window starting index ("
+                ++ show windowStart
+                ++ ") and size ("
+                ++ show windowSize
+                ++ ")"
+          )
+          $ getWindow dw
 
-instance (Arbitrary ix, CoArbitrary ix, Load DW ix e, Arbitrary e, Typeable e) =>
-         Arbitrary (ArrDW ix e) where
+instance
+  (Arbitrary ix, CoArbitrary ix, Load DW ix e, Arbitrary e, Typeable e)
+  => Arbitrary (ArrDW ix e)
+  where
   arbitrary = do
     ArrTiny (arr :: Array D ix e) <- arbitrary
     let sz = size arr
-    ArrDW arr <$>
-      if totalElem sz == 0
+    ArrDW arr
+      <$> if totalElem sz == 0
         then return (makeArray (getComp arr) sz (evaluate' arr))
         else do
           wix <- flip (liftIndex2 mod) (unSz sz) <$> arbitrary
-          wsz <- liftIndex (+1) . flip (liftIndex2 mod) (liftIndex2 (-) (unSz sz) wix) <$> arbitrary
+          wsz <- liftIndex (+ 1) . flip (liftIndex2 mod) (liftIndex2 (-) (unSz sz) wix) <$> arbitrary
           return $ makeWindowedArray arr wix (Sz wsz) (evaluate' arr)

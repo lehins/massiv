@@ -1,11 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+
 module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
---import Data.Massiv.Array.Unsafe as A
+
+-- import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench as A
 import Data.Monoid
 import Prelude as P
@@ -15,12 +17,17 @@ main = do
   let !sz = Sz2 1600 1200
       !array = arrRLightIx2 D Seq sz
       !array3 =
-        makeArrayR D Seq (Sz3 40 40 1200) (\ (i :> j :. k) -> lightFunc (i * j) k)
+        makeArrayR D Seq (Sz3 40 40 1200) (\(i :> j :. k) -> lightFunc (i * j) k)
       !array4 =
-        makeArrayR D Seq (Sz4 40 40 40 30) (\ (i :> j :> k :. l) -> lightFunc (i * j) (k * l))
+        makeArrayR D Seq (Sz4 40 40 40 30) (\(i :> j :> k :. l) -> lightFunc (i * j) (k * l))
       !array5 =
-        makeArrayR D Seq (Sz5 40 40 4 10 30) (\ (i :> j :> k :> l :. m) ->
-                                                lightFunc (i * j) (k * l * m))
+        makeArrayR
+          D
+          Seq
+          (Sz5 40 40 4 10 30)
+          ( \(i :> j :> k :> l :. m) ->
+              lightFunc (i * j) (k * l * m)
+          )
       !arrayP = arrRLightIx2 P Seq sz
   defaultMain
     [ bgroup
@@ -48,7 +55,7 @@ main = do
             bgroup
               "Seq"
               [ bench "foldlS . foldlWithin Dim2" $
-                whnf (A.foldlS (+) 0 . foldlWithin Dim2 (+) 0) arr
+                  whnf (A.foldlS (+) 0 . foldlWithin Dim2 (+) 0) arr
               , bench "foldlS . foldlInner" $ whnf (A.foldlS (+) 0 . foldlInner (+) 0) arr
               , bench "sum" $ whnf A.sum arr
               , bench "foldMono" $ whnf (getSum . foldMono Sum) arr
@@ -57,7 +64,7 @@ main = do
             bgroup
               "Par"
               [ bench "foldlP . foldlWithin Dim2" $
-                whnfIO (A.foldlP (+) 0 (+) 0 $ foldlWithin Dim2 (+) 0 arr)
+                  whnfIO (A.foldlP (+) 0 (+) 0 $ foldlWithin Dim2 (+) 0 arr)
               , bench "foldlP . foldlInner" $ whnfIO (A.foldlP (+) 0 (+) 0 $ foldlInner (+) 0 arr)
               , bench "sum" $ whnf A.sum arr
               , bench "foldMono" $ whnf (getSum . foldMono Sum) arr
@@ -65,9 +72,8 @@ main = do
         ]
     ]
 
-
-benchSum ::
-     (Index ix, Num a, Stream r ix a, Source r a)
+benchSum
+  :: (Index ix, Num a, Stream r ix a, Source r a)
   => Array r ix a
   -> [Benchmark]
 benchSum arr =

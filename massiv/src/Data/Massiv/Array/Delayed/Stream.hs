@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Delayed.Stream
 -- Copyright   : (c) Alexey Kuleshevich 2019-2022
@@ -10,27 +11,26 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Delayed.Stream
-  ( DS(..)
-  , Array (..)
-  , toStreamArray
-  , toStreamM
-  , toStreamIxM
-  , toSteps
-  , fromSteps
-  , fromStepsM
-  ) where
+module Data.Massiv.Array.Delayed.Stream (
+  DS (..),
+  Array (..),
+  toStreamArray,
+  toStreamM,
+  toStreamIxM,
+  toSteps,
+  fromSteps,
+  fromStepsM,
+) where
 
 import Control.Applicative
 import Control.Monad.ST
 import Data.Coerce
 import Data.Foldable
 import Data.Massiv.Array.Delayed.Pull
-import qualified Data.Massiv.Vector.Stream as S
 import Data.Massiv.Core.Common
+import qualified Data.Massiv.Vector.Stream as S
 import GHC.Exts
-import Prelude hiding (take, drop)
+import Prelude hiding (drop, take)
 
 -- | Delayed stream array that represents a sequence of values that can be loaded
 -- sequentially. Important distinction from other arrays is that its size might no be
@@ -62,7 +62,6 @@ fromStepsM :: Monad m => Steps m e -> m (Vector DS e)
 fromStepsM = fmap DSArray . S.transSteps
 {-# INLINE fromStepsM #-}
 
-
 instance Shape DS Ix1 where
   linearSizeHint = stepsSize . dsArray
   {-# INLINE linearSizeHint #-}
@@ -81,7 +80,6 @@ instance Strategy DS where
   getComp _ = Seq
   setComp _ = id
   repr = DS
-
 
 instance Functor (Array DS Ix1) where
   fmap f = coerce . S.map f . dsArray
@@ -103,7 +101,6 @@ instance Applicative (Array DS Ix1) where
 instance Monad (Array DS Ix1) where
   (>>=) arr f = coerce (S.concatMap (coerce . f) (dsArray arr))
   {-# INLINE (>>=) #-}
-
 
 instance Foldable (Array DS Ix1) where
   foldr f acc = S.unId . S.foldrLazy f acc . toSteps
@@ -135,7 +132,6 @@ instance Semigroup (Array DS Ix1 e) where
   (<>) a1 a2 = fromSteps (coerce a1 `S.append` coerce a2)
   {-# INLINE (<>) #-}
 
-
 instance Monoid (Array DS Ix1 e) where
   mempty = DSArray S.empty
   {-# INLINE mempty #-}
@@ -153,20 +149,19 @@ instance IsList (Array DS Ix1 e) where
   toList = S.toList . coerce
   {-# INLINE toList #-}
 
-
 instance S.Stream DS Ix1 e where
   toStream = coerce
   {-# INLINE toStream #-}
   toStreamIx = S.indexed . coerce
   {-# INLINE toStreamIx #-}
 
-
 -- | Flatten an array into a stream of values.
 --
 -- @since 0.4.1
 toStreamArray :: (Index ix, Source r e) => Array r ix e -> Vector DS e
 toStreamArray = DSArray . S.steps
-{-# INLINE[1] toStreamArray #-}
+{-# INLINE [1] toStreamArray #-}
+
 {-# RULES "toStreamArray/id" toStreamArray = id #-}
 
 -- | /O(1)/ - Convert an array into monadic `Steps`
@@ -183,10 +178,8 @@ toStreamIxM :: (Stream r ix e, Monad m) => Array r ix e -> Steps m (ix, e)
 toStreamIxM = S.transStepsId . toStreamIx
 {-# INLINE toStreamIxM #-}
 
-
 -- | /O(n)/ - `size` implementation.
 instance Load DS Ix1 e where
-
   makeArrayLinear _ k = fromSteps . S.generate k
   {-# INLINE makeArrayLinear #-}
   replicate _ k = fromSteps . S.replicate k
@@ -203,7 +196,6 @@ instance Load DS Ix1 e where
   unsafeLoadIntoIO marr arr = stToIO $ unsafeLoadIntoST marr arr
   {-# INLINE unsafeLoadIntoIO #-}
 
-
 -- cons :: e -> Array DS Ix1 e -> Array DS Ix1 e
 -- cons e = coerce . S.cons e . dsArray
 -- {-# INLINE cons #-}
@@ -216,7 +208,6 @@ instance Load DS Ix1 e where
 -- snoc (DSArray sts) e = DSArray (S.snoc sts e)
 -- {-# INLINE snoc #-}
 
-
 -- TODO: skip the stride while loading
 -- instance StrideLoad DS Ix1 e where
 --   iterArrayLinearWithStrideST_ scheduler stride resultSize arr uWrite =
@@ -227,5 +218,3 @@ instance Load DS Ix1 e where
 --           iterLinearM_ resultSize start (totalElem resultSize) (numWorkers scheduler) (<) $
 --             \ !i ix -> uWrite i (f (liftIndex2 (*) strideIx ix))
 --   {-# INLINE iterArrayLinearWithStrideST_ #-}
-
-

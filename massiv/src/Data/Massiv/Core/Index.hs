@@ -1,8 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ExplicitNamespaces #-}
+
 -- |
 -- Module      : Data.Massiv.Core.Index
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -10,110 +12,117 @@
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Core.Index
-  ( Ix0(..)
-  , type Ix1
-  , pattern Ix1
-  , type Ix2(Ix2, (:.))
-  , IxN((:>), Ix3, Ix4, Ix5)
-  , HighIxN
-  , type Ix3
-  , type Ix4
-  , type Ix5
-  , Ix
+module Data.Massiv.Core.Index (
+  Ix0 (..),
+  type Ix1,
+  pattern Ix1,
+  type Ix2 (Ix2, (:.)),
+  IxN ((:>), Ix3, Ix4, Ix5),
+  HighIxN,
+  type Ix3,
+  type Ix4,
+  type Ix5,
+  Ix,
+
   -- ** Size
-  , type Sz1
-  , type Sz2
-  , type Sz3
-  , type Sz4
-  , type Sz5
-  , Sz(Sz, Sz1, Sz2, Sz3, Sz4, Sz5)
-  , unSz
-  , zeroSz
-  , oneSz
-  , liftSz
-  , liftSz2
-  , consSz
-  , unconsSz
-  , snocSz
-  , unsnocSz
-  , setSzM
-  , insertSzM
-  , pullOutSzM
-  , toLinearSz
-  , mkSzM
+  type Sz1,
+  type Sz2,
+  type Sz3,
+  type Sz4,
+  type Sz5,
+  Sz (Sz, Sz1, Sz2, Sz3, Sz4, Sz5),
+  unSz,
+  zeroSz,
+  oneSz,
+  liftSz,
+  liftSz2,
+  consSz,
+  unconsSz,
+  snocSz,
+  unsnocSz,
+  setSzM,
+  insertSzM,
+  pullOutSzM,
+  toLinearSz,
+  mkSzM,
+
   -- ** Dimension
-  , Dim(..)
-  , Dimension(Dim1, Dim2, Dim3, Dim4, Dim5, DimN)
-  , IsIndexDimension
-  , IsDimValid
-  , ReportInvalidDim
+  Dim (..),
+  Dimension (Dim1, Dim2, Dim3, Dim4, Dim5, DimN),
+  IsIndexDimension,
+  IsDimValid,
+  ReportInvalidDim,
+
   -- ** Stride
-  , Stride(Stride)
-  , unStride
-  , toLinearIndexStride
-  , strideStart
-  , strideSize
-  , oneStride
+  Stride (Stride),
+  unStride,
+  toLinearIndexStride,
+  strideStart,
+  strideSize,
+  oneStride,
+
   -- ** Border
-  , Border(..)
-  , handleBorderIndex
+  Border (..),
+  handleBorderIndex,
+
   -- ** Index functions
-  , Lower
-  , Index(..)
-  , zeroIndex
-  , oneIndex
-  , isZeroSz
-  , isNotZeroSz
-  , headDim
-  , tailDim
-  , lastDim
-  , initDim
-  , getDim'
-  , setDim'
-  , modifyDim'
-  , dropDimM
-  , dropDim'
-  , pullOutDim'
-  , insertDim'
-  , fromDimension
-  , getDimension
-  , setDimension
-  , modifyDimension
-  , dropDimension
-  , pullOutDimension
-  , insertDimension
+  Lower,
+  Index (..),
+  zeroIndex,
+  oneIndex,
+  isZeroSz,
+  isNotZeroSz,
+  headDim,
+  tailDim,
+  lastDim,
+  initDim,
+  getDim',
+  setDim',
+  modifyDim',
+  dropDimM,
+  dropDim',
+  pullOutDim',
+  insertDim',
+  fromDimension,
+  getDimension,
+  setDimension,
+  modifyDimension,
+  dropDimension,
+  pullOutDimension,
+  insertDimension,
+
   -- * Iterators
-  , iter
-  , iterA_
-  , iterM_
-  , iterLinearM
-  , iterLinearM_
-  , module Data.Massiv.Core.Loop
-  , module Data.Massiv.Core.Index.Iterator
-  , module Data.Massiv.Core.Index.Tuple
+  iter,
+  iterA_,
+  iterM_,
+  iterLinearM,
+  iterLinearM_,
+  module Data.Massiv.Core.Loop,
+  module Data.Massiv.Core.Index.Iterator,
+  module Data.Massiv.Core.Index.Tuple,
+
   -- * Exceptions
-  , IndexException(..)
-  , SizeException(..)
-  , ShapeException(..)
-  , guardNumberOfElements
-  , indexWith
-  ) where
+  IndexException (..),
+  SizeException (..),
+  ShapeException (..),
+  guardNumberOfElements,
+  indexAssert,
+) where
 
 import Control.DeepSeq
-import Control.Monad.Catch (MonadThrow(..))
+import Control.Monad.Catch (MonadThrow (..))
 import Data.Coerce
 import Data.Functor.Identity (runIdentity)
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index.Internal
+import Data.Massiv.Core.Index.Iterator
 import Data.Massiv.Core.Index.Ix
 import Data.Massiv.Core.Index.Stride
 import Data.Massiv.Core.Index.Tuple
-import Data.Massiv.Core.Index.Iterator
 import Data.Massiv.Core.Loop
 import GHC.TypeLits
 
+#include "massiv.h"
 
 -- | 1-dimensional type synonym for size.
 --
@@ -140,57 +149,55 @@ type Sz4 = Sz Ix4
 -- @since 0.3.0
 type Sz5 = Sz Ix5
 
-
 -- | Approach to be used near the borders during various transformations.
 -- Whenever a function needs information not only about an element of interest, but
 -- also about it's neighbors, it will go out of bounds near the array edges,
 -- hence is this set of approaches that specify how to handle such situation.
-data Border e =
-  Fill e    -- ^ Fill in a constant element.
-              --
-              -- @
-              --            outside |  Array  | outside
-              -- ('Fill' 0) : 0 0 0 0 | 1 2 3 4 | 0 0 0 0
-              -- @
-              --
-  | Wrap      -- ^ Wrap around from the opposite border of the array.
-              --
-              -- @
-              --            outside |  Array  | outside
-              -- 'Wrap' :     1 2 3 4 | 1 2 3 4 | 1 2 3 4
-              -- @
-              --
-  | Edge      -- ^ Replicate the element at the edge.
-              --
-              -- @
-              --            outside |  Array  | outside
-              -- 'Edge' :     1 1 1 1 | 1 2 3 4 | 4 4 4 4
-              -- @
-              --
-  | Reflect   -- ^ Mirror like reflection.
-              --
-              -- @
-              --            outside |  Array  | outside
-              -- 'Reflect' :  4 3 2 1 | 1 2 3 4 | 4 3 2 1
-              -- @
-              --
-  | Continue  -- ^ Also mirror like reflection, but without repeating the edge element.
-              --
-              -- @
-              --            outside |  Array  | outside
-              -- 'Continue' : 1 4 3 2 | 1 2 3 4 | 3 2 1 4
-              -- @
-              --
+data Border e
+  = -- | Fill in a constant element.
+    --
+    -- @
+    --            outside |  Array  | outside
+    -- ('Fill' 0) : 0 0 0 0 | 1 2 3 4 | 0 0 0 0
+    -- @
+    Fill e
+  | -- | Wrap around from the opposite border of the array.
+    --
+    -- @
+    --            outside |  Array  | outside
+    -- 'Wrap' :     1 2 3 4 | 1 2 3 4 | 1 2 3 4
+    -- @
+    Wrap
+  | -- | Replicate the element at the edge.
+    --
+    -- @
+    --            outside |  Array  | outside
+    -- 'Edge' :     1 1 1 1 | 1 2 3 4 | 4 4 4 4
+    -- @
+    Edge
+  | -- | Mirror like reflection.
+    --
+    -- @
+    --            outside |  Array  | outside
+    -- 'Reflect' :  4 3 2 1 | 1 2 3 4 | 4 3 2 1
+    -- @
+    Reflect
+  | -- | Also mirror like reflection, but without repeating the edge element.
+    --
+    -- @
+    --            outside |  Array  | outside
+    -- 'Continue' : 1 4 3 2 | 1 2 3 4 | 3 2 1 4
+    -- @
+    Continue
   deriving (Eq, Show)
 
 instance NFData e => NFData (Border e) where
   rnf b = case b of
-            Fill e   -> rnf e
-            Wrap     -> ()
-            Edge     -> ()
-            Reflect  -> ()
-            Continue -> ()
-
+    Fill e -> rnf e
+    Wrap -> ()
+    Edge -> ()
+    Reflect -> ()
+    Continue -> ()
 
 -- | Apply a border resolution technique to an index
 --
@@ -204,25 +211,41 @@ instance NFData e => NFData (Border e) where
 -- 1 :. 2
 --
 -- @since 0.1.0
-handleBorderIndex ::
-     Index ix
-  => Border e -- ^ Broder resolution technique
-  -> Sz ix -- ^ Size
-  -> (ix -> e) -- ^ Index function that produces an element
-  -> ix -- ^ Index
+handleBorderIndex
+  :: Index ix
+  => Border e
+  -- ^ Broder resolution technique
+  -> Sz ix
+  -- ^ Size
+  -> (ix -> e)
+  -- ^ Index function that produces an element
+  -> ix
+  -- ^ Index
   -> e
 handleBorderIndex border !sz getVal !ix =
   case border of
     Fill val -> if isSafeIndex sz ix then getVal ix else val
-    Wrap     -> getVal (repairIndex sz ix wrap wrap)
-    Edge     -> getVal (repairIndex sz ix (const (const 0)) (\ (SafeSz k) _ -> k - 1))
-    Reflect  -> getVal (repairIndex sz ix (\ (SafeSz k) !i -> (abs i - 1) `mod` k)
-                        (\ (SafeSz k) !i -> (-i - 1) `mod` k))
-    Continue -> getVal (repairIndex sz ix (\ (SafeSz k) !i -> abs i `mod` k)
-                        (\ (SafeSz k) !i -> (-i - 2) `mod` k))
-
-  where wrap (SafeSz k) i = i `mod` k
-        {-# INLINE [1] wrap #-}
+    Wrap -> getVal (repairIndex sz ix wrap wrap)
+    Edge -> getVal (repairIndex sz ix (const (const 0)) (\(SafeSz k) _ -> k - 1))
+    Reflect ->
+      getVal
+        ( repairIndex
+            sz
+            ix
+            (\(SafeSz k) !i -> (abs i - 1) `mod` k)
+            (\(SafeSz k) !i -> (-i - 1) `mod` k)
+        )
+    Continue ->
+      getVal
+        ( repairIndex
+            sz
+            ix
+            (\(SafeSz k) !i -> abs i `mod` k)
+            (\(SafeSz k) !i -> (-i - 2) `mod` k)
+        )
+  where
+    wrap (SafeSz k) i = i `mod` k
+    {-# INLINE [1] wrap #-}
 {-# INLINE [1] handleBorderIndex #-}
 
 -- | Index with all zeros
@@ -255,6 +278,7 @@ oneIndex = pureIndex 1
 isNotZeroSz :: Index ix => Sz ix -> Bool
 isNotZeroSz !sz = isSafeIndex sz zeroIndex
 {-# INLINE [1] isNotZeroSz #-}
+
 -- TODO: benchmark against (also adjust `isEmpty` with fastest):
 -- - foldlIndex (*) 1 (unSz sz) /= 0
 -- - foldlIndex (\a x -> a && x /= 0) True (unSz sz)
@@ -271,7 +295,6 @@ isNotZeroSz !sz = isSafeIndex sz zeroIndex
 isZeroSz :: Index ix => Sz ix -> Bool
 isZeroSz = not . isNotZeroSz
 {-# INLINE [1] isZeroSz #-}
-
 
 -- | Convert a size to a linear size.
 --
@@ -470,7 +493,6 @@ getDimension :: IsIndexDimension ix n => ix -> Dimension n -> Int
 getDimension ix = getDim' ix . fromDimension
 {-# INLINE [1] getDimension #-}
 
-
 -- | Type safe way of dropping a particular dimension, thus lowering index
 -- dimensionality.
 --
@@ -527,18 +549,24 @@ insertDimension ix = insertDim' ix . fromDimension
 -- 3615
 --
 -- @since 0.1.0
-iter :: Index ix
-  => ix -- ^ Start index
-  -> ix -- ^ End index
-  -> ix -- ^ Increment
-  -> (Int -> Int -> Bool) -- ^ Continuation condition
-  -> a -- ^ Accumulator
-  -> (ix -> a -> a) -- ^ Iterating function
+iter
+  :: Index ix
+  => ix
+  -- ^ Start index
+  -> ix
+  -- ^ End index
+  -> ix
+  -- ^ Increment
+  -> (Int -> Int -> Bool)
+  -- ^ Continuation condition
+  -> a
+  -- ^ Accumulator
+  -> (ix -> a -> a)
+  -- ^ Iterating function
   -> a
 iter sIx eIx incIx cond acc f =
   runIdentity $ iterM sIx eIx incIx cond acc (\ix -> return . f ix)
 {-# INLINE iter #-}
-
 
 -- | Iterate over N-dimensional space linearly from start to end in row-major fashion with an
 -- accumulator
@@ -553,15 +581,22 @@ iter sIx eIx incIx cond acc f =
 -- 103
 --
 -- @since 0.1.0
-iterLinearM :: (Index ix, Monad m)
-            => Sz ix -- ^ Size
-            -> Int -- ^ Linear start (must be non-negative)
-            -> Int -- ^ Linear end (must be less than or equal to @`totalElem` sz@)
-            -> Int -- ^ Increment (must not be zero)
-            -> (Int -> Int -> Bool) -- ^ Continuation condition (continue if @True@)
-            -> a -- ^ Accumulator
-            -> (Int -> ix -> a -> m a)
-            -> m a
+iterLinearM
+  :: (Index ix, Monad m)
+  => Sz ix
+  -- ^ Size
+  -> Int
+  -- ^ Linear start (must be non-negative)
+  -> Int
+  -- ^ Linear end (must be less than or equal to @`totalElem` sz@)
+  -> Int
+  -- ^ Increment (must not be zero)
+  -> (Int -> Int -> Bool)
+  -- ^ Continuation condition (continue if @True@)
+  -> a
+  -- ^ Accumulator
+  -> (Int -> ix -> a -> m a)
+  -> m a
 iterLinearM !sz !k0 !k1 !inc cond !acc f =
   loopM k0 (`cond` k1) (+ inc) acc $ \ !i !acc0 -> f i (fromLinearIndex sz i) acc0
 {-# INLINE iterLinearM #-}
@@ -577,43 +612,49 @@ iterLinearM !sz !k0 !k1 !inc cond !acc f =
 -- True
 --
 -- @since 0.1.0
-iterLinearM_ :: (Index ix, Monad m) =>
-                Sz ix -- ^ Size
-             -> Int -- ^ Start (must be non-negative)
-             -> Int -- ^ End
-             -> Int -- ^ Increment (must not be zero)
-             -> (Int -> Int -> Bool) -- ^ Continuation condition (continue if @True@)
-             -> (Int -> ix -> m ()) -- ^ Monadic action that takes index in both forms
-             -> m ()
+iterLinearM_
+  :: (Index ix, Monad m)
+  => Sz ix
+  -- ^ Size
+  -> Int
+  -- ^ Start (must be non-negative)
+  -> Int
+  -- ^ End
+  -> Int
+  -- ^ Increment (must not be zero)
+  -> (Int -> Int -> Bool)
+  -- ^ Continuation condition (continue if @True@)
+  -> (Int -> ix -> m ())
+  -- ^ Monadic action that takes index in both forms
+  -> m ()
 iterLinearM_ sz !k0 !k1 !inc cond f =
   loopA_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
 
--- | This is used by @INDEX_CHECK@ macro and thus used whenever the @unsafe-checks@ cabal
--- flag is on.
+-- | This is used by the @unsafe-checks@ cabal flag.
 --
--- @since 0.4.0
-indexWith ::
-     Index ix
-  => String -- ^ Source file name, eg. __FILE__
-  -> Int -- ^ Line number in th source file, eg. __LINE__
-  -> String
-  -> (arr -> Sz ix) -- ^ Get size of the array
-  -> (arr -> ix -> e) -- ^ Indexing function
-  -> arr -- ^ Array
-  -> ix -- ^ Index
-  -> e
-indexWith fileName lineNo funName getSize f arr ix
+-- @since 1.1.0
+#ifdef MASSIV_UNSAFE_CHECKS
+indexAssert :: (HsaCallStack, Index ix) => String -> (a -> Sz ix) -> (a -> ix -> e) -> a -> ix -> e
+indexAssert funName getSize f arr ix
   | isSafeIndex sz ix = f arr ix
-  | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) sz ix
+  | otherwise = _errorIx ("<" ++ funName ++ ">") sz ix
   where
     sz = getSize arr
+#else
+indexAssert :: String -> (a -> Sz ix) -> (a -> ix -> e) -> a -> ix -> e
+indexAssert _funName _getSize f arr ix = f arr ix
+#endif
+{-# INLINE indexAssert #-}
 
--- | Helper function for throwing out of bounds error. Used by `indexWith`
-errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
-errorIx fName sz ix =
+-- | Helper function for throwing out of bounds error. Used by `indexAssert`
+_errorIx :: (HasCallStack, Show ix, Show ix') => String -> ix -> ix' -> a
+_errorIx fName sz ix =
   error $
-  fName ++
-  ": Index out of bounds: (" ++ show ix ++ ") for Array of size: (" ++ show sz ++ ")"
-{-# NOINLINE errorIx #-}
-
+    fName
+      ++ ": Index out of bounds: ("
+      ++ show ix
+      ++ ") for Array of size: ("
+      ++ show sz
+      ++ ")"
+{-# NOINLINE _errorIx #-}

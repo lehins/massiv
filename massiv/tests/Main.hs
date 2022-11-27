@@ -1,8 +1,8 @@
 module Main where
 
-import System.IO (BufferMode(LineBuffering), hSetBuffering, stdout)
-import Test.Hspec
 import Spec
+import System.IO (BufferMode (LineBuffering), hSetBuffering, stdout)
+import Test.Hspec
 
 main :: IO ()
 main = do

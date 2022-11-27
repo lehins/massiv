@@ -1,5 +1,6 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Mutable.Algorithms
 -- Copyright   : (c) Alexey Kuleshevich 2019-2022
@@ -7,18 +8,16 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Mutable.Algorithms
-  ( quicksortM_
-  , quicksortByM_
-  , unstablePartitionM
-  , iterateUntilM
-  ) where
+module Data.Massiv.Array.Mutable.Algorithms (
+  quicksortM_,
+  quicksortByM_,
+  unstablePartitionM,
+  iterateUntilM,
+) where
 
-import Data.Massiv.Array.Ops.Sort
 import Data.Massiv.Array.Manifest.Internal (iterateUntilM)
+import Data.Massiv.Array.Ops.Sort
 import Data.Massiv.Core.Common
-
 
 -- | Partition elements of the supplied mutable vector according to the predicate.
 --
@@ -35,9 +34,11 @@ import Data.Massiv.Core.Common
 --   [ 2, 1, 8, 10, 20, 50 ]
 --
 -- @since 1.0.0
-unstablePartitionM ::
-     forall r e m. (Manifest r e, PrimMonad m)
+unstablePartitionM
+  :: forall r e m
+   . (Manifest r e, PrimMonad m)
   => MVector (PrimState m) r e
-  -> (e -> m Bool) -- ^ Predicate
+  -> (e -> m Bool)
+  -- ^ Predicate
   -> m Ix1
 unstablePartitionM marr f = unsafeUnstablePartitionRegionM marr f 0 (unSz (sizeOfMArray marr) - 1)

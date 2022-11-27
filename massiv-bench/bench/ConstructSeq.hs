@@ -1,11 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+
 module Main where
 
---import           Bench
+-- import           Bench
 import Bench.Massiv.Array as A
+
 -- import           Bench.Massiv.Auto                      as M hiding (tupleToIx2)
---import           Data.Massiv.Array.Manifest  as A
+-- import           Data.Massiv.Array.Manifest  as A
 import Bench.Repa
 import Bench.Vector
 import Criterion.Main
@@ -15,7 +17,6 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as MVU
 import GHC.Exts as GHC
 import Prelude as P
-
 
 main :: IO ()
 main = do
@@ -30,10 +31,10 @@ main = do
         , env
             (return (tupleToIx2 t2))
             (bench "Massiv Ix2 U" . whnf (\sz -> makeArrayR U Seq sz lightFuncIx2))
-        -- , env
-        --     (return (tupleToIx2 t2))
-        --     (bench "Massiv Ix2 U Par" . whnf (\sz -> makeArrayR U Par sz lightFuncIx2))
-        , env
+        , -- , env
+          --     (return (tupleToIx2 t2))
+          --     (bench "Massiv Ix2 U Par" . whnf (\sz -> makeArrayR U Par sz lightFuncIx2))
+          env
             (return (tupleToIx2 t2))
             (bench "Massiv Ix2 P" . whnf (\sz -> makeArrayR P Seq sz lightFuncIx2))
         , env
@@ -46,9 +47,9 @@ main = do
         , env
             (return (tupleToSh2 t2))
             (bench "Repa DIM2 U" . whnf (R.computeUnboxedS . arrDLightSh2))
-        -- , env
-        --     (return (tupleToSh2 t2))
-        --     (bench "Repa DIM2 U Par" . whnf (runIdentity . R.computeUnboxedP . arrDLightSh2))
+            -- , env
+            --     (return (tupleToSh2 t2))
+            --     (bench "Repa DIM2 U Par" . whnf (runIdentity . R.computeUnboxedP . arrDLightSh2))
         ]
     , bgroup
         "copy"
@@ -60,36 +61,40 @@ main = do
             (bench "Massiv Ix2 U Seq" . whnf clone)
         , env
             (return (R.computeUnboxedS $ arrDLightSh2 $ tupleToSh2 t2))
-            (bench "Repa DIM2 U Par" .
-             whnf ((runIdentity . copyP) :: R.Array R.U DIM2 Double -> R.Array R.U DIM2 Double))
+            ( bench "Repa DIM2 U Par"
+                . whnf ((runIdentity . copyP) :: R.Array R.U DIM2 Double -> R.Array R.U DIM2 Double)
+            )
         , env
             (return (R.computeUnboxedS $ arrDLightSh2 $ tupleToSh2 t2))
-            (bench "Repa DIM2 U Seq" .
-             whnf (copyS :: R.Array R.U DIM2 Double -> R.Array R.U DIM2 Double))
+            ( bench "Repa DIM2 U Seq"
+                . whnf (copyS :: R.Array R.U DIM2 Double -> R.Array R.U DIM2 Double)
+            )
         , env
             (return (vecLight2 t2))
-            (\v ->
-               bench "Vector U" $
-               nfIO $ MVU.unsafeNew (VU.length v) >>= (\mv -> VU.copy mv v >> VU.unsafeFreeze mv))
+            ( \v ->
+                bench "Vector U" $
+                  nfIO $
+                    MVU.unsafeNew (VU.length v) >>= (\mv -> VU.copy mv v >> VU.unsafeFreeze mv)
+            )
         ]
     , env (return (concat ls)) $ \xs ->
         bgroup
           "fromList[]"
           [ bench "GHC.Exts.fromList :: [Double] -> VU.Vector Double" $
-            whnf (GHC.fromList :: [Double] -> Vector Double) xs
+              whnf (GHC.fromList :: [Double] -> Vector Double) xs
           , bench "Massiv.Array.Manifest.fromList :: [Double] -> A.Array A.U Ix1 Double" $
-            whnf (A.fromList Seq :: [Double] -> A.Array A.U Ix1 Double) xs
+              whnf (A.fromList Seq :: [Double] -> A.Array A.U Ix1 Double) xs
           , bench "GHC.Exts.fromList :: [Double] -> A.Array A.U Ix1 Double" $
-            whnf (GHC.fromList :: [Double] -> A.Array A.U Ix1 Double) xs
+              whnf (GHC.fromList :: [Double] -> A.Array A.U Ix1 Double) xs
           , bench "Repa.fromListUnboxed :: [Double] -> R.Array R.U DIM1 Double" $
-            whnf (R.fromListUnboxed (Z R.:. totalElem t2)) xs
+              whnf (R.fromListUnboxed (Z R.:. totalElem t2)) xs
           ]
     , env (return ls) $ \xs ->
         bgroup
           "fromList[[]]"
           [ bench "Massiv.Array.Manifest.fromList Seq :: [[Double]] -> A.Array U Ix2 Double" $
-            whnf (A.fromLists' Seq :: [[Double]] -> A.Array A.U Ix2 Double) xs
+              whnf (A.fromLists' Seq :: [[Double]] -> A.Array A.U Ix2 Double) xs
           , bench "Massiv.Array.Manifest.fromList Par :: [[Double]] -> A.Array U Ix2 Double" $
-            whnf (A.fromLists' Par :: [[Double]] -> A.Array A.U Ix2 Double) xs
+              whnf (A.fromLists' Par :: [[Double]] -> A.Array A.U Ix2 Double) xs
           ]
     ]

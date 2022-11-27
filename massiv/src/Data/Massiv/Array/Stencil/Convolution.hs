@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Stencil.Convolution
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -7,13 +8,12 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Stencil.Convolution
-  ( makeConvolutionStencil
-  , makeConvolutionStencilFromKernel
-  , makeCorrelationStencil
-  , makeCorrelationStencilFromKernel
-  ) where
+module Data.Massiv.Array.Stencil.Convolution (
+  makeConvolutionStencil,
+  makeConvolutionStencilFromKernel,
+  makeCorrelationStencil,
+  makeCorrelationStencilFromKernel,
+) where
 
 import Data.Massiv.Array.Ops.Fold (ifoldlS)
 import Data.Massiv.Array.Stencil.Internal
@@ -31,12 +31,14 @@ import GHC.Exts (inline)
 --
 -- Here is how to create a 2D horizontal Sobel Stencil:
 --
--- > sobelX :: Num e => Stencil Ix2 e e
--- > sobelX = makeConvolutionStencil (Sz2 3 3) (1 :. 1) $
--- >            \f -> f (-1 :. -1) (-1) . f (-1 :. 1) 1 .
--- >                  f ( 0 :. -1) (-2) . f ( 0 :. 1) 2 .
--- >                  f ( 1 :. -1) (-1) . f ( 1 :. 1) 1
--- > {-# INLINE sobelX #-}
+-- @
+-- sobelX :: Num e => Stencil Ix2 e e
+-- sobelX = makeConvolutionStencil (Sz2 3 3) (1 :. 1)
+--          $ \f -> f (-1 :. -1) (-1) . f (-1 :. 1) 1 .
+--                  f ( 0 :. -1) (-2) . f ( 0 :. 1) 2 .
+--                  f ( 1 :. -1) (-1) . f ( 1 :. 1) 1
+-- {\-# INLINE sobelX #-\}
+-- @
 --
 -- @since 0.1.0
 makeConvolutionStencil
@@ -54,7 +56,6 @@ makeConvolutionStencil !sz !sCenter relStencil =
     {-# INLINE stencil #-}
 {-# INLINE makeConvolutionStencil #-}
 
-
 -- | Make a stencil out of a Kernel Array. This `Stencil` will be slower than if
 -- `makeConvolutionStencil` is used, but sometimes we just really don't know the
 -- kernel at compile time.
@@ -70,13 +71,13 @@ makeConvolutionStencilFromKernel kArr = Stencil sz sInvertCenter stencil
     !szi1 = liftIndex (subtract 1) szi
     !sInvertCenter = liftIndex2 (-) szi1 sCenter
     !sCenter = liftIndex (`quot` 2) szi
-    stencil uget _ !ix = ifoldlS accum 0 kArr where
-      !ixOff = liftIndex2 (+) ix sCenter
-      accum !acc !kIx !kVal = uget (liftIndex2 (-) ixOff kIx) * kVal + acc
-      {-# INLINE accum #-}
+    stencil uget _ !ix = ifoldlS accum 0 kArr
+      where
+        !ixOff = liftIndex2 (+) ix sCenter
+        accum !acc !kIx !kVal = uget (liftIndex2 (-) ixOff kIx) * kVal + acc
+        {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE makeConvolutionStencilFromKernel #-}
-
 
 -- | Make a <https://en.wikipedia.org/wiki/Cross-correlation cross-correlation> stencil
 --
@@ -111,9 +112,10 @@ makeCorrelationStencilFromKernel kArr = Stencil sz sCenter stencil
   where
     !sz = size kArr
     !sCenter = liftIndex (`div` 2) $ unSz sz
-    stencil uget _ !ix = ifoldlS accum 0 kArr where
-      !ixOff = liftIndex2 (-) ix sCenter
-      accum !acc !kIx !kVal = uget (liftIndex2 (+) ixOff kIx) * kVal + acc
-      {-# INLINE accum #-}
+    stencil uget _ !ix = ifoldlS accum 0 kArr
+      where
+        !ixOff = liftIndex2 (-) ix sCenter
+        accum !acc !kIx !kVal = uget (liftIndex2 (+) ixOff kIx) * kVal + acc
+        {-# INLINE accum #-}
     {-# INLINE stencil #-}
 {-# INLINE makeCorrelationStencilFromKernel #-}

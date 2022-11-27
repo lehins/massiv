@@ -1,20 +1,21 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+
 module Examples.SortRows where
 
+import Control.Scheduler
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Manifest.Vector as A
-import Control.Scheduler
 import Data.Typeable
 import Data.Vector.Algorithms.Merge
 import Data.Vector.Generic as VG
 import Data.Vector.Generic.Mutable as VGM
 import System.IO.Unsafe
 
-sortRows ::
-     forall r e v.
-     ( Ord e
+sortRows
+  :: forall r e v
+   . ( Ord e
      , Typeable v
      , A.Load r Ix2 e
      , A.Manifest r e

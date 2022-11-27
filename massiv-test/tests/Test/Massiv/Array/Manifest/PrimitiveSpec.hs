@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+
 module Test.Massiv.Array.Manifest.PrimitiveSpec (spec) where
 
 import Data.Massiv.Array as A
@@ -10,8 +11,9 @@ import Data.Word
 import Test.Massiv.Array.MutableSpec (specUnboxedMutableR)
 import Test.Massiv.Core
 
-prop_ToFromByteArray ::
-     forall ix. (Ragged L ix Word16)
+prop_ToFromByteArray
+  :: forall ix
+   . (Ragged L ix Word16)
   => Array P ix Word16
   -> Property
 prop_ToFromByteArray arr =
@@ -33,9 +35,9 @@ prop_ToFromByteArray arr =
     marr'' <- fromMutableByteArrayOffsetM sz mba' (unwrapMutableByteArray marr)
     unsafeFreeze Seq marr'' `shouldReturn` arr
 
-
-prop_ToFromPrimitiveVector ::
-     forall ix. (Ragged L ix Word)
+prop_ToFromPrimitiveVector
+  :: forall ix
+   . (Ragged L ix Word)
   => Array P ix Word
   -> Property
 prop_ToFromPrimitiveVector arr =

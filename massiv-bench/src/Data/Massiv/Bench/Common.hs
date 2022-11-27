@@ -2,16 +2,17 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Data.Massiv.Bench.Common
-  ( makeRandomArray
-  , showsType
-  , stdGen
-  , lightFunc
-  , heavyFunc
-  , lightFuncIx2
-  , arrRLightIx2
-  , arrRHeavyIx2
-  ) where
+
+module Data.Massiv.Bench.Common (
+  makeRandomArray,
+  showsType,
+  stdGen,
+  lightFunc,
+  heavyFunc,
+  lightFuncIx2,
+  arrRLightIx2,
+  arrRHeavyIx2,
+) where
 
 import Data.Massiv.Array
 import Data.Typeable
@@ -21,7 +22,7 @@ stdGen :: StdGen
 stdGen = mkStdGen 2020
 
 -- | Use Typeable to show the type.
-showsType :: forall t . Typeable t => ShowS
+showsType :: forall t. Typeable t => ShowS
 showsType = showsTypeRep (typeRep (Proxy :: Proxy t))
 
 makeRandomArray :: (Index ix, Manifest r e, Random e) => Sz ix -> IO (Array r ix e)
@@ -44,10 +45,9 @@ lightFuncIx2 (i :. j) = lightFunc i j
 {-# INLINE lightFuncIx2 #-}
 
 arrRLightIx2 :: Load r Ix2 Double => r -> Comp -> Sz2 -> Matrix r Double
-arrRLightIx2 _ comp arrSz = makeArray comp arrSz (\ (i :. j) -> lightFunc i j)
+arrRLightIx2 _ comp arrSz = makeArray comp arrSz (\(i :. j) -> lightFunc i j)
 {-# INLINE arrRLightIx2 #-}
 
 arrRHeavyIx2 :: Load r Ix2 Double => r -> Comp -> Sz2 -> Matrix r Double
-arrRHeavyIx2 _ comp arrSz = makeArray comp arrSz (\ (i :. j) -> heavyFunc i j)
+arrRHeavyIx2 _ comp arrSz = makeArray comp arrSz (\(i :. j) -> heavyFunc i j)
 {-# INLINE arrRHeavyIx2 #-}
-

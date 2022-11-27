@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Module      : Data.Massiv.Core.Operations
 -- Copyright   : (c) Alexey Kuleshevich 2019-2022
@@ -10,23 +11,20 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
-module Data.Massiv.Core.Operations
-  ( FoldNumeric(..)
-  , defaultPowerSumArray
-  , defaultUnsafeDotProduct
-  , defaultFoldArray
-  , Numeric(..)
-  , defaultUnsafeLiftArray
-  , defaultUnsafeLiftArray2
-  , NumericFloat(..)
-  ) where
+module Data.Massiv.Core.Operations (
+  FoldNumeric (..),
+  defaultPowerSumArray,
+  defaultUnsafeDotProduct,
+  defaultFoldArray,
+  Numeric (..),
+  defaultUnsafeLiftArray,
+  defaultUnsafeLiftArray2,
+  NumericFloat (..),
+) where
 
 import Data.Massiv.Core.Common
 
-
-
 class (Size r, Num e) => FoldNumeric r e where
-
   {-# MINIMAL foldArray, powerSumArray, unsafeDotProduct #-}
 
   -- | Compute sum of all elements in the array
@@ -58,9 +56,8 @@ class (Size r, Num e) => FoldNumeric r e where
   -- @since 0.5.6
   foldArray :: Index ix => (e -> e -> e) -> e -> Array r ix e -> e
 
-
-defaultUnsafeDotProduct ::
-     (Num e, Index ix, Source r e) => Array r ix e -> Array r ix e -> e
+defaultUnsafeDotProduct
+  :: (Num e, Index ix, Source r e) => Array r ix e -> Array r ix e -> e
 defaultUnsafeDotProduct a1 a2 = go 0 0
   where
     !len = totalElem (size a1)
@@ -88,7 +85,6 @@ defaultFoldArray f !initAcc arr = go initAcc 0
 {-# INLINE defaultFoldArray #-}
 
 class FoldNumeric r e => Numeric r e where
-
   {-# MINIMAL unsafeLiftArray, unsafeLiftArray2 #-}
 
   plusScalar :: Index ix => Array r ix e -> e -> Array r ix e
@@ -126,6 +122,7 @@ class FoldNumeric r e => Numeric r e where
   -- TODO:
   --  - rename to powerScalar
   --  - add? powerPointwise :: Array r ix e -> Array r ix Int -> Array r ix e
+
   -- | Raise each element of the array to the power
   powerPointwise :: Index ix => Array r ix e -> Int -> Array r ix e
   powerPointwise arr pow = unsafeLiftArray (^ pow) arr
@@ -135,15 +132,13 @@ class FoldNumeric r e => Numeric r e where
 
   unsafeLiftArray2 :: Index ix => (e -> e -> e) -> Array r ix e -> Array r ix e -> Array r ix e
 
-
-defaultUnsafeLiftArray ::
-     (Load r ix e, Source r e) => (e -> e) -> Array r ix e -> Array r ix e
+defaultUnsafeLiftArray
+  :: (Load r ix e, Source r e) => (e -> e) -> Array r ix e -> Array r ix e
 defaultUnsafeLiftArray f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
 {-# INLINE defaultUnsafeLiftArray #-}
 
-
-defaultUnsafeLiftArray2 ::
-     (Load r ix e, Source r e)
+defaultUnsafeLiftArray2
+  :: (Load r ix e, Source r e)
   => (e -> e -> e)
   -> Array r ix e
   -> Array r ix e
@@ -153,9 +148,7 @@ defaultUnsafeLiftArray2 f a1 a2 =
     f (unsafeLinearIndex a1 i) (unsafeLinearIndex a2 i)
 {-# INLINE defaultUnsafeLiftArray2 #-}
 
-
 class (Numeric r e, Floating e) => NumericFloat r e where
-
   divideScalar :: Index ix => Array r ix e -> e -> Array r ix e
   divideScalar arr e = unsafeLiftArray (/ e) arr
   {-# INLINE divideScalar #-}
@@ -176,21 +169,19 @@ class (Numeric r e, Floating e) => NumericFloat r e where
   sqrtPointwise = unsafeLiftArray sqrt
   {-# INLINE sqrtPointwise #-}
 
-  -- floorPointwise :: (Index ix, Integral a) => Array r ix e -> Array r ix a
-  -- floorPointwise = unsafeLiftArray floor
-  -- {-# INLINE floorPointwise #-}
+-- floorPointwise :: (Index ix, Integral a) => Array r ix e -> Array r ix a
+-- floorPointwise = unsafeLiftArray floor
+-- {-# INLINE floorPointwise #-}
 
-  -- ceilingPointwise :: (Index ix, Integral a) => Array r ix e -> Array r ix a
-  -- ceilingPointwise = unsafeLiftArray ceiling
-  -- {-# INLINE ceilingPointwise #-}
-
+-- ceilingPointwise :: (Index ix, Integral a) => Array r ix e -> Array r ix a
+-- ceilingPointwise = unsafeLiftArray ceiling
+-- {-# INLINE ceilingPointwise #-}
 
 -- class Equality r e where
 
 --   unsafeEq :: Index ix => Array r ix e -> Array r ix e -> Bool
 
 --   unsafeEqPointwise :: Index ix => Array r ix e -> Array r ix e -> Array r ix Bool
-
 
 -- class Relation r e where
 
@@ -206,5 +197,3 @@ class (Numeric r e, Floating e) => NumericFloat r e where
 --   unsafeMinimum :: Array r ix e -> e
 
 --   unsafeMaximum :: Array r ix e -> e
-
-
