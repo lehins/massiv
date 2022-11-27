@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -43,8 +42,6 @@ import GHC.Exts as GHC (IsList (..))
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude hiding (mapM)
 
-#include "massiv.h"
-
 -- | Representation for `Unbox`ed elements
 data U = U deriving (Show)
 
@@ -84,7 +81,7 @@ instance (Unbox e, Ord e, Index ix) => Ord (Array U ix e) where
 
 instance Unbox e => Source U e where
   unsafeLinearIndex (UArray _ _ v) =
-    INDEX_CHECK ("(Source U ix e).unsafeLinearIndex", Sz . VU.length, VU.unsafeIndex) v
+    indexAssert "U.unsafeLinearIndex" (SafeSz . VU.length) VU.unsafeIndex v
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeOuterSlice (UArray c _ v) szL i =
@@ -123,7 +120,7 @@ instance (Unbox e, Index ix) => StrideLoad U ix e
 
 instance Unbox e => Manifest U e where
   unsafeLinearIndexM (UArray _ _ v) =
-    INDEX_CHECK ("(Manifest U ix e).unsafeLinearIndexM", Sz . VU.length, VU.unsafeIndex) v
+    indexAssert "S.unsafeLinearIndexM" (SafeSz . VU.length) VU.unsafeIndex v
   {-# INLINE unsafeLinearIndexM #-}
 
   sizeOfMArray (MUArray sz _) = sz
@@ -152,11 +149,11 @@ instance Unbox e => Manifest U e where
   {-# INLINE unsafeLinearCopy #-}
 
   unsafeLinearRead (MUArray _ mv) =
-    INDEX_CHECK ("(Manifest U ix e).unsafeLinearRead", Sz . MVU.length, MVU.unsafeRead) mv
+    indexAssert "U.unsafeLinearRead" (Sz . MVU.length) MVU.unsafeRead mv
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MUArray _ mv) =
-    INDEX_CHECK ("(Manifest U ix e).unsafeLinearWrite", Sz . MVU.length, MVU.unsafeWrite) mv
+    indexAssert "U.unsafeLinearWrite" (Sz . MVU.length) MVU.unsafeWrite mv
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearGrow (MUArray _ mv) sz = MUArray sz <$> MVU.unsafeGrow mv (totalElem sz)

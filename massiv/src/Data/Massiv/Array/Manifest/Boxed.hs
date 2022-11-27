@@ -158,8 +158,7 @@ instance Strategy BL where
 
 instance Source BL e where
   unsafeLinearIndex (BLArray _ _sz o a) i =
-    INDEX_CHECK("(Source BL ix e).unsafeLinearIndex",
-                SafeSz . A.sizeofArray, A.indexArray) a (i + o)
+    indexAssert "BL.unsafeLinearIndex" (SafeSz . A.sizeofArray) A.indexArray a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeOuterSlice (BLArray c _ o a) szL i = BLArray c szL (i * totalElem szL + o) a
@@ -171,8 +170,7 @@ instance Source BL e where
 instance Manifest BL e where
 
   unsafeLinearIndexM (BLArray _ _sz o a) i =
-    INDEX_CHECK("(Manifest BL ix e).unsafeLinearIndexM",
-                SafeSz . A.sizeofArray, A.indexArray) a (i + o)
+    indexAssert "BL.unsafeLinearIndexM" (SafeSz . A.sizeofArray) A.indexArray a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
   sizeOfMArray (MBLArray sz _ _) = sz
@@ -200,13 +198,11 @@ instance Manifest BL e where
   {-# INLINE newMArray #-}
 
   unsafeLinearRead (MBLArray _ o ma) i =
-    INDEX_CHECK("(Manifest BL ix e).unsafeLinearRead",
-                SafeSz . A.sizeofMutableArray, A.readArray) ma (i + o)
+    indexAssert "B.unsafeLinearRead" (SafeSz . A.sizeofMutableArray) A.readArray ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
-  unsafeLinearWrite (MBLArray _sz o ma) i e =
-    INDEX_CHECK("(Manifest BL ix e).unsafeLinearWrite",
-                SafeSz . A.sizeofMutableArray, A.writeArray) ma (i + o) e
+  unsafeLinearWrite (MBLArray _sz o ma) i =
+    indexAssert "B.unsafeLinearWrite" (SafeSz . A.sizeofMutableArray) A.writeArray ma (i + o)
   {-# INLINE unsafeLinearWrite #-}
 
 instance Size BL where

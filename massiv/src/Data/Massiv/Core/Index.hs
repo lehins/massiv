@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE GADTs #-}
@@ -105,7 +106,7 @@ module Data.Massiv.Core.Index (
   SizeException (..),
   ShapeException (..),
   guardNumberOfElements,
-  indexWith,
+  indexAssert,
 ) where
 
 import Control.DeepSeq
@@ -120,6 +121,8 @@ import Data.Massiv.Core.Index.Stride
 import Data.Massiv.Core.Index.Tuple
 import Data.Massiv.Core.Loop
 import GHC.TypeLits
+
+#include "massiv.h"
 
 -- | 1-dimensional type synonym for size.
 --
@@ -628,35 +631,25 @@ iterLinearM_ sz !k0 !k1 !inc cond f =
   loopA_ k0 (`cond` k1) (+ inc) $ \ !i -> f i (fromLinearIndex sz i)
 {-# INLINE iterLinearM_ #-}
 
--- | This is used by @INDEX_CHECK@ macro and thus used whenever the @unsafe-checks@ cabal
--- flag is on.
+-- | This is used by the @unsafe-checks@ cabal flag.
 --
--- @since 0.4.0
-indexWith
-  :: Index ix
-  => String
-  -- ^ Source file name, eg. __FILE__
-  -> Int
-  -- ^ Line number in th source file, eg. __LINE__
-  -> String
-  -> (arr -> Sz ix)
-  -- ^ Get size of the array
-  -> (arr -> ix -> e)
-  -- ^ Indexing function
-  -> arr
-  -- ^ Array
-  -> ix
-  -- ^ Index
-  -> e
-indexWith fileName lineNo funName getSize f arr ix
+-- @since 1.1.0
+#ifdef MASSIV_UNSAFE_CHECKS
+indexAssert :: (HsaCallStack, Index ix) => String -> (a -> Sz ix) -> (a -> ix -> e) -> a -> ix -> e
+indexAssert funName getSize f arr ix
   | isSafeIndex sz ix = f arr ix
-  | otherwise = errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) sz ix
+  | otherwise = _errorIx ("<" ++ funName ++ ">") sz ix
   where
     sz = getSize arr
+#else
+indexAssert :: String -> (a -> Sz ix) -> (a -> ix -> e) -> a -> ix -> e
+indexAssert _funName _getSize f arr ix = f arr ix
+#endif
+{-# INLINE indexAssert #-}
 
--- | Helper function for throwing out of bounds error. Used by `indexWith`
-errorIx :: (Show ix, Show ix') => String -> ix -> ix' -> a
-errorIx fName sz ix =
+-- | Helper function for throwing out of bounds error. Used by `indexAssert`
+_errorIx :: (HasCallStack, Show ix, Show ix') => String -> ix -> ix' -> a
+_errorIx fName sz ix =
   error $
     fName
       ++ ": Index out of bounds: ("
@@ -664,4 +657,4 @@ errorIx fName sz ix =
       ++ ") for Array of size: ("
       ++ show sz
       ++ ")"
-{-# NOINLINE errorIx #-}
+{-# NOINLINE _errorIx #-}

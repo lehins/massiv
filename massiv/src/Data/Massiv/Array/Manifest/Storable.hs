@@ -66,8 +66,6 @@ import qualified Data.Vector.Generic.Mutable as MVG
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Storable.Mutable as MVS
 
-#include "massiv.h"
-
 -- | Representation for `Storable` elements
 data S = S deriving (Show)
 
@@ -119,7 +117,7 @@ indexForeignPtr fp i = unsafeInlineIO $ unsafeWithForeignPtr fp $ \p -> peekElem
 
 instance Storable e => Source S e where
   unsafeLinearIndex (SArray _ _sz fp) =
-    INDEX_CHECK ("(Source S ix e).unsafeLinearIndex", const (toLinearSz _sz), indexForeignPtr) fp
+    indexAssert "S.unsafeLinearIndex" (const (toLinearSz _sz)) indexForeignPtr fp
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeOuterSlice (SArray c _ fp) szL i =
@@ -143,7 +141,7 @@ instance Size S where
 
 instance Storable e => Manifest S e where
   unsafeLinearIndexM (SArray _ _sz fp) =
-    INDEX_CHECK ("(Source S ix e).unsafeLinearIndex", const (toLinearSz _sz), indexForeignPtr) fp
+    indexAssert "S.unsafeLinearIndex" (const (toLinearSz _sz)) indexForeignPtr fp
   {-# INLINE unsafeLinearIndexM #-}
 
   sizeOfMArray (MSArray sz _) = sz
@@ -179,12 +177,22 @@ instance Storable e => Manifest S e where
 
   unsafeLinearRead (MSArray _sz fp) o =
     unsafeIOToPrim $
-      INDEX_CHECK ("(Manifest S ix e).unsafeLinearRead", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (`peekElemOff` o))) fp o
+      indexAssert
+        "S.unsafeLinearRead"
+        (const (toLinearSz _sz))
+        (\_ _ -> unsafeWithForeignPtr fp (`peekElemOff` o))
+        fp
+        o
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite (MSArray _sz fp) o e =
     unsafeIOToPrim $
-      INDEX_CHECK ("(Manifest S ix e).unsafeLinearWrite", const (toLinearSz _sz), (\_ _ -> unsafeWithForeignPtr fp (\p -> pokeElemOff p o e))) fp o
+      indexAssert
+        "S.unsafeLinearWrite"
+        (const (toLinearSz _sz))
+        (\_ _ -> unsafeWithForeignPtr fp (\p -> pokeElemOff p o e))
+        fp
+        o
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearSet (MSArray _ fp) i k e =

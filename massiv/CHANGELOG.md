@@ -1,3 +1,7 @@
+# 1.1.0
+
+* Removed `indexWith` in favor of `indexAssert`
+
 # 1.0.2
 
 * Addition of `Iterator` type class and related fucntions:

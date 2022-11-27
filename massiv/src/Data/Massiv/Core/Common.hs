@@ -121,6 +121,8 @@ import qualified Data.Vector.Fusion.Stream.Monadic as S (Stream)
 import Data.Vector.Fusion.Util
 import GHC.Exts (IsList)
 
+#include "massiv.h"
+
 -- | The array family. Representations @r@ describe how data is arranged or computed. All
 -- arrays have a common property that each index @ix@ always maps to the same unique
 -- element @e@, even if that element does not yet exist in memory and the array has to be
@@ -313,7 +315,7 @@ class (Strategy r, Size r) => Source r e where
   -- arbitrary memory is possible when invalid index is supplied.
   --
   -- @since 0.1.0
-  unsafeIndex :: Index ix => Array r ix e -> ix -> e
+  unsafeIndex :: HAS_CALL_STACK => Index ix => Array r ix e -> ix -> e
   unsafeIndex !arr = unsafeLinearIndex arr . toLinearIndex (size arr)
   {-# INLINE unsafeIndex #-}
 
@@ -321,7 +323,7 @@ class (Strategy r, Size r) => Source r e where
   -- bounds check is performed
   --
   -- @since 0.1.0
-  unsafeLinearIndex :: Index ix => Array r ix e -> Int -> e
+  unsafeLinearIndex :: HAS_CALL_STACK => Index ix => Array r ix e -> Int -> e
   unsafeLinearIndex !arr = unsafeIndex arr . fromLinearIndex (size arr)
   {-# INLINE unsafeLinearIndex #-}
 
@@ -329,7 +331,7 @@ class (Strategy r, Size r) => Source r e where
   -- efficient for underlying representation
   --
   -- @since 1.0.2
-  unsafePrefIndex :: Index ix => Array r ix e -> PrefIndex ix e
+  unsafePrefIndex :: HAS_CALL_STACK => Index ix => Array r ix e -> PrefIndex ix e
   unsafePrefIndex !arr = PrefIndexLinear (unsafeLinearIndex arr)
   {-# INLINE unsafePrefIndex #-}
 
@@ -337,7 +339,8 @@ class (Strategy r, Size r) => Source r e where
   --
   -- @since 0.1.0
   unsafeOuterSlice
-    :: (Index ix, Index (Lower ix))
+    :: HAS_CALL_STACK
+    => (Index ix, Index (Lower ix))
     => Array r ix e
     -> Sz (Lower ix)
     -> Int
@@ -581,12 +584,23 @@ class Source r e => Manifest r e where
   -- | Read an element at linear row-major index
   --
   -- @since 0.1.0
-  unsafeLinearRead :: (Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> Int -> m e
+  unsafeLinearRead
+    :: HAS_CALL_STACK
+    => (Index ix, PrimMonad m)
+    => MArray (PrimState m) r ix e
+    -> Int
+    -> m e
 
   -- | Write an element into mutable array with linear row-major index
   --
   -- @since 0.1.0
-  unsafeLinearWrite :: (Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> Int -> e -> m ()
+  unsafeLinearWrite
+    :: HAS_CALL_STACK
+    => (Index ix, PrimMonad m)
+    => MArray (PrimState m) r ix e
+    -> Int
+    -> e
+    -> m ()
 
   -- | Initialize mutable array to some default value.
   --
@@ -614,7 +628,8 @@ class Source r e => Manifest r e where
   --
   -- @since 0.3.0
   unsafeLinearSet
-    :: (Index ix, PrimMonad m)
+    :: HAS_CALL_STACK
+    => (Index ix, PrimMonad m)
     => MArray (PrimState m) r ix e
     -> Ix1
     -> Sz1
@@ -628,7 +643,8 @@ class Source r e => Manifest r e where
   --
   -- @since 0.3.6
   unsafeLinearCopy
-    :: (Index ix', Index ix, PrimMonad m)
+    :: HAS_CALL_STACK
+    => (Index ix', Index ix, PrimMonad m)
     => MArray (PrimState m) r ix' e
     -- ^ Source mutable array
     -> Ix1
@@ -650,7 +666,8 @@ class Source r e => Manifest r e where
   --
   -- @since 0.3.6
   unsafeArrayLinearCopy
-    :: (Index ix', Index ix, PrimMonad m)
+    :: HAS_CALL_STACK
+    => (Index ix', Index ix, PrimMonad m)
     => Array r ix' e
     -- ^ Source pure array
     -> Ix1
@@ -674,7 +691,8 @@ class Source r e => Manifest r e where
   --
   -- @since 0.3.6
   unsafeLinearShrink
-    :: (Index ix, PrimMonad m)
+    :: HAS_CALL_STACK
+    => (Index ix, PrimMonad m)
     => MArray (PrimState m) r ix e
     -> Sz ix
     -> m (MArray (PrimState m) r ix e)
@@ -687,7 +705,8 @@ class Source r e => Manifest r e where
   --
   -- @since 0.3.6
   unsafeLinearGrow
-    :: (Index ix, PrimMonad m)
+    :: HAS_CALL_STACK
+    => (Index ix, PrimMonad m)
     => MArray (PrimState m) r ix e
     -> Sz ix
     -> m (MArray (PrimState m) r ix e)
@@ -698,7 +717,8 @@ class Source r e => Manifest r e where
   {-# INLINE unsafeLinearGrow #-}
 
 unsafeDefaultLinearShrink
-  :: (Manifest r e, Index ix, PrimMonad m)
+  :: HAS_CALL_STACK
+  => (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> Sz ix
   -> m (MArray (PrimState m) r ix e)
@@ -712,7 +732,8 @@ unsafeDefaultLinearShrink marr sz = do
 --
 -- @since 0.1.0
 unsafeRead
-  :: (Manifest r e, Index ix, PrimMonad m)
+  :: HAS_CALL_STACK
+  => (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> ix
   -> m e
@@ -723,7 +744,8 @@ unsafeRead marr = unsafeLinearRead marr . toLinearIndex (sizeOfMArray marr)
 --
 -- @since 0.1.0
 unsafeWrite
-  :: (Manifest r e, Index ix, PrimMonad m)
+  :: HAS_CALL_STACK
+  => (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> ix
   -> e
@@ -735,7 +757,8 @@ unsafeWrite marr = unsafeLinearWrite marr . toLinearIndex (sizeOfMArray marr)
 --
 -- @since 0.4.0
 unsafeLinearModify
-  :: (Manifest r e, Index ix, PrimMonad m)
+  :: HAS_CALL_STACK
+  => (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> (e -> m e)
   -> Int
@@ -751,7 +774,8 @@ unsafeLinearModify !marr f !i = do
 --
 -- @since 0.4.0
 unsafeModify
-  :: (Manifest r e, Index ix, PrimMonad m)
+  :: HAS_CALL_STACK
+  => (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> (e -> m e)
   -> ix
@@ -764,7 +788,8 @@ unsafeModify marr f ix = unsafeLinearModify marr f (toLinearIndex (sizeOfMArray 
 --
 -- @since 0.4.0
 unsafeSwap
-  :: (Manifest r e, Index ix, PrimMonad m)
+  :: HAS_CALL_STACK
+  => (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> ix
   -> ix
@@ -779,7 +804,8 @@ unsafeSwap !marr !ix1 !ix2 = unsafeLinearSwap marr (toLinearIndex sz ix1) (toLin
 --
 -- @since 0.4.0
 unsafeLinearSwap
-  :: (Manifest r e, Index ix, PrimMonad m)
+  :: HAS_CALL_STACK
+  => (Manifest r e, Index ix, PrimMonad m)
   => MArray (PrimState m) r ix e
   -> Int
   -> Int

@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MagicHash #-}
@@ -73,8 +72,6 @@ import GHC.Exts as GHC
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude hiding (mapM)
 
-#include "massiv.h"
-
 -- | Representation for `Prim`itive elements
 data P = P deriving (Show)
 
@@ -127,13 +124,7 @@ instance Size P where
 
 instance Prim e => Source P e where
   unsafeLinearIndex _arr@(PArray _ _ o a) i =
-    INDEX_CHECK
-      ( "(Source P ix e).unsafeLinearIndex"
-      , SafeSz . elemsBA _arr
-      , indexByteArray
-      )
-      a
-      (i + o)
+    indexAssert "P.unsafeLinearIndex" (SafeSz . elemsBA _arr) indexByteArray a (i + o)
   {-# INLINE unsafeLinearIndex #-}
 
   unsafeOuterSlice (PArray c _ o a) szL i =
@@ -145,13 +136,7 @@ instance Prim e => Source P e where
 
 instance Prim e => Manifest P e where
   unsafeLinearIndexM _pa@(PArray _ _sz o a) i =
-    INDEX_CHECK
-      ( "(Manifest P ix e).unsafeLinearIndexM"
-      , const (Sz (totalElem _sz))
-      , indexByteArray
-      )
-      a
-      (i + o)
+    indexAssert "P.unsafeLinearIndexM" (const (Sz (totalElem _sz))) indexByteArray a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
 
   sizeOfMArray (MPArray sz _ _) = sz
@@ -183,23 +168,11 @@ instance Prim e => Manifest P e where
   {-# INLINE initialize #-}
 
   unsafeLinearRead _mpa@(MPArray _sz o ma) i =
-    INDEX_CHECK
-      ( "(Manifest P ix e).unsafeLinearRead"
-      , const (Sz (totalElem _sz))
-      , readByteArray
-      )
-      ma
-      (i + o)
+    indexAssert "P.unsafeLinearRead" (const (Sz (totalElem _sz))) readByteArray ma (i + o)
   {-# INLINE unsafeLinearRead #-}
 
   unsafeLinearWrite _mpa@(MPArray _sz o ma) i =
-    INDEX_CHECK
-      ( "(Manifest P ix e).unsafeLinearWrite"
-      , const (Sz (totalElem _sz))
-      , writeByteArray
-      )
-      ma
-      (i + o)
+    indexAssert "P.unsafeLinearWrite" (const (Sz (totalElem _sz))) writeByteArray ma (i + o)
   {-# INLINE unsafeLinearWrite #-}
 
   unsafeLinearSet (MPArray _ o ma) offset (SafeSz sz) = setByteArray ma (offset + o) sz
@@ -446,10 +419,10 @@ fromPrimitiveMVector (MVP.MVector offset len mba) = MPArray (SafeSz len) offset 
 unsafeAtomicReadIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> m Int
 unsafeAtomicReadIntArray _mpa@(MPArray sz o mba) ix =
-  INDEX_CHECK
-    ( "unsafeAtomicReadIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicReadIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case atomicReadIntArray# mba# i# s# of
             (# s'#, e# #) -> (# s'#, I# e# #)
@@ -464,10 +437,10 @@ unsafeAtomicReadIntArray _mpa@(MPArray sz o mba) ix =
 unsafeAtomicWriteIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m ()
 unsafeAtomicWriteIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
-  INDEX_CHECK
-    ( "unsafeAtomicWriteIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicWriteIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive_ (atomicWriteIntArray# mba# i# e#)
     )
     mba
@@ -480,10 +453,10 @@ unsafeAtomicWriteIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 unsafeCasIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> Int -> m Int
 unsafeCasIntArray _mpa@(MPArray sz o mba) ix (I# e#) (I# n#) =
-  INDEX_CHECK
-    ( "unsafeCasIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeCasIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case casIntArray# mba# i# e# n# s# of
             (# s'#, o# #) -> (# s'#, I# o# #)
@@ -498,8 +471,10 @@ unsafeCasIntArray _mpa@(MPArray sz o mba) ix (I# e#) (I# n#) =
 unsafeAtomicModifyIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> (Int -> Int) -> m Int
 unsafeAtomicModifyIntArray _mpa@(MPArray sz o mba) ix f =
-  INDEX_CHECK
-    ("unsafeAtomicModifyIntArray", SafeSz . elemsMBA _mpa, atomicModify)
+  indexAssert
+    "P.unsafeAtomicModifyIntArray"
+    (SafeSz . elemsMBA _mpa)
+    atomicModify
     mba
     (o + toLinearIndex sz ix)
   where
@@ -523,10 +498,10 @@ unsafeAtomicModifyIntArray _mpa@(MPArray sz o mba) ix f =
 unsafeAtomicAddIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicAddIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
-  INDEX_CHECK
-    ( "unsafeAtomicAddIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicAddIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case fetchAddIntArray# mba# i# e# s# of
             (# s'#, p# #) -> (# s'#, I# p# #)
@@ -541,10 +516,10 @@ unsafeAtomicAddIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 unsafeAtomicSubIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicSubIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
-  INDEX_CHECK
-    ( "unsafeAtomicSubIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicSubIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case fetchSubIntArray# mba# i# e# s# of
             (# s'#, p# #) -> (# s'#, I# p# #)
@@ -559,10 +534,10 @@ unsafeAtomicSubIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 unsafeAtomicAndIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicAndIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
-  INDEX_CHECK
-    ( "unsafeAtomicAndIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicAndIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case fetchAndIntArray# mba# i# e# s# of
             (# s'#, p# #) -> (# s'#, I# p# #)
@@ -577,10 +552,10 @@ unsafeAtomicAndIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 unsafeAtomicNandIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicNandIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
-  INDEX_CHECK
-    ( "unsafeAtomicNandIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicNandIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case fetchNandIntArray# mba# i# e# s# of
             (# s'#, p# #) -> (# s'#, I# p# #)
@@ -595,10 +570,10 @@ unsafeAtomicNandIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 unsafeAtomicOrIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicOrIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
-  INDEX_CHECK
-    ( "unsafeAtomicOrIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicOrIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case fetchOrIntArray# mba# i# e# s# of
             (# s'#, p# #) -> (# s'#, I# p# #)
@@ -613,10 +588,10 @@ unsafeAtomicOrIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
 unsafeAtomicXorIntArray
   :: (Index ix, PrimMonad m) => MArray (PrimState m) P ix Int -> ix -> Int -> m Int
 unsafeAtomicXorIntArray _mpa@(MPArray sz o mba) ix (I# e#) =
-  INDEX_CHECK
-    ( "unsafeAtomicXorIntArray"
-    , SafeSz . elemsMBA _mpa
-    , \(MutableByteArray mba#) (I# i#) ->
+  indexAssert
+    "P.unsafeAtomicXorIntArray"
+    (SafeSz . elemsMBA _mpa)
+    ( \(MutableByteArray mba#) (I# i#) ->
         primitive $ \s# ->
           case fetchXorIntArray# mba# i# e# s# of
             (# s'#, p# #) -> (# s'#, I# p# #)
