@@ -94,7 +94,7 @@ index to an element (see the [Computation](#computation) section for the meaning
 go ahead and square its elements
 
 ```haskell
-λ> makeVectorR D Seq 10 id
+λ> vec = makeVectorR D Seq 10 id
 λ> evaluateM vec 4
 4
 λ> vec2 = A.map (^ (2 :: Int)) vec
