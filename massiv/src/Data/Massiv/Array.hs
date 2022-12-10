@@ -206,4 +206,4 @@ import Prelude as P hiding (
 
 -- $folding
 --
---All folding is done in a row-major order.
+-- All folding is done in a row-major order.

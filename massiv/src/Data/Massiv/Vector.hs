@@ -251,23 +251,17 @@ module Data.Massiv.Vector (
   -- , minIndexBy
   -- , maxIndex
   -- , maxIndexBy
-  -- -- ** Prefix sums
-  -- , prescanl
-  -- , prescanl'
-  -- , postscanl
-  -- , postscanl'
-  -- , scanl
-  -- , scanl'
-  -- , scanl1
-  -- , scanl1'
-  -- , prescanr
-  -- , prescanr'
-  -- , postscanr
-  -- , postscanr'
-  -- , scanr
-  -- , scanr'
-  -- , scanr1
-  -- , scanr1'
+
+  -- ** Scanning
+  sprescanl,
+  spostscanl,
+  spostscanlAcc,
+  sscanl,
+  sscanl1,
+  -- sprescanr,
+  -- spostscanr,
+  -- sscanr,
+  -- sscanr1,
 
   -- * Conversions
 
@@ -2755,3 +2749,84 @@ sminimum' = sfoldl1' min
 sminimumM :: forall r ix e m. (Ord e, Stream r ix e, MonadThrow m) => Array r ix e -> m e
 sminimumM = sfoldl1M (\e acc -> pure (min e acc))
 {-# INLINE sminimumM #-}
+
+-- | /O(n)/ - left scan with strict accumulator.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector
+-- >>> sprescanl min 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 4)
+--   [ 6, 6, 5, 5 ]
+-- >>> sprescanl max 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 4)
+--   [ 6, 10, 10, 70 ]
+--
+-- @since 1.0.3
+sprescanl :: Stream r ix e => (a -> e -> a) -> a -> Array r ix e -> Vector DS a
+sprescanl f acc = DSArray . S.prescanlM (\a b -> pure (f a b)) acc . toStream
+{-# INLINE sprescanl #-}
+
+-- | /O(n)/ - left scan with strict accumulator.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector
+-- >>> spostscanl min 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 4)
+--   [ 6, 5, 5, 3 ]
+-- >>> spostscanl max 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 4)
+--   [ 10, 10, 70, 70 ]
+--
+-- @since 1.0.3
+spostscanl :: Stream r ix e => (a -> e -> a) -> a -> Array r ix e -> Vector DS a
+spostscanl f acc = DSArray . S.postscanlM (\a b -> pure (f a b)) acc . toStream
+{-# INLINE spostscanl #-}
+
+-- | /O(n)/ - Just like `spostscanl` except it is possible to produce a vector with an
+-- element type that differes from accumulator type.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector
+-- >>> spostscanlAcc (\x y -> if x < y then (True, x) else (False, y)) 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 4)
+--   [ True, False, True, False ]
+-- >>> spostscanlAcc (\x y -> if x > y then (True, y) else (False, x)) 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 4)
+--   [ False, True, False, True ]
+--
+-- @since 1.0.3
+spostscanlAcc :: Stream r ix e => (c -> e -> (a, c)) -> c -> Array r ix e -> Vector DS a
+spostscanlAcc f acc = DSArray . S.postscanlAccM (\a b -> pure (f a b)) acc . toStream
+{-# INLINE spostscanlAcc #-}
+
+
+-- | /O(n)/ - left scan with strict accumulator.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector
+-- >>> sscanl min 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 5)
+--   [ 6, 6, 5, 5, 3 ]
+-- >>> sscanl max 6 $ sfromList [10, 5, 70, 3 :: Int]
+-- Array DS Seq (Sz1 5)
+--   [ 6, 10, 10, 70, 70 ]
+--
+-- @since 1.0.3
+sscanl :: Stream r ix e => (a -> e -> a) -> a -> Array r ix e -> Vector DS a
+sscanl f acc = DSArray . S.scanlM (\a b -> pure (f a b)) acc . toStream
+{-# INLINE sscanl #-}
+
+-- | /O(n)/ - left scan with strict accumulator and no initial value for the accumulator.
+--
+-- ==== __Examples__
+--
+-- >>> import Data.Massiv.Vector as V
+--
+-- @since 1.0.3
+sscanl1 :: Stream r ix e => (e -> e -> e) -> Array r ix e -> Vector DS e
+sscanl1 f = DSArray . S.scanl1M (\a b -> pure (f a b)) . toStream
+{-# INLINE sscanl1 #-}

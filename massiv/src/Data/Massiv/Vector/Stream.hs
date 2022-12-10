@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -113,6 +114,13 @@ module Data.Massiv.Vector.Stream (
   unsafeUnfoldrNM,
   unfoldrExactN,
   unfoldrExactNM,
+
+  -- ** Scanning
+  prescanlM,
+  postscanlM,
+  postscanlAccM,
+  scanlM,
+  scanl1M,
 
   -- ** Enumeration
   enumFromStepN,
@@ -237,11 +245,11 @@ steps !arr =
     PrefIndexLinear gi ->
       Steps (S.Stream step 0) (LengthExact (coerce k))
       where
-        k = totalElem $ size arr
-        step i
+        !k = totalElem $ size arr
+        step !i
           | i < k =
-              let e = gi i
-               in e `seq` pure $ S.Yield e (i + 1)
+              let !e = gi i
+               in pure $ S.Yield e (i + 1)
           | otherwise = pure S.Done
         {-# INLINE [0] step #-}
 {-# INLINE [1] steps #-}
@@ -328,7 +336,7 @@ unstreamIntoM marr sz str =
 
 unstreamMax
   :: forall r e
-   . (Manifest r e)
+   . Manifest r e
   => Int
   -> S.Stream Id e
   -> Vector r e
@@ -336,21 +344,25 @@ unstreamMax kMax str =
   runST $ do
     marr <- unsafeNew (SafeSz kMax)
     k <- unstreamMaxM marr str
-    unsafeLinearShrink marr (SafeSz k) >>= unsafeFreeze Seq
+    marrShrunk <-
+      if k == kMax
+        then pure marr
+        else unsafeLinearShrink marr (SafeSz k)
+    unsafeFreeze Seq marrShrunk
 {-# INLINE unstreamMax #-}
 
 unstreamMaxM
   :: (Manifest r a, Index ix, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
 unstreamMaxM marr (S.Stream step s) = stepLoad s 0
   where
-    stepLoad t i =
+    stepLoad t !i =
       case unId (step t) of
         S.Yield e' t' -> do
           unsafeLinearWrite marr i e'
           stepLoad t' (i + 1)
         S.Skip t' -> stepLoad t' i
         S.Done -> pure i
-    {-# INLINE stepLoad #-}
+    {-# INLINE [0] stepLoad #-}
 {-# INLINE unstreamMaxM #-}
 
 unstreamUnknown :: Manifest r a => S.Stream Id a -> Vector r a
@@ -906,3 +918,50 @@ toLengthMax (LengthExact n) = LengthMax n
 toLengthMax (LengthMax n) = LengthMax n
 toLengthMax LengthUnknown = LengthUnknown
 {-# INLINE toLengthMax #-}
+
+-- | Prefix scan with strict accumulator and a monadic operator
+prescanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
+prescanlM f acc ss = ss{stepsStream = S.prescanlM f acc (stepsStream ss)}
+{-# INLINE prescanlM #-}
+
+-- | Suffix scan with a monadic operator
+postscanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
+postscanlM f acc ss = ss{stepsStream = S.postscanlM f acc (stepsStream ss)}
+{-# INLINE postscanlM #-}
+
+-- | Suffix scan with a monadic operator
+postscanlAccM :: Monad m => (c -> b -> m (a, c)) -> c -> Steps m b -> Steps m a
+postscanlAccM f acc ss = ss{stepsStream = postscanlAccStreamM f acc (stepsStream ss)}
+{-# INLINE postscanlAccM #-}
+
+-- | Suffix scan with strict acccumulator and a monadic operator
+postscanlAccStreamM :: Monad m => (c -> b -> m (a, c)) -> c -> S.Stream m b -> S.Stream m a
+postscanlAccStreamM f w (S.Stream step t) = w `seq` S.Stream step' (t, w)
+  where
+    step' (s, x) =
+      x `seq`
+        do
+          r <- step s
+          case r of
+            S.Yield y s' -> do
+              (a, z) <- f x y
+              z `seq` return (S.Yield a (s', z))
+            S.Skip s' -> return $ S.Skip (s', x)
+            S.Done -> return S.Done
+    {-# INLINE [0] step' #-}
+{-# INLINE postscanlAccStreamM #-}
+
+-- | Haskell-style scan with a monadic operator
+scanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
+scanlM f acc Steps{stepsStream, stepsSize} =
+  Steps
+    { stepsStream = S.scanlM f acc stepsStream
+    , stepsSize = addLengthHint (LengthExact 1) stepsSize
+    }
+{-# INLINE scanlM #-}
+
+-- | Initial-value free scan over a 'Stream' with a strict accumulator
+-- and a monadic operator
+scanl1M :: Monad m => (a -> a -> m a) -> Steps m a -> Steps m a
+scanl1M f ss = ss{stepsStream = S.scanl1M f (stepsStream ss)}
+{-# INLINE scanl1M #-}

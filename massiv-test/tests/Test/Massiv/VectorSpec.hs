@@ -1020,6 +1020,21 @@ spec =
             sfromListN (Sz (maxBound `div` 8)) xs !==! VP.fromList xs
           prop "unsafeFromListN" $ \sz@(Sz n) (xs :: [Word]) ->
             A.unsafeFromListN sz xs !==! VP.fromListN n xs
+      describe "Scanning" $ do
+        prop "sscanl" $ \(v :: Vector P Word32) (f :: Fun (Word, Word32) Word) a0 ->
+          V.sscanl (applyFun2 f) a0 v !==! VP.scanl' (applyFun2 f) a0 (toPrimitiveVector v)
+        prop "sscanl1" $ \(v :: Vector P Word32) (f :: Fun (Word32, Word32) Word32) ->
+          isNotEmpty v
+            ==> (V.sscanl1 (applyFun2 f) v !==! VP.scanl1' (applyFun2 f) (toPrimitiveVector v))
+        prop "sprescanl" $ \(v :: Vector P Word32) (f :: Fun (Word, Word32) Word) a0 ->
+          V.sprescanl (applyFun2 f) a0 v
+            !==! VP.prescanl' (applyFun2 f) a0 (toPrimitiveVector v)
+        prop "spostscanl" $ \(v :: Vector P Word32) (f :: Fun (Word, Word32) Word) a0 ->
+          V.spostscanl (applyFun2 f) a0 v
+            !==! VP.postscanl' (applyFun2 f) a0 (toPrimitiveVector v)
+        prop "spostscanlAcc" $ \(v :: Vector P Word32) (f :: Fun (Word, Word32) Word) a0 ->
+          V.spostscanlAcc (\x y -> let z = applyFun2 f x y in (z, z)) a0 v
+            !==! VP.postscanl' (applyFun2 f) a0 (toPrimitiveVector v)
 
 prop_sfoldl1' :: Vector P Word -> Fun (Word, Word) Word -> Property
 prop_sfoldl1' v f =
