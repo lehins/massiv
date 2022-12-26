@@ -42,11 +42,6 @@ module Data.Massiv.Vector.Stream (
   unstreamUnknownM,
   unstreamIntoM,
 
-  -- * Bundle
-  toBundle,
-  fromBundle,
-  fromBundleM,
-
   -- * Operations on Steps
   length,
   null,
@@ -154,10 +149,9 @@ import Data.Coerce
 import qualified Data.Foldable as F
 import Data.Massiv.Core.Common hiding (empty, replicate, singleton)
 import Data.Maybe (catMaybes)
+import qualified Data.Stream.Monadic as S
 import qualified Data.Traversable as Traversable (traverse)
-import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import qualified Data.Vector.Fusion.Bundle.Size as B
-import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
 import qualified GHC.Exts (IsList (..))
 import Prelude hiding (
@@ -278,20 +272,6 @@ isteps !arr =
   where
     !sz = size arr
 {-# INLINE isteps #-}
-
-toBundle :: (Monad m, Index ix, Source r e) => Array r ix e -> B.Bundle m v e
-toBundle arr =
-  let Steps str k = steps arr
-   in B.fromStream str (sizeHintToBundleSize k)
-{-# INLINE toBundle #-}
-
-fromBundle :: Manifest r e => B.Bundle Id v e -> Vector r e
-fromBundle bundle = fromStream (B.sSize bundle) (B.sElems bundle)
-{-# INLINE fromBundle #-}
-
-fromBundleM :: (Monad m, Manifest r e) => B.Bundle m v e -> m (Vector r e)
-fromBundleM bundle = fromStreamM (B.sSize bundle) (B.sElems bundle)
-{-# INLINE fromBundleM #-}
 
 fromStream :: forall r e. Manifest r e => B.Size -> S.Stream Id e -> Vector r e
 fromStream sz str =
