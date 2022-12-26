@@ -20,6 +20,7 @@ module Data.Massiv.Array.Unsafe (
   Sz (SafeSz),
   Stride (SafeStride),
   unsafeIndex,
+  unsafePrefIndex,
   unsafeLinearIndex,
   unsafeLinearIndexM,
 
