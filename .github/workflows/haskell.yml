@@ -12,20 +12,21 @@ defaults: { run: { shell: bash } }
 
 jobs:
   massiv-test-with-stack:
+    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Test with Stack
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        resolver: [lts-12, lts-14, lts-16, lts-18, lts-19, nightly]
+        resolver: [lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, nightly]
         include:
           - resolver: lts-12
             ghc: 8.4.4
             stack-yaml: stack-extra-deps.yaml
           - resolver: lts-14
             ghc: 8.6.5
-            stack-yaml: stack-coveralls.yaml
+            stack-yaml: stack-extra-deps.yaml
           - resolver: lts-16
             ghc: 8.8.4
             stack-yaml: stack-extra-deps.yaml
@@ -33,8 +34,11 @@ jobs:
             ghc: 8.10.7
           - resolver: lts-19
             ghc: 9.0.2
+          - resolver: lts-20
+            stack-yaml: stack-coveralls.yaml
+            ghc: 9.2.5
           - resolver: nightly
-            ghc: 9.2.4
+            # ghc: 9.4.3
         exclude:
           - resolver: lts-14
             os: windows-latest # OOM on building Test.Massiv.VectorSpec
@@ -42,6 +46,8 @@ jobs:
             os: windows-latest # OOM on building Test.Massiv.VectorSpec
           - resolver: lts-18
             os: windows-latest # Too buggy, occasional ghc crashes
+          - resolver: lts-20
+            os: windows-latest # Can't install ghc
 
     env:
       STACK_YAML: stack.yaml
@@ -49,6 +55,7 @@ jobs:
       cache-version: v7 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
+
     - uses: haskell/actions/setup@v1
       id: setup-haskell-cabal
       name: Setup Haskell
@@ -56,11 +63,10 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         enable-stack: true
         stack-version: 'latest'
-        cabal-version: '3.6'
 
     - name: Cache
       id: cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
@@ -72,7 +78,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
     - name: Windows Cache
       id: cache-windows
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       if: matrix.os == 'windows-latest'
       with:
         path: |
@@ -102,10 +108,10 @@ jobs:
       run: |
         set -ex
         [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-20" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps
           stack $STACK_ARGS hpc report --all
-          curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-8.8.4.tar.bz2 | tar xj shc
+          curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-9.2.5.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
           stack $STACK_ARGS test massiv:doctests
@@ -113,42 +119,47 @@ jobs:
         fi
 
   massiv-test-with-cabal:
+    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Test with Cabal
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { cabal: "3.6", os: ubuntu-latest, ghc: "8.0.2" }
-          - { cabal: "3.6", os: ubuntu-latest, ghc: "8.2.2" }
-          - { cabal: "3.6", os: ubuntu-latest, ghc: "9.0.1" }
-          - { cabal: "3.6", os: ubuntu-latest, ghc: "9.2.1" }
-          # - { cabal: "3.6", os: windows-latest, ghc: "8.0.2" } # OOM on tests
-          # - { cabal: "3.6", os: windows-latest, ghc: "8.2.2" } # OOM on tests
-          # - { cabal: "3.6", os: windows-latest, ghc: "9.0.1" } # OOM on tests
-          - { cabal: "3.6", os: windows-latest, ghc: "9.2.1" }
-          - { cabal: "3.6", os: macOS-latest, ghc: "8.0.2" }
-          - { cabal: "3.6", os: macOS-latest, ghc: "8.2.2" }
-          - { cabal: "3.6", os: macOS-latest, ghc: "9.0.1" }
-          - { cabal: "3.6", os: macOS-latest, ghc: "9.2.1" }
+          # - { os: ubuntu-latest, ghc: "8.0.2" } # Problem installing ghc with ghcup
+          # - { os: ubuntu-latest, ghc: "8.2.2" } # Problem installing ghc with ghcup
+          - { os: ubuntu-latest, ghc: "9.0.2" }
+          - { os: ubuntu-latest, ghc: "9.2.5" }
+          - { os: ubuntu-latest, ghc: "9.4.4" }
+          # - { os: windows-latest, ghc: "8.0.2" } # OOM on tests
+          # - { os: windows-latest, ghc: "8.2.2" } # OOM on tests
+          # - { os: windows-latest, ghc: "9.0.1" } # OOM on tests
+          - { os: windows-latest, ghc: "9.2.4" }
+          # - { os: windows-latest, ghc: "9.2.5" } # Problem installing ghc with ghcup
+          # - { os: windows-latest, ghc: "9.4.4" } # Linker errors
+          - { os: macOS-latest, ghc: "8.0.2" }
+          - { os: macOS-latest, ghc: "8.2.2" }
+          - { os: macOS-latest, ghc: "9.0.2" }
+          - { os: macOS-latest, ghc: "9.2.5" }
+          - { os: macOS-latest, ghc: "9.4.4" }
 
     env:
       cache-version: v2 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
+
     - uses: haskell/actions/setup@v1
       id: setup-haskell-cabal
       name: Setup Haskell
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: ${{ matrix.cabal }}
 
     - name: Cache Cabal Store
       id: cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
-          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          ~/.cabal/store
           dist-newstyle
           massiv/dist-newstyle
           massiv-test/dist-newstyle
@@ -172,6 +183,7 @@ jobs:
         cd ..
 
   massiv-bench:
+    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Benchmarks
     runs-on: ${{ matrix.os }}
     strategy:
@@ -189,6 +201,7 @@ jobs:
       cache-version: v2 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v2
+
     - uses: haskell/actions/setup@v1
       id: setup-haskell-cabal
       name: Setup Haskell
@@ -199,7 +212,7 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
@@ -219,6 +232,7 @@ jobs:
 
 
   massiv-examples:
+    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Examples
 
     runs-on: ubuntu-latest
@@ -241,7 +255,7 @@ jobs:
       id: extract_branch
 
     - name: Cache
-      uses: actions/cache@v2.0.0
+      uses: actions/cache@v3
       with:
         # A list of files, directories, and wildcard patterns to cache and restore
         path: |
