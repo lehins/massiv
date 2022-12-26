@@ -247,9 +247,7 @@ steps !arr =
       where
         !k = totalElem $ size arr
         step !i
-          | i < k =
-              let !e = gi i
-               in pure $ S.Yield e (i + 1)
+          | i < k = pure $ S.Yield (gi i) (i + 1)
           | otherwise = pure S.Done
         {-# INLINE [0] step #-}
 {-# INLINE [1] steps #-}
@@ -353,16 +351,10 @@ unstreamMax kMax str =
 
 unstreamMaxM
   :: (Manifest r a, Index ix, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
-unstreamMaxM marr (S.Stream step s) = stepLoad s 0
+unstreamMaxM marr = S.foldlM' fillAtIndex 0 . S.trans (pure . unId)
   where
-    stepLoad t !i =
-      case unId (step t) of
-        S.Yield e' t' -> do
-          unsafeLinearWrite marr i e'
-          stepLoad t' (i + 1)
-        S.Skip t' -> stepLoad t' i
-        S.Done -> pure i
-    {-# INLINE [0] stepLoad #-}
+    fillAtIndex i x = (i + 1) <$ unsafeLinearWrite marr i x
+    {-# INLINE fillAtIndex #-}
 {-# INLINE unstreamMaxM #-}
 
 unstreamUnknown :: Manifest r a => S.Stream Id a -> Vector r a
@@ -377,21 +369,20 @@ unstreamUnknownM
   => MVector (PrimState m) r a
   -> S.Stream Id a
   -> m (MVector (PrimState m) r a)
-unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (sizeOfMArray marrInit)) marrInit
+unstreamUnknownM marr str = do
+  (marr', k) <- S.foldlM' fillAtIndex (marr, 0) $ S.trans (pure . unId) str
+  if k < unSz (sizeOfMArray marr')
+    then unsafeLinearShrink marr' (SafeSz k)
+    else pure marr'
   where
-    stepLoad t i kMax marr
-      | i < kMax =
-          case unId (step t) of
-            S.Yield e' t' -> do
-              unsafeLinearWrite marr i e'
-              stepLoad t' (i + 1) kMax marr
-            S.Skip t' -> stepLoad t' i kMax marr
-            S.Done -> unsafeLinearShrink marr (SafeSz i)
-      | otherwise = do
-          let kMax' = max 1 (kMax * 2)
-          marr' <- unsafeLinearGrow marr (SafeSz kMax')
-          stepLoad t i kMax' marr'
-    {-# INLINE stepLoad #-}
+    fillAtIndex (!ma, !i) x = do
+      let k = unSz (sizeOfMArray ma)
+      ma' <-
+        if i < k
+          then pure ma
+          else unsafeLinearGrow ma (SafeSz (max 1 k * 2))
+      (ma', i + 1) <$ unsafeLinearWrite ma' i x
+    {-# INLINE fillAtIndex #-}
 {-# INLINE unstreamUnknownM #-}
 
 unstreamExact
@@ -921,12 +912,12 @@ toLengthMax LengthUnknown = LengthUnknown
 
 -- | Prefix scan with strict accumulator and a monadic operator
 prescanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
-prescanlM f acc ss = ss{stepsStream = S.prescanlM f acc (stepsStream ss)}
+prescanlM f acc ss = ss{stepsStream = S.prescanlM' f acc (stepsStream ss)}
 {-# INLINE prescanlM #-}
 
 -- | Suffix scan with a monadic operator
 postscanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
-postscanlM f acc ss = ss{stepsStream = S.postscanlM f acc (stepsStream ss)}
+postscanlM f acc ss = ss{stepsStream = S.postscanlM' f acc (stepsStream ss)}
 {-# INLINE postscanlM #-}
 
 -- | Suffix scan with a monadic operator
@@ -955,7 +946,7 @@ postscanlAccStreamM f w (S.Stream step t) = w `seq` S.Stream step' (t, w)
 scanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
 scanlM f acc Steps{stepsStream, stepsSize} =
   Steps
-    { stepsStream = S.scanlM f acc stepsStream
+    { stepsStream = S.scanlM' f acc stepsStream
     , stepsSize = addLengthHint (LengthExact 1) stepsSize
     }
 {-# INLINE scanlM #-}
@@ -963,5 +954,5 @@ scanlM f acc Steps{stepsStream, stepsSize} =
 -- | Initial-value free scan over a 'Stream' with a strict accumulator
 -- and a monadic operator
 scanl1M :: Monad m => (a -> a -> m a) -> Steps m a -> Steps m a
-scanl1M f ss = ss{stepsStream = S.scanl1M f (stepsStream ss)}
+scanl1M f ss = ss{stepsStream = S.scanl1M' f (stepsStream ss)}
 {-# INLINE scanl1M #-}
