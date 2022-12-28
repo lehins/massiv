@@ -1,6 +1,8 @@
-# 1.1.0
+# 1.0.3
 
-* Removed `indexWith` in favor of `indexAssert`
+* Deprecated `indexWith` in favor of `indexAssert`
+* Addition of scans: `sscanl`, `sscanl1`, `sprescanl`, `spostscanl` and `spostscanlAcc`
+* Expose `unsafePrefIndex`
 
 # 1.0.2
 

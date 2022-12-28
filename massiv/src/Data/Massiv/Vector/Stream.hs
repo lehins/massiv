@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -40,11 +41,6 @@ module Data.Massiv.Vector.Stream (
   unstreamUnknown,
   unstreamUnknownM,
   unstreamIntoM,
-
-  -- * Bundle
-  toBundle,
-  fromBundle,
-  fromBundleM,
 
   -- * Operations on Steps
   length,
@@ -114,6 +110,13 @@ module Data.Massiv.Vector.Stream (
   unfoldrExactN,
   unfoldrExactNM,
 
+  -- ** Scanning
+  prescanlM,
+  postscanlM,
+  postscanlAccM,
+  scanlM,
+  scanl1M,
+
   -- ** Enumeration
   enumFromStepN,
 
@@ -146,10 +149,9 @@ import Data.Coerce
 import qualified Data.Foldable as F
 import Data.Massiv.Core.Common hiding (empty, replicate, singleton)
 import Data.Maybe (catMaybes)
+import qualified Data.Stream.Monadic as S
 import qualified Data.Traversable as Traversable (traverse)
-import qualified Data.Vector.Fusion.Bundle.Monadic as B
 import qualified Data.Vector.Fusion.Bundle.Size as B
-import qualified Data.Vector.Fusion.Stream.Monadic as S
 import Data.Vector.Fusion.Util
 import qualified GHC.Exts (IsList (..))
 import Prelude hiding (
@@ -237,11 +239,9 @@ steps !arr =
     PrefIndexLinear gi ->
       Steps (S.Stream step 0) (LengthExact (coerce k))
       where
-        k = totalElem $ size arr
-        step i
-          | i < k =
-              let e = gi i
-               in e `seq` pure $ S.Yield e (i + 1)
+        !k = totalElem $ size arr
+        step !i
+          | i < k = pure $ S.Yield (gi i) (i + 1)
           | otherwise = pure S.Done
         {-# INLINE [0] step #-}
 {-# INLINE [1] steps #-}
@@ -272,20 +272,6 @@ isteps !arr =
   where
     !sz = size arr
 {-# INLINE isteps #-}
-
-toBundle :: (Monad m, Index ix, Source r e) => Array r ix e -> B.Bundle m v e
-toBundle arr =
-  let Steps str k = steps arr
-   in B.fromStream str (sizeHintToBundleSize k)
-{-# INLINE toBundle #-}
-
-fromBundle :: Manifest r e => B.Bundle Id v e -> Vector r e
-fromBundle bundle = fromStream (B.sSize bundle) (B.sElems bundle)
-{-# INLINE fromBundle #-}
-
-fromBundleM :: (Monad m, Manifest r e) => B.Bundle m v e -> m (Vector r e)
-fromBundleM bundle = fromStreamM (B.sSize bundle) (B.sElems bundle)
-{-# INLINE fromBundleM #-}
 
 fromStream :: forall r e. Manifest r e => B.Size -> S.Stream Id e -> Vector r e
 fromStream sz str =
@@ -328,7 +314,7 @@ unstreamIntoM marr sz str =
 
 unstreamMax
   :: forall r e
-   . (Manifest r e)
+   . Manifest r e
   => Int
   -> S.Stream Id e
   -> Vector r e
@@ -336,21 +322,19 @@ unstreamMax kMax str =
   runST $ do
     marr <- unsafeNew (SafeSz kMax)
     k <- unstreamMaxM marr str
-    unsafeLinearShrink marr (SafeSz k) >>= unsafeFreeze Seq
+    marrShrunk <-
+      if k == kMax
+        then pure marr
+        else unsafeLinearShrink marr (SafeSz k)
+    unsafeFreeze Seq marrShrunk
 {-# INLINE unstreamMax #-}
 
 unstreamMaxM
   :: (Manifest r a, Index ix, PrimMonad m) => MArray (PrimState m) r ix a -> S.Stream Id a -> m Int
-unstreamMaxM marr (S.Stream step s) = stepLoad s 0
+unstreamMaxM marr = S.foldlM' fillAtIndex 0 . S.trans (pure . unId)
   where
-    stepLoad t i =
-      case unId (step t) of
-        S.Yield e' t' -> do
-          unsafeLinearWrite marr i e'
-          stepLoad t' (i + 1)
-        S.Skip t' -> stepLoad t' i
-        S.Done -> pure i
-    {-# INLINE stepLoad #-}
+    fillAtIndex i x = (i + 1) <$ unsafeLinearWrite marr i x
+    {-# INLINE fillAtIndex #-}
 {-# INLINE unstreamMaxM #-}
 
 unstreamUnknown :: Manifest r a => S.Stream Id a -> Vector r a
@@ -365,21 +349,20 @@ unstreamUnknownM
   => MVector (PrimState m) r a
   -> S.Stream Id a
   -> m (MVector (PrimState m) r a)
-unstreamUnknownM marrInit (S.Stream step s) = stepLoad s 0 (unSz (sizeOfMArray marrInit)) marrInit
+unstreamUnknownM marr str = do
+  (marr', k) <- S.foldlM' fillAtIndex (marr, 0) $ S.trans (pure . unId) str
+  if k < unSz (sizeOfMArray marr')
+    then unsafeLinearShrink marr' (SafeSz k)
+    else pure marr'
   where
-    stepLoad t i kMax marr
-      | i < kMax =
-          case unId (step t) of
-            S.Yield e' t' -> do
-              unsafeLinearWrite marr i e'
-              stepLoad t' (i + 1) kMax marr
-            S.Skip t' -> stepLoad t' i kMax marr
-            S.Done -> unsafeLinearShrink marr (SafeSz i)
-      | otherwise = do
-          let kMax' = max 1 (kMax * 2)
-          marr' <- unsafeLinearGrow marr (SafeSz kMax')
-          stepLoad t i kMax' marr'
-    {-# INLINE stepLoad #-}
+    fillAtIndex (!ma, !i) x = do
+      let k = unSz (sizeOfMArray ma)
+      ma' <-
+        if i < k
+          then pure ma
+          else unsafeLinearGrow ma (SafeSz (max 1 k * 2))
+      (ma', i + 1) <$ unsafeLinearWrite ma' i x
+    {-# INLINE fillAtIndex #-}
 {-# INLINE unstreamUnknownM #-}
 
 unstreamExact
@@ -906,3 +889,50 @@ toLengthMax (LengthExact n) = LengthMax n
 toLengthMax (LengthMax n) = LengthMax n
 toLengthMax LengthUnknown = LengthUnknown
 {-# INLINE toLengthMax #-}
+
+-- | Prefix scan with strict accumulator and a monadic operator
+prescanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
+prescanlM f acc ss = ss{stepsStream = S.prescanlM' f acc (stepsStream ss)}
+{-# INLINE prescanlM #-}
+
+-- | Suffix scan with a monadic operator
+postscanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
+postscanlM f acc ss = ss{stepsStream = S.postscanlM' f acc (stepsStream ss)}
+{-# INLINE postscanlM #-}
+
+-- | Suffix scan with a monadic operator
+postscanlAccM :: Monad m => (c -> b -> m (a, c)) -> c -> Steps m b -> Steps m a
+postscanlAccM f acc ss = ss{stepsStream = postscanlAccStreamM f acc (stepsStream ss)}
+{-# INLINE postscanlAccM #-}
+
+-- | Suffix scan with strict acccumulator and a monadic operator
+postscanlAccStreamM :: Monad m => (c -> b -> m (a, c)) -> c -> S.Stream m b -> S.Stream m a
+postscanlAccStreamM f w (S.Stream step t) = w `seq` S.Stream step' (t, w)
+  where
+    step' (s, x) =
+      x `seq`
+        do
+          r <- step s
+          case r of
+            S.Yield y s' -> do
+              (a, z) <- f x y
+              z `seq` return (S.Yield a (s', z))
+            S.Skip s' -> return $ S.Skip (s', x)
+            S.Done -> return S.Done
+    {-# INLINE [0] step' #-}
+{-# INLINE postscanlAccStreamM #-}
+
+-- | Haskell-style scan with a monadic operator
+scanlM :: Monad m => (a -> b -> m a) -> a -> Steps m b -> Steps m a
+scanlM f acc Steps{stepsStream, stepsSize} =
+  Steps
+    { stepsStream = S.scanlM' f acc stepsStream
+    , stepsSize = addLengthHint (LengthExact 1) stepsSize
+    }
+{-# INLINE scanlM #-}
+
+-- | Initial-value free scan over a 'Stream' with a strict accumulator
+-- and a monadic operator
+scanl1M :: Monad m => (a -> a -> m a) -> Steps m a -> Steps m a
+scanl1M f ss = ss{stepsStream = S.scanl1M' f (stepsStream ss)}
+{-# INLINE scanl1M #-}

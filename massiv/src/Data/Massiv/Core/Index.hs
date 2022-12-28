@@ -107,6 +107,7 @@ module Data.Massiv.Core.Index (
   ShapeException (..),
   guardNumberOfElements,
   indexAssert,
+  indexWith,
 ) where
 
 import Control.DeepSeq
@@ -635,7 +636,7 @@ iterLinearM_ sz !k0 !k1 !inc cond f =
 --
 -- @since 1.1.0
 #ifdef MASSIV_UNSAFE_CHECKS
-indexAssert :: (HsaCallStack, Index ix) => String -> (a -> Sz ix) -> (a -> ix -> e) -> a -> ix -> e
+indexAssert :: (HasCallStack, Index ix) => String -> (a -> Sz ix) -> (a -> ix -> e) -> a -> ix -> e
 indexAssert funName getSize f arr ix
   | isSafeIndex sz ix = f arr ix
   | otherwise = _errorIx ("<" ++ funName ++ ">") sz ix
@@ -646,6 +647,33 @@ indexAssert :: String -> (a -> Sz ix) -> (a -> ix -> e) -> a -> ix -> e
 indexAssert _funName _getSize f arr ix = f arr ix
 #endif
 {-# INLINE indexAssert #-}
+
+-- | This is used by @INDEX_CHECK@ macro and thus used whenever the @unsafe-checks@ cabal
+-- flag is on.
+--
+-- @since 0.4.0
+indexWith
+  :: Index ix
+  => String
+  -- ^ Source file name, eg. __FILE__
+  -> Int
+  -- ^ Line number in th source file, eg. __LINE__
+  -> String
+  -> (arr -> Sz ix)
+  -- ^ Get size of the array
+  -> (arr -> ix -> e)
+  -- ^ Indexing function
+  -> arr
+  -- ^ Array
+  -> ix
+  -- ^ Index
+  -> e
+indexWith fileName lineNo funName getSize f arr ix
+  | isSafeIndex sz ix = f arr ix
+  | otherwise = _errorIx ("<" ++ fileName ++ ":" ++ show lineNo ++ "> " ++ funName) sz ix
+  where
+    sz = getSize arr
+{-# DEPRECATED indexWith "In favor of `indexAssert` that uses HasCallStack" #-}
 
 -- | Helper function for throwing out of bounds error. Used by `indexAssert`
 _errorIx :: (HasCallStack, Show ix, Show ix') => String -> ix -> ix' -> a

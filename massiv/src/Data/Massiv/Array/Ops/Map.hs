@@ -345,7 +345,7 @@ zipWithA f arr1 arr2
     !sz1 = size arr1
 {-# INLINE zipWithA #-}
 
--- | Similar to `zipWith`, except does it sequentiall and using the `Applicative`. Note that
+-- | Similar to `zipWith`, except does it sequentially and using the `Applicative`. Note that
 -- resulting array has Manifest representation.
 --
 -- @since 0.3.0
@@ -400,7 +400,8 @@ izipWith3A f arr1 arr2 arr3 =
 
 -- | Traverse with an `Applicative` action over an array sequentially.
 --
--- /Note/ - using `traversePrim` will always be faster, althought not always possible.
+-- /Note/ - using `traversePrim` instead will always be significantly faster, roughly
+-- about 30 times faster in practice.
 --
 -- @since 0.2.6
 traverseA
