@@ -9,7 +9,15 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 
 | Language | Github Actions | Coveralls | Gitter.im |
 |:--------:|:--------------:|:---------:|:---------:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Build Status](https://github.com/lehins/massiv/workflows/massiv-CI/badge.svg)](https://github.com/lehins/massiv/actions) | [![Coverage Status](https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master)](https://coveralls.io/github/lehins/massiv?branch=master) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+| ![GitHub top language][GHL] | [![GA-CI][GA-B]][GA-L] | [![Coveralls][Co-B]][Co-L] | [![Gitter][Gi-B]][Gi-L]
+
+[GHL]: https://img.shields.io/github/languages/top/lehins/massiv.svg
+[GA-B]: https://github.com/lehins/massiv/workflows/massiv-CI/badge.svg?branch=master
+[GA-L]: https://github.com/lehins/massiv/actions
+[Co-B]: https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master
+[Co-L]: https://coveralls.io/github/lehins/massiv?branch=master
+[Gi-B]: https://badges.gitter.im/haskell-massiv/Lobby.svg
+[Gi-L]: https://gitter.im/haskell-massiv/Lobby
 
 |      Package       | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
