@@ -53,7 +53,7 @@ jobs:
 
     env:
       STACK_YAML: 'stack.ghc-${{ matrix.ghc }}.yaml'
-      STACK_ARGS: '--system-ghc'
+      STACK_ARGS: '--resolver=${{ matrix.resolver }} --system-ghc'
       cache-version: v7 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v3
@@ -98,7 +98,7 @@ jobs:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-20" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage --no-run-tests --haddock --no-haddock-deps
         else
           stack $STACK_ARGS test --no-run-tests --haddock --no-haddock-deps
@@ -108,7 +108,7 @@ jobs:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-20" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage
           stack $STACK_ARGS hpc report --all
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.7.0/shc-Linux-X64.tar.bz2 | tar xj shc

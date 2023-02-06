@@ -1,4 +1,5 @@
 work-dir: ".stack-work-root"
+system-ghc: true
 resolver: lts-19.33
 packages:
 - 'massiv/'
