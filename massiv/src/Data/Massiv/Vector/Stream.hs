@@ -833,14 +833,6 @@ toListN :: Monad m => S.Stream m a -> m (Int, [a])
 toListN = S.foldr (\x (i, xs) -> (i + 1, x : xs)) (0, [])
 {-# INLINE toListN #-}
 
-sizeHintToBundleSize :: LengthHint -> B.Size
-sizeHintToBundleSize =
-  \case
-    LengthExact k -> B.Exact (coerce k)
-    LengthMax k -> B.Max (coerce k)
-    LengthUnknown -> B.Unknown
-{-# INLINE sizeHintToBundleSize #-}
-
 addHint :: (Sz1 -> LengthHint) -> Int -> Int -> LengthHint
 addHint hint m n
   | k == coerce sz = hint sz

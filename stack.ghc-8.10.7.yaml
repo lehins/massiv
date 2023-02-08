@@ -1,0 +1,12 @@
+work-dir: ".stack-work-root"
+resolver: lts-18.28
+packages:
+- 'massiv/'
+- 'massiv-test/'
+flags: {}
+extra-deps:
+- scheduler-2.0.0.1@sha256:3e36c5a50536d20f03320defd64e3d3adb6309b471ae048efda7df9d54361308,2556
+- vector-stream-0.1.0.0@sha256:09b0f8dc4e51936b9d6b04791f0aa03f7c9759b5fb7140eac8a9461cda1e55a3,1404
+
+ghc-options:
+  '$everything': -haddock

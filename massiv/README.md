@@ -9,11 +9,19 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 
 | Language | Github Actions | Coveralls | Gitter.im |
 |:--------:|:--------------:|:---------:|:---------:|
-| ![GitHub top language](https://img.shields.io/github/languages/top/lehins/massiv.svg) | [![Build Status](https://github.com/lehins/massiv/workflows/massiv-CI/badge.svg)](https://github.com/lehins/massiv/actions) | [![Coverage Status](https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master)](https://coveralls.io/github/lehins/massiv?branch=master) | [![Join the chat at https://gitter.im/haskell-massiv/Lobby](https://badges.gitter.im/haskell-massiv/Lobby.svg)](https://gitter.im/haskell-massiv/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+| ![GitHub top language][GHL] | [![GA-CI][GA-B]][GA-L] | [![Coveralls][Co-B]][Co-L] | [![Gitter][Gi-B]][Gi-L]
+
+[GHL]: https://img.shields.io/github/languages/top/lehins/massiv.svg
+[GA-B]: https://github.com/lehins/massiv/workflows/massiv-CI/badge.svg?branch=master
+[GA-L]: https://github.com/lehins/massiv/actions
+[Co-B]: https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master
+[Co-L]: https://coveralls.io/github/lehins/massiv?branch=master
+[Gi-B]: https://badges.gitter.im/haskell-massiv/Lobby.svg
+[Gi-L]: https://gitter.im/haskell-massiv/Lobby
 
 |      Package       | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
-|  [`massiv`](https://github.com/lehins/massiv/tree/master/massiv)|                                       [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv)|                                                                                                        [![Nightly](https://www.stackage.org/package/massiv/badge/nightly)](https://www.stackage.org/nightly/package/massiv)| [![LTS](https://www.stackage.org/package/massiv-io/badge/lts)](https://www.stackage.org/lts/package/massiv-io)|
+|  [`massiv`](https://github.com/lehins/massiv/tree/master/massiv)|                                       [![Hackage](https://img.shields.io/hackage/v/massiv.svg)](https://hackage.haskell.org/package/massiv)|                                                                                                        [![Nightly](https://www.stackage.org/package/massiv/badge/nightly)](https://www.stackage.org/nightly/package/massiv)| [![LTS](https://www.stackage.org/package/massiv/badge/lts)](https://www.stackage.org/lts/package/massiv)|
 |  [`massiv-test`](https://github.com/lehins/massiv/tree/master/massiv-test)|                            [![Hackage](https://img.shields.io/hackage/v/massiv-test.svg)](https://hackage.haskell.org/package/massiv-test)|                                                                                              [![Nightly](https://www.stackage.org/package/massiv-test/badge/nightly)](https://www.stackage.org/nightly/package/massiv-test)|                                                                               [![LTS](https://www.stackage.org/package/massiv-test/badge/lts)](https://www.stackage.org/lts/package/massiv-test)|
 |  [`haskell-scheduler`](https://github.com/lehins/haskell-scheduler)|                                   [![Hackage](https://img.shields.io/hackage/v/scheduler.svg)](https://hackage.haskell.org/package/scheduler)|                                                                                          [![Nightly](https://www.stackage.org/package/scheduler/badge/nightly)](https://www.stackage.org/nightly/package/scheduler)|                                                                   [![LTS](https://www.stackage.org/package/scheduler/badge/lts)](https://www.stackage.org/lts/package/scheduler)|
 

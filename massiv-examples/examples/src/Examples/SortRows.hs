@@ -30,7 +30,7 @@ sortRows arr = unsafePerformIO $ do
   let comp = getComp arr
       sz@(Sz2 m n) = size arr
   withScheduler_ comp $ \scheduler ->
-    loopM_ 0 (< m) (+ 1) $ \i ->
+    loopA_ 0 (< m) (+ 1) $ \i ->
       scheduleWork scheduler $ sort $ VGM.slice (toLinearIndex sz (i :. 0)) n mv
   v :: v e <- VG.unsafeFreeze mv
   A.fromVectorM comp sz v

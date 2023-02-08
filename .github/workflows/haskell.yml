@@ -5,6 +5,8 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ master ]
+  schedule:
+    - cron: "0 5 * * 5"
 
 defaults: { run: { shell: bash } }
 
@@ -13,33 +15,33 @@ defaults: { run: { shell: bash } }
 jobs:
   massiv-test-with-stack:
     if: github.event.pull_request.head.repo.full_name != github.repository
-    name: Test with Stack
+    name: Stack
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        resolver: [lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, nightly]
+        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, nightly]
         include:
+          - resolver: lts-11
+            ghc: '8.2.2'
           - resolver: lts-12
-            ghc: 8.4.4
-            stack-yaml: stack-extra-deps.yaml
+            ghc: '8.4.4'
           - resolver: lts-14
-            ghc: 8.6.5
-            stack-yaml: stack-extra-deps.yaml
+            ghc: '8.6.5'
           - resolver: lts-16
-            ghc: 8.8.4
-            stack-yaml: stack-extra-deps.yaml
+            ghc: '8.8.4'
           - resolver: lts-18
-            ghc: 8.10.7
+            ghc: '8.10.7'
           - resolver: lts-19
-            ghc: 9.0.2
+            ghc: '9.0.2'
           - resolver: lts-20
-            stack-yaml: stack-coveralls.yaml
-            ghc: 9.2.5
+            ghc: '9.2.5'
           - resolver: nightly
-            # ghc: 9.4.3
+            ghc: '9.4.4'
         exclude:
+          - resolver: lts-12
+            os: windows-latest # internal error: evacuate: strange closure type 91016001
           - resolver: lts-14
             os: windows-latest # OOM on building Test.Massiv.VectorSpec
           - resolver: lts-16
@@ -50,13 +52,13 @@ jobs:
             os: windows-latest # Can't install ghc
 
     env:
-      STACK_YAML: stack.yaml
-      STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
+      STACK_YAML: 'stack.ghc-${{ matrix.ghc }}.yaml'
+      STACK_ARGS: '--resolver=${{ matrix.resolver }} --system-ghc'
       cache-version: v7 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
       with:
@@ -73,45 +75,43 @@ jobs:
           .stack-work-root
           massiv/.stack-work-root
           massiv-test/.stack-work-root
-        key: ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+          ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
     - name: Windows Cache
       id: cache-windows
       uses: actions/cache@v3
       if: matrix.os == 'windows-latest'
       with:
         path: |
-          C:\\Users\\RUNNER~1\\AppData\\Roaming\\stack
           C:\\Users\\RUNNER~1\\AppData\\Local\\Programs\\stack
-        key: ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
+        key: ${{ runner.os }}-${{ matrix.ghc }}-programs-${{ env.cache-version }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.resolver }}-programs-${{ env.cache-version }}
+          ${{ runner.os }}-${{ matrix.ghc }}-programs-${{ env.cache-version }}
+    - name: Reset modtime
+      run: |
+        set -ex
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/master/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        runhaskell -- git-modtime.hs -f .stack-work-root/tree-contents.txt
     - name: Build
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/c426e74aa129b7cb14e83305fd2639ccc41b03cd/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        mkdir -p .stack-work-root
-        # Windows is confused about stack's default user directory
-        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work-root/tree-contents.txt
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-14" ] && [ -n "${COVERALLS_TOKEN}" ]; then
-          stack $STACK_ARGS build massiv-test:tests --coverage --test --no-run-tests --haddock --no-haddock-deps
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+          stack $STACK_ARGS test massiv-test:tests --coverage --no-run-tests --haddock --no-haddock-deps
         else
-          stack $STACK_ARGS build --test --no-run-tests --haddock --no-haddock-deps
+          stack $STACK_ARGS test --no-run-tests --haddock --no-haddock-deps
         fi
     - name: Test
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        [ -n "${{ matrix.stack-yaml }}" ] && STACK_YAML=${{ matrix.stack-yaml }}
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-20" ] && [ -n "${COVERALLS_TOKEN}" ]; then
-          stack $STACK_ARGS test massiv-test:tests --coverage --haddock --no-haddock-deps
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+          stack $STACK_ARGS test massiv-test:tests --coverage
           stack $STACK_ARGS hpc report --all
-          curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.6.1/shc-linux-x64-9.2.5.tar.bz2 | tar xj shc
+          curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.7.0/shc-Linux-X64.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
           stack $STACK_ARGS test massiv:doctests
@@ -120,23 +120,22 @@ jobs:
 
   massiv-test-with-cabal:
     if: github.event.pull_request.head.repo.full_name != github.repository
-    name: Test with Cabal
+    name: Cabal
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # - { os: ubuntu-latest, ghc: "8.0.2" } # Problem installing ghc with ghcup
-          # - { os: ubuntu-latest, ghc: "8.2.2" } # Problem installing ghc with ghcup
+          - { os: ubuntu-latest, ghc: "8.0.2" }
+          - { os: ubuntu-latest, ghc: "8.2.2" }
           - { os: ubuntu-latest, ghc: "9.0.2" }
           - { os: ubuntu-latest, ghc: "9.2.5" }
           - { os: ubuntu-latest, ghc: "9.4.4" }
           # - { os: windows-latest, ghc: "8.0.2" } # OOM on tests
           # - { os: windows-latest, ghc: "8.2.2" } # OOM on tests
           # - { os: windows-latest, ghc: "9.0.1" } # OOM on tests
-          - { os: windows-latest, ghc: "9.2.4" }
-          # - { os: windows-latest, ghc: "9.2.5" } # Problem installing ghc with ghcup
-          # - { os: windows-latest, ghc: "9.4.4" } # Linker errors
+          - { os: windows-latest, ghc: "9.2.5" }
+          - { os: windows-latest, ghc: "9.4.4" } # Linker errors
           - { os: macOS-latest, ghc: "8.0.2" }
           - { os: macOS-latest, ghc: "8.2.2" }
           - { os: macOS-latest, ghc: "9.0.2" }
@@ -144,11 +143,11 @@ jobs:
           - { os: macOS-latest, ghc: "9.4.4" }
 
     env:
-      cache-version: v2 # bump up this version to invalidate currently stored cache
+      cache-version: v3 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
       with:
@@ -159,13 +158,18 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ~/.cabal/store
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
           massiv/dist-newstyle
           massiv-test/dist-newstyle
         key: cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
         restore-keys: |
           cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
+    - name: Reset modtime
+      run: |
+        set -ex
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/master/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        runhaskell -- git-modtime.hs -f dist-newstyle/tree-contents.txt
     - name: Build
       run: |
         set -ex
@@ -196,13 +200,12 @@ jobs:
             ghc: 8.10.7
 
     env:
-      STACK_YAML: stack.yaml
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v2 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
       with:
@@ -218,15 +221,17 @@ jobs:
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
           massiv/.stack-work-bench
           massiv-bench/.stack-work-bench
-        key: bench-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+        key: bench-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
         restore-keys: |
-          bench-${{ runner.os }}-${{ matrix.resolver }}-${{ env.cache-version }}
+          bench-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
+    - name: Reset modtime
+      run: |
+        set -ex
+        curl -sSL https://raw.githubusercontent.com/lehins/utils/master/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
+        runhaskell -- git-modtime.hs -f massiv-bench/.stack-work-bench/tree-contents.txt
     - name: Build
       run: |
         set -ex
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/c426e74aa129b7cb14e83305fd2639ccc41b03cd/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        mkdir -p .stack-work-bench
-        stack $STACK_ARGS runghc -- git-modtime.hs -f .stack-work-bench/tree-contents.txt
         cd massiv-bench
         stack $STACK_ARGS build --bench --no-run-benchmarks
 
@@ -235,36 +240,37 @@ jobs:
     if: github.event.pull_request.head.repo.full_name != github.repository
     name: Examples
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        ghc: [9.2.5]
 
     env:
-      STACK_ARGS: '--resolver lts-18.16 --system-ghc'
+      STACK_ARGS: '--system-ghc'
     steps:
-    - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v1
+    - uses: actions/checkout@v3
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
       with:
-        ghc-version: '8.10.7'
+        ghc-version: ${{ matrix.ghc }}
         enable-stack: true
         stack-version: 'latest'
-
-    - name: Extract branch name
-      shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_ACTOR}/${GITHUB_REF#refs/heads/})"
-      id: extract_branch
 
     - name: Cache
       uses: actions/cache@v3
       with:
         # A list of files, directories, and wildcard patterns to cache and restore
         path: |
-          "~/.stack"
-          "massiv-examples/.stack-work"
-          "massiv-examples/*/.stack-work"
-        # An explicit key for restoring and saving the cache
-        key: "${{ steps.extract_branch.outputs.branch }}"
-        restore-keys: "*/master"
+          ${{ steps.setup-haskell-cabal.outputs.stack-root }}
+          "massiv/.stack-work-examples"
+          "massiv-examples/.stack-work-examples"
+          "massiv-examples/*/.stack-work-examples"
+        key: bench-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
+        restore-keys: |
+          bench-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
 
     - name: Build and Test
       run: |

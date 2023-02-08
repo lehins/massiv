@@ -1,7 +1,10 @@
 work-dir: ".stack-work-root"
-resolver: lts-20.04
+resolver: lts-20.10
 packages:
 - 'massiv/'
 - 'massiv-test/'
-system-ghc: true
+flags: {}
 extra-deps: []
+
+ghc-options:
+  '$everything': -haddock
