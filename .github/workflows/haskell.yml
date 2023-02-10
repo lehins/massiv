@@ -58,6 +58,13 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # Workaround the issue on GA Ubuntu images:
+    # https://github.com/actions/runner-images/issues/7061
+    - name: Fixup ghcup
+      run: |
+        rm -f /usr/local/.ghcup/cache/ghcup-0.0.7.yaml*
+        sudo chown -R $USER /usr/local/.ghcup
+
     - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
