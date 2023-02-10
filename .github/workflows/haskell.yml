@@ -61,6 +61,7 @@ jobs:
     # Workaround the issue on GA Ubuntu images:
     # https://github.com/actions/runner-images/issues/7061
     - name: Fixup ghcup
+      if: matrix.os == 'ubuntu-latest'
       run: |
         rm -f /usr/local/.ghcup/cache/ghcup-0.0.7.yaml*
         sudo chown -R $USER /usr/local/.ghcup
