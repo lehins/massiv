@@ -36,7 +36,7 @@ jobs:
           - resolver: lts-19
             ghc: '9.0.2'
           - resolver: lts-20
-            ghc: '9.2.5'
+            ghc: '9.2.7'
           - resolver: nightly
             ghc: '9.4.4'
         exclude:
@@ -137,31 +137,23 @@ jobs:
           - { os: ubuntu-latest, ghc: "8.0.2" }
           - { os: ubuntu-latest, ghc: "8.2.2" }
           - { os: ubuntu-latest, ghc: "9.0.2" }
-          - { os: ubuntu-latest, ghc: "9.2.5" }
+          - { os: ubuntu-latest, ghc: "9.2.7" }
           - { os: ubuntu-latest, ghc: "9.4.4" }
           # - { os: windows-latest, ghc: "8.0.2" } # OOM on tests
           # - { os: windows-latest, ghc: "8.2.2" } # OOM on tests
           # - { os: windows-latest, ghc: "9.0.1" } # OOM on tests
-          - { os: windows-latest, ghc: "9.2.5" }
+          - { os: windows-latest, ghc: "9.2.7" }
           - { os: windows-latest, ghc: "9.4.4" } # Linker errors
           - { os: macOS-latest, ghc: "8.0.2" }
           - { os: macOS-latest, ghc: "8.2.2" }
           - { os: macOS-latest, ghc: "9.0.2" }
-          - { os: macOS-latest, ghc: "9.2.5" }
+          - { os: macOS-latest, ghc: "9.2.7" }
           - { os: macOS-latest, ghc: "9.4.4" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v3
-
-    # Workaround the issue on GA Ubuntu images:
-    # https://github.com/actions/runner-images/issues/7061
-    - name: Fixup ghcup
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        rm -f /usr/local/.ghcup/cache/ghcup-0.0.7.yaml*
-        sudo chown -R $USER /usr/local/.ghcup
 
     - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
