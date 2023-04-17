@@ -27,11 +27,13 @@ import Control.Monad (when)
 import Control.Monad.IO.Unlift
 import Control.Monad.Primitive
 import Control.Scheduler
+import Data.Bits (countLeadingZeros)
 import Data.Massiv.Array.Delayed.Stream
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Transform
 import Data.Massiv.Core.Common
 import Data.Massiv.Vector (scatMaybes, sunfoldrN)
+import Data.Word (Word64)
 import System.IO.Unsafe
 
 -- | Count number of occurrences of each element in the array. Results will be
@@ -192,9 +194,18 @@ quicksortInternalM_
   -> Scheduler s ()
   -> MVector s r e
   -> m ()
-quicksortInternalM_ fLT fEQ scheduler marr =
-  scheduleWork scheduler $ qsort (numWorkers scheduler) 0 (unSz (sizeOfMArray marr) - 1)
+quicksortInternalM_ fLT fEQ scheduler marr
+  | numWorkers scheduler < 2 || depthPar <= 0 = qsortSeq 0 (k - 1)
+  | otherwise = qsortPar depthPar 0 (k - 1)
   where
+    -- How deep into the search tree should we continue scheduling jobs. Constants below
+    -- were discovered imperically:
+    depthPar = min (logNumWorkers + 4) (logSize - 10)
+    k = unSz (sizeOfMArray marr)
+    -- We must use log becuase decinding into a tree creates an exponential number of jobs
+    logNumWorkers = 63 - countLeadingZeros (fromIntegral (numWorkers scheduler) :: Word64)
+    -- Using many cores on small vectors only makes things slower
+    logSize = 63 - countLeadingZeros (fromIntegral k :: Word64)
     ltSwap i j = do
       ei <- unsafeLinearRead marr i
       ej <- unsafeLinearRead marr j
@@ -212,7 +223,7 @@ quicksortInternalM_ fLT fEQ scheduler marr =
       _ <- ltSwap hi lo
       ltSwap mid hi
     {-# INLINE getPivot #-}
-    qsort !n !lo !hi =
+    qsortPar !n !lo !hi =
       when (lo < hi) $ do
         p <- getPivot lo hi
         l <- unsafeUnstablePartitionRegionM marr (`fLT` p) lo (hi - 1)
@@ -220,9 +231,16 @@ quicksortInternalM_ fLT fEQ scheduler marr =
         if n > 0
           then do
             let !n' = n - 1
-            scheduleWork scheduler $ qsort n' lo (l - 1)
-            scheduleWork scheduler $ qsort n' h hi
+            scheduleWork scheduler $ qsortPar n' lo (l - 1)
+            scheduleWork scheduler $ qsortPar n' h hi
           else do
-            qsort n lo (l - 1)
-            qsort n h hi
+            qsortSeq lo (l - 1)
+            qsortSeq h hi
+    qsortSeq !lo !hi =
+      when (lo < hi) $ do
+        p <- getPivot lo hi
+        l <- unsafeUnstablePartitionRegionM marr (`fLT` p) lo (hi - 1)
+        h <- unsafeUnstablePartitionRegionM marr (`fEQ` p) l hi
+        qsortSeq lo (l - 1)
+        qsortSeq h hi
 {-# INLINE quicksortInternalM_ #-}
