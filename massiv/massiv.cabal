@@ -22,6 +22,7 @@ tested-with:         GHC == 8.0.2
                    , GHC == 9.0.2
                    , GHC == 9.2.7
                    , GHC == 9.4.4
+                   , GHC == 9.6.1
 
 flag unsafe-checks
   description: Enable all the bounds checks for unsafe functions at the cost of
