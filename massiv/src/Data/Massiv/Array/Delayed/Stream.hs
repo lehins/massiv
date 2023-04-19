@@ -189,6 +189,10 @@ instance Load DS Ix1 e where
     S.mapM_ (uncurry uWrite) $ S.indexed $ S.transStepsId (coerce arr)
   {-# INLINE iterArrayLinearST_ #-}
 
+  unsafeLoadInto _ marr (DSArray sts) =
+    S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
+  {-# INLINE unsafeLoadInto #-}
+
   unsafeLoadIntoST marr (DSArray sts) =
     S.unstreamIntoM marr (stepsSize sts) (stepsStream sts)
   {-# INLINE unsafeLoadIntoST #-}

@@ -450,17 +450,30 @@ class (Strategy r, Shape r ix) => Load r ix e where
   -- | Load into a supplied mutable array sequentially. Returned array does not have to be
   -- the same.
   --
+  -- @since 1.0.4
+  unsafeLoadInto
+    :: Manifest r' e
+    => Scheduler s ()
+    -> MVector s r' e
+    -> Array r ix e
+    -> ST s (MArray s r' ix e)
+  unsafeLoadInto scheduler mvec arr = do
+    let sz = outerSize arr
+    mvec' <- resizeMVector mvec $ toLinearSz sz
+    iterArrayLinearWithSetST_ scheduler arr (unsafeLinearWrite mvec') (unsafeLinearSet mvec')
+    pure $ unsafeResizeMArray sz mvec'
+  {-# INLINE unsafeLoadInto #-}
+
+  -- | Load into a supplied mutable array sequentially. Returned array does not have to be
+  -- the same.
+  --
   -- @since 1.0.0
   unsafeLoadIntoST
     :: Manifest r' e
     => MVector s r' e
     -> Array r ix e
     -> ST s (MArray s r' ix e)
-  unsafeLoadIntoST mvec arr = do
-    let sz = outerSize arr
-    mvec' <- resizeMVector mvec $ toLinearSz sz
-    iterArrayLinearWithSetST_ trivialScheduler_ arr (unsafeLinearWrite mvec') (unsafeLinearSet mvec')
-    pure $ unsafeResizeMArray sz mvec'
+  unsafeLoadIntoST = unsafeLoadInto trivialScheduler_
   {-# INLINE unsafeLoadIntoST #-}
 
   -- | Same as `unsafeLoadIntoST`, but respecting computation strategy.

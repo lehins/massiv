@@ -461,7 +461,7 @@ scheduleMassivWork = scheduleWork
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`
 --
 -- @since 1.0.0
-withMassivScheduler_ :: Comp -> (Scheduler RealWorld () -> IO ()) -> IO ()
+withMassivScheduler_ :: MonadUnliftIO m => Comp -> (Scheduler RealWorld () -> m ()) -> m ()
 withMassivScheduler_ comp f =
   case comp of
     Par -> withGlobalScheduler_ globalScheduler f

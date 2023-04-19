@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Main where
 
@@ -33,23 +34,27 @@ mkGroups :: Int -> Array S Ix1 Int64 -> Benchmark
 mkGroups numCaps !vRand =
   bgroup
     (show (unSz (size vRand)))
-    [ mkGroup numCaps "random" vRand
-    , mkGroup numCaps "sorted" (A.quicksort vRand)
-    , mkGroup numCaps "reversed sorted" (A.compute (A.reverse Dim1 (A.quicksort vRand)))
-    , mkGroup numCaps "replicated" (A.replicate Seq (A.size vRand) 31415)
+    [ mkGroup numCaps "random" (A.delay vRand)
+    , mkGroup numCaps "sorted" (A.delay (A.quicksort vRand))
+    , mkGroup numCaps "reversed sorted" (A.reverse Dim1 (A.quicksort vRand))
+    , mkGroup numCaps "replicated" (A.replicate @D Seq (A.size vRand) 31415)
     ]
 
-mkGroup :: Int -> String -> Array S Ix1 Int64 -> Benchmark
+mkGroup :: (Size r, Load r Ix1 Int64) => Int -> String -> Array r Ix1 Int64 -> Benchmark
 mkGroup numCaps name !v =
   bgroup
     name
-    [ bench
-      ( "massiv/Array "
-          ++ show comp
-          ++ if comp == Seq then [] else " (min " ++ w n ++ " " ++ show s ++ ")"
-      )
-      $ nf A.quicksort (setComp comp v)
-    | (comp, n) <- (Seq, 1) : ((\n -> (ParN n, n)) <$> Prelude.take (log2i numCaps) (iterate (* 2) 2))
+    [ env (computeIO v :: IO (Vector P Int64)) $ \vec ->
+      bench
+        ( "massiv/Array "
+            ++ show comp
+            ++ if comp == Seq then [] else " (min " ++ w n ++ " " ++ show s ++ ")"
+        )
+        $ nf A.quicksort (setComp comp vec)
+    | (comp, n) <-
+        (Seq, 1)
+          : ((\n -> (ParN n, n)) <$> Prelude.take (log2i numCaps) (iterate (* 2) 2))
+          ++ [(Par, fromIntegral numCaps)]
     ]
   where
     w n = show (log2i (fromIntegral n) + 4)

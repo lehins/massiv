@@ -2,6 +2,7 @@
 
 * Improve performance of sorting algorithm and its parallelization. Fix huge slow down on
   CPUs with at least 16 cores.
+* Addition of `unsafeCopyMArrayST` and `unsafeLoadInto`
 
 # 1.0.3
 

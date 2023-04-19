@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExplicitForAll #-}
 
 -- |
@@ -11,6 +12,7 @@ module Data.Massiv.Array.Mutable.Internal (
   unsafeCreateArray,
   unsafeCreateArray_,
   unsafeCreateArrayS,
+  unsafeCopyMArrayST,
 ) where
 
 import Control.Scheduler
@@ -76,3 +78,24 @@ unsafeCreateArray_ comp sz action = do
   arr <- liftIO $ unsafeFreeze comp marr
   return arr
 {-# INLINE unsafeCreateArray_ #-}
+
+-- | Make an unsafe copy while using a scheduler
+--
+-- @since 1.0.4
+unsafeCopyMArrayST
+  :: forall r ix e s
+   . (Manifest r e, Index ix)
+  => Scheduler s ()
+  -> Array r ix e
+  -> MArray s r ix e
+  -> ST s ()
+unsafeCopyMArrayST scheduler arr marr = do
+  let !totalLength = totalElem (size arr)
+  splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
+    loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
+      scheduleWork_ scheduler $ unsafeArrayLinearCopy arr start marr start (SafeSz chunkLength)
+    let slackLength = totalLength - slackStart
+    when (slackLength > 0) $
+      scheduleWork_ scheduler $
+        unsafeArrayLinearCopy arr slackStart marr slackStart (SafeSz slackLength)
+{-# INLINE unsafeCopyMArrayST #-}

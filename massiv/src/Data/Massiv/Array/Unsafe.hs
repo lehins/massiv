@@ -50,6 +50,7 @@ module Data.Massiv.Array.Unsafe (
   unsafeCreateArray,
   unsafeCreateArray_,
   unsafeCreateArrayS,
+  unsafeCopyMArrayST,
 
   -- ** Read
   unsafeRead,

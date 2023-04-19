@@ -273,7 +273,7 @@ newMArray'
 newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
 {-# INLINE newMArray' #-}
 
--- | /O(n)/ - Make a mutable copy of a pure array. Keep in mind that both `freeze` and `thaw` trigger a
+-- | /O(n)/ - Make a mutable  of a pure array. Keep in mind that both `freeze` and `thaw` trigger a
 -- copy of the full array.
 --
 -- ==== __Example__
@@ -291,22 +291,19 @@ newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
 --   ]
 --
 -- @since 0.1.0
-thaw :: forall r ix e m. (Manifest r e, Index ix, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
+thaw
+  :: forall r ix e m
+   . (Manifest r e, Index ix, MonadIO m)
+  => Array r ix e
+  -> m (MArray RealWorld r ix e)
 thaw arr =
   liftIO $ do
-    let sz = size arr
-        totalLength = totalElem sz
-    marr <- unsafeNew sz
+    marr <- unsafeNew (size arr)
     withMassivScheduler_ (getComp arr) $ \scheduler ->
-      splitLinearly (numWorkers scheduler) totalLength $ \chunkLength slackStart -> do
-        loopA_ 0 (< slackStart) (+ chunkLength) $ \ !start ->
-          scheduleWork_ scheduler $ unsafeArrayLinearCopy arr start marr start (SafeSz chunkLength)
-        let slackLength = totalLength - slackStart
-        when (slackLength > 0) $
-          scheduleWork_ scheduler $
-            unsafeArrayLinearCopy arr slackStart marr slackStart (SafeSz slackLength)
+      stToIO $ unsafeCopyMArrayST scheduler arr marr
     pure marr
 {-# INLINE thaw #-}
+
 
 -- | Same as `thaw`, but restrict computation to sequential only.
 --
@@ -1099,8 +1096,11 @@ withMArray_
   -> (Scheduler RealWorld () -> MArray RealWorld r ix e -> m a)
   -> m (Array r ix e)
 withMArray_ arr action = do
-  marr <- thaw arr
-  withScheduler_ (getComp arr) (`action` marr)
+  marr <- liftIO $ unsafeNew (size arr)
+  withMassivScheduler_ (getComp arr) $ \scheduler -> do
+    liftIO $ runBatch_ scheduler $ \_ ->
+      stToIO $ unsafeCopyMArrayST scheduler arr marr
+    void $ action scheduler marr
   liftIO $ unsafeFreeze (getComp arr) marr
 {-# INLINE withMArray_ #-}
 
@@ -1116,7 +1116,7 @@ withLoadMArray_
   -> m (Array r ix e)
 withLoadMArray_ arr action = do
   marr <- loadArray arr
-  withScheduler_ (getComp arr) (`action` marr)
+  withMassivScheduler_ (getComp arr) (void . (`action` marr))
   liftIO $ unsafeFreeze (getComp arr) marr
 {-# INLINE [2] withLoadMArray_ #-}
 
