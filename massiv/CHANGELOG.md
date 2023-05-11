@@ -1,3 +1,8 @@
+# 1.0.4
+
+* Improve performance of sorting algorithm and its parallelization. Fix huge slow down on
+  CPUs with at least 16 cores.
+
 # 1.0.3
 
 * Deprecated `indexWith` in favor of `indexAssert`

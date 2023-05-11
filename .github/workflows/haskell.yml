@@ -139,16 +139,19 @@ jobs:
           - { os: ubuntu-latest, ghc: "9.0.2" }
           - { os: ubuntu-latest, ghc: "9.2.7" }
           - { os: ubuntu-latest, ghc: "9.4.4" }
+          - { os: ubuntu-latest, ghc: "9.6.1" }
           # - { os: windows-latest, ghc: "8.0.2" } # OOM on tests
           # - { os: windows-latest, ghc: "8.2.2" } # OOM on tests
           # - { os: windows-latest, ghc: "9.0.1" } # OOM on tests
           - { os: windows-latest, ghc: "9.2.7" }
-          - { os: windows-latest, ghc: "9.4.4" } # Linker errors
+          - { os: windows-latest, ghc: "9.4.4" }
+          - { os: windows-latest, ghc: "9.6.1" }
           - { os: macOS-latest, ghc: "8.0.2" }
           - { os: macOS-latest, ghc: "8.2.2" }
           - { os: macOS-latest, ghc: "9.0.2" }
           - { os: macOS-latest, ghc: "9.2.7" }
           - { os: macOS-latest, ghc: "9.4.4" }
+          - { os: macOS-latest, ghc: "9.6.1" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
@@ -261,7 +264,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ghc: [9.2.5]
+        ghc: [9.2.7]
 
     env:
       STACK_ARGS: '--system-ghc'
