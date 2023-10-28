@@ -178,11 +178,6 @@ jobs:
         key: cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
         restore-keys: |
           cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
-    - name: Reset modtime
-      run: |
-        set -ex
-        curl -sSL https://raw.githubusercontent.com/lehins/utils/master/haskell/git-modtime/git-modtime.hs -o git-modtime.hs
-        runhaskell -- git-modtime.hs -f dist-newstyle/tree-contents.txt
     - name: Build
       run: |
         set -ex
