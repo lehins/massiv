@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, nightly]
+        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, lts-21, nightly]
         include:
           - resolver: lts-11
             ghc: '8.2.2'
@@ -36,9 +36,11 @@ jobs:
           - resolver: lts-19
             ghc: '9.0.2'
           - resolver: lts-20
-            ghc: '9.2.7'
+            ghc: '9.2.8'
+          - resolver: lts-21
+            ghc: '9.4.7'
           - resolver: nightly
-            ghc: '9.4.4'
+            ghc: '9.6.3'
         exclude:
           - resolver: lts-11
             os: windows-latest # doctests.exe: getPermissions: does not exist
@@ -140,20 +142,23 @@ jobs:
           - { os: ubuntu-latest, ghc: "8.2.2" }
           - { os: ubuntu-latest, ghc: "9.0.2" }
           - { os: ubuntu-latest, ghc: "9.2.7" }
-          - { os: ubuntu-latest, ghc: "9.4.4" }
-          - { os: ubuntu-latest, ghc: "9.6.1" }
+          - { os: ubuntu-latest, ghc: "9.4.7" }
+          - { os: ubuntu-latest, ghc: "9.6.3" }
+          - { os: ubuntu-latest, ghc: "9.8.1" }
           # - { os: windows-latest, ghc: "8.0.2" } # OOM on tests
           # - { os: windows-latest, ghc: "8.2.2" } # OOM on tests
           # - { os: windows-latest, ghc: "9.0.1" } # OOM on tests
           - { os: windows-latest, ghc: "9.2.7" }
-          - { os: windows-latest, ghc: "9.4.4" }
-          - { os: windows-latest, ghc: "9.6.1" }
+          - { os: windows-latest, ghc: "9.4.7" }
+          - { os: windows-latest, ghc: "9.6.3" }
+          - { os: windows-latest, ghc: "9.8.1" }
           - { os: macOS-latest, ghc: "8.0.2" }
           - { os: macOS-latest, ghc: "8.2.2" }
           - { os: macOS-latest, ghc: "9.0.2" }
-          - { os: macOS-latest, ghc: "9.2.7" }
-          - { os: macOS-latest, ghc: "9.4.4" }
-          - { os: macOS-latest, ghc: "9.6.1" }
+          - { os: macOS-latest, ghc: "9.2.8" }
+          - { os: macOS-latest, ghc: "9.4.7" }
+          - { os: macOS-latest, ghc: "9.6.3" }
+          - { os: macOS-latest, ghc: "9.8.1" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
