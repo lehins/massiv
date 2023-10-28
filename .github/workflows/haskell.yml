@@ -40,6 +40,8 @@ jobs:
           - resolver: nightly
             ghc: '9.4.4'
         exclude:
+          - resolver: lts-11
+            os: windows-latest # doctests.exe: getPermissions: does not exist
           - resolver: lts-12
             os: windows-latest # internal error: evacuate: strange closure type 91016001
           - resolver: lts-14
