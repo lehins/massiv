@@ -172,6 +172,10 @@ instance Uniform Ix2 where
 instance UniformRange Ix2 where
   uniformRM (l1 :. l2, u1 :. u2) g = (:.) <$> uniformRM (l1, u1) g <*> uniformRM (l2, u2) g
   {-# INLINE uniformRM #-}
+#if MIN_VERSION_random(1,3,0)
+  isInRange (l1 :. l2, u1 :. u2) (i1 :. i2) =
+    isInRangeOrd (l1, u1) i1 && isInRangeOrd (l2, u2) i2
+#endif
 
 instance Random Ix2
 
@@ -182,6 +186,10 @@ instance Uniform (Ix (n - 1)) => Uniform (IxN n) where
 instance UniformRange (Ix (n - 1)) => UniformRange (IxN n) where
   uniformRM (l1 :> l2, u1 :> u2) g = (:>) <$> uniformRM (l1, u1) g <*> uniformRM (l2, u2) g
   {-# INLINE uniformRM #-}
+#if MIN_VERSION_random(1,3,0)
+  isInRange (l1 :> l2, u1 :> u2) (i1 :> i2) =
+    isInRangeOrd (l1, u1) i1 && isInRange (l2, u2) i2
+#endif
 
 instance Random (Ix (n - 1)) => Random (IxN n) where
   random g =
