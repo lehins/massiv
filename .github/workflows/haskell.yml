@@ -10,7 +10,10 @@ on:
 
 defaults: { run: { shell: bash } }
 
-
+# Cancel running actions when a new action on the same PR is started
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   massiv-test-with-stack:
