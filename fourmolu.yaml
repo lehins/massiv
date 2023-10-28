@@ -12,3 +12,4 @@ in-style: right-align
 unicode: never
 respectful: true
 fixities: []
+single-constraint-parens: never

@@ -143,6 +143,9 @@ instance (UniformRange ix, Index ix) => Uniform (Sz ix) where
 instance UniformRange ix => UniformRange (Sz ix) where
   uniformRM (SafeSz l, SafeSz u) g = SafeSz <$> uniformRM (l, u) g
   {-# INLINE uniformRM #-}
+#if MIN_VERSION_random(1,3,0)
+  isInRange (SafeSz l, SafeSz u) (SafeSz k) = isInRange (l, u) k
+#endif
 
 instance (UniformRange ix, Index ix) => Random (Sz ix)
 
@@ -365,6 +368,9 @@ instance Uniform Dim where
 
 instance UniformRange Dim where
   uniformRM r g = Dim <$> uniformRM (coerce r) g
+#if MIN_VERSION_random(1,3,0)
+  isInRange = isInRangeOrd
+#endif
 
 instance Random Dim
 
@@ -736,7 +742,7 @@ class
   -- @since 1.0.2
   iterF :: ix -> ix -> ix -> (Int -> Int -> Bool) -> f a -> (ix -> f a -> f a) -> f a
   default iterF
-    :: (Index (Lower ix))
+    :: Index (Lower ix)
     => ix
     -> ix
     -> ix
@@ -758,7 +764,7 @@ class
   -- @since 0.1.0
   stepNextMF :: ix -> ix -> ix -> (Int -> Int -> Bool) -> (Maybe ix -> f a) -> f a
   default stepNextMF
-    :: (Index (Lower ix))
+    :: Index (Lower ix)
     => ix
     -> ix
     -> ix
