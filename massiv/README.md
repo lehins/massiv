@@ -12,8 +12,8 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 | ![GitHub top language][GHL] | [![GA-CI][GA-B]][GA-L] | [![Coveralls][Co-B]][Co-L] | [![Gitter][Gi-B]][Gi-L]
 
 [GHL]: https://img.shields.io/github/languages/top/lehins/massiv.svg
-[GA-B]: https://github.com/lehins/massiv/workflows/massiv-CI/badge.svg?branch=master
-[GA-L]: https://github.com/lehins/massiv/actions
+[GA-B]: https://github.com/lehins/massiv/actions/workflows/haskell.yml/badge.svg?branch=master
+[GA-L]: https://github.com/lehins/massiv/actions/workflows/haskell.yml
 [Co-B]: https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master
 [Co-L]: https://coveralls.io/github/lehins/massiv?branch=master
 [Gi-B]: https://badges.gitter.im/haskell-massiv/Lobby.svg
