@@ -317,7 +317,7 @@ randomArray
   -> Sz ix
   -- ^ Resulting size of the array.
   -> Array DL ix e
-randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothing load
+randomArray gen splitGen' nextRandom comp sz = unsafeMakeLoadArray comp sz Nothing load
   where
     !totalLength = totalElem sz
     load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
@@ -332,7 +332,7 @@ randomArray gen splitGen nextRandom comp sz = unsafeMakeLoadArray comp sz Nothin
             let (genI0, genI1) =
                   if numWorkers scheduler == 1
                     then (genI, genI)
-                    else splitGen genI
+                    else splitGen' genI
             scheduleWork_ scheduler $
               void $
                 loopM start (< start + chunkLength) (+ 1) genI0 writeRandom

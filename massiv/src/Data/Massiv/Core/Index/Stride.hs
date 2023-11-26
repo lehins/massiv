@@ -72,6 +72,9 @@ instance (UniformRange ix, Index ix) => Uniform (Stride ix) where
 instance UniformRange ix => UniformRange (Stride ix) where
   uniformRM (SafeStride l, SafeStride u) g = SafeStride <$> uniformRM (l, u) g
   {-# INLINE uniformRM #-}
+#if MIN_VERSION_random(1,3,0)
+  isInRange (SafeStride l, SafeStride u) (SafeStride k) = isInRange (l, u) k
+#endif
 
 instance (UniformRange ix, Index ix) => Random (Stride ix)
 
