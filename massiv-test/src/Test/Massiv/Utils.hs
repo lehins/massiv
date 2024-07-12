@@ -7,8 +7,8 @@
 module Test.Massiv.Utils (
   showsType,
   showsArrayType,
-  assertException,
-  assertExceptionIO,
+  assertDeepException,
+  assertDeepExceptionIO,
   assertSomeException,
   assertSomeExceptionIO,
   toStringException,
@@ -61,34 +61,8 @@ showsArrayType :: forall r ix e. (Typeable r, Typeable ix, Typeable e) => ShowS
 showsArrayType =
   ("Array " ++) . showsType @r . (" (" ++) . showsType @ix . (") " ++) . showsType @e
 
-assertException
-  :: (Testable b, NFData a, Exception exc)
-  => (exc -> b)
-  -- ^ Return True if that is the exception that was expected
-  -> a
-  -- ^ Value that should throw an exception, when fully evaluated
-  -> Property
-assertException isExc = assertExceptionIO isExc . pure
-
 assertSomeException :: NFData a => a -> Property
 assertSomeException = assertSomeExceptionIO . pure
-
-assertExceptionIO
-  :: (Testable b, NFData a, Exception exc)
-  => (exc -> b)
-  -- ^ Return True if that is the exception that was expected
-  -> IO a
-  -- ^ IO Action that should throw an exception
-  -> Property
-assertExceptionIO isExc action =
-  monadicIO $
-    run $
-      catch
-        ( do
-            res <- action
-            res `deepseq` return (counterexample "Did not receive an exception" False)
-        )
-        (\exc -> displayException exc `deepseq` return (property (isExc exc)))
 
 assertSomeExceptionIO :: NFData a => IO a -> Property
 assertSomeExceptionIO action =
@@ -100,6 +74,35 @@ assertSomeExceptionIO action =
             res `deepseq` return (counterexample "Did not receive an exception" False)
         )
         (\exc -> displayException exc `deepseq` return (property True))
+
+#if !MIN_VERSION_QuickCheck(2,15,0)
+assertDeepException
+  :: (Testable b, NFData a, Exception exc)
+  => (exc -> b)
+  -- ^ Return True if that is the exception that was expected
+  -> a
+  -- ^ Value that should throw an exception, when fully evaluated
+  -> Property
+assertDeepException isExc = assertDeepExceptionIO isExc . pure
+
+assertDeepExceptionIO
+  :: (Testable b, NFData a, Exception exc)
+  => (exc -> b)
+  -- ^ Return True if that is the exception that was expected
+  -> IO a
+  -- ^ IO Action that should throw an exception
+  -> Property
+assertDeepExceptionIO isExc action =
+  monadicIO $
+    run $
+      catch
+        ( do
+            res <- action
+            res `deepseq` return (counterexample "Did not receive an exception" False)
+        )
+        (\exc -> displayException exc `deepseq` return (property (isExc exc)))
+
+#endif
 
 toStringException :: Either SomeException a -> Either String a
 toStringException = either (Left . displayException) Right
@@ -130,7 +133,7 @@ expectProp = monadicIO . run
 -- | Convert a Testable to a quickcheck Property. Works well with hspec expectations as well
 --
 -- @since 1.7.0
-propIO :: (Testable a) => IO a -> Property
+propIO :: Testable a => IO a -> Property
 propIO action = monadicIO $ run action
 
 epsilonExpect

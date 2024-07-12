@@ -275,17 +275,17 @@ prop_PullOutInsert (DimIx dim) ix =
 prop_getDimException :: (Typeable ix, Index ix) => Dim -> ix -> Property
 prop_getDimException d ix =
   (d <= 0 || d > dimensions (Just ix))
-    ==> assertExceptionIO (== IndexDimensionException ix d) (getDimM ix d)
+    ==> assertDeepExceptionIO (== IndexDimensionException ix d) (getDimM ix d)
 
 prop_setDimException :: (Typeable ix, Index ix) => Dim -> ix -> Int -> Property
 prop_setDimException d ix i =
   (d <= 0 || d > dimensions (Just ix))
-    ==> assertExceptionIO (== IndexDimensionException ix d) (setDimM ix d i)
+    ==> assertDeepExceptionIO (== IndexDimensionException ix d) (setDimM ix d i)
 
 prop_PullOutDimException :: (Typeable ix, Index ix) => Dim -> ix -> Property
 prop_PullOutDimException d ix =
   (d <= 0 || d > dimensions (Just ix))
-    ==> assertExceptionIO (== IndexDimensionException ix d) (pullOutDimM ix d)
+    ==> assertDeepExceptionIO (== IndexDimensionException ix d) (pullOutDimM ix d)
 
 prop_InsertDimException
   :: forall ix
@@ -295,7 +295,7 @@ prop_InsertDimException
   -> Int
   -> Property
 prop_InsertDimException d ix i =
-  (d <= 0 || d > dimensions resIO) ==> assertExceptionIO (== IndexDimensionException ix d) resIO
+  (d <= 0 || d > dimensions resIO) ==> assertDeepExceptionIO (== IndexDimensionException ix d) resIO
   where
     resIO = insertDimM ix d i :: IO ix
 
@@ -479,7 +479,7 @@ ixSpec = do
   describe "NFData" $ do
     it "rnf" $ property $ \(ix :: ix) -> rnf ix `shouldBe` ()
     it "throws exception" $ property $ \(DimIx d :: DimIx ix) (ix :: ix) ->
-      assertException (== ExpectedException) (setDim' ix d (throw ExpectedException))
+      assertDeepException (== ExpectedException) (setDim' ix d (throw ExpectedException))
 
 ix2UpSpec
   :: forall ix
@@ -516,7 +516,7 @@ szNumSpec = do
     prop "negate (throws error on non-zero)" $ \sz ->
       sz
         /= zeroSz
-        ==> assertException
+        ==> assertDeepException
           (\(ErrorCallWithLocation err loc) -> err `deepseq` loc `deepseq` True)
           (negate sz :: Sz ix)
 

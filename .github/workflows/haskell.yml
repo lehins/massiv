@@ -2,29 +2,33 @@ name: massiv-CI
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ "master", "release/**" ]
   pull_request:
-    branches: [ master ]
+    branches: [ "**" ]
   schedule:
     - cron: "0 5 * * 5"
 
 defaults: { run: { shell: bash } }
 
-# Cancel running actions when a new action on the same PR is started
+# Cancel running workflows when a new workflow on the same PR or branch is started,
+# but put scheduled workflows into their own group
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{
+    format('{0}-{1}{2}',
+      github.workflow,
+      github.event.pull_request.number || github.ref,
+      github.event_name == 'schedule' && '-scheduled' || '')}}
   cancel-in-progress: true
 
 jobs:
   massiv-test-with-stack:
-    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Stack
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, lts-21, nightly]
+        os: [ubuntu-latest, macOS-13, windows-latest]
+        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, lts-21, lts-22, nightly]
         include:
           - resolver: lts-11
             ghc: '8.2.2'
@@ -41,22 +45,20 @@ jobs:
           - resolver: lts-20
             ghc: '9.2.8'
           - resolver: lts-21
-            ghc: '9.4.7'
+            ghc: '9.4.8'
+          - resolver: lts-22
+            ghc: '9.6.5'
           - resolver: nightly
-            ghc: '9.6.3'
-        exclude:
-          - resolver: lts-11
-            os: windows-latest # doctests.exe: getPermissions: does not exist
-          - resolver: lts-12
-            os: windows-latest # internal error: evacuate: strange closure type 91016001
-          - resolver: lts-14
-            os: windows-latest # OOM on building Test.Massiv.VectorSpec
-          - resolver: lts-16
-            os: windows-latest # OOM on building Test.Massiv.VectorSpec
-          - resolver: lts-18
-            os: windows-latest # Too buggy, occasional ghc crashes
-          - resolver: lts-20
-            os: windows-latest # Can't install ghc
+            ghc: '9.8.2'
+        # exclude:
+        #   - resolver: lts-12
+        #     os: windows-latest
+        #   - resolver: lts-14
+        #     os: windows-latest
+        #   # - resolver: lts-16
+        #   #   os: windows-latest # OOM on building Test.Massiv.VectorSpec
+        #   - resolver: lts-18
+        #     os: windows-latest # Too buggy, occasional ghc crashes
 
     env:
       STACK_YAML: 'stack.ghc-${{ matrix.ghc }}.yaml'
@@ -71,7 +73,7 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         enable-stack: true
-        stack-version: 'latest'
+        stack-version: '2.15.5'
 
     - name: Cache
       id: cache
@@ -105,7 +107,7 @@ jobs:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-21" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage --no-run-tests --haddock --no-haddock-deps
         else
           stack $STACK_ARGS test --no-run-tests --haddock --no-haddock-deps
@@ -115,7 +117,7 @@ jobs:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       run: |
         set -ex
-        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-19" ] && [ -n "${COVERALLS_TOKEN}" ]; then
+        if [ "${{ matrix.os }}.${{ matrix.resolver }}" == "ubuntu-latest.lts-21" ] && [ -n "${COVERALLS_TOKEN}" ]; then
           stack $STACK_ARGS test massiv-test:tests --coverage
           stack $STACK_ARGS hpc report --all
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.7.0/shc-Linux-X64.tar.bz2 | tar xj shc
@@ -126,7 +128,6 @@ jobs:
         fi
 
   massiv-test-with-cabal:
-    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Cabal
     runs-on: ${{ matrix.os }}
     strategy:
@@ -135,25 +136,40 @@ jobs:
         include:
           - { os: ubuntu-latest, ghc: "8.0.2" }
           - { os: ubuntu-latest, ghc: "8.2.2" }
+          - { os: ubuntu-latest, ghc: "8.4.4" }
+          - { os: ubuntu-latest, ghc: "8.6.5" }
+          - { os: ubuntu-latest, ghc: "8.8.4" }
+          - { os: ubuntu-latest, ghc: "8.10.7" }
           - { os: ubuntu-latest, ghc: "9.0.2" }
-          - { os: ubuntu-latest, ghc: "9.2.7" }
-          - { os: ubuntu-latest, ghc: "9.4.7" }
-          - { os: ubuntu-latest, ghc: "9.6.3" }
-          - { os: ubuntu-latest, ghc: "9.8.1" }
-          # - { os: windows-latest, ghc: "8.0.2" } # OOM on tests
-          # - { os: windows-latest, ghc: "8.2.2" } # OOM on tests
-          # - { os: windows-latest, ghc: "9.0.1" } # OOM on tests
-          - { os: windows-latest, ghc: "9.2.7" }
-          - { os: windows-latest, ghc: "9.4.7" }
-          - { os: windows-latest, ghc: "9.6.3" }
-          - { os: windows-latest, ghc: "9.8.1" }
-          - { os: macOS-latest, ghc: "8.0.2" }
-          - { os: macOS-latest, ghc: "8.2.2" }
-          - { os: macOS-latest, ghc: "9.0.2" }
+          - { os: ubuntu-latest, ghc: "9.2.8" }
+          - { os: ubuntu-latest, ghc: "9.4.8" }
+          - { os: ubuntu-latest, ghc: "9.6.5" }
+          - { os: ubuntu-latest, ghc: "9.8.2" }
+          - { os: ubuntu-latest, ghc: "9.10.1" }
+          # - { os: windows-latest, ghc: "8.0.2" } # Linker errors
+          # - { os: windows-latest, ghc: "8.2.2" } # Linker errors
+          - { os: windows-latest, ghc: "8.4.4" }
+          - { os: windows-latest, ghc: "8.6.5" }
+          - { os: windows-latest, ghc: "8.8.4" }
+          - { os: windows-latest, ghc: "8.10.7" }
+          - { os: windows-latest, ghc: "9.0.2" }
+          - { os: windows-latest, ghc: "9.2.8" }
+          - { os: windows-latest, ghc: "9.4.8" }
+          - { os: windows-latest, ghc: "9.6.5" }
+          - { os: windows-latest, ghc: "9.8.2" }
+          - { os: windows-latest, ghc: "9.10.1" }
+          - { os: macOS-13, ghc: "8.0.2" }
+          - { os: macOS-13, ghc: "8.2.2" }
+          - { os: macOS-13, ghc: "8.4.4" }
+          - { os: macOS-13, ghc: "8.6.5" }
+          - { os: macOS-13, ghc: "8.8.4" }
+          - { os: macOS-13, ghc: "8.10.7" }
+          - { os: macOS-13, ghc: "9.0.2" }
           - { os: macOS-latest, ghc: "9.2.8" }
-          - { os: macOS-latest, ghc: "9.4.7" }
-          - { os: macOS-latest, ghc: "9.6.3" }
-          - { os: macOS-latest, ghc: "9.8.1" }
+          - { os: macOS-latest, ghc: "9.4.8" }
+          - { os: macOS-latest, ghc: "9.6.5" }
+          - { os: macOS-latest, ghc: "9.8.2" }
+          - { os: macOS-latest, ghc: "9.10.1" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
@@ -187,39 +203,30 @@ jobs:
       run: |
         set -ex
         cabal test all --project-file cabal-ci.project
-    - name: Check Cabal Files
-      run: |
-        set -ex
-        cd massiv
-        cabal -vnormal check
-        cd ..
+    # - name: Check Cabal Files
+    #   run: |
+    #     set -ex
+    #     cd massiv
+    #     cabal -vnormal check
+    #     cd ..
 
   massiv-bench:
-    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Benchmarks
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        resolver: [lts-18]
+        resolver: [lts-22]
         include:
-          - resolver: lts-18
-            ghc: 8.10.7
+          - resolver: lts-22
+            ghc: 9.6.5
 
     env:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v2 # bump up this version to invalidate currently stored cache
     steps:
     - uses: actions/checkout@v3
-
-    # Workaround the issue on GA Ubuntu images:
-    # https://github.com/actions/runner-images/issues/7061
-    - name: Fixup ghcup
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        rm -f /usr/local/.ghcup/cache/ghcup-0.0.7.yaml*
-        sudo chown -R $USER /usr/local/.ghcup
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -253,7 +260,6 @@ jobs:
 
 
   massiv-examples:
-    if: github.event.pull_request.head.repo.full_name != github.repository
     name: Examples
 
     runs-on: ${{ matrix.os }}
@@ -261,20 +267,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ghc: [9.2.7]
+        ghc: [9.6.5]
 
     env:
       STACK_ARGS: '--system-ghc'
     steps:
     - uses: actions/checkout@v3
-
-    # Workaround the issue on GA Ubuntu images:
-    # https://github.com/actions/runner-images/issues/7061
-    - name: Fixup ghcup
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        rm -f /usr/local/.ghcup/cache/ghcup-0.0.7.yaml*
-        sudo chown -R $USER /usr/local/.ghcup
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal

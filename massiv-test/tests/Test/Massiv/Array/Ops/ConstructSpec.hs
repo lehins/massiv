@@ -23,7 +23,7 @@ prop_rangeStepEqEnumFromStepN from (NonZero step) sz =
 
 prop_rangeStepExc :: Int -> Int -> Property
 prop_rangeStepExc from to =
-  assertException
+  assertDeepException
     selectErrorCall
     (computeAs U (rangeStep' Seq from 0 to))
 

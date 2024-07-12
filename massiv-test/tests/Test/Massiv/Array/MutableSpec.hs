@@ -126,7 +126,7 @@ prop_Write arr ix e =
       marr <- thaw arr
       A.read marr ix >>= \case
         Nothing ->
-          let withExcept = assertExceptionIO (== IndexOutOfBoundsException (size arr) ix)
+          let withExcept = assertDeepExceptionIO (== IndexOutOfBoundsException (size arr) ix)
            in pure
                 ( withExcept (writeM marr ix e)
                     .&&. (write marr ix e `shouldReturn` False)
@@ -160,7 +160,7 @@ prop_Modify arr f ix =
       marr <- thaw arr
       modify marr (pure . apply f) ix >>= \case
         Nothing ->
-          let withExcept = assertExceptionIO (== IndexOutOfBoundsException (size arr) ix)
+          let withExcept = assertDeepExceptionIO (== IndexOutOfBoundsException (size arr) ix)
            in pure
                 ( withExcept (void $ indexM arr ix)
                     .&&. withExcept (void $ readM marr ix)
@@ -199,7 +199,7 @@ prop_Swap arr ix1 ix2 =
       swap marr ix1 ix2 >>= \case
         Nothing ->
           let withExcept =
-                assertExceptionIO
+                assertDeepExceptionIO
                   ( \case
                       IndexOutOfBoundsException _ _ -> True
                       _ -> False
