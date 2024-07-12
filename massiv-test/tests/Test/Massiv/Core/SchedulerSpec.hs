@@ -11,7 +11,7 @@ import Prelude as P
 -- | Ensure proper exception handling.
 prop_CatchDivideByZero :: ArrIx D Ix2 Int -> [Int] -> Property
 prop_CatchDivideByZero (ArrIx arr ix) caps =
-  assertException
+  assertDeepException
     (== DivideByZero)
     ( A.sum $
         A.imap
@@ -26,7 +26,7 @@ prop_CatchDivideByZero (ArrIx arr ix) caps =
 -- | Ensure proper exception handling in nested parallel computation
 prop_CatchNested :: ArrIx D Ix1 (ArrIx D Ix1 Int) -> [Int] -> Property
 prop_CatchNested (ArrIx arr ix) caps =
-  assertException
+  assertDeepException
     (== DivideByZero)
     ( computeAs U $
         A.map A.sum $

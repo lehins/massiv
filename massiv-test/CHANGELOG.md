@@ -1,3 +1,9 @@
+# 1.1.0
+
+* Rename `assertException` to `assertDeepException` and `assertExceptionIO` to
+  `assertDeepExceptionIO` in order to match functions that were released in
+  `QuickCheck-2.15`
+
 # 1.0.0
 
 * Support for massiv-1.0.0.0

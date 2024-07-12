@@ -106,7 +106,7 @@ prop_ConcatMconcat arrs =
 prop_ExtractSizeMismatch
   :: (Size r, Load r ix e, NFData (Array r Int e)) => ArrTiny r ix e -> Positive Int -> Property
 prop_ExtractSizeMismatch (ArrTiny arr) (Positive n) =
-  assertExceptionIO (SizeElementsMismatchException sz sz' ==) $ resizeM sz' arr
+  assertDeepExceptionIO (SizeElementsMismatchException sz sz' ==) $ resizeM sz' arr
   where
     sz = size arr
     sz' = Sz (totalElem sz + n)

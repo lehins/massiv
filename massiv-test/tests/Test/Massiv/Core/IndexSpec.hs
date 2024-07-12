@@ -167,6 +167,6 @@ spec = do
   specSz @Ix5
   describe "NFData Border" $ do
     it "Fill exception" $
-      assertException (ExpectedException ==) (Fill (throw ExpectedException :: Int))
+      assertDeepException (ExpectedException ==) (Fill (throw ExpectedException :: Int))
     it "rnf" $ property $ \(b :: Border Int) -> rnf b `shouldBe` ()
   specLaws $ eqLaws (Proxy @(Border Int))
