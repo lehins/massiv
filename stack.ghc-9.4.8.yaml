@@ -1,5 +1,6 @@
 work-dir: ".stack-work-root"
-resolver: nightly-2023-02-04
+resolver: lts-21.25
+system-ghc: true
 packages:
 - 'massiv/'
 - 'massiv-test/'
