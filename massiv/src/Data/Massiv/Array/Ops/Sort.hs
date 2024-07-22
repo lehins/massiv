@@ -199,7 +199,7 @@ quicksortInternalM_ fLT fEQ scheduler marr
   | otherwise = qsortPar depthPar 0 (k - 1)
   where
     -- How deep into the search tree should we continue scheduling jobs. Constants below
-    -- were discovered imperically:
+    -- were discovered empirically:
     depthPar = min (logNumWorkers + 4) (logSize - 10)
     k = unSz (sizeOfMArray marr)
     -- We must use log becuase decinding into a tree creates an exponential number of jobs
