@@ -17,7 +17,7 @@ The name for this library comes from the Russian word Massiv (Масси́в), w
 [Co-B]: https://coveralls.io/repos/github/lehins/massiv/badge.svg?branch=master
 [Co-L]: https://coveralls.io/github/lehins/massiv?branch=master
 [Gi-B]: https://badges.gitter.im/haskell-massiv/Lobby.svg
-[Gi-L]: https://gitter.im/haskell-massiv/Lobby
+[Gi-L]: https://app.gitter.im/#/room/#haskell-massiv_Lobby:gitter.im
 
 |      Package       | Hackage | Nightly | LTS |
 |:-------------------|:-------:|:-------:|:---:|
