@@ -50,11 +50,11 @@ jobs:
             ghc: '9.6.5'
           - resolver: nightly
             ghc: '9.8.2'
-        # exclude:
-        #   - resolver: lts-12
-        #     os: windows-latest
-        #   - resolver: lts-14
-        #     os: windows-latest
+        exclude:
+          - resolver: lts-12 # Due to occasional: "permission denied (Access is denied.)"
+            os: windows-latest
+          - resolver: lts-14 # Due to occasional: "permission denied (Access is denied.)"
+            os: windows-latest
         #   # - resolver: lts-16
         #   #   os: windows-latest # OOM on building Test.Massiv.VectorSpec
         #   - resolver: lts-18
