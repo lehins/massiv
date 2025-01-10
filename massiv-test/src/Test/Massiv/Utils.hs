@@ -38,11 +38,17 @@ import Data.Maybe as X (fromMaybe, isJust, isNothing)
 import Data.Typeable as X
 import Test.Hspec as X
 import Test.Hspec.QuickCheck as X
-import Test.QuickCheck as X hiding ((.&.))
 import Test.QuickCheck.Classes.Base as X
+import Test.QuickCheck as X hiding ((.&.))
 import Test.QuickCheck.Function as X
+import UnliftIO.Exception (Exception (..), SomeException, catchAny)
+#if !MIN_VERSION_QuickCheck(2,15,0)
 import Test.QuickCheck.Monadic as X
-import UnliftIO.Exception (Exception (..), SomeException, catch, catchAny)
+import UnliftIO.Exception (catch)
+#else
+import Test.QuickCheck.Monadic (assertDeepException, assertDeepExceptionIO)
+import Test.QuickCheck.Monadic as X hiding (assertDeepException, assertDeepExceptionIO)
+#endif
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup as X ((<>))
 #endif
@@ -108,8 +114,7 @@ toStringException :: Either SomeException a -> Either String a
 toStringException = either (Left . displayException) Right
 
 selectErrorCall :: ErrorCall -> Bool
-selectErrorCall = \case
-  ErrorCallWithLocation err loc -> err `deepseq` loc `deepseq` True
+selectErrorCall (ErrorCall err) = err `deepseq` True
 
 data ExpectedException = ExpectedException deriving (Show, Eq)
 

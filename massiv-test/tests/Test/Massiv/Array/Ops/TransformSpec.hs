@@ -9,7 +9,7 @@
 
 module Test.Massiv.Array.Ops.TransformSpec (spec) where
 
-import Data.Foldable as F (foldl', toList)
+import qualified Data.Foldable as F
 import Data.Massiv.Array as A
 import Data.Maybe
 import Data.Sequence as S
@@ -289,8 +289,8 @@ preJust m = isJust m ==> fromJust m
 
 prop_ConsSnoc :: Array D Ix1 Int -> [SeqOp Int] -> Property
 prop_ConsSnoc arr ops =
-  A.toList (computeAs U (foldl' applyArraySeqOp (toLoadArray arr) ops))
-    === F.toList (foldl' applySequenceSeqOp (S.fromList (A.toList arr)) ops)
+  A.toList (computeAs U (F.foldl' applyArraySeqOp (toLoadArray arr) ops))
+    === F.toList (F.foldl' applySequenceSeqOp (S.fromList (A.toList arr)) ops)
 
 data SeqOp e = Cons e | Snoc e deriving (Eq, Show)
 
