@@ -48,9 +48,12 @@ prop_toFromList _ arr = comp === comp' .&&. arr === arr'
 
 prop_excFromToListIx2 :: Comp -> [[Int]] -> Property
 prop_excFromToListIx2 comp ls2 =
-  if P.null lsL || P.all (head lsL ==) lsL
-    then label "Expected Success" $ resultLs === ls2
-    else label "Expected Failure" $ assertSomeException resultLs
+  case lsL of
+    [] -> label "Expected Success" $ resultLs === ls2
+    (x : xs)
+      | P.all (x ==) xs ->
+          label "Expected Success" $ resultLs === ls2
+    _ -> label "Expected Failure" $ assertSomeException resultLs
   where
     lsL = P.map P.length ls2
     resultLs = toLists (fromLists' comp ls2 :: Array U Ix2 Int)
@@ -59,7 +62,9 @@ prop_excFromToListIx3 :: Comp -> [[[Int]]] -> Property
 prop_excFromToListIx3 comp ls3
   | P.null (P.concat (P.concat ls3)) =
       classify True "Expected Success" $ counterexample (show arr) $ totalElem (size arr) === 0
-  | P.all (head lsL ==) lsL && P.all (P.all (head (head lsLL) ==)) lsLL =
+  | (xL : xsL) <- lsL
+  , ((xLL : _) : _) <- lsLL
+  , P.all (xL ==) xsL && P.all (P.all (xLL ==)) lsLL =
       classify True "Expected Success" $ counterexample (show arr) $ resultLs === ls3
   | otherwise = classify True "Expected Failure" $ assertSomeException resultLs
   where
