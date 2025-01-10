@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- |
 -- Module      : Data.Massiv.Core.Index.Ix
@@ -50,6 +51,7 @@ import qualified Data.Vector.Generic.Mutable as VM
 import qualified Data.Vector.Unboxed as VU
 import qualified GHC.Arr as I
 import GHC.TypeLits
+import GHC.Generics 
 import System.Random.Stateful
 #if !MIN_VERSION_base(4,11,0)
 import Data.Semigroup
@@ -60,7 +62,7 @@ infixr 5 :>, :.
 -- | 2-dimensional index. This is also a base index for higher dimensions.
 --
 -- @since 0.1.0
-data Ix2 = {-# UNPACK #-} !Int :. {-# UNPACK #-} !Int
+data Ix2 = {-# UNPACK #-} !Int :. {-# UNPACK #-} !Int deriving Generic
 
 -- | 2-dimensional index constructor. Useful when infix notation is inconvenient. @(Ix2 i j) == (i :. j)@
 --
@@ -145,7 +147,7 @@ pattern Sz5 i5 i4 i3 i2 i1 = Sz (i5 :> i4 :> i3 :> i2 :. i1)
 -- | n-dimensional index. Needs a base case, which is the `Ix2`.
 --
 -- @since 0.1.0
-data IxN (n :: Nat) = {-# UNPACK #-} !Int :> !(Ix (n - 1))
+data IxN (n :: Nat) = {-# UNPACK #-} !Int :> !(Ix (n - 1)) deriving Generic
 
 -- | Defines n-dimensional index by relating a general `IxN` with few base cases.
 --
