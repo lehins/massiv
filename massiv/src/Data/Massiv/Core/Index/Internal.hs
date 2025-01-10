@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 
 -- |
@@ -74,6 +75,7 @@ import Data.Kind
 import Data.Massiv.Core.Loop
 import Data.Typeable
 import GHC.TypeLits
+import GHC.Generics
 import System.Random.Stateful
 
 -- | `Sz` is the size of the array. It describes total number of elements along
@@ -113,7 +115,7 @@ newtype Sz ix
     --
     -- @since 0.3.0
     SafeSz ix
-  deriving (Eq, Ord, NFData)
+  deriving (Eq, Ord, NFData, Generic)
 
 -- | A safe bidirectional pattern synonym for `Sz` construction that will make sure that none of
 -- the size elements are negative.
@@ -135,6 +137,7 @@ pattern Sz1 ix <- SafeSz ix
     Sz1 ix = SafeSz (max 0 ix)
 
 {-# COMPLETE Sz1 #-}
+
 
 instance (UniformRange ix, Index ix) => Uniform (Sz ix) where
   uniformM g = SafeSz <$> uniformRM (pureIndex 0, pureIndex maxBound) g
@@ -355,7 +358,7 @@ pullOutSzM (SafeSz sz) = fmap coerce . pullOutDimM sz
 -- | A way to select Array dimension at a value level.
 --
 -- @since 0.1.0
-newtype Dim = Dim {unDim :: Int} deriving (Eq, Ord, Num, Real, Integral, Enum, NFData)
+newtype Dim = Dim {unDim :: Int} deriving (Eq, Ord, Num, Real, Integral, Enum, NFData, Generic)
 
 instance Show Dim where
   show (Dim d) = "(Dim " ++ show d ++ ")"
