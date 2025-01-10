@@ -1,3 +1,8 @@
+# 1.0.4.1 
+
+* Added `deriving Generic` to `Ix2`, `IxN`, `Stride` and `Sz` types to ensure compatibility
+  with GHC 9.12.1 and random-1.3.
+
 # 1.0.4
 
 * Improve performance of sorting algorithm and its parallelization. Fix huge slow down on
