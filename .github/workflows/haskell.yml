@@ -28,10 +28,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-13, windows-latest]
-        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, lts-21, lts-22, nightly]
+        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, lts-21, lts-22, lts-23, nightly]
         include:
           - resolver: lts-11
             ghc: '8.2.2'
+            stack-version: '2.15.5'
           - resolver: lts-12
             ghc: '8.4.4'
           - resolver: lts-14
@@ -47,9 +48,11 @@ jobs:
           - resolver: lts-21
             ghc: '9.4.8'
           - resolver: lts-22
-            ghc: '9.6.5'
+            ghc: '9.6.6'
+          - resolver: lts-23
+            ghc: '9.8.4'
           - resolver: nightly
-            ghc: '9.8.2'
+            ghc: '9.10.1'
         # exclude:
         #   - resolver: lts-12
         #     os: windows-latest
@@ -73,7 +76,7 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         enable-stack: true
-        stack-version: '2.15.5'
+        stack-version: ${{ matrix.stack-version || 'latest' }}
 
     - name: Cache
       id: cache
@@ -134,7 +137,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, ghc: "8.0.2" }
+          # - { os: ubuntu-latest, ghc: "8.0.2" }
           - { os: ubuntu-latest, ghc: "8.2.2" }
           - { os: ubuntu-latest, ghc: "8.4.4" }
           - { os: ubuntu-latest, ghc: "8.6.5" }
@@ -144,8 +147,9 @@ jobs:
           - { os: ubuntu-latest, ghc: "9.2.8" }
           - { os: ubuntu-latest, ghc: "9.4.8" }
           - { os: ubuntu-latest, ghc: "9.6.5" }
-          - { os: ubuntu-latest, ghc: "9.8.2" }
+          - { os: ubuntu-latest, ghc: "9.8.4" }
           - { os: ubuntu-latest, ghc: "9.10.1" }
+          - { os: ubuntu-latest, ghc: "9.12.1" }
           # - { os: windows-latest, ghc: "8.0.2" } # Linker errors
           # - { os: windows-latest, ghc: "8.2.2" } # Linker errors
           - { os: windows-latest, ghc: "8.4.4" }
@@ -156,9 +160,10 @@ jobs:
           - { os: windows-latest, ghc: "9.2.8" }
           - { os: windows-latest, ghc: "9.4.8" }
           - { os: windows-latest, ghc: "9.6.5" }
-          - { os: windows-latest, ghc: "9.8.2" }
+          - { os: windows-latest, ghc: "9.8.4" }
           - { os: windows-latest, ghc: "9.10.1" }
-          - { os: macOS-13, ghc: "8.0.2" }
+          - { os: windows-latest, ghc: "9.12.1" }
+          # - { os: macOS-13, ghc: "8.0.2" }
           - { os: macOS-13, ghc: "8.2.2" }
           - { os: macOS-13, ghc: "8.4.4" }
           - { os: macOS-13, ghc: "8.6.5" }
@@ -168,8 +173,9 @@ jobs:
           - { os: macOS-latest, ghc: "9.2.8" }
           - { os: macOS-latest, ghc: "9.4.8" }
           - { os: macOS-latest, ghc: "9.6.5" }
-          - { os: macOS-latest, ghc: "9.8.2" }
+          - { os: macOS-latest, ghc: "9.8.4" }
           - { os: macOS-latest, ghc: "9.10.1" }
+          - { os: macOS-latest, ghc: "9.12.1" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
@@ -220,7 +226,7 @@ jobs:
         resolver: [lts-22]
         include:
           - resolver: lts-22
-            ghc: 9.6.5
+            ghc: 9.6.6
 
     env:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
@@ -267,7 +273,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ghc: [9.6.5]
+        ghc: [9.6.6]
 
     env:
       STACK_ARGS: '--system-ghc'

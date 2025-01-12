@@ -46,7 +46,7 @@ import Data.Massiv.Array.Unsafe (Sz (SafeSz))
 import Data.Massiv.Core.Index
 import Data.Proxy
 import Data.Typeable
-import GHC.Exception (ErrorCall (ErrorCallWithLocation))
+import GHC.Exception (ErrorCall (ErrorCall))
 import Test.Massiv.Utils
 
 -- | Dimension that is always within bounds of an index
@@ -517,7 +517,7 @@ szNumSpec = do
       sz
         /= zeroSz
         ==> assertDeepException
-          (\(ErrorCallWithLocation err loc) -> err `deepseq` loc `deepseq` True)
+          (\(ErrorCall err) -> err `deepseq` True)
           (negate sz :: Sz ix)
 
     prop "abs" $ prop_UnaryNumSz @ix abs
