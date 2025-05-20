@@ -443,7 +443,7 @@ loadWithIxN scheduler arr uWrite = do
           , dwWindow = ($ i) <$> mw
           }
       loadLower mw !i =
-        scheduleWork_ scheduler $
+        --scheduleWork_ scheduler $
           iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
       {-# INLINE loadLower #-}
   loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
