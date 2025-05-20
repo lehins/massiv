@@ -448,7 +448,8 @@ loadWithIxN scheduler arr uWrite = do
   loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
   loopA_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
   loopA_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower Nothing)
-{-# INLINE loadWithIxN #-}
+{-# INLINEABLE loadWithIxN #-}
+{-# SPECIALIZE loadWithIxN :: Scheduler s () -> Array DW Ix3 e -> (Int -> e -> ST s ()) -> ST s () #-}
 
 unrollAndJam
   :: Monad m
