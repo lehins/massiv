@@ -354,6 +354,7 @@ instance StrideLoad DW Ix2 e where
   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
+  {-# SPECIALIZE instance Load DW Ix3 e #-}
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
   {-# INLINE makeArray #-}
   iterArrayLinearST_ = loadWithIxN
