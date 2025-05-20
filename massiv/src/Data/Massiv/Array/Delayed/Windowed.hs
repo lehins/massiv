@@ -445,11 +445,12 @@ loadWithIxN scheduler arr uWrite = do
       loadLower mw !i =
         scheduleWork_ scheduler $
           iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
+      {-# INLINE loadLower #-}
   loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
   loopA_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
   loopA_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower Nothing)
-{-# INLINEABLE loadWithIxN #-}
-{-# SPECIALIZE loadWithIxN :: Scheduler s () -> Array DW Ix3 e -> (Int -> e -> ST s ()) -> ST s () #-}
+{-# INLINE loadWithIxN #-}
+--{-# SPECIALIZE loadWithIxN :: Scheduler s () -> Array DW Ix3 e -> (Int -> e -> ST s ()) -> ST s () #-}
 
 unrollAndJam
   :: Monad m
