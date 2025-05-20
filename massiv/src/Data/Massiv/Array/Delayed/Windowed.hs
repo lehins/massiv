@@ -35,6 +35,7 @@ import Data.Massiv.Core.Common
 import Data.Massiv.Core.List (showArrayList, showsArrayPrec)
 import Data.Maybe (fromMaybe)
 import GHC.TypeLits
+import GHC.Base (modInt)
 
 -- | Delayed Windowed Array representation.
 data DW = DW
@@ -521,7 +522,7 @@ unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
         5 -> f5
         6 -> f6
         _ -> f7
-  let !ibS = ib - ((ib - it) `mod` bH)
+  let !ibS = ib - ((ib - it) `modInt` bH)
   loopA_ it (< ibS) (+ bH) $ \ !i ->
     loopA_ jt (< jb) (+ js) $ \ !j ->
       f' (i :. j)
