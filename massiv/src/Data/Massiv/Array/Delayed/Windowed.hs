@@ -353,8 +353,14 @@ instance StrideLoad DW Ix2 e where
       >>= uncurry (loadWindowIx2 (numWorkers scheduler))
   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
+instance {-# OVERLAPPING #-} Load DW Ix3 e where
+  makeArray c sz f = DWArray (makeArray c sz f) Nothing
+  {-# INLINE makeArray #-}
+  iterArrayLinearST_ = loadWithIx3
+  {-# INLINE iterArrayLinearST_ #-}
+
+
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
-  {-# SPECIALIZE instance Load DW Ix3 e #-}
   makeArray c sz f = DWArray (makeArray c sz f) Nothing
   {-# INLINE makeArray #-}
   iterArrayLinearST_ = loadWithIxN
@@ -415,6 +421,41 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
     (loadLower (Just mkLowerWindow))
   loopA_ (strideStart (Stride s) curWindowEnd) (< unSz headSourceSize) (+ s) (loadLower Nothing)
 {-# INLINE loadArrayWithIxN #-}
+
+loadWithIx3
+  :: Scheduler s ()
+  -> Array DW Ix3 e
+  -> (Int -> e -> ST s ())
+  -> ST s ()
+loadWithIx3 scheduler arr uWrite = do
+  let DWArray darr window = arr
+      Window{windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
+      !(!si, !szL) = unconsSz (dSize darr)
+      !windowEnd = liftIndex2 (+) windowStart (unSz windowSize)
+      !(!t, !windowStartL) = unconsDim windowStart
+      !pageElements = totalElem szL
+      mkLowerWindow i =
+        Window
+          { windowStart = windowStartL
+          , windowSize = snd $ unconsSz windowSize
+          , windowIndex = windowIndex . consDim i
+          , windowUnrollIx2 = windowUnrollIx2
+          }
+      mkLowerArray mw i =
+        DWArray
+          { dwArray =
+              darr{dComp = Seq, dSize = szL, dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)}
+          , dwWindow = ($ i) <$> mw
+          }
+      loadLower mw !i =
+        --scheduleWork_ scheduler $
+          iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
+      {-# INLINE loadLower #-}
+  loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
+  loopA_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
+  loopA_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower Nothing)
+{-# INLINE loadWithIx3 #-}
+
 
 loadWithIxN
   :: (Index ix, Load DW (Lower ix) e)
