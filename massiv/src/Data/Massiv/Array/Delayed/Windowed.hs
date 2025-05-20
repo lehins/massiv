@@ -425,9 +425,9 @@ loadWithIxN
 loadWithIxN scheduler arr uWrite = do
   let DWArray darr window = arr
       Window{windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
-      !(si, szL) = unconsSz (dSize darr)
+      !(!si, !szL) = unconsSz (dSize darr)
       !windowEnd = liftIndex2 (+) windowStart (unSz windowSize)
-      !(t, windowStartL) = unconsDim windowStart
+      !(!t, !windowStartL) = unconsDim windowStart
       !pageElements = totalElem szL
       mkLowerWindow i =
         Window
@@ -444,7 +444,7 @@ loadWithIxN scheduler arr uWrite = do
           }
       loadLower mw !i =
         --scheduleWork_ scheduler $
-          iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> uWrite (k + pageElements * i))
+          iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
       {-# INLINE loadLower #-}
   loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
   loopA_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
