@@ -56,7 +56,9 @@ instance Functor (Window ix) where
   fmap f arr@Window{windowIndex} = arr{windowIndex = f . windowIndex}
 
 data instance Array DW ix e = DWArray
-  { dwArray :: !(Array D ix e)
+  { dwComp :: !Comp
+  , dwSize :: !(Sz ix)
+  , dwIndex :: !(ix -> e)
   , dwWindow :: !(Maybe (Window ix e))
   }
 
@@ -65,16 +67,16 @@ instance (Ragged L ix e, Load DW ix e, Show e) => Show (Array DW ix e) where
   showList = showArrayList
 
 instance Strategy DW where
-  setComp c arr = arr{dwArray = (dwArray arr){dComp = c}}
+  setComp c arr = arr{dwComp = c}
   {-# INLINE setComp #-}
-  getComp = dComp . dwArray
+  getComp = dwComp
   {-# INLINE getComp #-}
   repr = DW
 
 instance Functor (Array DW ix) where
-  fmap f arr@DWArray{dwArray, dwWindow} =
+  fmap f arr@DWArray{dwIndex, dwWindow} =
     arr
-      { dwArray = fmap f dwArray
+      { dwIndex = f . dwIndex
       , dwWindow = fmap f <$> dwWindow
       }
   {-# INLINE fmap #-}
@@ -130,7 +132,7 @@ makeWindowedArray
   -- ^ Indexing function foto use inside window
   -> Array DW ix e
 makeWindowedArray !arr wStart wSize wIndex =
-  insertWindow (delay arr) $
+  insertWindow arr $
     Window{windowStart = wStart, windowSize = wSize, windowIndex = wIndex, windowUnrollIx2 = Nothing}
 {-# INLINE makeWindowedArray #-}
 
@@ -139,15 +141,17 @@ makeWindowedArray !arr wStart wSize wIndex =
 --
 -- @since 0.3.0
 insertWindow
-  :: Index ix
-  => Array D ix e
+  :: (Index ix, Source r e)
+  => Array r ix e
   -- ^ Source array that will have a window inserted into it
   -> Window ix e
   -- ^ Window to place inside the delayed array
   -> Array DW ix e
 insertWindow !arr !window =
   DWArray
-    { dwArray = delay arr
+    { dwComp = getComp arr
+    , dwSize = arrSize
+    , dwIndex = unsafeIndex arr
     , dwWindow =
         Just $!
           Window
@@ -159,7 +163,7 @@ insertWindow !arr !window =
     }
   where
     wStart' = unSz (Sz (liftIndex2 min wStart (liftIndex (subtract 1) sz)))
-    Sz sz = size arr
+    arrSize@(Sz sz) = size arr
     Window
       { windowStart = wStart
       , windowSize = Sz wSize
@@ -179,7 +183,12 @@ getWindow = dwWindow
 --
 -- @since 0.3.0
 dropWindow :: Array DW ix e -> Array D ix e
-dropWindow = dwArray
+dropWindow DWArray {..} =
+  DArray
+  { dComp = dwComp
+  , dSize = dwSize
+  , dPrefIndex = PrefIndex dwIndex
+  }
 {-# INLINE dropWindow #-}
 
 zeroWindow :: Index ix => Window ix e
@@ -191,8 +200,8 @@ data EmptyWindowException = EmptyWindowException deriving (Eq, Show)
 instance Exception EmptyWindowException where
   displayException _ = "Index of zero size Window"
 
-windowError :: a
-windowError = throwImpossible EmptyWindowException
+windowError :: ix -> a
+windowError _ = throwImpossible EmptyWindowException
 {-# NOINLINE windowError #-}
 
 loadWithIx1
@@ -201,24 +210,24 @@ loadWithIx1
   -> Array DW Ix1 e
   -> (Ix1 -> e -> m a)
   -> m (Ix1 -> Ix1 -> m (), Ix1, Ix1)
-loadWithIx1 with (DWArray a@(DArray _ sz _) mWindow) uWrite = do
+loadWithIx1 with (DWArray _ sz uIndex mWindow) uWrite = do
   let Window it wk indexW _ = fromMaybe zeroWindow mWindow
       wEnd = it + unSz wk
-  with $ iterA_ 0 it 1 (<) $ \ !i -> uWrite i (unsafeIndex a i)
-  with $ iterA_ wEnd (unSz sz) 1 (<) $ \ !i -> uWrite i (unsafeIndex a i)
+  with $ iterA_ 0 it 1 (<) $ \ !i -> uWrite i (uIndex i)
+  with $ iterA_ wEnd (unSz sz) 1 (<) $ \ !i -> uWrite i (uIndex i)
   return (\from to -> with $ iterA_ from to 1 (<) $ \ !i -> uWrite i (indexW i), it, wEnd)
 {-# INLINE loadWithIx1 #-}
 
 instance Index ix => Shape DW ix where
   maxLinearSize = Just . linearSize
   {-# INLINE maxLinearSize #-}
-  linearSize = SafeSz . totalElem . dSize . dwArray
+  linearSize = SafeSz . totalElem . dwSize
   {-# INLINE linearSize #-}
-  outerSize = dSize . dwArray
+  outerSize = dwSize
   {-# INLINE outerSize #-}
 
 instance Load DW Ix1 e where
-  makeArray c sz f = DWArray (makeArray c sz f) Nothing
+  makeArray c sz f = DWArray c sz f Nothing
   {-# INLINE makeArray #-}
   iterArrayLinearST_ scheduler arr uWrite = do
     (loadWindow, wStart, wEnd) <- loadWithIx1 (scheduleWork scheduler) arr uWrite
@@ -251,14 +260,14 @@ loadArrayWithIx1
   -> Sz1
   -> (Ix1 -> e -> m a)
   -> m ((Ix1, Ix1) -> m (), (Ix1, Ix1))
-loadArrayWithIx1 with (DWArray darr@(DArray _ arrSz _) mWindow) stride _ uWrite = do
+loadArrayWithIx1 with (DWArray _ arrSz uIndex mWindow) stride _ uWrite = do
   let Window it wk indexW _ = fromMaybe zeroWindow mWindow
       wEnd = it + unSz wk
       strideIx = unStride stride
-  with $ iterA_ 0 it strideIx (<) $ \ !i -> uWrite (i `div` strideIx) (unsafeIndex darr i)
+  with $ iterA_ 0 it strideIx (<) $ \ !i -> uWrite (i `div` strideIx) (uIndex i)
   with $
     iterA_ (strideStart stride wEnd) (unSz arrSz) strideIx (<) $ \ !i ->
-      uWrite (i `div` strideIx) (unsafeIndex darr i)
+      uWrite (i `div` strideIx) (uIndex i)
   return
     ( \(from, to) ->
         with $
@@ -275,14 +284,13 @@ loadWithIx2
   -> (Int -> t1 -> m ())
   -> m (Ix2 -> m (), Ix2)
 loadWithIx2 with arr uWrite = do
-  let DWArray darr window = arr
-      Sz (m :. n) = dSize darr
+  let DWArray _ (Sz (m :. n)) uIndex window = arr
       Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
       ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       stride = oneStride
       !sz = strideSize stride $ outerSize arr
-      writeB !ix = uWrite (toLinearIndex sz ix) (unsafeIndex darr ix)
+      writeB !ix = uWrite (toLinearIndex sz ix) (uIndex ix)
       {-# INLINE writeB #-}
       writeW !ix = uWrite (toLinearIndex sz ix) (indexW ix)
       {-# INLINE writeW #-}
@@ -304,13 +312,12 @@ loadArrayWithIx2
   -> (Int -> e -> m ())
   -> m (Ix2 -> m (), Ix2)
 loadArrayWithIx2 with arr stride sz uWrite = do
-  let DWArray darr window = arr
-      Sz (m :. n) = dSize darr
+  let DWArray _ (Sz (m :. n)) uIndex window = arr
       Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
       ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       strideIx@(is :. js) = unStride stride
-      writeB !ix = uWrite (toLinearIndexStride stride sz ix) (unsafeIndex darr ix)
+      writeB !ix = uWrite (toLinearIndexStride stride sz ix) (uIndex ix)
       {-# INLINE writeB #-}
       writeW !ix = uWrite (toLinearIndexStride stride sz ix) (indexW ix)
       {-# INLINE writeW #-}
@@ -340,7 +347,7 @@ loadWindowIx2 nWorkers loadWindow (it :. ib) = do
 {-# INLINE loadWindowIx2 #-}
 
 instance Load DW Ix2 e where
-  makeArray c sz f = DWArray (makeArray c sz f) Nothing
+  makeArray c sz f = DWArray c sz f Nothing
   {-# INLINE makeArray #-}
   iterArrayLinearST_ scheduler arr uWrite =
     loadWithIx2 (scheduleWork scheduler) arr uWrite
@@ -354,7 +361,7 @@ instance StrideLoad DW Ix2 e where
   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
-  makeArray c sz f = DWArray (makeArray c sz f) Nothing
+  makeArray c sz f = DWArray c sz f Nothing
   {-# INLINE makeArray #-}
   iterArrayLinearST_ = loadWithIxN
   {-# INLINE iterArrayLinearST_ #-}
@@ -372,9 +379,9 @@ loadArrayWithIxN
   -> (Int -> e -> ST s ())
   -> ST s ()
 loadArrayWithIxN scheduler stride szResult arr uWrite = do
-  let DWArray darr window = arr
+  let DWArray _ sz uIndex window = arr
       Window{windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
-      !(headSourceSize, lowerSourceSize) = unconsSz (dSize darr)
+      !(headSourceSize, lowerSourceSize) = unconsSz sz
       !lowerSize = snd $ unconsSz szResult
       !(s, lowerStrideIx) = unconsDim $ unStride stride
       !(curWindowStart, lowerWindowStart) = unconsDim windowStart
@@ -390,12 +397,9 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
           }
       mkLowerArray mw i =
         DWArray
-          { dwArray =
-              darr
-                { dComp = Seq
-                , dSize = lowerSourceSize
-                , dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)
-                }
+          { dwComp = Seq
+          , dwSize = lowerSourceSize
+          , dwIndex = uIndex . consDim i
           , dwWindow = ($ i) <$> mw
           }
       loadLower mw !i =
@@ -422,9 +426,9 @@ loadWithIxN
   -> (Int -> e -> ST s ())
   -> ST s ()
 loadWithIxN scheduler arr uWrite = do
-  let DWArray darr window = arr
+  let DWArray _ sz uIndex window = arr
       Window{windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
-      !(si, szL) = unconsSz (dSize darr)
+      !(si, szL) = unconsSz sz
       !windowEnd = liftIndex2 (+) windowStart (unSz windowSize)
       !(t, windowStartL) = unconsDim windowStart
       !pageElements = totalElem szL
@@ -437,8 +441,9 @@ loadWithIxN scheduler arr uWrite = do
           }
       mkLowerArray mw i =
         DWArray
-          { dwArray =
-              darr{dComp = Seq, dSize = szL, dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)}
+          { dwComp = Seq
+          , dwSize = szL
+          , dwIndex = uIndex . consDim i
           , dwWindow = ($ i) <$> mw
           }
       loadLower mw !i =
