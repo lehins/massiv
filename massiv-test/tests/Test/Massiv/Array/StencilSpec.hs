@@ -92,7 +92,7 @@ unsafeMapStencil
   -> Array DW ix a
 unsafeMapStencil b sSz sCenter stencilF !arr = insertWindow warr window
   where
-    !warr = makeArray (getComp arr) sz (stencil (borderIndex b arr))
+    !warr = makeArrayR D (getComp arr) sz (stencil (borderIndex b arr))
     !window =
       Window
         { windowStart = sCenter
