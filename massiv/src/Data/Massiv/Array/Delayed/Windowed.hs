@@ -45,7 +45,7 @@ data Window ix e = Window
   -- ^ Index of where window will start at.
   , windowSize :: !(Sz ix)
   -- ^ Size of the window
-  , windowIndex :: ix -> e
+  , windowIndex :: !(ix -> e)
   -- ^ Indexing function for the window
   , windowUnrollIx2 :: !(Maybe Int)
   -- ^ Setting this value during stencil application improves cache

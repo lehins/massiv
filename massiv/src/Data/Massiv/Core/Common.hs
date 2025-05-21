@@ -296,8 +296,8 @@ class Size r where
 
 -- | Prefered indexing function.
 data PrefIndex ix e
-  = PrefIndex (ix -> e)
-  | PrefIndexLinear (Int -> e)
+  = PrefIndex !(ix -> e)
+  | PrefIndexLinear !(Int -> e)
 
 instance Functor (PrefIndex ix) where
   fmap f = \case
