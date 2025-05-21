@@ -331,7 +331,7 @@ loadArrayWithIx2 with arr stride sz uWrite = do
 
 loadWindowIx2 :: Monad m => Int -> (Ix2 -> m ()) -> Ix2 -> m ()
 loadWindowIx2 nWorkers loadWindow (it :. ib) = do
-  let !(chunkHeight, slackHeight) = (ib - it) `quotRem` nWorkers
+  let !(!chunkHeight, !slackHeight) = (ib - it) `quotRem` nWorkers
   loopA_ 0 (< nWorkers) (+ 1) $ \ !wid ->
     let !it' = wid * chunkHeight + it
      in loadWindow (it' :. (it' + chunkHeight))
@@ -445,7 +445,7 @@ loadWithIx3 scheduler arr uWrite = do
       mkLowerArray mw i =
         DWArray
           { dwArray =
-              darr{dComp = Seq, dSize = szL, dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)}
+              DArray{dComp = Seq, dSize = szL, dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)}
           , dwWindow = ($ i) <$> mw
           }
       loadLower mw !i =
