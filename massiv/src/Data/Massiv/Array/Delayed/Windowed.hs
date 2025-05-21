@@ -192,8 +192,8 @@ data EmptyWindowException = EmptyWindowException deriving (Eq, Show)
 instance Exception EmptyWindowException where
   displayException _ = "Index of zero size Window"
 
-windowError :: a
-windowError = throwImpossible EmptyWindowException
+windowError :: ix -> a
+windowError _ = throwImpossible EmptyWindowException
 {-# NOINLINE windowError #-}
 
 loadWithIx1
