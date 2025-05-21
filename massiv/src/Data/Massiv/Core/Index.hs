@@ -226,7 +226,7 @@ handleBorderIndex
 handleBorderIndex border !sz getVal !ix =
   case border of
     Fill val -> if isSafeIndex sz ix then getVal ix else val
-    Wrap -> getVal (repairIndex sz ix wrap wrap)
+    Wrap -> getVal (repairIndex sz ix (\(SafeSz k) i -> i `mod` k) (\(SafeSz k) i -> i `mod` k))
     Edge -> getVal (repairIndex sz ix (const (const 0)) (\(SafeSz k) _ -> k - 1))
     Reflect ->
       getVal
@@ -244,9 +244,6 @@ handleBorderIndex border !sz getVal !ix =
             (\(SafeSz k) !i -> abs i `mod` k)
             (\(SafeSz k) !i -> (-i - 2) `mod` k)
         )
-  where
-    wrap (SafeSz k) i = i `mod` k
-    {-# INLINE [1] wrap #-}
 {-# INLINE [1] handleBorderIndex #-}
 
 -- | Index with all zeros
