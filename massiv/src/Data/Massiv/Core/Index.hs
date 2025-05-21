@@ -122,6 +122,7 @@ import Data.Massiv.Core.Index.Ix
 import Data.Massiv.Core.Index.Stride
 import Data.Massiv.Core.Index.Tuple
 import Data.Massiv.Core.Loop
+import GHC.Base (modInt)
 import GHC.TypeLits
 
 #include "massiv.h"
@@ -235,27 +236,22 @@ handleBorderIndex
 handleBorderIndex border !sz getVal !ix =
   case border of
     Fill val -> if isSafeIndex sz ix then getVal ix else val
-    Wrap -> getVal (repairIndex sz ix wrap wrap)
+    Wrap -> getVal (repairIndex sz ix (\(SafeSz k) i -> i `modInt` k) (\(SafeSz k) i -> i `modInt` k))
     Edge -> getVal (repairIndex sz ix (const (const 0)) (\(SafeSz k) _ -> k - 1))
     Reflect ->
-      getVal
-        ( repairIndex
-            sz
-            ix
-            (\(SafeSz k) !i -> (abs i - 1) `mod` k)
-            (\(SafeSz k) !i -> (-i - 1) `mod` k)
-        )
+      getVal $!
+        repairIndex
+          sz
+          ix
+          (\(SafeSz k) i -> (-i - 1) `modInt` k)
+          (\(SafeSz k) i -> (-i - 1) `modInt` k)
     Continue ->
-      getVal
-        ( repairIndex
-            sz
-            ix
-            (\(SafeSz k) !i -> abs i `mod` k)
-            (\(SafeSz k) !i -> (-i - 2) `mod` k)
-        )
-  where
-    wrap (SafeSz k) i = i `mod` k
-    {-# INLINE [1] wrap #-}
+      getVal $!
+        repairIndex
+          sz
+          ix
+          (\(SafeSz k) i -> negate i `modInt` k)
+          (\(SafeSz k) i -> (-i - 2) `modInt` k)
 {-# INLINE [1] handleBorderIndex #-}
 
 -- | Index with all zeros
