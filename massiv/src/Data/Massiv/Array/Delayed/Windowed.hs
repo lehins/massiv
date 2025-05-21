@@ -435,13 +435,13 @@ loadWithIx3 scheduler arr uWrite = do
       !windowEnd = liftIndex2 (+) windowStart (unSz windowSize)
       !(!t, !windowStartL) = unconsDim windowStart
       !pageElements = totalElem szL
-      mkLowerWindow i =
-        Window
-          { windowStart = windowStartL
-          , windowSize = snd $ unconsSz windowSize
-          , windowIndex = windowIndex . consDim i
-          , windowUnrollIx2 = windowUnrollIx2
-          }
+      -- mkLowerWindow i =
+      --   Window
+      --     { windowStart = windowStartL
+      --     , windowSize = snd $ unconsSz windowSize
+      --     , windowIndex = windowIndex . consDim i
+      --     , windowUnrollIx2 = windowUnrollIx2
+      --     }
       mkLowerArray mw i =
         DWArray
           { dwArray =
@@ -450,7 +450,9 @@ loadWithIx3 scheduler arr uWrite = do
           }
       loadLower mw !i =
         --scheduleWork_ scheduler $
-          iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
+        loadWithIx2 (scheduleWork scheduler) (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
+        -- >>= uncurry (loadWindowIx2 (numWorkers scheduler))
+          --iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
       {-# INLINE loadLower #-}
   loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
   loopA_ t (< headDim windowEnd) (+ 1) (loadLower Nothing) --(Just mkLowerWindow))
