@@ -381,11 +381,11 @@ instance StrideLoad DW Ix2 e where
       >>= uncurry (loadWindowIx2 (numWorkers scheduler))
   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
-instance {-# OVERLAPPING #-} Load DW Ix3 e where
-  makeArray c sz f = DWArray (makeArray c sz f) Nothing
-  {-# INLINE makeArray #-}
-  iterArrayLinearST_ = loadWithIx3
-  {-# INLINE iterArrayLinearST_ #-}
+-- instance {-# OVERLAPPING #-} Load DW Ix3 e where
+--   makeArray c sz f = DWArray (makeArray c sz f) Nothing
+--   {-# INLINE makeArray #-}
+--   iterArrayLinearST_ = loadWithIx3
+--   {-# INLINE iterArrayLinearST_ #-}
 
 
 instance (Index (IxN n), Load DW (Ix (n - 1)) e) => Load DW (IxN n) e where
