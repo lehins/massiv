@@ -231,20 +231,18 @@ handleBorderIndex border !sz getVal !ix =
     Edge -> getVal (repairIndex sz ix (const (const 0)) (\(SafeSz k) _ -> k - 1))
     Reflect ->
       getVal
-        ( repairIndex
+        $! repairIndex
             sz
             ix
             (\(SafeSz k) i -> (abs i - 1) `modInt` k)
             (\(SafeSz k) i -> (-i - 1) `modInt` k)
-        )
     Continue ->
       getVal
-        ( repairIndex
+        $! repairIndex
             sz
             ix
             (\(SafeSz k) i -> abs i `modInt` k)
             (\(SafeSz k) i -> (-i - 2) `modInt` k)
-        )
 {-# INLINE [1] handleBorderIndex #-}
 
 -- | Index with all zeros

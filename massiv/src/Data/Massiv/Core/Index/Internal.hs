@@ -650,8 +650,8 @@ class
   repairIndex sz !ix rBelow rOver =
     consDim (repairIndex n i rBelow rOver) (repairIndex szL ixL rBelow rOver)
     where
-      !(n, szL) = unconsSz sz
-      !(i, ixL) = unconsDim ix
+      !(!n, !szL) = unconsSz sz
+      !(!i, !ixL) = unconsDim ix
   {-# INLINE [1] repairIndex #-}
 
   -- | This function is what makes it possible to iterate over an array of any dimension.
