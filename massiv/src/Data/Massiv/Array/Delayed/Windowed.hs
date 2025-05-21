@@ -296,6 +296,33 @@ loadWithIx2 with arr uWrite = do
   return (f, it :. ib)
 {-# INLINE loadWithIx2 #-}
 
+loadWithIx2'
+  :: Monad m
+  => (m () -> m ())
+  -> Sz2
+  -> (Ix2 -> t1)
+  -> (Int -> t1 -> m ())
+  -> m (Ix2 -> m (), Ix2)
+loadWithIx2' with dsz duix uWrite = do
+  let Sz (m :. n) = dsz
+      Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = zeroWindow
+      ib :. jb = (wm + it) :. (wn + jt)
+      !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
+      stride = oneStride
+      !sz = strideSize stride dsz
+      writeB !ix = uWrite (toLinearIndex sz ix) (duix ix)
+      {-# INLINE writeB #-}
+      writeW !ix = uWrite (toLinearIndex sz ix) (indexW ix)
+      {-# INLINE writeW #-}
+  with $ iterA_ (0 :. 0) (it :. n) (1 :. 1) (<) writeB
+  with $ iterA_ (ib :. 0) (m :. n) (1 :. 1) (<) writeB
+  with $ iterA_ (it :. 0) (ib :. jt) (1 :. 1) (<) writeB
+  with $ iterA_ (it :. jb) (ib :. n) (1 :. 1) (<) writeB
+  let f (it' :. ib') = with $ unrollAndJam blockHeight (it' :. jt) (ib' :. jb) 1 writeW
+      {-# INLINE f #-}
+  return (f, it :. ib)
+{-# INLINE loadWithIx2' #-}
+
 loadArrayWithIx2
   :: Monad m
   => (m () -> m ())
@@ -442,15 +469,19 @@ loadWithIx3 scheduler arr uWrite = do
       --     , windowIndex = windowIndex . consDim i
       --     , windowUnrollIx2 = windowUnrollIx2
       --     }
-      mkLowerArray mw i =
-        DWArray
-          { dwArray =
-              DArray{dComp = Seq, dSize = szL, dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)}
-          , dwWindow = ($ i) <$> mw
-          }
-      loadLower mw !i =
+      -- mkLowerArray mw i =
+      --   DWArray
+      --     { dwArray =
+      --         DArray{dComp = Seq, dSize = szL, dPrefIndex = PrefIndex (unsafeIndex darr . consDim i)}
+      --     , dwWindow = ($ i) <$> mw
+      --     }
+      loadLower _mw !i =
         --scheduleWork_ scheduler $
-        loadWithIx2 (scheduleWork scheduler) (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
+        loadWithIx2'
+          (scheduleWork scheduler)
+          szL
+          (unsafeIndex darr . consDim i)
+          (\k -> let !j = k + pageElements * i in uWrite j)
         -- >>= uncurry (loadWindowIx2 (numWorkers scheduler))
           --iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
       {-# INLINE loadLower #-}
