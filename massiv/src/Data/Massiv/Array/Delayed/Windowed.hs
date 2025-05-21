@@ -453,7 +453,7 @@ loadWithIx3 scheduler arr uWrite = do
           iterArrayLinearST_ scheduler (mkLowerArray mw i) (\k -> let !j = k + pageElements * i in uWrite j)
       {-# INLINE loadLower #-}
   loopA_ 0 (< headDim windowStart) (+ 1) (loadLower Nothing)
-  loopA_ t (< headDim windowEnd) (+ 1) (loadLower (Just mkLowerWindow))
+  loopA_ t (< headDim windowEnd) (+ 1) (loadLower Nothing) --(Just mkLowerWindow))
   loopA_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower Nothing)
 {-# INLINE loadWithIx3 #-}
 
