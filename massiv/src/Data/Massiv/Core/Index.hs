@@ -225,27 +225,24 @@ handleBorderIndex
   -- ^ Index
   -> e
 handleBorderIndex border !sz getVal !ix =
-  if isSafeIndex sz ix
-  then getVal ix
-  else
-    case border of
-      Fill val -> val
-      Wrap -> getVal (repairIndex sz ix (\(SafeSz k) i -> i `modInt` k) (\(SafeSz k) i -> i `modInt` k))
-      Edge -> getVal (repairIndex sz ix (const (const 0)) (\(SafeSz k) _ -> k - 1))
-      Reflect ->
-        getVal
-          $! repairIndex
-              sz
-              ix
-              (\(SafeSz k) i -> (abs i - 1) `modInt` k)
-              (\(SafeSz k) i -> (-i - 1) `modInt` k)
-      Continue ->
-        getVal
-          $! repairIndex
-              sz
-              ix
-              (\(SafeSz k) i -> abs i `modInt` k)
-              (\(SafeSz k) i -> (-i - 2) `modInt` k)
+  case border of
+    Fill val -> if isSafeIndex sz ix then getVal ix else val
+    Wrap -> getVal (repairIndex sz ix (\(SafeSz k) i -> i `modInt` k) (\(SafeSz k) i -> i `modInt` k))
+    Edge -> getVal (repairIndex sz ix (const (const 0)) (\(SafeSz k) _ -> k - 1))
+    Reflect ->
+      getVal
+        $! repairIndex
+            sz
+            ix
+            (\(SafeSz k) i -> (-i - 1) `modInt` k)
+            (\(SafeSz k) i -> (-i - 1) `modInt` k)
+    Continue ->
+      getVal
+        $! repairIndex
+            sz
+            ix
+            (\(SafeSz k) i -> -i `modInt` k)
+            (\(SafeSz k) i -> (-i - 2) `modInt` k)
 {-# INLINE [1] handleBorderIndex #-}
 
 -- | Index with all zeros
