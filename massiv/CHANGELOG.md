@@ -1,3 +1,8 @@
+# 1.0.5
+
+* Relax signature for `insertWindow` to accept any `Source` array, not just `D` type.
+* Improve performance and reduce allocations during computation of higher dimension `DW` arrays [#142](https://github.com/lehins/massiv/issues/142)
+
 # 1.0.4
 
 * Improve performance of sorting algorithm and its parallelization. Fix huge slow down on
