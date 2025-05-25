@@ -739,6 +739,9 @@ class
 
   -- | Similar to `iterM`, but no restriction on a Monad.
   --
+  -- iterF (-10) 20 4 (<) [] (:) :: [Int]
+  -- [-10,-6,-2,2,6,10,14,18]
+  --
   -- @since 1.0.2
   iterF :: ix -> ix -> ix -> (Int -> Int -> Bool) -> f a -> (ix -> f a -> f a) -> f a
   default iterF
