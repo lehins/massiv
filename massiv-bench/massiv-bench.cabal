@@ -31,6 +31,16 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall
 
+benchmark border
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      bench
+  main-is:             Border.hs
+  ghc-options:         -Wall -threaded -O2
+  build-depends:       base
+                     , criterion
+                     , massiv
+  default-language:    Haskell2010
+
 benchmark sort
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench
