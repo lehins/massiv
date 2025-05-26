@@ -57,20 +57,25 @@ data Window ix e = Window
 
 data Unroll
   = UnrollNone
-  | -- | UnrollVertical !Int
-    UnrollHorizontal !Int
-  --  UnrollEither !Ix2
+  | --  | UnrollVertical !Int
+    --  | UnrollHorizontal !Int
+    UnrollEither !Ix2
   deriving (Eq, Ord, Show)
 
 mkUnrollFromSz :: Index ix => Sz ix -> Unroll
 mkUnrollFromSz sz =
-  case pullOutSzM sz 1 of
-    Just (Sz u1, _)
-      | u1 > 1 -> UnrollHorizontal u1
-    -- _ -> case pullOutSzM sz 2 of
-    --   Just (Sz u2, _)
-    --     | u2 > 1 -> UnrollVertical u2
-    _ -> UnrollNone
+  case (,) <$> pullOutSzM sz 2 <*> pullOutSzM sz 1 of
+    Just ((Sz u2, _), (Sz u1, _))
+      | u1 > 1 && u2 > 1 -> UnrollEither (u2 :. u1)
+      | otherwise -> UnrollNone
+
+-- case pullOutSzM sz 1 of
+--   Just (Sz u1, _)
+--     | u1 > 1 -> UnrollHorizontal u1
+--   -- _ -> case pullOutSzM sz 2 of
+--   --   Just (Sz u2, _)
+--   --     | u2 > 1 -> UnrollVertical u2
+--   _ -> UnrollNone
 
 -- case (,) <$> pullOutSzM sz 2 <*> pullOutSzM sz 1 of
 --   Nothing ->
@@ -334,8 +339,10 @@ loadWithIx2 nWorkers with arr uWrite = do
   let f (it' :. ib') =
         with $
           case unroll of
-            UnrollHorizontal blockWidth ->
-              unrollAndJamHorizontal blockWidth (it' :. jt) (ib' :. jb) 1 writeW
+            -- UnrollHorizontal blockWidth ->
+            --   unrollAndJamHorizontal blockWidth (it' :. jt) (ib' :. jb) 1 writeW
+            UnrollEither block ->
+              unrollAndJam block (it' :. jt) (ib' :. jb) writeW
             -- UnrollVertical blockHeight ->
             --   with $ unrollAndJamVertical blockHeight (it' :. jt) (ib' :. jb) 1 writeW
             UnrollNone ->
@@ -377,10 +384,10 @@ loadArrayWithIx2 with arr stride sz uWrite = do
           --   | is == 1 ->
           --       -- Turn on unrolling when there is no vertical stride
           --       unrollAndJamVertical blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
-          UnrollHorizontal blockWidth
-            | js == 1 ->
-                -- Turn on unrolling when there is no horizontal stride
-                unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
+          -- UnrollHorizontal blockWidth
+          --   | js == 1 ->
+          --       -- Turn on unrolling when there is no horizontal stride
+          --       unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
           -- UnrollEither (blockHeight :. blockWidth)
           --   | js == 1 ->
           --       unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
@@ -597,5 +604,57 @@ unrollAndJamHorizontal !bW (it :. jt) (ib :. jb) is f = do
     loopA_ jbS (< jb) (+ 1) $ \ !j ->
       f (i :. j)
 {-# INLINE unrollAndJamHorizontal #-}
+
+unrollAndJam
+  :: Monad m
+  => Ix2
+  -- ^ Block
+  -> Ix2
+  -- ^ Top corner
+  -> Ix2
+  -- ^ Bottom corner
+  -> (Ix2 -> m ())
+  -- ^ Writing function
+  -> m ()
+unrollAndJam (bH :. bW) (it :. jt) (ib :. jb) f = do
+  let
+    f13 (i :. j) = f (i :. j) >> f (i :. (j + 1)) >> f (i :. (j + 2))
+    {-# INLINE f13 #-}
+    -- f21 (i :. j) = f (i :. j) >> f ((i + 1) :. j)
+    -- {-# INLINE f21 #-}
+    -- f22 (i :. j) = f (i :. j) >> f ((i + 1) :. j) >> f12 ((i + 1) :. j)
+    -- {-# INLINE f22 #-}
+    f33 (i :. j) = do
+      f13 (i :. j)
+      f13 ((i + 1) :. j)
+      f13 ((i + 2) :. j)
+    {-# INLINE f33 #-}
+    -- let f4 (i :. j) = f (i :. j) >> f3 (i :. (j + 1))
+    -- let f5 (i :. j) = f (i :. j) >> f4 (i :. (j + 1))
+    -- let f6 (i :. j) = f (i :. j) >> f5 (i :. (j + 1))
+    -- let f7 (i :. j) = f (i :. j) >> f6 (i :. (j + 1))
+    f' = case bH :. bW of
+      1 :. 1 -> f
+      -- 1 :. 2 -> f12
+      -- 2 :. 1 -> f21
+      -- 2 :. 2 -> f22
+      3 :. 3 -> f33
+    -- 4 -> f4
+    -- 5 -> f5
+    -- 6 -> f6
+    -- _ -> f7
+    !ibS = ib - ((ib - it) `modInt` bH)
+    !jbS = jb - ((jb - jt) `modInt` bW)
+  loopA_ it (< ibS) (+ bH) $ \ !i -> do
+    loopA_ jt (< jbS) (+ bW) $ \ !j ->
+      f' (i :. j)
+    loopA_ jbS (< jb) (+ 1) $ \ !j ->
+      f (i :. j)
+  loopA_ ibS (< ib) (+ 1) $ \ !i -> do
+    loopA_ jt (< jbS) (+ bW) $ \ !j ->
+      f' (i :. j)
+    loopA_ jbS (< jb) (+ 1) $ \ !j ->
+      f (i :. j)
+{-# INLINE unrollAndJam #-}
 
 -- TODO: Implement Hilbert curve
