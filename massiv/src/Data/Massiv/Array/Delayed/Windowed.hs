@@ -57,9 +57,9 @@ data Window ix e = Window
 
 data Unroll
   = UnrollNone
-  | UnrollVertical !Int
-  | UnrollHorizontal !Int
-  | UnrollEither !Ix2
+  | -- | UnrollVertical !Int
+    UnrollHorizontal !Int
+  --  UnrollEither !Ix2
   deriving (Eq, Ord, Show)
 
 mkUnrollFromSz :: Index ix => Sz ix -> Unroll
@@ -332,13 +332,14 @@ loadWithIx2 nWorkers with arr uWrite = do
   with $ iterA_ (it :. 0) (ib :. jt) (1 :. 1) (<) writeB
   with $ iterA_ (it :. jb) (ib :. n) (1 :. 1) (<) writeB
   let f (it' :. ib') =
-        case unroll of
-          UnrollHorizontal blockWidth ->
-            with $ unrollAndJamHorizontal blockWidth (it' :. jt) (ib' :. jb) 1 writeW
-          -- UnrollVertical blockHeight ->
-          --   with $ unrollAndJamVertical blockHeight (it' :. jt) (ib' :. jb) 1 writeW
-          _ ->
-            with $ iterA_ (it' :. jt) (ib' :. jb) 1 (<) writeW
+        with $
+          case unroll of
+            UnrollHorizontal blockWidth ->
+              unrollAndJamHorizontal blockWidth (it' :. jt) (ib' :. jb) 1 writeW
+            -- UnrollVertical blockHeight ->
+            --   with $ unrollAndJamVertical blockHeight (it' :. jt) (ib' :. jb) 1 writeW
+            UnrollNone ->
+              iterA_ (it' :. jt) (ib' :. jb) 1 (<) writeW
       -- UnrollVertical blockHeight ->
       --   with $ unrollAndJamVertical blockHeight (it' :. jt) (ib' :. jb) 1 writeW
       -- UnrollHorizontal blockWidth ->
@@ -372,19 +373,19 @@ loadArrayWithIx2 with arr stride sz uWrite = do
   with $ iterA_ (strideStart stride (it :. jb)) (ib :. n) strideIx (<) writeB
   let f (it' :. ib') =
         case unroll of
-          UnrollVertical blockHeight
-            | is == 1 ->
-                -- Turn on unrolling when there is no vertical stride
-                unrollAndJamVertical blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
+          -- UnrollVertical blockHeight
+          --   | is == 1 ->
+          --       -- Turn on unrolling when there is no vertical stride
+          --       unrollAndJamVertical blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
           UnrollHorizontal blockWidth
             | js == 1 ->
                 -- Turn on unrolling when there is no horizontal stride
                 unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
-          UnrollEither (blockHeight :. blockWidth)
-            | js == 1 ->
-                unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
-            | is == 1 ->
-                unrollAndJamVertical blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
+          -- UnrollEither (blockHeight :. blockWidth)
+          --   | js == 1 ->
+          --       unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
+          --   | is == 1 ->
+          --       unrollAndJamVertical blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
           _ ->
             iterA_ (strideStart stride (it' :. jt)) (ib' :. jb) strideIx (<) writeW
       {-# INLINE f #-}
