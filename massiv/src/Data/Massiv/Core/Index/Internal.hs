@@ -1003,6 +1003,11 @@ pattern Ix1 i = i
 
 type instance Lower Int = Ix0
 
+-- This is needed to avoid GHC from doing redundant allocations
+throwIndexZeroException :: Int -> a
+throwIndexZeroException = throw . IndexZeroException
+{-# NOINLINE throwIndexZeroException #-}
+
 instance Index Ix1 where
   type Dimensions Ix1 = 1
   dimensions _ = 1
@@ -1020,7 +1025,7 @@ instance Index Ix1 where
   fromLinearIndexAcc n k = k `quotRem` n
   {-# INLINE [1] fromLinearIndexAcc #-}
   repairIndex k@(SafeSz ksz) !i rBelow rOver
-    | ksz <= 0 = throw $ IndexZeroException ksz
+    | ksz <= 0 = throwIndexZeroException ksz
     | i < 0 = rBelow k i
     | i >= ksz = rOver k i
     | otherwise = i
