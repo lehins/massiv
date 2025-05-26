@@ -83,7 +83,7 @@ toUnboxV6
 toUnboxV6 f v1 v2 v3 v4 v5 v6 =
   appComp (getComp v1) (toUnboxV5 (f (toUnboxedVector v1)) v2 v3 v4 v5 v6)
 
-toPrimV2 :: (Index ix) => (VP.Vector e1 -> VP.Vector e2 -> t) -> Array P ix e1 -> Array P ix e2 -> t
+toPrimV2 :: Index ix => (VP.Vector e1 -> VP.Vector e2 -> t) -> Array P ix e1 -> Array P ix e2 -> t
 toPrimV2 f v1 v2 = f (toPrimitiveVector v1) (toPrimitiveVector v2)
 
 toPrimV3

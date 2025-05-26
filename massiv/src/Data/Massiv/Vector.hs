@@ -2801,7 +2801,6 @@ spostscanlAcc :: Stream r ix e => (c -> e -> (a, c)) -> c -> Array r ix e -> Vec
 spostscanlAcc f acc = DSArray . S.postscanlAccM (\a b -> pure (f a b)) acc . toStream
 {-# INLINE spostscanlAcc #-}
 
-
 -- | /O(n)/ - left scan with strict accumulator. First element is the value of the accumulator.
 --
 -- ==== __Examples__

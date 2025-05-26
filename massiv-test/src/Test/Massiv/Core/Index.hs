@@ -204,12 +204,12 @@ prop_CountElements thresh sz =
   totalElem sz
     < thresh
     ==> totalElem sz
-    == iter zeroIndex (unSz sz) (pureIndex 1) (<) 0 (const (+ 1))
+      == iter zeroIndex (unSz sz) (pureIndex 1) (<) 0 (const (+ 1))
 
 prop_IterMonotonic :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonic thresh sz =
-  (totalElem sz < thresh)
-    ==> fst (iter (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono)
+  (totalElem sz < thresh) ==>
+    fst (iter (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono)
   where
     mono curIx (prevMono, prevIx) =
       let isMono = prevMono && prevIx < curIx
@@ -217,10 +217,10 @@ prop_IterMonotonic thresh sz =
 
 prop_IterMonotonicM :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonicM thresh sz =
-  (totalElem sz < thresh)
-    ==> fst
-    $ runIdentity
-    $ iterM (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono
+  (totalElem sz < thresh) ==>
+    fst $
+      runIdentity $
+        iterM (liftIndex succ zeroIndex) (unSz sz) (pureIndex 1) (<) (True, zeroIndex) mono
   where
     mono curIx (prevMono, prevIx) =
       let isMono = prevMono && prevIx < curIx
@@ -228,8 +228,8 @@ prop_IterMonotonicM thresh sz =
 
 prop_IterMonotonicBackwards :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonicBackwards thresh sz@(Sz szix) =
-  (totalElem sz < thresh)
-    ==> fst (iter (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono)
+  (totalElem sz < thresh) ==>
+    fst (iter (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono)
   where
     mono curIx (prevMono, prevIx) =
       let isMono = prevMono && prevIx > curIx
@@ -237,10 +237,10 @@ prop_IterMonotonicBackwards thresh sz@(Sz szix) =
 
 prop_IterMonotonicBackwardsM :: Index ix => Int -> Sz ix -> Property
 prop_IterMonotonicBackwardsM thresh sz@(Sz szix) =
-  (totalElem sz < thresh)
-    ==> fst
-    $ runIdentity
-    $ iterM (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono
+  (totalElem sz < thresh) ==>
+    fst $
+      runIdentity $
+        iterM (liftIndex pred szix) zeroIndex (pureIndex (-1)) (>=) (True, szix) mono
   where
     mono curIx (prevMono, prevIx) =
       let isMono = prevMono && prevIx > curIx
@@ -274,18 +274,18 @@ prop_PullOutInsert (DimIx dim) ix =
 
 prop_getDimException :: (Typeable ix, Index ix) => Dim -> ix -> Property
 prop_getDimException d ix =
-  (d <= 0 || d > dimensions (Just ix))
-    ==> assertDeepExceptionIO (== IndexDimensionException ix d) (getDimM ix d)
+  (d <= 0 || d > dimensions (Just ix)) ==>
+    assertDeepExceptionIO (== IndexDimensionException ix d) (getDimM ix d)
 
 prop_setDimException :: (Typeable ix, Index ix) => Dim -> ix -> Int -> Property
 prop_setDimException d ix i =
-  (d <= 0 || d > dimensions (Just ix))
-    ==> assertDeepExceptionIO (== IndexDimensionException ix d) (setDimM ix d i)
+  (d <= 0 || d > dimensions (Just ix)) ==>
+    assertDeepExceptionIO (== IndexDimensionException ix d) (setDimM ix d i)
 
 prop_PullOutDimException :: (Typeable ix, Index ix) => Dim -> ix -> Property
 prop_PullOutDimException d ix =
-  (d <= 0 || d > dimensions (Just ix))
-    ==> assertDeepExceptionIO (== IndexDimensionException ix d) (pullOutDimM ix d)
+  (d <= 0 || d > dimensions (Just ix)) ==>
+    assertDeepExceptionIO (== IndexDimensionException ix d) (pullOutDimM ix d)
 
 prop_InsertDimException
   :: forall ix

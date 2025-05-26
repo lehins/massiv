@@ -6,6 +6,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Manifest
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -13,125 +14,145 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Manifest
-  ( -- * Manifest
-    Manifest
+module Data.Massiv.Array.Manifest (
+  -- * Manifest
+  Manifest,
+
   -- ** Generate
-  , generateArray
-  , generateArrayLinear
-  , generateArrayS
-  , generateArrayLinearS
-  , generateSplitSeedArray
+  generateArray,
+  generateArrayLinear,
+  generateArrayS,
+  generateArrayLinearS,
+  generateSplitSeedArray,
+
   -- ** Stateful worker threads
-  , generateArrayWS
-  , generateArrayLinearWS
+  generateArrayWS,
+  generateArrayLinearWS,
+
   -- ** Unfold
-  , unfoldrPrimM_
-  , iunfoldrPrimM_
-  , unfoldrPrimM
-  , iunfoldrPrimM
-  , unfoldlPrimM_
-  , iunfoldlPrimM_
-  , unfoldlPrimM
-  , iunfoldlPrimM
+  unfoldrPrimM_,
+  iunfoldrPrimM_,
+  unfoldrPrimM,
+  iunfoldrPrimM,
+  unfoldlPrimM_,
+  iunfoldlPrimM_,
+  unfoldlPrimM,
+  iunfoldlPrimM,
+
   -- ** Mapping
-  , forPrimM
-  , forPrimM_
-  , iforPrimM
-  , iforPrimM_
-  , iforLinearPrimM
-  , iforLinearPrimM_
-  , for2PrimM_
-  , ifor2PrimM_
+  forPrimM,
+  forPrimM_,
+  iforPrimM,
+  iforPrimM_,
+  iforLinearPrimM,
+  iforLinearPrimM_,
+  for2PrimM_,
+  ifor2PrimM_,
+
   -- * Boxed
-  , B(..)
-  , BL(..)
-  , BN(..)
-  , N
-  , pattern N
-  , Uninitialized(..)
+  B (..),
+  BL (..),
+  BN (..),
+  N,
+  pattern N,
+  Uninitialized (..),
+
   -- ** Access
-  , findIndex
+  findIndex,
+
   -- ** Conversion
   -- $boxed_conversion_note
-  , toLazyArray
-  , evalLazyArray
-  , forceLazyArray
-  , unwrapNormalForm
-  , evalNormalForm
+  toLazyArray,
+  evalLazyArray,
+  forceLazyArray,
+  unwrapNormalForm,
+  evalNormalForm,
+
   -- *** Primitive Boxed Array
-  , unwrapLazyArray
-  , wrapLazyArray
-  , unwrapArray
-  , evalArray
-  , unwrapMutableArray
-  , unwrapMutableLazyArray
-  , evalMutableArray
-  , unwrapNormalFormArray
-  , evalNormalFormArray
-  , unwrapNormalFormMutableArray
-  , evalNormalFormMutableArray
+  unwrapLazyArray,
+  wrapLazyArray,
+  unwrapArray,
+  evalArray,
+  unwrapMutableArray,
+  unwrapMutableLazyArray,
+  evalMutableArray,
+  unwrapNormalFormArray,
+  evalNormalFormArray,
+  unwrapNormalFormMutableArray,
+  evalNormalFormMutableArray,
+
   -- *** Boxed Vector
-  , toBoxedVector
-  , toBoxedMVector
-  , fromBoxedVector
-  , fromBoxedMVector
-  , evalBoxedVector
-  , evalBoxedMVector
+  toBoxedVector,
+  toBoxedMVector,
+  fromBoxedVector,
+  fromBoxedMVector,
+  evalBoxedVector,
+  evalBoxedMVector,
+
   -- * Primitive
-  , P(..)
-  , Prim
+  P (..),
+  Prim,
+
   -- ** Conversion
+
   -- *** Primitive ByteArray
-  , toByteArray
-  , toByteArrayM
-  , unwrapByteArray
-  , unwrapByteArrayOffset
-  , fromByteArray
-  , fromByteArrayM
-  , fromByteArrayOffsetM
-  , toMutableByteArray
-  , unwrapMutableByteArray
-  , unwrapMutableByteArrayOffset
-  , fromMutableByteArray
-  , fromMutableByteArrayM
-  , fromMutableByteArrayOffsetM
+  toByteArray,
+  toByteArrayM,
+  unwrapByteArray,
+  unwrapByteArrayOffset,
+  fromByteArray,
+  fromByteArrayM,
+  fromByteArrayOffsetM,
+  toMutableByteArray,
+  unwrapMutableByteArray,
+  unwrapMutableByteArrayOffset,
+  fromMutableByteArray,
+  fromMutableByteArrayM,
+  fromMutableByteArrayOffsetM,
+
   -- *** Primitive Vector
-  , toPrimitiveVector
-  , toPrimitiveMVector
-  , fromPrimitiveVector
-  , fromPrimitiveMVector
+  toPrimitiveVector,
+  toPrimitiveMVector,
+  fromPrimitiveVector,
+  fromPrimitiveMVector,
+
   -- * Storable
-  , S(..)
-  , Storable
-  , mallocCompute
-  , mallocCopy
+  S (..),
+  Storable,
+  mallocCompute,
+  mallocCopy,
+
   -- ** Conversion
+
   -- *** Storable Vector
-  , toStorableVector
-  , toStorableMVector
-  , fromStorableVector
-  , fromStorableMVector
+  toStorableVector,
+  toStorableMVector,
+  fromStorableVector,
+  fromStorableMVector,
+
   -- *** Direct Pointer Access
-  , withPtr
+  withPtr,
+
   -- * Unboxed
-  , U(..)
-  , Unbox
+  U (..),
+  Unbox,
+
   -- ** Conversion
+
   -- *** Unboxed Vector
-  , toUnboxedVector
-  , toUnboxedMVector
-  , fromUnboxedVector
-  , fromUnboxedMVector
+  toUnboxedVector,
+  toUnboxedMVector,
+  fromUnboxedVector,
+  fromUnboxedMVector,
+
   -- * ByteString Conversion
-  , fromByteString
-  , castFromByteString
-  , toByteString
-  , castToByteString
-  , toBuilder
-  , castToBuilder
-  ) where
+  fromByteString,
+  castFromByteString,
+  toByteString,
+  castToByteString,
+  toBuilder,
+  castToBuilder,
+) where
 
 import Control.Monad
 import Data.ByteString as S hiding (findIndex)
@@ -152,14 +173,17 @@ import Data.Word (Word8)
 -- doesn't match the total number of elements of new array.
 --
 -- @since 0.2.1
-fromByteString ::
-     Load r Ix1 Word8
-  => Comp -- ^ Computation strategy
-  -> ByteString -- ^ Strict ByteString to use as a source.
+fromByteString
+  :: Load r Ix1 Word8
+  => Comp
+  -- ^ Computation strategy
+  -> ByteString
+  -- ^ Strict ByteString to use as a source.
   -> Vector r Word8
 fromByteString comp bs = makeArrayLinear comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
 {-# INLINE fromByteString #-}
 
+{- FOURMOLU_DISABLE -}
 -- | /O(n)/ - Convert any source array into a strict `ByteString`. In case when the source array is
 -- actually storable, no memory copy will occur.
 --
@@ -176,6 +200,7 @@ toByteString = castToByteString .
   compute
 #endif
 {-# INLINE toByteString #-}
+{- FOURMOLU_ENABLE -}
 
 -- | /O(n)/ - Conversion of array monoidally into a ByteString `Builder`.
 --
@@ -212,8 +237,6 @@ castFromByteString comp (PS fp offset len) = unsafeArrayFromForeignPtr comp fp o
 -- kept as the same array. Conversion to Massiv boxed array will undergo evaluation during which
 -- computation strategies will be respected.
 
-
-
 -- | /O(n)/ - Perform a row-major search starting at @0@ for an element. Returns the index
 -- of the first occurance of an element or `Nothing` if a predicate could not be satisifed
 -- after it was applyied to all elements of the array.
@@ -230,7 +253,6 @@ findIndex f arr = go 0
         then Just $ fromLinearIndex sz i
         else go (i + 1)
 {-# INLINE findIndex #-}
-
 
 -- | Very similar to @`computeAs` `S`@ except load the source array into memory allocated
 -- with @malloc@ on C heap. It can potentially be useful when iteroperating with some C

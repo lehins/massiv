@@ -13,7 +13,7 @@ import Test.Massiv.Core
 
 prop_ToFromByteArray
   :: forall ix
-   . (Ragged L ix Word16)
+   . Ragged L ix Word16
   => Array P ix Word16
   -> Property
 prop_ToFromByteArray arr =
@@ -37,7 +37,7 @@ prop_ToFromByteArray arr =
 
 prop_ToFromPrimitiveVector
   :: forall ix
-   . (Ragged L ix Word)
+   . Ragged L ix Word
   => Array P ix Word
   -> Property
 prop_ToFromPrimitiveVector arr =

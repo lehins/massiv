@@ -46,9 +46,9 @@ newtype ArrTinyNE r ix e = ArrTinyNE
 -- @since 0.1.0
 data ArrIx r ix e = ArrIx (Array r ix e) ix
 
-deriving instance (Show (Array r ix e)) => Show (ArrNE r ix e)
-deriving instance (Show (Array r ix e)) => Show (ArrTiny r ix e)
-deriving instance (Show (Array r ix e)) => Show (ArrTinyNE r ix e)
+deriving instance Show (Array r ix e) => Show (ArrNE r ix e)
+deriving instance Show (Array r ix e) => Show (ArrTiny r ix e)
+deriving instance Show (Array r ix e) => Show (ArrTinyNE r ix e)
 deriving instance (Show (Array r ix e), Show ix) => Show (ArrIx r ix e)
 
 instance Arbitrary Comp where

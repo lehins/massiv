@@ -44,11 +44,11 @@ mkGroup numCaps name !v =
   bgroup
     name
     [ bench
-      ( "massiv/Array "
-          ++ show comp
-          ++ if comp == Seq then [] else " (min " ++ w n ++ " " ++ show s ++ ")"
-      )
-      $ nf A.quicksort (setComp comp v)
+        ( "massiv/Array "
+            ++ show comp
+            ++ if comp == Seq then [] else " (min " ++ w n ++ " " ++ show s ++ ")"
+        )
+        $ nf A.quicksort (setComp comp v)
     | (comp, n) <- (Seq, 1) : ((\n -> (ParN n, n)) <$> Prelude.take (log2i numCaps) (iterate (* 2) 2))
     ]
   where

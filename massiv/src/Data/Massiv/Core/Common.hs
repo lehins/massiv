@@ -116,8 +116,8 @@ import Data.Kind
 import Data.Massiv.Core.Exception
 import Data.Massiv.Core.Index
 import Data.Massiv.Core.Index.Internal (Sz (SafeSz))
-import Data.Typeable
 import qualified Data.Stream.Monadic as S (Stream)
+import Data.Typeable
 import Data.Vector.Fusion.Util
 import GHC.Exts (IsList)
 
