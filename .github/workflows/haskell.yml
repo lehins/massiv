@@ -21,6 +21,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fourmolu:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install fourmolu
+      run: |
+        FOURMOLU_VERSION="0.17.0.0"
+        BINDIR=$HOME/.local/bin
+        mkdir -p "$BINDIR"
+        curl -sSfL "https://github.com/fourmolu/fourmolu/releases/download/v${FOURMOLU_VERSION}/fourmolu-${FOURMOLU_VERSION}-linux-x86_64" -o "$BINDIR/fourmolu"
+        chmod a+x "$BINDIR/fourmolu"
+        echo "$BINDIR" >> $GITHUB_PATH
+
+    - name: Run fourmolu
+      run: ./scripts/fourmolize.sh
+
   massiv-test-with-stack:
     name: Stack
     runs-on: ${{ matrix.os }}
