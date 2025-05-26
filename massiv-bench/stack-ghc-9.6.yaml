@@ -1,0 +1,6 @@
+work-dir: ".stack-work-bench"
+resolver: lts-22.44
+packages:
+- '.'
+extra-deps:
+- '../massiv/'
