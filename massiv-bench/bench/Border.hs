@@ -41,8 +41,11 @@ handleBorderIndexBenchGroup border =
    in bgroup
         (showBorderType border)
         [ handleBorderIndexBench border sz3 d3
+        , handleBorderIndexLinearBench border sz3 d3
         , handleBorderIndexBench border sz2 d2
+        , handleBorderIndexLinearBench border sz2 d2
         , handleBorderIndexBench border sz1 d1
+        , handleBorderIndexLinearBench border sz1 d1
         ]
 
 handleBorderIndexBench :: Index ix => Border () -> Sz ix -> Int -> Benchmark
@@ -50,6 +53,16 @@ handleBorderIndexBench !border !sz !distance =
   let !startIx = liftIndex (subtract distance) zeroIndex
       !endIx = liftIndex (+ distance) (unSz sz)
       !borderIO = pure <$> border
-   in bench (show (typeOf sz) ++ ": " ++ show distance) $
+   in bench (show (typeOf sz) ++ ": toLinear " ++ show distance) $
         whnfIO $
-          iterA_ startIx endIx (pureIndex 1) (<) (handleBorderIndex borderIO sz (`seq` pure ()))
+          iterA_ startIx endIx (pureIndex 1) (<) (handleBorderIndex borderIO sz ((`seq` pure ()) . toLinearIndex sz))
+
+
+handleBorderIndexLinearBench :: Index ix => Border () -> Sz ix -> Int -> Benchmark
+handleBorderIndexLinearBench !border !sz !distance =
+  let !startIx = liftIndex (subtract distance) zeroIndex
+      !endIx = liftIndex (+ distance) (unSz sz)
+      !borderIO = pure <$> border
+   in bench (show (typeOf sz) ++ ": Linear " ++ show distance) $
+        whnfIO $
+          iterA_ startIx endIx (pureIndex 1) (<) (handleBorderIndexLinear borderIO sz (`seq` pure ()))

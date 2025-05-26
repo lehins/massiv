@@ -1058,7 +1058,11 @@ instance Index Ix1 where
     | i >= ksz = rOver k i
     | otherwise = i
   {-# INLINE [1] repairIndex #-}
-  repairIndexLinear = repairIndex
+  repairIndexLinear k@(SafeSz ksz) !i rBelow rOver
+    | ksz <= 0 = throwIndexZeroException ksz
+    | i < 0 = rBelow k i
+    | i >= ksz = rOver k i
+    | otherwise = i
   {-# INLINE [1] repairIndexLinear #-}
   consDim i _ = i
   {-# INLINE [1] consDim #-}
