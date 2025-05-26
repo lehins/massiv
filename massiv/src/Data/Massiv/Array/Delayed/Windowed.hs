@@ -143,7 +143,7 @@ makeWindowedArray !arr wStart wSize wIndex =
 --
 -- @since 0.3.0
 insertWindow
-  :: (Index ix)
+  :: Index ix
   => Array D ix e
   -- ^ Source array that will have a window inserted into it
   -> Window ix e
@@ -185,12 +185,12 @@ getWindow = dwWindow
 --
 -- @since 0.3.0
 dropWindow :: Array DW ix e -> Array D ix e
-dropWindow DWArray {..} =
+dropWindow DWArray{..} =
   DArray
-  { dComp = dwComp
-  , dSize = dwSize
-  , dPrefIndex = PrefIndex dwIndex
-  }
+    { dComp = dwComp
+    , dSize = dwSize
+    , dPrefIndex = PrefIndex dwIndex
+    }
 {-# INLINE dropWindow #-}
 
 zeroWindow :: Index ix => Window ix e
@@ -207,17 +207,17 @@ windowError _ = throwImpossible EmptyWindowException
 {-# NOINLINE windowError #-}
 
 loadWithIx1
-  :: (Monad m)
+  :: Monad m
   => (m () -> m ())
   -> Array DW Ix1 e
   -> (Ix1 -> e -> m a)
   -> m (Ix1 -> Ix1 -> m (), Ix1, Ix1)
 loadWithIx1 with (DWArray _ sz uIndex mWindow) uWrite = do
-  let Window it wk indexW _ = fromMaybe zeroWindow mWindow
+  let Window it wk uwIndex _ = fromMaybe zeroWindow mWindow
       wEnd = it + unSz wk
   with $ iterA_ 0 it 1 (<) $ \ !i -> uWrite i (uIndex i)
   with $ iterA_ wEnd (unSz sz) 1 (<) $ \ !i -> uWrite i (uIndex i)
-  return (\from to -> with $ iterA_ from to 1 (<) $ \ !i -> uWrite i (indexW i), it, wEnd)
+  return (\from to -> with $ iterA_ from to 1 (<) $ \ !i -> uWrite i (uwIndex i), it, wEnd)
 {-# INLINE loadWithIx1 #-}
 
 instance Index ix => Shape DW ix where
@@ -255,7 +255,7 @@ instance StrideLoad DW Ix1 e where
   {-# INLINE iterArrayLinearWithStrideST_ #-}
 
 loadArrayWithIx1
-  :: (Monad m)
+  :: Monad m
   => (m () -> m ())
   -> Array DW Ix1 e
   -> Stride Ix1
@@ -263,7 +263,7 @@ loadArrayWithIx1
   -> (Ix1 -> e -> m a)
   -> m ((Ix1, Ix1) -> m (), (Ix1, Ix1))
 loadArrayWithIx1 with (DWArray _ arrSz uIndex mWindow) stride _ uWrite = do
-  let Window it wk indexW _ = fromMaybe zeroWindow mWindow
+  let Window it wk uwIndex _ = fromMaybe zeroWindow mWindow
       wEnd = it + unSz wk
       strideIx = unStride stride
   with $ iterA_ 0 it strideIx (<) $ \ !i -> uWrite (i `div` strideIx) (uIndex i)
@@ -274,7 +274,7 @@ loadArrayWithIx1 with (DWArray _ arrSz uIndex mWindow) stride _ uWrite = do
     ( \(from, to) ->
         with $
           iterA_ (strideStart stride from) to strideIx (<) $ \ !i ->
-            uWrite (i `div` strideIx) (indexW i)
+            uWrite (i `div` strideIx) (uwIndex i)
     , (it, wEnd)
     )
 {-# INLINE loadArrayWithIx1 #-}
@@ -287,14 +287,13 @@ loadWithIx2
   -> m (Ix2 -> m (), Ix2)
 loadWithIx2 with arr uWrite = do
   let DWArray _ (Sz (m :. n)) uIndex window = arr
-      Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
+      Window (it :. jt) (Sz (wm :. wn)) uwIndex mUnrollHeight = fromMaybe zeroWindow window
       ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
-      stride = oneStride
-      !sz = strideSize stride $ outerSize arr
+      !sz = strideSize oneStride $ outerSize arr
       writeB !ix = uWrite (toLinearIndex sz ix) (uIndex ix)
       {-# INLINE writeB #-}
-      writeW !ix = uWrite (toLinearIndex sz ix) (indexW ix)
+      writeW !ix = uWrite (toLinearIndex sz ix) (uwIndex ix)
       {-# INLINE writeW #-}
   with $ iterA_ (0 :. 0) (it :. n) (1 :. 1) (<) writeB
   with $ iterA_ (ib :. 0) (m :. n) (1 :. 1) (<) writeB
@@ -315,13 +314,13 @@ loadArrayWithIx2
   -> m (Ix2 -> m (), Ix2)
 loadArrayWithIx2 with arr stride sz uWrite = do
   let DWArray _ (Sz (m :. n)) uIndex window = arr
-      Window (it :. jt) (Sz (wm :. wn)) indexW mUnrollHeight = fromMaybe zeroWindow window
+      Window (it :. jt) (Sz (wm :. wn)) uwIndex mUnrollHeight = fromMaybe zeroWindow window
       ib :. jb = (wm + it) :. (wn + jt)
       !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       strideIx@(is :. js) = unStride stride
       writeB !ix = uWrite (toLinearIndexStride stride sz ix) (uIndex ix)
       {-# INLINE writeB #-}
-      writeW !ix = uWrite (toLinearIndexStride stride sz ix) (indexW ix)
+      writeW !ix = uWrite (toLinearIndexStride stride sz ix) (uwIndex ix)
       {-# INLINE writeW #-}
   with $ iterA_ (0 :. 0) (it :. n) strideIx (<) writeB
   with $ iterA_ (strideStart stride (ib :. 0)) (m :. n) strideIx (<) writeB
@@ -403,19 +402,19 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
           }
       loadLower mkWindow !i =
         let !lowerArray =
-               DWArray
-                 { dwComp = Seq
-                 , dwSize = lowerSourceSize
-                 , dwIndex = uIndex . consDim i
-                 , dwWindow = mkWindow i
-                 }
+              DWArray
+                { dwComp = Seq
+                , dwSize = lowerSourceSize
+                , dwIndex = uIndex . consDim i
+                , dwWindow = mkWindow i
+                }
             !innerScheduler =
               if numWorkers scheduler <= unSz (strideSize (Stride s) headSourceSize)
                 then trivialScheduler_
                 else scheduler
-        in scheduleWork_ scheduler $
-             iterArrayLinearWithStrideST_ innerScheduler (Stride lowerStrideIx) lowerSize lowerArray $ \k ->
-               uWrite (k + pageElements * (i `div` s))
+         in scheduleWork_ scheduler $
+              iterArrayLinearWithStrideST_ innerScheduler (Stride lowerStrideIx) lowerSize lowerArray $ \k ->
+                uWrite (k + pageElements * (i `div` s))
       {-# INLINE loadLower #-}
   loopA_ 0 (< headDim windowStart) (+ s) (loadLower (const Nothing))
   loopA_
@@ -473,7 +472,7 @@ loadWithIxN scheduler arr uWrite = do
 unrollAndJam
   :: Monad m
   => Int
-  -- ^ Block height
+  -- ^ Block height. Must not be zero.
   -> Ix2
   -- ^ Top corner
   -> Ix2
@@ -484,21 +483,22 @@ unrollAndJam
   -- ^ Writing function
   -> m ()
 unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
-  let f2 (i :. j) = f (i :. j) >> f ((i + 1) :. j)
-  let f3 (i :. j) = f (i :. j) >> f2 ((i + 1) :. j)
-  let f4 (i :. j) = f (i :. j) >> f3 ((i + 1) :. j)
-  let f5 (i :. j) = f (i :. j) >> f4 ((i + 1) :. j)
-  let f6 (i :. j) = f (i :. j) >> f5 ((i + 1) :. j)
-  let f7 (i :. j) = f (i :. j) >> f6 ((i + 1) :. j)
-  let f' = case bH of
-        1 -> f
-        2 -> f2
-        3 -> f3
-        4 -> f4
-        5 -> f5
-        6 -> f6
-        _ -> f7
-  let !ibS = ib - ((ib - it) `modInt` bH)
+  let
+    f2 (i :. j) = f (i :. j) >> f ((i + 1) :. j)
+    f3 (i :. j) = f (i :. j) >> f2 ((i + 1) :. j)
+    f4 (i :. j) = f (i :. j) >> f3 ((i + 1) :. j)
+    f5 (i :. j) = f (i :. j) >> f4 ((i + 1) :. j)
+    f6 (i :. j) = f (i :. j) >> f5 ((i + 1) :. j)
+    f7 (i :. j) = f (i :. j) >> f6 ((i + 1) :. j)
+    f' = case bH of
+      1 -> f
+      2 -> f2
+      3 -> f3
+      4 -> f4
+      5 -> f5
+      6 -> f6
+      _ -> f7
+    !ibS = ib - ((ib - it) `modInt` bH)
   loopA_ it (< ibS) (+ bH) $ \ !i ->
     loopA_ jt (< jb) (+ js) $ \ !j ->
       f' (i :. j)
