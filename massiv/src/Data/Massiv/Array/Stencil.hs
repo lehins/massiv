@@ -202,7 +202,14 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
       DArray
         (getComp arr)
         sz
-        (PrefIndex (stencilF (borderIndex border arr) (borderIndex border arr) . liftIndex2 (+) offset))
+        -- (PrefIndex (stencilF (borderIndex border arr) (borderIndex border arr) . liftIndex2 (+) offset))
+        ( PrefIndex
+            ( stencilF
+                (handleBorderIndexLinear border (size arr) (unsafeLinearIndex arr))
+                (handleBorderIndexLinear border (size arr) (unsafeLinearIndex arr))
+                . liftIndex2 (+) offset
+            )
+        )
     -- Size by which the resulting array will shrink (not accounting for padding)
     !shrinkSz = Sz (liftIndex (subtract 1) (unSz sSz))
     !sz = liftSz2 (-) (SafeSz (liftIndex2 (+) po (liftIndex2 (+) pb (unSz (size arr))))) shrinkSz

@@ -65,6 +65,7 @@ module Data.Massiv.Core.Index (
   -- ** Border
   Border (..),
   handleBorderIndex,
+  handleBorderIndexLinear,
 
   -- ** Index functions
   Lower,
@@ -251,6 +252,37 @@ handleBorderIndex border !sz getVal !ix =
       getVal $
         repairIndex sz ix (\(SafeSz k) i -> negate i `modInt` k) (\(SafeSz k) i -> (-i - 2) `modInt` k)
 {-# INLINE [1] handleBorderIndex #-}
+
+handleBorderIndexLinear
+  :: Index ix
+  => Border e
+  -- ^ Broder resolution technique
+  -> Sz ix
+  -- ^ Size
+  -> (Int -> e)
+  -- ^ Index function that produces an element
+  -> ix
+  -- ^ Index
+  -> e
+handleBorderIndexLinear border !sz getVal !ix =
+  case border of
+    Fill val
+      | isSafeIndex sz ix -> getVal $ toLinearIndex sz ix
+      | otherwise -> val
+    Wrap ->
+      getVal $
+        repairIndexLinear sz ix 0 (\(SafeSz k) i -> i `modInt` k) (\(SafeSz k) i -> i `modInt` k)
+    Edge ->
+      getVal $
+        repairIndexLinear sz ix 0 (const (const 0)) (\(SafeSz k) _ -> k - 1)
+    Reflect ->
+      getVal $
+        repairIndexLinear sz ix 0 (\(SafeSz k) i -> (-i - 1) `modInt` k) (\(SafeSz k) i -> (-i - 1) `modInt` k)
+    Continue ->
+      getVal $
+        repairIndexLinear sz ix 0 (\(SafeSz k) i -> negate i `modInt` k) (\(SafeSz k) i -> (-i - 2) `modInt` k)
+{-# INLINE [1] handleBorderIndexLinear #-}
+
 
 -- | Index with all zeros
 --
