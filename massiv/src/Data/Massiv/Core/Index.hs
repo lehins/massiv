@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -193,12 +194,20 @@ data Border e
   deriving (Eq, Show)
 
 instance NFData e => NFData (Border e) where
-  rnf b = case b of
+  rnf = \case
     Fill e -> rnf e
     Wrap -> ()
     Edge -> ()
     Reflect -> ()
     Continue -> ()
+
+instance Functor Border where
+  fmap f = \case
+    Fill e -> Fill (f e)
+    Wrap -> Wrap
+    Edge -> Edge
+    Reflect -> Reflect
+    Continue -> Continue
 
 -- | Apply a border resolution technique to an index
 --

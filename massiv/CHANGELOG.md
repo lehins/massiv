@@ -1,5 +1,6 @@
 # 1.0.5
 
+* Add `Functor` instance for `Border`
 * Improve performance and reduce allocations during computation of higher dimension `DW` arrays [#142](https://github.com/lehins/massiv/issues/142)
 
 # 1.0.4
