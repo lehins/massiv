@@ -36,6 +36,8 @@ module Data.Massiv.Array.Delayed (
   DW (..),
   Window (..),
   insertWindow,
+  Unroll,
+  mkUnrollFromSz,
   getWindow,
   dropWindow,
   makeWindowedArray,

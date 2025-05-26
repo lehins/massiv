@@ -98,7 +98,7 @@ unsafeMapStencil b sSz sCenter stencilF !arr = insertWindow warr window
         { windowStart = sCenter
         , windowSize = windowSz
         , windowIndex = stencil (unsafeIndex arr)
-        , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
+        , windowUnroll = mkUnrollFromSz sSz
         }
     !sz = size arr
     !windowSz = Sz (liftIndex2 (-) (unSz sz) (liftIndex (subtract 1) (unSz sSz)))

@@ -20,6 +20,8 @@ module Data.Massiv.Array.Delayed.Windowed (
   DW (..),
   Array (..),
   Window (..),
+  Unroll (..),
+  mkUnrollFromSz,
   insertWindow,
   getWindow,
   dropWindow,
@@ -48,11 +50,41 @@ data Window ix e = Window
   -- ^ Size of the window
   , windowIndex :: ix -> e
   -- ^ Indexing function for the window
-  , windowUnrollIx2 :: !(Maybe Int)
+  , windowUnroll :: !Unroll
   -- ^ Setting this value during stencil application improves cache
-  -- utilization by unrolling the loop for Ix2 and higher dimensions.
-  -- Has no affect on arrays with one dimension.
+  -- utilization by unrolling the loop.
   }
+
+data Unroll
+  = UnrollNone
+  | UnrollVertical !Int
+  | UnrollHorizontal !Int
+  | UnrollEither !Ix2
+  deriving (Eq, Ord, Show)
+
+mkUnrollFromSz :: Index ix => Sz ix -> Unroll
+mkUnrollFromSz sz =
+  case pullOutSzM sz 1 of
+    Just (Sz u1, _)
+      | u1 > 1 -> UnrollHorizontal u1
+    -- _ -> case pullOutSzM sz 2 of
+    --   Just (Sz u2, _)
+    --     | u2 > 1 -> UnrollVertical u2
+    _ -> UnrollNone
+
+-- case (,) <$> pullOutSzM sz 2 <*> pullOutSzM sz 1 of
+--   Nothing ->
+--     case pullOutSzM sz 1 of
+--       Just (Sz u1, _)
+--         | u1 > 1 -> UnrollHorizontal u1
+--       _ -> UnrollNone
+--   Just ((Sz u2, _), (Sz u1, _))
+--     | u1 > 1 ->
+--         if u2 > 1
+--           then UnrollEither (u2 :. u1)
+--           else UnrollHorizontal u1
+--     | u2 > 1 -> UnrollVertical u2
+--     | otherwise -> UnrollNone
 
 instance Functor (Window ix) where
   fmap f arr@Window{windowIndex} = arr{windowIndex = f . windowIndex}
@@ -113,7 +145,7 @@ instance Functor (Array DW ix) where
 --   | otherwise =
 --     DWArray {dwArray = delay arr, dwWindow = Just $! Window {..}}
 --   where
---     windowUnrollIx2 = Nothing
+--     windowUnroll = UnrollNone
 --     sz = size arr
 -- {-# INLINE _makeWindowedArrayM #-}
 
@@ -135,7 +167,7 @@ makeWindowedArray
   -> Array DW ix e
 makeWindowedArray !arr wStart wSize wIndex =
   insertWindow (delay arr) $
-    Window{windowStart = wStart, windowSize = wSize, windowIndex = wIndex, windowUnrollIx2 = Nothing}
+    Window{windowStart = wStart, windowSize = wSize, windowIndex = wIndex, windowUnroll = UnrollNone}
 {-# INLINE makeWindowedArray #-}
 
 -- | Inserts a `Window` into a delayed array while scaling the window down if it doesn't fit inside
@@ -160,7 +192,7 @@ insertWindow !arr !window =
             { windowStart = wStart'
             , windowSize = Sz (liftIndex2 min wSize (liftIndex2 (-) sz wStart'))
             , windowIndex = wIndex
-            , windowUnrollIx2 = wUnrollIx2
+            , windowUnroll = wUnroll
             }
     }
   where
@@ -170,7 +202,7 @@ insertWindow !arr !window =
       { windowStart = wStart
       , windowSize = Sz wSize
       , windowIndex = wIndex
-      , windowUnrollIx2 = wUnrollIx2
+      , windowUnroll = wUnroll
       } = window
 {-# INLINE insertWindow #-}
 
@@ -194,7 +226,7 @@ dropWindow DWArray{..} =
 {-# INLINE dropWindow #-}
 
 zeroWindow :: Index ix => Window ix e
-zeroWindow = Window zeroIndex zeroSz windowError Nothing
+zeroWindow = Window zeroIndex zeroSz windowError UnrollNone
 {-# INLINE zeroWindow #-}
 
 data EmptyWindowException = EmptyWindowException deriving (Eq, Show)
@@ -281,15 +313,15 @@ loadArrayWithIx1 with (DWArray _ arrSz uIndex mWindow) stride _ uWrite = do
 
 loadWithIx2
   :: Monad m
-  => (m () -> m ())
+  => Int
+  -> (m () -> m ())
   -> Array DW Ix2 t1
   -> (Int -> t1 -> m ())
-  -> m (Ix2 -> m (), Ix2)
-loadWithIx2 with arr uWrite = do
+  -> m ()
+loadWithIx2 nWorkers with arr uWrite = do
   let DWArray _ (Sz (m :. n)) uIndex window = arr
-      Window (it :. jt) (Sz (wm :. wn)) uwIndex mUnrollHeight = fromMaybe zeroWindow window
+      Window (it :. jt) (Sz (wm :. wn)) uwIndex unroll = fromMaybe zeroWindow window
       ib :. jb = (wm + it) :. (wn + jt)
-      !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       !sz = strideSize oneStride $ outerSize arr
       writeB !ix = uWrite (toLinearIndex sz ix) (uIndex ix)
       {-# INLINE writeB #-}
@@ -299,9 +331,22 @@ loadWithIx2 with arr uWrite = do
   with $ iterA_ (ib :. 0) (m :. n) (1 :. 1) (<) writeB
   with $ iterA_ (it :. 0) (ib :. jt) (1 :. 1) (<) writeB
   with $ iterA_ (it :. jb) (ib :. n) (1 :. 1) (<) writeB
-  let f (it' :. ib') = with $ unrollAndJam' blockHeight (it' :. jt) (ib' :. jb) 1 writeW
+  let f (it' :. ib') =
+        case unroll of
+          UnrollHorizontal blockWidth ->
+            with $ unrollAndJamHorizontal blockWidth (it' :. jt) (ib' :. jb) 1 writeW
+          -- UnrollVertical blockHeight ->
+          --   with $ unrollAndJamVertical blockHeight (it' :. jt) (ib' :. jb) 1 writeW
+          _ ->
+            with $ iterA_ (it' :. jt) (ib' :. jb) 1 (<) writeW
+      -- UnrollVertical blockHeight ->
+      --   with $ unrollAndJamVertical blockHeight (it' :. jt) (ib' :. jb) 1 writeW
+      -- UnrollHorizontal blockWidth ->
+      --   with $ unrollAndJamHorizontal blockWidth (it' :. jt) (ib' :. jb) 1 writeW
+      -- UnrollEither (_ :. blockWidth) ->
+      --   with $ unrollAndJamHorizontal blockWidth (it' :. jt) (ib' :. jb) 1 writeW
       {-# INLINE f #-}
-  return (f, it :. ib)
+  loadWindowIx2 nWorkers f (it :. ib)
 {-# INLINE loadWithIx2 #-}
 
 loadArrayWithIx2
@@ -314,9 +359,8 @@ loadArrayWithIx2
   -> m (Ix2 -> m (), Ix2)
 loadArrayWithIx2 with arr stride sz uWrite = do
   let DWArray _ (Sz (m :. n)) uIndex window = arr
-      Window (it :. jt) (Sz (wm :. wn)) uwIndex mUnrollHeight = fromMaybe zeroWindow window
+      Window (it :. jt) (Sz (wm :. wn)) uwIndex unroll = fromMaybe zeroWindow window
       ib :. jb = (wm + it) :. (wn + jt)
-      !blockHeight = maybe 1 (min 7 . max 1) mUnrollHeight
       strideIx@(is :. js) = unStride stride
       writeB !ix = uWrite (toLinearIndexStride stride sz ix) (uIndex ix)
       {-# INLINE writeB #-}
@@ -326,12 +370,23 @@ loadArrayWithIx2 with arr stride sz uWrite = do
   with $ iterA_ (strideStart stride (ib :. 0)) (m :. n) strideIx (<) writeB
   with $ iterA_ (strideStart stride (it :. 0)) (ib :. jt) strideIx (<) writeB
   with $ iterA_ (strideStart stride (it :. jb)) (ib :. n) strideIx (<) writeB
-  let f (it' :. ib')
-        | is > 1 || blockHeight <= 1 =
-            -- Turn off unrolling for vertical strides
+  let f (it' :. ib') =
+        case unroll of
+          UnrollVertical blockHeight
+            | is == 1 ->
+                -- Turn on unrolling when there is no vertical stride
+                unrollAndJamVertical blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
+          UnrollHorizontal blockWidth
+            | js == 1 ->
+                -- Turn on unrolling when there is no horizontal stride
+                unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
+          UnrollEither (blockHeight :. blockWidth)
+            | js == 1 ->
+                unrollAndJamHorizontal blockWidth (strideStart stride (it' :. jt)) (ib' :. jb) is writeW
+            | is == 1 ->
+                unrollAndJamVertical blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
+          _ ->
             iterA_ (strideStart stride (it' :. jt)) (ib' :. jb) strideIx (<) writeW
-        | otherwise =
-            unrollAndJam blockHeight (strideStart stride (it' :. jt)) (ib' :. jb) js writeW
       {-# INLINE f #-}
   return (with . f, it :. ib)
 {-# INLINE loadArrayWithIx2 #-}
@@ -351,8 +406,7 @@ instance Load DW Ix2 e where
   makeArray c sz f = DWArray c sz f Nothing
   {-# INLINE makeArray #-}
   iterArrayLinearST_ scheduler arr uWrite =
-    loadWithIx2 (scheduleWork scheduler) arr uWrite
-      >>= uncurry (loadWindowIx2 (numWorkers scheduler))
+    loadWithIx2 (numWorkers scheduler) (scheduleWork scheduler) arr uWrite
   {-# INLINE iterArrayLinearST_ #-}
 
 instance StrideLoad DW Ix2 e where
@@ -381,7 +435,7 @@ loadArrayWithIxN
   -> ST s ()
 loadArrayWithIxN scheduler stride szResult arr uWrite = do
   let DWArray _ sz uIndex window = arr
-      Window{windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
+      Window{windowStart, windowSize, windowIndex, windowUnroll} = fromMaybe zeroWindow window
       !(!headSourceSize, !lowerSourceSize) = unconsSz sz
       !lowerSize = snd $ unconsSz szResult
       !(!s, !lowerStrideIx) = unconsDim $ unStride stride
@@ -394,7 +448,7 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
           { windowStart = lowerWindowStart
           , windowSize = tailWindowSz
           , windowIndex = \_ -> error "Window index uninitialized"
-          , windowUnrollIx2 = windowUnrollIx2
+          , windowUnroll = windowUnroll
           }
       mkLowerWindow !i =
         lowerWindow
@@ -433,7 +487,7 @@ loadWithIxN
   -> ST s ()
 loadWithIxN scheduler arr uWrite = do
   let DWArray _ sz uIndex window = arr
-      Window{windowStart, windowSize, windowIndex, windowUnrollIx2} = fromMaybe zeroWindow window
+      Window{windowStart, windowSize, windowIndex, windowUnroll} = fromMaybe zeroWindow window
       !(!si, !szL) = unconsSz sz
       !windowEnd = liftIndex2 (+) windowStart (unSz windowSize)
       !(!t, windowStartL) = unconsDim windowStart
@@ -443,7 +497,7 @@ loadWithIxN scheduler arr uWrite = do
           { windowStart = windowStartL
           , windowSize = snd $ unconsSz windowSize
           , windowIndex = \_ -> error "Window index uninitialized"
-          , windowUnrollIx2 = windowUnrollIx2
+          , windowUnroll = windowUnroll
           }
       mkLowerWindow !i =
         lowerWindow
@@ -469,7 +523,7 @@ loadWithIxN scheduler arr uWrite = do
   loopA_ (headDim windowEnd) (< unSz si) (+ 1) (loadLower (const Nothing))
 {-# INLINE loadWithIxN #-}
 
-unrollAndJam
+unrollAndJamVertical
   :: Monad m
   => Int
   -- ^ Block height. Must not be zero.
@@ -482,7 +536,7 @@ unrollAndJam
   -> (Ix2 -> m ())
   -- ^ Writing function
   -> m ()
-unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
+unrollAndJamVertical !bH (it :. jt) (ib :. jb) js f = do
   let
     f2 (i :. j) = f (i :. j) >> f ((i + 1) :. j)
     f3 (i :. j) = f (i :. j) >> f2 ((i + 1) :. j)
@@ -505,9 +559,9 @@ unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
   loopA_ ibS (< ib) (+ 1) $ \ !i ->
     loopA_ jt (< jb) (+ js) $ \ !j ->
       f (i :. j)
-{-# INLINE unrollAndJam #-}
+{-# INLINE unrollAndJamVertical #-}
 
-unrollAndJam'
+unrollAndJamHorizontal
   :: Monad m
   => Int
   -- ^ Block height
@@ -520,14 +574,14 @@ unrollAndJam'
   -> (Ix2 -> m ())
   -- ^ Writing function
   -> m ()
-unrollAndJam' !bH (it :. jt) (ib :. jb) _js f = do
+unrollAndJamHorizontal !bW (it :. jt) (ib :. jb) is f = do
   let f2 (i :. j) = f (i :. j) >> f (i :. (j + 1))
   let f3 (i :. j) = f (i :. j) >> f2 (i :. (j + 1))
   let f4 (i :. j) = f (i :. j) >> f3 (i :. (j + 1))
   let f5 (i :. j) = f (i :. j) >> f4 (i :. (j + 1))
   let f6 (i :. j) = f (i :. j) >> f5 (i :. (j + 1))
   let f7 (i :. j) = f (i :. j) >> f6 (i :. (j + 1))
-  let f' = case bH of
+  let f' = case bW of
         1 -> f
         2 -> f2
         3 -> f3
@@ -535,12 +589,12 @@ unrollAndJam' !bH (it :. jt) (ib :. jb) _js f = do
         5 -> f5
         6 -> f6
         _ -> f7
-  let !jbS = jb - ((jb - jt) `modInt` bH)
-  loopA_ it (< ib) (+ 1) $ \ !i -> do
-    loopA_ jt (< jbS) (+ bH) $ \ !j ->
+  let !jbS = jb - ((jb - jt) `modInt` bW)
+  loopA_ it (< ib) (+ is) $ \ !i -> do
+    loopA_ jt (< jbS) (+ bW) $ \ !j ->
       f' (i :. j)
     loopA_ jbS (< jb) (+ 1) $ \ !j ->
       f (i :. j)
-{-# INLINE unrollAndJam' #-}
+{-# INLINE unrollAndJamHorizontal #-}
 
 -- TODO: Implement Hilbert curve

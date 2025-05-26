@@ -207,12 +207,13 @@ applyStencil (Padding (Sz po) (Sz pb) border) (Stencil sSz sCenter stencilF) !ar
     !shrinkSz = Sz (liftIndex (subtract 1) (unSz sSz))
     !sz = liftSz2 (-) (SafeSz (liftIndex2 (+) po (liftIndex2 (+) pb (unSz (size arr))))) shrinkSz
     !wsz = liftSz2 (-) (size arr) shrinkSz
+    unroll = mkUnrollFromSz sSz
     !window =
       Window
         { windowStart = po
         , windowSize = wsz
         , windowIndex = stencilF (unsafeIndex arr) (index' arr) . liftIndex2 (+) offset
-        , windowUnrollIx2 = unSz . fst <$> pullOutSzM sSz 2
+        , windowUnroll = unroll
         }
 {-# INLINE applyStencil #-}
 
