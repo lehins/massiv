@@ -1250,7 +1250,8 @@ atan2A = liftNumArray2M atan2
 -- size, otherwise it will result in an error.
 --
 -- @since 1.0.0
-sumArrays' :: (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
+sumArrays'
+  :: (HasCallStack, Foldable t, Load r ix e, Numeric r e) => t (Array r ix e) -> Array r ix e
 sumArrays' = throwEither . sumArraysM
 {-# INLINE sumArrays' #-}
 

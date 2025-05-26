@@ -259,7 +259,8 @@ findIndex f arr = go 0
 -- programs.
 --
 -- @since 0.5.9
-mallocCompute :: forall r ix e. (Size r, Load r ix e, Storable e) => Array r ix e -> IO (Array S ix e)
+mallocCompute
+  :: forall r ix e. (Size r, Load r ix e, Storable e) => Array r ix e -> IO (Array S ix e)
 mallocCompute arr = do
   let sz = size arr
   marr <- unsafeMallocMArray sz

@@ -979,7 +979,8 @@ sliceAt' k = throwEither . sliceAtM k
 -- ==== __Examples__
 --
 -- @since 0.5.0
-sliceAtM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
+sliceAtM
+  :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e, Vector r e)
 sliceAtM k v = do
   l <- takeM k v
   pure (l, unsafeDrop k v)

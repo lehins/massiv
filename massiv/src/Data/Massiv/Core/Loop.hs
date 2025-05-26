@@ -454,8 +454,12 @@ scheduleMassivWork = scheduleWork
 {-# INLINE [0] scheduleMassivWork #-}
 
 {-# RULES
-"scheduleWork/scheduleWork_/ST" forall (scheduler :: Scheduler s ()) (action :: ST s ()). scheduleMassivWork scheduler action = scheduleWork_ scheduler action
-"scheduleWork/scheduleWork_/IO" forall (scheduler :: Scheduler RealWorld ()) (action :: IO ()). scheduleMassivWork scheduler action = scheduleWork_ scheduler action
+"scheduleWork/scheduleWork_/ST" forall (scheduler :: Scheduler s ()) (action :: ST s ()).
+  scheduleMassivWork scheduler action =
+    scheduleWork_ scheduler action
+"scheduleWork/scheduleWork_/IO" forall (scheduler :: Scheduler RealWorld ()) (action :: IO ()).
+  scheduleMassivWork scheduler action =
+    scheduleWork_ scheduler action
   #-}
 
 -- | Selects an optimal scheduler for the supplied strategy, but it works only in `IO`

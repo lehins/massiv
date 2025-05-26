@@ -314,7 +314,11 @@ toLoadArray arr = DLArray (getComp arr) sz load
       -> (Ix1 -> Sz1 -> e -> ST s ())
       -> ST s ()
     load scheduler !startAt dlWrite dlSet =
-      iterArrayLinearWithSetST_ scheduler arr (dlWrite . (+ startAt)) (\offset -> dlSet (offset + startAt))
+      iterArrayLinearWithSetST_
+        scheduler
+        arr
+        (dlWrite . (+ startAt))
+        (\offset -> dlSet (offset + startAt))
     {-# INLINE load #-}
 {-# INLINE [1] toLoadArray #-}
 

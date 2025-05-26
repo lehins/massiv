@@ -45,6 +45,10 @@ main = do
 
   -- Illustrating how strides work
   -- Simple downsampling leads to aliasing
-  writeImageAuto "files/frog_small0.png" $ computeWithStrideAs S (Stride (2 :. 2)) $ mapStencil Edge identity frog
+  writeImageAuto "files/frog_small0.png" $
+    computeWithStrideAs S (Stride (2 :. 2)) $
+      mapStencil Edge identity frog
   -- Downsampling after box filtering
-  writeImageAuto "files/frog_small1.png" $ computeWithStrideAs S (Stride (2 :. 2)) $ mapStencil Edge box frog
+  writeImageAuto "files/frog_small1.png" $
+    computeWithStrideAs S (Stride (2 :. 2)) $
+      mapStencil Edge box frog

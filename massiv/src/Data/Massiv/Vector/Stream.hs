@@ -479,7 +479,9 @@ zipWith5
   -> Steps m e
   -> Steps m f
 zipWith5 f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) =
-  Steps (S.zipWith5 f sa sb sc sd se) (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd ke))))
+  Steps
+    (S.zipWith5 f sa sb sc sd se)
+    (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd ke))))
 {-# INLINE zipWith5 #-}
 
 zipWith6
@@ -529,7 +531,9 @@ zipWith5M
   -> Steps m e
   -> Steps m f
 zipWith5M f (Steps sa ka) (Steps sb kb) (Steps sc kc) (Steps sd kd) (Steps se ke) =
-  Steps (S.zipWith5M f sa sb sc sd se) (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd ke))))
+  Steps
+    (S.zipWith5M f sa sb sc sd se)
+    (minLengthHint ka (minLengthHint kb (minLengthHint kc (minLengthHint kd ke))))
 {-# INLINE zipWith5M #-}
 
 zipWith6M

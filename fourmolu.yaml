@@ -13,3 +13,4 @@ unicode: never
 respectful: false
 fixities: []
 single-constraint-parens: never
+column-limit: 100

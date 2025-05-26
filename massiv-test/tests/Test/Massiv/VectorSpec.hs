@@ -71,7 +71,14 @@ toUnboxV5 f v1 v2 v3 v4 v5 = appComp (getComp v1) (toUnboxV4 (f (toUnboxedVector
 
 toUnboxV6
   :: Unbox e
-  => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e)
+  => ( VU.Vector e1
+       -> VU.Vector e2
+       -> VU.Vector e3
+       -> VU.Vector e4
+       -> VU.Vector e5
+       -> VU.Vector e6
+       -> VU.Vector e
+     )
   -> Array U ix1 e1
   -> Array U ix2 e2
   -> Array U ix3 e3

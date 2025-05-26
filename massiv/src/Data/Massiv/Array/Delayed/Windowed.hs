@@ -422,7 +422,11 @@ loadArrayWithIxN scheduler stride szResult arr uWrite = do
     (< curWindowEnd)
     (+ s)
     (loadLower (Just . mkLowerWindow))
-  loopA_ (strideStart (Stride s) curWindowEnd) (< unSz headSourceSize) (+ s) (loadLower (const Nothing))
+  loopA_
+    (strideStart (Stride s) curWindowEnd)
+    (< unSz headSourceSize)
+    (+ s)
+    (loadLower (const Nothing))
 {-# INLINE loadArrayWithIxN #-}
 
 loadWithIxN
