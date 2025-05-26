@@ -271,16 +271,16 @@ handleBorderIndexLinear border !sz getVal !ix =
       | otherwise -> val
     Wrap ->
       getVal $
-        repairIndexLinear sz ix 0 (\(SafeSz k) i -> i `modInt` k) (\(SafeSz k) i -> i `modInt` k)
+        repairIndexLinear sz ix (\(SafeSz k) i -> i `modInt` k) (\(SafeSz k) i -> i `modInt` k)
     Edge ->
       getVal $
-        repairIndexLinear sz ix 0 (const (const 0)) (\(SafeSz k) _ -> k - 1)
+        repairIndexLinear sz ix (const (const 0)) (\(SafeSz k) _ -> k - 1)
     Reflect ->
       getVal $
-        repairIndexLinear sz ix 0 (\(SafeSz k) i -> (-i - 1) `modInt` k) (\(SafeSz k) i -> (-i - 1) `modInt` k)
+        repairIndexLinear sz ix (\(SafeSz k) i -> (-i - 1) `modInt` k) (\(SafeSz k) i -> (-i - 1) `modInt` k)
     Continue ->
       getVal $
-        repairIndexLinear sz ix 0 (\(SafeSz k) i -> negate i `modInt` k) (\(SafeSz k) i -> (-i - 2) `modInt` k)
+        repairIndexLinear sz ix (\(SafeSz k) i -> negate i `modInt` k) (\(SafeSz k) i -> (-i - 2) `modInt` k)
 {-# INLINE [1] handleBorderIndexLinear #-}
 
 

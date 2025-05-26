@@ -353,6 +353,11 @@ instance Index Ix2 where
   {-# INLINE [1] liftIndex2 #-}
   repairIndex (SafeSz (k :. szL)) (i :. ixL) rBelow rOver =
     repairIndex (SafeSz k) i rBelow rOver :. repairIndex (SafeSz szL) ixL rBelow rOver
+  repairIndexLinear (SafeSz (k2 :. k1)) (i2 :. i1) rBelow rOver =
+    let !i2' = repairIndexLinear (SafeSz k2) i2 rBelow rOver
+        !i1' = repairIndexLinear (SafeSz k1) i1 rBelow rOver
+     in i2' * k1 + i1'
+  {-# INLINE [1] repairIndexLinear #-}
   {-# INLINE [1] repairIndex #-}
   iterF (s :. sIxL) (e :. eIxL) (inc :. incIxL) cond initAct f =
     loopF s (`cond` e) (+ inc) initAct $ \ !i g ->
@@ -414,6 +419,12 @@ instance {-# OVERLAPPING #-} Index (IxN 3) where
   repairIndex (SafeSz (n :> szL)) (i :> ixL) rBelow rOver =
     repairIndex (SafeSz n) i rBelow rOver :> repairIndex (SafeSz szL) ixL rBelow rOver
   {-# INLINE [1] repairIndex #-}
+  repairIndexLinear (SafeSz (k3 :> k2 :. k1)) (i3 :> i2 :. i1) rBelow rOver =
+    let !i3' = repairIndexLinear (SafeSz k3) i3 rBelow rOver
+        !i2' = repairIndexLinear (SafeSz k2) i2 rBelow rOver
+        !i1' = repairIndexLinear (SafeSz k1) i1 rBelow rOver
+     in (i3' * k2 + i2') * k1 + i1'
+  {-# INLINE [1] repairIndexLinear #-}
   iterTargetRowMajorAccM iAcc iStart sz (b3 :> b2 :. b1) (s3 :> s2 :. s1) initAcc action =
     let n = totalElem sz
         iShift = iStart + iAcc * n

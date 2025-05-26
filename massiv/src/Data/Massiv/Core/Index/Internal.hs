@@ -654,7 +654,6 @@ class
       !(i, ixL) = unconsDim ix
   {-# INLINE [1] repairIndex #-}
 
-
   -- | Same as `repairIndex`, but also produces in the end a linear index, instead of multi-dimensional.
   --
   -- @since 1.0.5
@@ -663,8 +662,6 @@ class
     -- ^ Size
     -> ix
     -- ^ Index
-    -> Int
-    -- ^ Accumulator
     -> (Sz Int -> Int -> Int)
     -- ^ Repair when below zero
     -> (Sz Int -> Int -> Int)
@@ -674,16 +671,15 @@ class
     :: Index (Lower ix)
     => Sz ix
     -> ix
-    -> Int
     -> (Sz Int -> Int -> Int)
     -> (Sz Int -> Int -> Int)
     -> Int
-  repairIndexLinear sz !ix !acc rBelow rOver =
-    repairIndexLinear szL ixL acc' rBelow rOver
+  repairIndexLinear (SafeSz sz) !ix rBelow rOver = ixL' * n + i'
     where
-      !acc' = acc * unSz n + repairIndex n i rBelow rOver
-      !(!n, !szL) = unconsSz sz
-      !(!i, !ixL) = unconsDim ix
+      !(!szL, !n) = unsnocDim sz
+      !(!ixL, !i) = unsnocDim ix
+      !ixL' = repairIndexLinear (SafeSz szL) ixL rBelow rOver
+      !i' = repairIndexLinear (SafeSz n) i rBelow rOver
   {-# INLINE [1] repairIndexLinear #-}
 
   -- | This function is what makes it possible to iterate over an array of any dimension.
@@ -1062,11 +1058,7 @@ instance Index Ix1 where
     | i >= ksz = rOver k i
     | otherwise = i
   {-# INLINE [1] repairIndex #-}
-  repairIndexLinear k@(SafeSz ksz) !i !acc rBelow rOver
-    | ksz <= 0 = throwIndexZeroException ksz
-    | i < 0 = acc * ksz + rBelow k i
-    | i >= ksz = acc * ksz + rOver k i
-    | otherwise = acc * ksz + i
+  repairIndexLinear = repairIndex
   {-# INLINE [1] repairIndexLinear #-}
   consDim i _ = i
   {-# INLINE [1] consDim #-}
