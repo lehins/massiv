@@ -299,7 +299,7 @@ loadWithIx2 with arr uWrite = do
   with $ iterA_ (ib :. 0) (m :. n) (1 :. 1) (<) writeB
   with $ iterA_ (it :. 0) (ib :. jt) (1 :. 1) (<) writeB
   with $ iterA_ (it :. jb) (ib :. n) (1 :. 1) (<) writeB
-  let f (it' :. ib') = with $ unrollAndJam blockHeight (it' :. jt) (ib' :. jb) 1 writeW
+  let f (it' :. ib') = with $ unrollAndJam' blockHeight (it' :. jt) (ib' :. jb) 1 writeW
       {-# INLINE f #-}
   return (f, it :. ib)
 {-# INLINE loadWithIx2 #-}
@@ -506,5 +506,41 @@ unrollAndJam !bH (it :. jt) (ib :. jb) js f = do
     loopA_ jt (< jb) (+ js) $ \ !j ->
       f (i :. j)
 {-# INLINE unrollAndJam #-}
+
+unrollAndJam'
+  :: Monad m
+  => Int
+  -- ^ Block height
+  -> Ix2
+  -- ^ Top corner
+  -> Ix2
+  -- ^ Bottom corner
+  -> Int
+  -- ^ Column Stride
+  -> (Ix2 -> m ())
+  -- ^ Writing function
+  -> m ()
+unrollAndJam' !bH (it :. jt) (ib :. jb) _js f = do
+  let f2 (i :. j) = f (i :. j) >> f (i :. (j + 1))
+  let f3 (i :. j) = f (i :. j) >> f2 (i :. (j + 1))
+  let f4 (i :. j) = f (i :. j) >> f3 (i :. (j + 1))
+  let f5 (i :. j) = f (i :. j) >> f4 (i :. (j + 1))
+  let f6 (i :. j) = f (i :. j) >> f5 (i :. (j + 1))
+  let f7 (i :. j) = f (i :. j) >> f6 (i :. (j + 1))
+  let f' = case bH of
+        1 -> f
+        2 -> f2
+        3 -> f3
+        4 -> f4
+        5 -> f5
+        6 -> f6
+        _ -> f7
+  let !jbS = jb - ((jb - jt) `modInt` bH)
+  loopA_ it (< ib) (+ 1) $ \ !i -> do
+    loopA_ jt (< jbS) (+ bH) $ \ !j ->
+      f' (i :. j)
+    loopA_ jbS (< jb) (+ 1) $ \ !j ->
+      f (i :. j)
+{-# INLINE unrollAndJam' #-}
 
 -- TODO: Implement Hilbert curve
