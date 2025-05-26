@@ -4,20 +4,18 @@
 
 module Main where
 
+import Control.DeepSeq
+import Control.Exception
+import Control.Monad as M
 import Control.Monad.ST
 import Control.Scheduler
 import Criterion.Main
 import Data.Bifunctor
+import Data.Foldable as F
+import Data.List as L
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as A
 import Data.Massiv.Bench.Common as A
-
--- import qualified Data.Vector.Primitive as VP
-import Control.DeepSeq
-import Control.Exception
-import Control.Monad as M
-import Data.Foldable as F
-import Data.List as L
 import Data.Proxy
 import Prelude as P
 

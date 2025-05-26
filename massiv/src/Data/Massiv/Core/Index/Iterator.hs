@@ -284,6 +284,7 @@ pattern RowMajor
 pattern RowMajor f <- RowMajorInternal f
   where
     RowMajor = RowMajorInternal . max 1
+
 {-# COMPLETE RowMajor #-}
 
 instance Iterator RowMajor where
@@ -369,6 +370,7 @@ pattern RowMajorUnbalanced
 pattern RowMajorUnbalanced f <- RowMajorUnbalancedInternal f
   where
     RowMajorUnbalanced = RowMajorUnbalancedInternal . max 1
+
 {-# COMPLETE RowMajorUnbalanced #-}
 
 instance Iterator RowMajorUnbalanced where

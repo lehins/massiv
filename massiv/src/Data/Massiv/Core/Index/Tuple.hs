@@ -65,8 +65,11 @@ type Ix4T = (Int, Int, Int, Int)
 type Ix5T = (Int, Int, Int, Int, Int)
 
 type instance Lower Ix2T = Ix1T
+
 type instance Lower Ix3T = Ix2T
+
 type instance Lower Ix4T = Ix3T
+
 type instance Lower Ix5T = Ix4T
 
 -- | Convert an `Int` tuple to `Ix2`

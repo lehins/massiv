@@ -128,7 +128,9 @@ import System.IO.Unsafe
 import Prelude as P
 
 infixr 8 .^, .^^
+
 infixl 7 !*!, .*., .*, *., !/!, ./., ./, /., `quotA`, `remA`, `divA`, `modA`
+
 infixl 6 !+!, .+., .+, +., !-!, .-., .-, -.
 
 -- | Similar to `liftArray2M`, except it can be applied only to representations

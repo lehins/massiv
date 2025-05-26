@@ -4,7 +4,6 @@ module Main where
 
 import Criterion.Main
 import Data.Massiv.Array as A
-
 -- import Data.Massiv.Core.Operations
 -- import Data.Massiv.Array.SIMD
 import Data.Massiv.Bench as A

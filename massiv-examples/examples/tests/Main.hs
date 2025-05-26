@@ -1,10 +1,8 @@
 module Main where
 
-import System.IO
-
-import Test.Hspec
-
 import Spec
+import System.IO
+import Test.Hspec
 
 main :: IO ()
 main = do

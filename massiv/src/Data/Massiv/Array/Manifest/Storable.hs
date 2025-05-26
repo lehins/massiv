@@ -50,6 +50,9 @@ import Data.Massiv.Core.Operations
 import Data.Massiv.Vector.Stream as S (isteps, steps)
 import Data.Primitive.ByteArray
 import Data.Primitive.Ptr (setPtr)
+import qualified Data.Vector.Generic.Mutable as MVG
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Storable.Mutable as MVS
 import Data.Word
 import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
@@ -61,10 +64,6 @@ import GHC.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
 import Unsafe.Coerce
 import Prelude hiding (mapM)
-
-import qualified Data.Vector.Generic.Mutable as MVG
-import qualified Data.Vector.Storable as VS
-import qualified Data.Vector.Storable.Mutable as MVS
 
 -- | Representation for `Storable` elements
 data S = S deriving (Show)

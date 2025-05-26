@@ -10,6 +10,6 @@ haddock-style-module:
 let-style: auto
 in-style: right-align
 unicode: never
-respectful: true
+respectful: false
 fixities: []
 single-constraint-parens: never

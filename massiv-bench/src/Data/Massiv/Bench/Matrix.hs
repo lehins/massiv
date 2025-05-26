@@ -72,6 +72,7 @@ data MxV r e = MxV
   { aMxV :: !(Matrix r e)
   , bMxV :: !(Vector r e)
   }
+
 instance (NFData (Matrix r e), NFData (Vector r e)) => NFData (MxV r e) where
   rnf (MxV a b) = a `deepseq` b `deepseq` ()
 
@@ -122,6 +123,7 @@ data VxM r e = VxM
   { aVxM :: !(Vector r e)
   , bVxM :: !(Matrix r e)
   }
+
 instance (NFData (Matrix r e), NFData (Vector r e)) => NFData (VxM r e) where
   rnf (VxM a b) = a `deepseq` b `deepseq` ()
 

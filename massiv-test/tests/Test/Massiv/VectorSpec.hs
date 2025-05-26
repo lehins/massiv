@@ -25,9 +25,8 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import Data.Word
-import Test.Massiv.Core
-
 import System.Random.MWC as MWC
+import Test.Massiv.Core
 
 infix 4 !==!, !!==!!
 
@@ -231,6 +230,7 @@ prop_sunfoldrExactNM seed k a =
 
 genWithMapM :: PrimMonad m => ((Word -> m Word) -> m a) -> MWC.Gen (PrimState m) -> m a
 genWithMapM genM gen = genM $ \e -> xor e <$> uniform gen
+
 genWithMapWS :: PrimMonad m => ((Word -> MWC.Gen (PrimState m) -> m Word) -> m a) -> m a
 genWithMapWS genM = genM $ \e gen -> xor e <$> uniform gen
 
@@ -331,10 +331,13 @@ prop_sifilterM seed g a =
 
 applyFun4 :: Fun (a, b, c, d) e -> (a -> b -> c -> d -> e)
 applyFun4 (Fun _ f) a b c d = f (a, b, c, d)
+
 applyFun5 :: Fun (a, b, c, d, e) f -> (a -> b -> c -> d -> e -> f)
 applyFun5 (Fun _ g) a b c d f = g (a, b, c, d, f)
+
 applyFun6 :: Fun (a, (b, c, d, e, f)) g -> (a -> b -> c -> d -> e -> f -> g)
 applyFun6 (Fun _ h) a b c d f g = h (a, (b, c, d, f, g))
+
 applyFun7 :: Fun (a, b, (c, d, e, f, g)) h -> (a -> b -> c -> d -> e -> f -> g -> h)
 applyFun7 (Fun _ i) a b c d f g h = i (a, b, (c, d, f, g, h))
 

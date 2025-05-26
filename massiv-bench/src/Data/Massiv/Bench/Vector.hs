@@ -52,6 +52,7 @@ data VxV r e = VxV
   { aVxV :: !(Vector r e)
   , bVxV :: !(Vector r e)
   }
+
 instance NFData (Vector r e) => NFData (VxV r e) where
   rnf (VxV a b) = a `deepseq` b `deepseq` ()
 

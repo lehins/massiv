@@ -120,6 +120,7 @@ data instance Array BL ix e = BLArray
   , blOffset :: {-# UNPACK #-} !Int
   , blData :: {-# UNPACK #-} !(A.Array e)
   }
+
 data instance MArray s BL ix e
   = MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
 
@@ -464,10 +465,13 @@ type N = BN
 
 pattern N :: N
 pattern N = BN
+
 {-# COMPLETE N #-}
+
 {-# DEPRECATED N "In favor of more consistently named `BN`" #-}
 
 newtype instance Array BN ix e = BNArray (Array BL ix e)
+
 newtype instance MArray s BN ix e = MBNArray (MArray s BL ix e)
 
 instance (Ragged L ix e, Show e, NFData e) => Show (Array BN ix e) where

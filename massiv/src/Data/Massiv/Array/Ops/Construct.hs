@@ -76,7 +76,6 @@ import Control.Monad (void, when)
 import Control.Monad.ST
 import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
-
 -- import Data.Massiv.Array.Delayed.Stream (unfoldr, unfoldrN)
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Core.Common
