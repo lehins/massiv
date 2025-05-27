@@ -295,7 +295,7 @@ iunfoldlS_ sz f acc0 = DLArray{dlComp = Seq, dlSize = sz, dlLoad = load}
 -- >>> import Data.Massiv.Array
 -- >>> import System.Random as Random
 -- >>> gen = Random.mkStdGen 217
--- >>> randomArray gen Random.split Random.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
+-- >>> randomArray gen Random.splitGen Random.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
 -- Array DL (ParN 2) (Sz (2 :. 3))
 --   [ [ 0.2616843941380331, 0.600959468331641, 0.4382415961606372 ]
 --   , [ 0.27812817813217605, 0.2993277194932741, 0.2774105268603957 ]
@@ -521,8 +521,8 @@ randomArrayS gen sz nextRandom =
 -- >>> gens <- initWorkerStates Par (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
 -- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
 -- Array P Par (Sz (2 :. 3))
---   [ [ 8.999240522095299, 6.832223390653755, 3.065728078741671 ]
---   , [ 7.242581103346686, 2.4565807301968623, 0.4514262066689775 ]
+--   [ [ 8.999240522095299, 6.832223390653754, 1.434271921258329 ]
+--   , [ 7.242581103346687, 2.0434192698031377, 4.048573793331022 ]
 --   ]
 -- >>> randomArrayWS gens (Sz1 6) (uniformRM (0, 9)) :: IO (Vector P Int)
 -- Array P Par (Sz1 6)
