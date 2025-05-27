@@ -151,7 +151,6 @@ jobs:
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.7.0/shc-Linux-X64.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
-          stack $STACK_ARGS test massiv:doctests
           stack $STACK_ARGS test massiv-test:tests
         fi
 
@@ -226,20 +225,28 @@ jobs:
         restore-keys: |
           cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
     - name: Build
+      id: build
       run: |
         set -ex
-        cabal configure --haddock-all --enable-tests --project-file cabal-ci.project
-        cabal build all --write-ghc-environment-files=always --project-file cabal-ci.project
+        cabal configure --haddock-all
+        cabal build all
     - name: Test
       run: |
         set -ex
-        cabal test all --project-file cabal-ci.project
-    # - name: Check Cabal Files
-    #   run: |
-    #     set -ex
-    #     cd massiv
-    #     cabal -vnormal check
-    #     cd ..
+        cabal test all
+
+    - name: Install Doctest
+      id: install-doctest
+      if: steps.build.outcome == 'success'
+      run: |
+        set -ex
+        cabal install doctest --ignore-project --overwrite-policy=always
+
+    - name: Doctest
+      if: steps.install-doctest.outcome == 'success'
+      run: |
+        set -ex
+        ./scripts/doctest.sh
 
   massiv-bench:
     name: Benchmarks
@@ -251,7 +258,7 @@ jobs:
         resolver: [lts-22]
         include:
           - resolver: lts-22
-            ghc: 9.6.6
+            ghc: 9.6.7
 
     env:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
