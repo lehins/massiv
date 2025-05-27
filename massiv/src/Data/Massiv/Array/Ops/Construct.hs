@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -293,7 +294,7 @@ iunfoldlS_ sz f acc0 = DLArray{dlComp = Seq, dlSize = sz, dlLoad = load}
 -- >>> import Data.Massiv.Array
 -- >>> import System.Random as Random
 -- >>> gen = Random.mkStdGen 217
--- >>> randomArray gen Random.split Random.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
+-- >>> randomArray gen Random.splitGen Random.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
 -- Array DL (ParN 2) (Sz (2 :. 3))
 --   [ [ 0.2616843941380331, 0.600959468331641, 0.4382415961606372 ]
 --   , [ 0.27812817813217605, 0.2993277194932741, 0.2774105268603957 ]
@@ -385,6 +386,19 @@ makeSplitSeedArray it seed splitSeed comp sz genFunc =
 -- | Generate a random array where all elements are sampled from a uniform distribution.
 --
 -- @since 1.0.0
+#if MIN_VERSION_random(1,3,0)
+uniformArray
+  :: forall ix e g
+   . (Index ix, SplitGen g, Uniform e)
+  => g
+  -- ^ Initial random value generator.
+  -> Comp
+  -- ^ Computation strategy.
+  -> Sz ix
+  -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformArray gen = randomArray gen splitGen uniform
+#else
 uniformArray
   :: forall ix e g
    . (Index ix, RandomGen g, Uniform e)
@@ -396,11 +410,27 @@ uniformArray
   -- ^ Resulting size of the array.
   -> Array DL ix e
 uniformArray gen = randomArray gen split uniform
+#endif
 {-# INLINE uniformArray #-}
 
 -- | Same as `uniformArray`, but will generate values in a supplied range.
 --
 -- @since 1.0.0
+#if MIN_VERSION_random(1,3,0)
+uniformRangeArray
+  :: forall ix e g
+   . (Index ix, SplitGen g, UniformRange e)
+  => g
+  -- ^ Initial random value generator.
+  -> (e, e)
+  -- ^ Inclusive range in which values will be generated in.
+  -> Comp
+  -- ^ Computation strategy.
+  -> Sz ix
+  -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformRangeArray gen r = randomArray gen splitGen (uniformR r)
+#else
 uniformRangeArray
   :: forall ix e g
    . (Index ix, RandomGen g, UniformRange e)
@@ -414,6 +444,7 @@ uniformRangeArray
   -- ^ Resulting size of the array.
   -> Array DL ix e
 uniformRangeArray gen r = randomArray gen split (uniformR r)
+#endif
 {-# INLINE uniformRangeArray #-}
 
 -- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
@@ -489,8 +520,8 @@ randomArrayS gen sz nextRandom =
 -- >>> gens <- initWorkerStates Par (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
 -- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
 -- Array P Par (Sz (2 :. 3))
---   [ [ 8.999240522095299, 6.832223390653755, 3.065728078741671 ]
---   , [ 7.242581103346686, 2.4565807301968623, 0.4514262066689775 ]
+--   [ [ 8.999240522095299, 6.832223390653754, 1.434271921258329 ]
+--   , [ 7.242581103346687, 2.0434192698031377, 4.048573793331022 ]
 --   ]
 -- >>> randomArrayWS gens (Sz1 6) (uniformRM (0, 9)) :: IO (Vector P Int)
 -- Array P Par (Sz1 6)
