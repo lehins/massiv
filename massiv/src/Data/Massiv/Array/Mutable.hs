@@ -291,7 +291,8 @@ newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
 --   ]
 --
 -- @since 0.1.0
-thaw :: forall r ix e m. (Manifest r e, Index ix, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
+thaw
+  :: forall r ix e m. (Manifest r e, Index ix, MonadIO m) => Array r ix e -> m (MArray RealWorld r ix e)
 thaw arr =
   liftIO $ do
     let sz = size arr
@@ -982,7 +983,8 @@ unfoldlPrimM sz gen acc0 =
 -- action to it. There is no mutation to the array, unless the action itself modifies it.
 --
 -- @since 0.4.0
-forPrimM_ :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m ()) -> m ()
+forPrimM_
+  :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m ()) -> m ()
 forPrimM_ marr f =
   loopA_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (unsafeLinearRead marr >=> f)
 {-# INLINE forPrimM_ #-}
@@ -990,7 +992,8 @@ forPrimM_ marr f =
 -- | Sequentially loop over a mutable array while modifying each element with an action.
 --
 -- @since 0.4.0
-forPrimM :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
+forPrimM
+  :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> (e -> m e) -> m ()
 forPrimM marr f =
   loopA_ 0 (< totalElem (sizeOfMArray marr)) (+ 1) (unsafeLinearModify marr f)
 {-# INLINE forPrimM #-}
@@ -1278,7 +1281,8 @@ write_ marr ix = when (isSafeIndex (sizeOfMArray marr) ix) . unsafeWrite marr ix
 --
 -- @since 0.4.0
 writeM
-  :: (Manifest r e, Index ix, PrimMonad m, MonadThrow m) => MArray (PrimState m) r ix e -> ix -> e -> m ()
+  :: (Manifest r e, Index ix, PrimMonad m, MonadThrow m)
+  => MArray (PrimState m) r ix e -> ix -> e -> m ()
 writeM marr ix e =
   write marr ix e >>= (`unless` throwM (IndexOutOfBoundsException (sizeOfMArray marr) ix))
 {-# INLINE writeM #-}
@@ -1367,7 +1371,8 @@ modifyM_ marr f ix = void $ modifyM marr f ix
 -- otherwise.
 --
 -- @since 0.1.0
-swap :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m (Maybe (e, e))
+swap
+  :: (Manifest r e, Index ix, PrimMonad m) => MArray (PrimState m) r ix e -> ix -> ix -> m (Maybe (e, e))
 swap marr ix1 ix2 =
   let !sz = sizeOfMArray marr
    in if isSafeIndex sz ix1 && isSafeIndex sz ix2

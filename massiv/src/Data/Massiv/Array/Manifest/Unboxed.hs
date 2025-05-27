@@ -50,6 +50,7 @@ data instance Array U ix e = UArray
   , uSize :: !(Sz ix)
   , uData :: !(VU.Vector e)
   }
+
 data instance MArray s U ix e = MUArray !(Sz ix) !(VU.MVector s e)
 
 instance (Ragged L ix e, Show e, Unbox e) => Show (Array U ix e) where

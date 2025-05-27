@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -9,6 +8,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Boxed
 -- Copyright   : (c) Alexey Kuleshevich 2018-2022
@@ -16,50 +17,49 @@
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
 -- Portability : non-portable
---
-module Data.Massiv.Array.Manifest.Boxed
-  ( B(..)
-  , BL(..)
-  , BN(..)
-  , N
-  , pattern N
-  , Array(..)
-  , MArray(..)
-  , wrapLazyArray
-  , unwrapLazyArray
-  , unwrapNormalForm
-  , evalNormalForm
-  , unwrapArray
-  , evalArray
-  , toLazyArray
-  , evalLazyArray
-  , forceLazyArray
-  , unwrapMutableArray
-  , unwrapMutableLazyArray
-  , evalMutableArray
-  , unwrapNormalFormArray
-  , evalNormalFormArray
-  , unwrapNormalFormMutableArray
-  , evalNormalFormMutableArray
-  , toBoxedVector
-  , toBoxedMVector
-  , fromBoxedVector
-  , fromBoxedMVector
-  , evalBoxedVector
-  , evalBoxedMVector
-  , evalNormalBoxedVector
-  , evalNormalBoxedMVector
-  , coerceBoxedArray
-  , coerceNormalBoxedArray
-  , seqArray
-  , deepseqArray
-  ) where
+module Data.Massiv.Array.Manifest.Boxed (
+  B (..),
+  BL (..),
+  BN (..),
+  N,
+  pattern N,
+  Array (..),
+  MArray (..),
+  wrapLazyArray,
+  unwrapLazyArray,
+  unwrapNormalForm,
+  evalNormalForm,
+  unwrapArray,
+  evalArray,
+  toLazyArray,
+  evalLazyArray,
+  forceLazyArray,
+  unwrapMutableArray,
+  unwrapMutableLazyArray,
+  evalMutableArray,
+  unwrapNormalFormArray,
+  evalNormalFormArray,
+  unwrapNormalFormMutableArray,
+  evalNormalFormMutableArray,
+  toBoxedVector,
+  toBoxedMVector,
+  fromBoxedVector,
+  fromBoxedMVector,
+  evalBoxedVector,
+  evalBoxedMVector,
+  evalNormalBoxedVector,
+  evalNormalBoxedMVector,
+  coerceBoxedArray,
+  coerceNormalBoxedArray,
+  seqArray,
+  deepseqArray,
+) where
 
-import Control.DeepSeq (NFData(..), deepseq)
+import Control.DeepSeq (NFData (..), deepseq)
 import Control.Exception
 import Control.Monad ((>=>))
 import Control.Monad.Primitive
-import qualified Data.Foldable as F (Foldable(..))
+import qualified Data.Foldable as F (Foldable (..))
 import Data.Massiv.Array.Delayed.Pull (D)
 import Data.Massiv.Array.Delayed.Push (DL)
 import Data.Massiv.Array.Delayed.Stream (DS)
@@ -77,8 +77,8 @@ import qualified Data.Primitive.Array as A
 import qualified Data.Vector as VB
 import qualified Data.Vector.Mutable as MVB
 import GHC.Exts as GHC
-import Prelude hiding (mapM, replicate)
 import System.IO.Unsafe (unsafePerformIO)
+import Prelude hiding (mapM, replicate)
 #if !MIN_VERSION_vector(0,13,0)
 import Unsafe.Coerce (unsafeCoerce)
 #endif
@@ -112,16 +112,17 @@ import Unsafe.Coerce (unsafeCoerce)
 -- 30414093201713378043612608166064768844377641568960512000000000000
 -- >>> length $ show $ fact 5000
 -- 16326
---
-data BL = BL deriving Show
+data BL = BL deriving (Show)
 
-data instance Array BL ix e = BLArray { blComp   :: !Comp
-                                      , blSize   :: !(Sz ix)
-                                      , blOffset :: {-# UNPACK #-} !Int
-                                      , blData   :: {-# UNPACK #-} !(A.Array e)
-                                      }
-data instance MArray s BL ix e =
-  MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
+data instance Array BL ix e = BLArray
+  { blComp :: !Comp
+  , blSize :: !(Sz ix)
+  , blOffset :: {-# UNPACK #-} !Int
+  , blData :: {-# UNPACK #-} !(A.Array e)
+  }
+
+data instance MArray s BL ix e
+  = MBLArray !(Sz ix) {-# UNPACK #-} !Int {-# UNPACK #-} !(A.MutableArray s e)
 
 instance (Ragged L ix e, Show e) => Show (Array BL ix e) where
   showsPrec = showsArrayPrec id
@@ -134,7 +135,6 @@ instance (Ragged L ix e, Show e) => Show (Array DL ix e) where
 instance Show e => Show (Array DS Ix1 e) where
   showsPrec = showsArrayPrec (computeAs BL)
   showList = showArrayList
-
 
 instance (Index ix, NFData e) => NFData (Array BL ix e) where
   rnf = (`deepseqArray` ())
@@ -149,12 +149,11 @@ instance (Index ix, Ord e) => Ord (Array BL ix e) where
   {-# INLINE compare #-}
 
 instance Strategy BL where
-  setComp c arr = arr { blComp = c }
+  setComp c arr = arr{blComp = c}
   {-# INLINE setComp #-}
   getComp = blComp
   {-# INLINE getComp #-}
   repr = BL
-
 
 instance Source BL e where
   unsafeLinearIndex (BLArray _ _sz o a) i =
@@ -168,7 +167,6 @@ instance Source BL e where
   {-# INLINE unsafeLinearSlice #-}
 
 instance Manifest BL e where
-
   unsafeLinearIndexM (BLArray _ _sz o a) i =
     indexAssert "BL.unsafeLinearIndexM" (SafeSz . A.sizeofArray) A.indexArray a (i + o)
   {-# INLINE unsafeLinearIndexM #-}
@@ -208,9 +206,8 @@ instance Manifest BL e where
 instance Size BL where
   size = blSize
   {-# INLINE size #-}
-  unsafeResize !sz !arr = arr { blSize = sz }
+  unsafeResize !sz !arr = arr{blSize = sz}
   {-# INLINE unsafeResize #-}
-
 
 instance Index ix => Shape BL ix where
   maxLinearSize = Just . SafeSz . elemsCount
@@ -238,7 +235,6 @@ instance Index ix => Stream BL ix e where
   toStreamIx = S.isteps
   {-# INLINE toStreamIx #-}
 
-
 -- | Row-major sequential folding over a Boxed array.
 instance Index ix => Foldable (Array BL ix) where
   fold = fold
@@ -257,9 +253,8 @@ instance Index ix => Foldable (Array BL ix) where
   {-# INLINE null #-}
   length = totalElem . size
   {-# INLINE length #-}
-  toList arr = build (\ c n -> foldrFB c n arr)
+  toList arr = build (\c n -> foldrFB c n arr)
   {-# INLINE toList #-}
-
 
 instance Index ix => Functor (Array BL ix) where
   fmap f arr = makeArrayLinear (blComp arr) (blSize arr) (f . unsafeLinearIndex arr)
@@ -292,15 +287,13 @@ instance Num e => Numeric BL e where
   unsafeLiftArray2 = defaultUnsafeLiftArray2
   {-# INLINE unsafeLiftArray2 #-}
 
-
-
 ------------------
 -- Boxed Strict --
 ------------------
 
 -- | Array representation for Boxed elements. Its elements are strict to Weak
 -- Head Normal Form (WHNF) only.
-data B = B deriving Show
+data B = B deriving (Show)
 
 newtype instance Array B ix e = BArray (Array BL ix e)
 
@@ -322,7 +315,6 @@ instance (Index ix, Ord e) => Ord (Array B ix e) where
   compare = compareArrays compare
   {-# INLINE compare #-}
 
-
 instance Source B e where
   unsafeLinearIndex arr = unsafeLinearIndex (toLazyArray arr)
   {-# INLINE unsafeLinearIndex #-}
@@ -336,10 +328,9 @@ instance Source B e where
 instance Strategy B where
   getComp = blComp . coerce
   {-# INLINE getComp #-}
-  setComp c arr = coerceBoxedArray (coerce arr) { blComp = c }
+  setComp c arr = coerceBoxedArray (coerce arr){blComp = c}
   {-# INLINE setComp #-}
   repr = B
-
 
 instance Index ix => Shape B ix where
   maxLinearSize = Just . SafeSz . elemsCount
@@ -348,12 +339,10 @@ instance Index ix => Shape B ix where
 instance Size B where
   size = blSize . coerce
   {-# INLINE size #-}
-  unsafeResize sz = coerce (\arr -> arr { blSize = sz })
+  unsafeResize sz = coerce (\arr -> arr{blSize = sz})
   {-# INLINE unsafeResize #-}
 
-
 instance Manifest B e where
-
   unsafeLinearIndexM = coerce unsafeLinearIndexM
   {-# INLINE unsafeLinearIndexM #-}
 
@@ -408,7 +397,6 @@ instance Index ix => Stream B ix e where
   toStreamIx = S.isteps
   {-# INLINE toStreamIx #-}
 
-
 -- | Row-major sequential folding over a Boxed array.
 instance Index ix => Foldable (Array B ix) where
   fold = fold
@@ -427,9 +415,8 @@ instance Index ix => Foldable (Array B ix) where
   {-# INLINE null #-}
   length = totalElem . size
   {-# INLINE length #-}
-  toList arr = build (\ c n -> foldrFB c n arr)
+  toList arr = build (\c n -> foldrFB c n arr)
   {-# INLINE toList #-}
-
 
 instance Index ix => Functor (Array B ix) where
   fmap f arr = makeArrayLinear (getComp arr) (size arr) (f . unsafeLinearIndex arr)
@@ -466,21 +453,25 @@ instance Num e => Numeric B e where
 -- Boxed Normal Form --
 -----------------------
 
-  -- | Array representation for Boxed elements. Its elements are always in Normal
+-- | Array representation for Boxed elements. Its elements are always in Normal
 -- Form (NF), therefore `NFData` instance is required.
-data BN = BN deriving Show
+data BN = BN deriving (Show)
 
 -- | Type and pattern `N` have been added for backwards compatibility and will be replaced
 -- in the future in favor of `BN`.
 --
 -- /Deprecated/ - since 1.0.0
 type N = BN
+
 pattern N :: N
 pattern N = BN
+
 {-# COMPLETE N #-}
+
 {-# DEPRECATED N "In favor of more consistently named `BN`" #-}
 
 newtype instance Array BN ix e = BNArray (Array BL ix e)
+
 newtype instance MArray s BN ix e = MBNArray (MArray s BL ix e)
 
 instance (Ragged L ix e, Show e, NFData e) => Show (Array BN ix e) where
@@ -514,7 +505,6 @@ instance NFData e => Source BN e where
   {-# INLINE unsafeLinearSlice #-}
   unsafeOuterSlice (BNArray a) i = coerce (unsafeOuterSlice a i)
   {-# INLINE unsafeOuterSlice #-}
-
 
 instance Index ix => Shape BN ix where
   maxLinearSize = Just . SafeSz . elemsCount
@@ -580,7 +570,6 @@ instance (Index ix, NFData e) => Stream BN ix e where
   toStreamIx = toStreamIx . coerce
   {-# INLINE toStreamIx #-}
 
-
 instance (NFData e, IsList (Array L ix e), Ragged L ix e) => IsList (Array BN ix e) where
   type Item (Array BN ix e) = Item (Array L ix e)
   fromList = L.fromLists' Seq
@@ -624,13 +613,14 @@ unwrapArray = blData . coerce
 -- | /O(n)/ - Wrap a boxed array and evaluate all elements to a WHNF.
 --
 -- @since 0.2.1
-evalArray ::
-     Comp -- ^ Computation strategy
-  -> A.Array e -- ^ Lazy boxed array from @primitive@ package.
+evalArray
+  :: Comp
+  -- ^ Computation strategy
+  -> A.Array e
+  -- ^ Lazy boxed array from @primitive@ package.
   -> Vector B e
 evalArray comp a = evalLazyArray $ setComp comp $ wrapLazyArray a
 {-# INLINE evalArray #-}
-
 
 -- | /O(1)/ - Unwrap boxed array. This will discard any possible slicing that has been
 -- applied to the array.
@@ -646,7 +636,6 @@ unwrapLazyArray = blData
 wrapLazyArray :: A.Array e -> Vector BL e
 wrapLazyArray a = BLArray Seq (SafeSz (A.sizeofArray a)) 0 a
 {-# INLINE wrapLazyArray #-}
-
 
 -- | /O(1)/ - Cast a strict boxed array into a lazy boxed array.
 --
@@ -677,7 +666,6 @@ unwrapMutableArray :: MArray s B ix e -> A.MutableArray s e
 unwrapMutableArray (MBArray (MBLArray _ _ marr)) = marr
 {-# INLINE unwrapMutableArray #-}
 
-
 -- | /O(1)/ - Unwrap mutable boxed lazy array. This will discard any possible slicing that has been
 -- applied to the array.
 --
@@ -686,13 +674,13 @@ unwrapMutableLazyArray :: MArray s BL ix e -> A.MutableArray s e
 unwrapMutableLazyArray (MBLArray _ _ marr) = marr
 {-# INLINE unwrapMutableLazyArray #-}
 
-
 -- | /O(n)/ - Wrap mutable boxed array and evaluate all elements to WHNF.
 --
 -- @since 0.2.1
-evalMutableArray ::
-     PrimMonad m
-  => A.MutableArray (PrimState m) e -- ^ Mutable array that will get wrapped
+evalMutableArray
+  :: PrimMonad m
+  => A.MutableArray (PrimState m) e
+  -- ^ Mutable array that will get wrapped
   -> m (MArray (PrimState m) B Ix1 e)
 evalMutableArray = fmap MBArray . fromMutableArraySeq seq
 {-# INLINE evalMutableArray #-}
@@ -712,14 +700,15 @@ unwrapNormalFormArray = blData . coerce
 -- | /O(n)/ - Wrap a boxed array and evaluate all elements to a Normal Form (NF).
 --
 -- @since 0.2.1
-evalNormalFormArray ::
-     NFData e
-  => Comp -- ^ Computation strategy
-  -> A.Array e -- ^ Lazy boxed array
+evalNormalFormArray
+  :: NFData e
+  => Comp
+  -- ^ Computation strategy
+  -> A.Array e
+  -- ^ Lazy boxed array
   -> Array N Ix1 e
 evalNormalFormArray comp = forceLazyArray . setComp comp . wrapLazyArray
 {-# INLINE evalNormalFormArray #-}
-
 
 -- | /O(1)/ - Unwrap a fully evaluated mutable boxed array. This will discard any possible
 -- slicing that has been applied to the array.
@@ -729,24 +718,22 @@ unwrapNormalFormMutableArray :: MArray s N ix e -> A.MutableArray s e
 unwrapNormalFormMutableArray = unwrapMutableLazyArray . coerce
 {-# INLINE unwrapNormalFormMutableArray #-}
 
-
 -- | /O(n)/ - Wrap mutable boxed array and evaluate all elements to NF.
 --
 -- @since 0.2.1
-evalNormalFormMutableArray ::
-     (PrimMonad m, NFData e)
+evalNormalFormMutableArray
+  :: (PrimMonad m, NFData e)
   => A.MutableArray (PrimState m) e
   -> m (MArray (PrimState m) N Ix1 e)
 evalNormalFormMutableArray marr = MBNArray <$> fromMutableArraySeq deepseq marr
 {-# INLINE evalNormalFormMutableArray #-}
 
-
 ----------------------
 -- Helper functions --
 ----------------------
 
-fromMutableArraySeq ::
-     PrimMonad m
+fromMutableArraySeq
+  :: PrimMonad m
   => (e -> m () -> m a)
   -> A.MutableArray (PrimState m) e
   -> m (MArray (PrimState m) BL Ix1 e)
@@ -756,16 +743,13 @@ fromMutableArraySeq with ma = do
   return $! MBLArray (SafeSz sz) 0 ma
 {-# INLINE fromMutableArraySeq #-}
 
-
 seqArray :: Index ix => Array BL ix a -> t -> t
 seqArray !arr t = foldlInternal (flip seq) () (flip seq) () arr `seq` t
 {-# INLINE seqArray #-}
 
-
 deepseqArray :: (NFData a, Index ix) => Array BL ix a -> t -> t
 deepseqArray !arr t = foldlInternal (flip deepseq) () (flip seq) () arr `seq` t
 {-# INLINE deepseqArray #-}
-
 
 -- | /O(1)/ - Converts array from `N` to `B` representation.
 --
@@ -781,6 +765,7 @@ evalNormalForm :: (Index ix, NFData e) => Array B ix e -> Array N ix e
 evalNormalForm (BArray arr) = arr `deepseqArray` BNArray arr
 {-# INLINE evalNormalForm #-}
 
+{- FOURMOLU_DISABLE -}
 -- | /O(1)/ - Converts a boxed `Array` into a `VB.Vector` without touching any
 -- elements.
 --
@@ -798,8 +783,7 @@ toBoxedVector BLArray{blOffset = off, blSize = sz, blData = arr } =
 fromVectorCast :: VectorCast a -> VB.Vector a
 fromVectorCast = unsafeCoerce
 #endif
-
-
+{- FOURMOLU_ENABLE -}
 
 -- | /O(1)/ - Converts a boxed `MArray` into a `MVB.MVector`.
 --
@@ -816,7 +800,6 @@ evalBoxedVector :: Comp -> VB.Vector a -> Array B Ix1 a
 evalBoxedVector comp = evalLazyArray . setComp comp . fromBoxedVector
 {-# INLINE evalBoxedVector #-}
 
-
 -- | /O(n)/ - Convert mutable boxed vector and evaluate all elements to WHNF
 -- sequentially. Both keep pointing to the same memory
 --
@@ -827,14 +810,13 @@ evalBoxedMVector (MVB.MVector o k ma) =
    in marr <$ loopA_ o (< k) (+ 1) (A.readArray ma >=> (`seq` pure ()))
 {-# INLINE evalBoxedMVector #-}
 
-
 -- | /O(1)/ - Cast a boxed vector without touching any elements.
 --
 -- @since 0.6.0
 fromBoxedVector :: VB.Vector a -> Vector BL a
 {-# INLINE fromBoxedVector #-}
 fromBoxedVector v =
-  BLArray {blComp = Seq, blSize = SafeSz n, blOffset = offset, blData = arr}
+  BLArray{blComp = Seq, blSize = SafeSz n, blOffset = offset, blData = arr}
   where
 #if MIN_VERSION_vector(0,13,0)
     (arr, offset, n) = VB.toArraySlice v
@@ -850,7 +832,6 @@ toVectorCast :: VB.Vector a -> VectorCast a
 toVectorCast = unsafeCoerce
 #endif
 
-
 -- | /O(1)/ - Convert mutable boxed vector to a lazy mutable boxed array. Both keep
 -- pointing to the same memory
 --
@@ -859,7 +840,6 @@ fromBoxedMVector :: MVB.MVector s a -> MArray s BL Ix1 a
 fromBoxedMVector (MVB.MVector o k ma) = MBLArray (SafeSz k) o ma
 {-# INLINE fromBoxedMVector #-}
 
-
 -- | /O(1)/ - Cast a boxed lazy array. It is unsafe because it can violate the invariant
 -- that all elements of `N` array are in NF.
 --
@@ -867,7 +847,6 @@ fromBoxedMVector (MVB.MVector o k ma) = MBLArray (SafeSz k) o ma
 coerceNormalBoxedArray :: Array BL ix e -> Array N ix e
 coerceNormalBoxedArray = coerce
 {-# INLINE coerceNormalBoxedArray #-}
-
 
 -- | /O(1)/ - Cast a boxed lazy array. It is unsafe because it can violate the invariant
 -- that all elements of `B` array are in WHNF.
@@ -881,8 +860,8 @@ coerceBoxedArray = coerce
 -- sequentially. Both keep pointing to the same memory
 --
 -- @since 0.5.0
-evalNormalBoxedMVector ::
-     (NFData a, PrimMonad m) => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) N Ix1 a)
+evalNormalBoxedMVector
+  :: (NFData a, PrimMonad m) => MVB.MVector (PrimState m) a -> m (MArray (PrimState m) N Ix1 a)
 evalNormalBoxedMVector (MVB.MVector o k ma) =
   let marr = MBNArray (MBLArray (SafeSz k) o ma)
    in marr <$ loopA_ o (< k) (+ 1) (A.readArray ma >=> pure . rnf)
@@ -898,4 +877,3 @@ evalNormalBoxedVector comp v =
     MVB.MVector o k ma <- VB.unsafeThaw v
     forceLazyArray <$> unsafeFreeze comp (MBLArray (SafeSz k) o ma)
 {-# INLINE evalNormalBoxedVector #-}
-

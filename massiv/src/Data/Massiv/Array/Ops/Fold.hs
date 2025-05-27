@@ -347,7 +347,8 @@ foldrInner = foldrWithin' 1
 -- | Monoidal fold over the inner most dimension.
 --
 -- @since 0.4.3
-foldInner :: (Monoid e, Index (Lower ix), Index ix, Source r e) => Array r ix e -> Array D (Lower ix) e
+foldInner
+  :: (Monoid e, Index (Lower ix), Index ix, Source r e) => Array r ix e -> Array D (Lower ix) e
 foldInner = foldlInner mappend mempty
 {-# INLINE foldInner #-}
 

@@ -102,4 +102,6 @@ generateSplitSeedArrayBench
   -> Benchmark
 generateSplitSeedArrayBench it !stdGen !comp sz =
   bench (show sz) $
-    nf (\n -> generateSplitSeedArray @P @ix @Word it stdGen (pure . split) comp n (\_ _ -> pure . uniform)) sz
+    nf
+      (\n -> generateSplitSeedArray @P @ix @Word it stdGen (pure . split) comp n (\_ _ -> pure . uniform))
+      sz

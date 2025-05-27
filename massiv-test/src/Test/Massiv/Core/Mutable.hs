@@ -226,7 +226,7 @@ prop_UnsafeLinearGrow (ArrIx arr ix) e =
   slice' 0 k (flatten arr)
     === slice' 0 k (flatten arrGrown)
     .&&. arrCopied
-    === arrGrown
+      === arrGrown
   where
     sz = size arr
     sz' = Sz (liftIndex2 (+) (unSz sz) ix)

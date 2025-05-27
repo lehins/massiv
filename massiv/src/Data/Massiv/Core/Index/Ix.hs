@@ -157,6 +157,7 @@ type family Ix (n :: Nat) = r | r -> n where
   Ix n = IxN n
 
 type instance Lower Ix2 = Ix1
+
 type instance Lower (IxN n) = Ix (n - 1)
 
 instance Show Ix2 where

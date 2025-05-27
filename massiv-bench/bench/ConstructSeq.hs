@@ -5,7 +5,6 @@ module Main where
 
 -- import           Bench
 import Bench.Massiv.Array as A
-
 -- import           Bench.Massiv.Auto                      as M hiding (tupleToIx2)
 -- import           Data.Massiv.Array.Manifest  as A
 import Bench.Repa

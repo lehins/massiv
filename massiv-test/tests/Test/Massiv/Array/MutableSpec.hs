@@ -46,7 +46,7 @@ type MutableSpec r e =
   , MutableArraySpec r Ix5 e
   )
 
-localMutableSpec :: forall r ix e. (MutableArraySpec r ix e) => Spec
+localMutableSpec :: forall r ix e. MutableArraySpec r ix e => Spec
 localMutableSpec = do
   describe "toStream/toList" $
     it "toStream" $

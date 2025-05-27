@@ -27,7 +27,7 @@ avg3x3Stencil = (/ 9) <$> makeConvolutionStencil (Sz 3) (1 :. 1) $ \get ->
     . get (1 :. 0) 1
     . get (1 :. 1) 1
 
-singletonStencil :: (Index ix) => (Int -> Int) -> Stencil ix Int Int
+singletonStencil :: Index ix => (Int -> Int) -> Stencil ix Int Int
 singletonStencil f =
   makeStencil oneSz zeroIndex $ \get -> f (get zeroIndex)
 

@@ -46,9 +46,12 @@ newtype ArrTinyNE r ix e = ArrTinyNE
 -- @since 0.1.0
 data ArrIx r ix e = ArrIx (Array r ix e) ix
 
-deriving instance (Show (Array r ix e)) => Show (ArrNE r ix e)
-deriving instance (Show (Array r ix e)) => Show (ArrTiny r ix e)
-deriving instance (Show (Array r ix e)) => Show (ArrTinyNE r ix e)
+deriving instance Show (Array r ix e) => Show (ArrNE r ix e)
+
+deriving instance Show (Array r ix e) => Show (ArrTiny r ix e)
+
+deriving instance Show (Array r ix e) => Show (ArrTinyNE r ix e)
+
 deriving instance (Show (Array r ix e), Show ix) => Show (ArrIx r ix e)
 
 instance Arbitrary Comp where
@@ -78,24 +81,34 @@ instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array D ix e) where
 
 instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array DL ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array DI ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Load DW ix e, Arbitrary e) => Arbitrary (Array DW ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (ix ~ Ix1, Arbitrary e) => Arbitrary (Array DS ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array B ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e) => Arbitrary (Array BL ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e, NFData e) => Arbitrary (Array BN ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e, Prim e) => Arbitrary (Array P ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e, Storable e) => Arbitrary (Array S ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Index ix, Arbitrary e, Unbox e) => Arbitrary (Array U ix e) where
   arbitrary = arbitraryArray arbitrary
+
 instance (Arbitrary ix, Load L ix e, Arbitrary e) => Arbitrary (Array L ix e) where
   arbitrary = arbitraryArray arbitrary
 

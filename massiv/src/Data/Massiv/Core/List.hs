@@ -37,7 +37,7 @@ import Data.Massiv.Core.Common
 import qualified Data.Massiv.Vector.Stream as S
 import Data.Monoid
 import Data.Typeable
-import GHC.Exts (IsList(..))
+import GHC.Exts (IsList (..))
 import GHC.TypeLits
 import System.IO.Unsafe (unsafePerformIO)
 

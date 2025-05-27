@@ -25,9 +25,8 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import Data.Word
-import Test.Massiv.Core
-
 import System.Random.MWC as MWC
+import Test.Massiv.Core
 
 infix 4 !==!, !!==!!
 
@@ -72,7 +71,14 @@ toUnboxV5 f v1 v2 v3 v4 v5 = appComp (getComp v1) (toUnboxV4 (f (toUnboxedVector
 
 toUnboxV6
   :: Unbox e
-  => (VU.Vector e1 -> VU.Vector e2 -> VU.Vector e3 -> VU.Vector e4 -> VU.Vector e5 -> VU.Vector e6 -> VU.Vector e)
+  => ( VU.Vector e1
+       -> VU.Vector e2
+       -> VU.Vector e3
+       -> VU.Vector e4
+       -> VU.Vector e5
+       -> VU.Vector e6
+       -> VU.Vector e
+     )
   -> Array U ix1 e1
   -> Array U ix2 e2
   -> Array U ix3 e3
@@ -83,7 +89,7 @@ toUnboxV6
 toUnboxV6 f v1 v2 v3 v4 v5 v6 =
   appComp (getComp v1) (toUnboxV5 (f (toUnboxedVector v1)) v2 v3 v4 v5 v6)
 
-toPrimV2 :: (Index ix) => (VP.Vector e1 -> VP.Vector e2 -> t) -> Array P ix e1 -> Array P ix e2 -> t
+toPrimV2 :: Index ix => (VP.Vector e1 -> VP.Vector e2 -> t) -> Array P ix e1 -> Array P ix e2 -> t
 toPrimV2 f v1 v2 = f (toPrimitiveVector v1) (toPrimitiveVector v2)
 
 toPrimV3
@@ -231,6 +237,7 @@ prop_sunfoldrExactNM seed k a =
 
 genWithMapM :: PrimMonad m => ((Word -> m Word) -> m a) -> MWC.Gen (PrimState m) -> m a
 genWithMapM genM gen = genM $ \e -> xor e <$> uniform gen
+
 genWithMapWS :: PrimMonad m => ((Word -> MWC.Gen (PrimState m) -> m Word) -> m a) -> m a
 genWithMapWS genM = genM $ \e gen -> xor e <$> uniform gen
 
@@ -331,10 +338,13 @@ prop_sifilterM seed g a =
 
 applyFun4 :: Fun (a, b, c, d) e -> (a -> b -> c -> d -> e)
 applyFun4 (Fun _ f) a b c d = f (a, b, c, d)
+
 applyFun5 :: Fun (a, b, c, d, e) f -> (a -> b -> c -> d -> e -> f)
 applyFun5 (Fun _ g) a b c d f = g (a, b, c, d, f)
+
 applyFun6 :: Fun (a, (b, c, d, e, f)) g -> (a -> b -> c -> d -> e -> f -> g)
 applyFun6 (Fun _ h) a b c d f g = h (a, (b, c, d, f, g))
+
 applyFun7 :: Fun (a, b, (c, d, e, f, g)) h -> (a -> b -> c -> d -> e -> f -> g -> h)
 applyFun7 (Fun _ i) a b c d f g h = i (a, b, (c, d, f, g, h))
 
