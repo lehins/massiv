@@ -1,5 +1,6 @@
 # 1.0.5
 
+* Adjust `uniformArray` and `uniformRangeArray` to use `SplitGen` instead of deprecated `split` whenever newer version of `random >= 1.3` is in use.
 * Add `Functor` instance for `Border`
 * Improve performance and reduce allocations during computation of higher dimension `DW` arrays [#142](https://github.com/lehins/massiv/issues/142)
 
