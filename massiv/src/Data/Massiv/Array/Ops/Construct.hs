@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -385,6 +386,19 @@ makeSplitSeedArray it seed splitSeed comp sz genFunc =
 -- | Generate a random array where all elements are sampled from a uniform distribution.
 --
 -- @since 1.0.0
+#if MIN_VERSION_random(1,3,0)
+uniformArray
+  :: forall ix e g
+   . (Index ix, SplitGen g, Uniform e)
+  => g
+  -- ^ Initial random value generator.
+  -> Comp
+  -- ^ Computation strategy.
+  -> Sz ix
+  -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformArray gen = randomArray gen splitGen uniform
+#else
 uniformArray
   :: forall ix e g
    . (Index ix, RandomGen g, Uniform e)
@@ -396,11 +410,27 @@ uniformArray
   -- ^ Resulting size of the array.
   -> Array DL ix e
 uniformArray gen = randomArray gen split uniform
+#endif
 {-# INLINE uniformArray #-}
 
 -- | Same as `uniformArray`, but will generate values in a supplied range.
 --
 -- @since 1.0.0
+#if MIN_VERSION_random(1,3,0)
+uniformRangeArray
+  :: forall ix e g
+   . (Index ix, SplitGen g, UniformRange e)
+  => g
+  -- ^ Initial random value generator.
+  -> (e, e)
+  -- ^ Inclusive range in which values will be generated in.
+  -> Comp
+  -- ^ Computation strategy.
+  -> Sz ix
+  -- ^ Resulting size of the array.
+  -> Array DL ix e
+uniformRangeArray gen r = randomArray gen splitGen (uniformR r)
+#else
 uniformRangeArray
   :: forall ix e g
    . (Index ix, RandomGen g, UniformRange e)
@@ -414,6 +444,7 @@ uniformRangeArray
   -- ^ Resulting size of the array.
   -> Array DL ix e
 uniformRangeArray gen r = randomArray gen split (uniformR r)
+#endif
 {-# INLINE uniformRangeArray #-}
 
 -- | Similar to `randomArray` but performs generation sequentially, which means it doesn't
