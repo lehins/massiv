@@ -86,7 +86,7 @@ import System.Random.Stateful
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array
+-- >>> import Data.Massiv.Core
 -- >>> Sz (1 :> 2 :. 3)
 -- Sz (1 :> 2 :. 3)
 --

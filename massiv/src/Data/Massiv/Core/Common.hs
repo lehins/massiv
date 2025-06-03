@@ -174,7 +174,6 @@ class Typeable r => Strategy r where
   -- ==== __Example__
   --
   -- >>> :set -XTypeApplications
-  -- >>> import Data.Massiv.Array
   -- >>> a = singleton @DL @Ix1 @Int 0
   -- >>> a
   -- Array DL Seq (Sz1 1)
@@ -255,7 +254,6 @@ class Index ix => Shape r ix where
   --
   -- ==== __Examples__
   --
-  -- >>> import Data.Massiv.Array
   -- >>> isNull $ range Seq (Ix2 10 20) (11 :. 21)
   -- False
   -- >>> isNull $ range Seq (Ix2 10 20) (10 :. 21)
@@ -362,7 +360,6 @@ class (Strategy r, Shape r ix) => Load r ix e where
   -- manually, like in the example below. Use "Data.Massiv.Array.makeArrayR" if you'd like to
   -- specify representation as an argument.
   --
-  -- >>> import Data.Massiv.Array
   -- >>> makeArray Seq (Sz (3 :. 4)) (\ (i :. j) -> if i == j then i else 0) :: Array D Ix2 Int
   -- Array D Seq (Sz (3 :. 4))
   --   [ [ 0, 0, 0, 0 ]
@@ -394,7 +391,6 @@ class (Strategy r, Shape r ix) => Load r ix e where
 
   -- | Same as `makeArray`, but produce elements using linear row-major index.
   --
-  -- >>> import Data.Massiv.Array
   -- >>> makeArrayLinear Seq (Sz (2 :. 4)) id :: Array D Ix2 Int
   -- Array D Seq (Sz (2 :. 4))
   --   [ [ 0, 1, 2, 3 ]
@@ -833,7 +829,6 @@ class (IsList (Array r ix e), Load r ix e) => Ragged r ix e where
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> :set -XTypeApplications
 -- >>> xs = empty @DL @Ix1 @Double
 -- >>> snoc (cons 4 (cons 5 xs)) 22
@@ -852,7 +847,6 @@ empty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> singleton 7 :: Array D Ix4 Double
 -- Array D Seq (Sz (1 :> 1 :> 1 :. 1))
 --   [ [ [ [ 7.0 ]
@@ -886,7 +880,6 @@ infixl 4 !, !?, ??
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> a = computeAs U $ iterateN (Sz (2 :. 3)) succ (0 :: Int)
 -- >>> a
 -- Array U Seq (Sz (2 :. 3))
@@ -912,7 +905,6 @@ infixl 4 !, !?, ??
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> :set -XTypeApplications
 -- >>> a <- fromListsM @U @Ix2 @Int Seq [[1,2,3],[4,5,6]]
 -- >>> a
@@ -945,7 +937,6 @@ infixl 4 !, !?, ??
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> :set -XTypeApplications
 -- >>> ma = fromListsM @U @Ix3 @Int @Maybe Seq [[[1,2,3]],[[4,5,6]]]
 -- >>> ma
@@ -994,7 +985,6 @@ indexM = evaluateM
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> :set -XOverloadedLists
 -- >>> xs = [0..100] :: Array P Ix1 Int
 -- >>> defaultIndex 999 xs 100
@@ -1012,7 +1002,6 @@ defaultIndex defVal = borderIndex (Fill defVal)
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> :set -XOverloadedLists
 -- >>> xs = [0..100] :: Array U Ix1 Int
 -- >>> borderIndex Wrap xs <$> range Seq 99 104
@@ -1029,7 +1018,6 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> :set -XOverloadedLists
 -- >>> xs = [0..100] :: Array U Ix1 Int
 -- >>> index' xs 50
@@ -1048,7 +1036,6 @@ index' arr ix = throwEither (evaluateM arr ix)
 -- ==== __Examples__
 --
 -- >>> import Control.Exception
--- >>> import Data.Massiv.Array
 -- >>> evaluateM (range Seq (Ix2 10 20) (100 :. 210)) 50 :: Either SomeException Ix2
 -- Right (60 :. 70)
 -- >>> evaluateM (range Seq (Ix2 10 20) (100 :. 210)) 150 :: Either SomeException Ix2
@@ -1065,7 +1052,6 @@ evaluateM arr ix
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> evaluate' (range Seq (Ix2 10 20) (100 :. 210)) 50
 -- 60 :. 70
 --
@@ -1078,7 +1064,6 @@ evaluate' arr ix = throwEither (evaluateM arr ix)
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> isNotNull (singleton 1 :: Array D Ix2 Int)
 -- True
 -- >>> isNotNull (empty :: Array D Ix2 Int)
@@ -1093,7 +1078,6 @@ isNotNull = not . isNull
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> isEmpty (singleton 1 :: Array D Ix2 Int)
 -- False
 -- >>> isEmpty (empty :: Array D Ix2 Int)
@@ -1108,7 +1092,6 @@ isEmpty = (== 0) . elemsCount
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> isNotEmpty (singleton 1 :: Array D Ix2 Int)
 -- True
 -- >>> isNotEmpty (empty :: Array D Ix2 Int)
@@ -1123,7 +1106,6 @@ isNotEmpty = not . isEmpty
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> elemsCount $ range Seq (Ix1 10) 15
 -- 5
 --
@@ -1143,3 +1125,14 @@ inline1 f = f
 inline2 :: (a -> b) -> a -> b
 inline2 f = f
 {-# INLINE [2] inline2 #-}
+
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core.List
+-- >>> import Data.Massiv.Array.Delayed
+-- >>> import Data.Massiv.Array.Manifest
+-- >>> import Data.Massiv.Array.Manifest.Internal
+-- >>> import Data.Massiv.Array.Manifest.List
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Ops.Slice
