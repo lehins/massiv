@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE PatternSynonyms #-}
 
@@ -29,14 +30,22 @@ module Data.Massiv.Core.Index.Iterator (
   defRowMajorLinear,
   RowMajorUnbalanced (RowMajorUnbalanced),
   defRowMajorUnbalanced,
+
+  RowMajor' (RowMajor'),
+  defRowMajor',
+  RowMajorLinear' (RowMajorLinear'),
+  defRowMajorLinear',
+
 ) where
 
+import GHC.Exts
 import Control.Monad
 import Control.Monad.ST
 import Control.Scheduler
 import Data.Massiv.Core.Index.Internal
 import Data.Massiv.Core.Index.Stride
 import Data.Massiv.Core.Loop
+import Data.Massiv.Core.UnboxedLoop
 
 class Iterator it where
   {-# MINIMAL (iterTargetM, iterTargetA_, iterTargetWithStrideAccST, iterTargetWithStrideAccST_) #-}
@@ -537,3 +546,97 @@ iterTargetFullWithStrideAccST_
 iterTargetFullWithStrideAccST_ it scheduler iStart sz =
   iterTargetWithStrideAccST_ it scheduler iStart sz (pureIndex 0)
 {-# INLINE iterTargetFullWithStrideAccST_ #-}
+
+
+
+
+---- Experiment
+
+
+-- | Default iterator that parallelizes work in linear chunks. Supplied factor
+-- will be used to schedule that many jobs per capability.
+--
+-- @since 1.0.2
+newtype RowMajor' = RowMajorInternal' Int
+
+-- | Default row major iterator with multiplying factor set to @8@.
+defRowMajor' :: RowMajor'
+defRowMajor' = RowMajorInternal' 8
+
+pattern RowMajor'
+  :: Int
+  -- ^ Multiplier that will be used to scale number of jobs.
+  -> RowMajor'
+pattern RowMajor' f <- RowMajorInternal' f
+  where
+    RowMajor' = RowMajorInternal' . max 1
+
+{-# COMPLETE RowMajor' #-}
+
+instance Iterator RowMajor' where
+  iterFullM _ start (Sz sz) = iterM# start sz (pureIndex 1) (<#)
+  {-# INLINE iterFullM #-}
+  iterFullA_ _ start (Sz sz) = iterA_# start sz (pureIndex 1) (<#)
+  {-# INLINE iterFullA_ #-}
+  iterFullAccST (RowMajorInternal' fact) scheduler startIx =
+    iterRowMajorST fact scheduler startIx (pureIndex 1)
+  {-# INLINE iterFullAccST #-}
+  iterTargetA_ _ i sz start (Stride stride) =
+    iterTargetRowMajorA_ 0 i sz start stride
+  {-# INLINE iterTargetA_ #-}
+  iterTargetM _ i sz start (Stride stride) =
+    iterTargetRowMajorAccM 0 i sz start stride
+  {-# INLINE iterTargetM #-}
+  iterTargetWithStrideAccST (RowMajor' fact) scheduler i sz ix (Stride stride) =
+    iterTargetRowMajorAccST 0 fact scheduler i sz ix stride
+  {-# INLINE iterTargetWithStrideAccST #-}
+  iterTargetWithStrideAccST_ (RowMajor' fact) scheduler i sz ix (Stride stride) =
+    iterTargetRowMajorAccST_ 0 fact scheduler i sz ix stride
+  {-# INLINE iterTargetWithStrideAccST_ #-}
+
+
+newtype RowMajorLinear' = RowMajorLinear' Int
+
+defRowMajorLinear' :: RowMajorLinear'
+defRowMajorLinear' = RowMajorLinear' 8
+
+unI# :: Int -> Int#
+unI# (I# i) = i
+{-# INLINE unI# #-}
+
+instance Iterator RowMajorLinear' where
+  iterTargetM _ iStart sz start (Stride stride) acc action =
+    loopM# 0# (<# (unI# (totalElem sz))) (+# 1#) acc $ \i ->
+      action (iStart + I# i) (liftIndex2 (+) start (liftIndex2 (*) stride (fromLinearIndex sz (I# i))))
+  {-# INLINE iterTargetM #-}
+  iterTargetA_ _ iStart sz start (Stride stride) action =
+    loopA_# 0# (<# unI# (totalElem sz)) (+# 1#) $ \i ->
+      action (iStart + I# i) (liftIndex2 (+) start (liftIndex2 (*) stride (fromLinearIndex sz (I# i))))
+  {-# INLINE iterTargetA_ #-}
+  iterTargetFullAccST it scheduler iStart sz acc splitAcc action =
+    let !(RowMajorLinear' fact) = it
+     in iterLinearAccST fact scheduler iStart 1 (totalElem sz) acc splitAcc $ \ !i ->
+          action i (fromLinearIndex sz i)
+  {-# INLINE iterTargetFullAccST #-}
+  iterTargetFullAccST_ it scheduler iStart sz acc splitAcc action =
+    let !(RowMajorLinear' fact) = it
+     in iterLinearAccST_ fact scheduler iStart 1 (totalElem sz) acc splitAcc $ \ !i ->
+          action i (fromLinearIndex sz i)
+  {-# INLINE iterTargetFullAccST_ #-}
+  iterTargetFullST_ it scheduler iStart sz action =
+    let !(RowMajorLinear' fact) = it
+     in iterLinearST_ fact scheduler iStart 1 (totalElem sz) $ \ !i ->
+          action i (fromLinearIndex sz i)
+  {-# INLINE iterTargetFullST_ #-}
+  iterTargetWithStrideAccST it scheduler iStart sz start (Stride stride) acc spliAcc action =
+    let RowMajorLinear' fact = it
+     in iterLinearAccST fact scheduler 0 1 (totalElem sz) acc spliAcc $ \i ->
+          action (iStart + i) $
+            liftIndex2 (+) start (liftIndex2 (*) stride (fromLinearIndex sz i))
+  {-# INLINE iterTargetWithStrideAccST #-}
+  iterTargetWithStrideAccST_ it scheduler iStart sz start (Stride stride) acc spliAcc action =
+    let RowMajorLinear' fact = it
+     in iterLinearAccST_ fact scheduler 0 1 (totalElem sz) acc spliAcc $ \i ->
+          action (iStart + i) $
+            liftIndex2 (+) start (liftIndex2 (*) stride (fromLinearIndex sz i))
+  {-# INLINE iterTargetWithStrideAccST_ #-}

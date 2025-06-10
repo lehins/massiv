@@ -69,6 +69,9 @@ iterFullBench !sz =
     [ bench "iterFullA_ (RowMajor)" $
         whnfIO $
           iterFullA_ defRowMajor zeroIndex sz (\ix -> ix `seq` pure ())
+    , bench "iterFullA_ (RowMajor')" $
+        whnfIO $
+          iterFullA_ defRowMajor' zeroIndex sz (\ix -> ix `seq` pure ())
     , bench "iterTargetFullST_ (RowMajor)" $
         whnfIO $
           stToIO $
@@ -84,6 +87,9 @@ iterFullBench !sz =
     , bench "iterFullA_ (RowMajorLinear)" $
         whnfIO $
           iterFullA_ defRowMajorLinear zeroIndex sz (\ix -> ix `seq` pure ())
+    , bench "iterFullA_ (RowMajorLinear')" $
+        whnfIO $
+          iterFullA_ defRowMajorLinear' zeroIndex sz (\ix -> ix `seq` pure ())
     , bench "iterTargetFullST_ (RowMajorLinear)" $
         whnfIO $
           stToIO $

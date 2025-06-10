@@ -8,6 +8,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -53,6 +54,7 @@ module Data.Massiv.Core.Index.Internal (
   Lower,
   Index (..),
   iterA_,
+  iterA_#,
   iterM_,
   Ix0 (..),
   type Ix1,
@@ -72,7 +74,9 @@ import Control.Scheduler
 import Data.Coerce
 import Data.Kind
 import Data.Massiv.Core.Loop
+import Data.Massiv.Core.UnboxedLoop
 import Data.Typeable
+import GHC.Exts
 import GHC.TypeLits
 import System.Random.Stateful
 
@@ -690,6 +694,39 @@ class
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterM #-}
 
+  iterM#
+    :: Monad m
+    => ix
+    -- ^ Start index
+    -> ix
+    -- ^ End index
+    -> ix
+    -- ^ Increment
+    -> (Int# -> Int# -> Bool#)
+    -- ^ Continue iterating while predicate is True (eg. until end of row)
+    -> a
+    -- ^ Initial value for an accumulator
+    -> (ix -> a -> m a)
+    -- ^ Accumulator function
+    -> m a
+  default iterM#
+    :: (Index (Lower ix), Monad m)
+    => ix
+    -> ix
+    -> ix
+    -> (Int# -> Int# -> Bool#)
+    -> a
+    -> (ix -> a -> m a)
+    -> m a
+  iterM# !sIx eIx !incIx cond !acc f =
+    loopM# s (`cond` e) (+# inc) acc $ \ !i !acc0 ->
+      iterM# sIxL eIxL incIxL cond acc0 $ \ !ix -> f (consDim (I# i) ix)
+    where
+      !(I# s, sIxL) = unconsDim sIx
+      !(I# e, eIxL) = unconsDim eIx
+      !(I# inc, incIxL) = unconsDim incIx
+  {-# INLINE iterM# #-}
+
   iterRowMajorST
     :: Int
     -- ^ Scheduler multiplying factor. Must be positive
@@ -761,6 +798,25 @@ class
       !(e, eIxL) = unconsDim eIx
       !(inc, incIxL) = unconsDim incIx
   {-# INLINE iterF #-}
+
+  iterF# :: ix -> ix -> ix -> (Int# -> Int# -> Bool#) -> f a -> (ix -> f a -> f a) -> f a
+  default iterF#
+    :: Index (Lower ix)
+    => ix
+    -> ix
+    -> ix
+    -> (Int# -> Int# -> Bool#)
+    -> f a
+    -> (ix -> f a -> f a)
+    -> f a
+  iterF# !sIx !eIx !incIx cond initAct f =
+    loopF# s (`cond` e) (+# inc) initAct $ \ i g ->
+      iterF# sIxL eIxL incIxL cond g (\ !ix -> f (consDim (I# i) ix))
+    where
+      !(I# s, sIxL) = unconsDim sIx
+      !(I# e, eIxL) = unconsDim eIx
+      !(I# inc, incIxL) = unconsDim incIx
+  {-# INLINE iterF# #-}
 
   -- | A single step in iteration
   --
@@ -1063,8 +1119,12 @@ instance Index Ix1 where
   {-# INLINE [1] foldlIndex #-}
   iterM k0 k1 inc cond = loopM k0 (`cond` k1) (+ inc)
   {-# INLINE iterM #-}
+  iterM# (I# k0) (I# k1) (I# inc) cond acc f = loopM# k0 (`cond` k1) (+# inc) acc (\i -> f (I# i))
+  {-# INLINE iterM# #-}
   iterF k0 k1 inc cond = loopF k0 (`cond` k1) (+ inc)
   {-# INLINE iterF #-}
+  iterF# (I# k0) (I# k1) (I# inc) cond action f = loopF# k0 (`cond` k1) (+# inc) action (\i -> f (I# i))
+  {-# INLINE iterF# #-}
   stepNextMF k0 k1 inc cond = nextMaybeF k0 (`cond` k1) (+ inc)
   {-# INLINE stepNextMF #-}
 
@@ -1126,6 +1186,28 @@ iterA_
 iterA_ sIx eIx incIx cond f =
   iterF sIx eIx incIx cond (pure ()) $ \ix go -> f ix *> go
 {-# INLINE iterA_ #-}
+
+-- | Same as `iterM`, Iterate over a region with specific step, but using
+-- `Applicative` instead of a `Monad` and don't bother with accumulator or return value.
+--
+-- @since 1.0.2
+iterA_#
+  :: forall ix f a
+   . (Index ix, Applicative f)
+  => ix
+  -- ^ Starting index
+  -> ix
+  -- ^ Ending index (not included)
+  -> ix
+  -- ^ Stepping index
+  -> (Int# -> Int# -> Bool#)
+  -- ^ Continuation function. Loop will stop on `False`
+  -> (ix -> f a)
+  -- ^ Action applied to an index. Result is ignored.
+  -> f ()
+iterA_# sIx eIx incIx cond f =
+  iterF# sIx eIx incIx cond (pure ()) $ \ix go -> f ix *> go
+{-# INLINE iterA_# #-}
 
 -- | Exceptions that get thrown when there is a problem with an index, size or dimension.
 --

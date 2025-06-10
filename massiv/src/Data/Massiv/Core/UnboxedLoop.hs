@@ -13,6 +13,7 @@
 -- Stability   : experimental
 -- Portability : non-portable
 module Data.Massiv.Core.UnboxedLoop (
+  Bool#,
   loop#,
   loopF#,
   nextMaybeF#,
