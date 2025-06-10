@@ -83,6 +83,7 @@ library
                      , Data.Massiv.Core.Index.Tuple
                      , Data.Massiv.Core.Index.Iterator
                      , Data.Massiv.Core.Loop
+                     , Data.Massiv.Core.UnboxedLoop
                      , Data.Massiv.Vector.Unsafe
   build-depends:       base >= 4.9 && < 5
                      , bytestring
