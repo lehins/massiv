@@ -89,7 +89,6 @@ import Prelude hiding (enumFromTo, replicate)
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> makeArrayR U Par (Sz (2 :> 3 :. 4)) (\ (i :> j :. k) -> i * i + j * j == k * k)
 -- Array U Par (Sz (2 :> 3 :. 4))
 --   [ [ [ True, False, False, False ]
@@ -179,7 +178,6 @@ makeArrayAR _ = makeArrayA
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> iterateN (Sz2 2 10) succ (10 :: Int)
 -- Array DL Seq (Sz (2 :. 10))
 --   [ [ 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ]
@@ -202,8 +200,7 @@ iiterateN sz f = iunfoldrS_ sz $ \a ix -> let !a' = f a ix in (a', a')
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
--- >>> unfoldrS_ (Sz1 10) (\xs -> (Prelude.head xs, Prelude.tail xs)) ([10 ..] :: [Int])
+-- >>> unfoldrS_ (Sz1 10) (Data.Maybe.fromJust . Data.List.uncons) ([10 ..] :: [Int])
 -- Array DL Seq (Sz1 10)
 --   [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ]
 --
@@ -283,7 +280,6 @@ iunfoldlS_ sz f acc0 = DLArray{dlComp = Seq, dlSize = sz, dlLoad = load}
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> import System.Random.SplitMix as SplitMix
 -- >>> gen = SplitMix.mkSMGen 217
 -- >>> randomArray gen SplitMix.splitSMGen SplitMix.nextDouble (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
@@ -292,7 +288,6 @@ iunfoldlS_ sz f acc0 = DLArray{dlComp = Seq, dlSize = sz, dlLoad = load}
 --   , [ 0.7218718218678238, 0.7006722805067258, 0.7225894731396042 ]
 --   ]
 --
--- >>> import Data.Massiv.Array
 -- >>> import System.Random as Random
 -- >>> gen = Random.mkStdGen 217
 -- >>> randomArray gen Random.splitGen Random.random (ParN 2) (Sz2 2 3) :: Array DL Ix2 Double
@@ -454,7 +449,6 @@ uniformRangeArray gen r = randomArray gen split (uniformR r)
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> import System.Random.SplitMix as SplitMix
 -- >>> gen = SplitMix.mkSMGen 217
 -- >>> snd $ randomArrayS gen (Sz2 2 3) SplitMix.nextDouble :: Array P Ix2 Double
@@ -463,7 +457,6 @@ uniformRangeArray gen r = randomArray gen split (uniformR r)
 --   , [ 0.39904053166835896, 0.5617584038393628, 0.16248374266020216 ]
 --   ]
 --
--- >>> import Data.Massiv.Array
 -- >>> import System.Random.Mersenne.Pure64 as MT
 -- >>> gen = MT.pureMT 217
 -- >>> snd $ randomArrayS gen (Sz2 2 3) MT.randomDouble :: Array P Ix2 Double
@@ -472,7 +465,6 @@ uniformRangeArray gen r = randomArray gen split (uniformR r)
 --   , [ 0.7139711572975297, 0.49401087853770953, 0.9397201599368645 ]
 --   ]
 --
--- >>> import Data.Massiv.Array
 -- >>> import System.Random as System
 -- >>> gen = System.mkStdGen 217
 -- >>> snd $ randomArrayS gen (Sz2 2 3) System.random :: Array P Ix2 Double
@@ -513,12 +505,11 @@ randomArrayS gen sz nextRandom =
 -- of course, statistical independence will depend on the entropy in your initial seeds,
 -- so do not use the example below verbatim, since initial seeds are sequential numbers.
 --
--- >>> import Data.Massiv.Array as A
 -- >>> import System.Random.MWC as MWC (initialize)
 -- >>> import System.Random.Stateful (uniformRM)
 -- >>> import Control.Scheduler (initWorkerStates, getWorkerId)
 -- >>> :set -XTypeApplications
--- >>> gens <- initWorkerStates Par (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
+-- >>> gens <- initWorkerStates Par (MWC.initialize . toPrimitiveVector . singleton @P @Ix1 . fromIntegral . getWorkerId)
 -- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
 -- Array P Par (Sz (2 :. 3))
 --   [ [ 8.999240522095299, 6.832223390653754, 1.434271921258329 ]
@@ -574,7 +565,6 @@ infix 4 ..., ..:
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> range Seq (Ix1 1) 6
 -- Array D Seq (Sz1 5)
 --   [ 1, 2, 3, 4, 5 ]
@@ -596,7 +586,6 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> rangeStepM Seq (Ix1 1) 2 8
 -- Array D Seq (Sz1 4)
 --   [ 1, 3, 5, 7 ]
@@ -629,7 +618,6 @@ rangeStepM comp !from !step !to
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> rangeStep' Seq (Ix1 1) 2 6
 -- Array D Seq (Sz1 3)
 --   [ 1, 3, 5 ]
@@ -702,7 +690,6 @@ rangeStepSize comp !from !step !sz =
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> enumFromN Seq (5 :: Double) 3
 -- Array D Seq (Sz1 3)
 --   [ 5.0, 6.0, 7.0 ]
@@ -735,7 +722,6 @@ enumFromN comp !from !sz = makeArrayLinear comp sz $ \i -> from + fromIntegral i
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> enumFromStepN Seq 1 (0.1 :: Double) 5
 -- Array D Seq (Sz1 5)
 --   [ 1.0, 1.1, 1.2, 1.3, 1.4 ]
@@ -784,7 +770,6 @@ enumFromStepN comp !from !step !sz = makeArrayLinear comp sz $ \i -> from + from
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> a = makeArrayR U Seq (Sz1 6) (+10) -- Imagine (+10) is some expensive function
 -- >>> a
 -- Array U Seq (Sz1 6)
@@ -897,3 +882,9 @@ expandInner k f arr =
     szl = size arr
     sz = snocSz szl k
 {-# INLINE expandInner #-}
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Manifest
+-- >>> import Data.Massiv.Array.Delayed.Push

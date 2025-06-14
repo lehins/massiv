@@ -89,8 +89,6 @@ makeUnsafeCorrelationStencil !sSz !sCenter relStencil = Stencil sSz sCenter sten
 --
 -- Convert a 1D stencil into a row or column 2D stencil:
 --
--- >>> import Data.Massiv.Array
--- >>> import Data.Massiv.Array.Unsafe
 -- >>> let arr = compute $ iterateN 3 succ 0 :: Array P Ix2 Int
 -- >>> arr
 -- Array P Seq (Sz (3 :. 3))
@@ -157,3 +155,12 @@ transformStencil transformSize transformIndex transformIndex' stencil =
 {-# INLINE transformStencil #-}
 
 -}
+
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Manifest.Primitive
+-- >>> import Data.Massiv.Array.Manifest.Internal
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Stencil

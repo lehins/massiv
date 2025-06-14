@@ -48,7 +48,6 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- highermost dimension. For example with rank-3 arrays outer slice would be equivalent to getting a
 -- page:
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = makeArrayR U Seq (Sz (3 :> 2 :. 4)) fromIx3
 -- >>> arr
 -- Array U Seq (Sz (3 :> 2 :. 4))
@@ -109,7 +108,6 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 --
 -- ===__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = makeArrayR U Seq (Sz (3 :> 2 :. 4)) fromIx3
 -- >>> arr !?> 2 ??> 0 ?? 3 :: Maybe Ix3T
 -- Just (2,0,3)
@@ -228,7 +226,6 @@ internalInnerSlice dim cutSz arr i = do
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> A.mapM_ print $ outerSlices (0 ..: (3 :. 2))
 -- Array D Seq (Sz1 2)
 --   [ 0 :. 0, 0 :. 1 ]
@@ -252,7 +249,6 @@ outerSlices arr = makeArray (getComp arr) k (unsafeOuterSlice (setComp Seq arr) 
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> A.mapM_ print $ innerSlices (0 ..: (3 :. 2))
 -- Array D Seq (Sz1 3)
 --   [ 0 :. 0, 1 :. 0, 2 :. 0 ]
@@ -274,7 +270,6 @@ innerSlices arr = makeArray (getComp arr) k (unsafeInnerSlice (setComp Seq arr) 
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> arr = fromIx3 <$> (0 ..: (4 :> 3 :. 2))
 -- >>> print arr
 -- Array D Seq (Sz (4 :> 3 :. 2))
@@ -342,3 +337,11 @@ withinSlicesM dim arr = do
   cutSz <- insertSzM szl dim oneSz
   pure $ makeArray Seq k (either throwImpossible id . internalInnerSlice dim cutSz arr)
 {-# INLINE withinSlicesM #-}
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Ops.Map as A
+-- >>> import Data.Massiv.Array.Delayed.Pull
+-- >>> import Data.Massiv.Array.Manifest.Unboxed

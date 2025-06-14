@@ -158,6 +158,30 @@ flattenMArray marr = unsafeResizeMArray (toLinearSz (sizeOfMArray marr)) marr
 -- dimensionality by one. Same as `Data.Massiv.Array.!?>` operator, but for
 -- mutable arrays.
 --
+-- ====__Examples__
+--
+-- >>> marr <- makeMArrayLinear @P Seq (Sz2 4 7) (pure . (+10))
+-- >>> freezeS marr
+-- Array P Seq (Sz (4 :. 7))
+--   [ [ 10, 11, 12, 13, 14, 15, 16 ]
+--   , [ 17, 18, 19, 20, 21, 22, 23 ]
+--   , [ 24, 25, 26, 27, 28, 29, 30 ]
+--   , [ 31, 32, 33, 34, 35, 36, 37 ]
+--   ]
+--
+-- Let's say our goal is to swap row with index 0 with the one with index 2:
+--
+-- >>> row0 <- outerSliceMArrayM marr 0
+-- >>> row2 <- outerSliceMArrayM marr 2
+-- >>> zipSwapM_ 0 row0 row2
+-- >>> freezeS marr
+-- Array P Seq (Sz (4 :. 7))
+--   [ [ 24, 25, 26, 27, 28, 29, 30 ]
+--   , [ 17, 18, 19, 20, 21, 22, 23 ]
+--   , [ 10, 11, 12, 13, 14, 15, 16 ]
+--   , [ 31, 32, 33, 34, 35, 36, 37 ]
+--   ]
+--
 -- @since 1.0.0
 outerSliceMArrayM
   :: forall r ix e m s
@@ -178,9 +202,8 @@ outerSliceMArrayM !marr !i = do
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array as A
--- >>> arr <- resizeM (Sz2 4 7) $ makeArrayR P Seq (Sz1 28) (+10)
--- >>> arr
+-- >>> marr <- makeMArrayLinear @P Seq (Sz2 4 7) (pure . (+10))
+-- >>> freezeS marr
 -- Array P Seq (Sz (4 :. 7))
 --   [ [ 10, 11, 12, 13, 14, 15, 16 ]
 --   , [ 17, 18, 19, 20, 21, 22, 23 ]
@@ -188,9 +211,8 @@ outerSliceMArrayM !marr !i = do
 --   , [ 31, 32, 33, 34, 35, 36, 37 ]
 --   ]
 --
--- Here we can see we can get individual rows from a mutable matrix
+-- Here is an example of how we can get individual rows from a mutable matrix
 --
--- >>> marr <- thawS arr
 -- >>> import Control.Monad ((<=<))
 -- >>> mapIO_ (print <=< freezeS)  $ outerSlicesMArray Seq marr
 -- Array P Seq (Sz1 7)
@@ -201,29 +223,6 @@ outerSliceMArrayM !marr !i = do
 --   [ 24, 25, 26, 27, 28, 29, 30 ]
 -- Array P Seq (Sz1 7)
 --   [ 31, 32, 33, 34, 35, 36, 37 ]
---
--- For the sake of example what if our goal was to mutate array in such a way
--- that rows from the top half were swapped with the bottom half:
---
--- >>> (top, bottom) <- splitAtM 1 2 $ outerSlicesMArray Seq marr
--- >>> mapIO_ (print <=< freezeS) top
--- Array P Seq (Sz1 7)
---   [ 10, 11, 12, 13, 14, 15, 16 ]
--- Array P Seq (Sz1 7)
---   [ 17, 18, 19, 20, 21, 22, 23 ]
--- >>> mapIO_ (print <=< freezeS) bottom
--- Array P Seq (Sz1 7)
---   [ 24, 25, 26, 27, 28, 29, 30 ]
--- Array P Seq (Sz1 7)
---   [ 31, 32, 33, 34, 35, 36, 37 ]
--- >>> szipWithM_ (zipSwapM_ 0) top bottom
--- >>> freezeS marr
--- Array P Seq (Sz (4 :. 7))
---   [ [ 24, 25, 26, 27, 28, 29, 30 ]
---   , [ 31, 32, 33, 34, 35, 36, 37 ]
---   , [ 10, 11, 12, 13, 14, 15, 16 ]
---   , [ 17, 18, 19, 20, 21, 22, 23 ]
---   ]
 --
 -- @since 1.0.0
 outerSlicesMArray
@@ -245,7 +244,6 @@ outerSlicesMArray comp marr =
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> marr <- newMArray' (Sz2 2 6) :: IO (MArray RealWorld P Ix2 Int)
 -- >>> freeze Seq marr
 -- Array P Seq (Sz (2 :. 6))
@@ -278,7 +276,6 @@ newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> :set -XTypeApplications
 -- >>> arr <- fromListsM @U @Ix2 @Double Par [[12,21],[13,31]]
 -- >>> marr <- thaw arr
@@ -312,7 +309,6 @@ thaw arr =
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> :set -XOverloadedLists
 -- >>> thawS @P @Ix1 @Double [1..10]
 -- >>> marr <- thawS @P @Ix1 @Double [1..10]
@@ -338,7 +334,6 @@ thawS arr = do
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> marr <- newMArray @P (Sz2 2 6) (0 :: Int)
 -- >>> forM_ (range Seq 0 (Ix2 1 4)) $ \ix -> write marr ix 9
 -- >>> freeze Seq marr
@@ -505,7 +500,6 @@ makeMArrayLinear comp sz f = do
 -- ====__Examples__
 --
 -- >>> :set -XTypeApplications
--- >>> import Data.Massiv.Array
 -- >>> createArray_ @P @_ @Int Seq (Sz1 2) (\ s marr -> scheduleWork s (writeM marr 0 10) >> scheduleWork s (writeM marr 1 11))
 -- Array P Seq (Sz1 2)
 --   [ 10, 11 ]
@@ -554,7 +548,6 @@ createArray comp sz action = do
 -- ====__Examples__
 --
 -- >>> :set -XTypeApplications
--- >>> import Data.Massiv.Array
 -- >>> createArrayS_ @P @_ @Int (Sz1 2) (\ marr -> write marr 0 10 >> write marr 1 12)
 -- Array P Seq (Sz1 2)
 --   [ 10, 12 ]
@@ -621,7 +614,6 @@ createArrayST sz action = runST $ createArrayS sz action
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> import Data.IORef
 -- >>> ref <- newIORef (0 :: Int)
 -- >>> generateArrayS (Sz1 6) (\ i -> modifyIORef' ref (+i) >> print i >> pure i) :: IO (Array U Ix1 Int)
@@ -793,7 +785,6 @@ generateArrayWS states sz make = generateArrayLinearWS states sz (make . fromLin
 --
 -- Create an array with Fibonacci numbers while performing an `IO` action at each iteration.
 --
--- >>> import Data.Massiv.Array
 -- >>> unfoldrPrimM_ (Sz1 10) (\(f0, f1) -> (f0, (f1, f0 + f1)) <$ print f1) (0, 1) :: IO (Array P Ix1 Int)
 -- 1
 -- 1
@@ -889,7 +880,6 @@ unfoldrPrimM sz gen acc0 =
 -- Create an array with Fibonacci numbers starting at the end while performing and `IO` action on
 -- the accumulator for each element of the array.
 --
--- >>> import Data.Massiv.Array
 -- >>> unfoldlPrimM_ (Sz1 10) (\a@(f0, f1) -> let fn = f0 + f1 in print a >> return ((f1, fn), f0)) (0, 1) :: IO (Array P Ix1 Int)
 -- (0,1)
 -- (1,1)
@@ -1344,7 +1334,6 @@ modifyM marr f ix
 --
 -- >>> :set -XTypeApplications
 -- >>> import Control.Monad.ST
--- >>> import Data.Massiv.Array
 -- >>> runST $ newMArray' @P @Ix1 @Int (Sz1 3) >>= (\ma -> modifyM_ ma (pure . (+10)) 1 >> freezeS ma)
 -- Array P Seq (Sz1 3)
 --   [ 0, 10, 0 ]
@@ -1450,3 +1439,11 @@ zipSwapM_ startIx m1 m2 = do
 msize :: (Manifest r e, Index ix) => MArray s r ix e -> Sz ix
 msize = sizeOfMArray
 {-# DEPRECATED msize "In favor of `sizeOfMArray`" #-}
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Manifest
+-- >>> import Data.Massiv.Array.Manifest.List
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Ops.Map

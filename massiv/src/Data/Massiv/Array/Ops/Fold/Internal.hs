@@ -231,7 +231,6 @@ foldrFB c n arr = go 0
 --
 -- ===__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> foldlP (flip (:)) [] (flip (:)) [] $ makeArrayR D Seq (Sz1 6) id
 -- [[5,4,3,2,1,0]]
 -- >>> foldlP (flip (:)) [] (++) [] $ makeArrayR D Seq (Sz1 6) id
@@ -280,7 +279,6 @@ ifoldlP f fAcc g gAcc =
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> foldrP (:) [] (++) [] $ makeArrayR D (ParN 2) (Sz2 2 3) fromIx2
 -- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
 -- >>> foldrP (:) [] (:) [] $ makeArrayR D Seq (Sz1 6) id
@@ -543,3 +541,10 @@ any f arr =
     Seq -> anySu f arr
     _ -> unsafePerformIO $ anyPu f arr
 {-# INLINE any #-}
+
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Delayed.Pull

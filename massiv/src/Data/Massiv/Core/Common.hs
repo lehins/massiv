@@ -1136,3 +1136,4 @@ inline2 f = f
 -- >>> import Data.Massiv.Array.Manifest.List
 -- >>> import Data.Massiv.Array.Ops.Construct
 -- >>> import Data.Massiv.Array.Ops.Slice
+-- >>> import Data.Massiv.Vector

@@ -705,7 +705,6 @@ sslice !i !k = fromSteps . S.slice i k . S.toStream
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> A.init (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
@@ -735,7 +734,6 @@ init' = throwEither . initM
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> initM (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
@@ -755,7 +753,6 @@ initM v = do
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> A.tail (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
@@ -787,7 +784,6 @@ tail' = throwEither . tailM
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> tailM (0 ..: 10)
 -- Array D Seq (Sz1 9)
 --   [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
@@ -808,7 +804,6 @@ tailM v = do
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> A.take 5 (0 ..: 10)
 -- Array D Seq (Sz1 5)
 --   [ 0, 1, 2, 3, 4 ]
@@ -858,7 +853,6 @@ take' k = throwEither . takeM k
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> takeM 5 (0 ..: 10)
 -- Array D Seq (Sz1 5)
 --   [ 0, 1, 2, 3, 4 ]
@@ -1119,7 +1113,6 @@ siterateNM n f a = fromStepsM $ S.iterateNM n f a
 --
 -- ====__Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> sunfoldr (\i -> if i < 9 then Just (i * i, i + 1) else Nothing) (0 :: Int)
 -- Array DS Seq (Sz1 9)
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64 ]
@@ -1133,7 +1126,6 @@ sunfoldr f = DSArray . S.unfoldr f
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> sunfoldrN 9 (\i -> Just (i*i, i + 1)) (0 :: Int)
 -- Array DS Seq (Sz1 9)
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64 ]
@@ -1398,7 +1390,6 @@ stoList = S.toList . toStream
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> arr = makeArrayR D Seq (Sz2 3 4) fromIx2
 -- >>> arr
 -- Array D Seq (Sz (3 :. 4))
@@ -1432,7 +1423,6 @@ sifilter f =
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> arr = makeArrayR D Seq (Sz2 3 4) fromIx2
 -- >>> arr
 -- Array D Seq (Sz (3 :. 4))
@@ -2838,3 +2828,8 @@ sscanl f acc = DSArray . S.scanlM (\a b -> pure (f a b)) acc . toStream
 sscanl1 :: Stream r ix e => (e -> e -> e) -> Array r ix e -> Vector DS e
 sscanl1 f = DSArray . S.scanl1M (\a b -> pure (f a b)) . toStream
 {-# INLINE sscanl1 #-}
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Manifest

@@ -41,7 +41,6 @@ import System.IO.Unsafe
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> xs = fromList Seq [2, 4, 3, 2, 4, 5, 2, 1] :: Array P Ix1 Int
 -- >>> xs
 -- Array P Seq (Sz1 8)
