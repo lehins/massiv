@@ -202,7 +202,7 @@ iiterateN sz f = iunfoldrS_ sz $ \a ix -> let !a' = f a ix in (a', a')
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> unfoldrS_ (Sz1 10) (\xs -> (Prelude.head xs, Prelude.tail xs)) ([10 ..] :: [Int])
+-- >>> unfoldrS_ (Sz1 10) (Data.Maybe.fromJust . Data.List.uncons) ([10 ..] :: [Int])
 -- Array DL Seq (Sz1 10)
 --   [ 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ]
 --
