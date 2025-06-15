@@ -947,7 +947,8 @@ replaceSlice
 replaceSlice dim i sl arr = do
   (l, m, r) <- splitExtractM dim i (SafeSz 1) arr
   m' <- resizeM (size m) sl
-  concatM dim [l, delay m', r]
+  --concatM dim [l, delay m', r]
+  undefined
 {-# INLINE replaceSlice #-}
 
 -- | Replace an outer slice of an array with another one
