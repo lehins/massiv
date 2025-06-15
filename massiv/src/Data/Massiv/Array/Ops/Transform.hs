@@ -19,7 +19,7 @@ module Data.Massiv.Array.Ops.Transform (
   transposeOuter,
 
   -- ** Reverse
-  reverse,
+  --reverse,
   reverse',
   reverseM,
 
@@ -82,18 +82,12 @@ import Data.Massiv.Array.Delayed.Pull
 import Data.Massiv.Array.Delayed.Push
 import Data.Massiv.Array.Mutable
 import Data.Massiv.Array.Ops.Construct
-import Data.Massiv.Array.Ops.Map
-import Data.Massiv.Core
-import Data.Massiv.Core.Common -- (size, unsafeIndex, unsafeResize, evaluate', evaluateM)
-import Prelude as P hiding (
-  concat,
-  drop,
-  mapM_,
-  reverse,
-  splitAt,
-  take,
-  traverse,
- )
+--import Data.Massiv.Array.Ops.Map as A
+--import Data.Massiv.Core
+import Data.Massiv.Core.Common
+-- import Prelude as P hiding (
+--   reverse,
+--  )
 
 -- | Extract a sub-array from within a larger source array. Array that is being extracted must be
 -- fully encapsulated in a source array, otherwise `SizeSubregionException` will be thrown.
@@ -422,14 +416,14 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --   ]
 --
 -- @since 0.4.1
-reverse
-  :: forall n r ix e
-   . (IsIndexDimension ix n, Index ix, Source r e)
-  => Dimension n
-  -> Array r ix e
-  -> Array D ix e
-reverse dim = reverse' (fromDimension dim)
-{-# INLINE reverse #-}
+-- reverse
+--   :: forall n r ix e
+--    . (IsIndexDimension ix n, Index ix, Source r e)
+--   => Dimension n
+--   -> Array r ix e
+--   -> Array D ix e
+-- reverse dim = reverse' (fromDimension dim)
+-- {-# INLINE reverse #-}
 
 -- | Similarly to `reverse`, flip an array along a particular dimension, but throws
 -- `IndexDimensionException` for an incorrect dimension.
@@ -627,37 +621,37 @@ concatM
   => Dim
   -> f (Array r ix e)
   -> m (Array DL ix e)
-concatM n arrsF =
-  case L.uncons (F.toList arrsF) of
-    Nothing -> pure empty
-    Just (a, arrs) -> do
-      let sz = unSz (size a)
-          szs = unSz . size <$> arrs
-      (k, szl) <- pullOutDimM sz n
-      -- / remove the dimension out of all sizes along which concatenation will happen
-      (ks, szls) <-
-        F.foldrM (\ !csz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM csz n) ([], []) szs
-      -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
-      traverse_
-        (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
-        (dropWhile ((== szl) . snd) $ P.zip szs szls)
-      let kTotal = SafeSz $ F.foldl' (+) k ks
-      newSz <- insertSzM (SafeSz szl) n kTotal
-      let load :: Loader e
-          load scheduler startAt dlWrite _dlSet =
-            let arrayLoader !kAcc (!kCur, arr) = do
-                  scheduleWork scheduler $
-                    iforM_ arr $ \ix e -> do
-                      i <- getDimM ix n
-                      ix' <- setDimM ix n (i + kAcc)
-                      dlWrite (startAt + toLinearIndex newSz ix') e
-                  pure $! kAcc + kCur
-                {-# INLINE arrayLoader #-}
-             in M.foldM_ arrayLoader 0 $ (k, a) : P.zip ks arrs
-          {-# INLINE load #-}
-      return $
-        DLArray{dlComp = getComp a <> foldMap getComp arrs, dlSize = newSz, dlLoad = load}
-{-# INLINE concatM #-}
+concatM n arrsF = undefined
+--   case L.uncons (F.toList arrsF) of
+--     Nothing -> pure empty
+--     Just (a, arrs) -> do
+--       let sz = unSz (size a)
+--           szs = unSz . size <$> arrs
+--       (k, szl) <- pullOutDimM sz n
+--       -- / remove the dimension out of all sizes along which concatenation will happen
+--       (ks, szls) <-
+--         F.foldrM (\ !csz (ks, szls) -> bimap (: ks) (: szls) <$> pullOutDimM csz n) ([], []) szs
+--       -- / make sure to fail as soon as at least one of the arrays has a mismatching inner size
+--       traverse_
+--         (\(sz', _) -> throwM (SizeMismatchException (SafeSz sz) (SafeSz sz')))
+--         (dropWhile ((== szl) . snd) $ zip szs szls)
+--       let kTotal = SafeSz $ F.foldl' (+) k ks
+--       newSz <- insertSzM (SafeSz szl) n kTotal
+--       let load :: Loader e
+--           load scheduler startAt dlWrite _dlSet =
+--             let arrayLoader !kAcc (!kCur, arr) = do
+--                   scheduleWork scheduler $
+--                     iforM_ arr $ \ix e -> do
+--                       i <- getDimM ix n
+--                       ix' <- setDimM ix n (i + kAcc)
+--                       dlWrite (startAt + toLinearIndex newSz ix') e
+--                   pure $! kAcc + kCur
+--                 {-# INLINE arrayLoader #-}
+--              in M.foldM_ arrayLoader 0 $ (k, a) : zip ks arrs
+--           {-# INLINE load #-}
+--       return $
+--         DLArray{dlComp = getComp a <> foldMap getComp arrs, dlSize = newSz, dlLoad = load}
+-- {-# INLINE concatM #-}
 
 -- | Stack slices on top of each other along the specified dimension.
 --
@@ -727,26 +721,26 @@ stackSlicesM
   => Dim
   -> f (Array r (Lower ix) e)
   -> m (Array DL ix e)
-stackSlicesM dim !arrsF = do
-  case L.uncons (F.toList arrsF) of
-    Nothing -> pure empty
-    Just (a, arrs) -> do
-      let sz = size a
-          len = SafeSz (F.length arrsF)
-      -- / make sure all arrays have the same size
-      M.forM_ arrsF $ \arr ->
-        unless (sz == size arr) $ throwM (SizeMismatchException sz (size arr))
-      newSz <- insertSzM sz dim len
-      let load :: Loader e
-          load scheduler startAt dlWrite _dlSet =
-            let loadIndex k ix = dlWrite (toLinearIndex newSz (insertDim' ix dim k) + startAt)
-                arrayLoader !k arr = (k + 1) <$ scheduleWork scheduler (imapM_ (loadIndex k) arr)
-                {-# INLINE arrayLoader #-}
-             in M.foldM_ arrayLoader 0 arrsF
-          {-# INLINE load #-}
-      return $
-        DLArray{dlComp = foldMap getComp arrs, dlSize = newSz, dlLoad = load}
-{-# INLINE stackSlicesM #-}
+stackSlicesM dim !arrsF = undefined -- do
+--   case L.uncons (F.toList arrsF) of
+--     Nothing -> pure empty
+--     Just (a, arrs) -> do
+--       let sz = size a
+--           len = SafeSz (F.length arrsF)
+--       -- / make sure all arrays have the same size
+--       M.forM_ arrsF $ \arr ->
+--         unless (sz == size arr) $ throwM (SizeMismatchException sz (size arr))
+--       newSz <- insertSzM sz dim len
+--       let load :: Loader e
+--           load scheduler startAt dlWrite _dlSet =
+--             let loadIndex k ix = dlWrite (toLinearIndex newSz (insertDim' ix dim k) + startAt)
+--                 arrayLoader !k arr = (k + 1) <$ scheduleWork scheduler (imapM_ (loadIndex k) arr)
+--                 {-# INLINE arrayLoader #-}
+--              in M.foldM_ arrayLoader 0 arrsF
+--           {-# INLINE load #-}
+--       return $
+--         DLArray{dlComp = foldMap getComp arrs, dlSize = newSz, dlLoad = load}
+-- {-# INLINE stackSlicesM #-}
 
 -- | Specialized `stackSlicesM` to handling stacking from the outside. It is the inverse of
 -- `Data.Massiv.Array.outerSlices`.
@@ -1269,19 +1263,20 @@ zoomWithGrid
   -> Array r ix e
   -- ^ Source array
   -> Array DL ix e
-zoomWithGrid gridVal (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz (Just gridVal) load
-  where
-    !kx = liftIndex (+ 1) zoomFactor
-    !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
-    !newSz = Sz (liftIndex (+ 1) lastNewIx)
-    load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
-    load scheduler _ writeElement =
-      iforSchedulerM_ scheduler arr $ \ !ix !e ->
-        let !kix = liftIndex2 (*) ix kx
-         in mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
-              range Seq (liftIndex (+ 1) kix) (liftIndex2 (+) kix kx)
-    {-# INLINE load #-}
-{-# INLINE zoomWithGrid #-}
+zoomWithGrid gridVal (Stride zoomFactor) arr = undefined
+--   unsafeMakeLoadArray Seq newSz (Just gridVal) load
+--   where
+--     !kx = liftIndex (+ 1) zoomFactor
+--     !lastNewIx = liftIndex2 (*) kx $ unSz (size arr)
+--     !newSz = Sz (liftIndex (+ 1) lastNewIx)
+--     load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
+--     load scheduler _ writeElement =
+--       iforSchedulerM_ scheduler arr $ \ !ix !e ->
+--         let !kix = liftIndex2 (*) ix kx
+--          in A.mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
+--               range Seq (liftIndex (+ 1) kix) (liftIndex2 (+) kix kx)
+--     {-# INLINE load #-}
+-- {-# INLINE zoomWithGrid #-}
 
 -- | Increaze the size of the array accoridng to the stride multiplier while replicating
 -- the same element to fill the neighbors. It is exactly the same as `zoomWithGrid`, but
@@ -1324,22 +1319,24 @@ zoom
   -> Array r ix e
   -- ^ Source array
   -> Array DL ix e
-zoom (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz Nothing load
-  where
-    !lastNewIx = liftIndex2 (*) zoomFactor $ unSz (size arr)
-    !newSz = Sz lastNewIx
-    load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
-    load scheduler _ writeElement =
-      iforSchedulerM_ scheduler arr $ \ !ix !e ->
-        let !kix = liftIndex2 (*) ix zoomFactor
-         in mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
-              range Seq kix (liftIndex2 (+) kix zoomFactor)
-    {-# INLINE load #-}
-{-# INLINE zoom #-}
+zoom (Stride zoomFactor) arr = undefined
+-- unsafeMakeLoadArray Seq newSz Nothing load
+--   where
+--     !lastNewIx = liftIndex2 (*) zoomFactor $ unSz (size arr)
+--     !newSz = Sz lastNewIx
+--     load :: forall s. Scheduler s () -> Ix1 -> (Ix1 -> e -> ST s ()) -> ST s ()
+--     load scheduler _ writeElement =
+--       iforSchedulerM_ scheduler arr $ \ !ix !e ->
+--         let !kix = liftIndex2 (*) ix zoomFactor
+--          in A.mapM_ (\ !ix' -> writeElement (toLinearIndex newSz ix') e) $
+--               range Seq kix (liftIndex2 (+) kix zoomFactor)
+--     {-# INLINE load #-}
+-- {-# INLINE zoom #-}
 
 -- $setup
 --
 -- >>> import Data.Massiv.Core
 -- >>> import Data.Massiv.Array.Ops.Construct
 -- >>> import Data.Massiv.Array.Ops.Slice
+-- >>> import Data.Massiv.Array.Ops.Map
 -- >>> import Data.Massiv.Array.Manifest
