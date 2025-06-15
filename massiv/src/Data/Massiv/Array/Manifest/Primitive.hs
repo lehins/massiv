@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
+-- Disable warning due to `sizeofMutableByteArray` for now
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
