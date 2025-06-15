@@ -117,7 +117,6 @@ computePrimM arr = loadArrayS arr >>= unsafeFreeze (getComp arr)
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> computeAs P $ range Seq (Ix1 0) 10
 -- Array P Seq (Sz1 10)
 --   [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
@@ -134,7 +133,6 @@ computeAs _ = compute
 -- aren't desireable for some reason:
 --
 -- >>> import Data.Proxy
--- >>> import Data.Massiv.Array
 -- >>> computeProxy (Proxy :: Proxy P) $ (^ (2 :: Int)) <$> range Seq (Ix1 0) 10
 -- Array P Seq (Sz1 10)
 --   [ 0, 1, 4, 9, 16, 25, 36, 49, 64, 81 ]
@@ -300,7 +298,6 @@ unsafeLoadIntoM marr arr = liftIO $ unsafeLoadIntoIO marr arr
 --
 -- ====__Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> let arr = computeAs P $ makeLoadArrayS (Sz2 8 8) (0 :: Int) $ \ w -> () <$ w (0 :. 0) 1
 -- >>> arr
 -- Array P Seq (Sz (8 :. 8))
@@ -395,3 +392,11 @@ iterateLoop convergence iteration = go
           arr'' <- iteration (n + 1) arr'
           go (n + 1) arr' arr'' $ flattenMArray nextMArr
 {-# INLINE iterateLoop #-}
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Delayed.Push
+-- >>> import Data.Massiv.Array.Manifest.Primitive
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Stencil

@@ -165,7 +165,6 @@ ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 --
 -- ====__Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> :set -XTypeApplications
 -- >>> arr = makeArrayLinear @U Seq (Sz (2 :. 5)) id
 -- >>> arr
@@ -378,7 +377,6 @@ foldWithin' dim = foldlWithin' dim mappend mempty
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> import Data.Monoid (Product(..))
 -- >>> arr = computeAs P $ iterateN (Sz2 2 3) (+1) (10 :: Int)
 -- >>> arr
@@ -420,7 +418,6 @@ ifoldOuterSlice f arr = foldMono g $ range (getComp arr) 0 k
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> import Data.Monoid (Product(..))
 -- >>> arr = computeAs P $ iterateN (Sz2 2 3) (+1) (10 :: Int)
 -- >>> arr
@@ -571,3 +568,10 @@ elem e = any (e ==)
 -- and two initial elements as arguments. This is necessary because an array is first
 -- split into chunks, which folded individually on separate cores with the first function,
 -- and the results of those folds are further folded with the second function.
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Manifest
+-- >>> import Data.Massiv.Array.Manifest.Internal
+-- >>> import Data.Massiv.Array.Ops.Fold as A
