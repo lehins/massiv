@@ -1,11 +1,9 @@
 packages:
   massiv
-  --massiv-bench
   massiv-test
 
 write-ghc-environment-files: always
--- Always build tests and benchmarks.
+-- Always build tests.
 tests: true
-benchmarks: true
 -- The only sensible test display option
 test-show-details: streaming
