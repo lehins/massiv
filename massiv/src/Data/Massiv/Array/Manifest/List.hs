@@ -51,7 +51,6 @@ fromList = fromLists'
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> fromListsM Seq [[1,2,3],[4,5,6]] :: Maybe (Array U Ix2 Int)
 -- Just (Array U Seq (Sz (2 :. 3))
 --   [ [ 1, 2, 3 ]
@@ -112,7 +111,6 @@ fromListToListArray = GHC.fromList
 --
 -- Convert a list of lists into a 2D Array
 --
--- >>> import Data.Massiv.Array as A
 -- >>> fromLists' Seq [[1,2,3],[4,5,6]] :: Array U Ix2 Int
 -- Array U Seq (Sz (2 :. 3))
 --   [ [ 1, 2, 3 ]
@@ -144,7 +142,6 @@ fromLists' comp = fromRaggedArray' . setComp comp . fromListToListArray
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> toList $ makeArrayR U Seq (Sz (2 :. 3)) fromIx2
 -- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]
 --
@@ -161,7 +158,6 @@ toList !arr = GHC.build (\c n -> foldrFB c n arr)
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = makeArrayR U Seq (Sz (2 :> 1 :. 3)) id
 -- >>> arr
 -- Array U Seq (Sz (2 :> 1 :. 3))
@@ -187,7 +183,6 @@ toLists = GHC.toList . toListArray
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> toLists2 $ makeArrayR U Seq (Sz2 2 3) fromIx2
 -- [[(0,0),(0,1),(0,2)],[(1,0),(1,1),(1,2)]]
 -- >>> toLists2 $ makeArrayR U Seq (Sz3 2 1 3) fromIx3
@@ -224,4 +219,8 @@ toLists4 = toList . foldrInner (:) [] . foldrInner (:) [] . foldrInner (:) []
 {-# INLINE toLists4 #-}
 
 -- $setup
--- >>> import Data.Massiv.Array as A
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Manifest
+-- >>> import Data.Massiv.Array.Ops.Construct
+

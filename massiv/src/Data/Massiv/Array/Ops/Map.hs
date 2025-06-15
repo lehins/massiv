@@ -587,7 +587,6 @@ iforM = flip itraverseA
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> rangeStepM Par (Ix1 10) 12 60 >>= A.mapM_ print
 -- 10
 -- 22
@@ -607,7 +606,6 @@ mapM_ = traverseA_
 -- Here is a common way of iterating N times using a for loop in an imperative
 -- language with mutation being an obvious side effect:
 --
--- >>> import Data.Massiv.Array as A
 -- >>> import Data.IORef
 -- >>> ref <- newIORef 0 :: IO (IORef Int)
 -- >>> A.forM_ (range Seq (Ix1 0) 1000) $ \ i -> modifyIORef' ref (+i)
@@ -621,7 +619,6 @@ forM_ = flip traverseA_
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> imapM_ (curry print) $ range Seq (Ix1 10) 15
 -- (0,10)
 -- (1,11)
@@ -782,7 +779,6 @@ forWS states arr f = imapWS states (\_ -> f) arr
 -- This is the same example as in `forM_`, with important difference that accumulator `ref` will be
 -- modified concurrently by as many threads as there are capabilities.
 --
--- >>> import Data.Massiv.Array
 -- >>> import Data.IORef
 -- >>> ref <- newIORef 0 :: IO (IORef Int)
 -- >>> forIO_ (range Par (Ix1 0) 1000) $ \ i -> atomicModifyIORef' ref (\v -> (v+i, ()))
@@ -939,3 +935,10 @@ iforSchedulerM_ scheduler arr action = imapSchedulerM_ scheduler action arr
 --   -> Array r ix e -- ^ Array that is being loaded
 --   -> (Int -> e -> ST s ()) -- ^ Function that writes an element into target array
 --   -> ST s ()
+
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Ops.Map as A

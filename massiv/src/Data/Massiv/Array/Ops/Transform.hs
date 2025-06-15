@@ -100,7 +100,6 @@ import Prelude as P hiding (
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> m <- resizeM (Sz (3 :. 3)) $ Ix1 1 ... 9
 -- >>> m
 -- Array D Seq (Sz (3 :. 3))
@@ -269,7 +268,6 @@ flatten arr = unsafeResize (SafeSz (totalElem (size arr))) arr
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = makeArrayLinearR D Seq (Sz (2 :. 3)) id
 -- >>> arr
 -- Array D Seq (Sz (2 :. 3))
@@ -298,7 +296,6 @@ transpose = transposeInner
 --
 -- ===__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = makeArrayLinearR U Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
 -- Array U Seq (Sz (2 :> 3 :. 4))
@@ -349,7 +346,6 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> :set -XTypeApplications
 -- >>> arr = makeArrayLinear @U Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
@@ -402,7 +398,6 @@ transposeOuter !arr = makeArray (getComp arr) newsz newVal
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> arr = makeArrayLinear Seq (Sz2 4 5) (+10) :: Array D Ix2 Int
 -- >>> arr
 -- Array D Seq (Sz (4 :. 5))
@@ -471,7 +466,6 @@ reverse' dim = throwEither . reverseM dim
 --
 -- ===__Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> :set -XTypeApplications
 -- >>> arr = makeArrayLinear @D Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
@@ -535,7 +529,6 @@ backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 --
 -- Append two 2D arrays along both dimensions. Note that they do agree on inner dimensions.
 --
--- >>> import Data.Massiv.Array
 -- >>> arrA = makeArrayR U Seq (Sz2 2 3) (\(i :. j) -> ('A', i, j))
 -- >>> arrB = makeArrayR U Seq (Sz2 2 3) (\(i :. j) -> ('B', i, j))
 -- >>> appendM 1 arrA arrB
@@ -674,7 +667,6 @@ concatM n arrsF =
 --
 -- Here are the three different ways to stack up two 2D Matrix pages into a 3D array.
 --
--- >>> import Data.Massiv.Array as A
 -- >>> x = compute (iterateN 3 succ 0) :: Matrix P Int
 -- >>> y = compute (iterateN 3 succ 9) :: Matrix P Int
 -- >>> x
@@ -765,7 +757,6 @@ stackSlicesM dim !arrsF = do
 --
 -- In this example we stack vectors as row of a matrix from top to bottom:
 --
--- >>> import Data.Massiv.Array as A
 -- >>> x = compute (iterateN 3 succ 0) :: Matrix P Int
 -- >>> x
 -- Array P Seq (Sz (3 :. 3))
@@ -806,7 +797,6 @@ stackOuterSlicesM = stackSlicesM (dimensions (Proxy :: Proxy ix))
 --
 -- In this example we stack vectors as columns of a matrix from left to right:
 --
--- >>> import Data.Massiv.Array as A
 -- >>> x = compute (iterateN 3 succ 0) :: Matrix P Int
 -- >>> x
 -- Array P Seq (Sz (3 :. 3))
@@ -913,7 +903,6 @@ splitExtractM dim startIx1 (Sz extractSzIx1) arr = do
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = makeArrayR U Seq (Sz3 3 4 5) fromIx3
 -- >>> arr' = makeArrayR U Seq (Sz3 3 4 5) (fromIx3 . liftIndex (* 100))
 -- >>> replaceSlice 2 1 (arr' <!> (2, 3)) arr
@@ -954,7 +943,6 @@ replaceSlice dim i sl arr = do
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = makeArrayR U Seq (Sz3 3 4 5) fromIx3
 -- >>> arr' = makeArrayR U Seq (Sz3 3 4 5) (fromIx3 . liftIndex (* 100))
 -- >>> replaceOuterSlice 1 (arr' !> 2) arr
@@ -991,7 +979,6 @@ replaceOuterSlice i sl arr = replaceSlice (dimensions (size arr)) i sl arr
 --
 -- ==== __Examples__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = fromIx3 <$> (0 :> 0 :. 0 ..: 3 :> 2 :. 6)
 -- >>> deleteRegionM 1 2 3 arr
 -- Array DL Seq (Sz (3 :> 2 :. 3))
@@ -1033,7 +1020,6 @@ deleteRegionM dim ix sz arr = do
 --
 -- ====__Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = fromIx2 <$> (0 :. 0 ..: 3 :. 6)
 -- >>> arr
 -- Array D Seq (Sz (3 :. 6))
@@ -1062,7 +1048,6 @@ deleteRowsM = deleteRegionM 2
 --
 -- ====__Example__
 --
--- >>> import Data.Massiv.Array
 -- >>> arr = fromIx2 <$> (0 :. 0 ..: 3 :. 6)
 -- >>> arr
 -- Array D Seq (Sz (3 :. 6))
@@ -1120,7 +1105,6 @@ downsample stride arr =
 --
 -- ====__Examples__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> arr = iterateN (Sz2 3 2) succ (0 :: Int)
 -- >>> arr
 -- Array DL Seq (Sz (3 :. 2))
@@ -1253,7 +1237,6 @@ transform2' getSz get arr1 arr2 =
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> arr = resize' (Sz2 3 2) (Ix1 1 ... 6)
 -- >>> arr
 -- Array D Seq (Sz (3 :. 2))
@@ -1306,7 +1289,6 @@ zoomWithGrid gridVal (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz (Ju
 --
 -- ==== __Example__
 --
--- >>> import Data.Massiv.Array as A
 -- >>> arr = resize' (Sz3 1 3 2) (Ix1 1 ... 6)
 -- >>> arr
 -- Array D Seq (Sz (1 :> 3 :. 2))
@@ -1354,3 +1336,10 @@ zoom (Stride zoomFactor) arr = unsafeMakeLoadArray Seq newSz Nothing load
               range Seq kix (liftIndex2 (+) kix zoomFactor)
     {-# INLINE load #-}
 {-# INLINE zoom #-}
+
+-- $setup
+--
+-- >>> import Data.Massiv.Core
+-- >>> import Data.Massiv.Array.Ops.Construct
+-- >>> import Data.Massiv.Array.Ops.Slice
+-- >>> import Data.Massiv.Array.Manifest
