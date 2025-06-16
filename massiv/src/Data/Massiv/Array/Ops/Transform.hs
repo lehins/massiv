@@ -350,7 +350,7 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 -- ====__Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @U Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
 -- Array U Seq (Sz (2 :> 3 :. 4))
@@ -472,7 +472,7 @@ reverse' dim = throwEither . reverseM dim
 -- ===__Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @D Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
 -- Array D Seq (Sz (2 :> 3 :. 4))

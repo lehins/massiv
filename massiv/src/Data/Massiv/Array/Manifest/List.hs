@@ -121,7 +121,7 @@ fromListToListArray = GHC.fromList
 --
 -- Above example implemented using GHC's `OverloadedLists` extension:
 --
--- >>> :set -XOverloadedLists
+-- >>> :seti -XOverloadedLists
 -- >>> [[1,2,3],[4,5,6]] :: Array U Ix2 Int
 -- Array U Seq (Sz (2 :. 3))
 --   [ [ 1, 2, 3 ]

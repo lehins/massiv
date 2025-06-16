@@ -516,7 +516,7 @@ randomArrayS gen sz nextRandom =
 -- >>> import System.Random.MWC as MWC (initialize)
 -- >>> import System.Random.Stateful (uniformRM)
 -- >>> import Control.Scheduler (initWorkerStates, getWorkerId)
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> gens <- initWorkerStates Par (MWC.initialize . A.toPrimitiveVector . A.singleton @P @Ix1 . fromIntegral . getWorkerId)
 -- >>> randomArrayWS gens (Sz2 2 3) (uniformRM (0, 9)) :: IO (Matrix P Double)
 -- Array P Par (Sz (2 :. 3))

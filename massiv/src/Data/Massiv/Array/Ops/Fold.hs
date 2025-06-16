@@ -166,7 +166,7 @@ ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 -- ====__Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @U Seq (Sz (2 :. 5)) id
 -- >>> arr
 -- Array U Seq (Sz (2 :. 5))

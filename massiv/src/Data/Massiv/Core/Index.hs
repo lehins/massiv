@@ -452,7 +452,7 @@ insertDim' ix dim = throwEither . insertDimM ix dim
 --
 -- >>> fromDimension Dim4
 -- (Dim 4)
--- >>> :set -XDataKinds
+-- >>> :seti -XDataKinds
 -- >>> fromDimension (DimN :: Dimension 10)
 -- (Dim 10)
 --

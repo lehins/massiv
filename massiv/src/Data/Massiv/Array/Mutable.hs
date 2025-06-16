@@ -255,7 +255,7 @@ outerSlicesMArray comp marr =
 --
 -- Or using @TypeApplications@:
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> newMArray' @P @Ix2 @Int (Sz2 2 6) >>= freezeS
 -- Array P Seq (Sz (2 :. 6))
 --   [ [ 0, 0, 0, 0, 0, 0 ]
@@ -279,7 +279,7 @@ newMArray' sz = unsafeNew sz >>= \ma -> ma <$ initialize ma
 -- ==== __Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr <- fromListsM @U @Ix2 @Double Par [[12,21],[13,31]]
 -- >>> marr <- thaw arr
 -- >>> modify marr (pure . (+ 10)) (1 :. 0)
@@ -314,7 +314,7 @@ thaw arr =
 -- ==== __Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XOverloadedLists
+-- >>> :seti -XOverloadedLists
 -- >>> thawS @P @Ix1 @Double [1..10]
 -- >>> marr <- thawS @P @Ix1 @Double [1..10]
 -- >>> writeM marr 5 100
@@ -505,7 +505,7 @@ makeMArrayLinear comp sz f = do
 --
 -- ====__Examples__
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> import Data.Massiv.Array
 -- >>> createArray_ @P @_ @Int Seq (Sz1 2) (\ s marr -> scheduleWork s (writeM marr 0 10) >> scheduleWork s (writeM marr 1 11))
 -- Array P Seq (Sz1 2)
@@ -554,7 +554,7 @@ createArray comp sz action = do
 --
 -- ====__Examples__
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> import Data.Massiv.Array
 -- >>> createArrayS_ @P @_ @Int (Sz1 2) (\ marr -> write marr 0 10 >> write marr 1 12)
 -- Array P Seq (Sz1 2)
@@ -1346,7 +1346,7 @@ modifyM marr f ix
 --
 -- ====__Examples__
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> import Control.Monad.ST
 -- >>> import Data.Massiv.Array
 -- >>> runST $ newMArray' @P @Ix1 @Int (Sz1 3) >>= (\ma -> modifyM_ ma (pure . (+10)) 1 >> freezeS ma)
