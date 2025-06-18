@@ -158,6 +158,31 @@ flattenMArray marr = unsafeResizeMArray (toLinearSz (sizeOfMArray marr)) marr
 -- dimensionality by one. Same as `Data.Massiv.Array.!?>` operator, but for
 -- mutable arrays.
 --
+-- ====__Examples__
+--
+-- >>> import Data.Massiv.Array
+-- >>> marr <- makeMArrayLinear @P Seq (Sz2 4 7) (pure . (+10))
+-- >>> freezeS marr
+-- Array P Seq (Sz (4 :. 7))
+--   [ [ 10, 11, 12, 13, 14, 15, 16 ]
+--   , [ 17, 18, 19, 20, 21, 22, 23 ]
+--   , [ 24, 25, 26, 27, 28, 29, 30 ]
+--   , [ 31, 32, 33, 34, 35, 36, 37 ]
+--   ]
+--
+-- Let's say our goal is to swap row at index 0 with the one with index 2:
+--
+-- >>> row0 <- outerSliceMArrayM marr 0
+-- >>> row2 <- outerSliceMArrayM marr 2
+-- >>> zipSwapM_ 0 row0 row2
+-- >>> freezeS marr
+-- Array P Seq (Sz (4 :. 7))
+--   [ [ 24, 25, 26, 27, 28, 29, 30 ]
+--   , [ 17, 18, 19, 20, 21, 22, 23 ]
+--   , [ 10, 11, 12, 13, 14, 15, 16 ]
+--   , [ 31, 32, 33, 34, 35, 36, 37 ]
+--   ]
+--
 -- @since 1.0.0
 outerSliceMArrayM
   :: forall r ix e m s
@@ -188,7 +213,7 @@ outerSliceMArrayM !marr !i = do
 --   , [ 31, 32, 33, 34, 35, 36, 37 ]
 --   ]
 --
--- Here we can see we can get individual rows from a mutable matrix
+-- Here is how we can get individual rows from a mutable matrix
 --
 -- >>> marr <- thawS arr
 -- >>> import Control.Monad ((<=<))
