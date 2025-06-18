@@ -1,5 +1,5 @@
 work-dir: ".stack-work-root"
-resolver: lts-22.27
+resolver: lts-22.44
 packages:
 - 'massiv/'
 - 'massiv-test/'

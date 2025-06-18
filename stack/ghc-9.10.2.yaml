@@ -1,5 +1,5 @@
 work-dir: ".stack-work-root"
-resolver: nightly-2025-01-10
+resolver: nightly-2025-06-17
 packages:
 - 'massiv/'
 - 'massiv-test/'
