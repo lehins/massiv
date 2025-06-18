@@ -78,9 +78,9 @@ jobs:
             ghc: '9.8.4'
           - resolver: nightly
             ghc: '9.10.2'
-        # exclude:
-        #   - resolver: lts-12
-        #     os: windows-latest
+        exclude:
+          - resolver: lts-22
+            os: windows-latest
         #   - resolver: lts-14
         #     os: windows-latest
         #   # - resolver: lts-16
