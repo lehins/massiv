@@ -73,11 +73,11 @@ jobs:
           - resolver: lts-21
             ghc: '9.4.8'
           - resolver: lts-22
-            ghc: '9.6.6'
+            ghc: '9.6.7'
           - resolver: lts-23
             ghc: '9.8.4'
           - resolver: nightly
-            ghc: '9.10.1'
+            ghc: '9.10.2'
         # exclude:
         #   - resolver: lts-12
         #     os: windows-latest
@@ -93,7 +93,7 @@ jobs:
       STACK_ARGS: '--resolver=${{ matrix.resolver }} --system-ghc'
       cache-version: v7 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -105,7 +105,7 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
@@ -117,7 +117,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
     - name: Windows Cache
       id: cache-windows
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: matrix.os == 'windows-latest'
       with:
         path: |
@@ -170,10 +170,10 @@ jobs:
           - { os: ubuntu-latest, ghc: "9.0.2" }
           - { os: ubuntu-latest, ghc: "9.2.8" }
           - { os: ubuntu-latest, ghc: "9.4.8" }
-          - { os: ubuntu-latest, ghc: "9.6.5" }
+          - { os: ubuntu-latest, ghc: "9.6.7" }
           - { os: ubuntu-latest, ghc: "9.8.4" }
-          - { os: ubuntu-latest, ghc: "9.10.1" }
-          - { os: ubuntu-latest, ghc: "9.12.1" }
+          - { os: ubuntu-latest, ghc: "9.10.2" }
+          - { os: ubuntu-latest, ghc: "9.12.2" }
           # - { os: windows-latest, ghc: "8.0.2" } # Linker errors
           # - { os: windows-latest, ghc: "8.2.2" } # Linker errors
           - { os: windows-latest, ghc: "8.4.4" }
@@ -183,10 +183,10 @@ jobs:
           - { os: windows-latest, ghc: "9.0.2" }
           - { os: windows-latest, ghc: "9.2.8" }
           - { os: windows-latest, ghc: "9.4.8" }
-          - { os: windows-latest, ghc: "9.6.5" }
+          - { os: windows-latest, ghc: "9.6.7" }
           - { os: windows-latest, ghc: "9.8.4" }
-          - { os: windows-latest, ghc: "9.10.1" }
-          - { os: windows-latest, ghc: "9.12.1" }
+          - { os: windows-latest, ghc: "9.10.2" }
+          - { os: windows-latest, ghc: "9.12.2" }
           # - { os: macOS-13, ghc: "8.0.2" }
           - { os: macOS-13, ghc: "8.2.2" }
           - { os: macOS-13, ghc: "8.4.4" }
@@ -196,15 +196,15 @@ jobs:
           - { os: macOS-13, ghc: "9.0.2" }
           - { os: macOS-latest, ghc: "9.2.8" }
           - { os: macOS-latest, ghc: "9.4.8" }
-          - { os: macOS-latest, ghc: "9.6.5" }
+          - { os: macOS-latest, ghc: "9.6.7" }
           - { os: macOS-latest, ghc: "9.8.4" }
-          - { os: macOS-latest, ghc: "9.10.1" }
-          - { os: macOS-latest, ghc: "9.12.1" }
+          - { os: macOS-latest, ghc: "9.10.2" }
+          - { os: macOS-latest, ghc: "9.12.2" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -214,7 +214,7 @@ jobs:
 
     - name: Cache Cabal Store
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
@@ -264,7 +264,7 @@ jobs:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'
       cache-version: v2 # bump up this version to invalidate currently stored cache
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -276,7 +276,7 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.stack-root }}
@@ -305,12 +305,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ghc: [9.6.6]
+        ghc: [9.6.7]
 
     env:
       STACK_ARGS: '--system-ghc'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
@@ -321,7 +321,7 @@ jobs:
         stack-version: 'latest'
 
     - name: Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         # A list of files, directories, and wildcard patterns to cache and restore
         path: |
