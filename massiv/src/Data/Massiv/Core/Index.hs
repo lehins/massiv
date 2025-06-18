@@ -8,7 +8,7 @@
 
 -- |
 -- Module      : Data.Massiv.Core.Index
--- Copyright   : (c) Alexey Kuleshevich 2018-2022
+-- Copyright   : (c) Alexey Kuleshevich 2018-2025
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <alexey@kuleshevi.ch>
 -- Stability   : experimental
@@ -452,7 +452,7 @@ insertDim' ix dim = throwEither . insertDimM ix dim
 --
 -- >>> fromDimension Dim4
 -- (Dim 4)
--- >>> :set -XDataKinds
+-- >>> :seti -XDataKinds
 -- >>> fromDimension (DimN :: Dimension 10)
 -- (Dim 10)
 --

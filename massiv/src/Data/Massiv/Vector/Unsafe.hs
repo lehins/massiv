@@ -2,7 +2,7 @@
 
 -- |
 -- Module      : Data.Massiv.Vector.Unsafe
--- Copyright   : (c) Alexey Kuleshevich 2020-2022
+-- Copyright   : (c) Alexey Kuleshevich 2020-2025
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

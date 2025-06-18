@@ -11,7 +11,7 @@
 
 -- |
 -- Module      : Data.Massiv.Core.Common
--- Copyright   : (c) Alexey Kuleshevich 2018-2022
+-- Copyright   : (c) Alexey Kuleshevich 2018-2025
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -173,7 +173,7 @@ class Typeable r => Strategy r where
   --
   -- ==== __Example__
   --
-  -- >>> :set -XTypeApplications
+  -- >>> :seti -XTypeApplications
   -- >>> import Data.Massiv.Array
   -- >>> a = singleton @DL @Ix1 @Int 0
   -- >>> a
@@ -372,7 +372,7 @@ class (Strategy r, Shape r ix) => Load r ix e where
   --
   -- Instead of restricting the full type manually we can use @TypeApplications@ as convenience:
   --
-  -- >>> :set -XTypeApplications
+  -- >>> :seti -XTypeApplications
   -- >>> makeArray @P @_ @Double Seq (Sz2 3 4) $ \(i :. j) -> logBase (fromIntegral i) (fromIntegral j)
   -- Array P Seq (Sz (3 :. 4))
   --   [ [ NaN, -0.0, -0.0, -0.0 ]
@@ -834,7 +834,7 @@ class (IsList (Array r ix e), Load r ix e) => Ragged r ix e where
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array as A
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> xs = empty @DL @Ix1 @Double
 -- >>> snoc (cons 4 (cons 5 xs)) 22
 -- Array DL Seq (Sz1 3)
@@ -862,7 +862,7 @@ empty = makeArray Seq zeroSz (const (throwImpossible Uninitialized))
 --
 -- Instead of specifying type signature we could use @TypeApplications@
 --
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> singleton @U @Ix4 @Double 7
 -- Array U Seq (Sz (1 :> 1 :> 1 :. 1))
 --   [ [ [ [ 7.0 ]
@@ -913,7 +913,7 @@ infixl 4 !, !?, ??
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array as A
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> a <- fromListsM @U @Ix2 @Int Seq [[1,2,3],[4,5,6]]
 -- >>> a
 -- Array U Seq (Sz (2 :. 3))
@@ -946,7 +946,7 @@ infixl 4 !, !?, ??
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array as A
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> ma = fromListsM @U @Ix3 @Int @Maybe Seq [[[1,2,3]],[[4,5,6]]]
 -- >>> ma
 -- Just (Array U Seq (Sz (2 :> 1 :. 3))
@@ -995,7 +995,7 @@ indexM = evaluateM
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XOverloadedLists
+-- >>> :seti -XOverloadedLists
 -- >>> xs = [0..100] :: Array P Ix1 Int
 -- >>> defaultIndex 999 xs 100
 -- 100
@@ -1013,7 +1013,7 @@ defaultIndex defVal = borderIndex (Fill defVal)
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array as A
--- >>> :set -XOverloadedLists
+-- >>> :seti -XOverloadedLists
 -- >>> xs = [0..100] :: Array U Ix1 Int
 -- >>> borderIndex Wrap xs <$> range Seq 99 104
 -- Array D Seq (Sz1 5)
@@ -1030,7 +1030,7 @@ borderIndex border arr = handleBorderIndex border (size arr) (unsafeIndex arr)
 -- ==== __Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XOverloadedLists
+-- >>> :seti -XOverloadedLists
 -- >>> xs = [0..100] :: Array U Ix1 Int
 -- >>> index' xs 50
 -- 50

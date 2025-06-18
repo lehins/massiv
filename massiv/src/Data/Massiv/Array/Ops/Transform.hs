@@ -7,7 +7,7 @@
 
 -- |
 -- Module      : Data.Massiv.Array.Ops.Transform
--- Copyright   : (c) Alexey Kuleshevich 2018-2022
+-- Copyright   : (c) Alexey Kuleshevich 2018-2025
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -350,7 +350,7 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 -- ====__Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @U Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
 -- Array U Seq (Sz (2 :> 3 :. 4))
@@ -472,7 +472,7 @@ reverse' dim = throwEither . reverseM dim
 -- ===__Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @D Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
 -- Array D Seq (Sz (2 :> 3 :. 4))

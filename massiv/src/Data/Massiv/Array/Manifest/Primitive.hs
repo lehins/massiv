@@ -8,10 +8,12 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UndecidableInstances #-}
+-- Disable warning due to `sizeofMutableByteArray` for now
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      : Data.Massiv.Array.Manifest.Primitive
--- Copyright   : (c) Alexey Kuleshevich 2018-2022
+-- Copyright   : (c) Alexey Kuleshevich 2018-2025
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental

@@ -6,7 +6,7 @@
 
 -- |
 -- Module      : Data.Massiv.Array.Ops.Fold
--- Copyright   : (c) Alexey Kuleshevich 2018-2022
+-- Copyright   : (c) Alexey Kuleshevich 2018-2025
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -166,7 +166,7 @@ ifoldlWithin dim = ifoldlWithin' (fromDimension dim)
 -- ====__Example__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @U Seq (Sz (2 :. 5)) id
 -- >>> arr
 -- Array U Seq (Sz (2 :. 5))

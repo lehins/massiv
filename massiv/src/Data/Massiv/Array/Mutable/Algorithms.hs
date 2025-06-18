@@ -3,7 +3,7 @@
 
 -- |
 -- Module      : Data.Massiv.Array.Mutable.Algorithms
--- Copyright   : (c) Alexey Kuleshevich 2019-2022
+-- Copyright   : (c) Alexey Kuleshevich 2019-2025
 -- License     : BSD3
 -- Maintainer  : Alexey Kuleshevich <lehins@yandex.ru>
 -- Stability   : experimental
@@ -25,7 +25,7 @@ import Data.Massiv.Core.Common
 --
 -- >>> import Data.Massiv.Array as A
 -- >>> import Data.Massiv.Array.Mutable.Algorithms
--- >>> :set -XOverloadedLists
+-- >>> :seti -XOverloadedLists
 -- >>> m <- thaw ([2,1,50,10,20,8] :: Array P Ix1 Int)
 -- >>> unstablePartitionM m (pure . (<= 10))
 -- 4
