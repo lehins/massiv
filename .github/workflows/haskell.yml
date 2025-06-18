@@ -161,7 +161,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - { os: ubuntu-latest, ghc: "8.0.2" }
           - { os: ubuntu-latest, ghc: "8.2.2" }
           - { os: ubuntu-latest, ghc: "8.4.4" }
           - { os: ubuntu-latest, ghc: "8.6.5" }
@@ -174,7 +173,6 @@ jobs:
           - { os: ubuntu-latest, ghc: "9.8.4" }
           - { os: ubuntu-latest, ghc: "9.10.2" }
           - { os: ubuntu-latest, ghc: "9.12.2" }
-          # - { os: windows-latest, ghc: "8.0.2" } # Linker errors
           # - { os: windows-latest, ghc: "8.2.2" } # Linker errors
           - { os: windows-latest, ghc: "8.4.4" }
           - { os: windows-latest, ghc: "8.6.5" }

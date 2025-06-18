@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -183,7 +182,6 @@ fromByteString
 fromByteString comp bs = makeArrayLinear comp (SafeSz (S.length bs)) (SU.unsafeIndex bs)
 {-# INLINE fromByteString #-}
 
-{- FOURMOLU_DISABLE -}
 -- | /O(n)/ - Convert any source array into a strict `ByteString`. In case when the source array is
 -- actually storable, no memory copy will occur.
 --
@@ -192,15 +190,8 @@ toByteString ::
      Load r ix Word8
   => Array r ix Word8 -- ^ Source array
   -> ByteString
-toByteString = castToByteString .
-#if __GLASGOW_HASKELL__ >= 820
-  convert
-  {- For ghc-8.0 `convert` results in "internal error: ARR_WORDS object entered!" -}
-#else
-  compute
-#endif
+toByteString = castToByteString . convert
 {-# INLINE toByteString #-}
-{- FOURMOLU_ENABLE -}
 
 -- | /O(n)/ - Conversion of array monoidally into a ByteString `Builder`.
 --

@@ -13,8 +13,7 @@ build-type:          Simple
 extra-source-files:  README.md
                    , CHANGELOG.md
 cabal-version:       >=1.10
-tested-with:         GHC == 8.0.2
-                   , GHC == 8.2.2
+tested-with:         GHC == 8.2.2
                    , GHC == 8.4.4
                    , GHC == 8.6.5
                    , GHC == 8.8.4
@@ -84,7 +83,7 @@ library
                      , Data.Massiv.Core.Index.Iterator
                      , Data.Massiv.Core.Loop
                      , Data.Massiv.Vector.Unsafe
-  build-depends:       base >= 4.9 && < 5
+  build-depends:       base >= 4.10 && < 5
                      , bytestring
                      , deepseq
                      , exceptions
