@@ -1,3 +1,7 @@
+# 1.1.0
+
+*
+
 # 1.0.5
 
 * Add `Functor` instance for `Border`
