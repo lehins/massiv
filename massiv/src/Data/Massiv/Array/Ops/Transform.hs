@@ -561,6 +561,7 @@ backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 --   ]
 -- >>> appendM 2 arrA arrC
 -- *** Exception: SizeMismatchException: (Sz (2 :. 3)) vs (Sz (2 :. 4))
+-- ...
 --
 -- @since 0.3.0
 appendM

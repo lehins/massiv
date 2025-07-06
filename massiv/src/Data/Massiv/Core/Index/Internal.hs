@@ -295,6 +295,7 @@ snocSz (SafeSz i) (SafeSz ix) = SafeSz (snocDim i ix)
 -- Sz (1 :. 3)
 -- >>> setSzM (Sz2 2 3) 3 (Sz1 1) :: IO Sz2
 -- *** Exception: IndexDimensionException: (Dim 3) for (2 :. 3)
+-- ...
 --
 -- @since 0.3.0
 setSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> Sz Int -> m (Sz ix)
@@ -310,6 +311,7 @@ setSzM (SafeSz sz) dim (SafeSz sz1) = SafeSz <$> setDimM sz dim sz1
 -- Sz (1 :> 2 :. 3)
 -- >>> insertSzM (Sz2 2 3) 4 (Sz1 1) :: IO Sz3
 -- *** Exception: IndexDimensionException: (Dim 4) for (2 :. 3)
+-- ...
 --
 -- @since 0.3.0
 insertSzM :: (MonadThrow m, Index ix) => Sz (Lower ix) -> Dim -> Sz Int -> m (Sz ix)
@@ -349,6 +351,7 @@ unsnocSz (SafeSz sz) = coerce (unsnocDim sz)
 -- (Sz1 1,Sz (2 :. 3))
 -- >>> pullOutSzM (Sz3 1 2 3) 0
 -- *** Exception: IndexDimensionException: (Dim 0) for (1 :> 2 :. 3)
+-- ...
 --
 -- @since 0.3.0
 pullOutSzM :: (MonadThrow m, Index ix) => Sz ix -> Dim -> m (Sz Ix1, Sz (Lower ix))

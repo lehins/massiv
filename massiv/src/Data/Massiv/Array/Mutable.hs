@@ -288,6 +288,7 @@ outerSlicesMArray comp marr =
 --   ]
 -- >>> newMArray' @B @_ @Int (Sz2 2 6) >>= freezeS
 -- *** Exception: Uninitialized
+-- ...
 --
 -- @since 0.6.0
 newMArray'

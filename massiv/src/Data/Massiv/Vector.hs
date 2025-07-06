@@ -473,6 +473,7 @@ shead' = throwEither . sheadM
 -- 0
 -- >>> x <- sheadM $ sunfoldr (\_ -> Nothing) (0 :: Int)
 -- *** Exception: SizeEmptyException: (Sz1 0) corresponds to an empty array
+-- ...
 --
 -- @since 0.5.0
 sheadM
@@ -640,8 +641,10 @@ slice' i k = throwEither . sliceM i k
 --   [ 10, 11, 12, 13, 14 ]
 -- >>> sliceM (-10) 5 (Ix1 0 ... 100)
 -- *** Exception: SizeSubregionException: (Sz1 101) is to small for -10 (Sz1 5)
+-- ...
 -- >>> sliceM 98 50 (Ix1 0 ... 100)
 -- *** Exception: SizeSubregionException: (Sz1 101) is to small for 98 (Sz1 50)
+-- ...
 -- >>> sliceM 9999999999998 3 (Ix1 0 ... 10000000000000)
 -- Array D Seq (Sz1 3)
 --   [ 9999999999998, 9999999999999, 10000000000000 ]
@@ -868,6 +871,7 @@ take' k = throwEither . takeM k
 -- -1
 -- >>> takeM 15 (0 ..: 10)
 -- *** Exception: SizeSubregionException: (Sz1 10) is to small for 0 (Sz1 15)
+-- ...
 --
 -- @since 0.5.0
 takeM :: forall r e m. (Source r e, MonadThrow m) => Sz1 -> Vector r e -> m (Vector r e)

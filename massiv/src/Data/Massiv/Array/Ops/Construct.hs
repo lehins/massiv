@@ -601,6 +601,7 @@ range comp !from !to = rangeSize comp from (Sz (liftIndex2 (-) to from))
 --   [ 1, 3, 5, 7 ]
 -- >>> rangeStepM Seq (Ix1 1) 0 8
 -- *** Exception: IndexZeroException: 0
+-- ...
 --
 -- @since 0.3.0
 rangeStepM

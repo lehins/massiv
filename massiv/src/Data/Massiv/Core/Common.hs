@@ -924,6 +924,7 @@ infixl 4 !, !?, ??
 -- 3
 -- >>> a !? 0 :. 3
 -- *** Exception: IndexOutOfBoundsException: (0 :. 3) is not safe for (Sz (2 :. 3))
+-- ...
 -- >>> a !? 0 :. 3 :: Maybe Int
 -- Nothing
 --
