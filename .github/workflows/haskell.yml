@@ -85,7 +85,7 @@ jobs:
           - { os: windows-latest, resolver: lts-19, ghc: '9.0.2' }
           - { os: windows-latest, resolver: lts-20, ghc: '9.2.8' }
           - { os: windows-latest, resolver: lts-21, ghc: '9.4.8' }
-          - { os: windows-latest, resolver: lts-22, ghc: '9.6.7' }
+          #- { os: windows-latest, resolver: lts-22, ghc: '9.6.7' } # Can't find ghc-9.6.7.exe
           - { os: windows-latest, resolver: lts-23, ghc: '9.8.4' }
           - { os: windows-latest, resolver: nightly, ghc: '9.10.2' }
 
@@ -171,10 +171,10 @@ jobs:
           - { os: ubuntu-latest, ghc: "9.0.2" }
           - { os: ubuntu-latest, ghc: "9.2.8" }
           - { os: ubuntu-latest, ghc: "9.4.8" }
-          - { os: ubuntu-latest, ghc: "9.6.5" }
+          - { os: ubuntu-latest, ghc: "9.6.7" }
           - { os: ubuntu-latest, ghc: "9.8.4" }
-          - { os: ubuntu-latest, ghc: "9.10.1" }
-          - { os: ubuntu-latest, ghc: "9.12.1" }
+          - { os: ubuntu-latest, ghc: "9.10.2" }
+          - { os: ubuntu-latest, ghc: "9.12.2" }
           # - { os: windows-latest, ghc: "8.0.2" } # Linker errors
           # - { os: windows-latest, ghc: "8.2.2" } # Linker errors
           - { os: windows-latest, ghc: "8.4.4" }
@@ -184,23 +184,23 @@ jobs:
           - { os: windows-latest, ghc: "9.0.2" }
           - { os: windows-latest, ghc: "9.2.8" }
           - { os: windows-latest, ghc: "9.4.8" }
-          - { os: windows-latest, ghc: "9.6.5" }
+          - { os: windows-latest, ghc: "9.6.7" }
           - { os: windows-latest, ghc: "9.8.4" }
-          - { os: windows-latest, ghc: "9.10.1" }
-          - { os: windows-latest, ghc: "9.12.1" }
+          - { os: windows-latest, ghc: "9.10.2" }
+          - { os: windows-latest, ghc: "9.12.2" }
           # - { os: macOS-13, ghc: "8.0.2" }
           - { os: macOS-13, ghc: "8.2.2" }
           - { os: macOS-13, ghc: "8.4.4" }
-          - { os: macOS-13, ghc: "8.6.5" }
-          - { os: macOS-13, ghc: "8.8.4" }
-          - { os: macOS-13, ghc: "8.10.7" }
-          - { os: macOS-13, ghc: "9.0.2" }
+          # - { os: macOS-13, ghc: "8.6.5" }  # doctest "Security" error
+          # - { os: macOS-13, ghc: "8.8.4" }  # doctest "Security" error
+          # - { os: macOS-13, ghc: "8.10.7" } # linker warning in doctests
+          # - { os: macOS-13, ghc: "9.0.2" }  # linker warning in doctests
           - { os: macOS-latest, ghc: "9.2.8" }
           - { os: macOS-latest, ghc: "9.4.8" }
-          - { os: macOS-latest, ghc: "9.6.5" }
+          - { os: macOS-latest, ghc: "9.6.7" }
           - { os: macOS-latest, ghc: "9.8.4" }
-          - { os: macOS-latest, ghc: "9.10.1" }
-          - { os: macOS-latest, ghc: "9.12.1" }
+          - { os: macOS-latest, ghc: "9.10.2" }
+          - { os: macOS-latest, ghc: "9.12.2" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
