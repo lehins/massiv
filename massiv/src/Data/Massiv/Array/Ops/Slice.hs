@@ -117,6 +117,7 @@ infixl 4 !>, !?>, ??>, <!, <!?, <??, <!>, <!?>, <??>
 -- Nothing
 -- >>> arr !?> 2 ??> -10 ?? 1
 -- *** Exception: IndexOutOfBoundsException: -10 is not safe for (Sz1 2)
+-- ...
 --
 -- @since 0.1.0
 (??>)

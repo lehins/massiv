@@ -350,7 +350,7 @@ transposeInner !arr = makeArray (getComp arr) newsz newVal
 -- ====__Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @U Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
 -- Array U Seq (Sz (2 :> 3 :. 4))
@@ -472,7 +472,7 @@ reverse' dim = throwEither . reverseM dim
 -- ===__Examples__
 --
 -- >>> import Data.Massiv.Array
--- >>> :set -XTypeApplications
+-- >>> :seti -XTypeApplications
 -- >>> arr = makeArrayLinear @D Seq (Sz (2 :> 3 :. 4)) id
 -- >>> arr
 -- Array D Seq (Sz (2 :> 3 :. 4))
@@ -561,6 +561,7 @@ backpermute' sz ixF !arr = makeArray (getComp arr) sz (evaluate' arr . ixF)
 --   ]
 -- >>> appendM 2 arrA arrC
 -- *** Exception: SizeMismatchException: (Sz (2 :. 3)) vs (Sz (2 :. 4))
+-- ...
 --
 -- @since 0.3.0
 appendM

@@ -52,41 +52,42 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-13, windows-latest]
-        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, lts-21, lts-22, lts-23, nightly]
         include:
-          - resolver: lts-11
-            ghc: '8.2.2'
-            stack-version: '2.15.5'
-          - resolver: lts-12
-            ghc: '8.4.4'
-          - resolver: lts-14
-            ghc: '8.6.5'
-          - resolver: lts-16
-            ghc: '8.8.4'
-          - resolver: lts-18
-            ghc: '8.10.7'
-          - resolver: lts-19
-            ghc: '9.0.2'
-          - resolver: lts-20
-            ghc: '9.2.8'
-          - resolver: lts-21
-            ghc: '9.4.8'
-          - resolver: lts-22
-            ghc: '9.6.6'
-          - resolver: lts-23
-            ghc: '9.8.4'
-          - resolver: nightly
-            ghc: '9.10.1'
-        # exclude:
-        #   - resolver: lts-12
-        #     os: windows-latest
-        #   - resolver: lts-14
-        #     os: windows-latest
-        #   # - resolver: lts-16
-        #   #   os: windows-latest # OOM on building Test.Massiv.VectorSpec
-        #   - resolver: lts-18
-        #     os: windows-latest # Too buggy, occasional ghc crashes
+          - { os: ubuntu-latest, resolver: lts-11, ghc: '8.2.2', stack-version: '2.15.5' }
+          - { os: ubuntu-latest, resolver: lts-12, ghc: '8.4.4' }
+          - { os: ubuntu-latest, resolver: lts-14, ghc: '8.6.5' }
+          - { os: ubuntu-latest, resolver: lts-16, ghc: '8.8.4' }
+          - { os: ubuntu-latest, resolver: lts-18, ghc: '8.10.7' }
+          - { os: ubuntu-latest, resolver: lts-19, ghc: '9.0.2' }
+          - { os: ubuntu-latest, resolver: lts-20, ghc: '9.2.8' }
+          - { os: ubuntu-latest, resolver: lts-21, ghc: '9.4.8' }
+          - { os: ubuntu-latest, resolver: lts-22, ghc: '9.6.7' }
+          - { os: ubuntu-latest, resolver: lts-23, ghc: '9.8.4' }
+          - { os: ubuntu-latest, resolver: nightly, ghc: '9.10.2' }
+
+          - { os: macOS-13, resolver: lts-11, ghc: '8.2.2', stack-version: '2.15.5' }
+          - { os: macOS-13, resolver: lts-12, ghc: '8.4.4' }
+          - { os: macOS-13, resolver: lts-14, ghc: '8.6.5' }
+          - { os: macOS-13, resolver: lts-16, ghc: '8.8.4' }
+          - { os: macOS-13, resolver: lts-18, ghc: '8.10.7' }
+          - { os: macOS-13, resolver: lts-19, ghc: '9.0.2' }
+          - { os: macOS-latest, resolver: lts-20, ghc: '9.2.8' }
+          - { os: macOS-latest, resolver: lts-21, ghc: '9.4.8' }
+          - { os: macOS-latest, resolver: lts-22, ghc: '9.6.7' }
+          - { os: macOS-latest, resolver: lts-23, ghc: '9.8.4' }
+          - { os: macOS-latest, resolver: nightly, ghc: '9.10.2' }
+
+          - { os: windows-latest, resolver: lts-11, ghc: '8.2.2', stack-version: '2.15.5' }
+          - { os: windows-latest, resolver: lts-12, ghc: '8.4.4' }
+          - { os: windows-latest, resolver: lts-14, ghc: '8.6.5' }
+          - { os: windows-latest, resolver: lts-16, ghc: '8.8.4' }
+          - { os: windows-latest, resolver: lts-18, ghc: '8.10.7' }
+          - { os: windows-latest, resolver: lts-19, ghc: '9.0.2' }
+          - { os: windows-latest, resolver: lts-20, ghc: '9.2.8' }
+          - { os: windows-latest, resolver: lts-21, ghc: '9.4.8' }
+          #- { os: windows-latest, resolver: lts-22, ghc: '9.6.7' } # Can't find ghc-9.6.7.exe
+          - { os: windows-latest, resolver: lts-23, ghc: '9.8.4' }
+          - { os: windows-latest, resolver: nightly, ghc: '9.10.2' }
 
     env:
       STACK_YAML: 'stack.ghc-${{ matrix.ghc }}.yaml'
@@ -151,7 +152,6 @@ jobs:
           curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.7.0/shc-Linux-X64.tar.bz2 | tar xj shc
           ./shc --repo-token="$COVERALLS_TOKEN" --partial-coverage --fetch-coverage combined custom
         else
-          stack $STACK_ARGS test massiv:doctests
           stack $STACK_ARGS test massiv-test:tests
         fi
 
@@ -171,10 +171,10 @@ jobs:
           - { os: ubuntu-latest, ghc: "9.0.2" }
           - { os: ubuntu-latest, ghc: "9.2.8" }
           - { os: ubuntu-latest, ghc: "9.4.8" }
-          - { os: ubuntu-latest, ghc: "9.6.5" }
+          - { os: ubuntu-latest, ghc: "9.6.7" }
           - { os: ubuntu-latest, ghc: "9.8.4" }
-          - { os: ubuntu-latest, ghc: "9.10.1" }
-          - { os: ubuntu-latest, ghc: "9.12.1" }
+          - { os: ubuntu-latest, ghc: "9.10.2" }
+          - { os: ubuntu-latest, ghc: "9.12.2" }
           # - { os: windows-latest, ghc: "8.0.2" } # Linker errors
           # - { os: windows-latest, ghc: "8.2.2" } # Linker errors
           - { os: windows-latest, ghc: "8.4.4" }
@@ -184,23 +184,23 @@ jobs:
           - { os: windows-latest, ghc: "9.0.2" }
           - { os: windows-latest, ghc: "9.2.8" }
           - { os: windows-latest, ghc: "9.4.8" }
-          - { os: windows-latest, ghc: "9.6.5" }
+          - { os: windows-latest, ghc: "9.6.7" }
           - { os: windows-latest, ghc: "9.8.4" }
-          - { os: windows-latest, ghc: "9.10.1" }
-          - { os: windows-latest, ghc: "9.12.1" }
+          - { os: windows-latest, ghc: "9.10.2" }
+          - { os: windows-latest, ghc: "9.12.2" }
           # - { os: macOS-13, ghc: "8.0.2" }
           - { os: macOS-13, ghc: "8.2.2" }
           - { os: macOS-13, ghc: "8.4.4" }
-          - { os: macOS-13, ghc: "8.6.5" }
-          - { os: macOS-13, ghc: "8.8.4" }
-          - { os: macOS-13, ghc: "8.10.7" }
-          - { os: macOS-13, ghc: "9.0.2" }
+          # - { os: macOS-13, ghc: "8.6.5" }  # doctest "Security" error
+          # - { os: macOS-13, ghc: "8.8.4" }  # doctest "Security" error
+          # - { os: macOS-13, ghc: "8.10.7" } # linker warning in doctests
+          # - { os: macOS-13, ghc: "9.0.2" }  # linker warning in doctests
           - { os: macOS-latest, ghc: "9.2.8" }
           - { os: macOS-latest, ghc: "9.4.8" }
-          - { os: macOS-latest, ghc: "9.6.5" }
+          - { os: macOS-latest, ghc: "9.6.7" }
           - { os: macOS-latest, ghc: "9.8.4" }
-          - { os: macOS-latest, ghc: "9.10.1" }
-          - { os: macOS-latest, ghc: "9.12.1" }
+          - { os: macOS-latest, ghc: "9.10.2" }
+          - { os: macOS-latest, ghc: "9.12.2" }
 
     env:
       cache-version: v3 # bump up this version to invalidate currently stored cache
@@ -226,20 +226,28 @@ jobs:
         restore-keys: |
           cabal-${{ runner.os }}-${{ matrix.ghc }}-${{ env.cache-version }}
     - name: Build
+      id: build
       run: |
         set -ex
-        cabal configure --haddock-all --enable-tests --project-file cabal-ci.project
-        cabal build all --write-ghc-environment-files=always --project-file cabal-ci.project
+        cabal configure --haddock-all
+        cabal build all
     - name: Test
       run: |
         set -ex
-        cabal test all --project-file cabal-ci.project
-    # - name: Check Cabal Files
-    #   run: |
-    #     set -ex
-    #     cd massiv
-    #     cabal -vnormal check
-    #     cd ..
+        cabal test all
+
+    - name: Install Doctest
+      id: install-doctest
+      if: steps.build.outcome == 'success'
+      run: |
+        set -ex
+        cabal install doctest --ignore-project --overwrite-policy=always
+
+    - name: Doctest
+      if: steps.install-doctest.outcome == 'success'
+      run: |
+        set -ex
+        ./scripts/doctest.sh
 
   massiv-bench:
     name: Benchmarks
@@ -251,7 +259,7 @@ jobs:
         resolver: [lts-22]
         include:
           - resolver: lts-22
-            ghc: 9.6.6
+            ghc: 9.6.7
 
     env:
       STACK_ARGS: '--resolver ${{ matrix.resolver }} --system-ghc'

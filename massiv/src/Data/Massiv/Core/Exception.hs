@@ -66,8 +66,7 @@ throwEither =
 -- happen when array was constructed with `Data.Massiv.Array.Unsafe.unsafeNew`.
 data Uninitialized = Uninitialized deriving (Show)
 
-instance Exception Uninitialized where
-  displayException Uninitialized = "Array element is uninitialized"
+instance Exception Uninitialized
 
 -- | Throw `SizeElementsMismatchException` whenever number of elements in both sizes do
 -- not match.
