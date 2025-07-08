@@ -52,41 +52,42 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-13, windows-latest]
-        resolver: [lts-11, lts-12, lts-14, lts-16, lts-18, lts-19, lts-20, lts-21, lts-22, lts-23, nightly]
         include:
-          - resolver: lts-11
-            ghc: '8.2.2'
-            stack-version: '2.15.5'
-          - resolver: lts-12
-            ghc: '8.4.4'
-          - resolver: lts-14
-            ghc: '8.6.5'
-          - resolver: lts-16
-            ghc: '8.8.4'
-          - resolver: lts-18
-            ghc: '8.10.7'
-          - resolver: lts-19
-            ghc: '9.0.2'
-          - resolver: lts-20
-            ghc: '9.2.8'
-          - resolver: lts-21
-            ghc: '9.4.8'
-          - resolver: lts-22
-            ghc: '9.6.6'
-          - resolver: lts-23
-            ghc: '9.8.4'
-          - resolver: nightly
-            ghc: '9.10.1'
-        # exclude:
-        #   - resolver: lts-12
-        #     os: windows-latest
-        #   - resolver: lts-14
-        #     os: windows-latest
-        #   # - resolver: lts-16
-        #   #   os: windows-latest # OOM on building Test.Massiv.VectorSpec
-        #   - resolver: lts-18
-        #     os: windows-latest # Too buggy, occasional ghc crashes
+          - { os: ubuntu-latest, resolver: lts-11, ghc: '8.2.2', stack-version: '2.15.5' }
+          - { os: ubuntu-latest, resolver: lts-12, ghc: '8.4.4' }
+          - { os: ubuntu-latest, resolver: lts-14, ghc: '8.6.5' }
+          - { os: ubuntu-latest, resolver: lts-16, ghc: '8.8.4' }
+          - { os: ubuntu-latest, resolver: lts-18, ghc: '8.10.7' }
+          - { os: ubuntu-latest, resolver: lts-19, ghc: '9.0.2' }
+          - { os: ubuntu-latest, resolver: lts-20, ghc: '9.2.8' }
+          - { os: ubuntu-latest, resolver: lts-21, ghc: '9.4.8' }
+          - { os: ubuntu-latest, resolver: lts-22, ghc: '9.6.7' }
+          - { os: ubuntu-latest, resolver: lts-23, ghc: '9.8.4' }
+          - { os: ubuntu-latest, resolver: nightly, ghc: '9.10.2' }
+
+          - { os: macOS-13, resolver: lts-11, ghc: '8.2.2', stack-version: '2.15.5' }
+          - { os: macOS-13, resolver: lts-12, ghc: '8.4.4' }
+          - { os: macOS-13, resolver: lts-14, ghc: '8.6.5' }
+          - { os: macOS-13, resolver: lts-16, ghc: '8.8.4' }
+          - { os: macOS-13, resolver: lts-18, ghc: '8.10.7' }
+          - { os: macOS-13, resolver: lts-19, ghc: '9.0.2' }
+          - { os: macOS-latest, resolver: lts-20, ghc: '9.2.8' }
+          - { os: macOS-latest, resolver: lts-21, ghc: '9.4.8' }
+          - { os: macOS-latest, resolver: lts-22, ghc: '9.6.7' }
+          - { os: macOS-latest, resolver: lts-23, ghc: '9.8.4' }
+          - { os: macOS-latest, resolver: nightly, ghc: '9.10.2' }
+
+          - { os: windows-latest, resolver: lts-11, ghc: '8.2.2', stack-version: '2.15.5' }
+          - { os: windows-latest, resolver: lts-12, ghc: '8.4.4' }
+          - { os: windows-latest, resolver: lts-14, ghc: '8.6.5' }
+          - { os: windows-latest, resolver: lts-16, ghc: '8.8.4' }
+          - { os: windows-latest, resolver: lts-18, ghc: '8.10.7' }
+          - { os: windows-latest, resolver: lts-19, ghc: '9.0.2' }
+          - { os: windows-latest, resolver: lts-20, ghc: '9.2.8' }
+          - { os: windows-latest, resolver: lts-21, ghc: '9.4.8' }
+          - { os: windows-latest, resolver: lts-22, ghc: '9.6.7' }
+          - { os: windows-latest, resolver: lts-23, ghc: '9.8.4' }
+          - { os: windows-latest, resolver: nightly, ghc: '9.10.2' }
 
     env:
       STACK_YAML: 'stack.ghc-${{ matrix.ghc }}.yaml'
